@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "mcp__context7__resolve-library-uri",
-      "mcp__context7__search-library-docs"
+      "mcp__context7__search-library-docs",
+      "Bash(npx oxlint:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__apply_migration"
     ]
   },
   "enableAllProjectMcpServers": true,

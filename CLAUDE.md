@@ -15,16 +15,42 @@ npm run preview      # Preview production build locally
 
 > Requires Node.js `^20.19.0 || >=22.12.0`. Use `nvm use 22.18.0` if needed.
 
+## Stack
+
+Vue 3 + TypeScript + Vite + Vuetify 3 (dark-default) + Pinia + Supabase (auth, DB, storage).
+
 ## Architecture
 
-Vue 3 SPA with TypeScript, Vite, and Vue Router.
-
-- `src/main.ts` — Entry point: creates app, registers router, mounts to `#app`
-- `src/router/index.ts` — Client-side history routing; home is eager-loaded, other routes should be lazy-loaded (`() => import(...)`) for code splitting
+- `src/main.ts` — Entry point: Pinia → `authStore.init()` → router → Vuetify → mount
+- `src/router/index.ts` — All routes lazy-loaded; nav guard checks `authStore.isAuthenticated`
 - `src/views/` — Page-level components (one per route)
-- `src/components/` — Reusable components
-- Use `@/` alias for all imports from `src/` (e.g. `@/components/Foo.vue`)
+- `src/components/` — Reusable components (`AppBar`, `CharacterCard`, `StatField`)
+- `src/stores/` — Pinia setup stores (`auth.ts`, `character.ts`)
+- `src/plugins/vuetify.ts` — Vuetify instance; exports `VUETIFY_THEME_KEY`
+- `src/lib/supabase.ts` — Supabase client (reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
+- `src/types/index.ts` — Shared interfaces (`Profile`, `Character`, `CharacterFormData`, `LevelUpEditableField`)
+- `src/styles/main.scss` — App-specific CSS overrides (Vuetify styles handled by plugin)
+- Use `@/` alias for all imports from `src/`
 - All components use `<script setup lang="ts">` (Composition API)
+
+## Routes
+
+| Path | Name | Auth |
+|------|------|------|
+| `/` | `login` | no |
+| `/signup` | `signup` | no |
+| `/dashboard` | `dashboard` | yes |
+| `/character/new` | `character-new` | yes |
+| `/character/:id` | `character-view` | yes |
+| `/character/:id/edit` | `character-edit` | yes |
+
+## Environment
+
+Copy `.env.local` values from Supabase Dashboard → Project Settings → API:
+```
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
 
 ## TypeScript
 
