@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import type { VForm } from 'vuetify/components'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+const form = ref<InstanceType<typeof VForm> | null>(null)
 
 const email = ref('')
 const password = ref('')
@@ -34,6 +36,7 @@ async function handleSignUp() {
     password.value = ''
     confirmPassword.value = ''
     displayName.value = ''
+    await form.value?.resetValidation()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Sign up failed'
   } finally {
@@ -56,7 +59,7 @@ async function handleSignUp() {
             <v-alert v-if="successMsg" type="success" class="mb-4" density="compact">
               {{ successMsg }}
             </v-alert>
-            <v-form @submit.prevent="handleSignUp">
+            <v-form ref="form" @submit.prevent="handleSignUp">
               <v-text-field
                 v-model="displayName"
                 label="Display Name"
