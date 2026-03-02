@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import AppBar from '@/components/AppBar.vue'
 import StatField from '@/components/StatField.vue'
 import { useCharacterStore } from '@/stores/character'
 import type { LevelUpEditableField } from '@/types'
 
 const route = useRoute()
-const router = useRouter()
 const characterStore = useCharacterStore()
 
 const isLevelingUp = ref(false)
