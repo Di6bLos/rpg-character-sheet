@@ -6,6 +6,7 @@ const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const displayName = ref('')
 const error = ref('')
 const successMsg = ref('')
@@ -16,6 +17,10 @@ const emailRules = [
   (v: string) => /.+@.+\..+/.test(v) || 'Invalid email format',
 ]
 const passwordRules = [(v: string) => !!v || 'Password is required']
+const confirmPasswordRules = [
+  (v: string) => !!v || 'Please confirm your password',
+  (v: string) => v === password.value || 'Passwords do not match',
+]
 const nameRules = [(v: string) => !!v || 'Display name is required']
 
 async function handleSignUp() {
@@ -27,6 +32,7 @@ async function handleSignUp() {
     successMsg.value = 'Account created! Check your email to confirm, then sign in.'
     email.value = ''
     password.value = ''
+    confirmPassword.value = ''
     displayName.value = ''
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Sign up failed'
@@ -57,6 +63,7 @@ async function handleSignUp() {
                 :rules="nameRules"
                 class="mb-2"
                 autocomplete="nickname"
+                required
               />
               <v-text-field
                 v-model="email"
@@ -65,14 +72,25 @@ async function handleSignUp() {
                 :rules="emailRules"
                 class="mb-2"
                 autocomplete="email"
+                required
               />
               <v-text-field
                 v-model="password"
                 label="Password"
                 type="password"
                 :rules="passwordRules"
+                class="mb-2"
+                autocomplete="new-password"
+                required
+              />
+              <v-text-field
+                v-model="confirmPassword"
+                label="Confirm Password"
+                type="password"
+                :rules="confirmPasswordRules"
                 class="mb-4"
                 autocomplete="new-password"
+                required
               />
               <v-btn type="submit" color="primary" block :loading="loading">Create Account</v-btn>
             </v-form>

@@ -50,6 +50,7 @@ async function handleLogin() {
                 :rules="emailRules"
                 class="mb-2"
                 autocomplete="email"
+                required
               />
               <v-text-field
                 v-model="password"
@@ -58,6 +59,7 @@ async function handleLogin() {
                 :rules="passwordRules"
                 class="mb-4"
                 autocomplete="current-password"
+                required
               />
               <v-btn type="submit" color="primary" block :loading="loading">Sign In</v-btn>
             </v-form>
