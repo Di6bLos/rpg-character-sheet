@@ -38,5 +38,8 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
-# MCP (contains secrets)
+# Local Netlify folder
+.netlify
+
+# MCP config (local tooling, not needed in repo)
 .mcp.json

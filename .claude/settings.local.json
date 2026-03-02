@@ -8,7 +8,10 @@
       "Bash(npx prettier:*)",
       "mcp__supabase__list_tables",
       "mcp__supabase__apply_migration",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(netlify:*)",
+      "mcp__netlify-mcp__netlify-project-services-reader",
+      "mcp__netlify-mcp__netlify-deploy-services-updater"
     ]
   },
   "enableAllProjectMcpServers": true,
