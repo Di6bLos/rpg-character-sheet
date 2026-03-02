@@ -49,6 +49,15 @@ src/
 - Use Vuetify's built-in theming system configured with SASS variables
 - Keep the color palette consistent — define primary, secondary, and surface colors in the Vuetify theme config, not inline
 
+### Formatting
+- Use Prettier for consistent code formatting — run `npm run format` before committing
+- Follow Vuetify's recommended class naming and structure for components to ensure proper styling
+- Use SASS variables for any custom styles to maintain consistency with the Vuetify theme
+- Avoid inline styles — all styles should be in `.scss` files or defined through Vuetify's theming system
+- Use Vuetify's grid system for responsive layouts instead of custom CSS where possible
+- For conditional classes, use Vue's `:class` binding with clear, descriptive class names that reflect the state (e.g. `:class="{ 'is-active': isActive }"`)
+- Use tab 4 spaces for indentation
+
 ---
 
 ## Authentication
