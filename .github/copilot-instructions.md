@@ -10,7 +10,6 @@ A web app where users can create accounts and build, store, and manage RPG chara
 - **UI Component Library:** Vuetify 3
 - **Styling:** SASS — use `.scss` files for custom styles, leverage Vuetify's SASS variables for theming
 - **Backend & Auth:** Supabase (PostgreSQL, Supabase Auth, Supabase Storage)
-- **Language:** JavaScript (not TypeScript for now — keep it beginner-friendly)
 
 ---
 
