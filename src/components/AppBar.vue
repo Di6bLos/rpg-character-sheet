@@ -47,11 +47,26 @@ async function handleLogout() {
     <v-btn icon aria-label="Toggle theme" @click="toggleTheme">
       <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
     </v-btn>
-    <v-avatar color="primary" size="36" class="mx-2" role="img" aria-label="User profile">
-      <span class="text-body-2 font-weight-bold">{{ initial }}</span>
-    </v-avatar>
-    <v-btn icon aria-label="Log out" @click="handleLogout">
-      <v-icon>mdi-logout</v-icon>
-    </v-btn>
+    <v-menu>
+      <template #activator="{ props }">
+        <v-avatar
+          v-bind="props"
+          color="primary"
+          size="36"
+          class="mx-2"
+          style="cursor: pointer"
+          role="button"
+          aria-label="User menu"
+        >
+          <span class="text-body-2 font-weight-bold">{{ initial }}</span>
+        </v-avatar>
+      </template>
+      <v-list density="compact" min-width="160">
+        <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" :to="{ name: 'dashboard' }" />
+        <v-list-item prepend-icon="mdi-bookshelf" title="Library" :to="{ name: 'documents' }" />
+        <v-divider />
+        <v-list-item prepend-icon="mdi-logout" title="Log out" @click="handleLogout" />
+      </v-list>
+    </v-menu>
   </v-app-bar>
 </template>
