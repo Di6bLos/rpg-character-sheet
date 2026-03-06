@@ -3,8 +3,10 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
+import { useSnackbarStore } from '@/stores/snackbar'
 
 const authStore = useAuthStore()
+const snackbar = useSnackbarStore()
 const router = useRouter()
 const theme = useTheme()
 
@@ -21,6 +23,7 @@ function toggleTheme() {
 
 async function handleLogout() {
   await authStore.logout()
+  snackbar.show('Logged out')
   router.push({ name: 'login' })
 }
 </script>

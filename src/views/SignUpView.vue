@@ -2,8 +2,10 @@
 import { ref } from 'vue'
 import type { VForm } from 'vuetify/components'
 import { useAuthStore } from '@/stores/auth'
+import { useSnackbarStore } from '@/stores/snackbar'
 
 const authStore = useAuthStore()
+const snackbar = useSnackbarStore()
 const form = ref<InstanceType<typeof VForm> | null>(null)
 
 const email = ref('')
@@ -11,7 +13,6 @@ const password = ref('')
 const confirmPassword = ref('')
 const displayName = ref('')
 const error = ref('')
-const successMsg = ref('')
 const loading = ref(false)
 
 const emailRules = [
@@ -27,11 +28,10 @@ const nameRules = [(v: string) => !!v || 'Display name is required']
 
 async function handleSignUp() {
   error.value = ''
-  successMsg.value = ''
   loading.value = true
   try {
     await authStore.signUp(email.value, password.value, displayName.value)
-    successMsg.value = 'Account created! Check your email to confirm, then sign in.'
+    snackbar.show('Account created! Check your email to confirm, then sign in.')
     email.value = ''
     password.value = ''
     confirmPassword.value = ''
@@ -55,9 +55,6 @@ async function handleSignUp() {
           <v-card-text>
             <v-alert v-if="error" type="error" class="mb-4" density="compact" closable>
               {{ error }}
-            </v-alert>
-            <v-alert v-if="successMsg" type="success" class="mb-4" density="compact">
-              {{ successMsg }}
             </v-alert>
             <v-form ref="form" @submit.prevent="handleSignUp">
               <v-text-field
