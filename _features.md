@@ -45,4 +45,4 @@
 | 040 | Library controls | Users can view, upload, and download new documents. |
 | 041 | Document display | Files will be in a list format. The display name will be the file name without dashes or underscore and Uppercase each first letter |
 | 042 | PDF Viewer | Many of the files will be .pdf so set up a viewer when a user clicks a doc that will allow them to view one page at a time |
-| 043 | View Controls | add a back(to docs) button. users should be able to change the orientation of the page in case some some are landscape or portrait (regular) |
+| 043 | PDF View Controls | add a back(to docs) button. users should be able to change the orientation of the page in case some some are landscape or portrait (regular) |
