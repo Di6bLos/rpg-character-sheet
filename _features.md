@@ -40,3 +40,9 @@
 | 036 | Error Boundary Handling | Handle 404s and unauthorized access attempts gracefully with friendly error pages | ☐ |
 | 037 | Responsive Layout | Ensure all pages look good on mobile, tablet, and desktop using Vuetify's grid system | ☐ |
 | 038 | Environment Config | Set up `.env` and `.env.example` with Supabase URL and anon key, add `.env` to `.gitignore` | ☐ |
+| 038 | Verify Supabase | Verify connection to `rpg-character-sheet` database through subapase mcp. |
+| 039 | Document library | 'Document' button in user dashboard takes them to a document library |
+| 040 | Library controls | Users can view, upload, and download new documents. |
+| 041 | Document display | Files will be in a list format. The display name will be the file name without dashes or underscore and Uppercase each first letter |
+| 042 | PDF Viewer | Many of the files will be .pdf so set up a viewer when a user clicks a doc that will allow them to view one page at a time |
+| 043 | View Controls | add a back(to docs) button. users should be able to change the orientation of the page in case some some are landscape or portrait (regular) |
