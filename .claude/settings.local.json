@@ -14,7 +14,18 @@
       "mcp__netlify-mcp__netlify-deploy-services-updater",
       "mcp__supabase__execute_sql",
       "Bash(nvm use:*)",
-      "mcp__supabase__get_project_url"
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_publishable_keys",
+      "mcp__supabase__get_logs",
+      "mcp__playwright__browser_hover"
     ]
   },
   "enableAllProjectMcpServers": true,
