@@ -23,7 +23,10 @@ onMounted(() => {
             Welcome, {{ authStore.profile?.display_name ?? 'Adventurer' }}
           </h1>
         </v-col>
-        <v-col cols="auto">
+        <v-col cols="auto" class="d-flex gap-2">
+          <v-btn variant="tonal" :to="{ name: 'documents' }" prepend-icon="mdi-bookshelf">
+            Documents
+          </v-btn>
           <v-btn color="primary" :to="{ name: 'character-new' }" prepend-icon="mdi-plus">
             Create Character
           </v-btn>
