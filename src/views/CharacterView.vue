@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted } from 'vue'
 import AppBar from '@/components/AppBar.vue'
 import StatField from '@/components/StatField.vue'
-import { useCharacterStore } from '@/stores/character'
+import { useCharacter } from '@/composables/useCharacter'
 import type { LevelUpEditableField } from '@/types'
 
-const route = useRoute()
-const characterStore = useCharacterStore()
+const { character: char, fetchCharacter, levelUp, updateCharacter } = useCharacter()
 
 const isLevelingUp = ref(false)
 const editableStats = ref<Partial<Record<LevelUpEditableField, number>>>({})
@@ -21,16 +19,12 @@ const statFields = [
   { key: 'hit_points' as const, label: 'HP' },
 ] satisfies Array<{ key: LevelUpEditableField; label: string }>
 
-const char = computed(() => characterStore.currentCharacter)
-
-onMounted(async () => {
-  await characterStore.fetchCharacter(route.params['id'] as string)
-})
+onMounted(fetchCharacter)
 
 async function handleLevelUp() {
   const c = char.value
   if (!c) return
-  await characterStore.levelUp(c.id, c.level)
+  await levelUp(c.id, c.level)
   // Populate editableStats with values captured before levelUp updated the store
   editableStats.value = {
     str: c.str,
@@ -46,7 +40,7 @@ async function handleLevelUp() {
 async function saveStatEdits() {
   const c = char.value
   if (!c) return
-  await characterStore.updateCharacter(c.id, editableStats.value)
+  await updateCharacter(c.id, editableStats.value)
   isLevelingUp.value = false
 }
 </script>

@@ -3,13 +3,15 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppBar from '@/components/AppBar.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useCharacterStore } from '@/stores/character'
+import { useSnackbarStore } from '@/stores/snackbar'
+import { useCharacter } from '@/composables/useCharacter'
 import type { CharacterFormData, LevelUpEditableField } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const characterStore = useCharacterStore()
+const snackbar = useSnackbarStore()
+const { character, fetchCharacter, updateCharacter, deleteCharacter, uploadImage } = useCharacter()
 
 const id = route.params['id'] as string
 
@@ -43,8 +45,8 @@ const statFields = [
 ] satisfies Array<{ key: LevelUpEditableField; label: string }>
 
 onMounted(async () => {
-  await characterStore.fetchCharacter(id)
-  const char = characterStore.currentCharacter
+  await fetchCharacter(id)
+  const char = character.value
   if (char) {
     form.value = {
       name: char.name,
@@ -79,14 +81,11 @@ async function handleSubmit() {
   try {
     let updates: Partial<CharacterFormData> = { ...form.value }
     if (imageFile.value && authStore.session) {
-      const imageUrl = await characterStore.uploadImage(
-        authStore.session.user.id,
-        id,
-        imageFile.value,
-      )
+      const imageUrl = await uploadImage(authStore.session.user.id, id, imageFile.value)
       updates = { ...updates, image_url: imageUrl }
     }
-    await characterStore.updateCharacter(id, updates)
+    await updateCharacter(id, updates)
+    snackbar.show('Character saved!')
     router.push({ name: 'character-view', params: { id } })
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to save character'
@@ -97,7 +96,7 @@ async function handleSubmit() {
 
 async function handleDelete() {
   deleteDialog.value = false
-  await characterStore.deleteCharacter(id)
+  await deleteCharacter(id)
   router.push({ name: 'dashboard' })
 }
 </script>

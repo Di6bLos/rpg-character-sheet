@@ -3,11 +3,13 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppBar from '@/components/AppBar.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useCharacterStore } from '@/stores/character'
+import { useSnackbarStore } from '@/stores/snackbar'
+import { useCharacter } from '@/composables/useCharacter'
 import type { CharacterFormData, LevelUpEditableField } from '@/types'
 
 const authStore = useAuthStore()
-const characterStore = useCharacterStore()
+const snackbar = useSnackbarStore()
+const { createCharacter, updateCharacter, uploadImage } = useCharacter()
 const router = useRouter()
 
 const form = ref<CharacterFormData>({
@@ -54,15 +56,12 @@ async function handleSubmit() {
   error.value = ''
   loading.value = true
   try {
-    const id = await characterStore.createCharacter(form.value)
+    const id = await createCharacter(form.value)
     if (imageFile.value && authStore.session) {
-      const imageUrl = await characterStore.uploadImage(
-        authStore.session.user.id,
-        id,
-        imageFile.value,
-      )
-      await characterStore.updateCharacter(id, { image_url: imageUrl })
+      const imageUrl = await uploadImage(authStore.session.user.id, id, imageFile.value)
+      await updateCharacter(id, { image_url: imageUrl })
     }
+    snackbar.show('Character created!')
     router.push({ name: 'character-view', params: { id } })
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to create character'
