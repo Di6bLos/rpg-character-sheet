@@ -2,15 +2,21 @@
 import { ref, onMounted } from 'vue'
 import AppBar from '@/components/AppBar.vue'
 import { useDocumentStore } from '@/stores/document'
+import { useSnackbarStore } from '@/stores/snackbar'
+import type { DocumentFile } from '@/types'
 
 const documentStore = useDocumentStore()
+const snackbar = useSnackbarStore()
 
 const uploadDialog = ref(false)
 const uploadFile = ref<File | null>(null)
 const uploading = ref(false)
-const snackbar = ref(false)
-const snackbarMessage = ref('')
-const snackbarColor = ref('success')
+const uploadSizeError = ref('')
+
+const deleteDialog = ref(false)
+const docToDelete = ref<DocumentFile | null>(null)
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
 
 onMounted(() => {
   documentStore.fetchDocuments()
@@ -39,22 +45,29 @@ function getFileIcon(name: string): string {
 function onFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   uploadFile.value = input.files?.[0] ?? null
+  uploadSizeError.value =
+    uploadFile.value && uploadFile.value.size > MAX_FILE_SIZE ? 'File exceeds the 50 MB limit' : ''
 }
 
 function openUploadDialog() {
   uploadFile.value = null
+  uploadSizeError.value = ''
   uploadDialog.value = true
 }
 
 async function confirmUpload() {
   if (!uploadFile.value) return
+  if (uploadFile.value.size > MAX_FILE_SIZE) {
+    uploadSizeError.value = 'File exceeds the 50 MB limit'
+    return
+  }
   uploading.value = true
   try {
     await documentStore.uploadDocument(uploadFile.value)
     uploadDialog.value = false
-    showSnackbar('Document uploaded successfully', 'success')
+    snackbar.show('Document uploaded successfully', 'success')
   } catch {
-    showSnackbar('Upload failed', 'error')
+    snackbar.show('Upload failed', 'error')
   } finally {
     uploading.value = false
   }
@@ -64,14 +77,26 @@ async function download(path: string, name: string) {
   try {
     await documentStore.downloadDocument(path, name)
   } catch {
-    showSnackbar('Download failed', 'error')
+    snackbar.show('Download failed', 'error')
   }
 }
 
-function showSnackbar(message: string, color: string) {
-  snackbarMessage.value = message
-  snackbarColor.value = color
-  snackbar.value = true
+function openDeleteDialog(doc: DocumentFile) {
+  docToDelete.value = doc
+  deleteDialog.value = true
+}
+
+async function confirmDelete() {
+  if (!docToDelete.value) return
+  try {
+    await documentStore.deleteDocument(docToDelete.value.path)
+    snackbar.show('Document deleted', 'success')
+  } catch {
+    snackbar.show('Delete failed', 'error')
+  } finally {
+    deleteDialog.value = false
+    docToDelete.value = null
+  }
 }
 </script>
 
@@ -80,15 +105,32 @@ function showSnackbar(message: string, color: string) {
   <v-main>
     <v-container>
       <v-row align="center" class="mb-4">
+        <v-col cols="auto">
+          <v-btn
+            icon
+            variant="text"
+            :to="{ name: 'dashboard' }"
+            aria-label="Back to Dashboard"
+          >
+            <v-icon>mdi-arrow-left</v-icon>
+          </v-btn>
+        </v-col>
         <v-col>
           <h1 class="text-h5">Document Library</h1>
         </v-col>
         <v-col cols="auto">
           <v-btn color="primary" prepend-icon="mdi-upload" @click="openUploadDialog">
-            Upload
+            <span class="d-none d-sm-inline">Upload</span>
           </v-btn>
         </v-col>
       </v-row>
+
+      <v-alert
+        v-if="documentStore.error"
+        type="error"
+        class="mb-4"
+        :text="documentStore.error"
+      />
 
       <v-progress-linear v-if="documentStore.loading" indeterminate color="primary" class="mb-4" />
 
@@ -100,17 +142,34 @@ function showSnackbar(message: string, color: string) {
           :title="doc.displayName"
           :subtitle="`${formatSize(doc.size)} · ${formatDate(doc.created_at)}`"
         >
-          <template #append class="mb-4">
-            <v-btn icon variant="text" @click="download(doc.path, doc.name)">
+          <template #append>
+            <v-btn
+              icon
+              variant="text"
+              :aria-label="`Download ${doc.name}`"
+              @click="download(doc.path, doc.name)"
+            >
               <v-icon>mdi-download</v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              variant="text"
+              color="error"
+              :aria-label="`Delete ${doc.name}`"
+              @click="openDeleteDialog(doc)"
+            >
+              <v-icon>mdi-delete</v-icon>
             </v-btn>
           </template>
         </v-list-item>
       </v-list>
 
-      <div v-else-if="!documentStore.loading" class="text-center mt-8">
+      <div v-else-if="!documentStore.loading && !documentStore.error" class="text-center mt-8">
         <v-icon size="80" color="grey">mdi-bookshelf</v-icon>
         <p class="text-body-1 mt-4">No documents yet. Upload your first file!</p>
+        <v-btn color="primary" prepend-icon="mdi-upload" class="mt-4" @click="openUploadDialog">
+          Upload
+        </v-btn>
       </div>
     </v-container>
   </v-main>
@@ -123,7 +182,10 @@ function showSnackbar(message: string, color: string) {
           label="Choose file"
           variant="outlined"
           accept="*/*"
+          hint="Accepted: PDF, Word, Excel, images · Max 50 MB"
+          persistent-hint
           :model-value="uploadFile ? [uploadFile] : []"
+          :error-messages="uploadSizeError"
           @change="onFileChange"
         />
       </v-card-text>
@@ -132,7 +194,7 @@ function showSnackbar(message: string, color: string) {
         <v-btn variant="text" @click="uploadDialog = false">Cancel</v-btn>
         <v-btn
           color="primary"
-          :disabled="!uploadFile"
+          :disabled="!uploadFile || !!uploadSizeError"
           :loading="uploading"
           @click="confirmUpload"
         >
@@ -142,8 +204,18 @@ function showSnackbar(message: string, color: string) {
     </v-card>
   </v-dialog>
 
-  <!-- Snackbar -->
-  <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
-    {{ snackbarMessage }}
-  </v-snackbar>
+  <!-- Delete Confirmation Dialog -->
+  <v-dialog v-model="deleteDialog" max-width="400">
+    <v-card title="Delete Document">
+      <v-card-text>
+        Are you sure you want to delete
+        <strong>{{ docToDelete?.displayName }}</strong>? This cannot be undone.
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+        <v-btn color="error" @click="confirmDelete">Delete</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>

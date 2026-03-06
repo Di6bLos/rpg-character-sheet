@@ -13,7 +13,8 @@
       "mcp__netlify-mcp__netlify-project-services-reader",
       "mcp__netlify-mcp__netlify-deploy-services-updater",
       "mcp__supabase__execute_sql",
-      "Bash(nvm use:*)"
+      "Bash(nvm use:*)",
+      "mcp__supabase__get_project_url"
     ]
   },
   "enableAllProjectMcpServers": true,

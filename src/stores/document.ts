@@ -14,23 +14,31 @@ function formatDisplayName(filename: string): string {
 export const useDocumentStore = defineStore('document', () => {
   const documents = ref<DocumentFile[]>([])
   const loading = ref(false)
+  const error = ref<string | null>(null)
 
   async function fetchDocuments() {
     const authStore = useAuthStore()
     if (!authStore.session) return
     loading.value = true
-    const userId = authStore.session.user.id
-    const { data } = await supabase.storage.from('documents').list(userId, {
-      sortBy: { column: 'created_at', order: 'desc' },
-    })
-    documents.value = (data ?? []).map((obj) => ({
-      name: obj.name,
-      path: `${userId}/${obj.name}`,
-      displayName: formatDisplayName(obj.name),
-      size: obj.metadata?.size ?? 0,
-      created_at: obj.created_at ?? '',
-    }))
-    loading.value = false
+    error.value = null
+    try {
+      const userId = authStore.session.user.id
+      const { data, error: fetchError } = await supabase.storage.from('documents').list(userId, {
+        sortBy: { column: 'created_at', order: 'desc' },
+      })
+      if (fetchError) throw fetchError
+      documents.value = (data ?? []).map((obj) => ({
+        name: obj.name,
+        path: `${userId}/${obj.name}`,
+        displayName: formatDisplayName(obj.name),
+        size: obj.metadata?.size ?? 0,
+        created_at: obj.created_at ?? '',
+      }))
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to load documents'
+    } finally {
+      loading.value = false
+    }
   }
 
   async function uploadDocument(file: File) {
@@ -58,5 +66,5 @@ export const useDocumentStore = defineStore('document', () => {
     documents.value = documents.value.filter((d) => d.path !== path)
   }
 
-  return { documents, loading, fetchDocuments, uploadDocument, downloadDocument, deleteDocument }
+  return { documents, loading, error, fetchDocuments, uploadDocument, downloadDocument, deleteDocument }
 })

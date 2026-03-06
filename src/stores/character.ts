@@ -7,16 +7,22 @@ import type { Character, CharacterFormData } from '@/types'
 export const useCharacterStore = defineStore('character', () => {
   const characters = ref<Character[]>([])
   const currentCharacter = ref<Character | null>(null)
+  const loading = ref(false)
 
   async function fetchCharacters() {
     const authStore = useAuthStore()
     if (!authStore.session) return
-    const { data } = await supabase
-      .from('characters')
-      .select('*')
-      .eq('user_id', authStore.session.user.id)
-      .order('created_at', { ascending: false })
-    characters.value = (data as Character[] | null) ?? []
+    loading.value = true
+    try {
+      const { data } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('user_id', authStore.session.user.id)
+        .order('created_at', { ascending: false })
+      characters.value = (data as Character[] | null) ?? []
+    } finally {
+      loading.value = false
+    }
   }
 
   async function fetchCharacter(id: string) {
@@ -77,6 +83,7 @@ export const useCharacterStore = defineStore('character', () => {
   return {
     characters,
     currentCharacter,
+    loading,
     fetchCharacters,
     fetchCharacter,
     createCharacter,
