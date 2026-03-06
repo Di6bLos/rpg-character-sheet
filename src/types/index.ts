@@ -27,3 +27,11 @@ export interface Character {
 export type CharacterFormData = Omit<Character, 'id' | 'user_id' | 'created_at' | 'updated_at'>
 
 export type LevelUpEditableField = 'str' | 'dex' | 'int' | 'wil' | 'armor' | 'hit_points'
+
+export interface DocumentFile {
+  name: string
+  path: string
+  displayName: string
+  size: number
+  created_at: string
+}
