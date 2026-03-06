@@ -44,6 +44,11 @@ const router = createRouter({
       component: () => import('@/views/CharacterEditView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/views/NotFoundView.vue'),
+    },
   ],
 })
 
