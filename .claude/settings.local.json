@@ -11,7 +11,9 @@
       "Bash(git commit:*)",
       "Bash(netlify:*)",
       "mcp__netlify-mcp__netlify-project-services-reader",
-      "mcp__netlify-mcp__netlify-deploy-services-updater"
+      "mcp__netlify-mcp__netlify-deploy-services-updater",
+      "mcp__supabase__execute_sql",
+      "Bash(nvm use:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
