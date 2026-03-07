@@ -66,5 +66,11 @@ export const useDocumentStore = defineStore('document', () => {
     documents.value = documents.value.filter((d) => d.path !== path)
   }
 
-  return { documents, loading, error, fetchDocuments, uploadDocument, downloadDocument, deleteDocument }
+  async function getSignedUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 3600)
+    if (error) throw error
+    return data.signedUrl
+  }
+
+  return { documents, loading, error, fetchDocuments, uploadDocument, downloadDocument, deleteDocument, getSignedUrl }
 })

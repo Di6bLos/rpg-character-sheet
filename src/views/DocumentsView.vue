@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import AppBar from '@/components/AppBar.vue'
+import PdfViewer from '@/components/PdfViewer.vue'
 import { useDocumentStore } from '@/stores/document'
 import { useSnackbarStore } from '@/stores/snackbar'
 import type { DocumentFile } from '@/types'
@@ -15,6 +16,10 @@ const uploadSizeError = ref('')
 
 const deleteDialog = ref(false)
 const docToDelete = ref<DocumentFile | null>(null)
+
+const viewerDialog = ref(false)
+const viewerUrl = ref('')
+const viewerFilename = ref('')
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
 
@@ -81,6 +86,21 @@ async function download(path: string, name: string) {
   }
 }
 
+async function openDocument(doc: DocumentFile) {
+  const ext = doc.name.split('.').pop()?.toLowerCase()
+  if (ext === 'pdf') {
+    try {
+      viewerUrl.value = await documentStore.getSignedUrl(doc.path)
+      viewerFilename.value = doc.displayName
+      viewerDialog.value = true
+    } catch {
+      snackbar.show('Failed to open document', 'error')
+    }
+  } else {
+    await download(doc.path, doc.name)
+  }
+}
+
 function openDeleteDialog(doc: DocumentFile) {
   docToDelete.value = doc
   deleteDialog.value = true
@@ -141,13 +161,15 @@ async function confirmDelete() {
           :prepend-icon="getFileIcon(doc.name)"
           :title="doc.displayName"
           :subtitle="`${formatSize(doc.size)} · ${formatDate(doc.created_at)}`"
+          style="cursor: pointer"
+          @click="openDocument(doc)"
         >
           <template #append>
             <v-btn
               icon
               variant="text"
               :aria-label="`Download ${doc.name}`"
-              @click="download(doc.path, doc.name)"
+              @click.stop="download(doc.path, doc.name)"
             >
               <v-icon>mdi-download</v-icon>
             </v-btn>
@@ -156,7 +178,7 @@ async function confirmDelete() {
               variant="text"
               color="error"
               :aria-label="`Delete ${doc.name}`"
-              @click="openDeleteDialog(doc)"
+              @click.stop="openDeleteDialog(doc)"
             >
               <v-icon>mdi-delete</v-icon>
             </v-btn>
@@ -173,6 +195,16 @@ async function confirmDelete() {
       </div>
     </v-container>
   </v-main>
+
+  <!-- PDF Viewer Dialog -->
+  <v-dialog v-model="viewerDialog" fullscreen>
+    <PdfViewer
+      v-if="viewerDialog"
+      :url="viewerUrl"
+      :filename="viewerFilename"
+      @close="viewerDialog = false"
+    />
+  </v-dialog>
 
   <!-- Upload Dialog -->
   <v-dialog v-model="uploadDialog" max-width="480">
