@@ -17,3 +17,6 @@
 | 013 | Document List Dividers | Add the `divided` prop to `v-list` on the Documents page to render `v-divider` between items, improving row separation as the list grows | ☐ |
 | 014 | Delete Dialog `role="alertdialog"` | The delete confirmation dialog renders as `role="dialog"`. Change to `role="alertdialog"` on the `v-card` to signal urgency to screen readers (WCAG 2.1 AA) | ☐ |
 | 015 | Progress Linear `aria-label` | Add `aria-label="Loading documents"` to the `v-progress-linear` on the Documents page | ☐ |
+| 016 | Feedback form | Add another link in the avatar dropdown that takes the user to a feedback form page where they can flag the submission as a 'comment', 'bug fix', 'feature request' | ☐ |
+| 017 | Feedback database | Initialize a database to store the submitted forms | ☐ |
+| 018 | Admin Dashboard | Create an admin page where i can see the submitted feedback by categories | ☐ |
