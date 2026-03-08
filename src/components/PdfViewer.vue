@@ -64,9 +64,11 @@ async function renderPage() {
     const page = await pdfDoc.getPage(currentPage.value)
     const canvas = canvasRef.value
 
-    const containerWidth = Math.min(canvasWrapRef.value?.clientWidth || 800, 900)
+    const padding = 32
+    const containerWidth = (canvasWrapRef.value?.clientWidth ?? 800) - padding
+    const containerHeight = (canvasWrapRef.value?.clientHeight ?? 600) - padding
     const viewport = page.getViewport({ scale: 1, rotation: rotation.value })
-    const scale = containerWidth / viewport.width
+    const scale = Math.min(containerWidth / viewport.width, containerHeight / viewport.height)
     const scaledViewport = page.getViewport({ scale, rotation: rotation.value })
 
     canvas.width = scaledViewport.width
@@ -124,7 +126,7 @@ watch([currentPage, rotation], renderPage)
       <div
         v-show="!loading && !error"
         ref="canvasWrapRef"
-        style="width: 100%; max-width: 1200px; max-height: 100%; overflow: auto; padding: 16px; box-sizing: border-box"
+        style="width: 100%; height: 100%; overflow: auto; padding: 16px; box-sizing: border-box"
       >
         <canvas ref="canvasRef" style="display: block; width: 100%; height: auto" />
       </div>
