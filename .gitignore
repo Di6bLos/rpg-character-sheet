@@ -46,3 +46,7 @@ __screenshots__/
 
 # UX review screenshots (local only)
 ux-review/
+
+# Nuxt
+.nuxt/
+.output/
