@@ -25,7 +25,7 @@ onMounted(() => {
                         Welcome, {{ authStore.profile?.display_name ?? 'Adventurer' }}
                     </h1>
                 </v-col>
-                <v-col cols="auto" class="d-flex gap-2">
+                <v-col cols="auto" class="d-flex ga-2">
                     <v-btn
                         variant="tonal"
                         :to="{ name: 'documents' }"
