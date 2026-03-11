@@ -1,7 +1,7 @@
 # UI/UX Reviewer Agent Memory
 
 ## Project Overview
-RPG Character Sheet app — Vue 3 + TypeScript + Vite + Vuetify 3 (dark default) + Pinia + Supabase.
+RPG Character Sheet app — Vue 3 + Nuxt 3 (SPA mode) + TypeScript + Vuetify 3 (dark default) + Pinia + Supabase.
 Single user account, RPG-focused (characters, stats, documents).
 
 ## Auth
@@ -35,7 +35,7 @@ Single user account, RPG-focused (characters, stats, documents).
 - `AppBar.vue` — global nav bar with theme toggle + avatar menu (Dashboard, Library, Log out)
 - `CharacterCard.vue` — `v-card` with hover, image + name + level/race/class subtitle
 - `StatField.vue` — switches between `v-chip` (read) and `v-text-field` (edit) based on `editable` prop
-- Views: `LoginView`, `SignUpView`, `DashboardView`, `CharacterNewView`, `CharacterView`, `CharacterEditView`, `DocumentsView`, `NotFoundView`
+- Views: pages in `pages/` — `index.vue` (login), `signup.vue`, `dashboard.vue`, `character/new.vue`, `character/[id].vue`, `character/[id]/edit.vue`, `documents.vue`, `[...slug].vue` (404)
 
 ## Document Store Pattern
 - `DocumentFile` type with `path`, `name`, `displayName`, `size`, `created_at`

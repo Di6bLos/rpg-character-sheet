@@ -36,8 +36,11 @@ export default defineNuxtConfig({
 
     runtimeConfig: {
         public: {
-            supabaseUrl: '',
-            supabaseAnonKey: '',
+            // Default to VITE_* env vars so existing .env.local files keep working.
+            // Override with NUXT_PUBLIC_SUPABASE_URL / NUXT_PUBLIC_SUPABASE_ANON_KEY
+            // for production deployments.
+            supabaseUrl: process.env.VITE_SUPABASE_URL ?? '',
+            supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY ?? '',
         },
     },
 
