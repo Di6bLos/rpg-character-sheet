@@ -2,17 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- when working on a 'feature' form the `_features.md` list, check off the tasks as you complete them.
+- when working on a 'feature' from the `_features.md` list, check off the tasks as you complete them.
 - After each sprint of updates, run the ui-ux-reviewer
 
 ## Commands
 
 ```bash
-npm run dev          # Start dev server (http://localhost:5173)
-npm run build        # Type-check + production build (runs in parallel)
-npm run type-check   # TypeScript check only (vue-tsc --build)
+npm run dev          # Start dev server (http://localhost:3000)
+npm run build        # Production build (nuxt build)
+npm run generate     # Static site generation (nuxt generate)
+npm run type-check   # TypeScript check (nuxt typecheck)
 npm run lint         # Run oxlint then eslint sequentially, both with --fix
-npm run format       # Prettier format src/ only
+npm run format       # Prettier format all files
 npm run preview      # Preview production build locally
 ```
 
@@ -20,32 +21,34 @@ npm run preview      # Preview production build locally
 
 ## Stack
 
-Vue 3 + TypeScript + Vite + Vuetify 3 (dark-default) + Pinia + Supabase (auth, DB, storage).
+Vue 3 + Nuxt 3 (SPA mode) + TypeScript + Vuetify 3 (dark-default) + Pinia + Supabase (auth, DB, storage).
 
 ## Architecture
 
-- `src/main.ts` — Entry point: Pinia → `authStore.init()` → router → Vuetify → mount
-- `src/router/index.ts` — All routes lazy-loaded; nav guard checks `authStore.isAuthenticated`
-- `src/views/` — Page-level components (one per route)
-- `src/components/` — Reusable components (`AppBar`, `CharacterCard`, `StatField`)
-- `src/stores/` — Pinia setup stores (`auth.ts`, `character.ts`)
-- `src/plugins/vuetify.ts` — Vuetify instance; exports `VUETIFY_THEME_KEY`
-- `src/lib/supabase.ts` — Supabase client (reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
-- `src/types/index.ts` — Shared interfaces (`Profile`, `Character`, `CharacterFormData`, `LevelUpEditableField`)
-- `src/styles/main.scss` — App-specific CSS overrides (Vuetify styles handled by plugin)
-- Use `@/` alias for all imports from `src/`
+- `nuxt.config.ts` — Nuxt configuration; modules: `@pinia/nuxt`, `vuetify-nuxt-module`
+- `app.vue` — Root layout component (Nuxt entry point)
+- `plugins/auth.client.ts` — Initialises auth store on client mount
+- `middleware/auth.ts` — Redirects unauthenticated users to `/`
+- `middleware/guest.ts` — Redirects authenticated users away from login/signup
+- `pages/` — File-based routing (one file per route)
+- `components/` — Reusable components (`AppBar`, `CharacterCard`, `StatField`)
+- `stores/` — Pinia setup stores (`auth.ts`, `character.ts`, `document.ts`)
+- `lib/supabase.ts` — Lazy Supabase client (reads `runtimeConfig.public.supabaseUrl/supabaseAnonKey`)
+- `types/index.ts` — Shared interfaces (`Profile`, `Character`, `CharacterFormData`, `LevelUpEditableField`)
+- `assets/styles/main.scss` — App-specific CSS overrides (Vuetify styles handled by plugin)
 - All components use `<script setup lang="ts">` (Composition API)
 
 ## Routes
 
 | Path | Name | Auth |
 |------|------|------|
-| `/` | `login` | no |
+| `/` | `index` | no |
 | `/signup` | `signup` | no |
 | `/dashboard` | `dashboard` | yes |
 | `/character/new` | `character-new` | yes |
 | `/character/:id` | `character-view` | yes |
 | `/character/:id/edit` | `character-edit` | yes |
+| `/documents` | `documents` | yes |
 
 ## Environment
 
@@ -55,11 +58,12 @@ VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
+These are automatically mapped to `runtimeConfig.public.supabaseUrl` / `supabaseAnonKey` in `nuxt.config.ts`.
+For production, you can also use `NUXT_PUBLIC_SUPABASE_URL` / `NUXT_PUBLIC_SUPABASE_ANON_KEY`.
+
 ## TypeScript
 
-Two tsconfig project references:
-- `tsconfig.app.json` — App source (`src/`), targets browser DOM
-- `tsconfig.node.json` — Vite/ESLint config files, targets Node
+Single `tsconfig.json` — Nuxt manages project references internally via `nuxt typecheck`.
 
 `noUncheckedIndexedAccess: true` is enabled — array/object index access returns `T | undefined`. Guard accordingly.
 

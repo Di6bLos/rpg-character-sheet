@@ -19,7 +19,7 @@ export interface Character {
     wil: number
     armor: number
     hit_points: number
-    notes: string
+    notes: string | null
     created_at: string
     updated_at: string
 }

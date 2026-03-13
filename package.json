@@ -17,7 +17,6 @@
   "dependencies": {
     "@mdi/font": "^7.4.47",
     "@oxlint/binding-darwin-arm64": "^1.50.0",
-    "@nuxtjs/supabase": "^1.5.2",
     "@pinia/nuxt": "^0.10.1",
     "@supabase/supabase-js": "^2.98.0",
     "nuxt": "^3.17.1",
