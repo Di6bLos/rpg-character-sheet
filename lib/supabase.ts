@@ -1,13 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-// Lazily initialise the Supabase client so that useRuntimeConfig() is only
-// called after the Nuxt context has been set up (env vars mapped in nuxt.config.ts).
 let _client: SupabaseClient | null = null
 
 function getClient(): SupabaseClient {
   if (!_client) {
-    const config = useRuntimeConfig()
-    _client = createClient(config.public.supabaseUrl as string, config.public.supabaseAnonKey as string)
+    const url = import.meta.env.VITE_SUPABASE_URL as string
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+    _client = createClient(url, key)
   }
   return _client
 }

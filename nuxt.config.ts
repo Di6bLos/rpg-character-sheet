@@ -34,17 +34,7 @@ export default defineNuxtConfig({
         },
     },
 
-    runtimeConfig: {
-        public: {
-            // Default to VITE_* env vars so existing .env.local files keep working.
-            // Override with NUXT_PUBLIC_SUPABASE_URL / NUXT_PUBLIC_SUPABASE_ANON_KEY
-            // for production deployments.
-            supabaseUrl: process.env.VITE_SUPABASE_URL ?? '',
-            supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY ?? '',
-        },
-    },
-
-    css: ['@mdi/font/css/materialdesignicons.css', '~/assets/styles/main.scss'],
+css: ['@mdi/font/css/materialdesignicons.css', '~/assets/styles/main.scss'],
 
     typescript: {
         strict: true,
