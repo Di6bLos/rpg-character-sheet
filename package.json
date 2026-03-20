@@ -19,7 +19,7 @@
     "@oxlint/binding-darwin-arm64": "^1.50.0",
     "@pinia/nuxt": "^0.10.1",
     "@supabase/supabase-js": "^2.98.0",
-    "nuxt": "^3.17.1",
+    "nuxt": "~3.17.7",
     "pdfjs-dist": "^5.5.207",
     "pinia": "^3.0.4",
     "vuetify": "^3.12.1",

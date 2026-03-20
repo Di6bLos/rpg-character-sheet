@@ -26,7 +26,15 @@
       "mcp__supabase__get_publishable_keys",
       "mcp__supabase__get_logs",
       "mcp__playwright__browser_hover",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npx nuxt:*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(grep -r app-manifest node_modules/nuxt/dist/vite-node-* node_modules/nuxt/dist/kit*)",
+      "Bash(node -e \"const r = require\\(''mlly''\\); r.resolvePath\\(''mocked-exports/empty''\\).then\\(p => console.log\\(p\\)\\).catch\\(\\(\\) => require\\(''module''\\).createRequire\\(import.meta.url ?? __filename\\).resolve\\(''mocked-exports/empty''\\)\\)\")",
+      "Bash(node -e \"console.log\\(require.resolve\\(''mocked-exports/empty''\\)\\)\")",
+      "Bash(npm view:*)",
+      "Bash(python3 -c \"import sys,json; vs=[v for v in json.load\\(sys.stdin\\) if v.startswith\\(''''3.17''''\\)]; print\\(vs[-1]\\)\")",
+      "Bash(npm install:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
