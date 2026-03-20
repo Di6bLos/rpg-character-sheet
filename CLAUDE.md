@@ -46,8 +46,8 @@ Vue 3 + Nuxt 3 (SPA mode) + TypeScript + Vuetify 3 (dark-default) + Pinia + Supa
 | `/signup` | `signup` | no |
 | `/dashboard` | `dashboard` | yes |
 | `/character/new` | `character-new` | yes |
-| `/character/:id` | `character-view` | yes |
-| `/character/:id/edit` | `character-edit` | yes |
+| `/character/:id` | `character-id` | yes |
+| `/character/:id/edit` | `character-id-edit` | yes |
 | `/documents` | `documents` | yes |
 
 ## Environment
