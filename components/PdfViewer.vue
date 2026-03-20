@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import openjpegWasmUrl from 'pdfjs-dist/wasm/openjpeg.wasm?url'
@@ -67,14 +67,17 @@ async function renderPage() {
         const canvas = canvasRef.value
 
         const padding = 32
-        const containerWidth = (canvasWrapRef.value?.clientWidth ?? 800) - padding
-        const containerHeight = (canvasWrapRef.value?.clientHeight ?? 600) - padding
+        const containerWidth = (canvasWrapRef.value?.clientWidth || window.innerWidth) - padding
+        const containerHeight = (canvasWrapRef.value?.clientHeight || window.innerHeight - 56) - padding
+        const dpr = window.devicePixelRatio || 1
         const viewport = page.getViewport({ scale: 1, rotation: rotation.value })
         const scale = Math.min(containerWidth / viewport.width, containerHeight / viewport.height)
-        const scaledViewport = page.getViewport({ scale, rotation: rotation.value })
+        const scaledViewport = page.getViewport({ scale: scale * dpr, rotation: rotation.value })
 
         canvas.width = scaledViewport.width
         canvas.height = scaledViewport.height
+        canvas.style.width = `${scaledViewport.width / dpr}px`
+        canvas.style.height = `${scaledViewport.height / dpr}px`
 
         await page.render({ canvas, viewport: scaledViewport }).promise
     } catch {
@@ -96,7 +99,10 @@ function rotate() {
     rotation.value = (rotation.value + 90) % 360
 }
 
-onMounted(loadPdf)
+onMounted(async () => {
+    await nextTick()
+    loadPdf()
+})
 watch([currentPage, rotation], renderPage)
 </script>
 
@@ -136,9 +142,12 @@ watch([currentPage, rotation], renderPage)
                     overflow: auto;
                     padding: 16px;
                     box-sizing: border-box;
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: center;
                 "
             >
-                <canvas ref="canvasRef" style="display: block; width: 100%; height: auto" />
+                <canvas ref="canvasRef" style="display: block" />
             </div>
         </v-card-text>
     </v-card>
