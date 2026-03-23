@@ -5,6 +5,7 @@ import { useAuthStore } from '~/stores/auth'
 import { useSnackbarStore } from '~/stores/snackbar'
 
 const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.profile?.is_admin === true)
 const snackbar = useSnackbarStore()
 const router = useRouter()
 const route = useRoute()
@@ -24,6 +25,7 @@ const routeTitle = computed(() => {
         'character-new': 'New Character',
         'character-id': 'Character',
         'character-id-edit': 'Edit Character',
+        admin: 'Admin Dashboard',
     }
     return titles[route.name as string] ?? 'RPG Sheet'
 })
@@ -70,6 +72,12 @@ async function handleLogout() {
                     prepend-icon="mdi-bookshelf"
                     title="Library"
                     :to="{ name: 'documents' }"
+                />
+                <v-list-item
+                    v-if="isAdmin"
+                    prepend-icon="mdi-shield-crown"
+                    title="Admin"
+                    :to="{ name: 'admin' }"
                 />
                 <v-divider />
                 <v-list-item prepend-icon="mdi-logout" title="Log out" @click="handleLogout" />

@@ -22,16 +22,15 @@ export const useDocumentStore = defineStore('document', () => {
         loading.value = true
         error.value = null
         try {
-            const userId = authStore.session.user.id
             const { data, error: fetchError } = await supabase.storage
                 .from('documents')
-                .list(userId, {
+                .list('shared', {
                     sortBy: { column: 'created_at', order: 'desc' },
                 })
             if (fetchError) throw fetchError
             documents.value = (data ?? []).map((obj) => ({
                 name: obj.name,
-                path: `${userId}/${obj.name}`,
+                path: `shared/${obj.name}`,
                 displayName: formatDisplayName(obj.name),
                 size: obj.metadata?.size ?? 0,
                 created_at: obj.created_at ?? '',
@@ -46,8 +45,7 @@ export const useDocumentStore = defineStore('document', () => {
     async function uploadDocument(file: File) {
         const authStore = useAuthStore()
         if (!authStore.session) throw new Error('Not authenticated')
-        const userId = authStore.session.user.id
-        const path = `${userId}/${file.name}`
+        const path = `shared/${file.name}`
         const { error } = await supabase.storage
             .from('documents')
             .upload(path, file, { upsert: true })

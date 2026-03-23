@@ -32,12 +32,33 @@ Single user account, RPG-focused (characters, stats, documents).
 10. **Delete button uses icon-only with no visible label** on document rows — relies entirely on aria-label
 
 ## Component Inventory
-- `AppBar.vue` — global nav bar with theme toggle + avatar menu (Dashboard, Library, Log out)
+- `AppBar.vue` — global nav bar with theme toggle + avatar menu (Dashboard, Library, Admin [admin only], Log out)
 - `CharacterCard.vue` — `v-card` with hover, image + name + level/race/class subtitle
 - `StatField.vue` — switches between `v-chip` (read) and `v-text-field` (edit) based on `editable` prop
-- Views: pages in `pages/` — `index.vue` (login), `signup.vue`, `dashboard.vue`, `character/new.vue`, `character/[id].vue`, `character/[id]/edit.vue`, `documents.vue`, `[...slug].vue` (404)
+- Views: pages in `pages/` — `index.vue` (login), `signup.vue`, `dashboard.vue`, `character/new.vue`, `character/[id].vue`, `character/[id]/edit.vue`, `documents.vue`, `admin/index.vue`, `[...slug].vue` (404)
 
 ## Document Store Pattern
 - `DocumentFile` type with `path`, `name`, `displayName`, `size`, `created_at`
-- Upload via dialog, delete via confirmation dialog
+- `/documents` page is now read-only (no upload/delete) — managed by admin only
+- Admin documents tab in `/admin` has full upload/delete capability
 - Uses Supabase Storage bucket
+
+## Admin Page Pattern (added Mar 2026)
+- Route: `/admin` — guarded by `middleware/admin.ts` (checks `authStore.isAdmin`)
+- `profiles.is_admin` boolean column controls access; `is_admin()` SQL function used in RLS policies
+- Three tabs: Users (`v-data-table`), Documents (list with upload/delete), Inbox (`v-data-table`)
+- Users tab uses nested Supabase join: `profiles + user_groups + groups`
+- Groups system: `groups` and `user_groups` tables; admin can create/delete groups, assign users
+- Inbox: `feedback` table; category chips (bug=error, feature_request=warning, comment=info)
+- RLS issue: `is_admin()` function may fail on nested PostgREST joins due to policy evaluation order
+- Admin store: `stores/admin.ts`; uses Edge Functions for invite/delete user operations
+
+## Recurring Issues Found (Admin/Documents Review — Mar 2026)
+11. **No page-level heading on admin** — `v-tabs` sits flush at top with no `<h1>` or section title above it
+12. **`v-container fluid` on admin** — no max-width constraint; content spans full 1440px, feels formless
+13. **Error alert displayed alongside empty table** — both "Failed to load profiles" AND "No data available" shown simultaneously; redundant and confusing
+14. **Invite dialog has no scrim/backdrop color** — dialog appears very close in tone to the page bg
+15. **AppBar title truncates on mobile** — "Admin Dash..." at 390px (same issue as documents)
+16. **Inbox table has no row-level action** — feedback items are read-only with no mark-as-resolved or delete capability (UX gap)
+17. **Documents page empty state copy change** — was "No documents yet. Upload the first file!" now "No documents available." — passive and unhelpful since users can no longer upload
+18. **Documents page title duplicated** — shown in AppBar AND as `<h1>` in page body; redundant
