@@ -43,3 +43,10 @@ __screenshots__/
 
 # MCP config (local tooling, not needed in repo)
 .mcp.json
+
+# UX review screenshots (local only)
+ux-review/
+
+# Nuxt
+.nuxt/
+.output/
