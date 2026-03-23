@@ -31,5 +31,13 @@ export default defineConfigWithVueTs(
     },
   },
 
+  // Vuetify uses slot names with dots (e.g. #item.column_name in v-data-table)
+  {
+    name: 'app/vuetify-slots',
+    rules: {
+      'vue/valid-v-slot': ['error', { allowModifiers: true }],
+    },
+  },
+
   skipFormatting,
 )

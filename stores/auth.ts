@@ -10,6 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
     const loading = ref(true)
 
     const isAuthenticated = computed(() => session.value !== null)
+    const isAdmin = computed(() => profile.value?.is_admin === true)
 
     async function fetchProfile() {
         if (!session.value) return
@@ -24,12 +25,25 @@ export const useAuthStore = defineStore('auth', () => {
     async function init() {
         const { data } = await supabase.auth.getSession()
         session.value = data.session
-        if (session.value) await fetchProfile()
+        if (session.value) {
+            await fetchProfile()
+            if (profile.value?.is_active === false) {
+                await logout()
+                loading.value = false
+                return
+            }
+        }
 
         supabase.auth.onAuthStateChange(async (_, newSession) => {
             session.value = newSession
-            if (newSession) await fetchProfile()
-            else profile.value = null
+            if (newSession) {
+                await fetchProfile()
+                if (profile.value?.is_active === false) {
+                    await logout()
+                }
+            } else {
+                profile.value = null
+            }
         })
 
         loading.value = false
@@ -45,8 +59,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function login(email: string, password: string) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+        session.value = data.session
+        await fetchProfile()
     }
 
     async function logout() {
@@ -55,5 +71,5 @@ export const useAuthStore = defineStore('auth', () => {
         profile.value = null
     }
 
-    return { session, profile, loading, isAuthenticated, init, signUp, login, logout }
+    return { session, profile, loading, isAuthenticated, isAdmin, init, signUp, login, logout }
 })

@@ -3,6 +3,31 @@ export interface Profile {
     display_name: string
     avatar_url: string | null
     created_at: string
+    is_admin: boolean
+    is_active: boolean
+}
+
+export interface Group {
+    id: string
+    name: string
+    created_at: string
+}
+
+export interface UserGroup {
+    user_id: string
+    group_id: string
+}
+
+export interface AdminProfile extends Profile {
+    groups: Group[]
+}
+
+export interface FeedbackItem {
+    id: string
+    user_id: string
+    message: string
+    category: 'comment' | 'bug' | 'feature_request'
+    created_at: string
 }
 
 export interface Character {
