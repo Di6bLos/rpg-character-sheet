@@ -36,6 +36,11 @@ export function rollDice(expr: DiceExpr, rng: Rng = Math.random): RollResult {
   return { total: rolls.reduce((a, b) => a + b, 0) + expr.mod, rolls }
 }
 
+/** D&D 5e critical hit: roll the damage dice twice; the flat modifier is added once. */
+export function critDice(expr: DiceExpr): DiceExpr {
+  return { ...expr, count: expr.count * 2 }
+}
+
 /** D&D 5e ability modifier from a score. */
 export function abilityMod(score: number): number {
   return Math.floor((score - 10) / 2)

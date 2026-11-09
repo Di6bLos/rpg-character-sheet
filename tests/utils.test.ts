@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { luminance, onAccent, isHex } from '../utils/contrast'
 import {
   abilityMod,
+  critDice,
   mapPenalties,
   parseDice,
   rollAttack,
@@ -100,6 +101,12 @@ describe('dice', () => {
     expect(rollAttack(7, faces(20, 20))).toEqual({ d20: 20, total: 27, natural: 20 })
     expect(rollAttack(7, faces(20, 1))).toEqual({ d20: 1, total: 8, natural: 1 })
     expect(rollAttack(7, faces(20, 11)).natural).toBeNull()
+  })
+
+  it('doubles damage dice but not the modifier on a 5e critical', () => {
+    expect(critDice({ count: 1, sides: 8, mod: 3 })).toEqual({ count: 2, sides: 8, mod: 3 })
+    const crit = rollDice(critDice({ count: 1, sides: 8, mod: 3 }), faces(8, 5, 7))
+    expect(crit).toEqual({ total: 15, rolls: [5, 7] })
   })
 
   it('applies the PF2e multiple attack penalty', () => {
