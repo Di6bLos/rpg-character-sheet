@@ -2,8 +2,30 @@
 const fonts =
   'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=UnifrakturMaguntia&family=Cormorant+Garamond:wght@600;700&family=Crimson+Pro:wght@400;600&family=Cinzel+Decorative:wght@700&family=Alegreya+Sans:wght@400;500;700&family=IM+Fell+English&family=IM+Fell+English+SC&family=Spectral:wght@400;600&display=swap'
 
+// Public Supabase settings, resolved at build time. Local dev uses the VITE_ names
+// from .env.local; on Vercel the Supabase integration provides SUPABASE_URL and
+// SUPABASE_ANON_KEY. Only the URL and the anon key are ever read here.
+const env = process.env
+const supabaseUrl =
+  env.VITE_SUPABASE_URL ||
+  env.NUXT_PUBLIC_SUPABASE_URL ||
+  env.SUPABASE_URL ||
+  env.NEXT_PUBLIC_SUPABASE_URL ||
+  ''
+const supabaseAnonKey =
+  env.VITE_SUPABASE_ANON_KEY ||
+  env.NUXT_PUBLIC_SUPABASE_ANON_KEY ||
+  env.SUPABASE_ANON_KEY ||
+  env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  ''
+
 export default defineNuxtConfig({
   ssr: false,
+
+  runtimeConfig: {
+    public: { supabaseUrl, supabaseAnonKey },
+  },
+
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 

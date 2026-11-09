@@ -2,9 +2,27 @@
 
 create extension if not exists citext with schema extensions;
 
+-- Legacy schema from the first version of the app. The old storage buckets
+-- (character-images, documents) and their files are left in place, without policies.
+drop policy if exists "Admin delete shared docs" on storage.objects;
+drop policy if exists "Admin upload shared docs" on storage.objects;
+drop policy if exists "Authenticated read shared docs" on storage.objects;
+drop policy if exists "Public read access for character images" on storage.objects;
+drop policy if exists "Users can delete own documents" on storage.objects;
+drop policy if exists "Users can delete own images" on storage.objects;
+drop policy if exists "Users can update own images" on storage.objects;
+drop policy if exists "Users can upload own documents" on storage.objects;
+drop policy if exists "Users can upload own images" on storage.objects;
+drop policy if exists "Users can view own documents" on storage.objects;
+drop table if exists public.user_groups cascade;
+drop table if exists public.groups cascade;
+drop table if exists public.feedback cascade;
 drop table if exists public.characters cascade;
 drop table if exists public.profiles cascade;
+drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user() cascade;
+drop function if exists public.is_admin() cascade;
+drop function if exists public.update_updated_at() cascade;
 
 create schema if not exists private;
 grant usage on schema private to authenticated, anon;
@@ -86,6 +104,28 @@ end $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function private.handle_new_user();
+
+-- Accounts that already exist get a profile too.
+insert into public.profiles (id, handle, display_name)
+select
+  u.id,
+  b.base || case when row_number() over (partition by b.base order by u.created_at) > 1
+    then (row_number() over (partition by b.base order by u.created_at))::text else '' end,
+  left(coalesce(nullif(trim(u.raw_user_meta_data ->> 'display_name'), ''), b.base), 60)
+from auth.users u
+cross join lateral (
+  select left(
+    case when char_length(c.clean) < 3 then 'player' || c.clean else c.clean end, 20
+  ) as base
+  from (
+    select regexp_replace(
+      lower(coalesce(u.raw_user_meta_data ->> 'handle', split_part(u.email, '@', 1))),
+      '[^a-z0-9_]', '', 'g'
+    ) as clean
+  ) c
+) b;
+
+insert into public.user_permissions (user_id) select id from public.profiles;
 
 -- ---------------------------------------------------------------------------
 -- Helper predicates (security definer so policies don't recurse)

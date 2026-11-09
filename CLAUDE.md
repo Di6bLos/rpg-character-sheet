@@ -37,7 +37,7 @@ npm run preview      # Preview production build locally
 - `middleware/` — `auth`, `guest`, `staff`
 - `plugins/auth.client.ts` — restores the session and applies the saved look before mount
 - `stores/` — `auth` (session, profile, permissions, `can(flag)`), `character`, `campaign`, `library`, `admin`, `snackbar`
-- `lib/supabase.ts` — lazy Supabase client (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`)
+- `lib/supabase.ts` — lazy Supabase client; reads `runtimeConfig.public.supabaseUrl/supabaseAnonKey`, which `nuxt.config.ts` fills from `VITE_SUPABASE_*` locally or `SUPABASE_URL` / `SUPABASE_ANON_KEY` (Vercel's Supabase integration)
 - `types/index.ts` — database row types; `types/sheets.ts` — per-system sheet JSON
 - `components/ui/` — `UiDialog` (native `<dialog>`), `UiSwitch`, `UiToast`
 - `components/sheet/` — `Shell` (action bar, editor, level-up), `Dnd5e{Classic,Gothic,Eldritch,Cursed}`, `Pf2eSheet`, `NimbleSheet`, `Editor`, `ListEditor`, `LevelUpDialog`, `Portrait`
