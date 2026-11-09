@@ -111,14 +111,16 @@ export const useCampaignStore = defineStore('campaign', () => {
     if (error) throw error
     const campaign = data as Campaign
 
+    let coverFailed = false
     if (input.cover) {
       const path = `${campaign.id}/cover-${Date.now()}-${safeFileName(input.cover.name)}`
       const upload = await supabase.storage
         .from('campaign-files')
         .upload(path, input.cover, { contentType: input.cover.type })
-      if (!upload.error) {
-        await supabase.from('campaigns').update({ cover_path: path }).eq('id', campaign.id)
-      }
+      const saved = upload.error
+        ? upload
+        : await supabase.from('campaigns').update({ cover_path: path }).eq('id', campaign.id)
+      coverFailed = Boolean(saved.error)
     }
 
     const failed: { who: string; reason: string }[] = []
@@ -131,7 +133,7 @@ export const useCampaignStore = defineStore('campaign', () => {
     }
 
     await fetchMine(true)
-    return { campaign, failed }
+    return { campaign, failed, coverFailed }
   }
 
   async function invite(campaignId: string, identifier: string) {
@@ -205,6 +207,46 @@ export const useCampaignStore = defineStore('campaign', () => {
     await fetchMine(true)
   }
 
+  /** Every stored file under a campaign's folder (board images, journal attachments, cover). */
+  async function listCampaignFiles(prefix: string): Promise<string[]> {
+    const { data, error } = await supabase.storage
+      .from('campaign-files')
+      .list(prefix, { limit: 1000 })
+    if (error) throw error
+    const paths: string[] = []
+    for (const item of data ?? []) {
+      const path = `${prefix}/${item.name}`
+      // Folders come back without an id.
+      if (item.id === null) paths.push(...(await listCampaignFiles(path)))
+      else paths.push(path)
+    }
+    return paths
+  }
+
+  /**
+   * Deletes a campaign with its board, journal, messages, invites and initiative
+   * (the database cascades those), plus its uploaded files. Files go first: once
+   * the campaign row is gone, nobody passes the storage policy for its folder.
+   * Allowed for the campaign's GM and for staff.
+   */
+  async function removeCampaign(campaignId: string) {
+    const files = await listCampaignFiles(campaignId)
+    for (let i = 0; i < files.length; i += 100) {
+      const { error } = await supabase.storage
+        .from('campaign-files')
+        .remove(files.slice(i, i + 100))
+      if (error) throw error
+    }
+    const { data, error } = await supabase
+      .from('campaigns')
+      .delete()
+      .eq('id', campaignId)
+      .select('id')
+    if (error) throw error
+    if (!data?.length) throw new Error('Only the Game Master or an admin can delete this campaign')
+    campaigns.value = campaigns.value.filter((c) => c.id !== campaignId)
+  }
+
   function reset() {
     campaigns.value = []
     invites.value = []
@@ -228,6 +270,7 @@ export const useCampaignStore = defineStore('campaign', () => {
     markRead,
     update,
     removeMember,
+    removeCampaign,
     reset,
   }
 })

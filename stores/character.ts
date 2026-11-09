@@ -71,13 +71,24 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   async function remove(id: string) {
-    const target = characters.value.find((c) => c.id === id)
+    // Read the portrait from the row itself: the list cache is empty when the
+    // sheet page was opened directly.
+    const { data: row } = await supabase
+      .from('characters')
+      .select('portrait_path')
+      .eq('id', id)
+      .maybeSingle()
     const { error } = await supabase.from('characters').delete().eq('id', id)
     if (error) throw error
-    if (target?.portrait_path) {
-      await supabase.storage.from('portraits').remove([target.portrait_path])
-    }
+    const portrait = (row as { portrait_path: string | null } | null)?.portrait_path
+    if (portrait) await removePortrait(portrait)
     characters.value = characters.value.filter((c) => c.id !== id)
+  }
+
+  /** Best-effort removal of a portrait file that is no longer referenced. */
+  async function removePortrait(path: string) {
+    const { error } = await supabase.storage.from('portraits').remove([path])
+    if (error) console.warn('Could not remove old portrait', path, error.message)
   }
 
   /** Uploads a portrait and returns its storage path. */
@@ -87,7 +98,7 @@ export const useCharacterStore = defineStore('character', () => {
     const path = `${auth.userId}/${characterId}-${Date.now()}.${ext || 'png'}`
     const { error } = await supabase.storage
       .from('portraits')
-      .upload(path, file, { contentType: file.type, upsert: true })
+      .upload(path, file, { contentType: file.type })
     if (error) throw error
     return path
   }
@@ -107,6 +118,7 @@ export const useCharacterStore = defineStore('character', () => {
     save,
     remove,
     uploadPortrait,
+    removePortrait,
     reset,
   }
 })

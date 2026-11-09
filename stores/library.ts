@@ -72,9 +72,20 @@ export const useLibraryStore = defineStore('library', () => {
   async function remove(doc: LibraryDocument) {
     const { error } = await supabase.from('library_documents').delete().eq('id', doc.id)
     if (error) throw error
-    await supabase.storage.from('library').remove([doc.file_path])
     documents.value = documents.value.filter((d) => d.id !== doc.id)
+    // Storage reports failures in `error` rather than throwing.
+    const removed = await supabase.storage.from('library').remove([doc.file_path])
+    if (removed.error) {
+      throw new Error(
+        `${doc.name} was removed from the library, but its file couldn’t be deleted from storage (${removed.error.message}).`,
+      )
+    }
   }
 
-  return { documents, loaded, loading, fetchAll, rejectReason, upload, remove }
+  function reset() {
+    documents.value = []
+    loaded.value = false
+  }
+
+  return { documents, loaded, loading, fetchAll, rejectReason, upload, remove, reset }
 })

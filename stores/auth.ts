@@ -31,8 +31,17 @@ export const useAuthStore = defineStore('auth', () => {
       supabase.from('profiles').select('*').eq('id', id).maybeSingle(),
       supabase.from('user_permissions').select('*').eq('user_id', id).maybeSingle(),
     ])
+    // The session may have changed (sign-out, another account) while these ran.
+    if (session.value?.user.id !== id) return
     profile.value = (profileRes.data as Profile | null) ?? null
     permissions.value = (permRes.data as UserPermissions | null) ?? null
+  }
+
+  /** Clears every store that caches the signed-in player's data. */
+  function resetPlayerData() {
+    useCharacterStore().reset()
+    useCampaignStore().reset()
+    useLibraryStore().reset()
   }
 
   async function init() {
@@ -41,6 +50,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (session.value) await fetchProfile()
 
     supabase.auth.onAuthStateChange((event, newSession) => {
+      // Covers sign-out or a different account in another tab, not just logout() here.
+      if (newSession?.user.id !== session.value?.user.id) resetPlayerData()
       session.value = newSession
       if (!newSession) {
         profile.value = null
@@ -72,6 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
+    if (data.session?.user.id !== session.value?.user.id) resetPlayerData()
     session.value = data.session
     await fetchProfile()
   }
@@ -82,8 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value = null
     permissions.value = null
     // Drop the previous player's cached data so the next sign-in starts clean.
-    useCharacterStore().reset()
-    useCampaignStore().reset()
+    resetPlayerData()
   }
 
   async function updateProfile(patch: Partial<Profile>) {

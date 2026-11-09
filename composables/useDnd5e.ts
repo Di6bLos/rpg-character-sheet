@@ -1,5 +1,5 @@
 import type { Dnd5eAbility, Dnd5eSheet } from '~/types/sheets'
-import { abilityMod, parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
+import { abilityMod, critDice, parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
 import type { ThemeId } from '~/utils/themes'
 
 const ABILITIES: [Dnd5eAbility, string][] = [
@@ -58,7 +58,7 @@ export function useDnd5e(theme: Ref<ThemeId>) {
       roll: () => {
         const attack = rollAttack(w.atk)
         const expr = parseDice(w.dmg)
-        const damage = expr ? rollDice(expr).total : null
+        const damage = expr ? rollDice(attack.natural === 20 ? critDice(expr) : expr).total : null
         editor.say(
           describeRoll(
             theme.value,

@@ -132,7 +132,18 @@ export const useAdminStore = defineStore('admin', () => {
         p_action: action,
       })
       if (error) throw error
-      await supabase.storage.from(group.first.bucket).remove([group.first.file_path])
+      // Storage reports failures in `error` rather than throwing.
+      const removed = await supabase.storage
+        .from(group.first.bucket)
+        .remove([group.first.file_path])
+      await Promise.all([fetchReports(), fetchUsers()])
+      if (removed.error) {
+        throw new Error(
+          `The report was resolved, but the file couldn’t be deleted from storage (${removed.error.message}). ` +
+            `Delete ${group.first.bucket}/${group.first.file_path} in the Supabase dashboard.`,
+        )
+      }
+      return
     }
     await Promise.all([fetchReports(), fetchUsers()])
   }

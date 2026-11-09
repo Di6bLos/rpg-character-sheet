@@ -49,9 +49,25 @@ export function provideSheetEditor(
   const uploadingPortrait = ref(false)
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  async function save() {
+  let pendingSave: Promise<void> | null = null
+
+  /** Saves the draft. A call made while a save is in flight runs after it. */
+  async function save(): Promise<void> {
     clearTimeout(timer)
-    if (!canEdit.value || !dirty.value || saving.value) return
+    if (pendingSave) {
+      await pendingSave
+      return save()
+    }
+    if (!canEdit.value || !dirty.value) return
+    pendingSave = persist()
+    try {
+      await pendingSave
+    } finally {
+      pendingSave = null
+    }
+  }
+
+  async function persist() {
     saving.value = true
     // Cleared up front so edits made while the request is in flight re-mark it.
     dirty.value = false
@@ -66,9 +82,15 @@ export function provideSheetEditor(
     } catch (err) {
       dirty.value = true
       snackbar.error(err, 'Could not save the sheet')
+      throw err
     } finally {
       saving.value = false
     }
+  }
+
+  /** save() for fire-and-forget callers; errors are already shown as a toast. */
+  function saveQuietly() {
+    save().catch(() => {})
   }
 
   watch(
@@ -77,12 +99,12 @@ export function provideSheetEditor(
       if (!canEdit.value) return
       dirty.value = true
       clearTimeout(timer)
-      timer = setTimeout(() => void save(), AUTOSAVE_MS)
+      timer = setTimeout(saveQuietly, AUTOSAVE_MS)
     },
     { deep: true },
   )
 
-  onBeforeUnmount(() => void save())
+  onBeforeUnmount(saveQuietly)
 
   function adjustHp(delta: number) {
     if (!canEdit.value) return
@@ -104,10 +126,21 @@ export function provideSheetEditor(
       return
     }
     uploadingPortrait.value = true
+    const previous = draft.value.portrait_path
+    let uploaded: string | null = null
     try {
-      draft.value.portrait_path = await store.uploadPortrait(draft.value.id, file)
+      uploaded = await store.uploadPortrait(draft.value.id, file)
+      draft.value.portrait_path = uploaded
+      await save()
+      if (previous && previous !== uploaded) await store.removePortrait(previous)
     } catch (err) {
-      snackbar.error(err, 'Could not upload the portrait')
+      if (uploaded && draft.value.portrait_path === uploaded) {
+        // The new path never reached the database; put the old one back and
+        // drop the orphaned upload.
+        draft.value.portrait_path = previous
+        await store.removePortrait(uploaded)
+      }
+      snackbar.error(err, 'Could not update the portrait')
     } finally {
       uploadingPortrait.value = false
     }
