@@ -170,7 +170,13 @@ function sign(n: number) {
     </div>
 
     <div v-if="tab === 'weapons'" class="tab-body">
-      <div v-if="weapons.length" class="table-wrap">
+      <div
+        v-if="weapons.length"
+        class="table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Table, scroll sideways for more"
+      >
         <table class="table" style="min-width: 640px">
           <thead>
             <tr>

@@ -225,12 +225,11 @@ watch(
   .topbar__nav {
     order: 3;
     width: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    margin: 0 -8px;
+    justify-content: space-between;
+    gap: 0;
 
     a {
-      padding: 0 12px;
+      padding: 0 8px;
       white-space: nowrap;
     }
   }

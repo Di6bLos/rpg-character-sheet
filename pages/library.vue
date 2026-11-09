@@ -199,6 +199,7 @@ function report(doc: LibraryDocument) {
         type="file"
         class="sr-only"
         tabindex="-1"
+        aria-label="Upload documents"
         :accept="LIBRARY_ACCEPT"
         multiple
         @change="onPick"
@@ -235,7 +236,13 @@ function report(doc: LibraryDocument) {
         role="status"
         aria-label="Loading documents"
       />
-      <div v-else class="table-wrap">
+      <div
+        v-else
+        class="table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Table, scroll sideways for more"
+      >
         <table class="table" style="min-width: 820px; font-size: 14px">
           <thead>
             <tr>

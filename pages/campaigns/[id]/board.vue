@@ -844,6 +844,10 @@ async function confirmRemoveEntry() {
   }
 }
 
+.hero__tools .seg {
+  background: var(--nav-bg);
+}
+
 .hero__tools {
   display: flex;
   flex-wrap: wrap;

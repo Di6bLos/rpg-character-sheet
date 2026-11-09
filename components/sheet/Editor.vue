@@ -119,7 +119,7 @@ const inventoryCols = computed(() => [
             <label for="d5-race">Race</label
             ><input id="d5-race" v-model="d5.lineage" class="input" />
           </div>
-          <div class="field">
+          <div class="field span-2">
             <label for="d5-class">Class</label
             ><input id="d5-class" v-model="d5.class" class="input" />
           </div>

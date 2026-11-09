@@ -85,9 +85,9 @@ img {
 // ---------------------------------------------------------------------------
 .page {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 40px clamp(16px, 4vw, 56px) 64px;
+  padding: 40px clamp(16px, 4vw, 48px) 64px;
   display: flex;
   flex-direction: column;
   gap: 40px;
@@ -177,6 +177,9 @@ img {
   --page-muted: var(--panel-muted);
   --line: var(--panel-line);
   --line-strong: var(--panel-line-strong);
+  --field: var(--panel-field);
+  --track: var(--panel-track);
+  --inset: var(--panel-inset);
   --accent-text: var(--accent-ink);
 
   h2,
@@ -485,7 +488,17 @@ select.input {
 }
 
 .table-wrap {
+  // position: relative keeps visually-hidden children from widening the page.
+  position: relative;
   overflow-x: auto;
+  // Edge shadows that appear only while there is more table to scroll to.
+  background:
+    linear-gradient(90deg, var(--scroll-cover, transparent) 30%, transparent) left / 40px 100%
+      no-repeat local,
+    linear-gradient(270deg, var(--scroll-cover, transparent) 30%, transparent) right / 40px 100%
+      no-repeat local,
+    linear-gradient(90deg, rgba(0, 0, 0, 0.45), transparent) left / 14px 100% no-repeat scroll,
+    linear-gradient(270deg, rgba(0, 0, 0, 0.45), transparent) right / 14px 100% no-repeat scroll;
 }
 
 .table {
@@ -700,4 +713,30 @@ select.input {
   color: var(--page-text);
   font-weight: 600;
   font-size: 14px;
+}
+
+// ---------------------------------------------------------------------------
+// Touch: compact controls grow to a 44px target on touch screens.
+// ---------------------------------------------------------------------------
+@media (pointer: coarse) {
+  .btn--sm,
+  .chip {
+    min-height: 44px;
+  }
+
+  .step,
+  .step.step--sm {
+    width: 44px;
+    height: 44px;
+  }
+
+  .pip {
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+    }
+  }
 }

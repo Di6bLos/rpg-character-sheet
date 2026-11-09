@@ -341,7 +341,13 @@ const bulkPct = computed(() =>
         Each button rolls that attack · 1st / 2nd / 3rd with multiple attack penalty
       </span>
     </div>
-    <div v-if="strikes.length" class="table-wrap">
+    <div
+      v-if="strikes.length"
+      class="table-wrap"
+      tabindex="0"
+      role="region"
+      aria-label="Table, scroll sideways for more"
+    >
       <table class="table" style="min-width: 760px">
         <thead>
           <tr>
@@ -679,7 +685,8 @@ const bulkPct = computed(() =>
   font-family: Inter, system-ui, sans-serif;
 
   &--T {
-    background: var(--line);
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--page-text);
     color: var(--page-text);
   }
 

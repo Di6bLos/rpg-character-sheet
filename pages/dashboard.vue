@@ -267,7 +267,7 @@ const libDocs = computed(() => library.documents.slice(0, 4))
             v-model="draft"
             class="input"
             maxlength="4000"
-            :placeholder="`Message the party in ${current.name}…`"
+            placeholder="Message the party…"
           />
           <button type="submit" class="btn" :disabled="sending || !draft.trim()">Send</button>
         </form>

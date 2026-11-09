@@ -183,8 +183,14 @@ function confirmSuspend() {
           role="status"
           aria-label="Loading users"
         />
-        <div v-else class="table-wrap">
-          <table class="table" style="min-width: 780px; font-size: 14px">
+        <div
+          v-else
+          class="table-wrap"
+          tabindex="0"
+          role="region"
+          aria-label="Table, scroll sideways for more"
+        >
+          <table class="table" style="min-width: 680px; font-size: 14px">
             <thead>
               <tr>
                 <th scope="col" style="padding-left: 20px">User</th>
@@ -455,7 +461,7 @@ tr.is-selected td {
 }
 
 .role {
-  min-width: 130px;
+  min-width: 118px;
   width: auto;
 }
 

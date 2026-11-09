@@ -57,7 +57,13 @@ async function remove() {
         role="status"
         aria-label="Loading documents"
       />
-      <div v-else class="table-wrap">
+      <div
+        v-else
+        class="table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Table, scroll sideways for more"
+      >
         <table class="table" style="min-width: 720px; font-size: 14px">
           <thead>
             <tr>

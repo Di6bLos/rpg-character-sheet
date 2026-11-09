@@ -60,7 +60,13 @@ async function remove() {
     </header>
     <section class="panel panel--flush">
       <div v-if="loading" class="spinner" role="status" aria-label="Loading campaigns" />
-      <div v-else class="table-wrap">
+      <div
+        v-else
+        class="table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Table, scroll sideways for more"
+      >
         <table class="table" style="min-width: 680px; font-size: 14px">
           <thead>
             <tr>

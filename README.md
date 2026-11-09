@@ -1,48 +1,55 @@
-# rpg-vue-scaffold
+# Lantern
 
-This template should help get you started developing with Vue 3 in Vite.
+Character sheets and campaign tools for a tabletop group.
 
-## Recommended IDE Setup
+- Character sheets for D&D 5e, Pathfinder 2e and Nimble, with dice rollers and a level-up flow
+- Campaigns with a board for maps and images, a journal, party and secret messages, and a GM console with an initiative tracker
+- A shared document library
+- Four themes (Classic, Gothic, Eldritch, Cursed) and a per-player accent colour
+- An admin area for roles, permissions and reported uploads
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+Built with Nuxt 3 (SPA), Vue 3, TypeScript, Pinia and Supabase. Hosted on Vercel.
 
-## Recommended Browser Setup
+## Getting started
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+Requires Node.js `^20.19.0 || >=22.12.0`.
 
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
 npm install
+npm run dev        # http://localhost:3000
 ```
 
-### Compile and Hot-Reload for Development
+Create `.env.local` with your Supabase project's values (Dashboard → Project Settings → API):
 
-```sh
-npm run dev
+```
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### Type-Check, Compile and Minify for Production
+## Database
 
-```sh
-npm run build
+The schema, row-level security policies, storage buckets and realtime setup are in `supabase/migrations/`.
+
+- Hosted project: `supabase link --project-ref <ref>` then `supabase db push`.
+- Local: `supabase start` runs a local stack (API on port 55421) with the migrations applied.
+
+The first admin is promoted by hand after signing up:
+
+```sql
+update public.profiles set role = 'admin' where handle = '<username>';
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+## Scripts
 
-```sh
-npm run lint
-```
+| Command | What it does |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run type-check` | TypeScript check |
+| `npm run lint` | Oxlint, then ESLint |
+| `npm run test` | Unit tests for the rules logic |
+| `npm run format` | Prettier |
+
+## Design
+
+`design/` holds the reference screens and tokens the app is built from. See `design/README.md`.

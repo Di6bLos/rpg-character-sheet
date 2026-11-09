@@ -95,13 +95,11 @@ function hpPct(c: Combatant) {
 async function saveEncounter(patch: Partial<Encounter>) {
   if (!encounter.value) return
   Object.assign(encounter.value, patch)
-  const { error } = await supabase
-    .from('encounters')
-    .upsert({
-      campaign_id: campaignId.value,
-      round: encounter.value.round,
-      active_combatant: encounter.value.active_combatant,
-    })
+  const { error } = await supabase.from('encounters').upsert({
+    campaign_id: campaignId.value,
+    round: encounter.value.round,
+    active_combatant: encounter.value.active_combatant,
+  })
   if (error) snackbar.error(error, 'Could not update the turn order')
 }
 
@@ -696,7 +694,12 @@ function classLine(r: RosterEntry) {
           </button>
         </form>
       </div>
-      <div class="table-wrap">
+      <div
+        class="table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Table, scroll sideways for more"
+      >
         <table class="table" style="min-width: 760px; font-size: 14px">
           <thead>
             <tr>
@@ -966,6 +969,10 @@ function classLine(r: RosterEntry) {
     background: var(--field);
     box-shadow: inset 0 0 0 1px var(--track);
 
+    @media (max-width: 560px) {
+      flex-wrap: wrap;
+    }
+
     &.is-active {
       background: var(--accent-tint);
       box-shadow: inset 0 0 0 1.5px var(--accent);
@@ -1041,6 +1048,18 @@ function classLine(r: RosterEntry) {
   flex: none;
   display: flex;
   gap: 4px;
+
+  @media (max-width: 560px) {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+
+  @media (pointer: coarse) {
+    button {
+      width: 44px;
+      height: 44px;
+    }
+  }
 
   button {
     width: 36px;

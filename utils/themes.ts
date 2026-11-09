@@ -69,23 +69,63 @@ export function resolveAccent(theme: ThemeId, accent: string | null | undefined)
   return accent && isHex(accent) ? accent : themeMeta(theme).defaultAccent
 }
 
+/** Luminance of the surface accent-coloured text sits on: the page, and a panel. */
+const SURFACES: Record<ThemeId, { page: string; panel: string }> = {
+  classic: { page: '#14110E', panel: '#1D1914' },
+  gothic: { page: '#0B0A0A', panel: '#131111' },
+  eldritch: { page: '#0A0812', panel: '#161222' },
+  cursed: { page: '#0D0906', panel: '#DCC9A3' },
+}
+
+function mix(hex: string, toward: string, amount: number): string {
+  const a = Number.parseInt(hex.slice(1), 16)
+  const b = Number.parseInt(toward.slice(1), 16)
+  const channel = (shift: number) => {
+    const from = (a >> shift) & 255
+    const to = (b >> shift) & 255
+    return Math.round(from + (to - from) * amount)
+  }
+  const value = (channel(16) << 16) | (channel(8) << 8) | channel(0)
+  return `#${value.toString(16).padStart(6, '0').toUpperCase()}`
+}
+
+export function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
 /**
- * CSS custom properties derived from the player's accent. `--accent-ink` is the
- * accent as readable text on a panel: mixed toward ink on Cursed parchment, and
- * lifted toward white when a custom colour is too dark for the dark themes.
+ * The accent as text on `surface`: nudged toward white (dark surfaces) or ink
+ * (parchment) in steps until it reaches WCAG AA contrast, so any custom colour
+ * stays readable.
+ */
+export function readableAccent(accent: string, surface: string, start = 0): string {
+  const toward = luminance(surface) > 0.4 ? '#1E1209' : '#FFFFFF'
+  for (let amount = start; amount < 1; amount += 0.08) {
+    const candidate = mix(accent, toward, amount)
+    if (contrast(candidate, surface) >= 4.5) return candidate
+  }
+  return toward
+}
+
+/**
+ * CSS custom properties derived from the player's accent. `--accent` is for
+ * fills; `--accent-text` / `--accent-ink` are the accent as readable text on
+ * the page and on a panel (mixed toward ink on Cursed parchment, per tokens.json).
  */
 export function accentVars(theme: ThemeId, accent: string): Record<string, string> {
-  const lift = luminance(accent) < 0.12 ? `color-mix(in srgb, ${accent} 55%, #fff)` : accent
+  const surface = SURFACES[theme]
   return {
     '--accent': accent,
     '--on-accent': onAccent(accent),
-    '--accent-text': lift,
-    '--accent-ink': theme === 'cursed' ? `color-mix(in srgb, ${accent} 62%, #1E1209)` : lift,
+    '--accent-text': readableAccent(accent, surface.page),
+    '--accent-ink': readableAccent(accent, surface.panel, theme === 'cursed' ? 0.38 : 0),
     '--accent-tint': `color-mix(in srgb, ${accent} 16%, transparent)`,
   }
 }
 
-export function accentName(accent: string): string {
+export function accentName(accent: string | null): string {
+  if (accent === null) return 'Theme default'
   const preset = ACCENTS.find((a) => a.hex.toLowerCase() === accent.toLowerCase())
   return preset ? preset.name : `Custom ${accent.toUpperCase()}`
 }

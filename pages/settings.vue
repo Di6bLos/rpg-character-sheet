@@ -240,7 +240,7 @@ const toggles = [
         </div>
         <p class="small muted">
           Theme: <strong>{{ meta.name }}</strong> · Accent:
-          <strong>{{ accentName(activeAccent) }}</strong>
+          <strong>{{ accentName(accent) }}</strong>
         </p>
       </aside>
     </div>

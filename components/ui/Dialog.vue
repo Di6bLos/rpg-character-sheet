@@ -53,7 +53,9 @@ function onBackdrop(event: MouseEvent) {
           ×
         </button>
       </header>
-      <slot />
+      <div class="dialog__scroll">
+        <slot />
+      </div>
       <footer v-if="$slots.actions" class="dialog__actions">
         <slot name="actions" />
       </footer>
@@ -64,7 +66,7 @@ function onBackdrop(event: MouseEvent) {
 <style scoped lang="scss">
 .dialog {
   width: min(var(--dialog-width), calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   padding: 0;
   border: 0;
   background: transparent;
@@ -81,8 +83,25 @@ function onBackdrop(event: MouseEvent) {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+}
+
+.dialog__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  // Room for focus rings, which the scroll container would otherwise clip.
+  margin: -4px;
+  padding: 4px;
+}
+
+.dialog__head,
+.dialog__actions {
+  flex: none;
 }
 
 .dialog__head {

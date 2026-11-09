@@ -10,7 +10,7 @@ import {
   sign,
 } from '../utils/dice'
 import { LEVEL_UP_RULES, averageHp, canBump, hpGain } from '../utils/levelUp'
-import { accentVars, resolveAccent } from '../utils/themes'
+import { accentVars, contrast, readableAccent, resolveAccent } from '../utils/themes'
 
 /** Deterministic rng that yields the given die faces for a die of `sides`. */
 function faces(sides: number, ...values: number[]) {
@@ -44,13 +44,31 @@ describe('themes', () => {
     expect(resolveAccent('gothic', '#123456')).toBe('#123456')
   })
 
-  it('mixes accent text toward ink on Cursed parchment', () => {
-    expect(accentVars('cursed', '#C8551F')['--accent-ink']).toContain('#1E1209')
+  it('keeps accent text at AA contrast on every theme surface', () => {
+    const accents = ['#E0B054', '#B8443A', '#C8551F', '#6FCF8E', '#200010', '#FFFFFF', '#79A7D3']
+    const surfaces = {
+      classic: '#1D1914',
+      gothic: '#131111',
+      eldritch: '#161222',
+      cursed: '#DCC9A3',
+    }
+    for (const [theme, panel] of Object.entries(surfaces)) {
+      for (const accent of accents) {
+        const vars = accentVars(theme as 'classic', accent)
+        expect(contrast(vars['--accent-ink']!, panel)).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
+  it('leaves an already readable accent untouched', () => {
+    expect(readableAccent('#E0B054', '#14110E')).toBe('#E0B054')
     expect(accentVars('classic', '#E0B054')['--accent-ink']).toBe('#E0B054')
   })
 
-  it('lifts very dark custom accents so they stay readable as text', () => {
-    expect(accentVars('classic', '#200010')['--accent-text']).toContain('#fff')
+  it('mixes accent text toward ink on Cursed parchment', () => {
+    const ink = accentVars('cursed', '#C8551F')['--accent-ink']!
+    expect(ink).not.toBe('#C8551F')
+    expect(contrast(ink, '#DCC9A3')).toBeGreaterThanOrEqual(4.5)
   })
 })
 

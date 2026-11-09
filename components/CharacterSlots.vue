@@ -205,7 +205,7 @@ async function create() {
   font-family: var(--font-heading);
   font-size: 26px;
   font-weight: 700;
-  color: var(--accent);
+  color: #e0b054;
 }
 
 .slot__system {
