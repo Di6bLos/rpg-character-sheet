@@ -1,0 +1,138 @@
+// Theme tokens from design/tokens.json and design/screens/Settings.dc.html.
+// Accent variables (--accent, --on-accent, --accent-text, --accent-ink,
+// --accent-tint) are set on <html> by composables/useTheme.ts.
+
+:root,
+[data-theme='classic'] {
+  --panel-line-strong: #5a4c3a;
+  --page-bg: radial-gradient(1200px 500px at 70% -10%, #2a2117 0%, #14110e 60%);
+  --page-base: #14110e;
+  --page-text: #efe6d4;
+  --page-soft: #cdbfa6;
+  --page-muted: #a8997f;
+  --line: #3a3127;
+  --line-strong: #5a4c3a;
+  --nav-bg: #0f0d0a;
+  --panel-bg: #1d1914;
+  --panel-text: #efe6d4;
+  --panel-soft: #cdbfa6;
+  --panel-muted: #a8997f;
+  --panel-line: #3a3127;
+  --panel-shadow: none;
+  --field: #14110e;
+  --track: #2c251d;
+  --inset: #241e17;
+  --font-display: Cinzel, Georgia, serif;
+  --font-heading: Cinzel, Georgia, serif;
+  --font-body: Inter, system-ui, -apple-system, sans-serif;
+  --display-spacing: 0.12em;
+  --radius-panel: 14px;
+  --radius-control: 8px;
+  --secondary: #6fc2b4;
+  --on-secondary: #0e1f1c;
+  --secret-bg: #17201e;
+
+  --accent: #e0b054;
+  --on-accent: #141010;
+  --accent-text: #e0b054;
+  --accent-ink: #e0b054;
+  --accent-tint: color-mix(in srgb, #e0b054 16%, transparent);
+
+  --danger: #e2735f;
+  --danger-bg: #3a1d17;
+  --danger-text: #f7c9bc;
+  --ok-bg: #1f3531;
+  --ok-text: #bfe9e1;
+  --warn-bg: #3a2f1c;
+  --warn-text: #f0cb7e;
+}
+
+[data-theme='gothic'] {
+  --panel-line-strong: #5a4f49;
+  --page-bg: radial-gradient(ellipse 1100px 520px at 50% -12%, #2b1414 0%, #0b0a0a 62%);
+  --page-base: #0b0a0a;
+  --page-text: #e8e0d0;
+  --page-soft: #c9bfb2;
+  --page-muted: #a79d92;
+  --line: #3b3532;
+  --line-strong: #5a504b;
+  --nav-bg: #080707;
+  --panel-bg: #131111;
+  --panel-text: #e8e0d0;
+  --panel-soft: #c9bfb2;
+  --panel-muted: #a79d92;
+  --panel-line: #3b3532;
+  --panel-shadow: inset 0 0 0 4px #131111, inset 0 0 0 5px #2a2422;
+  --field: #0e0c0c;
+  --track: #241f1e;
+  --inset: #1a1716;
+  --font-display: UnifrakturMaguntia, Georgia, serif;
+  --font-heading: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Crimson Pro', Georgia, serif;
+  --display-spacing: 0.02em;
+  --radius-panel: 0px;
+  --radius-control: 0px;
+  --secondary: #a79d92;
+  --on-secondary: #141010;
+  --secret-bg: #1c1313;
+}
+
+[data-theme='eldritch'] {
+  --panel-line-strong: #4a3f70;
+  --page-bg: radial-gradient(900px 600px at 50% 0%, #241a3d 0%, #0a0812 65%);
+  --page-base: #0a0812;
+  --page-text: #e6e0f5;
+  --page-soft: #c7bee3;
+  --page-muted: #a69dc4;
+  --line: #2e2745;
+  --line-strong: #4a3f6e;
+  --nav-bg: #07060d;
+  --panel-bg: rgba(22, 18, 34, 0.9);
+  --panel-text: #e6e0f5;
+  --panel-soft: #c7bee3;
+  --panel-muted: #a69dc4;
+  --panel-line: #2e2745;
+  --panel-shadow: 0 0 40px rgba(80, 60, 140, 0.18);
+  --field: #120e1e;
+  --track: #1e1830;
+  --inset: #1a1530;
+  --font-display: 'Cinzel Decorative', Cinzel, serif;
+  --font-heading: Cinzel, serif;
+  --font-body: 'Alegreya Sans', system-ui, sans-serif;
+  --display-spacing: 0.06em;
+  --radius-panel: 22px;
+  --radius-control: 999px;
+  --secondary: #8a6fd1;
+  --on-secondary: #ffffff;
+  --secret-bg: #181232;
+}
+
+[data-theme='cursed'] {
+  --panel-line-strong: #2b1a0e;
+  --page-bg: radial-gradient(700px 400px at 15% 105%, #3a1a0a 0%, transparent 70%), #0d0906;
+  --page-base: #0d0906;
+  --page-text: #ebd9b4;
+  --page-soft: #d2bd96;
+  --page-muted: #b99e7a;
+  --line: #3a2414;
+  --line-strong: #6b4a30;
+  --nav-bg: #090604;
+  --panel-bg: radial-gradient(circle at 85% 10%, rgba(120, 70, 20, 0.22), transparent 40%), #dcc9a3;
+  --panel-text: #2b1a0e;
+  --panel-soft: #4a3423;
+  --panel-muted: #5c4330;
+  --panel-line: #8a6e52;
+  --panel-shadow: inset 0 0 50px rgba(70, 35, 10, 0.55), 0 10px 30px rgba(0, 0, 0, 0.6);
+  --field: rgba(255, 245, 220, 0.4);
+  --track: #c4ad84;
+  --inset: rgba(90, 55, 25, 0.14);
+  --font-display: 'IM Fell English', Georgia, serif;
+  --font-heading: 'IM Fell English SC', Georgia, serif;
+  --font-body: Spectral, Georgia, serif;
+  --display-spacing: 0.04em;
+  --radius-panel: 2px;
+  --radius-control: 0px;
+  --secondary: #5c4330;
+  --on-secondary: #ebd9b4;
+  --secret-bg: rgba(90, 55, 25, 0.2);
+}
