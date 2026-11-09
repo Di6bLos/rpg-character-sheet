@@ -3,13 +3,20 @@ const auth = useAuthStore()
 const route = useRoute()
 const menuOpen = ref(false)
 const menuEl = ref<HTMLElement | null>(null)
+const menuBtn = ref<HTMLButtonElement | null>(null)
+
+/** Esc from the trigger or any menu item closes the menu and returns focus to the trigger. */
+function closeMenu() {
+  if (!menuOpen.value) return
+  menuOpen.value = false
+  menuBtn.value?.focus()
+}
 
 const links = [
   { to: '/dashboard', label: 'Dashboard', match: ['/dashboard'] },
   { to: '/characters', label: 'Characters', match: ['/characters', '/character'] },
   { to: '/campaigns', label: 'Campaigns', match: ['/campaigns', '/join'] },
   { to: '/library', label: 'Library', match: ['/library'] },
-  { to: '/settings', label: 'Settings', match: ['/settings'] },
 ]
 
 function isCurrent(match: string[]) {
@@ -54,15 +61,15 @@ watch(
             {{ link.label }}
           </NuxtLink>
         </nav>
-        <div ref="menuEl" class="account">
+        <div ref="menuEl" class="account" @keydown.esc="closeMenu">
           <button
+            ref="menuBtn"
             type="button"
             class="avatar account__btn"
             aria-haspopup="menu"
             :aria-expanded="menuOpen"
             :aria-label="`Account menu, signed in as ${auth.profile?.display_name ?? 'player'}`"
             @click="menuOpen = !menuOpen"
-            @keydown.esc="menuOpen = false"
           >
             {{ initial }}
           </button>

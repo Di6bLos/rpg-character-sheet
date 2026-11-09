@@ -13,6 +13,7 @@ type Row = Campaign & {
 
 const auth = useAuthStore()
 const snackbar = useSnackbarStore()
+const campaignStore = useCampaignStore()
 const rows = ref<Row[]>([])
 const loading = ref(true)
 const target = ref<Row | null>(null)
@@ -42,11 +43,14 @@ function gm(row: Row) {
 async function remove() {
   const row = target.value
   if (!row) return
-  const { error } = await supabase.from('campaigns').delete().eq('id', row.id)
   target.value = null
-  if (error) return snackbar.error(error, 'Could not delete the campaign')
-  rows.value = rows.value.filter((r) => r.id !== row.id)
-  snackbar.show(`${row.name} was deleted`)
+  try {
+    await campaignStore.removeCampaign(row.id)
+    rows.value = rows.value.filter((r) => r.id !== row.id)
+    snackbar.show(`${row.name} was deleted`)
+  } catch (err) {
+    snackbar.error(err, 'Could not delete the campaign')
+  }
 }
 </script>
 

@@ -92,7 +92,7 @@ async function create() {
   creating.value = true
   createdLink.value = ''
   try {
-    const { campaign, failed } = await store.create({
+    const { campaign, failed, coverFailed } = await store.create({
       name: name.value.trim() || 'Untitled campaign',
       system: system.value,
       pitch: pitch.value.trim(),
@@ -108,12 +108,12 @@ async function create() {
         // Clipboard can be blocked; the link is shown on the page instead.
       }
     }
-    if (failed.length) {
-      snackbar.show(
-        `${campaign.name} created. Couldn’t invite ${failed.map((f) => f.who).join(', ')}: no matching player.`,
-        'info',
-        7000,
-      )
+    const problems = [
+      coverFailed ? 'the cover image couldn’t be uploaded' : '',
+      failed.length ? `no player matched ${failed.map((f) => f.who).join(', ')}` : '',
+    ].filter(Boolean)
+    if (problems.length) {
+      snackbar.show(`${campaign.name} created, but ${problems.join(' and ')}.`, 'info', 7000)
     } else {
       snackbar.show(`${campaign.name} created${sent ? ` · ${plural(sent, 'invite')} sent` : ''}`)
     }
@@ -276,7 +276,7 @@ async function create() {
                 placeholder="What’s the hook? Tone, schedule, house rules…"
               />
             </div>
-            <label class="btn-dashed upload">
+            <label v-if="auth.can('can_upload_documents')" class="btn-dashed upload">
               <input type="file" accept="image/*" @change="onCover" />
               {{ cover ? `Cover: ${cover.name}` : 'Upload cover image' }}
             </label>

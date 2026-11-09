@@ -354,6 +354,35 @@ function classLine(r: RosterEntry) {
   const who = [r.summary?.lineage, r.summary?.class].filter(Boolean).join(' ')
   return `${who || 'Adventurer'} · ${r.character_level}`
 }
+
+// --- Delete campaign -----------------------------------------------------------
+const deleteOpen = ref(false)
+const deleteConfirm = ref('')
+const deleting = ref(false)
+const deleteMatches = computed(
+  () =>
+    deleteConfirm.value.trim().toLowerCase() === (campaign.value?.name ?? '').trim().toLowerCase(),
+)
+
+watch(deleteOpen, (open) => {
+  if (open) deleteConfirm.value = ''
+})
+
+async function confirmDeleteCampaign() {
+  const c = campaign.value
+  if (!c || !deleteMatches.value) return
+  deleting.value = true
+  try {
+    await store.removeCampaign(c.id)
+    deleteOpen.value = false
+    snackbar.show(`${c.name} was deleted`)
+    await navigateTo('/campaigns')
+  } catch (err) {
+    snackbar.error(err, 'Could not delete the campaign')
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -787,6 +816,53 @@ function classLine(r: RosterEntry) {
       </form>
     </section>
 
+    <section class="panel danger" aria-labelledby="danger-h">
+      <div>
+        <h2 id="danger-h">Delete this campaign</h2>
+        <p class="small muted">
+          Removes the board, journal, messages, invites and initiative for every player, along with
+          all uploaded maps and files. Characters are kept. This can’t be undone.
+        </p>
+      </div>
+      <button type="button" class="btn btn--danger" @click="deleteOpen = true">
+        Delete campaign
+      </button>
+    </section>
+
+    <UiDialog v-model="deleteOpen" :title="`Delete ${campaign.name}?`" alert width="480px">
+      <form id="delete-campaign" class="stack" @submit.prevent="confirmDeleteCampaign">
+        <p>
+          Everything in this campaign is deleted for all
+          {{ plural(campaign.playerCount + 1, 'member') }}. Their characters stay on their accounts.
+        </p>
+        <div class="field">
+          <label for="delete-confirm"
+            >Type <strong>{{ campaign.name }}</strong> to confirm</label
+          >
+          <input
+            id="delete-confirm"
+            v-model="deleteConfirm"
+            class="input"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+      </form>
+      <template #actions>
+        <button type="button" class="btn btn--ghost" @click="deleteOpen = false">
+          Keep campaign
+        </button>
+        <button
+          type="submit"
+          form="delete-campaign"
+          class="btn btn--danger"
+          :disabled="deleting || !deleteMatches"
+        >
+          {{ deleting ? 'Deleting…' : 'Delete campaign' }}
+        </button>
+      </template>
+    </UiDialog>
+
     <UiDialog v-model="addOpen" title="Add to initiative" width="520px">
       <div v-if="partyToAdd.length" class="row" style="justify-content: space-between">
         <span class="small">
@@ -1211,6 +1287,24 @@ function classLine(r: RosterEntry) {
   label {
     font-size: 13px;
     color: var(--page-soft);
+  }
+}
+
+.danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--panel-line));
+
+  h2 {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  p {
+    max-width: 62ch;
   }
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import openjpegWasmUrl from 'pdfjs-dist/wasm/openjpeg.wasm?url'
@@ -25,6 +25,9 @@ const emit = defineEmits<{
   close: []
 }>()
 
+// A modal <dialog> makes the library behind it inert, traps focus and closes on Esc.
+const dialogRef = ref<HTMLDialogElement | null>(null)
+let returnFocus: HTMLElement | null = null
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const canvasWrapRef = ref<HTMLDivElement | null>(null)
 const currentPage = ref(1)
@@ -98,14 +101,26 @@ function rotate() {
 }
 
 onMounted(async () => {
+  returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  dialogRef.value?.showModal()
   await nextTick()
   loadPdf()
+})
+
+onBeforeUnmount(() => {
+  if (dialogRef.value?.open) dialogRef.value.close()
+  returnFocus?.focus()
 })
 watch([currentPage, rotation], renderPage)
 </script>
 
 <template>
-  <div class="pdf">
+  <dialog
+    ref="dialogRef"
+    class="pdf"
+    :aria-label="`Document viewer: ${filename}`"
+    @close="emit('close')"
+  >
     <div class="pdf__bar">
       <button type="button" class="btn btn--ghost btn--sm" @click="emit('close')">
         <svg
@@ -156,16 +171,27 @@ watch([currentPage, rotation], renderPage)
         <canvas ref="canvasRef" />
       </div>
     </div>
-  </div>
+  </dialog>
 </template>
 
 <style scoped lang="scss">
 .pdf {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--page-text);
   display: flex;
   flex-direction: column;
+  background: var(--page-base);
+}
+
+.pdf::backdrop {
   background: var(--page-base);
 }
 

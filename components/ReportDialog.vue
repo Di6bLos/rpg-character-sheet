@@ -38,7 +38,13 @@ async function submit() {
   const text = detail.value.trim() ? `${reason.value}: ${detail.value.trim()}` : reason.value
   const { error } = await supabase
     .from('reports')
-    .insert({ ...props.target, reason: text.slice(0, 200) })
+    // The server fills in the file details from the target itself (see the
+    // reports_fill_details trigger); only the choice and the reason come from here.
+    .insert({
+      target_type: props.target.target_type,
+      target_id: props.target.target_id,
+      reason: text.slice(0, 200),
+    })
   sending.value = false
   if (error?.code === '23505') snackbar.show('You already reported this file', 'info')
   else if (error) return snackbar.error(error, 'Could not send the report')
