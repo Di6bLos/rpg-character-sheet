@@ -33,6 +33,12 @@ The schema, row-level security policies, storage buckets and realtime setup are 
 - Hosted project: `supabase link --project-ref <ref>` then `supabase db push`.
 - Local: `supabase start` runs a local stack (API on port 55421) with the migrations applied.
 
+> **Upgrading a project that ran the first version of this app?** The first migration
+> (`20261109000000_lantern_schema.sql`) replaces the old schema: it drops the v1 `profiles`,
+> `characters`, `groups`, `user_groups` and `feedback` tables and their rows. Accounts are kept
+> and get new profiles; the old `documents` and `character-images` buckets are left in place
+> but no longer reachable from the app. Back up anything you need before pushing.
+
 The first admin is promoted by hand after signing up:
 
 ```sql

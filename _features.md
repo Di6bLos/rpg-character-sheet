@@ -36,6 +36,13 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [x] Admin: users table, roles, permission switches, restriction reason, moderation history, suspend
 - [x] Admin: reports queue (dismiss, remove, remove + restrict), campaigns and documents lists
 
+## Follow-ups (after first deploy)
+- [x] Move the Nimble Core Rules and Heroes PDFs into the new library; delete the old `documents` bucket
+- [x] Delete campaign (GM console, typed-name confirmation; also removes uploaded files)
+- [x] Settings only in the avatar menu, not the top nav
+- [x] Copilot review fixes on PR #6 (reports derived server-side, autosave race, portraits, session reset, PDF dialog, crits, usernames)
+- [x] Apply `20261109000200_harden_reports_and_handles.sql` to the hosted database
+
 ## Phase 5 · Wrap-up
 - [x] UI/UX review pass on every screen (run `ui-ux-reviewer`) and fixes
 - [ ] Responsive and accessibility pass at phone width
