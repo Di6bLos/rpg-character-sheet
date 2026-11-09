@@ -10,7 +10,7 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [x] Settings: theme, accent presets, custom colour, notifications, live preview
 - [x] Database schema with row-level security (`supabase/migrations/`)
 - [x] Apply the migration to the hosted Supabase project and create the admin account
-- [ ] Vercel project, environment variables and first deploy
+- [x] Vercel project, environment variables and first deploy
 
 ## Phase 2 · Characters
 - [x] Five character slots, new character by system
@@ -40,4 +40,4 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [x] UI/UX review pass on every screen (run `ui-ux-reviewer`) and fixes
 - [ ] Responsive and accessibility pass at phone width
 - [x] Supabase security advisors on the hosted project
-- [ ] Production deploy on Vercel
+- [x] Production deploy on Vercel
