@@ -18,6 +18,8 @@ type CampaignRow = Campaign & {
   campaign_invites: { id: string; status: string; invitee_id: string | null }[]
 }
 
+export const MAX_CAMPAIGNS = 3
+
 export const useCampaignStore = defineStore('campaign', () => {
   const campaigns = ref<MyCampaign[]>([])
   const invites = ref<PendingInvite[]>([])
