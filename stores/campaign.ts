@@ -25,6 +25,8 @@ export const useCampaignStore = defineStore('campaign', () => {
   const invites = ref<PendingInvite[]>([])
   const loaded = ref(false)
   const loading = ref(false)
+  /** Campaigns the signed-in user created (what the limit counts), even if they've left or been demoted. */
+  const ownedCount = ref(0)
 
   /** The campaign with the soonest upcoming session, else the most recently created. */
   const current = computed<MyCampaign | null>(() => {
@@ -64,7 +66,9 @@ export const useCampaignStore = defineStore('campaign', () => {
       if (campaignRes.error) throw campaignRes.error
       if (inviteRes.error) throw inviteRes.error
 
-      campaigns.value = (campaignRes.data as unknown as CampaignRow[]).flatMap((row) => {
+      const rows = campaignRes.data as unknown as CampaignRow[]
+      ownedCount.value = rows.filter((row) => row.created_by === me).length
+      campaigns.value = rows.flatMap((row) => {
         const mine = row.campaign_members.find((m) => m.user_id === me)
         // Staff and invitees can read campaigns they haven't joined; skip those here.
         if (!mine) return []
@@ -257,6 +261,7 @@ export const useCampaignStore = defineStore('campaign', () => {
 
   return {
     campaigns,
+    ownedCount,
     invites,
     loaded,
     loading,

@@ -23,9 +23,7 @@ const responding = ref<string | null>(null)
 const createdLink = ref('')
 
 const permitted = computed(() => auth.can('can_create_campaigns'))
-const atLimit = computed(
-  () => store.campaigns.filter((c) => c.myRole === 'gm').length >= MAX_CAMPAIGNS,
-)
+const atLimit = computed(() => store.ownedCount >= MAX_CAMPAIGNS)
 const blocked = computed(() => !permitted.value || atLimit.value)
 
 onMounted(async () => {
@@ -239,8 +237,8 @@ async function create() {
         <div v-else-if="atLimit" class="notice" role="status">
           <strong>Campaign limit reached</strong>
           <span>
-            You run {{ MAX_CAMPAIGNS }} of {{ MAX_CAMPAIGNS }} campaigns. Delete one from its GM
-            console to start another.
+            You’ve created {{ MAX_CAMPAIGNS }} of {{ MAX_CAMPAIGNS }} campaigns. Delete one from its
+            GM console to start another.
           </span>
         </div>
 
