@@ -1,18 +1,27 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
+export type ToastKind = 'success' | 'error' | 'info'
+
 export const useSnackbarStore = defineStore('snackbar', () => {
-    const visible = ref(false)
-    const message = ref('')
-    const color = ref('success')
-    const timeout = ref(3000)
+  const visible = ref(false)
+  const message = ref('')
+  const kind = ref<ToastKind>('success')
+  let timer: ReturnType<typeof setTimeout> | undefined
 
-    function show(msg: string, c = 'success', t = 3000) {
-        message.value = msg
-        color.value = c
-        timeout.value = t
-        visible.value = true
-    }
+  function show(msg: string, k: ToastKind = 'success', timeout = 3500) {
+    message.value = msg
+    kind.value = k
+    visible.value = true
+    clearTimeout(timer)
+    timer = setTimeout(() => (visible.value = false), timeout)
+  }
 
-    return { visible, message, color, timeout, show }
+  /** Show an error toast from anything thrown. */
+  function error(err: unknown, fallback = 'Something went wrong') {
+    const msg = err instanceof Error ? err.message : (err as { message?: string })?.message
+    show(msg || fallback, 'error', 5000)
+  }
+
+  return { visible, message, kind, show, error }
 })

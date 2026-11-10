@@ -1,46 +1,60 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+const fonts =
+  'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=UnifrakturMaguntia&family=Cormorant+Garamond:wght@600;700&family=Crimson+Pro:wght@400;600&family=Cinzel+Decorative:wght@700&family=Alegreya+Sans:wght@400;500;700&family=IM+Fell+English&family=IM+Fell+English+SC&family=Spectral:wght@400;600&display=swap'
+
+// Public Supabase settings, resolved at build time. Local dev uses the VITE_ names
+// from .env.local; on Vercel the Supabase integration provides SUPABASE_URL and
+// SUPABASE_ANON_KEY. Only the URL and the anon key are ever read here.
+const env = process.env
+const supabaseUrl =
+  env.VITE_SUPABASE_URL ||
+  env.NUXT_PUBLIC_SUPABASE_URL ||
+  env.SUPABASE_URL ||
+  env.NEXT_PUBLIC_SUPABASE_URL ||
+  ''
+const supabaseAnonKey =
+  env.VITE_SUPABASE_ANON_KEY ||
+  env.NUXT_PUBLIC_SUPABASE_ANON_KEY ||
+  env.SUPABASE_ANON_KEY ||
+  env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  ''
+
 export default defineNuxtConfig({
-    ssr: false,
-    compatibilityDate: '2024-11-01',
-    devtools: { enabled: true },
+  ssr: false,
 
-    modules: [
-        '@pinia/nuxt',
-        'vuetify-nuxt-module',
-    ],
+  runtimeConfig: {
+    public: { supabaseUrl, supabaseAnonKey },
+  },
 
-    vuetify: {
-        moduleOptions: {},
-        vuetifyOptions: {
-            theme: {
-                defaultTheme: 'dark',
-                themes: {
-                    dark: {
-                        dark: true,
-                        colors: {
-                            primary: '#7C3AED',
-                            secondary: '#D97706',
-                        },
-                    },
-                    light: {
-                        dark: false,
-                        colors: {
-                            primary: '#7C3AED',
-                            secondary: '#D97706',
-                        },
-                    },
-                },
-            },
-        },
+  compatibilityDate: '2024-11-01',
+  devtools: { enabled: true },
+
+  modules: ['@pinia/nuxt'],
+
+  app: {
+    head: {
+      title: 'Lantern',
+      htmlAttrs: { lang: 'en', 'data-theme': 'classic' },
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'description', content: 'Character sheets and campaign tools for your table.' },
+        { name: 'theme-color', content: '#14110E' },
+      ],
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        { rel: 'stylesheet', href: fonts },
+      ],
     },
+  },
 
-css: ['@mdi/font/css/materialdesignicons.css', '~/assets/styles/main.scss'],
+  css: ['~/assets/styles/main.scss'],
 
-    typescript: {
-        strict: true,
-    },
+  typescript: {
+    strict: true,
+  },
 
-    imports: {
-        dirs: ['stores', 'composables'],
-    },
+  imports: {
+    dirs: ['stores', 'composables'],
+  },
 })

@@ -12,17 +12,15 @@
     "lint": "run-s lint:oxlint lint:eslint",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli ."
+    "format": "prettier --write --experimental-cli .",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@mdi/font": "^7.4.47",
-"@pinia/nuxt": "^0.10.1",
+    "@pinia/nuxt": "^0.10.1",
     "@supabase/supabase-js": "^2.98.0",
     "nuxt": "~3.17.7",
     "pdfjs-dist": "^5.5.207",
-    "pinia": "^3.0.4",
-    "vuetify": "^3.12.1",
-    "vuetify-nuxt-module": "^0.18.4"
+    "pinia": "^3.0.4"
   },
   "devDependencies": {
     "@types/node": "^24.11.0",
@@ -36,7 +34,8 @@
     "oxlint": "~1.50.0",
     "prettier": "3.8.1",
     "sass": "^1.97.3",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.0"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

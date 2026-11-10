@@ -22,10 +22,12 @@ export default defineConfigWithVueTs(
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
-  // Nuxt file-based routing uses single-word page/layout filenames by convention
+  // Nuxt file-based routing uses single-word page/layout filenames by convention, and
+  // components in subfolders are auto-registered with the folder as a prefix
+  // (components/ui/Dialog.vue is <UiDialog>), so their filenames can be one word.
   {
     name: 'app/nuxt-pages',
-    files: ['pages/**/*.vue', 'layouts/**/*.vue'],
+    files: ['pages/**/*.vue', 'layouts/**/*.vue', 'components/*/**/*.vue'],
     rules: {
       'vue/multi-word-component-names': 'off',
     },

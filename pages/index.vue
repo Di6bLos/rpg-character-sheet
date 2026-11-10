@@ -1,83 +1,96 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useAuthStore } from '~/stores/auth'
+definePageMeta({ layout: 'auth', middleware: 'guest' })
+useHead({ title: 'Sign in · Lantern' })
 
-// Task 014: Vue Router Setup — redirect authenticated users away from login
-definePageMeta({ middleware: 'guest' })
-
-const authStore = useAuthStore()
-const router = useRouter()
+const auth = useAuthStore()
+const route = useRoute()
 
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
+const busy = ref(false)
 const error = ref('')
-const loading = ref(false)
 
-const emailRules = [
-    (v: string) => !!v || 'Email is required',
-    (v: string) => /.+@.+\..+/.test(v) || 'Invalid email format',
-]
-const passwordRules = [(v: string) => !!v || 'Password is required']
-
-async function handleLogin() {
-    error.value = ''
-    loading.value = true
-    try {
-        await authStore.login(email.value, password.value)
-        router.push({ name: 'dashboard' })
-    } catch (e) {
-        error.value = e instanceof Error ? e.message : 'Login failed'
-    } finally {
-        loading.value = false
-    }
+async function submit() {
+  error.value = ''
+  busy.value = true
+  try {
+    await auth.login(email.value.trim(), password.value)
+    const next = typeof route.query.next === 'string' ? route.query.next : ''
+    await navigateTo(next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard')
+  } catch (err) {
+    error.value =
+      (err as { message?: string }).message === 'Invalid login credentials'
+        ? 'That email and password don’t match an account.'
+        : ((err as { message?: string }).message ?? 'Could not sign in. Try again.')
+  } finally {
+    busy.value = false
+  }
 }
 </script>
 
 <template>
-    <v-container class="fill-height" fluid>
-        <v-row align="center" justify="center">
-            <v-col cols="12" sm="8" md="4">
-                <v-card>
-                    <v-card-title class="text-h5 text-center pt-6">
-                        RPG Character Sheet
-                    </v-card-title>
-                    <v-card-subtitle class="text-center pb-2">
-                        Sign in to your account
-                    </v-card-subtitle>
-                    <v-card-text>
-                        <v-alert v-if="error" type="error" class="mb-4" density="compact" closable>
-                            {{ error }}
-                        </v-alert>
-                        <v-form @submit.prevent="handleLogin">
-                            <v-text-field
-                                v-model="email"
-                                label="Email"
-                                type="email"
-                                :rules="emailRules"
-                                class="mb-2"
-                                autocomplete="email"
-                                required
-                            />
-                            <v-text-field
-                                v-model="password"
-                                label="Password"
-                                type="password"
-                                :rules="passwordRules"
-                                class="mb-4"
-                                autocomplete="current-password"
-                                required
-                            />
-                            <v-btn type="submit" color="primary" block :loading="loading">
-                                Sign In
-                            </v-btn>
-                        </v-form>
-                    </v-card-text>
-                    <v-card-actions class="justify-center pb-4">
-                        <span class="text-body-2">Don't have an account?</span>
-                        <v-btn variant="text" :to="{ name: 'signup' }" size="small">Sign Up</v-btn>
-                    </v-card-actions>
-                </v-card>
-            </v-col>
-        </v-row>
-    </v-container>
+  <form class="stack" novalidate @submit.prevent="submit">
+    <h1 class="auth-title">Sign in</h1>
+    <div v-if="error" class="notice notice--error" role="alert">{{ error }}</div>
+    <div class="field">
+      <label for="login-email">Email</label>
+      <input
+        id="login-email"
+        v-model="email"
+        class="input"
+        type="email"
+        autocomplete="email"
+        required
+      />
+    </div>
+    <div class="field">
+      <label for="login-password">Password</label>
+      <div class="password">
+        <input
+          id="login-password"
+          v-model="password"
+          class="input"
+          :type="showPassword ? 'text' : 'password'"
+          autocomplete="current-password"
+          required
+        />
+        <button
+          type="button"
+          class="btn btn--quiet btn--sm"
+          :aria-pressed="showPassword"
+          @click="showPassword = !showPassword"
+        >
+          {{ showPassword ? 'Hide' : 'Show' }}
+        </button>
+      </div>
+    </div>
+    <button class="btn btn--block" type="submit" :disabled="busy || !email || !password">
+      {{ busy ? 'Signing in…' : 'Sign in' }}
+    </button>
+    <p class="small muted">
+      New to Lantern?
+      <NuxtLink :to="{ path: '/signup', query: route.query }">Create an account</NuxtLink>
+    </p>
+  </form>
 </template>
+
+<style scoped lang="scss">
+.auth-title {
+  font-size: 28px;
+}
+
+.password {
+  position: relative;
+
+  .input {
+    padding-right: 76px;
+  }
+
+  .btn {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+  }
+}
+</style>
