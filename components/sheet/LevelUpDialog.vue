@@ -248,15 +248,22 @@ async function confirm() {
     const s = sheet as NimbleSheet
     for (const [k, v] of Object.entries(bumps.value)) s.stats[k as keyof typeof s.stats] += v
     s.hitDice += 1
+    // Tagged with the level so lowering it removes them (untagged = written in by hand).
     names.forEach(([name], i) =>
       s.abilities.push({
         name,
         src: `${i === 0 ? s.class || 'Class' : 'Subclass'} ${next}`,
         desc: '',
+        level: next,
       }),
     )
     if (otherText)
-      s.abilities.push({ name: `Level ${next} changes`, src: `Level ${next}`, desc: otherText })
+      s.abilities.push({
+        name: `Level ${next} changes`,
+        src: `Level ${next}`,
+        desc: otherText,
+        level: next,
+      })
   }
 
   // Level is committed in the same save as the stat changes, so cancelling

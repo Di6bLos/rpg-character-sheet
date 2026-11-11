@@ -434,6 +434,25 @@ describe('lowering the level', () => {
     expect(sheet.subclassSlug).toBe('')
   })
 
+  it('keeps live mana and class resource state while restoring their maximums', () => {
+    const sheet = build(classBySlug('shadowmancer')!)
+    levelTo(sheet, 6, 'red-dragon')
+    sheet.mana.temp = 3
+    sheet.resource.count = 2
+    sheet.resource.active = true
+    restoreLevel(sheet, 4)
+    expect(sheet.mana.temp).toBe(3)
+    expect(sheet.resource).toMatchObject({ count: 2, active: true })
+  })
+
+  it('keeps spent Pilfered Power uses through a subclass change', () => {
+    const sheet = build(classBySlug('shadowmancer')!)
+    levelTo(sheet, 5, 'red-dragon')
+    sheet.resource.count = 2
+    changeSubclass(sheet, 5, 'abyssal-depths', {})
+    expect(sheet.resource.count).toBe(2)
+  })
+
   it('falls back to dropping level-tagged abilities when there is no history', () => {
     const sheet = build(classBySlug('berserker')!)
     levelTo(sheet, 6, 'mountainheart')

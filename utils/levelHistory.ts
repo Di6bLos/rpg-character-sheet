@@ -34,6 +34,42 @@ const PLAY_STATE = new Set([
 
 type Loose = Record<string, unknown>
 
+/**
+ * Play state nested inside objects whose other fields depend on the level: the
+ * definition and maximum come back from the snapshot, these stay as they are.
+ * `max` names the field each one is clamped to after the restore.
+ */
+const LIVE_FIELDS: { obj: string; field: string; max?: string }[] = [
+  { obj: 'mana', field: 'current', max: 'max' },
+  { obj: 'mana', field: 'temp' },
+  { obj: 'resource', field: 'active' },
+  { obj: 'resource', field: 'dice' },
+  { obj: 'resource', field: 'count' },
+  { obj: 'focus', field: 'current', max: 'max' },
+  { obj: 'shield', field: 'hp', max: 'hpMax' },
+  { obj: 'shield', field: 'raised' },
+]
+
+function liveFields(sheet: Loose): Map<string, unknown> {
+  const out = new Map<string, unknown>()
+  for (const { obj, field } of LIVE_FIELDS) {
+    const o = sheet[obj] as Loose | undefined
+    if (o && typeof o === 'object' && field in o) out.set(`${obj}.${field}`, o[field])
+  }
+  return out
+}
+
+function restoreLiveFields(sheet: Loose, live: Map<string, unknown>) {
+  for (const { obj, field, max } of LIVE_FIELDS) {
+    const o = sheet[obj] as Loose | undefined
+    const key = `${obj}.${field}`
+    if (!o || typeof o !== 'object' || !live.has(key)) continue
+    const value = live.get(key)
+    const cap = max ? o[max] : undefined
+    o[field] = typeof value === 'number' && typeof cap === 'number' ? Math.min(value, cap) : value
+  }
+}
+
 function snapshot(sheet: AnySheet): Loose {
   const out: Loose = {}
   for (const [k, v] of Object.entries(sheet)) if (!PLAY_STATE.has(k)) out[k] = v
@@ -83,16 +119,13 @@ export function restoreLevel(sheet: AnySheet, target: number): boolean {
   const handMade = Array.isArray(loose.abilities)
     ? (loose.abilities as { name: string; level?: number }[]).filter((a) => !a.level)
     : []
-  const mana = loose.mana as { current: number } | undefined
-  const manaNow = mana?.current
+  const live = liveFields(loose)
   const before = JSON.parse(JSON.stringify(entry.before)) as Loose
 
   Object.assign(loose, before)
 
   sheet.hp = Math.min(sheet.hp, sheet.hpMax)
-  const restoredMana = loose.mana as { current: number; max: number } | undefined
-  if (restoredMana && manaNow !== undefined)
-    restoredMana.current = Math.min(manaNow, restoredMana.max)
+  restoreLiveFields(loose, live)
   if (Array.isArray(loose.abilities)) {
     const list = loose.abilities as { name: string; level?: number }[]
     for (const a of handMade) if (!list.some((b) => !b.level && b.name === a.name)) list.push(a)
