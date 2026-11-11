@@ -49,7 +49,9 @@ defineEmits<{ select: [] }>()
   &[aria-pressed='true'] {
     border: 2px solid var(--accent);
     padding: 17px 13px 15px;
-    background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg));
+    // Tint layered over the panel surface: --panel-bg is a gradient on Cursed.
+    background:
+      linear-gradient(color-mix(in srgb, var(--accent) 10%, transparent) 0 0), var(--panel-bg);
   }
 
   &:focus-visible {

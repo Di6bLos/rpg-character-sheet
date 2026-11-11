@@ -845,7 +845,9 @@ const schoolNames = (schools: string[]) =>
   &[aria-checked='true'] {
     border: 2px solid var(--accent);
     padding: 13px 15px;
-    background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg));
+    // Tint layered over the panel surface: --panel-bg is a gradient on Cursed.
+    background:
+      linear-gradient(color-mix(in srgb, var(--accent) 10%, transparent) 0 0), var(--panel-bg);
   }
 
   // Locked backgrounds stay readable and focusable; only the frame dims.
