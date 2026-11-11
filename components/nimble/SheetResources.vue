@@ -3,7 +3,7 @@
 import { classBySlug } from '~/data/nimble/classes'
 import type { NimbleSheet } from '~/types/sheets'
 import { abilityBaseName, keyStatValue, sheetResource } from '~/utils/nimbleBuild'
-import { MAX_RAGE_DICE, spendActions } from '~/utils/nimblePlay'
+import { MAX_RAGE_DICE, encounterMana, spendActions } from '~/utils/nimblePlay'
 
 const MAX_COUNT = 12
 
@@ -13,10 +13,14 @@ const cls = computed(() => classBySlug(sheet.value.classSlug))
 const keyValue = computed(() => keyStatValue(sheet.value))
 
 // --- Mana ---------------------------------------------------------------
-const hasMana = computed(() => sheet.value.mana.max > 0)
-const manaFormula = computed(() =>
-  cls.value?.mana ? `${cls.value.mana.label} = ${sheet.value.mana.max}` : '',
-)
+// Spellblade has no mana pool, only INT mana gained on Initiative.
+const combatMana = computed(() => encounterMana(sheet.value))
+const hasMana = computed(() => sheet.value.mana.max > 0 || combatMana.value > 0)
+const manaFormula = computed(() => {
+  if (cls.value?.mana && sheet.value.mana.max > 0)
+    return `${cls.value.mana.label} = ${sheet.value.mana.max}`
+  return combatMana.value > 0 ? `${combatMana.value} on Initiative` : ''
+})
 const surge = computed(() =>
   sheet.value.abilities.find((a) => abilityBaseName(a.name) === 'Elemental Surge'),
 )
@@ -44,7 +48,7 @@ const resource = computed(() => sheetResource(sheet.value, draft.value.level))
 const res = computed(() => sheet.value.resource)
 const statValue = computed(() => {
   const stat = resource.value?.stat
-  return stat ? Math.max(0, sheet.value.stats[stat]) : 0
+  return stat ? Math.max(0, sheet.value.stats[stat]) + (resource.value?.bonus ?? 0) : 0
 })
 const usesLeft = computed(() => statValue.value - res.value.count)
 const badge = computed(() => {
@@ -52,7 +56,8 @@ const badge = computed(() => {
   if (!r) return ''
   if (r.kind === 'uses') return `${statValue.value} uses · ${r.stat}`
   const die = r.kind === 'dice' || r.kind === 'rage' ? `d${r.die}` : ''
-  const from = r.stat ? `${r.stat} (${statValue.value}) on Initiative` : ''
+  const stat = r.bonus ? `${r.stat}+${r.bonus}` : r.stat
+  const from = r.stat ? `${stat} (${statValue.value}) on Initiative` : ''
   return [die, from].filter(Boolean).join(' · ')
 })
 
@@ -152,6 +157,10 @@ function endConcentration() {
         <span class="small" style="font-size: 13px">
           <template v-if="surge"
             ><strong>Elemental Surge</strong>: temporary mana when you roll Initiative</template
+          >
+          <template v-else-if="combatMana > 0"
+            ><strong>Encounter mana</strong>: gained on New encounter, lost when combat
+            ends</template
           >
           <template v-else>Temporary mana (spent first, lost when combat ends)</template>
         </span>

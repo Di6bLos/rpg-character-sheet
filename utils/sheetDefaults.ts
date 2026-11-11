@@ -1,4 +1,5 @@
-import { classBySlug, poolOptionWounds } from '~/data/nimble/classes'
+import { classBySlug, poolOptionByName, poolOptionWounds } from '~/data/nimble/classes'
+import { BASE_SPEED } from '~/data/nimble/core'
 import type { GameSystem } from '~/types'
 import type {
   AnySheet,
@@ -14,7 +15,7 @@ import type {
  * Bump when a class-data change has to be applied to existing saves, and add the
  * upgrade to `upgradeRules`.
  */
-export const NIMBLE_RULES_VERSION = 1
+export const NIMBLE_RULES_VERSION = 2
 
 const PF2E_SKILLS: [string, Pf2eAttr][] = [
   ['Acrobatics', 'DEX'],
@@ -223,6 +224,18 @@ function upgradeRules(target: Record<string, unknown>) {
     const picks = Object.values(target.choices).flatMap((v) => (Array.isArray(v) ? v : []))
     for (const name of picks)
       if (typeof name === 'string') target.woundsMax += poolOptionWounds(cls, name)
+  }
+  if (cls && from < 2 && isPlainObject(target.choices)) {
+    // v2: pool options that change speed (Unstoppable Protector) or max Hit Dice
+    // (Fiendish Boon) now apply it. Fiendish Boon's +1 stat is left to the player.
+    const picks = Object.values(target.choices).flatMap((v) => (Array.isArray(v) ? v : []))
+    for (const name of picks) {
+      const option = typeof name === 'string' ? poolOptionByName(cls, name) : undefined
+      if (option?.speed && typeof target.speed === 'string')
+        target.speed = String((Number.parseInt(target.speed, 10) || BASE_SPEED) + option.speed)
+      if (option?.hitDice && typeof target.hitDice === 'number')
+        target.hitDice = Math.max(1, target.hitDice + option.hitDice)
+    }
   }
   target.rulesVersion = NIMBLE_RULES_VERSION
 }

@@ -11,6 +11,7 @@ import {
   castingBlocks,
   castSpell,
   dyingAttackSave,
+  encounterMana,
   fieldRest,
   fieldRestDice,
   heal,
@@ -354,6 +355,24 @@ describe('nimble sheet upgrades', () => {
     expect(defaultSheet('nimble').rulesVersion).toBe(NIMBLE_RULES_VERSION)
   })
 
+  it('gives older saves the speed and Hit Dice of picked pool options', () => {
+    const sheet = normalizeSheet('nimble', {
+      classSlug: 'oathsworn',
+      rulesVersion: 1,
+      speed: '6',
+      choices: { 'L3:sacred-decree': ['Unstoppable Protector'] },
+    })
+    expect(sheet.speed).toBe('7')
+    const boon = normalizeSheet('nimble', {
+      classSlug: 'shadowmancer',
+      rulesVersion: 1,
+      hitDice: 5,
+      choices: { 'L4:greater-invocations': ['Fiendish Boon'] },
+    })
+    expect(boon.hitDice).toBe(4)
+    expect(normalizeSheet('nimble', JSON.parse(JSON.stringify(boon))).hitDice).toBe(4)
+  })
+
   it('keeps coins that were already saved', () => {
     const sheet = normalizeSheet('nimble', { gold: '99 gp', coins: { gp: 3, sp: 4 } })
     expect(sheet.coins).toEqual({ gp: 3, sp: 4 })
@@ -582,6 +601,36 @@ describe('limited-use abilities', () => {
     const rest = hero({ uses: spent() })
     safeRest(rest)
     expect(used(rest)).toEqual([0, 0, 0, 0])
+  })
+
+  it('gives back a spent use of abilities that recharge on Initiative', () => {
+    const sheet = withAbilities(
+      [
+        ['Veilwalker’s Blessing', '(1/Safe Rest) Action: bless.'],
+        ['Conduit of Death', 'Your Veilwalker’s Blessing recharges when you roll Initiative.'],
+        ['Searing Light', '(WIL times/Safe Rest) Action: Heal.'],
+        ['Light Bearer', 'Regain 1 use of Searing Light when you roll Initiative.'],
+      ],
+      {
+        uses: {
+          'Veilwalker’s Blessing@rest': { used: 1 },
+          'Searing Light@rest': { used: 0 },
+        },
+      },
+    )
+    const line = newEncounter(sheet)
+    expect(sheet.uses['Veilwalker’s Blessing@rest']?.used).toBe(0)
+    expect(sheet.uses['Searing Light@rest']?.used).toBe(0) // nothing spent, nothing to give back
+    expect(line).toContain('Veilwalker’s Blessing recharged')
+  })
+
+  it('gives a Spellblade INT mana on Initiative', () => {
+    const sheet = hero({ classSlug: 'commander', subclassSlug: 'spellblade' })
+    sheet.stats.INT = 3
+    expect(encounterMana(sheet)).toBe(3)
+    newEncounter(sheet)
+    expect(sheet.mana.temp).toBe(3)
+    expect(encounterMana(hero({ classSlug: 'commander', subclassSlug: 'bulwark' }))).toBe(0)
   })
 
   it('finds a counter for every limit written in the rules data', () => {

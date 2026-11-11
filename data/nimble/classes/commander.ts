@@ -244,6 +244,7 @@ export const commander: ClassDef = {
     },
     19: { abilities: [], choices: [EPIC_BOON] },
     20: {
+      replacesAbilities: ['Unparalleled Tactics'],
       abilities: [
         {
           name: 'Captain of Legions',
@@ -338,8 +339,11 @@ export const commander: ClassDef = {
       name: 'Spellblade',
       tagline: 'steel meets spell',
       story: true,
+      // Combat Tactics die upgrades stay: Withering Strike reads the Combat Die.
+      replacesAbilities: ['Weapon Mastery'],
+      encounterMana: 'INT',
       poolSwap: {
-        replace: ['combat-tactics', 'combat-extra', 'weapon-mastery'],
+        replace: ['combat-tactics', 'weapon-mastery'],
         withPools: ['commander-orders'],
         spellMaxTier: 1,
       },
@@ -355,6 +359,7 @@ export const commander: ClassDef = {
       ],
       levels: {
         3: {
+          spells: { learn: ['Enchant Weapon'] },
           abilities: [
             {
               name: 'Firebrand',

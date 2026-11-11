@@ -112,11 +112,11 @@ export const hunter: ClassDef = {
     {
       id: 'beast-companion',
       name: 'Animal Companion',
-      note: 'Your companion’s HP and movement are abstracted; it knows where it is most needed and is never put in mortal danger. Its attacks count as your own for gaining Thrill of the Hunt charges.',
+      note: 'Your companion’s HP and movement are abstracted; it knows where it is most needed and is never put in mortal danger. Its attacks count as your own for gaining Thrill of the Hunt charges. Abilities that spend Thrill of the Hunt charges cannot miss nor can they generate new charges. Unused charges are lost when combat ends.',
       options: [
         {
           name: 'Small Companion',
-          desc: 'Cat, Bat, Hawk, Raccoon, Rooster, Ferret… Keen Eyes: (1/encounter) Mark a target for free (L7: 2/encounter, L11: 3/encounter). Protect Me!: (1/encounter) Whenever you Defend, your companion distracts the attacker, causing the attack to miss, and you move up to half your speed away (L7: 2/encounter). Go for the Throat!: (1/encounter) Costs 1 TotH charge: your companion attacks your quarry for 1d4+LVL damage for free, ignoring armor (L11: 2/encounter, 1/round; L15: 3/encounter, 1/round).',
+          desc: 'Cat, Bat, Hawk, Raccoon, Rooster, Ferret… Keen Eyes: (1/encounter) Mark a target for free (L7: 2/encounter, L11: 3/encounter). Protect Me!: (1/encounter) Whenever you Defend, your companion distracts the attacker, causing the attack to miss, and you move up to half your speed away (L7: 2/encounter). Go for the Throat!: (1/encounter; L11: 2/encounter; L15: 3/encounter; from level 11, at most once each round) Costs 1 TotH charge: your companion attacks your quarry for 1d4+LVL damage for free, ignoring armor.',
         },
         {
           name: 'Medium Companion',
@@ -279,7 +279,7 @@ export const hunter: ClassDef = {
             },
             {
               name: 'Primal Predator',
-              desc: '(1/encounter) Your weapon attacks ignore cover and armor this turn.',
+              desc: '(1/encounter; L15: 2/encounter) Your weapon attacks ignore cover and armor this turn.',
             },
           ],
         },
@@ -361,7 +361,29 @@ export const hunter: ClassDef = {
       introChoices: [
         poolChoice('beast-companion', 'Choose your animal companion', ['beast-companion']),
       ],
-      levels: {},
+      // The companion's Go for the Throat! and Protect Me! take the place of the
+      // first 2 Thrill of the Hunt abilities.
+      dropPoolPicks: { pool: 'thrill-of-the-hunt', count: 2 },
+      levels: {
+        7: {
+          abilities: [],
+          notes: [
+            'Your companion grows stronger: see the “L7” upgrades in its description (Small: Keen Eyes 2/encounter, Protect Me! 2/encounter; Medium: Ferocious moves 4 spaces; Large: Protect Me! before gaining the Wound).',
+          ],
+        },
+        11: {
+          abilities: [],
+          notes: [
+            'Your companion grows stronger: see the “L11” upgrades in its description (Small: Keen Eyes 3/encounter, Go for the Throat! 2/encounter; Medium and Large: Go for the Throat! 2/encounter).',
+          ],
+        },
+        15: {
+          abilities: [],
+          notes: [
+            'Your companion grows stronger: see the “L15” upgrades in its description (Small: Go for the Throat! 3/encounter; Medium: Ferocious moves 6 spaces; Large: Protect Me! 2/encounter).',
+          ],
+        },
+      },
     },
   ],
 }
