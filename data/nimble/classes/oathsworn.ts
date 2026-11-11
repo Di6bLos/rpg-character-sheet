@@ -42,6 +42,13 @@ export const oathsworn: ClassDef = {
   startingWeapons: ['Mace'],
   armorCalc: { base: 6, dexMax: 2, shield: 2 },
   mana: { label: 'WIL+LVL', stat: 'WIL', mult: 1 },
+  resource: {
+    name: 'Judgment Dice',
+    diceName: 'Judgment',
+    die: 6,
+    kind: 'dice',
+    ability: 'Radiant Judgment',
+  },
   swapRule: {
     name: 'Serve Selflessly',
     desc: 'Whenever you perform a notable selfless act during a Safe Rest, you may choose different Oathsworn options available to you.',
@@ -122,6 +129,7 @@ export const oathsworn: ClassDef = {
     3: {
       subclassChoice: true,
       abilities: [{ name: 'Radiant Judgment (2)', desc: 'Your Judgment Dice are d8s.' }],
+      resourceDie: 8,
       choices: [
         poolChoice('sacred-decree', 'Sacred Decree: learn 1 Sacred Decree', ['sacred-decrees']),
       ],
@@ -135,6 +143,7 @@ export const oathsworn: ClassDef = {
     5: {
       notes: [UPGRADED_CANTRIPS],
       abilities: [{ name: 'Radiant Judgment (3)', desc: 'Your Judgment Dice are d10s.' }],
+      resourceDie: 10,
       statIncrease: inc('DEX', 'INT'),
     },
     6: { spellTier: 3, notes: [tierNote(3)], abilities: [], choices: [decree(2, '2nd')] },
@@ -143,6 +152,7 @@ export const oathsworn: ClassDef = {
       spellTier: 4,
       notes: [tierNote(4)],
       abilities: [{ name: 'Radiant Judgment (4)', desc: 'Your Judgment Dice are d12s.' }],
+      resourceDie: 12,
       statIncrease: inc('STR', 'WIL'),
     },
     9: { abilities: [], statIncrease: inc('DEX', 'INT'), choices: [decree(3, '3rd')] },
@@ -150,6 +160,7 @@ export const oathsworn: ClassDef = {
       spellTier: 5,
       notes: [tierNote(5), UPGRADED_CANTRIPS],
       abilities: [{ name: 'Radiant Judgment (5)', desc: 'Your Judgment Dice are d20s.' }],
+      resourceDie: 20,
     },
     11: {
       abilities: [],

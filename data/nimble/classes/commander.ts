@@ -35,6 +35,14 @@ export const commander: ClassDef = {
   ],
   startingWeapons: ['Hand Axe', 'Javelins'],
   armorCalc: { base: 6, dexMax: 2 },
+  resource: {
+    name: 'Combat Dice',
+    diceName: 'Combat',
+    die: 6,
+    kind: 'dice',
+    ability: 'Fit for Any Battlefield',
+    stat: 'STR',
+  },
   swapRule: {
     name: 'Rigorous Training',
     desc: 'Whenever you train with your party or other soldiers during a Safe Rest, you may choose different Commander options available to you.',
@@ -163,6 +171,7 @@ export const commander: ClassDef = {
         },
         { name: 'Combat Tactics', desc: 'Your Combat Dice are now d8s.' },
       ],
+      resourceDie: 8,
       statIncrease: inc('DEX', 'WIL'),
     },
     6: {
@@ -186,6 +195,7 @@ export const commander: ClassDef = {
         { name: 'Master Commander (2)', desc: '+1 use of Coordinated Strike/Safe Rest.' },
         { name: 'Combat Tactics (2)', desc: 'Your Combat Dice are now d10s.' },
       ],
+      resourceDie: 10,
       statIncrease: inc('DEX', 'WIL'),
     },
     10: {
@@ -206,6 +216,7 @@ export const commander: ClassDef = {
         { name: 'Master Commander (3)', desc: '+1 use of Coordinated Strike/Safe Rest.' },
         { name: 'Combat Tactics (3)', desc: 'Your Combat Dice are now d12s.' },
       ],
+      resourceDie: 12,
       statIncrease: inc('DEX', 'WIL'),
     },
     14: {
@@ -220,6 +231,7 @@ export const commander: ClassDef = {
         { name: 'Master Commander (4)', desc: '+1 use of Coordinated Strike/Safe Rest.' },
         { name: 'Combat Tactics (4)', desc: 'Your Combat Dice are now d20s.' },
       ],
+      resourceDie: 20,
       statIncrease: inc('DEX', 'WIL'),
     },
     18: {

@@ -36,6 +36,14 @@ export const hunter: ClassDef = {
   ],
   startingWeapons: ['Shortbow', 'Dagger'],
   armorCalc: { base: 3 },
+  resource: {
+    name: 'Thrill of the Hunt',
+    diceName: 'Charge',
+    die: 0,
+    kind: 'counter',
+    ability: 'Thrill of the Hunt',
+    movesPool: 'thrill-of-the-hunt',
+  },
   swapRule: {
     name: 'Remember the Wild',
     desc: 'Whenever you spend a day in the wilderness during a Safe Rest, you may choose different Hunter options available to you.',

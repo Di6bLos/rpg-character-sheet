@@ -31,6 +31,14 @@ export const zephyr: ClassDef = {
   ],
   startingWeapons: ['Unarmed Strike', 'Staff'],
   armorCalc: { base: 0, addStr: true },
+  resource: {
+    name: 'Bursts of Speed',
+    diceName: 'Burst',
+    die: 0,
+    kind: 'counter',
+    ability: 'Burst of Speed',
+    stat: 'DEX',
+  },
   swapRule: {
     name: 'Focus',
     desc: 'Whenever you spend time meditating alone in a windy place during a Safe Rest, you may choose different Zephyr options available to you.',

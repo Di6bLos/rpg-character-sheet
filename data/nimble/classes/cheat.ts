@@ -34,6 +34,13 @@ export const cheat: ClassDef = {
   ],
   startingWeapons: ['Dagger', 'Sling'],
   armorCalc: { base: 3 },
+  resource: {
+    name: 'Sneak Attack',
+    diceName: 'Sneak Attack',
+    die: 6,
+    kind: 'info',
+    ability: 'Sneak Attack',
+  },
   swapRule: {
     name: 'Trade Secrets',
     desc: 'Whenever you spend a night talking shop with other roguish types during a Safe Rest, you may choose different Cheat options available to you.',

@@ -33,7 +33,13 @@ export const berserker: ClassDef = {
   ],
   startingWeapons: ['Battleaxe'],
   armorCalc: { base: 0 },
-  resource: { name: 'Rage', diceName: 'Fury', die: 4 },
+  resource: {
+    name: 'Rage',
+    diceName: 'Fury',
+    die: 4,
+    kind: 'rage',
+    ability: 'Rage',
+  },
   swapRule: {
     name: 'Wrath & Ruin',
     desc: 'Whenever you perform a notable act of destruction or feat of strength during a Safe Rest, you may choose different Berserker options available to you.',

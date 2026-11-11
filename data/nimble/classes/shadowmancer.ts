@@ -49,6 +49,14 @@ export const shadowmancer: ClassDef = {
   ],
   startingWeapons: ['Sickle'],
   armorCalc: { base: 2 },
+  resource: {
+    name: 'Pilfered Power',
+    diceName: 'Use',
+    die: 0,
+    kind: 'uses',
+    ability: 'Pilfered Power',
+    stat: 'DEX',
+  },
   swapRule: {
     name: 'Supplicate',
     desc: 'Whenever you commune with your Patron on a Safe Rest, you may beg them to allow you to choose different Shadowmancer options (they may ask for something in return).',
