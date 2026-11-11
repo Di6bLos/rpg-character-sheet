@@ -23,7 +23,7 @@ import {
   spendMana,
   takeDamage,
 } from '../utils/nimblePlay'
-import { defaultSheet, normalizeSheet } from '../utils/sheetDefaults'
+import { defaultSheet, normalizeSheet, parseLegacyGold } from '../utils/sheetDefaults'
 
 /** Deterministic rng that yields the given die faces for a die of `sides`. */
 function faces(sides: number, ...values: number[]) {
@@ -242,6 +242,28 @@ describe('nimble sheet upgrades', () => {
   it('keeps coins that were already saved', () => {
     const sheet = normalizeSheet('nimble', { gold: '99 gp', coins: { gp: 3, sp: 4 } })
     expect(sheet.coins).toEqual({ gp: 3, sp: 4 })
+  })
+
+  it('reads the old gold text without partial matches', () => {
+    expect(parseLegacyGold('15 gold')).toEqual({ gp: 15, sp: 0, rest: '' })
+    expect(parseLegacyGold('1,200')).toEqual({ gp: 1200, sp: 0, rest: '' })
+    expect(parseLegacyGold('12 gp, 3 sp')).toEqual({ gp: 12, sp: 3, rest: '' })
+    expect(parseLegacyGold('1.5 gp')).toMatchObject({ gp: 0, sp: 0 })
+    expect(parseLegacyGold('1.5 gp').rest).not.toBe('')
+    expect(parseLegacyGold('30 gp, 4 cp')).toEqual({ gp: 30, sp: 0, rest: '4cp' })
+  })
+
+  it('keeps old gold text it cannot convert in the notes', () => {
+    const sheet = normalizeSheet('nimble', { gold: '30 gp, 4 cp', notes: 'Owes Bram' })
+    expect(sheet.coins).toEqual({ gp: 30, sp: 0 })
+    expect(sheet.notes).toBe('Owes Bram\n\nOld Gold field: 30 gp, 4 cp')
+    expect(normalizeSheet('nimble', { gold: '12 gp' }).notes).toBe('')
+  })
+
+  it('marks an older save at 0 HP as Dying', () => {
+    expect(normalizeSheet('nimble', { hp: 0, hpMax: 12 }).dying).toBe(true)
+    expect(normalizeSheet('nimble', { hp: 0, hpMax: 12, dying: false }).dying).toBe(false)
+    expect(normalizeSheet('nimble', { hp: 5, hpMax: 12 }).dying).toBe(false)
   })
 })
 

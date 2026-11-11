@@ -200,17 +200,46 @@ export function normalizeSheet<K extends GameSystem>(system: K, stored: unknown)
   return sheet
 }
 
-/** Older Nimble saves kept money as a "12 gp" string; move it to the coin counters once. */
+/** Upgrades older Nimble saves in place: the Dying flag and the free-text Gold field. */
 function migrateNimble(sheet: NimbleSheet, stored: unknown) {
+  const saved = isPlainObject(stored) ? stored : {}
+  // Saves from before the flag existed: a hero at 0 HP was Dying.
+  if (!('dying' in saved) && typeof saved.hp === 'number' && saved.hp <= 0 && sheet.hpMax > 0)
+    sheet.dying = true
+
   const loose = sheet as unknown as Record<string, unknown>
   const old = loose.gold
   delete loose.gold
-  if (typeof old !== 'string') return
-  if (isPlainObject(stored) && isPlainObject(stored.coins)) return
-  const gp = /(\d[\d,]*)\s*gp/i.exec(old) ?? /^\s*(\d[\d,]*)\s*$/.exec(old)
-  const sp = /(\d[\d,]*)\s*sp/i.exec(old)
-  const num = (m: RegExpExecArray | null) => (m ? Number((m[1] ?? '0').replace(/,/g, '')) : 0)
-  sheet.coins = { gp: num(gp), sp: num(sp) }
+  if (typeof old !== 'string' || !old.trim() || isPlainObject(saved.coins)) return
+  const { gp, sp, rest } = parseLegacyGold(old)
+  sheet.coins = { gp, sp }
+  // Keep anything that couldn't be converted (copper, decimals, notes) where the player can see it.
+  if (rest)
+    sheet.notes = [sheet.notes.trimEnd(), `Old Gold field: ${old.trim()}`]
+      .filter(Boolean)
+      .join('\n\n')
+}
+
+// A whole amount ("12", "1,200") not glued to other digits, letters or a decimal point.
+const AMOUNT = String.raw`(?<![\w.,])(\d{1,3}(?:,\d{3})+|\d+)(?![\d.,]*\d)`
+const COIN = new RegExp(
+  String.raw`${AMOUNT}\s*(gp|gold(?:\s+pieces?)?|sp|silver(?:\s+pieces?)?)(?!\w)`,
+  'gi',
+)
+
+/** Reads gp and sp out of the old Gold text; `rest` is whatever was left unconverted. */
+export function parseLegacyGold(text: string): { gp: number; sp: number; rest: string } {
+  const bare = new RegExp(String.raw`^\s*${AMOUNT}\s*$`).exec(text)
+  if (bare) return { gp: Number((bare[1] ?? '0').replace(/,/g, '')), sp: 0, rest: '' }
+  let gp = 0
+  let sp = 0
+  const rest = text.replace(COIN, (_, amount: string, unit: string) => {
+    const n = Number(amount.replace(/,/g, ''))
+    if (/^s/i.test(unit)) sp += n
+    else gp += n
+    return ' '
+  })
+  return { gp, sp, rest: rest.replace(/[\s,;&+]|\band\b/gi, '') }
 }
 
 /** One-line "Half-Elf Ranger" style summary for cards and rosters. */
