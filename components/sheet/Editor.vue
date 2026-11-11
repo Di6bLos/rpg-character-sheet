@@ -537,6 +537,26 @@ const inventoryCols = computed(() => [
             <label for="nb-e-bg">Background</label
             ><input id="nb-e-bg" v-model="nb.background" class="input" />
           </div>
+          <div class="field">
+            <label for="nb-e-hw">Height &amp; weight</label
+            ><input
+              id="nb-e-hw"
+              v-model="nb.heightWeight"
+              class="input"
+              maxlength="40"
+              placeholder="5′7″ · 128 lb"
+            />
+          </div>
+          <div class="field">
+            <label for="nb-e-lang">Languages</label
+            ><input
+              id="nb-e-lang"
+              v-model="nb.languages"
+              class="input"
+              maxlength="120"
+              placeholder="Common, Elvish"
+            />
+          </div>
         </div>
       </fieldset>
       <fieldset class="group">
@@ -583,7 +603,7 @@ const inventoryCols = computed(() => [
             </select>
           </div>
           <div class="field">
-            <label for="nb-e-hdn">Hit dice available</label
+            <label for="nb-e-hdn">Max hit dice</label
             ><input id="nb-e-hdn" v-model.number="nb.hitDice" class="input" type="number" min="0" />
           </div>
           <div class="field">
@@ -608,18 +628,31 @@ const inventoryCols = computed(() => [
             />
           </div>
           <div class="field">
-            <label for="nb-e-gold">Gold</label
-            ><input id="nb-e-gold" v-model="nb.gold" class="input" />
+            <label for="nb-e-gp">Gold (gp)</label
+            ><input id="nb-e-gp" v-model.number="nb.coins.gp" class="input" type="number" min="0" />
+          </div>
+          <div class="field">
+            <label for="nb-e-sp">Silver (sp)</label
+            ><input id="nb-e-sp" v-model.number="nb.coins.sp" class="input" type="number" min="0" />
           </div>
         </div>
       </fieldset>
       <fieldset class="group">
         <legend>Class resource</legend>
         <p class="small muted">
-          A toggled state that adds bonus dice to melee damage, like a Berserker’s Rage and Fury
-          dice. Leave the name empty if your class has none.
+          Rage is a toggled state whose dice add to melee damage; dice and counters are pools you
+          count by hand. Heroes built from class data get theirs from the class. Leave the name
+          empty if your class has none.
         </p>
         <div class="grid">
+          <div class="field">
+            <label for="nb-e-rk">Type</label>
+            <select id="nb-e-rk" v-model="nb.resource.kind" class="input">
+              <option value="rage">Rage (toggle + bonus dice)</option>
+              <option value="dice">Dice pool</option>
+              <option value="counter">Counter</option>
+            </select>
+          </div>
           <div class="field">
             <label for="nb-e-rn">Name</label
             ><input id="nb-e-rn" v-model="nb.resource.name" class="input" placeholder="Rage" />
