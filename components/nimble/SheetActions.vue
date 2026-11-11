@@ -6,7 +6,7 @@ import { REACTIONS } from '~/data/nimble/core'
 import type { NimbleSheet } from '~/types/sheets'
 import { parseDice, rollNimble } from '~/utils/dice'
 import { abilityBaseName, keyStatValue, sheetResource } from '~/utils/nimbleBuild'
-import { abilityCounters, spendActions } from '~/utils/nimblePlay'
+import { abilityCounters, dyingAttackSave, spendActions } from '~/utils/nimblePlay'
 
 /** Up to this many uses show as pips; larger pools (Lay on Hands) show a bar. */
 const MAX_PIPS = 10
@@ -41,7 +41,7 @@ const attacks = computed(() =>
           Math.random,
           rushed,
         )
-        const dying = sheet.value.dying ? ' Dying: DC 10 STR save or take 1 Wound.' : ''
+        const dying = dyingAttackSave(sheet.value) ? ' Dying: DC 10 STR save or take 1 Wound.' : ''
         if (result.miss) say(`${w.name}: miss (first die rolled a 1).${dying}`)
         else
           say(

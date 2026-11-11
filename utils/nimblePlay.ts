@@ -12,9 +12,23 @@ const BASE_SLOTS = 10
 const COINS_PER_SLOT = 500
 const POTIONS_PER_SLOT = 2
 
-/** Actions a hero gets each turn: 3, or 1 while Dying. */
+function hasAbility(sheet: NimbleSheet, name: string): boolean {
+  return sheet.abilities.some((a) => abilityBaseName(a.name) === name)
+}
+
+/**
+ * Actions a hero gets each turn: 3, or 1 while Dying. Windborne (Zephyr) adds one,
+ * and it and Enduring Rage (Berserker) allow 2 while Dying.
+ */
 export function turnActions(sheet: NimbleSheet): number {
-  return sheet.dying ? 1 : 3
+  const windborne = hasAbility(sheet, 'Windborne')
+  if (sheet.dying) return windborne || hasAbility(sheet, 'Enduring Rage') ? 2 : 1
+  return windborne ? 4 : 3
+}
+
+/** Attacking while Dying calls for a DC 10 STR save, unless Enduring Rage waives it. */
+export function dyingAttackSave(sheet: NimbleSheet): boolean {
+  return sheet.dying && !hasAbility(sheet, 'Enduring Rage')
 }
 
 export function actionsLeft(sheet: NimbleSheet): number {

@@ -5,6 +5,7 @@ import type { NimbleSheet } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { keyStatValue } from '~/utils/nimbleBuild'
 import {
+  dyingAttackSave,
   fieldRest,
   fieldRestDice,
   heal,
@@ -13,6 +14,7 @@ import {
   isDead,
   safeRest,
   takeDamage,
+  turnActions,
 } from '~/utils/nimblePlay'
 
 const { draft, canEdit, hpPct, say } = useSheet<NimbleSheet>()
@@ -22,6 +24,12 @@ const woundsMax = computed(() => Math.max(1, sheet.value.woundsMax || 6))
 const dead = computed(() => isDead(sheet.value))
 const dying = computed(() => sheet.value.dying && sheet.value.hp === 0 && !dead.value)
 const bloodied = computed(() => isBloodied(sheet.value))
+// Enduring Rage and Windborne change what Dying allows.
+const dyingRules = computed(() => {
+  const n = turnActions(sheet.value)
+  const save = dyingAttackSave(sheet.value) ? 'Attacking or casting' : 'Casting'
+  return `${n} action${n === 1 ? '' : 's'} per turn. ${save}: DC 10 STR save or 1 Wound.`
+})
 const hpState = computed(() => {
   if (sheet.value.hp === 0) return 'At 0 HP'
   return bloodied.value
@@ -113,8 +121,7 @@ function confirmRest() {
       <strong>{{ woundsMax }} Wounds: your hero has died.</strong>
     </div>
     <div v-else-if="dying" class="notice notice--error" role="alert">
-      <strong>Dying.</strong> 1 action per turn. Attacking or casting: DC 10 STR save or 1 Wound.
-      Damage: 2 Wounds (crit 3).
+      <strong>Dying.</strong> {{ dyingRules }} Damage: 2 Wounds (crit 3).
     </div>
 
     <div class="tile vit-block">

@@ -8,6 +8,7 @@ import { abilityBaseName, sheetResource } from '../utils/nimbleBuild'
 import {
   abilityCounters,
   actionsLeft,
+  dyingAttackSave,
   fieldRest,
   fieldRestDice,
   heal,
@@ -22,6 +23,7 @@ import {
   spendActions,
   spendMana,
   takeDamage,
+  turnActions,
 } from '../utils/nimblePlay'
 import { defaultSheet, normalizeSheet, parseLegacyGold } from '../utils/sheetDefaults'
 
@@ -182,6 +184,18 @@ describe('nimble turn tracker', () => {
   it('gives 3 actions, or 1 while Dying', () => {
     expect(actionsLeft(hero())).toBe(3)
     expect(actionsLeft(hero({ hp: 0, dying: true }))).toBe(1)
+  })
+
+  it('counts Enduring Rage and Windborne in the action limit and the Dying save', () => {
+    const rage = [{ name: 'Enduring Rage', src: 'Berserker', desc: '', level: 4 }]
+    const wind = [{ name: 'Windborne', src: 'Zephyr', desc: '', level: 20 }]
+    expect(turnActions(hero({ abilities: rage }))).toBe(3)
+    expect(turnActions(hero({ hp: 0, dying: true, abilities: rage }))).toBe(2)
+    expect(turnActions(hero({ abilities: wind }))).toBe(4)
+    expect(turnActions(hero({ hp: 0, dying: true, abilities: wind }))).toBe(2)
+    expect(dyingAttackSave(hero({ hp: 0, dying: true }))).toBe(true)
+    expect(dyingAttackSave(hero({ hp: 0, dying: true, abilities: rage }))).toBe(false)
+    expect(dyingAttackSave(hero({ hp: 0, dying: true, abilities: wind }))).toBe(true)
   })
 
   it('resets actions, Rushed Attacks and reactions on a new turn', () => {
