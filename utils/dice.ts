@@ -72,16 +72,31 @@ export interface NimbleRoll {
 /**
  * Nimble attacks have no to-hit roll: roll damage. A 1 on the first die misses;
  * the first die's maximum rolls again (and keeps exploding) as a crit.
- * `bonusDice` are extra dice (e.g. Fury) added on a hit.
+ * `bonusDice` are extra dice (e.g. Fury) added on a hit. Each `disadvantage`
+ * (Rushed Attacks) rolls one more die and drops the highest; the first die
+ * left is the one that can miss or crit.
  */
 export function rollNimble(
   expr: DiceExpr,
   bonusDice: { count: number; sides: number } | null = null,
   rng: Rng = Math.random,
+  disadvantage = 0,
 ): NimbleRoll {
-  const first = rollDie(expr.sides, rng)
+  const extra = Math.max(0, Math.floor(disadvantage))
+  const rolled = Array.from({ length: Math.max(1, expr.count) + extra }, () =>
+    rollDie(expr.sides, rng),
+  )
+  const dropped = new Set(
+    rolled
+      .map((value, index) => ({ value, index }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, extra)
+      .map((d) => d.index),
+  )
+  const kept = rolled.filter((_, i) => !dropped.has(i))
+  const first = kept[0] ?? 1
   if (first === 1) return { miss: true, crit: false, total: 0, bonus: 0 }
-  let total = first
+  let total = kept.reduce((sum, v) => sum + v, 0)
   let crit = false
   let last = first
   while (last === expr.sides) {
@@ -89,7 +104,6 @@ export function rollNimble(
     last = rollDie(expr.sides, rng)
     total += last
   }
-  for (let i = 1; i < expr.count; i++) total += rollDie(expr.sides, rng)
   let bonus = 0
   if (bonusDice) for (let i = 0; i < bonusDice.count; i++) bonus += rollDie(bonusDice.sides, rng)
   return { miss: false, crit, total: total + expr.mod + bonus, bonus }

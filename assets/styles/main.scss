@@ -202,6 +202,12 @@ img {
   margin-bottom: 16px;
 }
 
+.title-help {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .eyebrow {
   font-size: 12px;
   font-weight: 700;
@@ -630,6 +636,18 @@ select.input {
   line-height: 1;
 }
 
+.step--sm {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+}
+
+.step--xs {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
 .meter {
   height: 8px;
   border-radius: min(var(--radius-control), 4px);
@@ -725,7 +743,8 @@ select.input {
   }
 
   .step,
-  .step.step--sm {
+  .step.step--sm,
+  .step.step--xs {
     width: 44px;
     height: 44px;
   }

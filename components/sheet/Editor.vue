@@ -9,8 +9,10 @@ import type {
   Pf2eAttr,
   Pf2eSheet,
 } from '~/types/sheets'
+import { canRestore, restoreLevel } from '~/utils/levelHistory'
 
-const { draft } = useSheet()
+const { draft, save } = useSheet()
+const snackbar = useSnackbarStore()
 
 const system = computed(() => draft.value.system)
 const d5 = computed(() => draft.value.sheet as Dnd5eSheet)
@@ -28,6 +30,51 @@ function toggleSave(k: Dnd5eAbility) {
   const idx = list.indexOf(k)
   if (idx >= 0) list.splice(idx, 1)
   else list.push(k)
+}
+
+// Levels only go up through the Level up dialog. Lowering one undoes what the
+// higher levels granted, after a warning.
+const levelPick = ref(draft.value.level)
+const lowerOpen = ref(false)
+const lowering = ref(false)
+watch(
+  () => draft.value.level,
+  (v) => (levelPick.value = v),
+)
+watch(lowerOpen, (isOpen) => {
+  if (!isOpen && !lowering.value) levelPick.value = draft.value.level
+})
+
+const lowerTarget = computed(() => levelPick.value)
+const lostLevels = computed(() => {
+  const from = lowerTarget.value + 1
+  const to = draft.value.level
+  return from === to ? `level ${to}` : `levels ${from}–${to}`
+})
+const fullUndo = computed(() => canRestore(draft.value.sheet, lowerTarget.value))
+const hpMaxAfter = computed(() => {
+  const entry = draft.value.sheet.levelHistory?.find((e) => e.level === lowerTarget.value + 1)
+  const hp = entry?.before.hpMax
+  return typeof hp === 'number' ? hp : null
+})
+
+// A separate button opens the warning: arrow keys on a closed select fire `change`.
+function openLower() {
+  if (levelPick.value < draft.value.level) lowerOpen.value = true
+}
+
+async function confirmLower() {
+  const target = lowerTarget.value
+  lowering.value = true
+  try {
+    restoreLevel(draft.value.sheet, target)
+    draft.value.level = target
+    lowerOpen.value = false
+    await save()
+    snackbar.show(`${draft.value.name} is now level ${target}`)
+  } finally {
+    lowering.value = false
+  }
 }
 
 const inventoryCols = computed(() => [
@@ -53,14 +100,28 @@ const inventoryCols = computed(() => [
         </div>
         <div class="field">
           <label for="ed-level">Level</label>
-          <input
-            id="ed-level"
-            v-model.number="draft.level"
-            class="input"
-            type="number"
-            min="1"
-            max="20"
-          />
+          <div class="row" style="gap: 8px; flex-wrap: nowrap">
+            <select
+              id="ed-level"
+              v-model.number="levelPick"
+              class="input"
+              style="flex: 1; min-width: 0"
+              aria-describedby="ed-level-hint"
+            >
+              <option v-for="l in draft.level" :key="l" :value="l">
+                {{ l === draft.level ? `${l} (current)` : `Lower to ${l}` }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="btn btn--ghost"
+              :disabled="levelPick >= draft.level"
+              @click="openLower"
+            >
+              Lower…
+            </button>
+          </div>
+          <span id="ed-level-hint" class="hint">Use Level up to go higher.</span>
         </div>
         <div class="field">
           <label for="ed-xp">XP</label>
@@ -487,6 +548,26 @@ const inventoryCols = computed(() => [
             <label for="nb-e-bg">Background</label
             ><input id="nb-e-bg" v-model="nb.background" class="input" />
           </div>
+          <div class="field">
+            <label for="nb-e-hw">Height &amp; weight</label
+            ><input
+              id="nb-e-hw"
+              v-model="nb.heightWeight"
+              class="input"
+              maxlength="40"
+              placeholder="5′7″ · 128 lb"
+            />
+          </div>
+          <div class="field">
+            <label for="nb-e-lang">Languages</label
+            ><input
+              id="nb-e-lang"
+              v-model="nb.languages"
+              class="input"
+              maxlength="120"
+              placeholder="Common, Elvish"
+            />
+          </div>
         </div>
       </fieldset>
       <fieldset class="group">
@@ -533,22 +614,56 @@ const inventoryCols = computed(() => [
             </select>
           </div>
           <div class="field">
-            <label for="nb-e-hdn">Hit dice available</label
+            <label for="nb-e-hdn">Max hit dice</label
             ><input id="nb-e-hdn" v-model.number="nb.hitDice" class="input" type="number" min="0" />
           </div>
           <div class="field">
-            <label for="nb-e-gold">Gold</label
-            ><input id="nb-e-gold" v-model="nb.gold" class="input" />
+            <label for="nb-e-wmax">Max wounds</label
+            ><input
+              id="nb-e-wmax"
+              v-model.number="nb.woundsMax"
+              class="input"
+              type="number"
+              min="1"
+              max="12"
+            />
+          </div>
+          <div class="field">
+            <label for="nb-e-mana">Max mana</label
+            ><input
+              id="nb-e-mana"
+              v-model.number="nb.mana.max"
+              class="input"
+              type="number"
+              min="0"
+            />
+          </div>
+          <div class="field">
+            <label for="nb-e-gp">Gold (gp)</label
+            ><input id="nb-e-gp" v-model.number="nb.coins.gp" class="input" type="number" min="0" />
+          </div>
+          <div class="field">
+            <label for="nb-e-sp">Silver (sp)</label
+            ><input id="nb-e-sp" v-model.number="nb.coins.sp" class="input" type="number" min="0" />
           </div>
         </div>
       </fieldset>
       <fieldset class="group">
         <legend>Class resource</legend>
         <p class="small muted">
-          A toggled state that adds bonus dice to melee damage, like a Berserker’s Rage and Fury
-          dice. Leave the name empty if your class has none.
+          Rage is a toggled state whose dice add to melee damage; dice and counters are pools you
+          count by hand. Heroes built from class data get theirs from the class. Leave the name
+          empty if your class has none.
         </p>
         <div class="grid">
+          <div class="field">
+            <label for="nb-e-rk">Type</label>
+            <select id="nb-e-rk" v-model="nb.resource.kind" class="input">
+              <option value="rage">Rage (toggle + bonus dice)</option>
+              <option value="dice">Dice pool</option>
+              <option value="counter">Counter</option>
+            </select>
+          </div>
           <div class="field">
             <label for="nb-e-rn">Name</label
             ><input id="nb-e-rn" v-model="nb.resource.name" class="input" placeholder="Rage" />
@@ -609,6 +724,38 @@ const inventoryCols = computed(() => [
       :blank="() => ({ name: '', qty: '1' })"
       :columns="inventoryCols"
     />
+
+    <UiDialog
+      v-model="lowerOpen"
+      :title="`Lower ${draft.name} to level ${lowerTarget}?`"
+      alert
+      width="500px"
+    >
+      <div class="notice notice--error">
+        <strong>Everything gained at {{ lostLevels }} will be lost</strong>
+        <template v-if="fullUndo">
+          Abilities, spells, stat increases, skill points and hit points from those levels are
+          removed<template v-if="hpMaxAfter !== null">
+            (max HP goes back to {{ hpMaxAfter }})</template
+          >, along with a subclass picked at those levels. This can’t be undone.
+        </template>
+        <template v-else>
+          This sheet was levelled before level history was kept, so only abilities and picks tagged
+          with those levels are removed. Fix stats and hit points by hand.
+        </template>
+      </div>
+      <p class="small muted">
+        Inventory, notes and wounds stay as they are; current HP is capped at the new maximum.
+      </p>
+      <template #actions>
+        <button type="button" class="btn btn--ghost" @click="lowerOpen = false">
+          Keep level {{ draft.level }}
+        </button>
+        <button type="button" class="btn btn--danger" :disabled="lowering" @click="confirmLower">
+          Lower to level {{ lowerTarget }}
+        </button>
+      </template>
+    </UiDialog>
   </div>
 </template>
 

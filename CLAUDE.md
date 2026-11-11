@@ -39,10 +39,14 @@ npm run preview      # Preview production build locally
 - `stores/` — `auth` (session, profile, permissions, `can(flag)`), `character`, `campaign`, `library`, `admin`, `snackbar`
 - `lib/supabase.ts` — lazy Supabase client; reads `runtimeConfig.public.supabaseUrl/supabaseAnonKey`, which `nuxt.config.ts` fills from `VITE_SUPABASE_*` locally or `SUPABASE_URL` / `SUPABASE_ANON_KEY` (Vercel's Supabase integration)
 - `types/index.ts` — database row types; `types/sheets.ts` — per-system sheet JSON
-- `components/ui/` — `UiDialog` (native `<dialog>`), `UiSwitch`, `UiToast`
+- `components/ui/` — `UiDialog` (native `<dialog>`), `UiSwitch`, `UiToast`, `UiHelp` (a "?" tooltip beside a section title; put section help text there, with `.title-help` wrapping the heading)
 - `components/sheet/` — `Shell` (action bar, editor, level-up), `Dnd5e{Classic,Gothic,Eldritch,Cursed}`, `Pf2eSheet`, `NimbleSheet`, `Editor`, `ListEditor`, `LevelUpDialog`, `Portrait`
 - `composables/useSheetEditor.ts` — provides the working copy of a character with debounced autosave; sheets read it with `useSheet()`
 - `utils/dice.ts`, `utils/levelUp.ts`, `utils/contrast.ts` — pure rules logic, covered by `tests/`
+- `data/nimble/` — Nimble rules data transcribed from the Core Rules and Heroes PDFs (kept locally in gitignored `.local.docs/`): 11 classes with levels 1–20, subclasses (incl. 4 story subclasses), ability pools, spells, ancestries, backgrounds. Never use the books' art (license); class "portraits" are original SVGs in `components/nimble/Sigil.vue`
+- `utils/nimbleBuild.ts` — builds a level 1 Nimble sheet, the per-level plan (abilities, choices, stat increases, subclass), applies level-ups and subclass changes; covered by `tests/nimbleBuild.test.ts`. Nimble sheets with a `classSlug` use the data-driven level-up; hand-made ones keep the free-text flow
+- `components/nimble/` — `HeroCard`, `Sigil`, `ChoicePicker` (shared by creation, level-up, subclass change), `SubclassDialog`; the panels of the Nimble sheet: `SheetVitals`, `SheetResources` (mana, class resource, concentration), `SheetTurn` (action tracker, New turn / New encounter), `SheetActions` (attacks, reactions, the limited-use abilities with their counters), `SheetAbilities` (every ability with its text), `SheetSpells`, `SheetConditions`, `SheetInventory`
+- `utils/nimblePlay.ts` — table-side Nimble rules (damage and dying, rests, mana, turn tracker, inventory slots) and `abilityCounters()`, which reads use limits ("1/encounter", "WIL times/Safe Rest", pools) from ability text; only abilities with a limit show in the Actions panel; covered by `tests/nimblePlay.test.ts`. A class's resource panel comes from `ClassDef.resource` via `sheetResource()` in `utils/nimbleBuild.ts`
 - Components in subfolders are auto-registered with the folder as prefix (`components/ui/Dialog.vue` is `<UiDialog>`)
 - All components use `<script setup lang="ts">`
 
@@ -53,6 +57,7 @@ npm run preview      # Preview production build locally
 | `/`, `/signup` | Sign in, sign up | guest |
 | `/dashboard` | Player dashboard | user |
 | `/characters` | Character slots | user |
+| `/characters/new/nimble` | Nimble hero builder (class → ancestry → stats → background → review) | user |
 | `/character/:id` | Sheet (by system and theme) | owner; campaign GM read-only |
 | `/campaigns` | Campaign list, create, invites | user |
 | `/campaigns/:id/board` | Board + journal | campaign member |
