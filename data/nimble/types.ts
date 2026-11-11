@@ -17,6 +17,8 @@ export interface PoolOption extends AbilityDef {
   requires?: string
   /** Option can be taken more than once (e.g. "+1 max Combat Dice"). */
   repeatable?: boolean
+  /** Change to max Wounds while the option is held (Mighty Endurance). */
+  woundsMax?: number
 }
 
 export interface AbilityPool {

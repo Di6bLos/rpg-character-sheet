@@ -68,6 +68,7 @@ export const berserker: ClassDef = {
         {
           name: 'Mighty Endurance',
           desc: 'You can now survive an additional 4 Wounds before death.',
+          woundsMax: 4,
         },
         { name: 'MORE BLOOD!', desc: 'Whenever an enemy crits you, gain 1 Fury Die.' },
         {
@@ -102,7 +103,7 @@ export const berserker: ClassDef = {
       abilities: [
         {
           name: 'Rage',
-          desc: '(1/turn) Action: Roll a Fury Die (1d4) and set it aside. Add it to every STR attack you make. You can have a max of KEY Fury Dice; they are lost when your Rage ends. Your Rage ends if you leave combat, drop to 0 HP, or go 1 round without attacking or Raging. You can Rage again while Raging; at your max, roll and keep the dice you want.',
+          desc: '(1/turn) Action: Roll a Fury Die (1d4) and set it aside. Add it to every STR attack you make. You can have a max of KEY Fury Dice; they are lost when your Rage ends. Your Rage ends if you leave combat, drop to 0 HP, or go 1 round without attacking or Raging. You can Rage again while Raging; at your max, roll and keep the dice you want. Fury Dice count as dice when calculating damage against monster armor.',
         },
         {
           name: 'That all you got?!',

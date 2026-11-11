@@ -1,6 +1,6 @@
 // Pure rules logic that turns Nimble class data (data/nimble) into a sheet:
 // the level 1 build, what each level-up grants, and applying a level-up.
-import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
+import { classBySlug, poolOptionWounds, subclassBySlug } from '~/data/nimble/classes'
 import { BASE_SPEED, BASE_WOUNDS, MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
 import type {
@@ -402,13 +402,15 @@ function applyChoice(
     else if (src.kind === 'school') pushUnique(sheet.spells.schools, value)
     else if (src.kind === 'spell' || (spell && option?.group && option.group in SCHOOL_NAMES))
       pushUnique(sheet.spells.learned, value)
-    else if (option)
+    else if (option) {
       sheet.abilities.push({
         name: option.label,
         src: option.group ?? cls.name,
         desc: option.desc,
         level,
       })
+      sheet.woundsMax += poolOptionWounds(cls, option.value)
+    }
   }
 }
 
@@ -591,6 +593,7 @@ function removeSubclass(sheet: NimbleSheet, cls: ClassDef, level: number): void 
   const lost = new Set<string>(sub.introSpells?.lose ?? [])
   const utility = new Set<string>()
   for (const v of picked) if (spellByName(v)) (spellByName(v)?.utility ? utility : learned).add(v)
+  for (const v of picked) sheet.woundsMax -= poolOptionWounds(cls, v)
   for (let l = 1; l <= level; l++) {
     const def = sub.levels[l]
     if (!def) continue

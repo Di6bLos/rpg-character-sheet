@@ -191,6 +191,11 @@ export interface NimbleSheet extends SheetCommon {
   backgroundSlug: string
   /** Picks made at creation and level-up, keyed "L<level>:<choice id>". */
   choices: Record<string, string[]>
+  /**
+   * Version of the class-data rules the save was built with. Older saves are
+   * upgraded on load (`migrateNimble` in utils/sheetDefaults).
+   */
+  rulesVersion: number
   subclass: string
   stats: Record<NimbleStat, number>
   saveAdv: NimbleStat | ''

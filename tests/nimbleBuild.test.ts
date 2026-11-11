@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { ANCESTRIES, ancestryBySlug } from '../data/nimble/ancestries'
 import { BACKGROUNDS, backgroundBySlug } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES, classBySlug } from '../data/nimble/classes'
-import { STAT_ARRAYS, weaponByName } from '../data/nimble/core'
+import { weaponByName } from '../data/nimble/core'
 import { SPELLS } from '../data/nimble/spells'
-import type { ClassDef } from '../data/nimble/types'
-import type { NimbleSheet, NimbleStat } from '../types/sheets'
+import type { ChoiceDef, ClassDef } from '../data/nimble/types'
+import type { NimbleSheet } from '../types/sheets'
 import { parseDice } from '../utils/dice'
 import {
+  abilityBaseName,
   applyNimbleLevel,
-  buildNimbleSheet,
   changeSubclass,
   creationChoices,
   keyStatValue,
@@ -17,66 +17,21 @@ import {
   nimbleLevelPlan,
   recommendedStats,
   subclassChangeChoices,
-  validatePicks,
-  type Picks,
-  type ResolvedChoice,
 } from '../utils/nimbleBuild'
 import { restoreLevel } from '../utils/levelHistory'
+import { autoPick, build, human, levelTo, survivalist } from './helpers/nimble'
 
-const human = ancestryBySlug('human')!
-const survivalist = backgroundBySlug('survivalist')!
-const standard = STAT_ARRAYS[0]!.values
-
-/** Picks the first valid options for every choice, as a player in a hurry would. */
-function autoPick(choices: ResolvedChoice[]): Picks {
-  const picks: Picks = {}
-  for (const c of choices) {
-    if (c.text) {
-      picks[c.key] = ['Test boon']
-      continue
-    }
-    if (c.perGroup) {
-      const seen = new Set<string | undefined>()
-      picks[c.key] = c.options
-        .filter((o) => !seen.has(o.group) && seen.add(o.group))
-        .map((o) => o.value)
-      continue
-    }
-    picks[c.key] = c.options.slice(0, c.count).map((o) => o.value)
+/** Every choice a class can ask for: class levels, subclass levels and subclass intros. */
+function choiceDefs(cls: ClassDef): [number | 'intro', ChoiceDef, string][] {
+  const out: [number | 'intro', ChoiceDef, string][] = []
+  for (const [l, d] of Object.entries(cls.levels))
+    for (const c of d?.choices ?? []) out.push([Number(l), c, 'class'])
+  for (const sub of cls.subclasses) {
+    for (const c of sub.introChoices ?? []) out.push(['intro', c, sub.slug])
+    for (const [l, d] of Object.entries(sub.levels))
+      for (const c of d?.choices ?? []) out.push([Number(l), c, sub.slug])
   }
-  return picks
-}
-
-/** Resolves choices one at a time so picks never collide, then returns all picks. */
-function pickLevel(sheet: NimbleSheet, level: number, subclassSlug?: string): Picks {
-  const picks: Picks = {}
-  const plan = nimbleLevelPlan(sheet, level, { subclassSlug })!
-  for (let i = 0; i < plan.choices.length; i++) {
-    const fresh = nimbleLevelPlan(sheet, level, { subclassSlug, pending: picks })!
-    const choice = fresh.choices[i]!
-    Object.assign(picks, autoPick([choice]))
-  }
-  return picks
-}
-
-function build(cls: ClassDef, ancestry = human, background = survivalist) {
-  const stats = recommendedStats(cls, standard)
-  const picks = autoPick(creationChoices(cls, background))
-  return buildNimbleSheet({ cls, ancestry, background, stats, skillPoints: { Might: 2 }, picks })
-}
-
-function levelTo(sheet: NimbleSheet, target: number, subclassSlug: string) {
-  for (let level = 2; level <= target; level++) {
-    const plan = nimbleLevelPlan(sheet, level)!
-    const sub = plan.subclassChoice ? subclassSlug : undefined
-    const picks = pickLevel(sheet, level, sub)
-    const full = nimbleLevelPlan(sheet, level, { subclassSlug: sub, pending: picks })!
-    for (const c of full.choices) expect(validatePicks(c, picks[c.key]), `${c.key}`).toBeNull()
-    const bumps: Partial<Record<NimbleStat, number>> = {}
-    if (plan.statIncrease)
-      plan.statIncrease.stats.slice(0, plan.statIncrease.count).forEach((s) => (bumps[s] = 1))
-    applyNimbleLevel(sheet, level, { hpGain: 5, statBumps: bumps, subclassSlug: sub, picks })
-  }
+  return out
 }
 
 describe('nimble data', () => {
@@ -130,6 +85,72 @@ describe('nimble data', () => {
           n,
         ).toBe(true)
     }
+  })
+
+  it('only references pools the class has', () => {
+    for (const cls of NIMBLE_CLASSES) {
+      const ids = new Set(cls.pools.map((p) => p.id))
+      const where = (id: string, at: string) => expect(ids.has(id), `${cls.slug} ${at}: ${id}`)
+      for (const [lvl, def, at] of choiceDefs(cls))
+        if (def.source.kind === 'pool')
+          for (const id of def.source.pools) where(id, `${at} L${lvl} ${def.id}`).toBe(true)
+      if (cls.resource?.movesPool) where(cls.resource.movesPool, 'resource').toBe(true)
+      for (const sub of cls.subclasses)
+        for (const id of [...(sub.poolSwap?.replace ?? []), ...(sub.poolSwap?.withPools ?? [])])
+          where(id, `${sub.slug} poolSwap`).toBe(true)
+    }
+  })
+
+  it('has unique, resolvable options in every pool', () => {
+    for (const cls of NIMBLE_CLASSES)
+      for (const pool of cls.pools) {
+        const names = pool.options.map((o) => o.name)
+        expect(new Set(names).size, `${cls.slug}/${pool.id} duplicate names`).toBe(names.length)
+        for (const o of pool.options)
+          if (o.requires)
+            expect(names, `${cls.slug}/${pool.id}: ${o.name} requires`).toContain(o.requires)
+      }
+  })
+
+  it('names real abilities in replacesAbilities and resource.ability', () => {
+    for (const cls of NIMBLE_CLASSES) {
+      const names = new Set(
+        Object.values(cls.levels).flatMap((d) =>
+          (d?.abilities ?? []).map((a) => abilityBaseName(a.name)),
+        ),
+      )
+      for (const sub of cls.subclasses)
+        for (const n of sub.replacesAbilities ?? [])
+          expect(names.has(n), `${cls.slug}/${sub.slug} replaces ${n}`).toBe(true)
+      if (cls.resource)
+        expect(
+          names.has(cls.resource.ability),
+          `${cls.slug} resource ${cls.resource.ability}`,
+        ).toBe(true)
+    }
+  })
+
+  it('upgrades only abilities that were granted earlier', () => {
+    for (const cls of NIMBLE_CLASSES)
+      for (const sub of [undefined, ...cls.subclasses]) {
+        const seen = new Set<string>()
+        for (let l = 1; l <= 20; l++) {
+          const granted = [
+            ...(cls.levels[l]?.abilities ?? []),
+            ...(l === 3 ? (sub?.intro ?? []) : []),
+            ...(sub?.levels[l]?.abilities ?? []),
+          ]
+          // A choice can be the earlier step ("Shadowmastery: choose…" before "Shadowmastery (3)").
+          for (const c of [...(cls.levels[l]?.choices ?? []), ...(sub?.levels[l]?.choices ?? [])])
+            seen.add(abilityBaseName(c.label.split(':')[0]!.trim()))
+          for (const a of granted) {
+            const base = abilityBaseName(a.name)
+            if (base !== a.name)
+              expect(seen.has(base), `${cls.slug}/${sub?.slug ?? '-'} L${l} ${a.name}`).toBe(true)
+            seen.add(base)
+          }
+        }
+      }
   })
 
   it('has unique slugs', () => {
@@ -250,6 +271,17 @@ describe('levelling', () => {
         if (cls.mana) expect(sheet.mana.max).toBeGreaterThan(20)
       })
 
+  for (const cls of NIMBLE_CLASSES)
+    for (const sub of cls.subclasses.filter((s) => s.story))
+      it(`levels a ${cls.slug} taking the ${sub.slug} story subclass at 3, up to 20`, () => {
+        const sheet = build(cls)
+        levelTo(sheet, 20, sub.slug)
+        expect(sheet.subclassSlug).toBe(sub.slug)
+        expect(sheet.hitDice).toBe(21)
+        for (const name of sub.replacesAbilities ?? [])
+          expect(sheet.abilities.some((a) => abilityBaseName(a.name) === name)).toBe(false)
+      })
+
   it('upgrades numbered abilities instead of duplicating them', () => {
     const sheet = build(classBySlug('cheat')!)
     levelTo(sheet, 9, 'scoundrel')
@@ -283,6 +315,15 @@ describe('levelling', () => {
     const arsenal = sheet.abilities.filter((a) => a.src === 'Savage Arsenal').map((a) => a.name)
     expect(arsenal).toHaveLength(7)
     expect(new Set(arsenal).size).toBe(7)
+  })
+
+  it('adds 4 max Wounds when Mighty Endurance is picked', () => {
+    const sheet = build(classBySlug('berserker')!)
+    levelTo(sheet, 3, 'red-mist')
+    const before = sheet.woundsMax
+    const picks = { 'L4:savage-arsenal': ['Mighty Endurance'] }
+    applyNimbleLevel(sheet, 4, { hpGain: 5, statBumps: { STR: 1 }, picks })
+    expect(sheet.woundsMax).toBe(before + 4)
   })
 
   it('gives the Swift Fists exemption to Zephyrs only', () => {

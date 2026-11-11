@@ -14,7 +14,7 @@ npm run generate     # Static site generation (nuxt generate)
 npm run type-check   # TypeScript check (nuxt typecheck)
 npm run lint         # Run oxlint then eslint sequentially, both with --fix
 npm run format       # Prettier format all files
-npm run test         # Vitest unit tests for utils/ (dice, level-up, contrast, themes)
+npm run test         # Vitest: utils, Nimble data integrity, golden level tables
 npm run preview      # Preview production build locally
 ```
 
@@ -43,12 +43,23 @@ npm run preview      # Preview production build locally
 - `components/sheet/` — `Shell` (action bar, editor, level-up), `Dnd5e{Classic,Gothic,Eldritch,Cursed}`, `Pf2eSheet`, `NimbleSheet`, `Editor`, `ListEditor`, `LevelUpDialog`, `Portrait`
 - `composables/useSheetEditor.ts` — provides the working copy of a character with debounced autosave; sheets read it with `useSheet()`
 - `utils/dice.ts`, `utils/levelUp.ts`, `utils/contrast.ts` — pure rules logic, covered by `tests/`
-- `data/nimble/` — Nimble rules data transcribed from the Core Rules and Heroes PDFs (kept locally in gitignored `.local.docs/`): 11 classes with levels 1–20, subclasses (incl. 4 story subclasses), ability pools, spells, ancestries, backgrounds. Never use the books' art (license); class "portraits" are original SVGs in `components/nimble/Sigil.vue`
+- `data/nimble/` — Nimble rules data transcribed from the Core Rules and Heroes PDFs (kept locally in gitignored `.local/`; see the `rpg-rules` skill): 11 classes with levels 1–20, subclasses (incl. 4 story subclasses), ability pools, spells, ancestries, backgrounds. Never use the books' art (license); class "portraits" are original SVGs in `components/nimble/Sigil.vue`
 - `utils/nimbleBuild.ts` — builds a level 1 Nimble sheet, the per-level plan (abilities, choices, stat increases, subclass), applies level-ups and subclass changes; covered by `tests/nimbleBuild.test.ts`. Nimble sheets with a `classSlug` use the data-driven level-up; hand-made ones keep the free-text flow
 - `components/nimble/` — `HeroCard`, `Sigil`, `ChoicePicker` (shared by creation, level-up, subclass change), `SubclassDialog`; the panels of the Nimble sheet: `SheetVitals`, `SheetResources` (mana, class resource, concentration), `SheetTurn` (action tracker, New turn / New encounter), `SheetActions` (attacks, reactions, the limited-use abilities with their counters), `SheetAbilities` (every ability with its text), `SheetSpells`, `SheetConditions`, `SheetInventory`
 - `utils/nimblePlay.ts` — table-side Nimble rules (damage and dying, rests, mana, turn tracker, inventory slots) and `abilityCounters()`, which reads use limits ("1/encounter", "WIL times/Safe Rest", pools) from ability text; only abilities with a limit show in the Actions panel; covered by `tests/nimblePlay.test.ts`. A class's resource panel comes from `ClassDef.resource` via `sheetResource()` in `utils/nimbleBuild.ts`
 - Components in subfolders are auto-registered with the folder as prefix (`components/ui/Dialog.vue` is `<UiDialog>`)
 - All components use `<script setup lang="ts">`
+
+## Agents & skills (`.claude/`)
+
+Rules work goes through these so it stays consistent and cites its sources:
+
+- `rpg-rules` skill — shared reference: source books and page offsets, licensing (what may be committed), Nimble math (hero curve, level cadence, spell damage, monster design) and how the repo encodes it; 5e/PF2e stubs
+- `source-extract` skill — PDF (`.local/`, cached per page by `scripts/pdf-pages.sh`) or web page → typed data with page citations and license checks
+- `rules-auditor` agent — checks one class level by level against the book; writes `.local/audits/<class>.md`. Once a class is clean and the user agrees, record its golden table: `NIMBLE_GOLDEN=<slug> npx vitest run tests/nimbleLevels.test.ts -u` (fixtures in `tests/fixtures/nimble/`, ignored by Prettier)
+- `homebrew-designer` agent — original monsters, spells, items, NPCs balanced to the system's math → `homebrew/<system>/*.md`
+- `system-converter` skill — convert content between Nimble, 5e and PF2e, listing the judgement calls
+- `add-game-system` skill — checklist for making 5e or PF2e data-driven like Nimble
 
 ## Routes
 
