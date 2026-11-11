@@ -61,6 +61,10 @@ function startEncounter() {
           {{ left }} of {{ perTurn }} left{{ sheet.dying ? ' (Dying)' : '' }}
         </strong>
         <span class="muted" style="font-size: 12px">{{ rushedNote }}</span>
+        <span v-if="sheet.casting.actions" class="muted" style="font-size: 12px">
+          Casting {{ sheet.casting.spell }}: {{ sheet.casting.actions }} more
+          {{ sheet.casting.actions === 1 ? 'action' : 'actions' }} on New turn
+        </span>
       </div>
       <div class="row" style="gap: 6px; margin-left: auto; flex-wrap: wrap">
         <button

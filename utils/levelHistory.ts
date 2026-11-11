@@ -27,6 +27,7 @@ const PLAY_STATE = new Set([
   'rushed',
   'reactionsUsed',
   'concentration',
+  'casting',
   'uses',
   'languages',
   'heightWeight',

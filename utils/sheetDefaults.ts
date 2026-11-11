@@ -154,6 +154,7 @@ function nimble(): NimbleSheet {
     rushed: 0,
     reactionsUsed: [],
     concentration: '',
+    casting: { spell: '', actions: 0 },
     conditions: [],
     resource: { name: '', diceName: '', kind: 'rage', active: false, dice: 0, die: 4, count: 0 },
     uses: {},

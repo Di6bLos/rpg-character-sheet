@@ -2,6 +2,7 @@
 // tracker and inventory slots. Pure functions that change the sheet in place and
 // return the line to show in the roll log.
 import { weaponByName } from '~/data/nimble/core'
+import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet } from '~/types/sheets'
 import { rollDie, sign, type Rng } from '~/utils/dice'
 import { abilityBaseName } from '~/utils/nimbleBuild'
@@ -188,7 +189,48 @@ export function safeRest(sheet: NimbleSheet): string {
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
+  sheet.casting = { ...NOT_CASTING }
   return 'Safe Rest: HP, Hit Dice, mana and limited uses restored; 1 Wound healed; temp HP expired.'
+}
+
+const NOT_CASTING = { spell: '', actions: 0 }
+
+/** Concentration starts once the spell is fully cast. */
+function finishCasting(sheet: NimbleSheet, spell: string): string {
+  if (sheet.casting.spell === spell) sheet.casting = { ...NOT_CASTING }
+  if (!/\bConcentration\b/.test(spellByName(spell)?.desc ?? '')) return ''
+  sheet.concentration = spell
+  return ' Concentrating.'
+}
+
+/**
+ * Starts casting a spell that takes `actions` (its cost is paid by the caller).
+ * Actions left this turn go to it; whatever is still owed is paid at the start of
+ * the next turns, and the spell takes effect when the last one is. Returns the
+ * line for the roll log.
+ */
+export function castSpell(sheet: NimbleSheet, spell: string, actions: number): string {
+  const paid = Math.min(actions, actionsLeft(sheet))
+  sheet.actionsSpent += paid
+  const owed = actions - paid
+  if (owed <= 0) return finishCasting(sheet, spell)
+  sheet.casting = { spell, actions: owed }
+  return ` ${owed} more action${owed === 1 ? '' : 's'} needed: it takes effect on a later turn.`
+}
+
+/** Pays actions owed on a spell from a new turn's actions. */
+function continueCasting(sheet: NimbleSheet): string {
+  const { spell, actions } = sheet.casting
+  if (!spell || actions <= 0) return ''
+  const paid = Math.min(actions, turnActions(sheet))
+  sheet.actionsSpent = paid
+  const owed = actions - paid
+  if (owed > 0) {
+    sheet.casting = { spell, actions: owed }
+    return ` Still casting ${spell}: ${paid} action${paid === 1 ? '' : 's'} spent, ${owed} to go.`
+  }
+  const done = finishCasting(sheet, spell)
+  return ` ${spell} takes effect (${paid} action${paid === 1 ? '' : 's'} spent).${done}`
 }
 
 /** Start of a new round for this hero: actions and once-per-round reactions come back. */
@@ -201,7 +243,8 @@ export function newTurn(sheet: NimbleSheet): string {
   // A sustained Rage grows by one Fury die each round.
   if (res.active) res.dice = Math.min(MAX_RAGE_DICE, res.dice + 1)
   const n = turnActions(sheet)
-  return `New turn: ${n} action${n === 1 ? '' : 's'}, reactions ready.`
+  const casting = continueCasting(sheet)
+  return `New turn: ${n} action${n === 1 ? '' : 's'}, reactions ready.${casting}`
 }
 
 export type UsePeriod = 'turn' | 'encounter' | 'rest'
@@ -358,6 +401,7 @@ function refill(sheet: NimbleSheet, periods: UsePeriod[]): void {
 /** Initiative is rolled: per-encounter and per-turn uses come back, and the turn starts fresh. */
 export function newEncounter(sheet: NimbleSheet): string {
   refill(sheet, ['turn', 'encounter'])
+  sheet.casting = { ...NOT_CASTING }
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []

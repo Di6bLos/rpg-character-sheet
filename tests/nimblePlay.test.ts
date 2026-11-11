@@ -8,6 +8,7 @@ import { abilityBaseName, sheetResource } from '../utils/nimbleBuild'
 import {
   abilityCounters,
   actionsLeft,
+  castSpell,
   dyingAttackSave,
   fieldRest,
   fieldRestDice,
@@ -243,6 +244,36 @@ describe('nimble inventory', () => {
     })
     // + 2 for 1200 gp
     expect(inventorySlots(sheet)).toEqual({ used: 11, max: 12 })
+  })
+})
+
+describe('casting over several turns', () => {
+  it('carries unpaid actions to the next turn and concentrates once cast', () => {
+    const sheet = hero()
+    spendActions(sheet, 2)
+    expect(castSpell(sheet, 'Fiery Embrace', 2)).toMatch(/1 more action/)
+    expect(actionsLeft(sheet)).toBe(0)
+    expect(sheet.concentration).toBe('')
+    expect(sheet.casting).toEqual({ spell: 'Fiery Embrace', actions: 1 })
+    expect(newTurn(sheet)).toMatch(/Fiery Embrace takes effect/)
+    expect(actionsLeft(sheet)).toBe(2)
+    expect(sheet.concentration).toBe('Fiery Embrace')
+    expect(sheet.casting).toEqual({ spell: '', actions: 0 })
+  })
+
+  it('spreads a long cast over as many turns as it needs', () => {
+    const sheet = hero()
+    castSpell(sheet, 'Ritual', 5)
+    expect(sheet.casting.actions).toBe(2)
+    newTurn(sheet)
+    expect(actionsLeft(sheet)).toBe(1)
+    expect(sheet.casting.actions).toBe(0)
+  })
+
+  it('casts at once when the turn has the actions', () => {
+    const sheet = hero()
+    expect(castSpell(sheet, 'Fiery Embrace', 2)).toBe(' Concentrating.')
+    expect(actionsLeft(sheet)).toBe(1)
   })
 })
 

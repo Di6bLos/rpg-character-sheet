@@ -7,14 +7,13 @@ import type { SpellDef, SpellSchool } from '~/data/nimble/types'
 import type { NimbleSheet } from '~/types/sheets'
 import { keyStatValue, knownSpells, knownUtilitySpells, sheetResource } from '~/utils/nimbleBuild'
 import {
-  actionsLeft,
+  castSpell,
   isHollowOne,
   manaPool,
   payBloodCast,
   payShadowExploit,
   shadowExploitCost,
   spellActions,
-  spendActions,
   spendMana,
 } from '~/utils/nimblePlay'
 
@@ -135,13 +134,9 @@ function cast(s: (typeof tiers.value)[number]['spells'][number], withWound = fal
     if (!spendMana(sheet.value, s.at)) return
     notes.push(`Cast ${s.name}${s.at > s.tier ? ` upcast to tier ${s.at}` : ''} · ${s.at} mana.`)
   }
-  if (s.actions > actionsLeft(sheet.value))
-    notes.push(`Needs ${s.actions} actions: finish casting next turn.`)
-  if (s.actions) spendActions(sheet.value, s.actions)
-  if (/\bConcentration\b/.test(s.desc)) {
-    sheet.value.concentration = s.name
-    notes.push('Concentrating.')
-  }
+  // Actions the turn can't cover carry over; Concentration starts once it is cast.
+  const progress = castSpell(sheet.value, s.name, s.actions).trim()
+  if (progress) notes.push(progress)
   if (sheet.value.dying) notes.push('Dying: DC 10 STR save or take 1 Wound.')
   say(notes.join(' '))
 }

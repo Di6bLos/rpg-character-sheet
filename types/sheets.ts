@@ -212,6 +212,8 @@ export interface NimbleSheet extends SheetCommon {
   reactionsUsed: string[]
   /** What the hero is concentrating on; empty when not concentrating. */
   concentration: string
+  /** A spell that needs more actions than the turn had: the actions still owed. */
+  casting: { spell: string; actions: number }
   conditions: string[]
   /**
    * Class resource. `active` and `dice` are a Berserker's Rage and Fury dice (added to
