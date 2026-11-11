@@ -14,6 +14,9 @@ const { draft, portrait, canEdit, uploadingPortrait, onPortrait } = useSheet()
   <div class="portrait">
     <div class="portrait__frame">
       <img v-if="portrait" :src="portrait" :alt="`Portrait of ${draft.name}`" />
+      <div v-else-if="$slots.empty" class="portrait__empty">
+        <slot name="empty" />
+      </div>
       <div v-else class="portrait__empty">
         <svg
           width="32"

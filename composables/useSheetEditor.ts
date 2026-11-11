@@ -76,7 +76,10 @@ export function provideSheetEditor(
       await store.save(draft.value.id, {
         name: name.trim() || 'Unnamed',
         level,
-        sheet: structuredClone(toRaw(sheet)),
+        // The sheet is plain JSON (jsonb). A JSON round-trip copies it even when
+        // reactive proxies ended up nested inside (e.g. arrays rebuilt with
+        // .filter() on the reactive draft), which structuredClone rejects.
+        sheet: JSON.parse(JSON.stringify(sheet)) as AnySheet,
         portrait_path,
       })
     } catch (err) {

@@ -51,13 +51,6 @@ export const PF2E_CONDITIONS = [
   'Prone',
 ]
 
-export const NIMBLE_REACTIONS = [
-  { name: 'Defend', desc: 'Reduce damage by your Armor' },
-  { name: 'Interpose', desc: 'Take a hit for an ally' },
-  { name: 'Opportunity', desc: 'Strike a foe that leaves' },
-  { name: 'Help', desc: 'Give an ally advantage' },
-]
-
 function dnd5e(): Dnd5eSheet {
   return {
     lineage: '',
@@ -130,6 +123,11 @@ function pf2e(): Pf2eSheet {
 
 function nimble(): NimbleSheet {
   return {
+    classSlug: '',
+    subclassSlug: '',
+    ancestrySlug: '',
+    backgroundSlug: '',
+    choices: {},
     lineage: '',
     class: '',
     subclass: '',
@@ -145,16 +143,30 @@ function nimble(): NimbleSheet {
     saveAdv: '',
     saveDis: '',
     wounds: 0,
+    woundsMax: 6,
     speed: '6',
     hitDie: 8,
     hitDice: 1,
+    hitDiceUsed: 0,
+    tempHp: 0,
+    dying: false,
     actionsSpent: 0,
-    resource: { name: '', diceName: '', active: false, dice: 0, die: 4 },
+    rushed: 0,
+    reactionsUsed: [],
+    concentration: '',
+    casting: { spell: '', actions: 0 },
+    conditions: [],
+    resource: { name: '', diceName: '', kind: 'rage', active: false, dice: 0, die: 4, count: 0 },
+    uses: {},
     attacks: [],
     skills: NIMBLE_SKILLS.map(([name, stat]) => ({ name, stat, points: 0 })),
     abilities: [],
+    spells: { schools: [], tier: 0, learned: [], lost: [], utility: [] },
+    mana: { current: 0, max: 0, temp: 0 },
     inventory: [],
-    gold: '0 gp',
+    coins: { gp: 0, sp: 0 },
+    languages: '',
+    heightWeight: '',
     notes: '',
   }
 }
@@ -184,7 +196,51 @@ function mergeDefaults(defaults: unknown, stored: unknown): unknown {
 
 /** Fills any fields missing from a stored sheet so older saves keep working. */
 export function normalizeSheet<K extends GameSystem>(system: K, stored: unknown): SheetBySystem[K] {
-  return mergeDefaults(defaultSheet(system), stored) as SheetBySystem[K]
+  const sheet = mergeDefaults(defaultSheet(system), stored) as SheetBySystem[K]
+  if (system === 'nimble') migrateNimble(sheet as NimbleSheet, stored)
+  return sheet
+}
+
+/** Upgrades older Nimble saves in place: the Dying flag and the free-text Gold field. */
+function migrateNimble(sheet: NimbleSheet, stored: unknown) {
+  const saved = isPlainObject(stored) ? stored : {}
+  // Saves from before the flag existed: a hero at 0 HP was Dying.
+  if (!('dying' in saved) && typeof saved.hp === 'number' && saved.hp <= 0 && sheet.hpMax > 0)
+    sheet.dying = true
+
+  const loose = sheet as unknown as Record<string, unknown>
+  const old = loose.gold
+  delete loose.gold
+  if (typeof old !== 'string' || !old.trim() || isPlainObject(saved.coins)) return
+  const { gp, sp, rest } = parseLegacyGold(old)
+  sheet.coins = { gp, sp }
+  // Keep anything that couldn't be converted (copper, decimals, notes) where the player can see it.
+  if (rest)
+    sheet.notes = [sheet.notes.trimEnd(), `Old Gold field: ${old.trim()}`]
+      .filter(Boolean)
+      .join('\n\n')
+}
+
+// A whole amount ("12", "1,200") not glued to other digits, letters or a decimal point.
+const AMOUNT = String.raw`(?<![\w.,])(\d{1,3}(?:,\d{3})+|\d+)(?![\d.,]*\d)`
+const COIN = new RegExp(
+  String.raw`${AMOUNT}\s*(gp|gold(?:\s+pieces?)?|sp|silver(?:\s+pieces?)?)(?!\w)`,
+  'gi',
+)
+
+/** Reads gp and sp out of the old Gold text; `rest` is whatever was left unconverted. */
+export function parseLegacyGold(text: string): { gp: number; sp: number; rest: string } {
+  const bare = new RegExp(String.raw`^\s*${AMOUNT}\s*$`).exec(text)
+  if (bare) return { gp: Number((bare[1] ?? '0').replace(/,/g, '')), sp: 0, rest: '' }
+  let gp = 0
+  let sp = 0
+  const rest = text.replace(COIN, (_, amount: string, unit: string) => {
+    const n = Number(amount.replace(/,/g, ''))
+    if (/^s/i.test(unit)) sp += n
+    else gp += n
+    return ' '
+  })
+  return { gp, sp, rest: rest.replace(/[\s,;&+]|\band\b/gi, '') }
 }
 
 /** One-line "Half-Elf Ranger" style summary for cards and rosters. */
