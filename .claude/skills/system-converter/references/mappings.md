@@ -29,17 +29,17 @@ A 5e bonus action → Nimble 1 action. A 5e full action spell → 2 actions (3 i
 | Nimble spell tier | 5e spell level | PF2e spell rank | Nimble hero level (full caster gets it) |
 | ----------------- | -------------- | --------------- | --------------------------------------- |
 | cantrip           | cantrip        | cantrip         | 1                                       |
-| T1                | 1              | 1               | 1                                       |
-| T2                | 2              | 2               | 3                                       |
-| T3                | 3              | 3               | 5                                       |
-| T4                | 4              | 4               | 7                                       |
-| T5                | 5              | 5               | 9                                       |
-| T6                | 6              | 6               | 11                                      |
-| T7                | 7              | 7               | 13                                      |
-| T8                | 8              | 8               | 15                                      |
-| T9                | 9              | 9–10            | 17                                      |
+| T1                | 1              | 1               | 2                                       |
+| T2                | 2              | 2               | 4                                       |
+| T3                | 3              | 3               | 6                                       |
+| T4                | 4              | 4               | 8                                       |
+| T5                | 5              | 5               | 10                                      |
+| T6                | 6              | 6               | 12                                      |
+| T7                | 7              | 7               | 14                                      |
+| T8                | 8              | 8               | 16                                      |
+| T9                | 9              | 9–10            | 18                                      |
 
-(Nimble column: "full casters gain a new tier every other level" per CK 8. Check the class table.)
+(Nimble column: the full casters in `data/nimble/classes/` (Mage, Shepherd, Songweaver, Stormshifter) unlock T1 at level 2 and each later tier every other level. Half casters are slower; the Shadowmancer gets T2 at 5, T3 at 7, T4 at 10 and so on up to T7 at 19. Check the class table.)
 
 Hero levels map 1:1 in all three systems (1–20). Monster level: Nimble level ≈ 5e CR at low levels (1/3 ≈ CR 1/4–1/2) and ≈ PF2e creature level (party level −1 / +0 / +2 for weak / standard / boss). Verify against the target's budget table.
 
