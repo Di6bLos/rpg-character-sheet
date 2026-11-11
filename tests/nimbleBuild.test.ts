@@ -327,6 +327,20 @@ describe('changeSubclass', () => {
     expect(spells).toContain('Entice')
   })
 
+  it('asks again for class picks the new subclass swaps out', () => {
+    const sheet = build(classBySlug('commander')!)
+    levelTo(sheet, 5, 'vanguard')
+    expect(sheet.abilities.some((a) => a.src === 'Combat Tactics')).toBe(true)
+    const { choices } = subclassChangeChoices(sheet, 5, 'spellblade')
+    const tactic = choices.find((c) => c.key === 'L4:combat-tactic')
+    expect(tactic).toBeDefined()
+    expect(tactic!.options.some((o) => o.group === 'Combat Tactics')).toBe(false)
+    const picks = autoPick(choices)
+    changeSubclass(sheet, 5, 'spellblade', picks)
+    expect(sheet.abilities.some((a) => a.src === 'Combat Tactics')).toBe(false)
+    expect(sheet.choices['L4:combat-tactic']).toEqual(picks['L4:combat-tactic'])
+  })
+
   it('asks a Beastmaster to choose a companion', () => {
     const sheet = build(classBySlug('hunter')!)
     levelTo(sheet, 5, 'wild-heart')

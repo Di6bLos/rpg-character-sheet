@@ -641,6 +641,18 @@ function canReplay(sheet: NimbleSheet, from: number, level: number): boolean {
 }
 
 /**
+ * Level a subclass change rebuilds the hero from, or null when the sheet is
+ * changed in place (no full level history). A rebuild restores the sheet from
+ * before that level, so hand edits made since then are lost.
+ */
+export function subclassReplayLevel(sheet: NimbleSheet, level: number): number | null {
+  const cls = classBySlug(sheet.classSlug)
+  if (!cls) return null
+  const entry = subclassEntryLevel(cls)
+  return level >= entry && canReplay(sheet, entry, level) ? entry : null
+}
+
+/**
  * Swaps in a story subclass (or any other) at the current level. The old
  * subclass's abilities, picks, spells and bonuses all go; the new one's intro and
  * every feature up to `level` come in. `picks` covers the intro choices (keyed at
@@ -660,7 +672,7 @@ export function changeSubclass(
   if (!cls || !sub) return
   const entry = subclassEntryLevel(cls)
 
-  if (level >= entry && canReplay(sheet, entry, level)) {
+  if (subclassReplayLevel(sheet, level) !== null) {
     const old = sheet.subclassSlug ? subclassBySlug(cls, sheet.subclassSlug) : undefined
     const oldKeys = old ? subclassChoiceKeys(old, entry) : new Set<string>()
     const inputs = (sheet.levelHistory ?? [])
@@ -739,6 +751,19 @@ export function subclassChangeChoices(
     for (const c of def.choices ?? []) choices.push(resolveChoice(base, cls, sub, c, l, pending))
     spells.learn.push(...(def.spells?.learn ?? []))
     spells.lose.push(...(def.spells?.lose ?? []))
+  }
+  // A rebuild replays past class picks; those whose options the subclass swaps
+  // (Spellblade's Combat Tactics) no longer fit and must be picked again.
+  if (subclassReplayLevel(sheet, level) !== null) {
+    const old = sheet.subclassSlug ? subclassBySlug(cls, sheet.subclassSlug) : undefined
+    for (let l = entry; l <= level; l++)
+      for (const def of cls.levels[l]?.choices ?? []) {
+        const key = `L${l}:${def.id}`
+        if (choices.some((c) => c.key === key)) continue
+        const was = JSON.stringify(effectiveSource(def, old))
+        if (was !== JSON.stringify(effectiveSource(def, sub)))
+          choices.push(resolveChoice(base, cls, sub, def, l, pending))
+      }
   }
   return { abilities, choices, spells }
 }

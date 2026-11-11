@@ -7,6 +7,7 @@ import {
   changeSubclass,
   keyStatValue,
   subclassChangeChoices,
+  subclassReplayLevel,
   validatePicks,
   type Picks,
 } from '~/utils/nimbleBuild'
@@ -33,6 +34,8 @@ const keyValue = computed(() => keyStatValue(sheet.value))
 const options = computed(() =>
   (cls.value?.subclasses ?? []).filter((s) => s.slug !== sheet.value.subclassSlug),
 )
+/** Heroes with level history are rebuilt from the subclass level, undoing hand edits since. */
+const replayFrom = computed(() => subclassReplayLevel(sheet.value, draft.value.level))
 const preview = computed(() =>
   pick.value
     ? subclassChangeChoices(sheet.value, draft.value.level, pick.value, picks.value)
@@ -59,6 +62,12 @@ async function confirm() {
       replaces {{ sheet.subclass || 'your current one' }}: its abilities are removed and the new
       one’s features up to level {{ draft.level }} are added.
     </p>
+    <div v-if="replayFrom !== null" class="notice">
+      <strong>Hand edits made since reaching level {{ replayFrom }} will be lost</strong>
+      Your hero is rebuilt from level {{ replayFrom }} with the same hit points, stat increases and
+      class picks. Changes you made by hand since then, such as attacks, armor, skills and spells,
+      go back to what the levels grant.
+    </div>
     <div class="subs" role="group" aria-label="Subclasses">
       <button
         v-for="s in options"
