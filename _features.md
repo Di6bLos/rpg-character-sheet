@@ -49,3 +49,20 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [ ] Responsive and accessibility pass at phone width
 - [x] Supabase security advisors on the hosted project
 - [x] Production deploy on Vercel
+
+## Phase 6 · Nimble heroes
+- [x] Source PDFs in `.local.docs/` (gitignored); class portraits are original SVG sigils (license forbids book art)
+- [x] Typed rules data in `data/nimble/` (classes + subclasses levels 1–20, ancestries, backgrounds)
+- [x] Sheet model: class/subclass/ancestry/background slugs, recorded choices, ability level
+- [x] `utils/nimbleBuild.ts` (level 1 build, level plan, apply level) with tests
+- [x] Hero creation flow `/characters/new/nimble` (hero → ancestry → background → stats → name & review)
+- [x] Data-driven Nimble level-up (new abilities, subclass and ability choices, stat increases)
+- [x] Class sigil as portrait fallback; abilities grouped by level; Spells panel with mana; Change subclass (story subclasses)
+- [x] UI/UX review of creation and level-up (fixed: choice layout collision, save of rebuilt arrays, off-screen validation, detail panel scroll, solid action bar, stepper, locked backgrounds)
+
+### Phase 6.1 · Nimble feedback
+- [x] Max HP gained on level-up is editable (for rolls made at the table)
+- [x] KEY in rules text shows the hero's number (higher Key Stat), highlighted
+- [x] Opening a spell closes the other open spell
+- [x] Changing subclass removes everything the old one granted (abilities, picks, spells, schools, bonuses); the Reaver's Bonescythe is a spell
+- [x] Level only goes up through Level up; lowering it warns, then undoes the higher levels (level history snapshots)

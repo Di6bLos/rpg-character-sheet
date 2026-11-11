@@ -25,6 +25,15 @@ const editing = ref(false)
 const levelUpOpen = ref(false)
 const deleteOpen = ref(false)
 const deleting = ref(false)
+const subclassOpen = ref(false)
+
+// Nimble heroes built from class data can swap subclass once they have one (level 3+).
+const canChangeSubclass = computed(
+  () =>
+    draft.value.system === 'nimble' &&
+    !!(draft.value.sheet as { classSlug?: string }).classSlug &&
+    draft.value.level >= 3,
+)
 
 // The dark-fantasy 5e layouts carry their own Level up button.
 const layoutHasLevelUp = computed(() => draft.value.system === 'dnd5e' && theme.value !== 'classic')
@@ -110,6 +119,18 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
 
     <template v-if="editing">
       <SheetEditor />
+      <div v-if="canChangeSubclass" class="panel danger-zone">
+        <div>
+          <h2>Change subclass</h2>
+          <p class="small muted">
+            For story subclasses like the Oathbreaker: swap your subclass when the story calls for
+            it (with your GM’s approval).
+          </p>
+        </div>
+        <button type="button" class="btn btn--ghost" @click="subclassOpen = true">
+          Change subclass
+        </button>
+      </div>
       <div class="panel danger-zone">
         <div>
           <h2>Delete this character</h2>
@@ -129,6 +150,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
     </template>
 
     <SheetLevelUpDialog v-model="levelUpOpen" />
+    <NimbleSubclassDialog v-if="canChangeSubclass" v-model="subclassOpen" />
 
     <UiDialog v-model="deleteOpen" :title="`Delete ${draft.name}?`" alert width="460px">
       <p>The sheet and its portrait will be removed permanently.</p>

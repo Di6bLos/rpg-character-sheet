@@ -54,3 +54,7 @@ ux-review/
 
 # Playwright MCP output (local only)
 .playwright-mcp/
+
+# Local source material (rule PDFs)
+.local/
+.local.docs/

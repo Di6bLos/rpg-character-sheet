@@ -43,6 +43,9 @@ npm run preview      # Preview production build locally
 - `components/sheet/` — `Shell` (action bar, editor, level-up), `Dnd5e{Classic,Gothic,Eldritch,Cursed}`, `Pf2eSheet`, `NimbleSheet`, `Editor`, `ListEditor`, `LevelUpDialog`, `Portrait`
 - `composables/useSheetEditor.ts` — provides the working copy of a character with debounced autosave; sheets read it with `useSheet()`
 - `utils/dice.ts`, `utils/levelUp.ts`, `utils/contrast.ts` — pure rules logic, covered by `tests/`
+- `data/nimble/` — Nimble rules data transcribed from the Core Rules and Heroes PDFs (kept locally in gitignored `.local.docs/`): 11 classes with levels 1–20, subclasses (incl. 4 story subclasses), ability pools, spells, ancestries, backgrounds. Never use the books' art (license); class "portraits" are original SVGs in `components/nimble/Sigil.vue`
+- `utils/nimbleBuild.ts` — builds a level 1 Nimble sheet, the per-level plan (abilities, choices, stat increases, subclass), applies level-ups and subclass changes; covered by `tests/nimbleBuild.test.ts`. Nimble sheets with a `classSlug` use the data-driven level-up; hand-made ones keep the free-text flow
+- `components/nimble/` — `HeroCard`, `Sigil`, `ChoicePicker` (shared by creation, level-up, subclass change), `SubclassDialog`
 - Components in subfolders are auto-registered with the folder as prefix (`components/ui/Dialog.vue` is `<UiDialog>`)
 - All components use `<script setup lang="ts">`
 
@@ -53,6 +56,7 @@ npm run preview      # Preview production build locally
 | `/`, `/signup` | Sign in, sign up | guest |
 | `/dashboard` | Player dashboard | user |
 | `/characters` | Character slots | user |
+| `/characters/new/nimble` | Nimble hero builder (class → ancestry → stats → background → review) | user |
 | `/character/:id` | Sheet (by system and theme) | owner; campaign GM read-only |
 | `/campaigns` | Campaign list, create, invites | user |
 | `/campaigns/:id/board` | Board + journal | campaign member |

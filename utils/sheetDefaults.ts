@@ -130,6 +130,11 @@ function pf2e(): Pf2eSheet {
 
 function nimble(): NimbleSheet {
   return {
+    classSlug: '',
+    subclassSlug: '',
+    ancestrySlug: '',
+    backgroundSlug: '',
+    choices: {},
     lineage: '',
     class: '',
     subclass: '',
@@ -145,6 +150,7 @@ function nimble(): NimbleSheet {
     saveAdv: '',
     saveDis: '',
     wounds: 0,
+    woundsMax: 6,
     speed: '6',
     hitDie: 8,
     hitDice: 1,
@@ -153,6 +159,8 @@ function nimble(): NimbleSheet {
     attacks: [],
     skills: NIMBLE_SKILLS.map(([name, stat]) => ({ name, stat, points: 0 })),
     abilities: [],
+    spells: { schools: [], tier: 0, learned: [], lost: [], utility: [] },
+    mana: { current: 0, max: 0 },
     inventory: [],
     gold: '0 gp',
     notes: '',

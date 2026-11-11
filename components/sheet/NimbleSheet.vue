@@ -1,14 +1,56 @@
 <script setup lang="ts">
-import type { NimbleSheet, NimbleStat } from '~/types/sheets'
+import { classBySlug } from '~/data/nimble/classes'
+import { SCHOOL_LABELS, SPELL_RULES } from '~/data/nimble/spells'
+import type { SpellSchool } from '~/data/nimble/types'
+import type { NimbleAbility, NimbleSheet, NimbleStat } from '~/types/sheets'
 import { parseDice, rollNimble, sign } from '~/utils/dice'
+import { keyStatValue, knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
 import { NIMBLE_REACTIONS } from '~/utils/sheetDefaults'
 
 const { draft, canEdit, campaignName, hpPct, adjustHp, lastRoll, say } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
-const MAX_WOUNDS = 6
+const MAX_WOUNDS = computed(() => Math.max(1, sheet.value.woundsMax || 6))
 const MAX_DICE = 6
+
+const cls = computed(() => classBySlug(sheet.value.classSlug))
+const keyValue = computed(() => keyStatValue(sheet.value))
+
+/** Abilities grouped by the level they were gained (hand-made entries go last). */
+const abilityGroups = computed(() => {
+  const groups = new Map<number, NimbleAbility[]>()
+  for (const a of sheet.value.abilities) {
+    const lvl = a.level ?? 0
+    groups.set(lvl, [...(groups.get(lvl) ?? []), a])
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a || 99) - (b || 99))
+    .map(([level, list]) => ({ level, list }))
+})
+const groupAbilities = computed(() => abilityGroups.value.some((g) => g.level > 0))
+
+const spells = computed(() => knownSpells(sheet.value))
+const utility = computed(() => knownUtilitySpells(sheet.value))
+const hasSpells = computed(() => spells.value.length > 0 || utility.value.length > 0)
+const spellsByTier = computed(() => {
+  const map = new Map<number, typeof spells.value>()
+  for (const s of spells.value) map.set(s.tier, [...(map.get(s.tier) ?? []), s])
+  return [...map.entries()].map(([tier, list]) => ({
+    tier,
+    label: tier === 0 ? 'Cantrips' : `Tier ${tier}`,
+    list,
+  }))
+})
+const schoolsLine = computed(() =>
+  sheet.value.spells.schools.map((s) => SCHOOL_LABELS[s as SpellSchool] ?? s).join(' · '),
+)
+
+function adjustMana(delta: number) {
+  if (!canEdit.value) return
+  const m = sheet.value.mana
+  m.current = Math.max(0, Math.min(m.max, m.current + delta))
+}
 
 const stats = computed(() =>
   STATS.map((k) => {
@@ -111,7 +153,11 @@ const skills = computed(() =>
 
 <template>
   <section class="identity" aria-label="Identity">
-    <SheetPortrait placeholder="Portrait" class="nb-portrait" />
+    <SheetPortrait placeholder="Portrait" class="nb-portrait">
+      <template v-if="cls" #empty>
+        <NimbleSigil :slug="cls.slug" :size="140" class="nb-sigil" />
+      </template>
+    </SheetPortrait>
     <div class="identity__body">
       <div class="stack" style="gap: 8px">
         <div class="row" style="gap: 10px">
@@ -329,6 +375,75 @@ const skills = computed(() =>
     <div v-if="lastRoll" class="roll-status" role="status">{{ lastRoll }}</div>
   </section>
 
+  <section v-if="hasSpells" class="panel stack" style="gap: 14px" aria-labelledby="sp-h">
+    <div class="panel-title" style="margin: 0">
+      <h2 id="sp-h">Spells</h2>
+      <span class="small muted" style="font-size: 12px">
+        <template v-if="schoolsLine || spells.length">
+          {{ schoolsLine || 'Pact magic' }} · up to
+          {{ sheet.spells.tier ? `tier ${sheet.spells.tier}` : 'cantrips' }}
+        </template>
+        <template v-else>No spell school yet</template>
+      </span>
+    </div>
+    <div v-if="sheet.mana.max > 0" class="tile mana">
+      <div class="stack" style="gap: 2px">
+        <strong style="font-size: 15px">Mana</strong>
+        <span class="muted" style="font-size: 12px">
+          {{ cls?.mana ? `Max ${cls.mana.label}` : 'Max' }} · recharges on a Safe Rest
+        </span>
+      </div>
+      <div class="row" style="gap: 10px">
+        <button
+          type="button"
+          class="step step--sm"
+          aria-label="Spend 1 mana"
+          :disabled="!canEdit"
+          @click="adjustMana(-1)"
+        >
+          −
+        </button>
+        <span class="resource__dice" aria-live="polite">
+          {{ sheet.mana.current }} / {{ sheet.mana.max }}
+        </span>
+        <button
+          type="button"
+          class="step step--sm"
+          aria-label="Regain 1 mana"
+          :disabled="!canEdit"
+          @click="adjustMana(1)"
+        >
+          +
+        </button>
+      </div>
+    </div>
+    <p class="small muted" style="font-size: 12px">{{ SPELL_RULES }}</p>
+    <div v-for="t in spellsByTier" :key="t.tier" class="stack" style="gap: 8px">
+      <div class="caps">{{ t.label }}</div>
+      <div class="spells">
+        <details v-for="s in t.list" :key="s.name" name="nimble-spell" class="spell">
+          <summary>
+            <strong>{{ s.name }}</strong>
+            <small>{{ SCHOOL_LABELS[s.school] }} · {{ s.cast }}</small>
+          </summary>
+          <p><NimbleRulesText :text="s.desc" :key-value="keyValue" /></p>
+        </details>
+      </div>
+    </div>
+    <div v-if="utility.length" class="stack" style="gap: 8px">
+      <div class="caps">Utility spells</div>
+      <div class="spells">
+        <details v-for="s in utility" :key="s.name" name="nimble-spell" class="spell">
+          <summary>
+            <strong>{{ s.name }}</strong>
+            <small>{{ SCHOOL_LABELS[s.school] }} · {{ s.cast }}</small>
+          </summary>
+          <p><NimbleRulesText :text="s.desc" :key-value="keyValue" /></p>
+        </details>
+      </div>
+    </div>
+  </section>
+
   <div class="three-col">
     <section class="panel stack" style="gap: 8px" aria-labelledby="sk-h">
       <h2 id="sk-h" style="margin-bottom: 6px">Skills</h2>
@@ -345,13 +460,18 @@ const skills = computed(() =>
 
     <section class="panel stack" style="gap: 8px" aria-labelledby="ab-h">
       <h2 id="ab-h" style="margin-bottom: 6px">Class abilities</h2>
-      <div v-for="(a, i) in sheet.abilities" :key="i" class="ability">
-        <div class="row" style="justify-content: space-between; gap: 8px; flex-wrap: nowrap">
-          <strong>{{ a.name }}</strong>
-          <small>{{ a.src }}</small>
+      <template v-for="g in abilityGroups" :key="g.level">
+        <div v-if="groupAbilities" class="caps ability-level">
+          {{ g.level ? `Level ${g.level}` : 'Other' }}
         </div>
-        <span>{{ a.desc }}</span>
-      </div>
+        <div v-for="(a, i) in g.list" :key="`${g.level}-${i}`" class="ability">
+          <div class="row" style="justify-content: space-between; gap: 8px; flex-wrap: nowrap">
+            <strong>{{ a.name }}</strong>
+            <small>{{ a.src }}</small>
+          </div>
+          <NimbleRulesText :text="a.desc" :key-value="keyValue" />
+        </div>
+      </template>
       <p v-if="!sheet.abilities.length" class="empty">No abilities recorded yet.</p>
     </section>
 
@@ -693,6 +813,69 @@ const skills = computed(() =>
     font-size: 13px;
     color: var(--page-soft);
     line-height: 1.45;
+    // Upgrades append "Level N: …" on new lines.
+    white-space: pre-line;
+  }
+}
+
+.ability-level {
+  margin-top: 8px;
+  color: var(--accent-text);
+}
+
+// Fill most of the portrait frame; it keeps its square shape.
+.nb-sigil {
+  width: min(140px, 100%);
+  height: auto;
+}
+
+.mana {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+}
+
+.spells {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 8px;
+}
+
+.spell {
+  border-radius: min(var(--radius-panel), 10px);
+  background: var(--field);
+  border: 1px solid var(--line);
+
+  summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    cursor: pointer;
+    min-height: 44px;
+
+    strong {
+      font-size: 14px;
+    }
+
+    small {
+      font-size: 12px;
+      color: var(--page-muted);
+    }
+  }
+
+  p {
+    padding: 0 12px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--page-soft);
+  }
+
+  &[open] {
+    border-color: var(--accent);
   }
 }
 </style>

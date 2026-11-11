@@ -41,10 +41,11 @@ export const useCharacterStore = defineStore('character', () => {
     return data ? hydrate(data as Character) : null
   }
 
-  async function create(system: GameSystem, name: string) {
+  /** Creates a character with an empty sheet, or a prebuilt one (Nimble hero builder). */
+  async function create(system: GameSystem, name: string, sheet?: AnySheet) {
     const { data, error } = await supabase
       .from('characters')
-      .insert({ system, name, sheet: defaultSheet(system) })
+      .insert({ system, name, sheet: sheet ?? defaultSheet(system) })
       .select()
       .single()
     if (error) throw error

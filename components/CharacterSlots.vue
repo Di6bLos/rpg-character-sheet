@@ -48,7 +48,17 @@ onMounted(async () => {
   }
 })
 
+/** Class slug of a Nimble character built from class data, for its sigil. */
+function nimbleClass(c: (typeof store.characters)[number]): string {
+  return c.system === 'nimble' ? ((c.sheet as { classSlug?: string }).classSlug ?? '') : ''
+}
+
 function start(system: GameSystem) {
+  // Nimble heroes are built from class data in a dedicated flow.
+  if (system === 'nimble') {
+    void navigateTo('/characters/new/nimble')
+    return
+  }
   newSystem.value = system
   newName.value = ''
   createOpen.value = true
@@ -87,6 +97,9 @@ async function create() {
       <NuxtLink v-for="c in store.characters" :key="c.id" :to="`/character/${c.id}`" class="slot">
         <div class="slot__art">
           <img v-if="c.portrait_path" :src="portraitUrl(c.portrait_path) ?? ''" alt="" />
+          <div v-else-if="nimbleClass(c)" class="slot__initials slot__sigil">
+            <NimbleSigil :slug="nimbleClass(c)" :size="76" />
+          </div>
           <div v-else class="slot__initials">{{ initials(c.name) }}</div>
           <span class="badge slot__system" :class="`badge--${c.system}`">{{
             systemLabel(c.system)
@@ -206,6 +219,11 @@ async function create() {
   font-size: 26px;
   font-weight: 700;
   color: #e0b054;
+}
+
+.slot__sigil {
+  width: 84px;
+  height: 84px;
 }
 
 .slot__system {
