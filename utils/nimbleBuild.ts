@@ -87,13 +87,24 @@ export function manaMax(cls: ClassDef, sheet: NimbleSheet, level: number): numbe
   return Math.max(0, sheet.stats[cls.mana.stat] * cls.mana.mult + level)
 }
 
-function weaponAttack(name: string, stats: Record<NimbleStat, number>): NimbleAttack | null {
+/** Properties a class ability adds to one weapon; only heroes with that ability get them. */
+const WEAPON_PERKS: Record<string, { ability: string; props: string }> = {
+  'Unarmed Strike': { ability: 'Swift Fists', props: 'Swift Fists: no Rushed Attack disadvantage' },
+}
+
+function weaponAttack(
+  name: string,
+  stats: Record<NimbleStat, number>,
+  abilities: NimbleAbility[],
+): NimbleAttack | null {
   const w = weaponByName(name)
   if (!w) return null
   const mod = stats[w.stat]
+  const perk = WEAPON_PERKS[w.name]
+  const perkProps = perk && abilities.some((a) => a.name === perk.ability) ? perk.props : ''
   return {
     name: w.name,
-    props: [w.type, w.props].filter(Boolean).join(', '),
+    props: [w.type, w.props, perkProps].filter(Boolean).join(', '),
     dmg: mod ? `${w.dice}${sign(mod)}` : w.dice,
     melee: w.melee,
   }
@@ -448,7 +459,7 @@ function syncDerived(
 ) {
   sheet.ac += classArmor(cls, sheet.stats) - classArmor(cls, before)
   sheet.initMod += sheet.stats.DEX - before.DEX
-  sheet.attacks = sheet.attacks.map((a) => weaponAttack(a.name, sheet.stats) ?? a)
+  sheet.attacks = sheet.attacks.map((a) => weaponAttack(a.name, sheet.stats, sheet.abilities) ?? a)
   const max = manaMax(cls, sheet, level)
   sheet.mana.current = Math.max(0, Math.min(max, sheet.mana.current + (max - sheet.mana.max)))
   sheet.mana.max = max
@@ -863,9 +874,6 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
   const perception = sheet.skills.find((s) => s.name === 'Perception')
   sheet.passivePerception = 10 + stats.WIL + (perception?.points ?? 0)
 
-  sheet.attacks = cls.startingWeapons
-    .map((w) => weaponAttack(w, stats))
-    .filter((a): a is NimbleAttack => !!a)
   sheet.inventory = cls.startingGear.map((g) => ({ ...g }))
   if (cls.resource)
     sheet.resource = {
@@ -889,6 +897,10 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
 
   for (const choice of creationChoices(cls, background, input.picks))
     applyChoice(sheet, cls, choice, input.picks[choice.key] ?? [], 1)
+  // After the abilities, so weapon perks (Swift Fists) can be seen.
+  sheet.attacks = cls.startingWeapons
+    .map((w) => weaponAttack(w, stats, sheet.abilities))
+    .filter((a): a is NimbleAttack => !!a)
   sheet.mana.max = sheet.mana.current = manaMax(cls, sheet, 1)
   return sheet
 }

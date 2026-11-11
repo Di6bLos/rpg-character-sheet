@@ -40,7 +40,7 @@ export const WEAPONS: WeaponDef[] = [
     dice: '1d4',
     stat: 'STR',
     type: 'Bludgeoning',
-    props: 'Swift Fists: no Rushed Attack disadvantage',
+    props: '',
     melee: true,
   },
   {

@@ -285,6 +285,18 @@ describe('levelling', () => {
     expect(new Set(arsenal).size).toBe(7)
   })
 
+  it('gives the Swift Fists exemption to Zephyrs only', () => {
+    const zephyr = build(classBySlug('zephyr')!)
+    const fists = zephyr.attacks.find((a) => a.name === 'Unarmed Strike')
+    expect(fists?.props).toMatch(/no rushed/i)
+
+    const berserker = build(classBySlug('berserker')!)
+    berserker.attacks.push({ name: 'Unarmed Strike', props: '', dmg: '1d4', melee: true })
+    levelTo(berserker, 2, 'red-mist')
+    const punch = berserker.attacks.find((a) => a.name === 'Unarmed Strike')
+    expect(punch?.props).not.toMatch(/no rushed/i)
+  })
+
   it('swaps Spellblade’s tactic picks for orders and spells', () => {
     const sheet = build(classBySlug('commander')!)
     levelTo(sheet, 5, 'spellblade')
