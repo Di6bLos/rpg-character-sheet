@@ -5,8 +5,11 @@ const props = defineProps<{ text: string; label: string }>()
 
 const MARGIN = 12
 const GAP = 6
+/** Time to cross the gap between the button and the tooltip before it closes. */
+const HIDE_DELAY = 200
 
 const id = useId()
+const root = ref<HTMLElement>()
 const button = ref<HTMLButtonElement>()
 const tip = ref<HTMLElement>()
 const open = ref(false)
@@ -34,9 +37,24 @@ function show() {
   place()
 }
 
+let hideTimer: ReturnType<typeof setTimeout> | undefined
+
 function hide() {
+  clearTimeout(hideTimer)
   open.value = false
   pinned.value = false
+}
+
+// Hover covers the button and the tooltip, so the text can be reached and read.
+function onEnter() {
+  clearTimeout(hideTimer)
+  show()
+}
+
+function onLeave() {
+  if (pinned.value) return
+  clearTimeout(hideTimer)
+  hideTimer = setTimeout(hide, HIDE_DELAY)
 }
 
 function toggle() {
@@ -46,7 +64,7 @@ function toggle() {
 }
 
 function onOutside(event: Event) {
-  if (open.value && !button.value?.contains(event.target as Node)) hide()
+  if (open.value && !root.value?.contains(event.target as Node)) hide()
 }
 
 onMounted(() => {
@@ -55,6 +73,7 @@ onMounted(() => {
   window.addEventListener('resize', hide)
 })
 onBeforeUnmount(() => {
+  clearTimeout(hideTimer)
   document.removeEventListener('pointerdown', onOutside)
   window.removeEventListener('scroll', hide)
   window.removeEventListener('resize', hide)
@@ -62,7 +81,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <span class="help">
+  <span ref="root" class="help" @mouseenter="onEnter" @mouseleave="onLeave">
     <button
       ref="button"
       type="button"
@@ -71,8 +90,6 @@ onBeforeUnmount(() => {
       :aria-describedby="open ? id : undefined"
       :aria-expanded="open"
       @click="toggle"
-      @mouseenter="show"
-      @mouseleave="!pinned && hide()"
       @focus="show"
       @blur="hide"
       @keydown.esc="hide"
@@ -140,6 +157,5 @@ onBeforeUnmount(() => {
   line-height: 1.5;
   letter-spacing: normal;
   text-transform: none;
-  pointer-events: none;
 }
 </style>
