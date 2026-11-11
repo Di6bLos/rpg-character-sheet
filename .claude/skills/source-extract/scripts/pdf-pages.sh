@@ -38,7 +38,7 @@ case "$cmd" in
     search)
         slug="${1:?book slug}"; re="${2:?regex}"
         [[ -d "$cache/$slug" ]] || { echo "No cache for $slug; run extract first" >&2; exit 1; }
-        grep -ciE -- "$re" "$cache/$slug"/p*.txt | grep -v ':0$' \
+        grep -ciEH -- "$re" "$cache/$slug"/p*.txt | grep -v ':0$' \
             | sed -E 's#.*/p0*([0-9]+)\.txt:([0-9]+)#p\1 (\2 hits)#' || echo "no match"
         ;;
     show)
