@@ -51,13 +51,6 @@ export const PF2E_CONDITIONS = [
   'Prone',
 ]
 
-export const NIMBLE_REACTIONS = [
-  { name: 'Defend', desc: 'Reduce damage by your Armor' },
-  { name: 'Interpose', desc: 'Take a hit for an ally' },
-  { name: 'Opportunity', desc: 'Strike a foe that leaves' },
-  { name: 'Help', desc: 'Give an ally advantage' },
-]
-
 function dnd5e(): Dnd5eSheet {
   return {
     lineage: '',
@@ -154,15 +147,25 @@ function nimble(): NimbleSheet {
     speed: '6',
     hitDie: 8,
     hitDice: 1,
+    hitDiceUsed: 0,
+    tempHp: 0,
+    dying: false,
     actionsSpent: 0,
-    resource: { name: '', diceName: '', active: false, dice: 0, die: 4 },
+    rushed: 0,
+    reactionsUsed: [],
+    concentration: '',
+    conditions: [],
+    resource: { name: '', diceName: '', kind: 'rage', active: false, dice: 0, die: 4, count: 0 },
+    uses: {},
     attacks: [],
     skills: NIMBLE_SKILLS.map(([name, stat]) => ({ name, stat, points: 0 })),
     abilities: [],
     spells: { schools: [], tier: 0, learned: [], lost: [], utility: [] },
-    mana: { current: 0, max: 0 },
+    mana: { current: 0, max: 0, temp: 0 },
     inventory: [],
-    gold: '0 gp',
+    coins: { gp: 0, sp: 0 },
+    languages: '',
+    heightWeight: '',
     notes: '',
   }
 }
@@ -192,7 +195,22 @@ function mergeDefaults(defaults: unknown, stored: unknown): unknown {
 
 /** Fills any fields missing from a stored sheet so older saves keep working. */
 export function normalizeSheet<K extends GameSystem>(system: K, stored: unknown): SheetBySystem[K] {
-  return mergeDefaults(defaultSheet(system), stored) as SheetBySystem[K]
+  const sheet = mergeDefaults(defaultSheet(system), stored) as SheetBySystem[K]
+  if (system === 'nimble') migrateNimble(sheet as NimbleSheet, stored)
+  return sheet
+}
+
+/** Older Nimble saves kept money as a "12 gp" string; move it to the coin counters once. */
+function migrateNimble(sheet: NimbleSheet, stored: unknown) {
+  const loose = sheet as unknown as Record<string, unknown>
+  const old = loose.gold
+  delete loose.gold
+  if (typeof old !== 'string') return
+  if (isPlainObject(stored) && isPlainObject(stored.coins)) return
+  const gp = /(\d[\d,]*)\s*gp/i.exec(old) ?? /^\s*(\d[\d,]*)\s*$/.exec(old)
+  const sp = /(\d[\d,]*)\s*sp/i.exec(old)
+  const num = (m: RegExpExecArray | null) => (m ? Number((m[1] ?? '0').replace(/,/g, '')) : 0)
+  sheet.coins = { gp: num(gp), sp: num(sp) }
 }
 
 /** One-line "Half-Elf Ranger" style summary for cards and rosters. */

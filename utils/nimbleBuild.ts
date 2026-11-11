@@ -733,6 +733,68 @@ export function subclassChangeChoices(
 }
 
 /** The value KEY stands for in rules text: the higher of the class's two Key Stats. */
+/** Base name of an ability: "Sneak Attack (3)" is "Sneak Attack". */
+export function abilityBaseName(name: string): string {
+  return UPGRADE.exec(name)?.[1] ?? name
+}
+
+export interface SheetResource {
+  name: string
+  diceName: string
+  kind: NimbleSheet['resource']['kind']
+  die: number
+  /** Ability that grants it and its current text; empty for hand-made resources. */
+  ability: string
+  desc: string
+  stat?: NimbleStat
+  /** Picked options that spend one (Thrill of the Hunt abilities). */
+  moves: NimbleAbility[]
+}
+
+/**
+ * The class resource the sheet should show, or null. Sheets built from class data
+ * read it from the class once the hero has the ability that grants it (so heroes
+ * made before a class had a resource definition get it too); hand-made sheets use
+ * what was typed into the editor.
+ */
+export function sheetResource(sheet: NimbleSheet, level: number): SheetResource | null {
+  const cls = classBySlug(sheet.classSlug)
+  const def = cls?.resource
+  if (cls && def) {
+    const ability = sheet.abilities.find((a) => abilityBaseName(a.name) === def.ability)
+    if (!ability) return null
+    let die = def.die
+    const sub = cls.subclasses.find((s) => s.slug === sheet.subclassSlug)
+    for (let l = 1; l <= level; l++)
+      die = sub?.levels[l]?.resourceDie ?? cls.levels[l]?.resourceDie ?? die
+    const pool = cls.pools.find((p) => p.id === def.movesPool)
+    const moves = pool
+      ? sheet.abilities.filter((a) => pool.options.some((o) => o.name === a.name))
+      : []
+    return {
+      name: def.name,
+      diceName: def.diceName,
+      kind: def.kind,
+      die,
+      ability: ability.name,
+      desc: ability.desc,
+      stat: def.stat,
+      moves,
+    }
+  }
+  const res = sheet.resource
+  if (!res.name.trim()) return null
+  return {
+    name: res.name,
+    diceName: res.diceName,
+    kind: res.kind,
+    die: res.die,
+    ability: '',
+    desc: '',
+    moves: [],
+  }
+}
+
 export function keyStatValue(sheet: NimbleSheet): { value: number; stats: NimbleStat[] } | null {
   const cls = classBySlug(sheet.classSlug)
   if (!cls) return null
@@ -809,10 +871,13 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
     sheet.resource = {
       name: cls.resource.name,
       diceName: cls.resource.diceName,
+      kind: cls.resource.kind,
       active: false,
       dice: 0,
       die: cls.resource.die,
+      count: 0,
     }
+  sheet.languages = ['Common', ancestry.language].filter(Boolean).join(', ')
 
   applyLevelDef(sheet, cls.levels[1], cls.name, 1)
   const extras: NimbleAbility[] = [

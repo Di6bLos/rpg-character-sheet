@@ -23,6 +23,13 @@ const PLAY_STATE = new Set([
   'wounded',
   'heroPoints',
   'actionsSpent',
+  'hitDiceUsed',
+  'rushed',
+  'reactionsUsed',
+  'concentration',
+  'uses',
+  'languages',
+  'heightWeight',
 ])
 
 type Loose = Record<string, unknown>

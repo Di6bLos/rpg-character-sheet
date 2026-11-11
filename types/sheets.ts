@@ -44,6 +44,10 @@ export interface InventoryItem {
   name: string
   /** Quantity (5e, Nimble) or Bulk (PF2e). */
   qty: string
+  /** Nimble: inventory slots each one takes; 0 = small item (all share one slot). */
+  slots?: number
+  /** Nimble: short label such as Weapon or Armor. */
+  tag?: string
 }
 
 export interface NamedEntry {
@@ -169,6 +173,16 @@ export interface NimbleSpells {
   utility: string[]
 }
 
+/** How the class resource panel behaves on the Nimble sheet. */
+export type NimbleResourceKind = 'rage' | 'dice' | 'counter' | 'uses' | 'info'
+
+/** Uses spent of a limited ability. The limit comes from its rules text unless `max` is set. */
+export interface NimbleUses {
+  /** The player's own limit, for bonuses the sheet can't work out. */
+  max?: number
+  used: number
+}
+
 export interface NimbleSheet extends SheetCommon {
   /** Links the sheet to the rules data in data/nimble; empty for hand-made sheets. */
   classSlug: string
@@ -185,16 +199,43 @@ export interface NimbleSheet extends SheetCommon {
   woundsMax: number
   speed: string
   hitDie: number
+  /** Maximum Hit Dice. */
   hitDice: number
+  hitDiceUsed: number
+  tempHp: number
+  /** At 0 HP and not yet healed. */
+  dying: boolean
   actionsSpent: number
-  /** Class resource that adds bonus dice to melee damage (Rage / Fury dice for a Berserker). */
-  resource: { name: string; diceName: string; active: boolean; dice: number; die: number }
+  /** Attacks made this turn; each one after the first rolls with one more disadvantage. */
+  rushed: number
+  /** Names of the reactions used this round. */
+  reactionsUsed: string[]
+  /** What the hero is concentrating on; empty when not concentrating. */
+  concentration: string
+  conditions: string[]
+  /**
+   * Class resource. `active` and `dice` are a Berserker's Rage and Fury dice (added to
+   * melee damage); `count` holds the dice, charges or uses of the other kinds.
+   */
+  resource: {
+    name: string
+    diceName: string
+    kind: NimbleResourceKind
+    active: boolean
+    dice: number
+    die: number
+    count: number
+  }
+  /** Use counters by `AbilityCounter.id` (see utils/nimblePlay). */
+  uses: Record<string, NimbleUses>
   attacks: NimbleAttack[]
   skills: NimbleSkill[]
   abilities: NimbleAbility[]
   spells: NimbleSpells
-  mana: { current: number; max: number }
-  gold: string
+  mana: { current: number; max: number; temp: number }
+  coins: { gp: number; sp: number }
+  languages: string
+  heightWeight: string
 }
 
 export type AnySheet = Dnd5eSheet | Pf2eSheet | NimbleSheet

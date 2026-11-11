@@ -2,7 +2,7 @@
 // Nimble Core Rules and Heroes books (Nimble © 2025 Nimble Co., referenced
 // under the Nimble 3rd Party Creator License). Art from the books is never
 // used; class sigils are original.
-import type { InventoryItem, NimbleStat } from '~/types/sheets'
+import type { InventoryItem, NimbleResourceKind, NimbleStat } from '~/types/sheets'
 
 export type SpellSchool = 'fire' | 'ice' | 'lightning' | 'wind' | 'radiant' | 'necrotic'
 
@@ -117,11 +117,27 @@ export interface SubclassDef {
   levels: LevelTable
 }
 
-/** A class resource whose dice add to melee damage (Fury, Judgment). */
+/**
+ * A class resource tracked on the sheet. `rage` is a toggled state whose dice add
+ * to melee damage (Fury); `dice` and `counter` are pools the player counts by hand
+ * (Combat Dice, Bursts of Speed); `uses` is spent by casting (Pilfered Power);
+ * `info` only shows the rule (Sneak Attack).
+ */
 export interface ResourceDef {
   name: string
   diceName: string
+  /** Die size, for the kinds that roll dice. */
   die: number
+  kind: NimbleResourceKind
+  /**
+   * Ability that grants the resource. The panel appears once the hero has it and
+   * shows its text, so upgrades from later levels are included.
+   */
+  ability: string
+  /** Stat that sets how many the hero gets (shown as a hint; `uses` treats it as the limit). */
+  stat?: NimbleStat
+  /** Pool whose picked options appear as buttons that spend one. */
+  movesPool?: string
 }
 
 export interface ClassDef {
