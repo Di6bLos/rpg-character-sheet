@@ -58,7 +58,8 @@ const hpMaxAfter = computed(() => {
   return typeof hp === 'number' ? hp : null
 })
 
-function onLevelPick() {
+// A separate button opens the warning: arrow keys on a closed select fire `change`.
+function openLower() {
   if (levelPick.value < draft.value.level) lowerOpen.value = true
 }
 
@@ -99,17 +100,27 @@ const inventoryCols = computed(() => [
         </div>
         <div class="field">
           <label for="ed-level">Level</label>
-          <select
-            id="ed-level"
-            v-model.number="levelPick"
-            class="input"
-            aria-describedby="ed-level-hint"
-            @change="onLevelPick"
-          >
-            <option v-for="l in draft.level" :key="l" :value="l">
-              {{ l === draft.level ? `${l} (current)` : `Lower to ${l}` }}
-            </option>
-          </select>
+          <div class="row" style="gap: 8px; flex-wrap: nowrap">
+            <select
+              id="ed-level"
+              v-model.number="levelPick"
+              class="input"
+              style="flex: 1; min-width: 0"
+              aria-describedby="ed-level-hint"
+            >
+              <option v-for="l in draft.level" :key="l" :value="l">
+                {{ l === draft.level ? `${l} (current)` : `Lower to ${l}` }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="btn btn--ghost"
+              :disabled="levelPick >= draft.level"
+              @click="openLower"
+            >
+              Lower…
+            </button>
+          </div>
           <span id="ed-level-hint" class="hint">Use Level up to go higher.</span>
         </div>
         <div class="field">
