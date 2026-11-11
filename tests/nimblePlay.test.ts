@@ -8,6 +8,7 @@ import { abilityBaseName, sheetResource } from '../utils/nimbleBuild'
 import {
   abilityCounters,
   actionsLeft,
+  castingBlocks,
   castSpell,
   dyingAttackSave,
   fieldRest,
@@ -27,6 +28,7 @@ import {
   spellActions,
   spendActions,
   spendMana,
+  stopCasting,
   takeDamage,
   turnActions,
 } from '../utils/nimblePlay'
@@ -268,6 +270,17 @@ describe('casting over several turns', () => {
     newTurn(sheet)
     expect(actionsLeft(sheet)).toBe(1)
     expect(sheet.casting.actions).toBe(0)
+  })
+
+  it('will not start another spell over one still being cast', () => {
+    const sheet = hero()
+    castSpell(sheet, 'Fiery Embrace', 5)
+    expect(castingBlocks(sheet, 2)).toBe(true)
+    expect(castingBlocks(sheet, 0)).toBe(false)
+    expect(castSpell(sheet, 'Ignite', 2)).toMatch(/Still casting Fiery Embrace/)
+    expect(sheet.casting).toEqual({ spell: 'Fiery Embrace', actions: 2 })
+    expect(stopCasting(sheet)).toBe('Stopped casting Fiery Embrace.')
+    expect(castingBlocks(sheet, 2)).toBe(false)
   })
 
   it('casts at once when the turn has the actions', () => {

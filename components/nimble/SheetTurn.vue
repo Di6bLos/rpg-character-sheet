@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The turn tracker: actions left this turn, and the New turn / New encounter resets.
 import type { NimbleSheet } from '~/types/sheets'
-import { actionsLeft, newEncounter, newTurn, turnActions } from '~/utils/nimblePlay'
+import { actionsLeft, newEncounter, newTurn, stopCasting, turnActions } from '~/utils/nimblePlay'
 
 const { draft, canEdit, say } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -21,6 +21,10 @@ function toggleAction(n: number) {
     0,
     Math.min(perTurn.value, sheet.value.actionsSpent + (n <= left.value ? 1 : -1)),
   )
+}
+
+function cancelCasting() {
+  if (canEdit.value) say(stopCasting(sheet.value))
 }
 
 function startTurn() {
@@ -61,10 +65,20 @@ function startEncounter() {
           {{ left }} of {{ perTurn }} left{{ sheet.dying ? ' (Dying)' : '' }}
         </strong>
         <span class="muted" style="font-size: 12px">{{ rushedNote }}</span>
-        <span v-if="sheet.casting.actions" class="muted" style="font-size: 12px">
-          Casting {{ sheet.casting.spell }}: {{ sheet.casting.actions }} more
-          {{ sheet.casting.actions === 1 ? 'action' : 'actions' }} on New turn
-        </span>
+        <div v-if="sheet.casting.actions" class="row" style="gap: 6px">
+          <span class="muted" style="font-size: 12px">
+            Casting {{ sheet.casting.spell }}: {{ sheet.casting.actions }} more
+            {{ sheet.casting.actions === 1 ? 'action' : 'actions' }} on New turn
+          </span>
+          <button
+            type="button"
+            class="btn btn--ghost btn--sm"
+            :disabled="!canEdit"
+            @click="cancelCasting"
+          >
+            Stop casting
+          </button>
+        </div>
       </div>
       <div class="row" style="gap: 6px; margin-left: auto; flex-wrap: wrap">
         <button

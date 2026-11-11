@@ -7,6 +7,7 @@ import type { SpellDef, SpellSchool } from '~/data/nimble/types'
 import type { NimbleSheet } from '~/types/sheets'
 import { keyStatValue, knownSpells, knownUtilitySpells, sheetResource } from '~/utils/nimbleBuild'
 import {
+  castingBlocks,
   castSpell,
   isHollowOne,
   manaPool,
@@ -82,6 +83,7 @@ const tiers = computed(() => {
         bloodLabel: usesMinions && bloodCast.value ? `Cast · 1 Wound${acts}` : '',
         canUpcast: !pact.value && !reaver.value && s.tier > 0 && maxTier.value > s.tier,
         short: !usesPact && !usesMinions && at > manaPool(sheet.value),
+        busy: castingBlocks(sheet.value, actions),
         label:
           s.tier === 0
             ? `Cast · free${acts}`
@@ -111,7 +113,7 @@ function setUpcast(s: SpellDef, tier: number) {
 }
 
 function cast(s: (typeof tiers.value)[number]['spells'][number], withWound = false) {
-  if (!canEdit.value) return
+  if (!canEdit.value || s.busy) return
   const notes: string[] = []
   if (s.tier === 0) notes.push(`Cast ${s.name} (cantrip).`)
   else if (s.usesMinions && withWound) {
@@ -189,8 +191,14 @@ function cast(s: (typeof tiers.value)[number]['spells'][number], withWound = fal
                 type="button"
                 class="btn btn--sm cast"
                 :class="{ 'btn--ghost': s.tier === 0 }"
-                :disabled="!canEdit || s.short"
-                :title="s.short ? 'Not enough mana' : undefined"
+                :disabled="!canEdit || s.short || s.busy"
+                :title="
+                  s.busy
+                    ? `Still casting ${sheet.casting.spell}`
+                    : s.short
+                      ? 'Not enough mana'
+                      : undefined
+                "
                 @click="cast(s)"
               >
                 {{ s.label }}
@@ -199,7 +207,7 @@ function cast(s: (typeof tiers.value)[number]['spells'][number], withWound = fal
                 v-if="s.bloodLabel"
                 type="button"
                 class="btn btn--sm btn--ghost cast"
-                :disabled="!canEdit"
+                :disabled="!canEdit || s.busy"
                 @click="cast(s, true)"
               >
                 {{ s.bloodLabel }}

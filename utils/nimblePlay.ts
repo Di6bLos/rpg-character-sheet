@@ -204,12 +204,29 @@ function finishCasting(sheet: NimbleSheet, spell: string): string {
 }
 
 /**
- * Starts casting a spell that takes `actions` (its cost is paid by the caller).
- * Actions left this turn go to it; whatever is still owed is paid at the start of
- * the next turns, and the spell takes effect when the last one is. Returns the
- * line for the roll log.
+ * True while a spell is still being cast: another spell that takes actions has to
+ * wait for it, or the player stops casting. Check before charging the new spell.
+ */
+export function castingBlocks(sheet: NimbleSheet, actions: number): boolean {
+  return actions > 0 && sheet.casting.actions > 0
+}
+
+/** Gives up on the spell being cast; what it cost is not refunded. */
+export function stopCasting(sheet: NimbleSheet): string {
+  const { spell } = sheet.casting
+  sheet.casting = { ...NOT_CASTING }
+  return spell ? `Stopped casting ${spell}.` : ''
+}
+
+/**
+ * Starts casting a spell that takes `actions` (its cost is paid by the caller,
+ * after checking `castingBlocks`). Actions left this turn go to it; whatever is
+ * still owed is paid at the start of the next turns, and the spell takes effect
+ * when the last one is. Returns the line for the roll log.
  */
 export function castSpell(sheet: NimbleSheet, spell: string, actions: number): string {
+  // Never overwrite a cast in progress, which was already paid for.
+  if (castingBlocks(sheet, actions)) return ` Still casting ${sheet.casting.spell}.`
   const paid = Math.min(actions, actionsLeft(sheet))
   sheet.actionsSpent += paid
   const owed = actions - paid
