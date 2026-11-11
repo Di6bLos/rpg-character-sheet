@@ -256,6 +256,7 @@ export const useCampaignStore = defineStore('campaign', () => {
   function reset() {
     campaigns.value = []
     invites.value = []
+    ownedCount.value = 0
     loaded.value = false
   }
 
