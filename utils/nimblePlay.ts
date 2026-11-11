@@ -52,6 +52,33 @@ function addWounds(sheet: NimbleSheet, n: number) {
   sheet.wounds = Math.min(Math.max(1, sheet.woundsMax), sheet.wounds + n)
 }
 
+// --- Reaver (Shadowmancer story subclass) ---------------------------------------
+
+/** Use counter of Shadow Exploit; New encounter and Safe Rest clear it. */
+const SHADOW_EXPLOIT = 'Shadow Exploit@encounter'
+
+/** Hollow One: cut off from the patron, so tiered spells can't use Pilfered Power. */
+export function isHollowOne(sheet: NimbleSheet): boolean {
+  return hasAbility(sheet, 'Hollow One')
+}
+
+/** Minions the next Shadow Exploit cast costs: 1, plus 1 per spell cast that way this encounter. */
+export function shadowExploitCost(sheet: NimbleSheet): number {
+  return 1 + (sheet.uses[SHADOW_EXPLOIT]?.used ?? 0)
+}
+
+/** Casts with Shadow Exploit; returns the minions to sacrifice. */
+export function payShadowExploit(sheet: NimbleSheet): number {
+  const cost = shadowExploitCost(sheet)
+  sheet.uses[SHADOW_EXPLOIT] = { ...sheet.uses[SHADOW_EXPLOIT], used: cost }
+  return cost
+}
+
+/** Casts with My Blood, My Power: 1 Wound. */
+export function payBloodCast(sheet: NimbleSheet): void {
+  addWounds(sheet, 1)
+}
+
 /**
  * Temp HP absorbs damage first. Dropping to 0 HP means Dying, 1 Wound and lost
  * concentration; damage taken while already at 0 HP causes 2 Wounds.

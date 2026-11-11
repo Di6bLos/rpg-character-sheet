@@ -16,9 +16,13 @@ import {
   inventorySlots,
   isBloodied,
   isDead,
+  isHollowOne,
   newEncounter,
   newTurn,
+  payBloodCast,
+  payShadowExploit,
   safeRest,
+  shadowExploitCost,
   spellActions,
   spendActions,
   spendMana,
@@ -239,6 +243,28 @@ describe('nimble inventory', () => {
     })
     // + 2 for 1200 gp
     expect(inventorySlots(sheet)).toEqual({ used: 11, max: 12 })
+  })
+})
+
+describe('Reaver casting', () => {
+  const reaver = () =>
+    hero({ abilities: [{ name: 'Hollow One', src: 'Reaver', desc: '', level: 3 }] })
+
+  it('costs one more minion for each Shadow Exploit this encounter', () => {
+    const sheet = reaver()
+    expect(isHollowOne(sheet)).toBe(true)
+    expect(isHollowOne(hero())).toBe(false)
+    expect(payShadowExploit(sheet)).toBe(1)
+    expect(payShadowExploit(sheet)).toBe(2)
+    expect(shadowExploitCost(sheet)).toBe(3)
+    newEncounter(sheet)
+    expect(shadowExploitCost(sheet)).toBe(1)
+  })
+
+  it('pays My Blood, My Power with a Wound', () => {
+    const sheet = reaver()
+    payBloodCast(sheet)
+    expect(sheet.wounds).toBe(1)
   })
 })
 
