@@ -1,6 +1,6 @@
 // Pure rules logic that turns Nimble class data (data/nimble) into a sheet:
 // the level 1 build, what each level-up grants, and applying a level-up.
-import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
+import { classBySlug, poolOptionWounds, subclassBySlug } from '~/data/nimble/classes'
 import { BASE_SPEED, BASE_WOUNDS, MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
 import type {
@@ -143,15 +143,6 @@ function pushUnique(list: string[], ...values: string[]) {
 
 function poolsFor(cls: ClassDef, ids: string[]) {
   return cls.pools.filter((p) => ids.includes(p.id))
-}
-
-/** Sheet changes a picked pool option carries (Mighty Endurance: +4 max Wounds). */
-function poolOptionWounds(cls: ClassDef, name: string): number {
-  for (const pool of cls.pools) {
-    const option = pool.options.find((o) => o.name === name)
-    if (option) return option.woundsMax ?? 0
-  }
-  return 0
 }
 
 /** Spells the hero can cast right now, grouped by tier for the sheet. */

@@ -30,6 +30,15 @@ export function classBySlug(slug: string): ClassDef | undefined {
   return NIMBLE_CLASSES.find((c) => c.slug === slug)
 }
 
+/** Max Wounds a picked pool option adds (Mighty Endurance: +4); 0 when it adds none. */
+export function poolOptionWounds(cls: ClassDef, name: string): number {
+  for (const pool of cls.pools) {
+    const option = pool.options.find((o) => o.name === name)
+    if (option) return option.woundsMax ?? 0
+  }
+  return 0
+}
+
 export function subclassBySlug(cls: ClassDef, slug: string): SubclassDef | undefined {
   return cls.subclasses.find((s) => s.slug === slug)
 }

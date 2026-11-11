@@ -1,3 +1,4 @@
+import { classBySlug, poolOptionWounds } from '~/data/nimble/classes'
 import type { GameSystem } from '~/types'
 import type {
   AnySheet,
@@ -8,6 +9,12 @@ import type {
   Pf2eSheet,
   SheetBySystem,
 } from '~/types/sheets'
+
+/**
+ * Bump when a class-data change has to be applied to existing saves, and add the
+ * upgrade to `upgradeRules`.
+ */
+export const NIMBLE_RULES_VERSION = 1
 
 const PF2E_SKILLS: [string, Pf2eAttr][] = [
   ['Acrobatics', 'DEX'],
@@ -128,6 +135,7 @@ function nimble(): NimbleSheet {
     ancestrySlug: '',
     backgroundSlug: '',
     choices: {},
+    rulesVersion: NIMBLE_RULES_VERSION,
     lineage: '',
     class: '',
     subclass: '',
@@ -201,14 +209,43 @@ export function normalizeSheet<K extends GameSystem>(system: K, stored: unknown)
   return sheet
 }
 
-/** Upgrades older Nimble saves in place: the Dying flag and the free-text Gold field. */
+/**
+ * Brings a sheet (or a level-history snapshot of one) built from class data up to
+ * the current rules version. Bonuses are added on top of the saved values, so
+ * hand edits stay.
+ */
+function upgradeRules(target: Record<string, unknown>) {
+  const from = typeof target.rulesVersion === 'number' ? target.rulesVersion : 0
+  if (from >= NIMBLE_RULES_VERSION) return
+  const cls = typeof target.classSlug === 'string' ? classBySlug(target.classSlug) : undefined
+  if (cls && from < 1 && typeof target.woundsMax === 'number' && isPlainObject(target.choices)) {
+    // v1: pool options that raise max Wounds (Mighty Endurance) now apply it.
+    const picks = Object.values(target.choices).flatMap((v) => (Array.isArray(v) ? v : []))
+    for (const name of picks)
+      if (typeof name === 'string') target.woundsMax += poolOptionWounds(cls, name)
+  }
+  target.rulesVersion = NIMBLE_RULES_VERSION
+}
+
+/** Upgrades older Nimble saves in place: rules data, the Dying flag and the free-text Gold field. */
 function migrateNimble(sheet: NimbleSheet, stored: unknown) {
   const saved = isPlainObject(stored) ? stored : {}
+  const loose = sheet as unknown as Record<string, unknown>
+  // mergeDefaults filled in the current version; the save's own version decides.
+  loose.rulesVersion = saved.rulesVersion
+  upgradeRules(loose)
+  if (Array.isArray(sheet.levelHistory))
+    sheet.levelHistory = sheet.levelHistory.map((entry) => {
+      if (!isPlainObject(entry?.before)) return entry
+      const before = { ...entry.before }
+      upgradeRules(before)
+      return { ...entry, before }
+    })
+
   // Saves from before the flag existed: a hero at 0 HP was Dying.
   if (!('dying' in saved) && typeof saved.hp === 'number' && saved.hp <= 0 && sheet.hpMax > 0)
     sheet.dying = true
 
-  const loose = sheet as unknown as Record<string, unknown>
   const old = loose.gold
   delete loose.gold
   if (typeof old !== 'string' || !old.trim() || isPlainObject(saved.coins)) return

@@ -32,7 +32,12 @@ import {
   takeDamage,
   turnActions,
 } from '../utils/nimblePlay'
-import { defaultSheet, normalizeSheet, parseLegacyGold } from '../utils/sheetDefaults'
+import {
+  NIMBLE_RULES_VERSION,
+  defaultSheet,
+  normalizeSheet,
+  parseLegacyGold,
+} from '../utils/sheetDefaults'
 
 /** Deterministic rng that yields the given die faces for a die of `sides`. */
 function faces(sides: number, ...values: number[]) {
@@ -321,6 +326,32 @@ describe('nimble sheet upgrades', () => {
     expect(sheet.mana).toEqual({ current: 2, max: 4, temp: 0 })
     expect(sheet).toMatchObject({ tempHp: 0, dying: false, hitDiceUsed: 0, conditions: [] })
     expect(sheet.resource.kind).toBe('rage')
+  })
+
+  it('gives older Berserker saves the Mighty Endurance Wounds once', () => {
+    const picked = { 'L4:savage-arsenal': ['Mighty Endurance'] }
+    const old = {
+      classSlug: 'berserker',
+      choices: picked,
+      woundsMax: 7, // 6 + a hand edit, which stays
+      levelHistory: [
+        { level: 5, before: { classSlug: 'berserker', choices: picked, woundsMax: 6 } },
+        { level: 4, before: { classSlug: 'berserker', choices: {}, woundsMax: 6 } },
+      ],
+    }
+    const sheet = normalizeSheet('nimble', old)
+    expect(sheet.woundsMax).toBe(11)
+    expect(sheet.rulesVersion).toBe(NIMBLE_RULES_VERSION)
+    expect(sheet.levelHistory?.map((e) => e.before.woundsMax)).toEqual([10, 6])
+    expect(old.woundsMax).toBe(7) // the stored object isn't mutated
+    expect(old.levelHistory[0]!.before.woundsMax).toBe(6)
+
+    // Loading the upgraded save again adds nothing.
+    const again = normalizeSheet('nimble', JSON.parse(JSON.stringify(sheet)))
+    expect(again.woundsMax).toBe(11)
+    expect(again.levelHistory?.map((e) => e.before.woundsMax)).toEqual([10, 6])
+    // New sheets are already current.
+    expect(defaultSheet('nimble').rulesVersion).toBe(NIMBLE_RULES_VERSION)
   })
 
   it('keeps coins that were already saved', () => {
