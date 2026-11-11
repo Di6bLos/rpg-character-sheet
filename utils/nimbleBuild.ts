@@ -145,6 +145,15 @@ function poolsFor(cls: ClassDef, ids: string[]) {
   return cls.pools.filter((p) => ids.includes(p.id))
 }
 
+/** Sheet changes a picked pool option carries (Mighty Endurance: +4 max Wounds). */
+function poolOptionWounds(cls: ClassDef, name: string): number {
+  for (const pool of cls.pools) {
+    const option = pool.options.find((o) => o.name === name)
+    if (option) return option.woundsMax ?? 0
+  }
+  return 0
+}
+
 /** Spells the hero can cast right now, grouped by tier for the sheet. */
 export function knownSpells(sheet: NimbleSheet): SpellDef[] {
   const out: SpellDef[] = []
@@ -402,13 +411,15 @@ function applyChoice(
     else if (src.kind === 'school') pushUnique(sheet.spells.schools, value)
     else if (src.kind === 'spell' || (spell && option?.group && option.group in SCHOOL_NAMES))
       pushUnique(sheet.spells.learned, value)
-    else if (option)
+    else if (option) {
       sheet.abilities.push({
         name: option.label,
         src: option.group ?? cls.name,
         desc: option.desc,
         level,
       })
+      sheet.woundsMax += poolOptionWounds(cls, option.value)
+    }
   }
 }
 
@@ -591,6 +602,7 @@ function removeSubclass(sheet: NimbleSheet, cls: ClassDef, level: number): void 
   const lost = new Set<string>(sub.introSpells?.lose ?? [])
   const utility = new Set<string>()
   for (const v of picked) if (spellByName(v)) (spellByName(v)?.utility ? utility : learned).add(v)
+  for (const v of picked) sheet.woundsMax -= poolOptionWounds(cls, v)
   for (let l = 1; l <= level; l++) {
     const def = sub.levels[l]
     if (!def) continue

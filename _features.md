@@ -51,7 +51,7 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [x] Production deploy on Vercel
 
 ## Phase 6 · Nimble heroes
-- [x] Source PDFs in `.local.docs/` (gitignored); class portraits are original SVG sigils (license forbids book art)
+- [x] Source PDFs in `.local/` (gitignored); class portraits are original SVG sigils (license forbids book art)
 - [x] Typed rules data in `data/nimble/` (classes + subclasses levels 1–20, ancestries, backgrounds)
 - [x] Sheet model: class/subclass/ancestry/background slugs, recorded choices, ability level
 - [x] `utils/nimbleBuild.ts` (level 1 build, level plan, apply level) with tests

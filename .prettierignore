@@ -1,0 +1,2 @@
+# Golden fixtures are compared byte for byte by vitest; keep them as written.
+tests/fixtures/
