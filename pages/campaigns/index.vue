@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { GameSystem, PendingInvite } from '~/types'
+import { MAX_CAMPAIGNS } from '~/stores/campaign'
 import { plural, sessionDate } from '~/utils/format'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
 
@@ -21,7 +22,9 @@ const creating = ref(false)
 const responding = ref<string | null>(null)
 const createdLink = ref('')
 
-const blocked = computed(() => !auth.can('can_create_campaigns'))
+const permitted = computed(() => auth.can('can_create_campaigns'))
+const atLimit = computed(() => store.ownedCount >= MAX_CAMPAIGNS)
+const blocked = computed(() => !permitted.value || atLimit.value)
 
 onMounted(async () => {
   try {
@@ -225,9 +228,19 @@ async function create() {
       <section class="panel create" aria-labelledby="new-h">
         <h2 id="new-h">Create a campaign</h2>
 
-        <RestrictedNotice v-if="blocked" title="Campaign creation is turned off for your account">
+        <RestrictedNotice
+          v-if="!permitted"
+          title="Campaign creation is turned off for your account"
+        >
           You can still join campaigns you’re invited to.
         </RestrictedNotice>
+        <div v-else-if="atLimit" class="notice" role="status">
+          <strong>Campaign limit reached</strong>
+          <span>
+            You’ve created {{ MAX_CAMPAIGNS }} of {{ MAX_CAMPAIGNS }} campaigns. Delete one from its
+            GM console to start another.
+          </span>
+        </div>
 
         <div v-if="createdLink" class="notice notice--ok">
           <strong>Invite link copied</strong>

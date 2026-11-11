@@ -23,7 +23,13 @@ export default defineNuxtConfig({
   ssr: false,
 
   runtimeConfig: {
-    public: { supabaseUrl, supabaseAnonKey },
+    public: {
+      supabaseUrl,
+      supabaseAnonKey,
+      // Where auth emails send people back to. Empty in dev = the current origin.
+      // Override with NUXT_PUBLIC_SITE_URL (e.g. for preview deployments).
+      siteUrl: process.env.NODE_ENV === 'production' ? 'https://lantern.antillia.studio' : '',
+    },
   },
 
   compatibilityDate: '2024-11-01',

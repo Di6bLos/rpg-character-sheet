@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 - when working on a 'feature' from the `_features.md` list, check off the tasks as you complete them.
-- After each sprint of updates, run the ui-ux-reviewer
+- Run the ui-ux-reviewer only after major UI changes (layout changes, new components or pages), not after every sprint of updates
 
 ## Commands
 

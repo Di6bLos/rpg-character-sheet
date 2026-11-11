@@ -67,10 +67,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** Returns true when a session was created (false = email confirmation required). */
   async function signUp(email: string, password: string, displayName: string, handle: string) {
+    const siteUrl = useRuntimeConfig().public.siteUrl || window.location.origin
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName, handle } },
+      options: {
+        data: { display_name: displayName, handle },
+        emailRedirectTo: `${siteUrl}/dashboard`,
+      },
     })
     if (error) throw error
     if (data.session) {

@@ -24,6 +24,7 @@ Design reference: `design/README.md`. Check tasks off as they land.
 ## Phase 3 · Campaigns
 - [x] Create a campaign (creator is GM), invite by email/username or link, accept/decline
 - [x] Restricted state when campaign creation is turned off
+- [x] Limit of 3 campaigns per creator (DB trigger + disabled form with notice)
 - [x] Campaign board: pin maps/images, zoom, GM hide/reveal, player-view preview
 - [x] Campaign journal: entries, attachments, party or private visibility, filters
 - [x] GM console: initiative tracker, party and secret messages, roster, next session
