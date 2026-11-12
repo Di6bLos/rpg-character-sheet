@@ -135,4 +135,22 @@ describe('checkNimbleDraft', () => {
     const boss = checkNimbleDraft(block('None', 75, '1d8+2'), nimbleBudget('Boss', '2')!)
     expect(boss[0]).toContain('at least Medium armor')
   })
+
+  it('holds minion attacks to one die with no modifier', () => {
+    const minion = nimbleBudget('Minion', '1')!
+    expect(checkNimbleDraft(block('None', 0, '1d4.'), minion)).toEqual([])
+    const big = checkNimbleDraft(block('None', 0, '10d20+100'), minion)
+    expect(big).toHaveLength(1)
+    expect(big[0]).toContain('10d20+100')
+    expect(checkNimbleDraft(block('None', 0, '1d6'), minion)[0]).toContain('single 1d4')
+  })
+
+  it('says so when no attack dice can be read', () => {
+    expect(checkNimbleDraft(block('Medium', 46, 'WIL save or Frightened.'), level5)).toEqual([
+      'No attack dice found to check against the guide.',
+    ])
+    expect(checkNimbleDraft(block('None', 0, 'Shoves you.'), nimbleBudget('Minion', '1')!)).toEqual(
+      ['No attack dice found to check against the minion rules.'],
+    )
+  })
 })

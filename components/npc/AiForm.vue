@@ -103,6 +103,8 @@ async function generate() {
   if (!canGo.value) return
   busy.value = true
   error.value = ''
+  // The controls stay editable while it drafts; check the reply against what was asked.
+  const asked = budget.value
   try {
     const payloadFiles = await Promise.all(
       files.value.map(async (f) => ({
@@ -120,7 +122,7 @@ async function generate() {
         threat: threat.value,
         level: level.value,
         partyLevel: byParty.value,
-        budget: budget.value ? budgetLines(budget.value) : [],
+        budget: asked ? budgetLines(asked) : [],
         sourceSystem: source.value,
         description: desc.value.trim(),
         files: payloadFiles,
@@ -135,7 +137,7 @@ async function generate() {
         level: res.npc.level,
       }),
       assumptions: res.assumptions ?? [],
-      checks: budget.value ? checkNimbleDraft(res.npc.stat_block, budget.value) : [],
+      checks: asked ? checkNimbleDraft(res.npc.stat_block, asked) : [],
     })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'The assistant could not draft that'

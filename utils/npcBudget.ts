@@ -132,11 +132,32 @@ function hpOf(block: StatBlock): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+function actionItems(block: StatBlock) {
+  return (block.sections ?? []).filter((s) => /actions/i.test(s.title)).flatMap((s) => s.items)
+}
+
 function actionAverages(block: StatBlock): number[] {
-  return (block.sections ?? [])
-    .filter((s) => /actions/i.test(s.title))
-    .flatMap((s) => s.items.map((i) => actionAverage(i.n, i.t)))
+  return actionItems(block)
+    .map((i) => actionAverage(i.n, i.t))
     .filter((n): n is number => n !== null)
+}
+
+const DICE_ALL = new RegExp(DICE.source, 'gi')
+
+/** Minion attacks must be one die of the given size with no modifier ("1d6", not "2d6+2"). */
+function minionAttackNotes(block: StatBlock, die: string): string[] {
+  const notes: string[] = []
+  let found = false
+  for (const item of actionItems(block)) {
+    for (const m of `${item.n} ${item.t}`.matchAll(DICE_ALL)) {
+      found = true
+      const expr = m[0].replace(/\s+/g, '')
+      if (m[1] !== '1' || `d${m[2]}` !== die || m[4])
+        notes.push(`${item.n} rolls ${expr}; minion attacks are a single 1${die} with no modifier.`)
+    }
+  }
+  if (!found) notes.push('No attack dice found to check against the minion rules.')
+  return notes
 }
 
 const off = (actual: number, target: number) =>
@@ -153,7 +174,7 @@ export function checkNimbleDraft(block: StatBlock, b: NimbleBudget): string[] {
 
   if (b.threat === 'Minion') {
     if (hp) notes.push(`Minions have no HP in Nimble, but this one has ${hp}.`)
-    return notes
+    return [...notes, ...minionAttackNotes(block, b.die)]
   }
 
   if (b.threat === 'Boss') {
@@ -167,7 +188,8 @@ export function checkNimbleDraft(block: StatBlock, b: NimbleBudget): string[] {
       notes.push(
         `HP ${hp} is ${hp > target ? 'above' : 'below'} the ${target} the GM's Guide gives a legendary monster in ${ARMOR_LABEL[armor === 'none' ? 'medium' : armor]} at party level ${b.partyLevel}.`,
       )
-    if (best && off(best, r.attackBig))
+    if (!best) notes.push('No attack dice found to check against the guide.')
+    else if (off(best, r.attackBig))
       notes.push(
         `Its biggest attack averages ${Math.round(best)} damage; the guide suggests about ${r.attackBig} at party level ${b.partyLevel}.`,
       )
@@ -180,7 +202,8 @@ export function checkNimbleDraft(block: StatBlock, b: NimbleBudget): string[] {
     notes.push(
       `HP ${hp} is ${hp > target ? 'above' : 'below'} the ${target} the GM's Guide gives a level ${r.level} monster with ${ARMOR_LABEL[armor]}.`,
     )
-  if (best && off(best, r.damagePerRound))
+  if (!best) notes.push('No attack dice found to check against the guide.')
+  else if (off(best, r.damagePerRound))
     notes.push(
       `Its best action averages ${Math.round(best)} damage a round; the guide suggests about ${r.damagePerRound} at level ${r.level}.`,
     )
