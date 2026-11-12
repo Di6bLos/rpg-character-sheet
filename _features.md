@@ -123,6 +123,8 @@ Plan: board and GM console become routed pages on one shell; shared NPC pool; AI
 ### 7.4 AI
 - [x] Settings "AI providers": Claude, Gemini, ChatGPT keys (encrypted), default provider, test
 - [x] `generate-npc` Edge Function and the AI assistant in the generator
+- [x] Level picker and GM's Guide targets (Monster Builder, Legendary Monster Builder, minion dice) sent to the AI; drafts checked against them
+- [ ] 5e CR table and PF2e creature-building targets
 
 ### 7.5 Official content
 - [ ] Official monsters transcribed (Nimble 3PCL, SRD 5.2, PF2e ORC) with citations, seed script, attributions page

@@ -105,9 +105,11 @@ async function save() {
 
 // --- AI draft -----------------------------------------------------------------------
 const assumptions = ref<string[]>([])
-function onDraft(draft: { form: NpcForm; assumptions: string[] }) {
+const checks = ref<string[]>([])
+function onDraft(draft: { form: NpcForm; assumptions: string[]; checks: string[] }) {
   form.value = draft.form
   assumptions.value = draft.assumptions
+  checks.value = draft.checks
   aiGenerated.value = true
 }
 function editDraft() {
@@ -191,6 +193,13 @@ const note = computed(() =>
           <ul v-if="assumptions.length">
             <li v-for="(a, i) in assumptions" :key="i">{{ a }}</li>
           </ul>
+          <template v-if="system === 'nimble'">
+            <div class="gen__label">Checked against the GM’s Guide</div>
+            <ul v-if="checks.length" class="gen__checks">
+              <li v-for="(c, i) in checks" :key="i">{{ c }}</li>
+            </ul>
+            <p v-else class="small muted">HP and damage are within the guide’s range.</p>
+          </template>
           <div class="row" style="gap: 8px">
             <button type="button" class="btn" :disabled="saving" @click="save">
               Save to index
@@ -325,6 +334,14 @@ const note = computed(() =>
     font-size: 14px;
     line-height: 1.45;
   }
+
+  p {
+    margin: 0;
+  }
+}
+
+.gen__checks li::marker {
+  color: var(--warn-text);
 }
 
 @media (max-width: 900px) {

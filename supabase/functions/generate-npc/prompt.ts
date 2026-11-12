@@ -105,9 +105,9 @@ const SYSTEM_RULES: Record<GameSystem, string> = {
 - "stats" is an empty array. ac and initMod are 0.
 - Sections: "Traits" (passives and the group's one flavour ability), "Actions" (one action, or one clearly best action), "Bloodied" (optional phase change; leave out for minions). Bosses may add "Last Stand".
 - Write actions as damage dice plus effects, e.g. "1d6+2. On hit: the target is Grappled." Ranges and reach are in spaces.
-- Design rules (Nimble Creator's Kit): one action or one clearly best action; attacks that fight together share a die size; make monsters distinct with Automatic / On Hit / On Crit / On Death effects; no healing, no kiting, not too verbose.
-- Armor: Medium armor ignores damage modifiers, Heavy halves dice; give Medium/Heavy armor about 0.8x / 0.6x the HP an unarmored creature would have.
-- Minions die to any damage and can't crit: give them low HP and say "Minion" in Traits.`,
+- Design rules (Nimble Creator's Kit and GM's Guide): one action or one clearly best action; attacks that fight together share a die size; make monsters distinct with Automatic / On Hit / On Crit / On Death effects; no healing, no kiting, not too verbose.
+- Armor: Medium armor ignores damage modifiers, Heavy halves the dice. About 60% of monsters are unarmored, 30% Medium, 10% Heavy.
+- The request gives target numbers from the GM's Guide tables. Use them: HP for the armor you pick, damage per round, save DC. If you move away from a target (a glass cannon trading HP for damage, or a special ability costing a row), say so in assumptions.`,
   dnd5e: `Game system: fifth edition (5e), using SRD 5.2 conventions.
 - "top" uses exactly these labels in order: "Armor Class" (e.g. "13 (leather armor)"), "Hit Points" (e.g. "22 (5d8)"), "Speed" (e.g. "30 ft."), "Challenge" (e.g. "1 (200 XP)").
 - "stats" uses labels STR, DEX, CON, INT, WIS, CHA with scores as strings, e.g. "15".
@@ -126,9 +126,9 @@ const SYSTEM_RULES: Record<GameSystem, string> = {
 
 const THREAT: Record<Threat, string> = {
   Minion: 'a minion: weak alone, meant to come in groups, low HP',
-  Standard: 'a standard foe for a party of four of the given level',
+  Standard: 'a standard foe of the given level',
   Elite: 'an elite foe, roughly two standard foes in one, with a signature ability',
-  Boss: 'a solo boss for a party of four, with phases (Bloodied / Last Stand for Nimble, legendary-style for 5e, an extreme-threat solo for PF2e)',
+  Boss: 'a solo boss with phases (Nimble: a Legendary monster that acts after each hero’s turn, with Bloodied and Last Stand; 5e: legendary actions; PF2e: an extreme-threat solo)',
 }
 
 const LABEL: Record<GameSystem, string> = { nimble: 'Nimble', dnd5e: '5e', pf2e: 'Pathfinder 2e' }
@@ -144,11 +144,20 @@ Write original text. Never reproduce copyrighted text verbatim; summarise mechan
 List every judgement call (level picked, numbers derived rather than taken from a table, abilities dropped or merged in a conversion) in "assumptions", one short line each.`
 }
 
+const LEVEL_WORD: Record<GameSystem, string> = {
+  nimble: 'Level',
+  dnd5e: 'Challenge rating',
+  pf2e: 'Creature level',
+}
+
 export function userPrompt(input: {
   description: string
   kind: NpcKind
   threat: Threat
   system: GameSystem
+  level: string
+  partyLevel: boolean
+  budget: string[]
   sourceSystem: string
   fileNames: string[]
 }): string {
@@ -156,6 +165,13 @@ export function userPrompt(input: {
     `Make ${input.kind === 'humanoid' ? 'a humanoid NPC' : 'a monster'} for ${LABEL[input.system]}.`,
     `Threat: ${THREAT[input.threat]}.`,
   ]
+  if (input.level)
+    lines.push(
+      input.partyLevel
+        ? `Party level: ${input.level}.`
+        : `${LEVEL_WORD[input.system]}: ${input.level}.`,
+    )
+  if (input.budget.length) lines.push(input.budget.join('\n'))
   if (input.description) lines.push(`The GM describes it as:\n${input.description}`)
   if (input.fileNames.length) {
     const src =

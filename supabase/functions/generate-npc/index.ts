@@ -29,6 +29,11 @@ interface Body {
   system?: GameSystem
   kind?: NpcKind
   threat?: Threat
+  /** Monster level (or party level for Nimble minions and bosses), CR for 5e. */
+  level?: string
+  partyLevel?: boolean
+  /** Target numbers from the GM's Guide tables, computed by the app (utils/npcBudget.ts). */
+  budget?: string[]
   sourceSystem?: string
   description?: string
   files?: InFile[]
@@ -421,6 +426,12 @@ Deno.serve(async (req) => {
       kind,
       threat,
       system,
+      level: /^-?\d{1,2}(\/\d)?$/.test(String(body.level ?? '')) ? String(body.level) : '',
+      partyLevel: body.partyLevel === true,
+      budget: (Array.isArray(body.budget) ? body.budget : [])
+        .filter((l): l is string => typeof l === 'string')
+        .slice(0, 8)
+        .map((l) => l.slice(0, 400)),
       sourceSystem: body.sourceSystem ?? 'auto',
       fileNames: files.map((f) => f.name.slice(0, 120)),
     })

@@ -6,13 +6,25 @@ import { supabase } from '~/lib/supabase'
 import type { AiProvider, GameSystem, NpcKind, StatBlock } from '~/types'
 import { functionError, providerLabel } from '~/stores/aiKeys'
 import { fromStatBlock, type NpcForm } from '~/utils/npcStatBlock'
+import {
+  budgetLines,
+  budgetSummary,
+  checkNimbleDraft,
+  defaultLevel,
+  levelOptions,
+  nimbleBudget,
+  usesPartyLevel,
+  type Threat,
+} from '~/utils/npcBudget'
 
 const props = defineProps<{ system: GameSystem; kind: NpcKind }>()
-const emit = defineEmits<{ draft: [{ form: NpcForm; assumptions: string[] }] }>()
+const emit = defineEmits<{
+  draft: [{ form: NpcForm; assumptions: string[]; checks: string[] }]
+}>()
 
 const keys = useAiKeysStore()
 const snackbar = useSnackbarStore()
-const { campaignId } = useCampaignBoard()
+const { campaignId, roster } = useCampaignBoard()
 
 const MAX_TOTAL = 8 * 1024 * 1024
 const ACCEPT =
@@ -21,10 +33,30 @@ const ACCEPT =
 const desc = ref('')
 const files = ref<File[]>([])
 const source = ref<'auto' | GameSystem | 'other'>('auto')
-const threat = ref<'Minion' | 'Standard' | 'Elite' | 'Boss'>('Standard')
+const threat = ref<Threat>('Standard')
 const kind = ref<NpcKind>(props.kind)
 const provider = ref<AiProvider | null>(null)
 const busy = ref(false)
+
+// --- Level and the GM's Guide budget --------------------------------------------------
+/** Average level of the party's characters (the GM's row has none). */
+const partyLevel = computed(() => {
+  const levels = roster.value
+    .map((m) => m.character_level)
+    .filter((l): l is number => typeof l === 'number' && l > 0)
+  return levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1
+})
+const levels = computed(() => levelOptions(props.system, threat.value))
+const byParty = computed(() => usesPartyLevel(props.system, threat.value))
+const level = ref(defaultLevel(props.system, threat.value, partyLevel.value))
+// Switching between monster levels and party levels: keep the pick if it still exists.
+watch([levels, partyLevel], () => {
+  if (!levels.value.includes(level.value))
+    level.value = defaultLevel(props.system, threat.value, partyLevel.value)
+})
+const budget = computed(() =>
+  props.system === 'nimble' ? nimbleBudget(threat.value, level.value) : null,
+)
 const error = ref('')
 
 onMounted(async () => {
@@ -86,6 +118,9 @@ async function generate() {
         system: props.system,
         kind: kind.value,
         threat: threat.value,
+        level: level.value,
+        partyLevel: byParty.value,
+        budget: budget.value ? budgetLines(budget.value) : [],
         sourceSystem: source.value,
         description: desc.value.trim(),
         files: payloadFiles,
@@ -100,6 +135,7 @@ async function generate() {
         level: res.npc.level,
       }),
       assumptions: res.assumptions ?? [],
+      checks: budget.value ? checkNimbleDraft(res.npc.stat_block, budget.value) : [],
     })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'The assistant could not draft that'
@@ -184,6 +220,17 @@ async function generate() {
           {{ t }}
         </button>
       </div>
+    </div>
+    <div class="field">
+      <label for="ai-level">{{
+        byParty ? 'Party level' : system === 'dnd5e' ? 'Challenge rating' : 'Level'
+      }}</label>
+      <select id="ai-level" v-model="level" class="input" aria-describedby="ai-budget">
+        <option v-for="l in levels" :key="l" :value="l">{{ l }}</option>
+      </select>
+      <p v-if="budget" id="ai-budget" class="small muted ai__budget">
+        GM’s Guide targets: {{ budgetSummary(budget) }}
+      </p>
     </div>
     <div class="field">
       <span id="ai-kind" class="label">Kind</span>
@@ -345,6 +392,10 @@ async function generate() {
   min-height: 48px;
   font-family: var(--font-heading);
   font-size: 17px;
+}
+
+.ai__budget {
+  margin: 6px 0 0;
 }
 
 .ai__using {
