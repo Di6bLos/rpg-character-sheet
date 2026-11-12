@@ -29,6 +29,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
   let channel: RealtimeChannel | null = null
   let router: Router | null = null
   let nextId = 1
+  /** Bumped by `stop()`, so a notice still looking up its author after sign-out is dropped. */
+  let session = 0
   const timers = new Map<number, ReturnType<typeof setTimeout>>()
   const rosters = new Map<string, Promise<RosterEntry[]>>()
 
@@ -60,19 +62,22 @@ export const useNotificationsStore = defineStore('notifications', () => {
     resume(id)
   }
 
-  /** Rosters change rarely; cache one request per campaign for the session. */
+  /**
+   * Shares one in-flight request per campaign between notices that arrive together. Nothing
+   * is kept after it settles, so a player who joins or changes character later is named
+   * correctly.
+   */
   function rosterOf(campaignId: string) {
-    let cached = rosters.get(campaignId)
-    if (!cached) {
-      cached = useCampaignStore()
-        .roster(campaignId)
-        .catch(() => {
-          rosters.delete(campaignId)
-          return []
-        })
-      rosters.set(campaignId, cached)
-    }
-    return cached
+    const existing = rosters.get(campaignId)
+    if (existing) return existing
+    const pending: Promise<RosterEntry[]> = useCampaignStore()
+      .roster(campaignId)
+      .catch(() => [])
+      .finally(() => {
+        if (rosters.get(campaignId) === pending) rosters.delete(campaignId)
+      })
+    rosters.set(campaignId, pending)
+    return pending
   }
 
   async function who(campaignId: string, userId: string) {
@@ -94,10 +99,13 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const to = `/campaigns/${row.campaign_id}/board`
     // The board shows it as it arrives.
     if (currentPath() === to) return
+    const started = session
+    const subtitle = await who(row.campaign_id, row.author_id)
+    if (started !== session) return
     push({
       kind: 'journal',
       title: row.visibility === 'gm' ? 'Private journal entry' : 'New journal entry',
-      subtitle: await who(row.campaign_id, row.author_id),
+      subtitle,
       body: row.title,
       to,
     })
@@ -111,10 +119,13 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const to = '/dashboard'
     // The dashboard lists party messages as they arrive; a secret is still called out.
     if (!secret && currentPath() === to) return
+    const started = session
+    const subtitle = await who(row.campaign_id, row.sender_id)
+    if (started !== session) return
     push({
       kind: secret ? 'secret' : 'party',
       title: secret ? 'Secret message' : 'Party message',
-      subtitle: await who(row.campaign_id, row.sender_id),
+      subtitle,
       body: row.body,
       to,
     })
@@ -140,6 +151,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
 
   function stop() {
+    session++
     if (channel) void supabase.removeChannel(channel)
     channel = null
     rosters.clear()
