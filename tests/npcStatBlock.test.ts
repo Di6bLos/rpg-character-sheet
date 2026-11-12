@@ -68,4 +68,23 @@ describe('fromStatBlock', () => {
     expect(toStatBlock(back, 'nimble')).toEqual(block)
     expect(back.kind).toBe('humanoid')
   })
+
+  const meta = { name: 'Ghoul', kind: 'monster' as const, level: '1' }
+
+  it('keeps the tracker numbers of a numeric-only block', () => {
+    const back = fromStatBlock({ hp: 22, ac: 12, initMod: 2 }, 'dnd5e', meta)
+    expect(back.top['Hit Points']).toBe('22')
+    expect(back.top['Armor Class']).toBe('12')
+    const block = toStatBlock(back, 'dnd5e')
+    expect([block.hp, block.ac, block.initMod]).toEqual([22, 12, 2])
+  })
+
+  it('keeps an explicit initiative until its source input changes', () => {
+    const back = fromStatBlock({ stats: [['DEX', '14']], hp: 9, initMod: 5 }, 'dnd5e', meta)
+    expect(toStatBlock(back, 'dnd5e').initMod).toBe(5)
+    back.stats.DEX = '18'
+    expect(toStatBlock(back, 'dnd5e').initMod).toBe(4)
+    const nimble = fromStatBlock({ top: [['HP', '30']], hp: 30, initMod: 3 }, 'nimble', meta)
+    expect(toStatBlock(nimble, 'nimble').initMod).toBe(3)
+  })
 })

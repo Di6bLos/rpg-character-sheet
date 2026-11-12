@@ -16,6 +16,12 @@ export interface NpcForm {
   lines: [string, string][]
   sections: { title: string; items: StatEntry[] }[]
   gmNotes: string
+  /**
+   * The stored initiative modifier and the input it came with (DEX for 5e,
+   * Perception for PF2e, nothing for Nimble). Kept while that input is unchanged,
+   * so an explicit override survives Edit and Duplicate.
+   */
+  storedInit?: { mod: number; from: string }
 }
 
 interface TopField {
@@ -90,6 +96,13 @@ function abilityMod(score: number) {
   return Math.floor((score - 10) / 2)
 }
 
+/** The form input initiative is derived from, per system. */
+function initSource(form: NpcForm, system: GameSystem): string {
+  if (system === 'dnd5e') return (form.stats.DEX ?? '').trim()
+  const f = TOP_FIELDS[system].find((x) => x.role === 'init')
+  return f ? (form.top[f.label] ?? '').trim() : ''
+}
+
 /** Builds the stored stat block, including the numbers initiative reads (hp, ac, initMod). */
 export function toStatBlock(form: NpcForm, system: GameSystem): StatBlock {
   const fields = TOP_FIELDS[system]
@@ -107,6 +120,9 @@ export function toStatBlock(form: NpcForm, system: GameSystem): StatBlock {
     initMod = dex === undefined ? undefined : abilityMod(dex)
   } else if (system === 'pf2e') {
     initMod = byRole('init')
+  }
+  if (form.storedInit && form.storedInit.from === initSource(form, system)) {
+    initMod = form.storedInit.mod
   }
   const block: StatBlock = {
     type: form.type.trim() || undefined,
@@ -148,6 +164,18 @@ export function fromStatBlock(
     else form.lines.push([k, v])
   }
   for (const [k, v] of block.stats ?? []) form.stats[k] = v
+  // Blocks that only carry the tracker numbers (AI drafts, imports) keep them as fields.
+  const roleField = (role: TopField['role']) => TOP_FIELDS[system].find((f) => f.role === role)
+  for (const [role, value] of [
+    ['hp', block.hp],
+    ['ac', block.ac],
+  ] as const) {
+    const f = roleField(role)
+    if (f && value !== undefined && !(form.top[f.label] ?? '').trim())
+      form.top[f.label] = String(value)
+  }
+  if (block.initMod !== undefined)
+    form.storedInit = { mod: block.initMod, from: initSource(form, system) }
   form.lines.push(...(block.lines ?? []).map(([k, v]) => [k, v] as [string, string]))
   for (const sec of block.sections ?? []) {
     const existing = form.sections.find((s) => s.title === sec.title)
