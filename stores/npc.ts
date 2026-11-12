@@ -102,7 +102,7 @@ export const useNpcStore = defineStore('npc', () => {
   async function publish(draft: NpcDraft, poolId: string | null): Promise<string | null> {
     const site = useSiteStore()
     const auth = useAuthStore()
-    if (!site.settings.npc_pool_enabled) return poolId
+    if (!site.settings.npc_pool_publish) return poolId
     const row = {
       system: draft.system,
       kind: draft.kind,
@@ -165,7 +165,7 @@ export const useNpcStore = defineStore('npc', () => {
     let saved = res.data as CampaignNpc
     const site = useSiteStore()
     const poolId = await publish(draft, saved.pool_npc_id)
-    const published = !site.settings.npc_pool_enabled || poolId !== null
+    const published = !site.settings.npc_pool_publish || poolId !== null
     if (poolId && poolId !== saved.pool_npc_id) {
       const link = await supabase
         .from('campaign_npcs')
@@ -184,6 +184,44 @@ export const useNpcStore = defineStore('npc', () => {
         )
     }
     return { saved, published }
+  }
+
+  /** One pool NPC by id. */
+  async function getPool(id: string): Promise<PoolNpc> {
+    const { data, error } = await supabase.from('npcs').select('*').eq('id', id).single()
+    if (error) throw error
+    return data as PoolNpc
+  }
+
+  /**
+   * Staff (Admin → NPCs): creates or updates a pool NPC directly, Official or
+   * Homebrew, with no campaign copy. RLS lets staff write whatever the switches say.
+   */
+  async function savePool(
+    draft: Omit<NpcDraft, 'gm_notes'> & { source: NpcSource },
+    id?: string | null,
+  ): Promise<PoolNpc> {
+    const row = {
+      system: draft.system,
+      kind: draft.kind,
+      name: draft.name,
+      level: draft.level,
+      stat_block: draft.stat_block,
+      image_path: draft.image_path,
+      source: draft.source,
+      ai_generated: draft.ai_generated ?? false,
+    }
+    const res = id
+      ? await supabase.from('npcs').update(row).eq('id', id).select().single()
+      : await supabase.from('npcs').insert(row).select().single()
+    if (res.error) throw res.error
+    return res.data as PoolNpc
+  }
+
+  /** Deletes a pool NPC (its author or staff); campaign copies keep their own stat block. */
+  async function removePool(id: string) {
+    const { error } = await supabase.from('npcs').delete().eq('id', id)
+    if (error) throw error
   }
 
   /** Copies a pool NPC into a campaign's index (once; returns the existing copy if there is one). */
@@ -288,6 +326,9 @@ export const useNpcStore = defineStore('npc', () => {
     reset,
     fetchCampaign,
     searchPool,
+    getPool,
+    savePool,
+    removePool,
     uploadImage,
     save,
     pull,

@@ -7,7 +7,12 @@ const STALE_MS = 60_000
 
 /** Site-wide switches admins control (shared NPC pool, AI generator). */
 export const useSiteStore = defineStore('site', () => {
-  const settings = ref<SiteSettings>({ npc_pool_enabled: true, ai_enabled: true })
+  const settings = ref<SiteSettings>({
+    npc_pool_campaign: true,
+    npc_pool_library: true,
+    npc_pool_publish: true,
+    ai_enabled: true,
+  })
   const loaded = ref(false)
   let fetchedAt = 0
 
@@ -17,7 +22,7 @@ export const useSiteStore = defineStore('site', () => {
     fetchedAt = Date.now()
     const { data, error } = await supabase
       .from('site_settings')
-      .select('npc_pool_enabled, ai_enabled')
+      .select('npc_pool_campaign, npc_pool_library, npc_pool_publish, ai_enabled')
       .maybeSingle()
     if (error) {
       fetchedAt = 0
