@@ -37,11 +37,14 @@ export const useNpcStore = defineStore('npc', () => {
   const campaignNpcs = ref<CampaignNpc[]>([])
   const campaignId = ref<string | null>(null)
   const loading = ref(false)
-  /** Bumped on reset so a fetch started by the previous account can't refill the store. */
+  /**
+   * Bumped on every fetch and on reset, so only the latest fetch fills the store:
+   * not one for a campaign the GM has since left, nor one from the previous account.
+   */
   let generation = 0
 
   async function fetchCampaign(id: string) {
-    const gen = generation
+    const gen = ++generation
     loading.value = true
     try {
       const { data, error } = await supabase
