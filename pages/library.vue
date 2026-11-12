@@ -15,7 +15,7 @@ const route = useRoute()
 
 /** Documents, or the shared NPC pool (hidden when admins switch the pool off). */
 const tab = computed(() =>
-  route.query.tab === 'npcs' && site.settings.npc_pool_enabled ? 'npcs' : 'documents',
+  route.query.tab === 'npcs' && site.settings.npc_pool_library ? 'npcs' : 'documents',
 )
 const snackbar = useSnackbarStore()
 
@@ -218,7 +218,7 @@ function report(doc: LibraryDocument) {
       />
     </header>
 
-    <nav v-if="site.settings.npc_pool_enabled" aria-label="Library sections" class="lib-tabs">
+    <nav v-if="site.settings.npc_pool_library" aria-label="Library sections" class="lib-tabs">
       <NuxtLink to="/library" :aria-current="tab === 'documents' ? 'page' : undefined"
         >Documents</NuxtLink
       >

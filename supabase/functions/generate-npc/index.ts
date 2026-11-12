@@ -386,15 +386,25 @@ Deno.serve(async (req) => {
     }
 
     // Only the GM of the campaign can draft for it (and spend their key on it).
-    if (!body.campaignId) throw new HttpError(400, 'Missing campaign.')
-    const { data: member } = await asUser
-      .from('campaign_members')
-      .select('role')
-      .eq('campaign_id', body.campaignId)
-      .eq('user_id', user.id)
-      .maybeSingle()
-    if (member?.role !== 'gm')
-      throw new HttpError(403, 'Only the GM can generate NPCs for this campaign.')
+    // Staff draft for the shared pool from the admin area, without a campaign.
+    if (body.campaignId) {
+      const { data: member } = await asUser
+        .from('campaign_members')
+        .select('role')
+        .eq('campaign_id', body.campaignId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (member?.role !== 'gm')
+        throw new HttpError(403, 'Only the GM can generate NPCs for this campaign.')
+    } else {
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (profile?.role !== 'admin' && profile?.role !== 'moderator')
+        throw new HttpError(400, 'Missing campaign.')
+    }
 
     const system: GameSystem = body.system ?? 'nimble'
     if (!['nimble', 'dnd5e', 'pf2e'].includes(system))

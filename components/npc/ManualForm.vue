@@ -7,7 +7,13 @@ import { LEVEL_LABEL, STAT_KEYS, TOP_FIELDS, type NpcForm } from '~/utils/npcSta
 const form = defineModel<NpcForm>({ required: true })
 const image = defineModel<string | null>('image', { default: null })
 
-const props = defineProps<{ system: GameSystem; busy?: boolean; saveLabel?: string }>()
+const props = defineProps<{
+  system: GameSystem
+  busy?: boolean
+  saveLabel?: string
+  /** Pool entries (Admin → NPCs) have no GM notes. */
+  hideNotes?: boolean
+}>()
 const emit = defineEmits<{ save: [] }>()
 
 const snackbar = useSnackbarStore()
@@ -198,7 +204,7 @@ function addItem(si: number) {
       <span class="small muted">Shown in initiative and the party journal. Use your own art.</span>
     </div>
 
-    <div class="field">
+    <div v-if="!hideNotes" class="field">
       <label :for="`${id}-notes`">GM notes (never shown to players)</label>
       <textarea
         :id="`${id}-notes`"

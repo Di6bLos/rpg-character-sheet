@@ -1,8 +1,7 @@
 <script setup lang="ts">
 // Library → NPCs & monsters: the shared pool every GM's NPCs land in, plus
 // official ones from the rulebooks. GMs can pull any of them into a campaign.
-import { supabase } from '~/lib/supabase'
-import type { GameSystem, NpcKind, NpcSource, PoolNpc } from '~/types'
+import type { PoolNpc } from '~/types'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
 
 const auth = useAuthStore()
@@ -10,36 +9,9 @@ const campaigns = useCampaignStore()
 const npcs = useNpcStore()
 const snackbar = useSnackbarStore()
 
-const system = ref<GameSystem | null>(null)
-const kind = ref<NpcKind | null>(null)
-const source = ref<NpcSource | null>(null)
-const q = ref('')
-const list = ref<PoolNpc[]>([])
-const loading = ref(true)
-let timer: ReturnType<typeof setTimeout> | undefined
-
-async function load() {
-  loading.value = true
-  try {
-    list.value = await npcs.searchPool(
-      { system: system.value, kind: kind.value, source: source.value, q: q.value },
-      120,
-    )
-  } catch (err) {
-    snackbar.error(err, 'Could not load the NPC pool')
-  } finally {
-    loading.value = false
-  }
-}
-onMounted(() => {
-  void load()
-  void campaigns.fetchMine()
-})
-watch([system, kind, source], () => void load())
-watch(q, () => {
-  clearTimeout(timer)
-  timer = setTimeout(() => void load(), 250)
-})
+const { system, kind, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
+  useNpcPoolSearch(60)
+onMounted(() => void campaigns.fetchMine())
 
 // --- Detail -------------------------------------------------------------------------
 const open = ref<PoolNpc | null>(null)
@@ -79,9 +51,12 @@ const canDelete = computed(
 async function remove() {
   const npc = open.value
   if (!npc) return
-  const { error } = await supabase.from('npcs').delete().eq('id', npc.id)
-  if (error) return snackbar.error(error, 'Could not remove it from the pool')
-  list.value = list.value.filter((n) => n.id !== npc.id)
+  try {
+    await npcs.removePool(npc.id)
+  } catch (err) {
+    return snackbar.error(err, 'Could not remove it from the pool')
+  }
+  forget(npc.id)
   open.value = null
   snackbar.show(`${npc.name} removed from the pool. Campaigns that use it keep their copy.`)
 }
@@ -162,6 +137,11 @@ async function remove() {
         </button>
       </li>
     </ul>
+    <div v-if="hasMore && !loading" class="pool__more">
+      <button type="button" class="btn btn--ghost" :disabled="loadingMore" @click="loadMore">
+        {{ loadingMore ? 'Loading…' : 'Load more' }}
+      </button>
+    </div>
 
     <UiDialog v-model="detailOpen" :title="open?.name ?? ''" width="680px">
       <div v-if="open" class="stack">
@@ -280,6 +260,11 @@ async function remove() {
     border-color: var(--accent-text);
     color: var(--accent-text);
   }
+}
+
+.pool__more {
+  display: flex;
+  justify-content: center;
 }
 
 .pool__add {
