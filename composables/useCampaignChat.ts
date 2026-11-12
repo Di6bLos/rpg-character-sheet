@@ -6,13 +6,14 @@ import { threadsOf, type ThreadId } from '~/utils/chat'
 
 export type { ThreadId }
 
-function readKey(campaignId: string, thread: ThreadId) {
-  return `lantern:chat-read:${campaignId}:${thread}`
+/** Per user, so two people sharing a browser keep their own read positions. */
+function readKey(userId: string, campaignId: string, thread: ThreadId) {
+  return `lantern:chat-read:${userId}:${campaignId}:${thread}`
 }
 
-function readAt(campaignId: string, thread: ThreadId): string {
+function readAt(userId: string, campaignId: string, thread: ThreadId): string {
   try {
-    return localStorage.getItem(readKey(campaignId, thread)) ?? ''
+    return localStorage.getItem(readKey(userId, campaignId, thread)) ?? ''
   } catch {
     return ''
   }
@@ -26,6 +27,8 @@ export function useCampaignChat(campaignId: Ref<string>) {
   const thread = ref<ThreadId>('party')
   const lastRead = ref<Record<ThreadId, string>>({})
   const sending = ref(false)
+  /** True while the chat panel is on screen; messages only count as read then. */
+  const visible = ref(false)
   let channel: RealtimeChannel | null = null
 
   const me = computed(() => auth.userId ?? '')
@@ -56,7 +59,8 @@ export function useCampaignChat(campaignId: Ref<string>) {
         (payload) => {
           const row = payload.new as Message
           if (!messages.value.some((m) => m.id === row.id)) messages.value.unshift(row)
-          if (threadsOf(row, me.value).includes(thread.value)) markRead(thread.value)
+          if (visible.value && threadsOf(row, me.value).includes(thread.value))
+            markRead(thread.value)
         },
       )
       .on(
@@ -81,7 +85,7 @@ export function useCampaignChat(campaignId: Ref<string>) {
   )
 
   function unread(t: ThreadId): number {
-    const since = lastRead.value[t] ?? readAt(campaignId.value, t)
+    const since = lastRead.value[t] ?? readAt(me.value, campaignId.value, t)
     return messages.value.filter(
       (m) => m.sender_id !== me.value && threadsOf(m, me.value).includes(t) && m.created_at > since,
     ).length
@@ -98,7 +102,7 @@ export function useCampaignChat(campaignId: Ref<string>) {
     const stamp = newest && newest > new Date().toISOString() ? newest : new Date().toISOString()
     lastRead.value = { ...lastRead.value, [t]: stamp }
     try {
-      localStorage.setItem(readKey(campaignId.value, t), stamp)
+      localStorage.setItem(readKey(me.value, campaignId.value, t), stamp)
     } catch {
       // Private window: unread counts just reset next visit.
     }
@@ -137,18 +141,36 @@ export function useCampaignChat(campaignId: Ref<string>) {
   }
 
   async function init() {
+    lastRead.value = {}
     await load()
     subscribe()
-    markRead(thread.value)
+    if (visible.value) markRead(thread.value)
+  }
+
+  /** The chat panel calls this as it mounts and unmounts. */
+  function setVisible(on: boolean) {
+    visible.value = on
+    if (on) markRead(thread.value)
   }
 
   onMounted(init)
-  watch(campaignId, init)
+  watch([campaignId, me], init)
   onBeforeUnmount(() => {
     if (channel) void supabase.removeChannel(channel)
   })
 
-  return { messages, thread, inThread, sending, unread, totalUnread, open, send, markRead }
+  return {
+    messages,
+    thread,
+    inThread,
+    sending,
+    unread,
+    totalUnread,
+    open,
+    send,
+    markRead,
+    setVisible,
+  }
 }
 
 export type CampaignChat = ReturnType<typeof useCampaignChat>

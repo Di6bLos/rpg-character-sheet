@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Party chat with private threads to each member and unread badges.
-import type { RosterEntry } from '~/types'
+import type { Message, RosterEntry } from '~/types'
 import { authorLabel } from '~/utils/roster'
 import { plural, timeAgo } from '~/utils/format'
 
@@ -27,6 +27,17 @@ const tabs = computed(() => [
 
 const current = computed(() => tabs.value.find((t) => t.id === chat.thread.value) ?? tabs.value[0]!)
 
+// The member whose thread was open left the campaign: go back to the party,
+// so Send doesn't keep targeting them.
+watch(
+  () => [chat.thread.value, tabs.value.length],
+  () => {
+    if (props.roster.length && !tabs.value.some((t) => t.id === chat.thread.value))
+      chat.open('party')
+  },
+  { immediate: true },
+)
+
 const note = computed(() =>
   current.value.id === 'party'
     ? 'Everyone in the campaign sees these messages'
@@ -41,11 +52,23 @@ function who(userId: string) {
   return authorLabel(props.roster, userId).primary
 }
 
-async function send() {
-  if (await chat.send(draft.value)) draft.value = ''
+/** Older private messages could go to several people at once; name them all. */
+function groupNote(m: Message): string | null {
+  if (!m.recipient_ids || m.recipient_ids.length < 2) return null
+  const names = m.recipient_ids
+    .filter((id) => id !== m.sender_id)
+    .map((id) => (id === auth.userId ? 'you' : who(id)))
+  return `to ${names.join(', ')}`
 }
 
-onMounted(() => chat.markRead(chat.thread.value))
+async function send() {
+  const text = draft.value
+  // Keep anything typed while it was sending.
+  if ((await chat.send(text)) && draft.value === text) draft.value = ''
+}
+
+onMounted(() => chat.setVisible(true))
+onBeforeUnmount(() => chat.setVisible(false))
 </script>
 
 <template>
@@ -128,7 +151,8 @@ onMounted(() => chat.markRead(chat.thread.value))
         />
         <div class="chat__msg">
           <span class="chat__meta"
-            ><b>{{ m.sender_id === auth.userId ? 'You' : who(m.sender_id) }}</b> ·
+            ><b>{{ m.sender_id === auth.userId ? 'You' : who(m.sender_id) }}</b>
+            <template v-if="groupNote(m)"> {{ groupNote(m) }}</template> ·
             {{ timeAgo(m.created_at) }}</span
           >
           <span class="chat__bubble">{{ m.body }}</span>
