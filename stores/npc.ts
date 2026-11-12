@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { supabase } from '~/lib/supabase'
 import type { CampaignNpc, GameSystem, NpcKind, NpcSource, PoolNpc, StatBlock } from '~/types'
 import { safeFileName } from '~/utils/format'
-import { buildCopies } from '~/utils/initiative'
+import { buildCopies, combatantName } from '~/utils/initiative'
 import { journalStub } from '~/utils/npcJournal'
 
 export const NPC_IMAGE_MAX = 5 * 1024 * 1024
@@ -37,8 +37,11 @@ export const useNpcStore = defineStore('npc', () => {
   const campaignNpcs = ref<CampaignNpc[]>([])
   const campaignId = ref<string | null>(null)
   const loading = ref(false)
+  /** Bumped on reset so a fetch started by the previous account can't refill the store. */
+  let generation = 0
 
   async function fetchCampaign(id: string) {
+    const gen = generation
     loading.value = true
     try {
       const { data, error } = await supabase
@@ -47,11 +50,20 @@ export const useNpcStore = defineStore('npc', () => {
         .eq('campaign_id', id)
         .order('name')
       if (error) throw error
+      if (gen !== generation) return
       campaignNpcs.value = (data ?? []) as CampaignNpc[]
       campaignId.value = id
     } finally {
-      loading.value = false
+      if (gen === generation) loading.value = false
     }
+  }
+
+  /** Forget everything on sign-out or account change (stat blocks and GM notes are private). */
+  function reset() {
+    generation++
+    campaignNpcs.value = []
+    campaignId.value = null
+    loading.value = false
   }
 
   async function searchPool(filter: PoolFilter, limit = 60): Promise<PoolNpc[]> {
@@ -80,7 +92,10 @@ export const useNpcStore = defineStore('npc', () => {
     return path
   }
 
-  /** Publishes to the pool (or updates the user's own pool entry). Returns the pool id, or null when the pool is off. */
+  /**
+   * Publishes to the pool (or updates the user's own pool entry). Returns the
+   * pool id: the one passed in when the pool is off, null when a new entry fails.
+   */
   async function publish(draft: NpcDraft, poolId: string | null): Promise<string | null> {
     const site = useSiteStore()
     const auth = useAuthStore()
@@ -108,13 +123,20 @@ export const useNpcStore = defineStore('npc', () => {
     return (data as { id: string }).id
   }
 
-  /** Creates or updates a campaign NPC and keeps the pool in step. */
-  async function save(cid: string, draft: NpcDraft, id?: string | null): Promise<CampaignNpc> {
+  /**
+   * Creates or updates a campaign NPC, then keeps the pool in step. The
+   * campaign copy is saved first, so a failed save never publishes anything;
+   * `published` is false when the pool is on but publishing failed.
+   */
+  async function save(
+    cid: string,
+    draft: NpcDraft,
+    id?: string | null,
+  ): Promise<{ saved: CampaignNpc; published: boolean }> {
     const existing = id ? campaignNpcs.value.find((n) => n.id === id) : undefined
-    const poolId = await publish(draft, existing?.pool_npc_id ?? null)
     const row = {
       campaign_id: cid,
-      pool_npc_id: poolId,
+      pool_npc_id: existing?.pool_npc_id ?? null,
       system: draft.system,
       kind: draft.kind,
       name: draft.name,
@@ -129,7 +151,19 @@ export const useNpcStore = defineStore('npc', () => {
       ? await supabase.from('campaign_npcs').update(row).eq('id', existing.id).select().single()
       : await supabase.from('campaign_npcs').insert(row).select().single()
     if (res.error) throw res.error
-    const saved = res.data as CampaignNpc
+    let saved = res.data as CampaignNpc
+    const site = useSiteStore()
+    const poolId = await publish(draft, saved.pool_npc_id)
+    const published = !site.settings.npc_pool_enabled || poolId !== null
+    if (poolId && poolId !== saved.pool_npc_id) {
+      const link = await supabase
+        .from('campaign_npcs')
+        .update({ pool_npc_id: poolId })
+        .eq('id', saved.id)
+        .select()
+        .single()
+      if (!link.error) saved = link.data as CampaignNpc
+    }
     if (campaignId.value === cid) {
       const i = campaignNpcs.value.findIndex((n) => n.id === saved.id)
       if (i >= 0) campaignNpcs.value[i] = saved
@@ -138,7 +172,7 @@ export const useNpcStore = defineStore('npc', () => {
           a.name.localeCompare(b.name),
         )
     }
-    return saved
+    return { saved, published }
   }
 
   /** Copies a pool NPC into a campaign's index (once; returns the existing copy if there is one). */
@@ -209,20 +243,28 @@ export const useNpcStore = defineStore('npc', () => {
     if (present?.length === 1 && !(present[0] as { group_label: string | null }).group_label) {
       await supabase
         .from('combatants')
-        .update({ group_label: 'A', name: `${npc.name} A` })
+        .update({ group_label: 'A', name: combatantName(npc.name, 'A') })
         .eq('campaign_id', npc.campaign_id)
         .eq('campaign_npc_id', npc.id)
         .is('group_label', null)
     }
     const { error } = await supabase.from('combatants').insert(rows)
     if (error) throw error
-    const journaled = await addToJournal(npc)
-    return { added: rows.length, journaled }
+    // The combatants are in; a journal failure is reported on its own so a retry
+    // doesn't add the group twice.
+    try {
+      const journaled = await addToJournal(npc)
+      return { added: rows.length, journaled, journalError: null }
+    } catch (journalError) {
+      return { added: rows.length, journaled: false, journalError }
+    }
   }
 
   return {
     campaignNpcs,
+    campaignId,
     loading,
+    reset,
     fetchCampaign,
     searchPool,
     uploadImage,

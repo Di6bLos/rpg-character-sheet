@@ -134,10 +134,13 @@ async function addToInitiative() {
     const npc = await campaignCopy()
     if (!npc) return
     const n = Math.min(20, Math.max(1, Math.floor(count.value || 1)))
-    const { added, journaled } = await npcs.addToInitiative(npc, n, sharedRoll.value)
+    const { added, journaled, journalError } = await npcs.addToInitiative(npc, n, sharedRoll.value)
     status.value = `${plural(added, npc.name)} added to initiative${journaled ? ' · new party journal entry' : ''}`
-    snackbar.show(status.value)
     count.value = 1
+    if (journalError) {
+      status.value += ' · the party journal entry could not be added'
+      snackbar.error(journalError, status.value)
+    } else snackbar.show(status.value)
   } catch (err) {
     snackbar.error(err, 'Could not add to initiative')
   } finally {

@@ -27,12 +27,19 @@ const loadingSource = ref(false)
 const preview = computed(() => toStatBlock(form.value, system.value))
 
 onMounted(async () => {
-  if (!npcs.campaignNpcs.length) await npcs.fetchCampaign(campaignId.value).catch(() => undefined)
   const edit = editId.value
   const dup = typeof route.query.dup === 'string' ? route.query.dup : null
-  if (!edit && !dup) return
+  const needSource = !!edit || (!!dup && !dup.startsWith('pool:'))
+  if (!edit && !dup) {
+    // Saving reads the cached index; make sure it belongs to this campaign.
+    if (npcs.campaignId !== campaignId.value)
+      await npcs.fetchCampaign(campaignId.value).catch(() => undefined)
+    return
+  }
   loadingSource.value = true
   try {
+    if (needSource && npcs.campaignId !== campaignId.value)
+      await npcs.fetchCampaign(campaignId.value)
     if (dup?.startsWith('pool:')) {
       const { data, error } = await supabase
         .from('npcs')
@@ -68,10 +75,10 @@ onMounted(async () => {
 })
 
 async function save() {
-  if (!form.value.name.trim()) return
+  if (!form.value.name.trim() || loadingSource.value) return
   saving.value = true
   try {
-    const saved = await npcs.save(
+    const { saved, published } = await npcs.save(
       campaignId.value,
       {
         system: system.value,
@@ -85,13 +92,19 @@ async function save() {
       },
       editId.value,
     )
-    snackbar.show(
-      editId.value
-        ? `${saved.name} saved`
-        : site.settings.npc_pool_enabled
-          ? `${saved.name} saved to your index and the shared pool`
-          : `${saved.name} saved to your index`,
-    )
+    if (!published)
+      snackbar.show(
+        `${saved.name} saved to your index, but it could not be shared to the pool`,
+        'error',
+      )
+    else
+      snackbar.show(
+        editId.value
+          ? `${saved.name} saved`
+          : site.settings.npc_pool_enabled
+            ? `${saved.name} saved to your index and the shared pool`
+            : `${saved.name} saved to your index`,
+      )
     await navigateTo({
       path: `/campaigns/${campaignId.value}/gm/npcs`,
       query: { kind: saved.kind === 'humanoid' ? 'humanoid' : undefined, id: saved.id },
@@ -165,7 +178,7 @@ const note = computed(() =>
           v-model="form"
           v-model:image="image"
           :system="system"
-          :busy="saving"
+          :busy="saving || loadingSource"
           :save-label="editId ? 'Save changes' : 'Save to index'"
           @save="save"
         />
@@ -201,7 +214,7 @@ const note = computed(() =>
             <p v-else class="small muted">HP and damage are within the guide’s range.</p>
           </template>
           <div class="row" style="gap: 8px">
-            <button type="button" class="btn" :disabled="saving" @click="save">
+            <button type="button" class="btn" :disabled="saving || loadingSource" @click="save">
               Save to index
             </button>
             <button type="button" class="btn btn--ghost" @click="editDraft">Edit manually</button>
