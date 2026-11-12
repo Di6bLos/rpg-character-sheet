@@ -7,6 +7,10 @@ import type { NpcKind, PoolNpc } from '~/types'
 import { blankNpcForm, fromStatBlock, toStatBlock, type NpcForm } from '~/utils/npcStatBlock'
 import { systemLabel } from '~/utils/systems'
 
+// The source NPC is read once on mount, so remount when the query changes
+// (Generator tab from ?edit=<id>, or ?dup=<a> to ?dup=<b>) instead of reusing this instance.
+definePageMeta({ key: (route) => route.fullPath })
+
 const route = useRoute()
 const snackbar = useSnackbarStore()
 const site = useSiteStore()
