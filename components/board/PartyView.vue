@@ -14,8 +14,23 @@ const turnCharacterId = computed(
   () => init.order.value.find((c) => c.id === init.activeId.value)?.character_id ?? null,
 )
 
-// Roster HP and conditions change on the players' sheets; refresh with the turn.
+// Roster HP and conditions change on the players' sheets; refresh with the turn,
+// and every 30 seconds while the tab is visible so it stays current outside combat.
 watch(init.activeId, () => void reloadRoster())
+const ROSTER_REFRESH_MS = 30_000
+let rosterTimer: ReturnType<typeof setInterval> | null = null
+// A background refresh that fails just waits for the next one.
+function refreshRoster() {
+  if (document.visibilityState === 'visible') reloadRoster().catch(() => undefined)
+}
+onMounted(() => {
+  rosterTimer = setInterval(refreshRoster, ROSTER_REFRESH_MS)
+  document.addEventListener('visibilitychange', refreshRoster)
+})
+onBeforeUnmount(() => {
+  if (rosterTimer) clearInterval(rosterTimer)
+  document.removeEventListener('visibilitychange', refreshRoster)
+})
 
 // --- Add combatants (GM) --------------------------------------------------------
 const addOpen = ref(false)
