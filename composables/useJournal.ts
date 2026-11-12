@@ -78,6 +78,9 @@ export function useJournal(campaignId: Ref<string>) {
           },
           () => void load(),
         )
+        // Sent by another member after a change realtime can't show them: an entry
+        // made GM-only no longer passes their RLS, and attachments land after the entry.
+        .on('broadcast', { event: 'refresh' }, () => void load())
         .subscribe()
     } catch (err) {
       snackbar.error(err, 'Could not load the journal')
@@ -91,6 +94,11 @@ export function useJournal(campaignId: Ref<string>) {
   onBeforeUnmount(() => {
     if (channel) void supabase.removeChannel(channel)
   })
+
+  /** Asks every other open journal in this campaign to refetch. */
+  function notifyOthers() {
+    void channel?.send({ type: 'broadcast', event: 'refresh', payload: {} })
+  }
 
   function inSection(section: JournalSection) {
     return entries.value.filter((e) => (e.section ?? 'log') === section)
@@ -124,11 +132,16 @@ export function useJournal(campaignId: Ref<string>) {
           snackbar.error(up.error, `Could not attach ${file.name}`)
           continue
         }
-        await supabase
+        const { error: attachError } = await supabase
           .from('journal_attachments')
           .insert({ entry_id: entryId, file_path: path, name: file.name, size: file.size })
+        if (attachError) {
+          snackbar.error(attachError, `Could not attach ${file.name}`)
+          await supabase.storage.from(CAMPAIGN_BUCKET).remove([path])
+        }
       }
       await load()
+      if (entry.files.length) notifyOthers()
       snackbar.show('Added to the journal')
       return true
     } catch (err) {
@@ -139,25 +152,38 @@ export function useJournal(campaignId: Ref<string>) {
     }
   }
 
-  /** Saves a member's notes on an NPC or bestiary entry (facts are left untouched). */
+  /**
+   * Saves a member's notes on an NPC or bestiary entry. The server merges them
+   * into `fields` and keeps its own facts, so a reveal at the same moment isn't lost.
+   */
   async function saveNotes(entry: JournalEntry, notes: Omit<JournalFields, 'facts'>) {
-    const fields: JournalFields = { ...entry.fields, ...notes, facts: entry.fields?.facts ?? [] }
-    const { error } = await supabase.from('journal_entries').update({ fields }).eq('id', entry.id)
-    if (error) return snackbar.error(error, 'Could not save your notes')
-    entry.fields = fields
+    const { data, error } = await supabase.rpc('journal_save_notes', {
+      p_entry: entry.id,
+      p_notes: notes,
+    })
+    if (error || !data)
+      return snackbar.error(
+        error ?? new Error('You can’t edit this entry'),
+        'Could not save your notes',
+      )
+    entry.fields = data as JournalFields
     snackbar.show('Notes saved')
   }
 
-  /** GM only: replace the revealed facts. */
+  /** GM only: replace the revealed facts (the server keeps everyone's notes as they are). */
   async function setFacts(entry: JournalEntry, facts: JournalFact[]) {
-    const fields: JournalFields = { ...entry.fields, facts }
     const previous = entry.fields
-    entry.fields = fields
-    const { error } = await supabase.from('journal_entries').update({ fields }).eq('id', entry.id)
-    if (error) {
+    entry.fields = { ...entry.fields, facts }
+    const { data, error } = await supabase.rpc('journal_set_facts', {
+      p_entry: entry.id,
+      p_facts: facts,
+    })
+    if (error || !data) {
       entry.fields = previous
-      snackbar.error(error, 'Could not reveal that')
+      snackbar.error(error ?? new Error('You can’t edit this entry'), 'Could not reveal that')
+      return
     }
+    entry.fields = data as JournalFields
   }
 
   /** Author or GM: change an entry's title, text and who can see it. */
@@ -177,7 +203,9 @@ export function useJournal(campaignId: Ref<string>) {
       snackbar.error(error ?? new Error('You can’t edit this entry'), 'Could not save your changes')
       return false
     }
+    const visibilityChanged = entry.visibility !== data.visibility
     Object.assign(entry, data)
+    if (visibilityChanged) notifyOthers()
     snackbar.show('Entry updated')
     return true
   }
@@ -189,6 +217,7 @@ export function useJournal(campaignId: Ref<string>) {
       .eq('id', entry.id)
     if (error) return snackbar.error(error, 'Could not change who sees this')
     entry.visibility = visibility
+    notifyOthers()
   }
 
   async function remove(entry: JournalEntry) {
