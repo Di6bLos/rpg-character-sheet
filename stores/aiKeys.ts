@@ -44,17 +44,21 @@ export function providerLabel(id: AiProvider | null | undefined) {
 export const useAiKeysStore = defineStore('aiKeys', () => {
   const keys = ref<AiKeyInfo[]>([])
   const loaded = ref(false)
+  /** Bumped on reset so a fetch started by the previous account can't refill the store. */
+  let generation = 0
 
   const defaultKey = computed(() => keys.value.find((k) => k.is_default) ?? keys.value[0] ?? null)
 
   async function fetch(force = false) {
     if (loaded.value && !force) return
+    const gen = generation
     // Explicit columns: secret_id isn't readable by the browser at all.
     const { data, error } = await supabase
       .from('user_ai_keys')
       .select('provider, last4, is_default, created_at')
       .order('created_at')
     if (error) throw error
+    if (gen !== generation) return
     keys.value = (data ?? []) as AiKeyInfo[]
     loaded.value = true
   }
@@ -87,6 +91,7 @@ export const useAiKeysStore = defineStore('aiKeys', () => {
   }
 
   function reset() {
+    generation++
     keys.value = []
     loaded.value = false
   }
