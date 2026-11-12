@@ -35,6 +35,8 @@ interface Body {
   /** Target numbers from the GM's Guide tables, computed by the app (utils/npcBudget.ts). */
   budget?: string[]
   sourceSystem?: string
+  /** Keep an uploaded stat block's level and threat; ignore threat, level and budget. */
+  followStatBlock?: boolean
   description?: string
   files?: InFile[]
 }
@@ -444,6 +446,7 @@ Deno.serve(async (req) => {
         .map((l) => l.slice(0, 400)),
       sourceSystem: body.sourceSystem ?? 'auto',
       fileNames: files.map((f) => f.name.slice(0, 120)),
+      followStatBlock: body.followStatBlock === true,
     })
     const draft =
       keyRow.provider === 'anthropic'

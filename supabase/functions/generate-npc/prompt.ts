@@ -107,7 +107,7 @@ const SYSTEM_RULES: Record<GameSystem, string> = {
 - Write actions as damage dice plus effects, e.g. "1d6+2. On hit: the target is Grappled." Ranges and reach are in spaces.
 - Design rules (Nimble Creator's Kit and GM's Guide): one action or one clearly best action; attacks that fight together share a die size; make monsters distinct with Automatic / On Hit / On Crit / On Death effects; no healing, no kiting, not too verbose.
 - Armor: Medium armor ignores damage modifiers, Heavy halves the dice. About 60% of monsters are unarmored, 30% Medium, 10% Heavy.
-- The request gives target numbers from the GM's Guide tables. Use them: HP for the armor you pick, damage per round, save DC. If you move away from a target (a glass cannon trading HP for damage, or a special ability costing a row), say so in assumptions.`,
+- When the request gives target numbers from the GM's Guide tables, use them: HP for the armor you pick, damage per round, save DC. If you move away from a target (a glass cannon trading HP for damage, or a special ability costing a row), say so in assumptions.`,
   dnd5e: `Game system: fifth edition (5e), using SRD 5.2 conventions.
 - "top" uses exactly these labels in order: "Armor Class" (e.g. "13 (leather armor)"), "Hit Points" (e.g. "22 (5d8)"), "Speed" (e.g. "30 ft."), "Challenge" (e.g. "1 (200 XP)").
 - "stats" uses labels STR, DEX, CON, INT, WIS, CHA with scores as strings, e.g. "15".
@@ -139,7 +139,10 @@ Return one stat block as JSON matching the schema. Keep it playable at the table
 
 ${SYSTEM_RULES[system]}
 
-If the GM uploads a stat block from another system, convert it to ${LABEL[system]}: keep the concept, signature abilities and threat, and rebuild the numbers with ${LABEL[system]} math rather than copying them. If they upload art, design the creature from what it shows.
+If the GM uploads a stat block, the request says how to use it:
+- Follow it: keep its power level and role. If it is already ${LABEL[system]}, keep its level, numbers and abilities and only fit them to the schema. If it is from another system, pick the equivalent ${LABEL[system]} level and translate its HP, damage and abilities with ${LABEL[system]} math at that level.
+- Rebuild it: keep its concept and signature abilities, and set the numbers for the requested threat and level.
+If they upload art, design the creature from what it shows.
 Write original text. Never reproduce copyrighted text verbatim; summarise mechanics in your own words.
 List every judgement call (level picked, numbers derived rather than taken from a table, abilities dropped or merged in a conversion) in "assumptions", one short line each.`
 }
@@ -160,18 +163,25 @@ export function userPrompt(input: {
   budget: string[]
   sourceSystem: string
   fileNames: string[]
+  /** Keep an uploaded stat block's level and threat instead of the GM's picks. */
+  followStatBlock: boolean
 }): string {
+  const follow = input.followStatBlock && input.fileNames.length > 0
   const lines = [
     `Make ${input.kind === 'humanoid' ? 'a humanoid NPC' : 'a monster'} for ${LABEL[input.system]}.`,
-    `Threat: ${THREAT[input.threat]}.`,
   ]
-  if (input.level)
+  if (follow)
+    lines.push(
+      'Follow the attached stat block: keep its power level and threat. No threat, level or target numbers are requested. If the attachments are only art, pick a level that fits what it shows.',
+    )
+  else lines.push(`Threat: ${THREAT[input.threat]}.`)
+  if (input.level && !follow)
     lines.push(
       input.partyLevel
         ? `Party level: ${input.level}.`
         : `${LEVEL_WORD[input.system]}: ${input.level}.`,
     )
-  if (input.budget.length) lines.push(input.budget.join('\n'))
+  if (input.budget.length && !follow) lines.push(input.budget.join('\n'))
   if (input.description) lines.push(`The GM describes it as:\n${input.description}`)
   if (input.fileNames.length) {
     const src =
@@ -181,6 +191,7 @@ export function userPrompt(input: {
           ? 'it is from another game system'
           : `it is from ${LABEL[input.sourceSystem as GameSystem] ?? input.sourceSystem}`
     lines.push(`Attached: ${input.fileNames.join(', ')}. If it is a stat block, ${src}.`)
+    if (!follow) lines.push('If it is a stat block, rebuild it at the threat and level above.')
   }
   return lines.join('\n\n')
 }

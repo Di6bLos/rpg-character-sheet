@@ -44,6 +44,9 @@ const desc = ref('')
 const files = ref<File[]>([])
 const source = ref<'auto' | GameSystem | 'other'>('auto')
 const threat = ref<Threat>('Standard')
+/** With an upload: keep the stat block's own level and threat instead of the picks below. */
+const followBlock = ref(true)
+const following = computed(() => followBlock.value && files.value.length > 0)
 const kind = ref<NpcKind>(props.kind)
 const provider = ref<AiProvider | null>(null)
 const busy = ref(false)
@@ -108,7 +111,8 @@ async function generate() {
   busy.value = true
   error.value = ''
   // The controls stay editable while it drafts; check the reply against what was asked.
-  const asked = budget.value
+  const follow = following.value
+  const asked = follow ? null : budget.value
   try {
     const payloadFiles = await Promise.all(
       files.value.map(async (f) => ({
@@ -128,6 +132,7 @@ async function generate() {
         partyLevel: byParty.value,
         budget: asked ? budgetLines(asked) : [],
         sourceSystem: source.value,
+        followStatBlock: follow,
         description: desc.value.trim(),
         files: payloadFiles,
       },
@@ -212,7 +217,20 @@ async function generate() {
       </select>
     </div>
 
-    <div class="field">
+    <UiSwitch
+      v-if="files.length"
+      v-model="followBlock"
+      label="It's a stat block: keep its level and threat"
+    />
+    <p v-if="files.length" class="small muted ai__hint">
+      {{
+        followBlock
+          ? 'An uploaded stat block keeps its own power level. Turn off to rebuild it at the threat and level you pick.'
+          : 'An uploaded stat block is rebuilt at the threat and level below.'
+      }}
+    </p>
+
+    <div v-if="!following" class="field">
       <span id="ai-threat" class="label">Threat</span>
       <div role="radiogroup" aria-labelledby="ai-threat" class="seg">
         <button
@@ -227,7 +245,7 @@ async function generate() {
         </button>
       </div>
     </div>
-    <div class="field">
+    <div v-if="!following" class="field">
       <label for="ai-level">{{
         byParty ? 'Party level' : system === 'dnd5e' ? 'Challenge rating' : 'Level'
       }}</label>
@@ -402,6 +420,10 @@ async function generate() {
 
 .ai__budget {
   margin: 6px 0 0;
+}
+
+.ai__hint {
+  margin: -8px 0 0;
 }
 
 .ai__using {
