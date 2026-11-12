@@ -312,6 +312,16 @@ describe('rules fixes from the class audits', () => {
     expect(unarmed()).toMatch(new RegExp(`\\+${mod}$`))
   })
 
+  it('doubles the Zephyr’s ancestry Armor too at level 13', () => {
+    const cls = classBySlug('zephyr')!
+    const sheet = build(cls, ancestryBySlug('turtlefolk')!)
+    levelTo(sheet, 4, 'pain')
+    levelTo2(sheet, 5, 12)
+    expect(sheet.ac).toBe(classArmor(cls, sheet.stats, 12) + 4)
+    levelTo2(sheet, 13, 13)
+    expect(sheet.ac).toBe(2 * (classArmor(cls, sheet.stats, 12) + 4))
+  })
+
   it('takes Weapon Mastery and Combat Tactic picks from a Spellblade but keeps +1 Combat Dice', () => {
     const cls = classBySlug('commander')!
     const sheet = build(cls)

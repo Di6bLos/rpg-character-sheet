@@ -522,7 +522,11 @@ function syncDerived(
   level: number,
   prev: number,
 ) {
-  sheet.ac += classArmor(cls, sheet.stats, level) - classArmor(cls, before, prev)
+  // Iron Defense (2) doubles the whole Armor, ancestry and background bonuses too.
+  const doubling =
+    classFlagAt(cls, level, 'armorDoubled') && !classFlagAt(cls, prev, 'armorDoubled')
+  if (doubling) sheet.ac *= 2
+  sheet.ac += classArmor(cls, sheet.stats, level) - classArmor(cls, before, doubling ? level : prev)
   sheet.initMod +=
     sheet.stats.DEX - before.DEX + classInitiative(cls, level) - classInitiative(cls, prev)
   const melee = classMeleeDamage(cls, level)
