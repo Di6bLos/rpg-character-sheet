@@ -489,11 +489,13 @@ describe('lowering the level', () => {
     levelTo(sheet, 6, 'mountainheart')
     sheet.inventory.push({ name: 'Lucky coin', qty: '1' })
     sheet.notes = 'Owes the innkeeper'
+    sheet.backstory = 'Raised by wolves'
     sheet.wounds = 2
     sheet.abilities.push({ name: 'Homebrew trick', src: 'GM', desc: 'Custom' })
     restoreLevel(sheet, 2)
     expect(sheet.inventory.map((i) => i.name)).toContain('Lucky coin')
     expect(sheet.notes).toBe('Owes the innkeeper')
+    expect(sheet.backstory).toBe('Raised by wolves')
     expect(sheet.wounds).toBe(2)
     expect(sheet.abilities.map((a) => a.name)).toContain('Homebrew trick')
     expect(sheet.abilities.every((a) => !a.level || a.level <= 2)).toBe(true)
