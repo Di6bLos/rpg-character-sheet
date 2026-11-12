@@ -76,7 +76,7 @@ Rules work goes through these so it stays consistent and cites its sources:
 | `/join/:token` | Join by invite link | user |
 | `/library` | Document library | user |
 | `/settings` | Theme, accent, notifications | user |
-| `/admin`, `/admin/reports`, `/admin/campaigns`, `/admin/documents` | Admin area | admin, moderator |
+| `/admin`, `/admin/reports`, `/admin/campaigns`, `/admin/documents`, `/admin/npcs` | Admin area (NPCs: shared pool list + generator, Official / Homebrew) | admin, moderator |
 
 ## Data model
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // AI stat block assistant: describe a creature and/or upload art or another
 // system's stat block; the generate-npc Edge Function drafts it in the
-// campaign's system with the GM's own provider key.
+// given system with the user's own provider key (a GM for a campaign, or staff
+// for the shared pool when no campaign is passed).
 import { supabase } from '~/lib/supabase'
 import type { AiProvider, GameSystem, NpcKind, StatBlock } from '~/types'
 import { functionError, providerLabel } from '~/stores/aiKeys'
@@ -17,14 +18,23 @@ import {
   type Threat,
 } from '~/utils/npcBudget'
 
-const props = defineProps<{ system: GameSystem; kind: NpcKind }>()
+const props = withDefaults(
+  defineProps<{
+    system: GameSystem
+    kind: NpcKind
+    /** The campaign the draft is for; staff leave it out to draft for the shared pool. */
+    campaignId?: string | null
+    /** Average level of the party's characters (1 without a party). */
+    partyLevel?: number
+  }>(),
+  { campaignId: null, partyLevel: 1 },
+)
 const emit = defineEmits<{
   draft: [{ form: NpcForm; assumptions: string[]; checks: string[] }]
 }>()
 
 const keys = useAiKeysStore()
 const snackbar = useSnackbarStore()
-const { campaignId, roster } = useCampaignBoard()
 
 const MAX_TOTAL = 8 * 1024 * 1024
 const ACCEPT =
@@ -39,13 +49,7 @@ const provider = ref<AiProvider | null>(null)
 const busy = ref(false)
 
 // --- Level and the GM's Guide budget --------------------------------------------------
-/** Average level of the party's characters (the GM's row has none). */
-const partyLevel = computed(() => {
-  const levels = roster.value
-    .map((m) => m.character_level)
-    .filter((l): l is number => typeof l === 'number' && l > 0)
-  return levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1
-})
+const partyLevel = computed(() => props.partyLevel)
 const levels = computed(() => levelOptions(props.system, threat.value))
 const byParty = computed(() => usesPartyLevel(props.system, threat.value))
 const level = ref(defaultLevel(props.system, threat.value, partyLevel.value))
@@ -115,7 +119,7 @@ async function generate() {
     )
     const { data, error: fnError } = await supabase.functions.invoke('generate-npc', {
       body: {
-        campaignId: campaignId.value,
+        campaignId: props.campaignId ?? undefined,
         provider: provider.value,
         system: props.system,
         kind: kind.value,

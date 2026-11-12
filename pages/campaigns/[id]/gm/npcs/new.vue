@@ -15,7 +15,15 @@ const route = useRoute()
 const snackbar = useSnackbarStore()
 const site = useSiteStore()
 const npcs = useNpcStore()
-const { campaign, campaignId } = useCampaignBoard()
+const { campaign, campaignId, roster } = useCampaignBoard()
+
+/** Average level of the party's characters (the GM's row has none). */
+const partyLevel = computed(() => {
+  const levels = roster.value
+    .map((m) => m.character_level)
+    .filter((l): l is number => typeof l === 'number' && l > 0)
+  return levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1
+})
 
 const system = computed(() => campaign.value?.system ?? 'nimble')
 const mode = ref<'manual' | 'ai'>(route.query.mode === 'ai' ? 'ai' : 'manual')
@@ -105,7 +113,7 @@ async function save() {
       snackbar.show(
         editId.value
           ? `${saved.name} saved`
-          : site.settings.npc_pool_enabled
+          : site.settings.npc_pool_publish
             ? `${saved.name} saved to your index and the library`
             : `${saved.name} saved to your index`,
       )
@@ -186,7 +194,14 @@ const note = computed(() =>
           :save-label="editId ? 'Save changes' : 'Save to index'"
           @save="save"
         />
-        <NpcAiForm v-else :system="system" :kind="form.kind" @draft="onDraft" />
+        <NpcAiForm
+          v-else
+          :system="system"
+          :kind="form.kind"
+          :campaign-id="campaignId"
+          :party-level="partyLevel"
+          @draft="onDraft"
+        />
       </section>
 
       <section class="gen__preview" aria-label="Preview">

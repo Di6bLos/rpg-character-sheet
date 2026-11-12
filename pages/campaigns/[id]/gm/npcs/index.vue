@@ -29,7 +29,7 @@ watch([kind, where, selectedId], () => {
   })
 })
 
-const poolOn = computed(() => site.settings.npc_pool_enabled)
+const poolOn = computed(() => site.settings.npc_pool_campaign)
 watch(poolOn, (on) => {
   if (!on && where.value === 'pool') where.value = 'campaign'
 })

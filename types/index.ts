@@ -291,7 +291,12 @@ export interface CampaignNpc {
 }
 
 export interface SiteSettings {
-  npc_pool_enabled: boolean
+  /** GMs browse the pool and pull NPCs into a campaign. */
+  npc_pool_campaign: boolean
+  /** The Library "NPCs & monsters" tab. */
+  npc_pool_library: boolean
+  /** NPCs GMs save are also published to the pool. */
+  npc_pool_publish: boolean
   ai_enabled: boolean
 }
 

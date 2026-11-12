@@ -7,7 +7,13 @@ const links = computed(() => [
   { to: '/admin/reports', label: 'Reports' },
   { to: '/admin/campaigns', label: 'Campaigns' },
   { to: '/admin/documents', label: 'Documents' },
+  { to: '/admin/npcs', label: 'NPCs' },
 ])
+
+/** Sections with sub-pages (NPCs → generator) stay highlighted on them. */
+function isCurrent(to: string) {
+  return to === '/admin' ? route.path === to : route.path === to || route.path.startsWith(`${to}/`)
+}
 
 const { openCount, refresh } = useOpenReports()
 onMounted(refresh)
@@ -25,7 +31,7 @@ onMounted(refresh)
           v-for="link in links"
           :key="link.to"
           :to="link.to"
-          :aria-current="route.path === link.to ? 'page' : undefined"
+          :aria-current="isCurrent(link.to) ? 'page' : undefined"
         >
           <span>{{ link.label }}</span>
           <span v-if="link.to === '/admin/reports' && openCount > 0" class="badge badge--accent">

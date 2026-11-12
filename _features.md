@@ -119,6 +119,8 @@ Plan: board and GM console become routed pages on one shell; shared NPC pool; AI
 - [x] Add to initiative ×N (Goblin A–E) and the automatic journal entry; "Add to party journal" for NPCs met but not fought
 - [x] Library NPCs tab with Official / Homebrew filters and "Add to campaign"
 - [x] Admin "Site features": NPC pool and AI generator switches
+- [x] Pool switches split: GM console, Library, publishing (`site_settings.npc_pool_{campaign,library,publish}`)
+- [x] Admin NPCs: pool list and generator (any system, Official / Homebrew); staff draft with AI without a campaign
 
 ### 7.4 AI
 - [x] Settings "AI providers": Claude, Gemini, ChatGPT keys (encrypted), default provider, test
