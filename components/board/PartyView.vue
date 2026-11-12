@@ -50,14 +50,26 @@ async function addParty() {
   }
 }
 
+/** Letters for the custom group, continuing after any of the same name already on the board. */
+const customLabels = computed<(string | null)[]>(() => {
+  const name = draft.value.name.trim()
+  const count = Math.min(20, Math.max(1, draft.value.count || 1))
+  if (!name) return []
+  const existing = init.rows.value
+    .filter((c) => !c.campaign_npc_id && !c.character_id)
+    .filter((c) => c.name === combatantName(name, c.group_label))
+    // A lone copy without a letter counts as A.
+    .map((c) => c.group_label ?? 'A')
+  return count === 1 && !existing.length ? [null] : groupLabels(count, existing)
+})
+
 async function addCustom() {
   const d = draft.value
   const name = d.name.trim()
   if (!name) return
   adding.value = true
   try {
-    const count = Math.min(20, Math.max(1, d.count))
-    const labels = count === 1 ? [null] : groupLabels(count)
+    const labels = customLabels.value
     await init.insert(
       labels.map((label) => ({
         name: combatantName(name, label),
@@ -164,9 +176,9 @@ async function addCustom() {
               <input id="cb-ac" v-model.number="draft.ac" class="input" type="number" />
             </div>
           </div>
-          <p v-if="draft.count > 1 && draft.name.trim()" class="small muted">
-            Adds {{ draft.name.trim() }} A to {{ draft.name.trim() }}
-            {{ String.fromCharCode(64 + Math.min(20, draft.count)) }}.
+          <p v-if="customLabels.length > 1 && customLabels[0]" class="small muted">
+            Adds {{ draft.name.trim() }} {{ customLabels[0] }} to {{ draft.name.trim() }}
+            {{ customLabels[customLabels.length - 1] }}.
           </p>
           <div class="row" style="justify-content: flex-end">
             <button type="button" class="btn btn--ghost" @click="addOpen = false">Cancel</button>

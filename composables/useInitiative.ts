@@ -87,20 +87,36 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
     }
   }
 
+  // Each changed combatant fires its own event (and touches the encounter), so
+  // adding 20 copies arrives as a burst: refetch once when it settles.
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null
+  let refreshRows = false
+  function scheduleRefresh(rowsToo: boolean) {
+    refreshRows ||= rowsToo
+    if (refreshTimer) clearTimeout(refreshTimer)
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null
+      const withRows = refreshRows
+      refreshRows = false
+      const jobs: Promise<unknown>[] = [loadEncounter()]
+      if (withRows) jobs.push(loadRows())
+      Promise.all(jobs).catch((err) => snackbar.error(err, 'Could not refresh the turn order'))
+    }, 150)
+  }
+
   function subscribe() {
     if (channel) void supabase.removeChannel(channel)
     const filter = `campaign_id=eq.${campaignId.value}`
     channel = supabase
       .channel(`initiative-${campaignId.value}-${isGm.value ? 'gm' : 'party'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'encounters', filter }, () => {
-        void loadEncounter()
-        if (!isGm.value) void loadRows()
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'encounters', filter }, () =>
+        scheduleRefresh(!isGm.value),
+      )
     if (isGm.value) {
       channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'combatants', filter },
-        () => void loadRows(),
+        () => scheduleRefresh(true),
       )
     }
     channel.subscribe()
@@ -109,6 +125,7 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
   onMounted(load)
   watch([campaignId, isGm], load)
   onBeforeUnmount(() => {
+    if (refreshTimer) clearTimeout(refreshTimer)
     if (channel) void supabase.removeChannel(channel)
   })
 
@@ -154,7 +171,10 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
       .insert(newRows.map((r) => ({ ...r, campaign_id: campaignId.value })))
       .select()
     if (error) throw error
-    rows.value.push(...((data ?? []) as Combatant[]).map(fromCombatant))
+    // A realtime reload may already have brought these rows in.
+    const added = ((data ?? []) as Combatant[]).map(fromCombatant)
+    const ids = new Set(added.map((r) => r.id))
+    rows.value = [...rows.value.filter((r) => !ids.has(r.id)), ...added]
   }
 
   /** Seats every character in the roster that isn't in the order yet, rolling initiative. */
@@ -202,12 +222,26 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
     if (error) snackbar.error(error, 'Could not change initiative')
   }
 
-  async function adjustHp(c: TurnRow, delta: number) {
+  // HP writes for one combatant go out one at a time, so quick clicks land in order.
+  const hpWrites = new Map<string, Promise<void>>()
+
+  function adjustHp(c: TurnRow, delta: number): Promise<void> {
     const max = c.hp_max ?? 0
-    c.hp = Math.max(0, Math.min(max, (c.hp ?? 0) + delta))
-    c.hp_band = c.kind === 'pc' ? null : hpBand(c.hp, max)
-    const { error } = await supabase.from('combatants').update({ hp: c.hp }).eq('id', c.id)
-    if (error) snackbar.error(error, 'Could not update hit points')
+    const hp = Math.max(0, Math.min(max, (c.hp ?? 0) + delta))
+    c.hp = hp
+    c.hp_band = c.kind === 'pc' ? null : hpBand(hp, max)
+    const write = (hpWrites.get(c.id) ?? Promise.resolve()).then(async () => {
+      const { error } = await supabase.from('combatants').update({ hp }).eq('id', c.id)
+      if (error) {
+        snackbar.error(error, 'Could not update hit points')
+        await loadRows().catch(() => undefined)
+      }
+    })
+    hpWrites.set(c.id, write)
+    void write.finally(() => {
+      if (hpWrites.get(c.id) === write) hpWrites.delete(c.id)
+    })
+    return write
   }
 
   async function remove(c: TurnRow) {

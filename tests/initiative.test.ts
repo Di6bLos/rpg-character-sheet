@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { CampaignNpc } from '../types'
-import { buildCopies, groupLabels, hpBand, letter, sortOrder } from '../utils/initiative'
+import {
+  buildCopies,
+  combatantName,
+  COMBATANT_NAME_MAX,
+  groupLabels,
+  hpBand,
+  letter,
+  sortOrder,
+} from '../utils/initiative'
 
 const npc = (patch: Partial<CampaignNpc> = {}): CampaignNpc => ({
   id: 'n1',
@@ -73,6 +81,12 @@ describe('buildCopies', () => {
     expect(buildCopies(npc({ kind: 'humanoid' }), { count: 1 })[0]!.kind).toBe('npc')
     expect(buildCopies(npc(), { count: 50 })).toHaveLength(20)
   })
+  it('tracks Nimble minions (no HP) as 1 HP so they can go down', () => {
+    const minion = buildCopies(npc({ stat_block: { hp: 0 } }), { count: 1 })[0]!
+    expect([minion.hp, minion.hp_max]).toEqual([1, 1])
+    const other = buildCopies(npc({ system: 'dnd5e', stat_block: {} }), { count: 1 })[0]!
+    expect(other.hp_max).toBe(0)
+  })
 })
 
 describe('hpBand', () => {
@@ -88,10 +102,32 @@ describe('hpBand', () => {
 describe('sortOrder', () => {
   it('sorts highest first and keeps ties in the order added', () => {
     const rows = [
-      { id: 'a', initiative: 10, created_at: '2026-01-01T00:00:01Z' },
-      { id: 'b', initiative: 15, created_at: '2026-01-01T00:00:02Z' },
-      { id: 'c', initiative: 10, created_at: '2026-01-01T00:00:00Z' },
+      { id: 'a', name: 'A', initiative: 10, created_at: '2026-01-01T00:00:01Z' },
+      { id: 'b', name: 'B', initiative: 15, created_at: '2026-01-01T00:00:02Z' },
+      { id: 'c', name: 'C', initiative: 10, created_at: '2026-01-01T00:00:00Z' },
     ]
     expect(sortOrder(rows).map((r) => r.id)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('breaks full ties by name, then id, whatever order the rows arrive in', () => {
+    const t = '2026-01-01T00:00:00Z'
+    const rows = [
+      { id: 'z', name: 'Goblin B', initiative: 12, created_at: t },
+      { id: 'y', name: 'Goblin A', initiative: 12, created_at: t },
+      { id: 'x', name: 'Goblin A', initiative: 12, created_at: t },
+    ]
+    expect(sortOrder(rows).map((r) => r.id)).toEqual(['x', 'y', 'z'])
+    expect(sortOrder([...rows].reverse()).map((r) => r.id)).toEqual(['x', 'y', 'z'])
+  })
+})
+
+describe('combatantName', () => {
+  it('shortens long names so the group letter still fits', () => {
+    const long = 'x'.repeat(COMBATANT_NAME_MAX)
+    const named = combatantName(long, 'AB')
+    expect(named).toHaveLength(COMBATANT_NAME_MAX)
+    expect(named.endsWith(' AB')).toBe(true)
+    expect(combatantName(long, null)).toHaveLength(COMBATANT_NAME_MAX)
+    expect(combatantName('Goblin', 'C')).toBe('Goblin C')
   })
 })

@@ -28,9 +28,17 @@ export function groupLabels(count: number, existing: (string | null | undefined)
   return Array.from({ length: Math.max(0, count) }, (_, i) => letter(start + i))
 }
 
-/** "Goblin" + "C" → "Goblin C". A lone creature with no label keeps its name. */
+/** Longest combatant name the database accepts. */
+export const COMBATANT_NAME_MAX = 80
+
+/**
+ * "Goblin" + "C" → "Goblin C". A lone creature with no label keeps its name.
+ * Long names are shortened so the label still fits in the column.
+ */
 export function combatantName(base: string, label: string | null): string {
-  return label ? `${base} ${label}` : base
+  const room = label ? COMBATANT_NAME_MAX - label.length - 1 : COMBATANT_NAME_MAX
+  const name = base.trim().slice(0, room).trimEnd()
+  return label ? `${name} ${label}` : name
 }
 
 /** Players see a band, not numbers. Mirrors `campaign_initiative()` in SQL. */
@@ -42,10 +50,22 @@ export function hpBand(hp: number, hpMax: number): HpBand | null {
   return 'Unhurt'
 }
 
-/** Highest initiative first; ties keep the order they were added in. */
-export function sortOrder<T extends Pick<Combatant, 'initiative' | 'created_at'>>(rows: T[]): T[] {
+const byteOrder = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
+
+/**
+ * Highest initiative first; ties keep the order they were added in, then go
+ * by name and id (copies added together share a timestamp). Mirrors the
+ * ORDER BY of `campaign_initiative()` so the GM and players see one order.
+ */
+export function sortOrder<T extends Pick<Combatant, 'initiative' | 'created_at' | 'name' | 'id'>>(
+  rows: T[],
+): T[] {
   return [...rows].sort(
-    (a, b) => b.initiative - a.initiative || a.created_at.localeCompare(b.created_at),
+    (a, b) =>
+      b.initiative - a.initiative ||
+      byteOrder(a.created_at, b.created_at) ||
+      byteOrder(a.name, b.name) ||
+      byteOrder(a.id, b.id),
   )
 }
 
@@ -85,7 +105,10 @@ export function buildCopies(npc: CampaignNpc, opts: AddCopiesOptions): NewCombat
   const labels: (string | null)[] =
     count === 1 && existing.length === 0 ? [null] : groupLabels(count, existing)
   const mod = npc.stat_block.initMod ?? 0
-  const hp = Math.max(0, npc.stat_block.hp ?? 0)
+  // Nimble minions have no HP and drop to any damage: track them as 1 HP so the
+  // strip can still mark them Down.
+  const rawHp = Math.max(0, npc.stat_block.hp ?? 0)
+  const hp = npc.system === 'nimble' && rawHp === 0 ? 1 : rawHp
   const ac = npc.stat_block.ac ?? 10
   const shared = rollDie(20, rng) + mod
   return labels.map((label) => ({
