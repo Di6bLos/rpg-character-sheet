@@ -20,14 +20,14 @@ async function load() {
   failed.value = false
   try {
     const id = String(route.params.id)
-    const [found, seat] = await Promise.all([
-      store.fetchOne(id),
-      supabase
-        .from('campaign_members')
-        .select('campaign_id, campaigns(name)')
-        .eq('character_id', id)
-        .limit(1),
-    ])
+    // A character can sit in several campaigns; prefer the one the sheet was opened from.
+    const from = typeof route.query.campaign === 'string' ? route.query.campaign : null
+    let seatQuery = supabase
+      .from('campaign_members')
+      .select('campaign_id, campaigns(name)')
+      .eq('character_id', id)
+    if (from) seatQuery = seatQuery.eq('campaign_id', from)
+    const [found, seat] = await Promise.all([store.fetchOne(id), seatQuery.limit(1)])
     character.value = found
     const row = seat.data?.[0] as
       | { campaign_id: string; campaigns: { name: string } | null }

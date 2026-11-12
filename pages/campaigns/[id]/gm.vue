@@ -783,7 +783,7 @@ async function confirmDeleteCampaign() {
                   </button>
                   <NuxtLink
                     v-if="r.character_id"
-                    :to="`/character/${r.character_id}`"
+                    :to="`/character/${r.character_id}?campaign=${campaignId}`"
                     class="btn btn--ghost btn--sm"
                   >
                     View sheet

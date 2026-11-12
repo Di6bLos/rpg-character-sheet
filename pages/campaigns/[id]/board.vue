@@ -469,7 +469,7 @@ async function confirmRemoveEntry() {
         </label>
         <NuxtLink
           v-if="!isGm && campaign.myCharacterId"
-          :to="`/character/${campaign.myCharacterId}`"
+          :to="`/character/${campaign.myCharacterId}?campaign=${campaign.id}`"
           class="btn btn--ghost"
           >Open sheet</NuxtLink
         >
