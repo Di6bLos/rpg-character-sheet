@@ -293,7 +293,8 @@ const PERIODS: Record<string, UsePeriod> = {
 const PERIOD = '([Ss]afe [Rr]est|day|encounter|turn|round)'
 const AMOUNT = String.raw`((?:\d+\s*×\s*)?(?:STR|DEX|INT|WIL|LVL)|\d+)`
 /**
- * In order of appearance: a level step ("L7: 2/encounter"), a limit ("1/turn",
+ * In order of appearance: a level step ("L7: 2/encounter", which raises the last
+ * limit of that period or, if there is none yet, starts one), a limit ("1/turn",
  * "2×WIL times/Safe Rest"), a pool ("maximum is always 5×LVL and it recharges on a
  * Safe Rest"), charges ("You have DEX Beastshift charges; they reset on a Safe
  * Rest") and a single recharging use ("recharges when you Safe Rest").
@@ -357,7 +358,11 @@ function readLimits(ability: NimbleAbility, sheet: NimbleSheet, level: number): 
     if (stepLevel && stepUses && stepPeriod) {
       const period = PERIODS[stepPeriod.toLowerCase()]
       const target = found.findLast((c) => c.period === period)
-      if (target && level >= Number(stepLevel)) target.rule = Number(stepUses)
+      // A step with no earlier limit of its period starts one ("L11: 1/round").
+      if (level >= Number(stepLevel) && period) {
+        if (target) target.rule = Number(stepUses)
+        else add(period, stepPeriod, Number(stepUses), after)
+      }
     } else if (amount && word) {
       const period = PERIODS[word.toLowerCase()]
       if (period) add(period, word, limitValue(amount, sheet, level), after)

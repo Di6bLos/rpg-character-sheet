@@ -555,6 +555,18 @@ describe('limited-use abilities', () => {
     expect(counters(sheet, 12)).toEqual(['Small Companion@encounter 3'])
   })
 
+  it('starts a limit at the level the text names when there is none before it', () => {
+    const sheet = withAbilities([
+      [
+        'Small Companion',
+        'Go for the Throat!: (1/encounter; L11: 2/encounter, L11: 1/round; L15: 3/encounter) Attack.',
+      ],
+    ])
+    expect(counters(sheet, 10)).toEqual(['Small Companion@encounter 1'])
+    expect(counters(sheet, 11)).toEqual(['Small Companion@encounter 2', 'Small Companion@turn 1'])
+    expect(counters(sheet, 15)).toEqual(['Small Companion@encounter 3', 'Small Companion@turn 1'])
+  })
+
   it('adds the extra uses other abilities grant', () => {
     const sheet = withAbilities([
       ['Coordinated Strike!', '(1/round) Free action. You can do this INT times/Safe Rest.'],

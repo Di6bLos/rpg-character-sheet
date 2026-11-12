@@ -116,7 +116,7 @@ export const hunter: ClassDef = {
       options: [
         {
           name: 'Small Companion',
-          desc: 'Cat, Bat, Hawk, Raccoon, Rooster, Ferret… Keen Eyes: (1/encounter) Mark a target for free (L7: 2/encounter, L11: 3/encounter). Protect Me!: (1/encounter) Whenever you Defend, your companion distracts the attacker, causing the attack to miss, and you move up to half your speed away (L7: 2/encounter). Go for the Throat!: (1/encounter; L11: 2/encounter; L15: 3/encounter; from level 11, at most once each round) Costs 1 TotH charge: your companion attacks your quarry for 1d4+LVL damage for free, ignoring armor.',
+          desc: 'Cat, Bat, Hawk, Raccoon, Rooster, Ferret… Keen Eyes: (1/encounter) Mark a target for free (L7: 2/encounter, L11: 3/encounter). Protect Me!: (1/encounter) Whenever you Defend, your companion distracts the attacker, causing the attack to miss, and you move up to half your speed away (L7: 2/encounter). Go for the Throat!: (1/encounter; L11: 2/encounter, L11: 1/round; L15: 3/encounter) Costs 1 TotH charge: your companion attacks your quarry for 1d4+LVL damage for free, ignoring armor.',
         },
         {
           name: 'Medium Companion',
