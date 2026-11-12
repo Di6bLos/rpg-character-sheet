@@ -44,12 +44,23 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
   })
   const round = computed(() => encounter.value?.round ?? 1)
 
+  // HP writes for one combatant go out one at a time, so quick clicks land in order.
+  const hpWrites = new Map<string, Promise<void>>()
+  /** HP the GM has set but the server hasn't confirmed yet; reloads keep it. */
+  const pendingHp = new Map<string, number>()
+
+  function withPendingHp(row: TurnRow): TurnRow {
+    const hp = pendingHp.get(row.id)
+    if (hp === undefined) return row
+    return { ...row, hp, hp_band: row.kind === 'pc' ? null : hpBand(hp, row.hp_max ?? 0) }
+  }
+
   async function loadRows() {
     const id = campaignId.value
     if (isGm.value) {
       const { data, error } = await supabase.from('combatants').select('*').eq('campaign_id', id)
       if (error) throw error
-      rows.value = ((data ?? []) as Combatant[]).map(fromCombatant)
+      rows.value = ((data ?? []) as Combatant[]).map(fromCombatant).map(withPendingHp)
     } else {
       const { data, error } = await supabase.rpc('campaign_initiative', { p_campaign: id })
       if (error) throw error
@@ -222,25 +233,26 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
     if (error) snackbar.error(error, 'Could not change initiative')
   }
 
-  // HP writes for one combatant go out one at a time, so quick clicks land in order.
-  const hpWrites = new Map<string, Promise<void>>()
-
   function adjustHp(c: TurnRow, delta: number): Promise<void> {
+    const id = c.id
     const max = c.hp_max ?? 0
     const hp = Math.max(0, Math.min(max, (c.hp ?? 0) + delta))
     c.hp = hp
     c.hp_band = c.kind === 'pc' ? null : hpBand(hp, max)
-    const write = (hpWrites.get(c.id) ?? Promise.resolve()).then(async () => {
-      const { error } = await supabase.from('combatants').update({ hp }).eq('id', c.id)
+    pendingHp.set(id, hp)
+    const write = (hpWrites.get(id) ?? Promise.resolve()).then(async () => {
+      const { error } = await supabase.from('combatants').update({ hp }).eq('id', id)
+      const latest = hpWrites.get(id) === write
+      if (latest) {
+        hpWrites.delete(id)
+        pendingHp.delete(id)
+      }
       if (error) {
         snackbar.error(error, 'Could not update hit points')
-        await loadRows().catch(() => undefined)
+        if (latest) await loadRows().catch(() => undefined)
       }
     })
-    hpWrites.set(c.id, write)
-    void write.finally(() => {
-      if (hpWrites.get(c.id) === write) hpWrites.delete(c.id)
-    })
+    hpWrites.set(id, write)
     return write
   }
 
