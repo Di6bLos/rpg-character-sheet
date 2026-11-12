@@ -2,6 +2,8 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
 import type { BoardItem, Message, RosterEntry } from '~/types'
+import { chatReadAt } from '~/composables/useCampaignChat'
+import { threadsOf } from '~/utils/chat'
 import { plural, sessionDate, timeAgo } from '~/utils/format'
 import { authorLabel } from '~/utils/roster'
 import { systemLabel } from '~/utils/systems'
@@ -16,79 +18,91 @@ const snackbar = useSnackbarStore()
 
 type DashMessage = Message & { sender: { display_name: string } | null }
 
-const messages = ref<DashMessage[]>([])
+/** One row per campaign: its newest message and how many are unread. */
+interface CampaignLatest {
+  latest: DashMessage | null
+  unread: number
+}
+
+/** Recent messages per campaign; enough to count what's unread since the last visit to the chat. */
+const PER_CAMPAIGN = 50
+
+const latest = ref<Record<string, CampaignLatest>>({})
 const roster = ref<RosterEntry[]>([])
-/** Rosters of every campaign with a message in the list, to name senders by character. */
+/** Rosters of campaigns with a message, to name senders by character. */
 const rosters = ref<Record<string, RosterEntry[]>>({})
 const latestBoard = ref<BoardItem | null>(null)
 const latestBoardUrl = ref<string | null>(null)
-const draft = ref('')
-const sending = ref(false)
 let channel: RealtimeChannel | null = null
 
 const current = computed(() => campaigns.current)
 const campaignIds = computed(() => campaigns.campaigns.map((c) => c.id))
-const canMessage = computed(() => auth.can('can_send_messages'))
 
 function campaignOf(id: string) {
   return campaigns.byId(id)
 }
 
-const newCount = computed(
-  () =>
-    messages.value.filter((m) => {
-      const c = campaignOf(m.campaign_id)
-      return m.sender_id !== auth.userId && c && m.created_at > c.lastReadAt
-    }).length,
+/** Campaigns with a message, newest first. */
+const rows = computed(() =>
+  campaigns.campaigns
+    .map((c) => ({ campaign: c, ...(latest.value[c.id] ?? { latest: null, unread: 0 }) }))
+    .filter((r) => r.latest)
+    .sort((a, b) => b.latest!.created_at.localeCompare(a.latest!.created_at)),
 )
+
+const newCount = computed(() => rows.value.reduce((n, r) => n + r.unread, 0))
+
+function boardLink(campaignId: string) {
+  const c = campaignOf(campaignId)
+  return `/campaigns/${campaignId}/${c?.myRole === 'gm' ? 'gm' : 'board'}/party`
+}
 
 function fromLabel(m: DashMessage) {
   const c = campaignOf(m.campaign_id)
   const gm = c && m.sender_id === c.created_by ? ' (GM)' : ''
-  if (m.sender_id === auth.userId) return { primary: 'You' + gm, secondary: null }
+  if (m.sender_id === auth.userId) return 'You' + gm
   const label = authorLabel(rosters.value[m.campaign_id] ?? [], m.sender_id, m.sender?.display_name)
-  return { ...label, primary: label.primary + gm }
+  return label.primary + gm
 }
 
-/** Loads the rosters of campaigns in the message list that aren't cached yet. */
+/** Loads the rosters of campaigns in the list that aren't cached yet. */
 async function loadRosters() {
-  const missing = [...new Set(messages.value.map((m) => m.campaign_id))].filter(
-    (id) => !rosters.value[id],
-  )
-  const rows = await Promise.allSettled(missing.map((id) => campaigns.roster(id)))
+  const missing = rows.value.map((r) => r.campaign.id).filter((id) => !rosters.value[id])
+  const res = await Promise.allSettled(missing.map((id) => campaigns.roster(id)))
   // Only successes are cached, so a failed campaign is retried on the next refresh.
   missing.forEach((id, i) => {
-    const row = rows[i]
+    const row = res[i]
     if (row?.status === 'fulfilled') rosters.value[id] = row.value
   })
 }
 
-function tagLabel(m: DashMessage) {
-  const scope = m.recipient_ids
-    ? m.sender_id === auth.userId
-      ? 'Secret'
-      : m.recipient_ids.length > 1
-        ? 'Secret · you and others'
-        : 'Secret · only you'
-    : 'Party'
-  return campaigns.campaigns.length > 1
-    ? `${scope} · ${campaignOf(m.campaign_id)?.name ?? ''}`
-    : scope
+/** Counts messages from others newer than the board chat's read marker for their thread. */
+function unreadIn(campaignId: string, list: DashMessage[]): number {
+  const me = auth.userId ?? ''
+  return list.filter(
+    (m) =>
+      m.sender_id !== me &&
+      threadsOf(m, me).some((t) => m.created_at > chatReadAt(me, campaignId, t)),
+  ).length
 }
 
-async function loadMessages() {
-  if (!campaignIds.value.length) {
-    messages.value = []
-    return
-  }
+async function loadCampaign(campaignId: string) {
   const { data, error } = await supabase
     .from('messages')
     .select('*, sender:profiles!messages_sender_id_fkey(display_name)')
-    .in('campaign_id', campaignIds.value)
+    .eq('campaign_id', campaignId)
     .order('created_at', { ascending: false })
-    .limit(12)
+    .limit(PER_CAMPAIGN)
   if (error) throw error
-  messages.value = (data ?? []) as unknown as DashMessage[]
+  const list = (data ?? []) as unknown as DashMessage[]
+  latest.value = {
+    ...latest.value,
+    [campaignId]: { latest: list[0] ?? null, unread: unreadIn(campaignId, list) },
+  }
+}
+
+async function loadMessages() {
+  await Promise.all(campaignIds.value.map(loadCampaign))
   await loadRosters()
 }
 
@@ -120,8 +134,10 @@ function subscribe() {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
       const row = payload.new as Message
       if (!campaignIds.value.includes(row.campaign_id)) return
-      // The global notifications store announces it; here the list just refreshes.
-      void loadMessages()
+      // The global notifications store announces it; here that campaign's row refreshes.
+      loadCampaign(row.campaign_id)
+        .then(loadRosters)
+        .catch(() => undefined)
     })
     .subscribe()
 }
@@ -138,25 +154,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (channel) void supabase.removeChannel(channel)
-  // Leaving the dashboard counts as having read what was on it.
-  for (const c of campaigns.campaigns) {
-    if (messages.value.some((m) => m.campaign_id === c.id && m.created_at > c.lastReadAt)) {
-      void campaigns.markRead(c.id)
-    }
-  }
 })
-
-async function send() {
-  const body = draft.value.trim()
-  const c = current.value
-  if (!body || !c) return
-  sending.value = true
-  const { error } = await supabase.from('messages').insert({ campaign_id: c.id, body })
-  sending.value = false
-  if (error) return snackbar.error(error, 'Could not send the message')
-  draft.value = ''
-  await loadMessages()
-}
 
 const partyNames = computed(() =>
   roster.value.filter((r) => r.role === 'player').map((r) => r.character_name ?? r.display_name),
@@ -225,78 +223,70 @@ const libDocs = computed(() => library.documents.slice(0, 4))
             >{{ newCount }} new</span
           >
         </div>
-        <article
-          v-for="m in messages"
-          :key="m.id"
-          class="msg"
-          :class="{ 'msg--secret': m.recipient_ids }"
-        >
-          <div class="msg__icon">
-            <svg
-              v-if="m.recipient_ids"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
+        <ul v-if="rows.length" class="latest">
+          <li v-for="r in rows" :key="r.campaign.id">
+            <NuxtLink
+              :to="boardLink(r.campaign.id)"
+              class="latest__row"
+              :class="{ 'is-unread': r.unread }"
             >
-              <rect x="5" y="11" width="14" height="9" rx="2" />
-              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-            </svg>
-            <svg
-              v-else
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="9" cy="8" r="3" />
-              <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-              <circle cx="17" cy="9" r="2.5" />
-              <path d="M16 14.2c2.9.3 5 2.7 5 5.8" />
-            </svg>
-          </div>
-          <div class="msg__body">
-            <div class="row" style="gap: 8px">
-              <span class="msg__from">
-                <strong>{{ fromLabel(m).primary }}</strong>
-                <span v-if="fromLabel(m).secondary" class="msg__player">{{
-                  fromLabel(m).secondary
+              <span
+                class="latest__icon"
+                role="img"
+                :aria-label="r.unread ? plural(r.unread, 'unread message') : 'No unread messages'"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+                </svg>
+                <span v-if="r.unread" class="latest__count" aria-hidden="true">{{
+                  r.unread > 9 ? '9+' : r.unread
                 }}</span>
               </span>
-              <span class="msg__tag">{{ tagLabel(m) }}</span>
-              <span class="small muted" style="font-size: 12px">{{ timeAgo(m.created_at) }}</span>
-            </div>
-            <p>{{ m.body }}</p>
-          </div>
-        </article>
-        <p v-if="!messages.length" class="card-empty">
+              <span class="latest__body">
+                <span class="latest__top">
+                  <strong class="latest__campaign">{{ r.campaign.name }}</strong>
+                  <span class="latest__time">{{ timeAgo(r.latest!.created_at) }}</span>
+                </span>
+                <span class="latest__text">
+                  <svg
+                    v-if="r.latest!.recipient_ids"
+                    class="latest__lock"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    aria-label="Private"
+                    role="img"
+                  >
+                    <rect x="5" y="11" width="14" height="9" rx="2" />
+                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                  </svg>
+                  <b>{{ fromLabel(r.latest!) }}:</b> {{ r.latest!.body }}
+                </span>
+              </span>
+            </NuxtLink>
+          </li>
+        </ul>
+        <p v-else class="card-empty">
           {{
             current
-              ? 'No messages yet. Say hello to your party.'
+              ? 'No messages yet. Say hello to your party on the campaign board.'
               : 'Messages from your campaigns show up here.'
           }}
         </p>
-        <form v-if="current && canMessage" class="msg-form" @submit.prevent="send">
-          <label for="dash-msg" class="sr-only">Message the party in {{ current.name }}</label>
-          <input
-            id="dash-msg"
-            v-model="draft"
-            class="input"
-            maxlength="4000"
-            placeholder="Message the party…"
-          />
-          <button type="submit" class="btn" :disabled="sending || !draft.trim()">Send</button>
-        </form>
       </section>
 
       <section class="panel panel--flush" aria-labelledby="camp-h">
@@ -398,41 +388,49 @@ const libDocs = computed(() => library.documents.slice(0, 4))
   color: var(--page-muted);
 }
 
-.msg {
-  display: flex;
-  gap: 14px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--track);
+.latest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 
-  &--secret {
-    background: var(--secret-bg);
-
-    .msg__icon {
-      background: var(--ok-bg);
-      color: var(--secondary);
-    }
-
-    .msg__tag {
-      color: var(--secondary);
-    }
-  }
-
-  strong {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  p {
-    font-size: 14px;
-    line-height: 1.55;
-    color: var(--page-soft);
-    text-wrap: pretty;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+  li + li {
+    border-top: 1px solid var(--track);
   }
 }
 
-.msg__icon {
+.latest__row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 20px;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--track);
+  }
+
+  &.is-unread {
+    .latest__icon {
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+
+    .latest__campaign,
+    .latest__text {
+      color: var(--page-text);
+    }
+
+    .latest__text b {
+      font-weight: 700;
+    }
+  }
+}
+
+.latest__icon {
+  position: relative;
   flex: none;
   width: 36px;
   height: 36px;
@@ -441,39 +439,74 @@ const libDocs = computed(() => library.documents.slice(0, 4))
   align-items: center;
   justify-content: center;
   background: var(--track);
-  color: var(--accent-text);
-}
-
-.msg__body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.msg__from {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.msg__player {
-  font-size: 13px;
   color: var(--page-muted);
 }
 
-.msg__tag {
+.latest__count {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger-text);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  line-height: 16px;
+  text-align: center;
+}
+
+.latest__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.latest__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.latest__campaign {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.latest__time {
+  flex: none;
+  font-size: 12px;
   color: var(--page-muted);
 }
 
-.msg-form {
-  display: flex;
-  gap: 8px;
-  padding: 14px 20px;
+.latest__text {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--page-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+
+  b {
+    font-weight: 600;
+  }
+}
+
+.latest__lock {
+  vertical-align: -1px;
+  margin-right: 2px;
 }
 
 .cover {

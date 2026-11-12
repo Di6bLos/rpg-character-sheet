@@ -11,7 +11,8 @@ function readKey(userId: string, campaignId: string, thread: ThreadId) {
   return `lantern:chat-read:${userId}:${campaignId}:${thread}`
 }
 
-function readAt(userId: string, campaignId: string, thread: ThreadId): string {
+/** When this user last read a thread on the board (ISO time, '' if never). The dashboard reads it too. */
+export function chatReadAt(userId: string, campaignId: string, thread: ThreadId): string {
   try {
     return localStorage.getItem(readKey(userId, campaignId, thread)) ?? ''
   } catch {
@@ -85,7 +86,7 @@ export function useCampaignChat(campaignId: Ref<string>) {
   )
 
   function unread(t: ThreadId): number {
-    const since = lastRead.value[t] ?? readAt(me.value, campaignId.value, t)
+    const since = lastRead.value[t] ?? chatReadAt(me.value, campaignId.value, t)
     return messages.value.filter(
       (m) => m.sender_id !== me.value && threadsOf(m, me.value).includes(t) && m.created_at > since,
     ).length

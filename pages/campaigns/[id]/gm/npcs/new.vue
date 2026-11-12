@@ -94,7 +94,7 @@ async function save() {
     )
     if (!published)
       snackbar.show(
-        `${saved.name} saved to your index, but it could not be shared to the pool`,
+        `${saved.name} saved to your index, but it could not be added to the library`,
         'error',
       )
     else
@@ -102,7 +102,7 @@ async function save() {
         editId.value
           ? `${saved.name} saved`
           : site.settings.npc_pool_enabled
-            ? `${saved.name} saved to your index and the shared pool`
+            ? `${saved.name} saved to your index and the library`
             : `${saved.name} saved to your index`,
       )
     await navigateTo({

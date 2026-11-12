@@ -75,7 +75,7 @@ async function loadPool() {
       q: q.value,
     })
   } catch (err) {
-    snackbar.error(err, 'Could not search the NPC pool')
+    snackbar.error(err, 'Could not search the library')
   } finally {
     poolLoading.value = false
   }
@@ -250,7 +250,7 @@ watch(selectedId, () => {
             :aria-checked="where === 'pool'"
             @click="pickWhere('pool')"
           >
-            Shared pool
+            Library
           </button>
         </div>
         <div v-if="where === 'pool'" class="chips" role="group" aria-label="Source">
@@ -285,7 +285,7 @@ watch(selectedId, () => {
           v-if="where === 'pool' && poolLoading"
           class="spinner"
           role="status"
-          aria-label="Searching the pool"
+          aria-label="Searching the library"
         />
         <ul v-else class="npcs__items">
           <li v-for="it in list" :key="it.npc.id">
@@ -316,10 +316,10 @@ watch(selectedId, () => {
         <p v-if="!list.length && !(where === 'pool' && poolLoading)" class="small muted">
           {{
             where === 'pool'
-              ? 'Nothing in the pool matches. Every NPC a GM saves lands here.'
+              ? 'Nothing in the library matches. Every NPC a GM saves lands here.'
               : q
                 ? 'Nothing matches.'
-                : `No ${kind === 'monster' ? 'monsters' : 'humanoids'} yet. Build one, or pull one from the shared pool.`
+                : `No ${kind === 'monster' ? 'monsters' : 'humanoids'} yet. Build one, or pull one from the library.`
           }}
         </p>
       </aside>
@@ -431,8 +431,8 @@ watch(selectedId, () => {
       width="460px"
     >
       <p>
-        It leaves this campaign’s index. Copies in initiative and the party journal stay; the shared
-        pool keeps its entry.
+        It leaves this campaign’s index. Copies in initiative and the party journal stay; the
+        library keeps its entry.
       </p>
       <template #actions>
         <button type="button" class="btn btn--ghost" @click="removeOpen = false">Keep it</button>
