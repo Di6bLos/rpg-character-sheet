@@ -104,7 +104,7 @@ Plan: board and GM console become routed pages on one shell; shared NPC pool; AI
 - [x] Players read the turn order through `campaign_initiative()` (enemy HP shown as a band) and get live updates from `encounters`
 - [x] Journal NPC / bestiary entries: members edit their notes, only the GM reveals facts (trigger)
 - [x] Types, `utils/initiative.ts` (group letters, copies, HP band) and `utils/npcJournal.ts` (journal stub, facts) with tests
-- [ ] Apply the migration to the hosted project and run the security advisors
+- [x] Apply the migration to the hosted project and run the security advisors (plus FK indexes; `generate-npc` deployed)
 
 ### 7.2 Routed board
 - [x] `BoardShell` layout with routed tabs: `/board/{party,journal,maps}`, `/gm/{party,journal,maps,npcs}`
