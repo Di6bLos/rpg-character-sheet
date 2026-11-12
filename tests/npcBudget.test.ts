@@ -145,6 +145,19 @@ describe('checkNimbleDraft', () => {
     expect(checkNimbleDraft(block('None', 0, '1d6'), minion)[0]).toContain('single 1d4')
   })
 
+  it('leaves Reactions out of the damage and minion checks', () => {
+    const withReaction = (b: StatBlock): StatBlock => ({
+      ...b,
+      sections: [
+        ...(b.sections ?? []),
+        { title: 'Reactions', items: [{ n: 'Riposte', t: '6d10+20' }] },
+      ],
+    })
+    expect(checkNimbleDraft(withReaction(block('Medium', 46, '2d8+10')), level5)).toEqual([])
+    const minion = nimbleBudget('Minion', '1')!
+    expect(checkNimbleDraft(withReaction(block('None', 0, '1d4')), minion)).toEqual([])
+  })
+
   it('says so when no attack dice can be read', () => {
     expect(checkNimbleDraft(block('Medium', 46, 'WIL save or Frightened.'), level5)).toEqual([
       'No attack dice found to check against the guide.',

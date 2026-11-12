@@ -133,7 +133,8 @@ function hpOf(block: StatBlock): number | null {
 }
 
 function actionItems(block: StatBlock) {
-  return (block.sections ?? []).filter((s) => /actions/i.test(s.title)).flatMap((s) => s.items)
+  // Whole word: "Reactions" are conditional and don't count toward the damage budget.
+  return (block.sections ?? []).filter((s) => /\bactions\b/i.test(s.title)).flatMap((s) => s.items)
 }
 
 function actionAverages(block: StatBlock): number[] {
