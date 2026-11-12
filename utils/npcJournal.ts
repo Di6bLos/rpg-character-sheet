@@ -37,8 +37,11 @@ export function journalStub(npc: CampaignNpc): JournalStub {
 /** Every fact the GM could reveal from a stat block, in reading order. */
 export function revealableFacts(block: StatBlock): JournalFact[] {
   const out: JournalFact[] = []
+  if (block.size) out.push({ k: 'Size', v: block.size })
   if (block.type) out.push({ k: 'Type', v: block.type })
+  if (block.alignment) out.push({ k: 'Alignment', v: block.alignment })
   for (const [k, v] of block.top ?? []) out.push({ k, v })
+  for (const [k, v] of block.stats ?? []) out.push({ k, v })
   for (const [k, v] of block.lines ?? []) out.push({ k, v })
   for (const sec of block.sections ?? []) {
     for (const it of sec.items) out.push({ k: it.n, v: it.t })

@@ -51,6 +51,28 @@ describe('facts', () => {
   it('lists type, headline lines and actions in order', () => {
     expect(all.map((f) => f.k)).toEqual(['Type', 'Armor Class', 'Hit Points', 'Claws'])
   })
+  it('includes size, alignment and ability scores in reading order', () => {
+    const facts = revealableFacts({
+      size: 'Medium',
+      type: 'Undead',
+      alignment: 'Chaotic Evil',
+      top: [['Armor Class', '12']],
+      stats: [
+        ['STR', '13 (+1)'],
+        ['DEX', '15 (+2)'],
+      ],
+      lines: [['Senses', 'Darkvision 60 ft.']],
+    })
+    expect(facts.map((f) => f.k)).toEqual([
+      'Size',
+      'Type',
+      'Alignment',
+      'Armor Class',
+      'STR',
+      'DEX',
+      'Senses',
+    ])
+  })
   it('reveals and hides one at a time, keeping stat block order', () => {
     let r = toggleFact([], all[3]!, all)
     r = toggleFact(r, all[1]!, all)
