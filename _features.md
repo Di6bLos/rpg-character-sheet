@@ -51,7 +51,7 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [x] Production deploy on Vercel
 
 ## Phase 6 · Nimble heroes
-- [x] Source PDFs in `.local.docs/` (gitignored); class portraits are original SVG sigils (license forbids book art)
+- [x] Source PDFs in `.local/` (gitignored); class portraits are original SVG sigils (license forbids book art)
 - [x] Typed rules data in `data/nimble/` (classes + subclasses levels 1–20, ancestries, backgrounds)
 - [x] Sheet model: class/subclass/ancestry/background slugs, recorded choices, ability level
 - [x] `utils/nimbleBuild.ts` (level 1 build, level plan, apply level) with tests
@@ -81,3 +81,18 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [x] KEY stats marked on the stat tiles; size, height & weight and languages in the identity block
 - [x] Feedback: basic turn actions removed; Actions lists only abilities with an action or limited uses; spells and abilities are toggle cards (one open at a time); spells in two columns; All abilities shows full descriptions
 - [x] Feedback: Actions lists only abilities with limited uses (per turn/round, encounter, day/Safe Rest, or a pool), counted from their rules text (`abilityCounters`); "Track uses" removed from All abilities; "New encounter" refills per-encounter uses; pools (Lay on Hands) spend an amount
+
+### Phase 6.3 - Updates
+- [x] Journal entries and messages send a notification the player sees on every screen (`stores/notifications.ts`, `UiNotifications`; follows the Notifications settings)
+- [x] Messages and journal entries show the character name with the player's display name smaller below it (`utils/roster.ts`)
+- [x] Background story section (`backstory` on every sheet; Nimble "Background" panel, story field in the editor for 5e and PF2e)
+- [x] Game systems ordered Nimble, Pathfinder 2e, Dungeons & Dragons (Nimble is the default)
+- [x] Board ↔ character navigation: "Open sheet" beside "Playing as"; the sheet links back to its campaign board
+
+
+### Phase 6.4 - Updates
+- [] All players want to be able to see everyones portraits. Make an initiative tracker that whole party can see. on t
+- [] Update the pdf viewer with page selection, and zoom functions
+- [] Add click and drag feature to the map board
+- [] Monster creator, with a text area to describe the monster and ai generates it.
+- [] 

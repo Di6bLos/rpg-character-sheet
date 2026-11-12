@@ -8,6 +8,8 @@ const props = defineProps<{
   character: Character<AnySheet>
   canEdit: boolean
   campaignName: string
+  /** The campaign this character is seated in, for the link back to its board. */
+  campaignId?: string | null
 }>()
 
 const emit = defineEmits<{ deleted: [] }>()
@@ -64,22 +66,40 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
 <template>
   <div class="sheet" :class="`sheet--${draft.system}`">
     <div class="sheet__bar">
-      <NuxtLink to="/characters" class="back">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M15 6l-6 6 6 6" />
-        </svg>
-        All characters
-      </NuxtLink>
+      <nav class="sheet__back" aria-label="Go back">
+        <NuxtLink to="/characters" class="back">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+          All characters
+        </NuxtLink>
+        <NuxtLink v-if="campaignId" :to="`/campaigns/${campaignId}/board`" class="back">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+          <span class="back__label">{{ campaignName }} board</span>
+        </NuxtLink>
+      </nav>
       <div v-if="canEdit" class="row" style="gap: 10px">
         <button
           type="button"
@@ -183,6 +203,19 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.sheet__back {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 20px;
+}
+
+.back__label {
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .back {

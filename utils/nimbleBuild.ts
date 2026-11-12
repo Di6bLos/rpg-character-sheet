@@ -1,6 +1,6 @@
 // Pure rules logic that turns Nimble class data (data/nimble) into a sheet:
 // the level 1 build, what each level-up grants, and applying a level-up.
-import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
+import { classBySlug, poolOptionByName, subclassBySlug } from '~/data/nimble/classes'
 import { BASE_SPEED, BASE_WOUNDS, MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
 import type {
@@ -76,10 +76,32 @@ export function stepHitDie(die: number, steps: number): number {
   return HIT_DIE_STEPS[Math.min(HIT_DIE_STEPS.length - 1, idx + steps)] ?? die
 }
 
-export function classArmor(cls: ClassDef, stats: Record<NimbleStat, number>): number {
+/** True once the class table has granted a per-level flag (Swift Feet, Iron Defense (2)…). */
+export function classFlagAt(
+  cls: ClassDef,
+  level: number,
+  flag: 'initiativePerLevel' | 'meleeDamagePerLevel' | 'armorDoubled',
+): boolean {
+  for (let l = 1; l <= level; l++) if (cls.levels[l]?.[flag]) return true
+  return false
+}
+
+/** Armor from the class formula at a level; Iron Defense (2) doubles it from level 13. */
+export function classArmor(cls: ClassDef, stats: Record<NimbleStat, number>, level = 1): number {
   const { base, dexMax, shield, addStr } = cls.armorCalc
   const dex = dexMax === undefined ? stats.DEX : Math.min(stats.DEX, dexMax)
-  return base + dex + (shield ?? 0) + (addStr ? stats.STR : 0)
+  const armor = base + dex + (shield ?? 0) + (addStr ? stats.STR : 0)
+  return classFlagAt(cls, level, 'armorDoubled') ? armor * 2 : armor
+}
+
+/** Initiative the class table adds at a level (Swift Feet: +LVL). */
+export function classInitiative(cls: ClassDef, level: number): number {
+  return classFlagAt(cls, level, 'initiativePerLevel') ? level : 0
+}
+
+/** Damage the class table adds to melee attacks at a level (Reverberating Strikes: +LVL). */
+export function classMeleeDamage(cls: ClassDef, level: number): number {
+  return classFlagAt(cls, level, 'meleeDamagePerLevel') ? level : 0
 }
 
 export function manaMax(cls: ClassDef, sheet: NimbleSheet, level: number): number {
@@ -96,10 +118,11 @@ function weaponAttack(
   name: string,
   stats: Record<NimbleStat, number>,
   abilities: NimbleAbility[],
+  meleeBonus = 0,
 ): NimbleAttack | null {
   const w = weaponByName(name)
   if (!w) return null
-  const mod = stats[w.stat]
+  const mod = stats[w.stat] + (w.melee ? meleeBonus : 0)
   const perk = WEAPON_PERKS[w.name]
   const perkProps = perk && abilities.some((a) => a.name === perk.ability) ? perk.props : ''
   return {
@@ -402,13 +425,35 @@ function applyChoice(
     else if (src.kind === 'school') pushUnique(sheet.spells.schools, value)
     else if (src.kind === 'spell' || (spell && option?.group && option.group in SCHOOL_NAMES))
       pushUnique(sheet.spells.learned, value)
-    else if (option)
+    else if (option) {
       sheet.abilities.push({
         name: option.label,
         src: option.group ?? cls.name,
         desc: option.desc,
         level,
       })
+      applyPoolEffects(sheet, cls, option.value, 1)
+    }
+  }
+}
+
+/**
+ * Applies (sign 1) or takes back (sign -1) what a picked pool option changes on
+ * the sheet: max Wounds, speed, Hit Dice and a stat. Derived values follow in
+ * syncDerived.
+ */
+function applyPoolEffects(sheet: NimbleSheet, cls: ClassDef, name: string, sign: 1 | -1) {
+  const option = poolOptionByName(cls, name)
+  if (!option) return
+  if (option.woundsMax) sheet.woundsMax += sign * option.woundsMax
+  if (option.speed)
+    sheet.speed = String((Number.parseInt(sheet.speed, 10) || BASE_SPEED) + sign * option.speed)
+  if (option.hitDice) sheet.hitDice = Math.max(1, sheet.hitDice + sign * option.hitDice)
+  if (option.statBump?.length) {
+    const stat = option.statBump.reduce((best, s) =>
+      sheet.stats[s] > sheet.stats[best] ? s : best,
+    )
+    sheet.stats[stat] += sign
   }
 }
 
@@ -437,14 +482,33 @@ function applyLevelDef(sheet: NimbleSheet, def: LevelDef | undefined, src: strin
   }
   if (def.speed) sheet.speed = String((Number.parseInt(sheet.speed, 10) || BASE_SPEED) + def.speed)
   if (def.woundsMax) sheet.woundsMax += def.woundsMax
+  if (def.replacesAbilities)
+    sheet.abilities = sheet.abilities.filter(
+      (a) => !def.replacesAbilities?.includes(abilityBaseName(a.name)),
+    )
 }
+
+/** Key under `sheet.choices` that remembers the pool picks a subclass took the place of. */
+const droppedKey = (sub: SubclassDef) => `dropped:${sub.slug}`
 
 /** Starts a subclass: intro rules, spell swaps and abilities it replaces. */
 function enterSubclass(sheet: NimbleSheet, sub: SubclassDef, level: number) {
   sheet.subclassSlug = sub.slug
   sheet.subclass = sub.name
   if (sub.replacesAbilities)
-    sheet.abilities = sheet.abilities.filter((a) => !sub.replacesAbilities?.includes(a.name))
+    sheet.abilities = sheet.abilities.filter(
+      (a) => !sub.replacesAbilities?.includes(abilityBaseName(a.name)),
+    )
+  if (sub.dropPoolPicks) {
+    const cls = classBySlug(sheet.classSlug)
+    const pool = cls?.pools.find((p) => p.id === sub.dropPoolPicks?.pool)
+    const dropped = sheet.abilities
+      .filter((a) => pool?.options.some((o) => o.name === a.name))
+      .sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+      .slice(0, sub.dropPoolPicks.count)
+    sheet.abilities = sheet.abilities.filter((a) => !dropped.includes(a))
+    sheet.choices[droppedKey(sub)] = dropped.map((a) => `${a.level ?? 0}:${a.name}`)
+  }
   for (const a of sub.intro ?? []) addAbility(sheet, a, sub.name, level)
   if (sub.introSpells?.learn) pushUnique(sheet.spells.learned, ...sub.introSpells.learn)
   if (sub.introSpells?.lose) pushUnique(sheet.spells.lost, ...sub.introSpells.lose)
@@ -456,10 +520,19 @@ function syncDerived(
   cls: ClassDef,
   before: Record<NimbleStat, number>,
   level: number,
+  prev: number,
 ) {
-  sheet.ac += classArmor(cls, sheet.stats) - classArmor(cls, before)
-  sheet.initMod += sheet.stats.DEX - before.DEX
-  sheet.attacks = sheet.attacks.map((a) => weaponAttack(a.name, sheet.stats, sheet.abilities) ?? a)
+  // Iron Defense (2) doubles the whole Armor, ancestry and background bonuses too.
+  const doubling =
+    classFlagAt(cls, level, 'armorDoubled') && !classFlagAt(cls, prev, 'armorDoubled')
+  if (doubling) sheet.ac *= 2
+  sheet.ac += classArmor(cls, sheet.stats, level) - classArmor(cls, before, doubling ? level : prev)
+  sheet.initMod +=
+    sheet.stats.DEX - before.DEX + classInitiative(cls, level) - classInitiative(cls, prev)
+  const melee = classMeleeDamage(cls, level)
+  sheet.attacks = sheet.attacks.map(
+    (a) => weaponAttack(a.name, sheet.stats, sheet.abilities, melee) ?? a,
+  )
   const max = manaMax(cls, sheet, level)
   sheet.mana.current = Math.max(0, Math.min(max, sheet.mana.current + (max - sheet.mana.max)))
   sheet.mana.max = max
@@ -500,9 +573,15 @@ export function applyNimbleLevel(sheet: NimbleSheet, level: number, input: Level
   const sub = sheet.subclassSlug ? subclassBySlug(cls, sheet.subclassSlug) : undefined
   applyLevelDef(sheet, sub?.levels[level], sub?.name ?? '', level)
 
+  // Class abilities the subclass replaces stay off when the class table grants them later.
+  if (sub?.replacesAbilities)
+    sheet.abilities = sheet.abilities.filter(
+      (a) => !sub.replacesAbilities?.includes(abilityBaseName(a.name)),
+    )
+
   for (const choice of plan.choices)
     applyChoice(sheet, cls, choice, input.picks[choice.key] ?? [], level)
-  syncDerived(sheet, cls, before, level)
+  syncDerived(sheet, cls, before, level, level - 1)
 }
 
 /** Level at which the class table asks for a subclass (3 for every class). */
@@ -591,6 +670,7 @@ function removeSubclass(sheet: NimbleSheet, cls: ClassDef, level: number): void 
   const lost = new Set<string>(sub.introSpells?.lose ?? [])
   const utility = new Set<string>()
   for (const v of picked) if (spellByName(v)) (spellByName(v)?.utility ? utility : learned).add(v)
+  for (const v of picked) applyPoolEffects(sheet, cls, v, -1)
   for (let l = 1; l <= level; l++) {
     const def = sub.levels[l]
     if (!def) continue
@@ -621,11 +701,33 @@ function removeSubclass(sheet: NimbleSheet, cls: ClassDef, level: number): void 
     for (let l = 1; l <= level; l++) die = cls.levels[l]?.resourceDie ?? die
     sheet.resource.die = die
   }
-  // Class abilities the subclass had replaced come back.
-  for (const name of sub.replacesAbilities ?? [])
+  // Pool picks the subclass took the place of come back.
+  for (const entry of sheet.choices[droppedKey(sub)] ?? []) {
+    const [lvl, ...rest] = entry.split(':')
+    const name = rest.join(':')
+    const option = poolOptionByName(cls, name)
+    const pool = cls.pools.find((p) => p.options.includes(option!))
+    if (option && !sheet.abilities.some((a) => a.name === name))
+      sheet.abilities.push({
+        name,
+        src: pool?.name ?? cls.name,
+        desc: option.desc,
+        level: Number(lvl) || 0,
+      })
+  }
+  delete sheet.choices[droppedKey(sub)]
+  // Class abilities the subclass (or one of its levels) had replaced come back.
+  const replaced = [
+    ...(sub.replacesAbilities ?? []),
+    ...Object.entries(sub.levels)
+      .filter(([l]) => Number(l) <= level)
+      .flatMap(([, d]) => d?.replacesAbilities ?? []),
+  ]
+  for (const name of replaced)
     for (let l = 1; l <= level; l++) {
-      const a = cls.levels[l]?.abilities.find((x) => x.name === name)
-      if (a && !sheet.abilities.some((x) => x.name === name)) addAbility(sheet, a, cls.name, l)
+      const a = cls.levels[l]?.abilities.find((x) => abilityBaseName(x.name) === name)
+      if (a && (a.name !== name || !sheet.abilities.some((x) => x.name === name)))
+        addAbility(sheet, a, cls.name, l)
     }
 
   sheet.subclassSlug = ''
@@ -712,7 +814,7 @@ export function changeSubclass(
       applyChoice(sheet, cls, choice, picks[choice.key] ?? [], l)
     }
   }
-  syncDerived(sheet, cls, before, level)
+  syncDerived(sheet, cls, before, level, level)
 }
 
 /** Choices a subclass change will ask for (intro plus past subclass levels). */
@@ -783,6 +885,8 @@ export interface SheetResource {
   ability: string
   desc: string
   stat?: NimbleStat
+  /** Uses added on top of the stat (Windborne: +1 Burst of Speed). */
+  bonus: number
   /** Picked options that spend one (Thrill of the Hunt abilities). */
   moves: NimbleAbility[]
 }
@@ -815,6 +919,7 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
       ability: ability.name,
       desc: ability.desc,
       stat: def.stat,
+      bonus: def.bonus && level >= def.bonus.level ? def.bonus.amount : 0,
       moves,
     }
   }
@@ -827,6 +932,7 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
     die: res.die,
     ability: '',
     desc: '',
+    bonus: 0,
     moves: [],
   }
 }
@@ -885,8 +991,9 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
   sheet.hp = sheet.hpMax = cls.startingHp
   sheet.speed = String(BASE_SPEED + (ancestry.speed ?? 0))
   sheet.woundsMax = BASE_WOUNDS + (ancestry.woundsMax ?? 0) + (background.woundsMax ?? 0)
-  sheet.ac = classArmor(cls, stats) + (ancestry.armor ?? 0) + (background.armor ?? 0)
-  sheet.initMod = stats.DEX + (ancestry.initiative ?? 0) + (background.initiative ?? 0)
+  sheet.ac = classArmor(cls, stats, 1) + (ancestry.armor ?? 0) + (background.armor ?? 0)
+  sheet.initMod =
+    stats.DEX + classInitiative(cls, 1) + (ancestry.initiative ?? 0) + (background.initiative ?? 0)
 
   sheet.skills = sheet.skills.map((s) => ({
     ...s,
@@ -924,7 +1031,7 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
     applyChoice(sheet, cls, choice, input.picks[choice.key] ?? [], 1)
   // After the abilities, so weapon perks (Swift Fists) can be seen.
   sheet.attacks = cls.startingWeapons
-    .map((w) => weaponAttack(w, stats, sheet.abilities))
+    .map((w) => weaponAttack(w, stats, sheet.abilities, classMeleeDamage(cls, 1)))
     .filter((a): a is NimbleAttack => !!a)
   sheet.mana.max = sheet.mana.current = manaMax(cls, sheet, 1)
   return sheet

@@ -17,6 +17,17 @@ export interface PoolOption extends AbilityDef {
   requires?: string
   /** Option can be taken more than once (e.g. "+1 max Combat Dice"). */
   repeatable?: boolean
+  /** Change to max Wounds while the option is held (Mighty Endurance). */
+  woundsMax?: number
+  /** Change to speed in spaces while the option is held (Unstoppable Protector). */
+  speed?: number
+  /** Change to max Hit Dice while the option is held (Fiendish Boon: -1). */
+  hitDice?: number
+  /**
+   * +1 to one of these stats when picked (Fiendish Boon: DEX or INT). The build
+   * raises the higher one (the first on a tie); the player can move it by hand.
+   */
+  statBump?: NimbleStat[]
 }
 
 export interface AbilityPool {
@@ -91,6 +102,14 @@ export interface LevelDef {
   speed?: number
   /** Change to max Wounds. */
   woundsMax?: number
+  /** From this level on, Initiative gets +LVL (Zephyr's Swift Feet). */
+  initiativePerLevel?: boolean
+  /** From this level on, melee attacks deal +LVL damage (Zephyr's Reverberating Strikes). */
+  meleeDamagePerLevel?: boolean
+  /** From this level on, armor from the class formula is doubled (Zephyr's Iron Defense (2)). */
+  armorDoubled?: boolean
+  /** Abilities this level's features replace (removed from the sheet). */
+  replacesAbilities?: string[]
 }
 
 export type LevelTable = Partial<Record<number, LevelDef>>
@@ -114,6 +133,14 @@ export interface SubclassDef {
   replacesAbilities?: string[]
   /** Class pools this subclass replaces in later choices (Spellblade). */
   poolSwap?: { replace: string[]; withPools: string[]; spellMaxTier?: number }
+  /**
+   * The hero's earliest picks from a pool that this subclass takes the place of
+   * (Beastmaster: the companion's moves instead of the first 2 Thrill of the Hunt
+   * abilities). They leave the sheet and come back if the subclass is removed.
+   */
+  dropPoolPicks?: { pool: string; count: number }
+  /** Mana pool of a stat gained on Initiative and lost when combat ends (Spellblade). */
+  encounterMana?: NimbleStat
   levels: LevelTable
 }
 
@@ -138,6 +165,8 @@ export interface ResourceDef {
   stat?: NimbleStat
   /** Pool whose picked options appear as buttons that spend one. */
   movesPool?: string
+  /** Extra uses from a level on (Windborne: +1 Burst of Speed at level 20). */
+  bonus?: { level: number; amount: number }
 }
 
 export interface ClassDef {

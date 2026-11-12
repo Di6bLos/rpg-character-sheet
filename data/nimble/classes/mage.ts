@@ -193,7 +193,7 @@ export const mage: ClassDef = {
       abilities: [
         {
           name: 'Archmage',
-          desc: 'The first tiered spell you cast each encounter costs 1 action less and 5 fewer mana.',
+          desc: '(1/encounter) The first tiered spell you cast each encounter costs 1 action less and 5 fewer mana.',
         },
       ],
       statIncrease: CAPSTONE_STATS,
@@ -233,9 +233,11 @@ export const mage: ClassDef = {
             },
             {
               id: 'at-any-cost-spell',
-              label: 'At Any Cost: learn 1 tiered Necrotic spell',
+              // The book sets no tier cap; offer what a level 7 Mage can cast.
+              label:
+                'At Any Cost: learn 1 tiered Necrotic spell (up to tier 3, the highest you can cast)',
               count: 1,
-              source: { kind: 'spell', minTier: 1, maxTier: 9, schools: ['necrotic'] },
+              source: { kind: 'spell', minTier: 1, maxTier: 3, schools: ['necrotic'] },
             },
           ],
         },
@@ -286,9 +288,11 @@ export const mage: ClassDef = {
             },
             {
               id: 'tempest-mage-spell',
-              label: 'Tempest Mage: learn 1 tiered Wind spell',
+              // The book sets no tier cap; offer what a level 7 Mage can cast.
+              label:
+                'Tempest Mage: learn 1 tiered Wind spell (up to tier 3, the highest you can cast)',
               count: 1,
-              source: { kind: 'spell', minTier: 1, maxTier: 9, schools: ['wind'] },
+              source: { kind: 'spell', minTier: 1, maxTier: 3, schools: ['wind'] },
             },
           ],
         },

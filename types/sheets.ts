@@ -16,6 +16,8 @@ export interface SheetCommon {
   xpNext: number
   inventory: InventoryItem[]
   notes: string
+  /** The player's free-text story of where the character comes from (not the rules background). */
+  backstory: string
   /**
    * The sheet as it was before each level-up, so lowering the level can undo
    * what the higher levels granted. Added by the level-up dialog.
@@ -191,6 +193,11 @@ export interface NimbleSheet extends SheetCommon {
   backgroundSlug: string
   /** Picks made at creation and level-up, keyed "L<level>:<choice id>". */
   choices: Record<string, string[]>
+  /**
+   * Version of the class-data rules the save was built with. Older saves are
+   * upgraded on load (`migrateNimble` in utils/sheetDefaults).
+   */
+  rulesVersion: number
   subclass: string
   stats: Record<NimbleStat, number>
   saveAdv: NimbleStat | ''

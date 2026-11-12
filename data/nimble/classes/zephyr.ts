@@ -38,6 +38,7 @@ export const zephyr: ClassDef = {
     kind: 'counter',
     ability: 'Burst of Speed',
     stat: 'DEX',
+    bonus: { level: 20, amount: 1 },
   },
   swapRule: {
     name: 'Focus',
@@ -109,6 +110,7 @@ export const zephyr: ClassDef = {
       ],
     },
     2: {
+      initiativePerLevel: true,
       speed: 2,
       abilities: [
         { name: 'Swift Feet', desc: 'While unarmored, gain +2 speed and +LVL Initiative.' },
@@ -132,7 +134,7 @@ export const zephyr: ClassDef = {
       abilities: [
         {
           name: 'Unyielding Resolve',
-          desc: 'Ignore the first Wound you would suffer each encounter (when-Wounded abilities, such as Kinetic Momentum, still trigger).',
+          desc: '(1/encounter; L10: 2/encounter; L17: 3/encounter) Ignore the first Wound you would suffer each encounter (when-Wounded abilities, such as Kinetic Momentum, still trigger).',
         },
       ],
       statIncrease: inc('DEX', 'STR'),
@@ -143,6 +145,7 @@ export const zephyr: ClassDef = {
       ],
     },
     5: {
+      meleeDamagePerLevel: true,
       abilities: [
         {
           name: 'Reverberating Strikes',
@@ -184,6 +187,7 @@ export const zephyr: ClassDef = {
     11: { abilities: [] },
     12: { abilities: [], statIncrease: inc('DEX', 'STR'), choices: [martial(5, '5th')] },
     13: {
+      armorDoubled: true,
       abilities: [{ name: 'Iron Defense (2)', desc: 'Your armor is doubled while unarmored.' }],
       statIncrease: inc('INT', 'WIL'),
     },

@@ -11,6 +11,7 @@ import {
   castingBlocks,
   castSpell,
   dyingAttackSave,
+  encounterMana,
   fieldRest,
   fieldRestDice,
   heal,
@@ -32,7 +33,12 @@ import {
   takeDamage,
   turnActions,
 } from '../utils/nimblePlay'
-import { defaultSheet, normalizeSheet, parseLegacyGold } from '../utils/sheetDefaults'
+import {
+  NIMBLE_RULES_VERSION,
+  defaultSheet,
+  normalizeSheet,
+  parseLegacyGold,
+} from '../utils/sheetDefaults'
 
 /** Deterministic rng that yields the given die faces for a die of `sides`. */
 function faces(sides: number, ...values: number[]) {
@@ -323,6 +329,76 @@ describe('nimble sheet upgrades', () => {
     expect(sheet.resource.kind).toBe('rage')
   })
 
+  it('gives older Berserker saves the Mighty Endurance Wounds once', () => {
+    const picked = { 'L4:savage-arsenal': ['Mighty Endurance'] }
+    const old = {
+      classSlug: 'berserker',
+      choices: picked,
+      woundsMax: 7, // 6 + a hand edit, which stays
+      levelHistory: [
+        { level: 5, before: { classSlug: 'berserker', choices: picked, woundsMax: 6 } },
+        { level: 4, before: { classSlug: 'berserker', choices: {}, woundsMax: 6 } },
+      ],
+    }
+    const sheet = normalizeSheet('nimble', old)
+    expect(sheet.woundsMax).toBe(11)
+    expect(sheet.rulesVersion).toBe(NIMBLE_RULES_VERSION)
+    expect(sheet.levelHistory?.map((e) => e.before.woundsMax)).toEqual([10, 6])
+    expect(old.woundsMax).toBe(7) // the stored object isn't mutated
+    expect(old.levelHistory[0]!.before.woundsMax).toBe(6)
+
+    // Loading the upgraded save again adds nothing.
+    const again = normalizeSheet('nimble', JSON.parse(JSON.stringify(sheet)))
+    expect(again.woundsMax).toBe(11)
+    expect(again.levelHistory?.map((e) => e.before.woundsMax)).toEqual([10, 6])
+    // New sheets are already current.
+    expect(defaultSheet('nimble').rulesVersion).toBe(NIMBLE_RULES_VERSION)
+  })
+
+  it('gives older saves the speed and Hit Dice of picked pool options', () => {
+    const sheet = normalizeSheet('nimble', {
+      classSlug: 'oathsworn',
+      rulesVersion: 1,
+      speed: '6',
+      choices: { 'L3:sacred-decree': ['Unstoppable Protector'] },
+    })
+    expect(sheet.speed).toBe('7')
+    const boon = normalizeSheet('nimble', {
+      classSlug: 'shadowmancer',
+      rulesVersion: 1,
+      hitDice: 5,
+      choices: { 'L4:greater-invocations': ['Fiendish Boon'] },
+    })
+    expect(boon.hitDice).toBe(4)
+    expect(normalizeSheet('nimble', JSON.parse(JSON.stringify(boon))).hitDice).toBe(4)
+  })
+
+  it('gives older Zephyr saves the Swift Feet Initiative and doubled Armor', () => {
+    const old = {
+      classSlug: 'zephyr',
+      rulesVersion: 1,
+      level: '13',
+      initMod: 4,
+      ac: 12,
+      choices: {},
+      levelHistory: [
+        { level: 13, before: { classSlug: 'zephyr', choices: {}, initMod: 4, ac: 12 } },
+        { level: 2, before: { classSlug: 'zephyr', choices: {}, initMod: 3, ac: 5 } },
+      ],
+    }
+    const sheet = normalizeSheet('nimble', old)
+    expect(sheet).toMatchObject({ initMod: 17, ac: 24 })
+    // Level 12 (not doubled yet) and level 1 (no Swift Feet yet).
+    expect(sheet.levelHistory?.map((e) => [e.before.initMod, e.before.ac])).toEqual([
+      [16, 12],
+      [3, 5],
+    ])
+    expect(normalizeSheet('nimble', JSON.parse(JSON.stringify(sheet)))).toMatchObject({
+      initMod: 17,
+      ac: 24,
+    })
+  })
+
   it('keeps coins that were already saved', () => {
     const sheet = normalizeSheet('nimble', { gold: '99 gp', coins: { gp: 3, sp: 4 } })
     expect(sheet.coins).toEqual({ gp: 3, sp: 4 })
@@ -505,6 +581,18 @@ describe('limited-use abilities', () => {
     expect(counters(sheet, 12)).toEqual(['Small Companion@encounter 3'])
   })
 
+  it('starts a limit at the level the text names when there is none before it', () => {
+    const sheet = withAbilities([
+      [
+        'Small Companion',
+        'Go for the Throat!: (1/encounter; L11: 2/encounter, L11: 1/round; L15: 3/encounter) Attack.',
+      ],
+    ])
+    expect(counters(sheet, 10)).toEqual(['Small Companion@encounter 1'])
+    expect(counters(sheet, 11)).toEqual(['Small Companion@encounter 2', 'Small Companion@turn 1'])
+    expect(counters(sheet, 15)).toEqual(['Small Companion@encounter 3', 'Small Companion@turn 1'])
+  })
+
   it('adds the extra uses other abilities grant', () => {
     const sheet = withAbilities([
       ['Coordinated Strike!', '(1/round) Free action. You can do this INT times/Safe Rest.'],
@@ -551,6 +639,36 @@ describe('limited-use abilities', () => {
     const rest = hero({ uses: spent() })
     safeRest(rest)
     expect(used(rest)).toEqual([0, 0, 0, 0])
+  })
+
+  it('gives back a spent use of abilities that recharge on Initiative', () => {
+    const sheet = withAbilities(
+      [
+        ['Veilwalker’s Blessing', '(1/Safe Rest) Action: bless.'],
+        ['Conduit of Death', 'Your Veilwalker’s Blessing recharges when you roll Initiative.'],
+        ['Searing Light', '(WIL times/Safe Rest) Action: Heal.'],
+        ['Light Bearer', 'Regain 1 use of Searing Light when you roll Initiative.'],
+      ],
+      {
+        uses: {
+          'Veilwalker’s Blessing@rest': { used: 1 },
+          'Searing Light@rest': { used: 0 },
+        },
+      },
+    )
+    const line = newEncounter(sheet)
+    expect(sheet.uses['Veilwalker’s Blessing@rest']?.used).toBe(0)
+    expect(sheet.uses['Searing Light@rest']?.used).toBe(0) // nothing spent, nothing to give back
+    expect(line).toContain('Veilwalker’s Blessing recharged')
+  })
+
+  it('gives a Spellblade INT mana on Initiative', () => {
+    const sheet = hero({ classSlug: 'commander', subclassSlug: 'spellblade' })
+    sheet.stats.INT = 3
+    expect(encounterMana(sheet)).toBe(3)
+    newEncounter(sheet)
+    expect(sheet.mana.temp).toBe(3)
+    expect(encounterMana(hero({ classSlug: 'commander', subclassSlug: 'bulwark' }))).toBe(0)
   })
 
   it('finds a counter for every limit written in the rules data', () => {

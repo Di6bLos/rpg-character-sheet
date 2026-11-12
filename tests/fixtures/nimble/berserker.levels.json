@@ -1,0 +1,742 @@
+{
+  "mountainheart": [
+    {
+      "level": 1,
+      "abilities": [
+        "Berserker: Rage",
+        "Berserker: That all you got?!"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 2,
+      "abilities": [
+        "Berserker: Intensifying Fury",
+        "Berserker: One with the Ancients"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 3,
+      "abilities": [
+        "Berserker: Bloodlust",
+        "Path of the Mountainheart: Stone’s Resilience",
+        "Path of the Mountainheart: Mountainous Tenacity"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": true,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 4,
+      "abilities": [
+        "Berserker: Enduring Rage"
+      ],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": "STR/DEX ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 5,
+      "abilities": [
+        "Berserker: Rage (2)"
+      ],
+      "choices": [],
+      "statIncrease": "INT/WIL ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 6,
+      "abilities": [
+        "Berserker: Intensifying Fury (2)"
+      ],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 6
+      }
+    },
+    {
+      "level": 7,
+      "abilities": [
+        "Path of the Mountainheart: Unbreakable"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 6
+      }
+    },
+    {
+      "level": 8,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": "STR/DEX ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 6
+      }
+    },
+    {
+      "level": 9,
+      "abilities": [
+        "Berserker: Intensifying Fury (3)"
+      ],
+      "choices": [],
+      "statIncrease": "INT/WIL ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 8
+      }
+    },
+    {
+      "level": 10,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 8
+      }
+    },
+    {
+      "level": 11,
+      "abilities": [
+        "Path of the Mountainheart: Titan’s Fury"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 8
+      }
+    },
+    {
+      "level": 12,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": "STR/DEX ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 8
+      }
+    },
+    {
+      "level": 13,
+      "abilities": [
+        "Berserker: Intensifying Fury (4)"
+      ],
+      "choices": [],
+      "statIncrease": "INT/WIL ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 10
+      }
+    },
+    {
+      "level": 14,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 10
+      }
+    },
+    {
+      "level": 15,
+      "abilities": [
+        "Path of the Mountainheart: Mountain’s Endurance"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 10
+      }
+    },
+    {
+      "level": 16,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": "STR/DEX ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 10
+      }
+    },
+    {
+      "level": 17,
+      "abilities": [
+        "Berserker: Intensifying Fury (5)"
+      ],
+      "choices": [],
+      "statIncrease": "INT/WIL ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 12
+      }
+    },
+    {
+      "level": 18,
+      "abilities": [
+        "Berserker: Deep Rage"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 12
+      }
+    },
+    {
+      "level": 19,
+      "abilities": [],
+      "choices": [
+        "epic-boon ×text"
+      ],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 12
+      }
+    },
+    {
+      "level": 20,
+      "abilities": [
+        "Berserker: Boundless Rage"
+      ],
+      "choices": [],
+      "statIncrease": "STR/DEX/INT/WIL ×2",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 12
+      }
+    }
+  ],
+  "red-mist": [
+    {
+      "level": 1,
+      "abilities": [
+        "Berserker: Rage",
+        "Berserker: That all you got?!"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 2,
+      "abilities": [
+        "Berserker: Intensifying Fury",
+        "Berserker: One with the Ancients"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 3,
+      "abilities": [
+        "Berserker: Bloodlust",
+        "Path of the Red Mist: Blood Frenzy",
+        "Path of the Red Mist: Savage Awareness"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": true,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 4,
+      "abilities": [
+        "Berserker: Enduring Rage"
+      ],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": "STR/DEX ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 5,
+      "abilities": [
+        "Berserker: Rage (2)"
+      ],
+      "choices": [],
+      "statIncrease": "INT/WIL ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 4
+      }
+    },
+    {
+      "level": 6,
+      "abilities": [
+        "Berserker: Intensifying Fury (2)"
+      ],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 6
+      }
+    },
+    {
+      "level": 7,
+      "abilities": [
+        "Path of the Red Mist: Unstoppable Brutality"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 6
+      }
+    },
+    {
+      "level": 8,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": "STR/DEX ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 6
+      }
+    },
+    {
+      "level": 9,
+      "abilities": [
+        "Berserker: Intensifying Fury (3)"
+      ],
+      "choices": [],
+      "statIncrease": "INT/WIL ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 8
+      }
+    },
+    {
+      "level": 10,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 8
+      }
+    },
+    {
+      "level": 11,
+      "abilities": [
+        "Path of the Red Mist: Opportunistic Frenzy"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 6,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 8
+      }
+    },
+    {
+      "level": 12,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": "STR/DEX ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 8
+      }
+    },
+    {
+      "level": 13,
+      "abilities": [
+        "Berserker: Intensifying Fury (4)"
+      ],
+      "choices": [],
+      "statIncrease": "INT/WIL ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 10
+      }
+    },
+    {
+      "level": 14,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 10
+      }
+    },
+    {
+      "level": 15,
+      "abilities": [
+        "Path of the Red Mist: Onslaught"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 10
+      }
+    },
+    {
+      "level": 16,
+      "abilities": [],
+      "choices": [
+        "savage-arsenal ×1"
+      ],
+      "statIncrease": "STR/DEX ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 10
+      }
+    },
+    {
+      "level": 17,
+      "abilities": [
+        "Berserker: Intensifying Fury (5)"
+      ],
+      "choices": [],
+      "statIncrease": "INT/WIL ×1",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 12
+      }
+    },
+    {
+      "level": 18,
+      "abilities": [
+        "Berserker: Deep Rage"
+      ],
+      "choices": [],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 12
+      }
+    },
+    {
+      "level": 19,
+      "abilities": [],
+      "choices": [
+        "epic-boon ×text"
+      ],
+      "statIncrease": null,
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 12
+      }
+    },
+    {
+      "level": 20,
+      "abilities": [
+        "Berserker: Boundless Rage"
+      ],
+      "choices": [],
+      "statIncrease": "STR/DEX/INT/WIL ×2",
+      "subclassChoice": false,
+      "spellTier": null,
+      "after": {
+        "hitDie": 12,
+        "woundsMax": 10,
+        "speed": "6",
+        "manaMax": 0,
+        "schools": [],
+        "resourceDie": 12
+      }
+    }
+  ]
+}

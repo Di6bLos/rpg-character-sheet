@@ -115,7 +115,9 @@ export const shadowmancer: ClassDef = {
         },
         {
           name: 'Fiendish Boon',
-          desc: 'Increase your DEX or INT by 1. You have 1 fewer maximum Hit Dice.',
+          desc: 'Increase your DEX or INT by 1 (the sheet raises the higher one; move it by hand if you prefer the other). You have 1 fewer maximum Hit Dice.',
+          statBump: ['INT', 'DEX'],
+          hitDice: -1,
         },
         {
           name: 'Hungering Shadows',
@@ -160,7 +162,7 @@ export const shadowmancer: ClassDef = {
       abilities: [
         {
           name: 'Conduit of Shadow',
-          desc: 'Your Patron grants you knowledge of the Necrotic cantrips Shadow Blast and Summon Shadows. Your shadow minions follow the normal minion rules: 1 HP, no damage bonus, and they do not crit. You and your minions are different creatures, so you can attack once and command them to attack without the Rushed Attack penalty.',
+          desc: 'Your Patron grants you knowledge of the Necrotic cantrips Shadow Blast and Summon Shadows. Your shadow minions follow the normal minion rules: 1 HP, no damage bonus, and they do not crit. They abandon you immediately outside of combat. You and your minions are different creatures, so you can attack once and command them to attack without the Rushed Attack penalty.',
         },
       ],
     },

@@ -7,4 +7,16 @@ export default defineNuxtPlugin(async () => {
   await authStore.init()
   applySaved()
   watch(() => [authStore.profile?.theme, authStore.profile?.accent], applySaved)
+
+  // Journal entries and messages are announced on every screen while signed in.
+  const notifications = useNotificationsStore()
+  const router = useRouter()
+  watch(
+    () => authStore.userId,
+    (id) => {
+      notifications.stop()
+      if (id) notifications.start(router)
+    },
+    { immediate: true },
+  )
 })

@@ -188,6 +188,16 @@ const inventoryCols = computed(() => [
             <label for="d5-bg">Background</label
             ><input id="d5-bg" v-model="d5.background" class="input" />
           </div>
+          <div class="field span-full">
+            <label for="d5-story">Background story</label
+            ><textarea
+              id="d5-story"
+              v-model="d5.backstory"
+              class="input"
+              rows="4"
+              placeholder="Where they come from, who they've lost, what drives them…"
+            />
+          </div>
           <div class="field">
             <label for="d5-al">Alignment</label
             ><input id="d5-al" v-model="d5.alignment" class="input" />
@@ -281,6 +291,16 @@ const inventoryCols = computed(() => [
           <div class="field">
             <label for="pf-e-bg">Background</label
             ><input id="pf-e-bg" v-model="pf.background" class="input" />
+          </div>
+          <div class="field span-full">
+            <label for="pf-e-story">Background story</label
+            ><textarea
+              id="pf-e-story"
+              v-model="pf.backstory"
+              class="input"
+              rows="4"
+              placeholder="Where they come from, who they've lost, what drives them…"
+            />
           </div>
           <div class="field">
             <label for="pf-e-cls">Class</label
@@ -548,6 +568,16 @@ const inventoryCols = computed(() => [
             <label for="nb-e-bg">Background</label
             ><input id="nb-e-bg" v-model="nb.background" class="input" />
           </div>
+          <div class="field span-full">
+            <label for="nb-e-story">Background story</label
+            ><textarea
+              id="nb-e-story"
+              v-model="nb.backstory"
+              class="input"
+              rows="4"
+              placeholder="Where they come from, who they've lost, what drives them…"
+            />
+          </div>
           <div class="field">
             <label for="nb-e-hw">Height &amp; weight</label
             ><input
@@ -796,6 +826,10 @@ const inventoryCols = computed(() => [
 
 .span-2 {
   grid-column: span 2;
+}
+
+.span-full {
+  grid-column: 1 / -1;
 }
 
 .check {

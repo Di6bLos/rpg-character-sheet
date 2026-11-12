@@ -12,6 +12,7 @@ import {
   shortDate,
   stamp,
 } from '~/utils/format'
+import { authorLabel } from '~/utils/roster'
 import { systemLabel } from '~/utils/systems'
 
 definePageMeta({ middleware: 'auth' })
@@ -61,6 +62,9 @@ const meta = computed(() => {
 
 function nameOf(userId: string) {
   return roster.value.find((r) => r.user_id === userId)?.display_name ?? 'Former member'
+}
+function authorOf(e: JournalEntry) {
+  return authorLabel(roster.value, e.author_id, e.author?.display_name)
 }
 function roleOf(userId: string) {
   const entry = roster.value.find((r) => r.user_id === userId)
@@ -463,6 +467,12 @@ async function confirmRemoveEntry() {
             </option>
           </select>
         </label>
+        <NuxtLink
+          v-if="!isGm && campaign.myCharacterId"
+          :to="`/character/${campaign.myCharacterId}?campaign=${campaign.id}`"
+          class="btn btn--ghost"
+          >Open sheet</NuxtLink
+        >
       </div>
       <p v-if="!isGm && !myOptions.length" class="small muted">
         You have no {{ systemLabel(campaign.system) }} character yet.
@@ -719,7 +729,12 @@ async function confirmRemoveEntry() {
             :class="{ 'entry--private': e.visibility === 'gm' }"
           >
             <div class="entry__head">
-              <strong>{{ e.author?.display_name ?? 'Former member' }}</strong>
+              <span class="entry__author">
+                <strong>{{ authorOf(e).primary }}</strong>
+                <span v-if="authorOf(e).secondary" class="entry__player">{{
+                  authorOf(e).secondary
+                }}</span>
+              </span>
               <span class="entry__role">{{ roleOf(e.author_id) }}</span>
               <span v-if="e.visibility === 'gm'" class="badge badge--restricted">
                 {{ e.author_id === auth.userId ? privateLabel : 'Private to the GM' }}
@@ -1246,6 +1261,17 @@ async function confirmRemoveEntry() {
   strong {
     font-size: 17px;
   }
+}
+
+.entry__author {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.entry__player {
+  font-size: 13px;
+  color: var(--page-muted);
 }
 
 .entry__role {

@@ -114,6 +114,7 @@ export const cheat: ClassDef = {
     },
     3: {
       subclassChoice: true,
+      resourceDie: 8,
       abilities: [
         { name: 'Sneak Attack (2)', desc: 'Your Sneak Attack becomes 1d8.' },
         {
@@ -149,10 +150,14 @@ export const cheat: ClassDef = {
     8: { abilities: [], statIncrease: inc('DEX', 'INT'), choices: [underhanded(3)] },
     9: {
       abilities: [{ name: 'Sneak Attack (4)', desc: 'Your Sneak Attack becomes 2d10.' }],
+      resourceDie: 10,
       statIncrease: inc('WIL', 'STR'),
     },
     10: { abilities: [], choices: [underhanded(4)] },
-    11: { abilities: [{ name: 'Sneak Attack (5)', desc: 'Your Sneak Attack becomes 2d12.' }] },
+    11: {
+      abilities: [{ name: 'Sneak Attack (5)', desc: 'Your Sneak Attack becomes 2d12.' }],
+      resourceDie: 12,
+    },
     12: { abilities: [], statIncrease: inc('DEX', 'INT'), choices: [underhanded(5)] },
     13: {
       abilities: [
@@ -161,7 +166,10 @@ export const cheat: ClassDef = {
       statIncrease: inc('WIL', 'STR'),
     },
     14: { abilities: [], choices: [underhanded(6)] },
-    15: { abilities: [{ name: 'Sneak Attack (6)', desc: 'Your Sneak Attack becomes 2d20.' }] },
+    15: {
+      abilities: [{ name: 'Sneak Attack (6)', desc: 'Your Sneak Attack becomes 2d20.' }],
+      resourceDie: 20,
+    },
     16: { abilities: [], statIncrease: inc('DEX', 'INT'), choices: [underhanded(7)] },
     17: {
       abilities: [{ name: 'Sneak Attack (7)', desc: 'Your Sneak Attack becomes 3d20.' }],
@@ -206,6 +214,7 @@ export const cheat: ClassDef = {
           ],
         },
         11: {
+          replacesAbilities: ['Leave No Trace'],
           abilities: [
             {
               name: 'Professional Skulker',
@@ -233,7 +242,7 @@ export const cheat: ClassDef = {
             },
             {
               name: 'Sweet Talk',
-              desc: 'You may gain advantage on all Influence checks with NPCs you’ve just met for the first time. This lasts until you fail an Influence check with them or until you meet a 2nd time. You then have disadvantage on Influence checks with them (until you get back on their good side).',
+              desc: 'You may gain advantage on all Influence checks with NPCs you’ve just met for the first time. This lasts until you fail an Influence check with them or until you meet a 2nd time. You have disadvantage on Influence checks with them after you use this ability (until you get back on their good side).',
             },
           ],
         },

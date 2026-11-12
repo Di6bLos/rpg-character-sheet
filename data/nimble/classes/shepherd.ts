@@ -106,7 +106,7 @@ export const shepherd: ClassDef = {
         },
         {
           name: 'Lifebinding Spirit',
-          desc: '(Radiant spell, tier 1) Summon a spirit companion that follows you and is immune to harm; it can take the form of any small friendly animal (give it a name!). It shares your action pool but counts as a different creature, so you can each attack once without Rushed Attacks every round.',
+          desc: '(Radiant spell, tier 1) Summon a spirit companion that follows you and is immune to harm; it can take the form of any small/tiny friendly animal (give it a name!). It lasts until you cast this spell again, take a Safe Rest, or it heals a number of times equal to the mana spent. Action: it attacks or heals a creature within Reach 4 for 1d6+WIL radiant damage or healing (ignoring armor); see the spell card for upcasting. It shares your action pool but counts as a different creature, so you can each attack once without Rushed Attacks every round.',
         },
       ],
     },

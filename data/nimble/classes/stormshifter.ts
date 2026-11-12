@@ -98,7 +98,7 @@ export const stormshifter: ClassDef = {
         },
         {
           name: 'Beastshift',
-          desc: 'Action: Transform into a harmless beast (squirrel, pigeon, etc.). While transformed, you can speak with animals. The form lasts until you drop to 0 HP, cast a spell, or end it on your turn for free. You have DEX Beastshift charges; they reset on a Safe Rest. Tiny beasts: attacks against you have disadvantage, but ANY damage ends the form.',
+          desc: 'Action: Transform into a harmless beast (squirrel, pigeon, etc.). While transformed, you can speak with animals. The form lasts until you drop to 0 HP, cast a spell, or end it on your turn for free. You have DEX Beastshift charges; they reset on a Safe Rest. Tiny beasts (Beast of Nightmares included): attacks against you have disadvantage, but ANY damage ends the form.',
         },
       ],
     },
@@ -136,7 +136,7 @@ export const stormshifter: ClassDef = {
       abilities: [
         {
           name: 'Direbeast Form (3)',
-          desc: 'You can Beastshift into a Beast of Nightmares (Tiny): any Tiny beast or insect (provided it is horrible). Gain the Sting attack ((1/round) Action: Reach 0, 1d4 piercing + 3×LVL acid damage ignoring armor; on crit 4×LVL instead) and Silent But Deadly (Speed 2; you cannot Defend or Interpose; attackers cannot target you until you become conspicuous).',
+          desc: 'You can Beastshift into a Beast of Nightmares (Tiny): any Tiny beast or insect (provided it is horrible). Gain the Sting attack ((1/round) Action: Reach 0, 1d4 piercing + 3×LVL acid damage ignoring armor; on crit 4×LVL instead) and Silent But Deadly (Speed 2; you cannot Defend or Interpose; attackers cannot target you until you become conspicuous, e.g. being seen transforming or attacking). The Tiny beasts rule applies: attacks against you have disadvantage, but ANY damage ends the form.',
         },
       ],
       statIncrease: inc('STR', 'INT'),
@@ -311,7 +311,7 @@ export const stormshifter: ClassDef = {
             },
             {
               name: 'Venomous Gaze',
-              desc: '(1/encounter) Action: Spend 2 mana to shift into a Beast of Nightmares. Then entice a creature within 12 spaces to move 2×WIL spaces closer on a failed WIL save (they roll with disadvantage and must repeat until they save or can move no further). If they end in your space, you may Sting them for free.',
+              desc: '(1/encounter) Action: Spend 2 mana to shift into a Beast of Nightmares. Then entice a creature within 12 spaces to move 2×WIL spaces closer to you on a failed WIL save (they roll with disadvantage and must repeat until they save or can move no further). If they end up in the same space as you, you may Sting them for free.',
             },
           ],
         },

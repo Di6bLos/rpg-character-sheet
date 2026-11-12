@@ -5,6 +5,7 @@ import { weaponByName } from '~/data/nimble/core'
 import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet } from '~/types/sheets'
 import { rollDie, sign, type Rng } from '~/utils/dice'
+import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
 import { abilityBaseName } from '~/utils/nimbleBuild'
 
 /** Fury dice a Rage can hold before the player has to pick which to keep. */
@@ -292,7 +293,8 @@ const PERIODS: Record<string, UsePeriod> = {
 const PERIOD = '([Ss]afe [Rr]est|day|encounter|turn|round)'
 const AMOUNT = String.raw`((?:\d+\s*×\s*)?(?:STR|DEX|INT|WIL|LVL)|\d+)`
 /**
- * In order of appearance: a level step ("L7: 2/encounter"), a limit ("1/turn",
+ * In order of appearance: a level step ("L7: 2/encounter", which raises the last
+ * limit of that period or, if there is none yet, starts one), a limit ("1/turn",
  * "2×WIL times/Safe Rest"), a pool ("maximum is always 5×LVL and it recharges on a
  * Safe Rest"), charges ("You have DEX Beastshift charges; they reset on a Safe
  * Rest") and a single recharging use ("recharges when you Safe Rest").
@@ -356,7 +358,11 @@ function readLimits(ability: NimbleAbility, sheet: NimbleSheet, level: number): 
     if (stepLevel && stepUses && stepPeriod) {
       const period = PERIODS[stepPeriod.toLowerCase()]
       const target = found.findLast((c) => c.period === period)
-      if (target && level >= Number(stepLevel)) target.rule = Number(stepUses)
+      // A step with no earlier limit of its period starts one ("L11: 1/round").
+      if (level >= Number(stepLevel) && period) {
+        if (target) target.rule = Number(stepUses)
+        else add(period, stepPeriod, Number(stepUses), after)
+      }
     } else if (amount && word) {
       const period = PERIODS[word.toLowerCase()]
       if (period) add(period, word, limitValue(amount, sheet, level), after)
@@ -415,14 +421,58 @@ function refill(sheet: NimbleSheet, periods: UsePeriod[]): void {
   }
 }
 
-/** Initiative is rolled: per-encounter and per-turn uses come back, and the turn starts fresh. */
+/**
+ * Abilities whose spent use comes back when Initiative is rolled, read from text
+ * like "Your Veilwalker's Blessing recharges when you roll Initiative" or "Regain
+ * 1 use/charge of Searing Light when you roll Initiative".
+ */
+const INITIATIVE_RECHARGE = [
+  /Your ([A-Z][\w'’ ]+?) recharges when you roll Initiative/g,
+  /Regain 1 (?:use|charge)(?:\/charge)? of ([A-Z][\w'’ ]+?) when you roll Initiative/g,
+]
+
+/** Names of the abilities that get a spent per-Safe-Rest use back on Initiative. */
+export function initiativeRecharges(sheet: NimbleSheet): string[] {
+  const names: string[] = []
+  for (const a of sheet.abilities)
+    for (const pattern of INITIATIVE_RECHARGE)
+      for (const m of a.desc.matchAll(pattern)) if (m[1]) names.push(m[1].trim())
+  return names
+}
+
+/** Mana gained on Initiative and lost when combat ends (Spellblade: INT); 0 for everyone else. */
+export function encounterMana(sheet: NimbleSheet): number {
+  const cls = classBySlug(sheet.classSlug)
+  const sub = cls && sheet.subclassSlug ? subclassBySlug(cls, sheet.subclassSlug) : undefined
+  return sub?.encounterMana ? Math.max(0, sheet.stats[sub.encounterMana]) : 0
+}
+
+/**
+ * Initiative is rolled: per-encounter and per-turn uses come back, abilities that
+ * recharge on Initiative get one use back, encounter mana is gained, and the turn
+ * starts fresh.
+ */
 export function newEncounter(sheet: NimbleSheet): string {
   refill(sheet, ['turn', 'encounter'])
+  const recharged: string[] = []
+  for (const name of initiativeRecharges(sheet)) {
+    const tracker = sheet.uses[`${abilityBaseName(name)}@rest`]
+    if (tracker && tracker.used > 0) {
+      tracker.used -= 1
+      recharged.push(name)
+    }
+  }
+  const mana = encounterMana(sheet)
+  if (mana > 0) sheet.mana.temp = mana
   sheet.casting = { ...NOT_CASTING }
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
-  return 'New encounter: per-encounter abilities, actions and reactions ready.'
+  const extra = [
+    recharged.length ? ` ${recharged.join(', ')} recharged.` : '',
+    mana > 0 ? ` ${mana} encounter mana gained.` : '',
+  ].join('')
+  return `New encounter: per-encounter abilities, actions and reactions ready.${extra}`
 }
 
 /** Actions a spell takes, from its "2 Actions, AoE" line; rituals and reactions take none. */
