@@ -69,15 +69,24 @@ export const useNpcStore = defineStore('npc', () => {
     loading.value = false
   }
 
-  async function searchPool(filter: PoolFilter, limit = 60): Promise<PoolNpc[]> {
+  /**
+   * One page of the pool, by name (id breaks ties so pages never overlap or skip).
+   * Name search is a substring match, served by the trigram index on `npcs.name`.
+   */
+  async function searchPool(filter: PoolFilter, limit = 60, offset = 0): Promise<PoolNpc[]> {
     const auth = useAuthStore()
-    let query = supabase.from('npcs').select('*').order('name').limit(limit)
+    let query = supabase
+      .from('npcs')
+      .select('*')
+      .order('name')
+      .order('id')
+      .range(offset, offset + limit - 1)
     if (filter.system) query = query.eq('system', filter.system)
     if (filter.kind) query = query.eq('kind', filter.kind)
     if (filter.source) query = query.eq('source', filter.source)
     if (filter.mine && auth.userId) query = query.eq('created_by', auth.userId)
     const q = filter.q?.trim()
-    if (q) query = query.ilike('name', `%${q.replace(/[%_]/g, (c) => `\\${c}`)}%`)
+    if (q) query = query.ilike('name', `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`)
     const { data, error } = await query
     if (error) throw error
     return (data ?? []) as PoolNpc[]
@@ -220,8 +229,11 @@ export const useNpcStore = defineStore('npc', () => {
 
   /** Deletes a pool NPC (its author or staff); campaign copies keep their own stat block. */
   async function removePool(id: string) {
-    const { error } = await supabase.from('npcs').delete().eq('id', id)
+    // RLS hides rows the user may not delete, so a blocked delete removes nothing
+    // and returns no error: ask for the row back to tell the two apart.
+    const { data, error } = await supabase.from('npcs').delete().eq('id', id).select('id')
     if (error) throw error
+    if (!data?.length) throw new Error('That NPC is already gone or isn’t yours to remove')
   }
 
   /** Copies a pool NPC into a campaign's index (once; returns the existing copy if there is one). */

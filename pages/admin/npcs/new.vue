@@ -31,6 +31,9 @@ const saving = ref(false)
 const loadingSource = ref(false)
 
 const preview = computed(() => toStatBlock(form.value, system.value))
+/** What the AI assistant assumed and the GM's Guide checks of its last draft. */
+const assumptions = ref<string[]>([])
+const checks = ref<string[]>([])
 
 onMounted(async () => {
   void site.fetch().catch(() => undefined)
@@ -95,8 +98,6 @@ async function save() {
 }
 
 // --- AI draft -----------------------------------------------------------------------
-const assumptions = ref<string[]>([])
-const checks = ref<string[]>([])
 function onDraft(draft: { form: NpcForm; assumptions: string[]; checks: string[] }) {
   form.value = draft.form
   assumptions.value = draft.assumptions

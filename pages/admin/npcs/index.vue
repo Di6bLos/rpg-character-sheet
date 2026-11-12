@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Admin → NPCs: the shared pool. Staff browse, edit and remove any entry and
 // build new ones (Official or Homebrew) with the generator.
-import type { GameSystem, NpcKind, NpcSource, PoolNpc } from '~/types'
+import type { PoolNpc } from '~/types'
 import { shortDate } from '~/utils/format'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
 
@@ -12,40 +12,9 @@ const npcs = useNpcStore()
 const site = useSiteStore()
 const snackbar = useSnackbarStore()
 
-const system = ref<GameSystem | null>(null)
-const kind = ref<NpcKind | null>(null)
-const source = ref<NpcSource | null>(null)
-const q = ref('')
-const list = ref<PoolNpc[]>([])
-const loading = ref(true)
-let timer: ReturnType<typeof setTimeout> | undefined
-let generation = 0
-
-async function load() {
-  const gen = ++generation
-  loading.value = true
-  try {
-    const rows = await npcs.searchPool(
-      { system: system.value, kind: kind.value, source: source.value, q: q.value },
-      300,
-    )
-    if (gen === generation) list.value = rows
-  } catch (err) {
-    if (gen === generation) snackbar.error(err, 'Could not load the NPC pool')
-  } finally {
-    if (gen === generation) loading.value = false
-  }
-}
-onMounted(() => {
-  void load()
-  void site.fetch().catch(() => undefined)
-})
-onBeforeUnmount(() => clearTimeout(timer))
-watch([system, kind, source], () => void load())
-watch(q, () => {
-  clearTimeout(timer)
-  timer = setTimeout(() => void load(), 250)
-})
+const { system, kind, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
+  useNpcPoolSearch(100)
+onMounted(() => void site.fetch().catch(() => undefined))
 
 const poolNote = computed(() => {
   const s = site.settings
@@ -86,7 +55,7 @@ async function remove() {
   removing.value = true
   try {
     await npcs.removePool(npc.id)
-    list.value = list.value.filter((n) => n.id !== npc.id)
+    forget(npc.id)
     snackbar.show(`${npc.name} removed from the pool. Campaigns that use it keep their copy.`)
   } catch (err) {
     snackbar.error(err, 'Could not remove it from the pool')
@@ -233,6 +202,11 @@ async function remove() {
           </tbody>
         </table>
       </div>
+      <div v-if="hasMore" class="more">
+        <button type="button" class="btn btn--ghost" :disabled="loadingMore" @click="loadMore">
+          {{ loadingMore ? 'Loading…' : 'Load more' }}
+        </button>
+      </div>
     </section>
 
     <UiDialog v-model="detailOpen" :title="open?.name ?? ''" width="680px">
@@ -287,6 +261,13 @@ async function remove() {
   h2 {
     font-size: 20px;
   }
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
 }
 
 .filters {
