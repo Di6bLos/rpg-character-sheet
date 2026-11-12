@@ -17,6 +17,11 @@ export interface NewEntry {
   fields?: JournalFields
 }
 
+interface PendingFacts {
+  facts: JournalFact[]
+  write: Promise<void>
+}
+
 /** Public URL for an NPC image (bucket `npc-images`). */
 export function npcImageUrl(path: string | null | undefined): string | null {
   if (!path) return null
@@ -50,6 +55,8 @@ export function useJournal(campaignId: Ref<string>) {
   const loading = ref(true)
   const posting = ref(false)
   let channel: RealtimeChannel | null = null
+  /** The latest fact write per entry id, chained behind the ones before it. */
+  const pendingFacts = new Map<string, PendingFacts>()
 
   async function load() {
     const { data, error } = await supabase
@@ -58,7 +65,13 @@ export function useJournal(campaignId: Ref<string>) {
       .eq('campaign_id', campaignId.value)
       .order('created_at', { ascending: false })
     if (error) throw error
-    entries.value = (data ?? []) as unknown as JournalEntry[]
+    const fresh = (data ?? []) as unknown as JournalEntry[]
+    // A fact write still in flight shows its facts, not the row from before it.
+    for (const e of fresh) {
+      const pending = pendingFacts.get(e.id)
+      if (pending) e.fields = { ...e.fields, facts: pending.facts }
+    }
+    entries.value = fresh
   }
 
   async function init() {
@@ -170,20 +183,35 @@ export function useJournal(campaignId: Ref<string>) {
     snackbar.show('Notes saved')
   }
 
-  /** GM only: replace the revealed facts (the server keeps everyone's notes as they are). */
+  /**
+   * GM only: replace the revealed facts (the server keeps everyone's notes as they are).
+   * Writes for one entry go out one at a time so a reveal can't land after a later
+   * "Hide all"; until the last one settles, its facts win over responses and reloads.
+   */
   async function setFacts(entry: JournalEntry, facts: JournalFact[]) {
-    const previous = entry.fields
-    entry.fields = { ...entry.fields, facts }
-    const { data, error } = await supabase.rpc('journal_set_facts', {
-      p_entry: entry.id,
-      p_facts: facts,
+    const id = entry.id
+    const current = () => entries.value.find((e) => e.id === id) ?? entry
+    const target = current()
+    target.fields = { ...target.fields, facts }
+    const job: PendingFacts = { facts, write: Promise.resolve() }
+    job.write = (pendingFacts.get(id)?.write ?? Promise.resolve()).then(async () => {
+      // A newer click is queued behind this one: only its facts need to reach the server.
+      if (pendingFacts.get(id) !== job) return
+      const { data, error } = await supabase.rpc('journal_set_facts', {
+        p_entry: id,
+        p_facts: job.facts,
+      })
+      const latest = pendingFacts.get(id) === job
+      if (latest) pendingFacts.delete(id)
+      if (error || !data) {
+        snackbar.error(error ?? new Error('You can’t edit this entry'), 'Could not reveal that')
+        if (latest) await load().catch(() => undefined)
+        return
+      }
+      if (latest) current().fields = data as JournalFields
     })
-    if (error || !data) {
-      entry.fields = previous
-      snackbar.error(error ?? new Error('You can’t edit this entry'), 'Could not reveal that')
-      return
-    }
-    entry.fields = data as JournalFields
+    pendingFacts.set(id, job)
+    await job.write
   }
 
   /** Author or GM: change an entry's title, text and who can see it. */
