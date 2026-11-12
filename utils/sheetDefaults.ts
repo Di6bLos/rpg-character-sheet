@@ -1,4 +1,5 @@
-import { classBySlug, poolOptionWounds } from '~/data/nimble/classes'
+import { classBySlug, poolOptionByName, poolOptionWounds } from '~/data/nimble/classes'
+import { BASE_SPEED } from '~/data/nimble/core'
 import type { GameSystem } from '~/types'
 import type {
   AnySheet,
@@ -14,7 +15,7 @@ import type {
  * Bump when a class-data change has to be applied to existing saves, and add the
  * upgrade to `upgradeRules`.
  */
-export const NIMBLE_RULES_VERSION = 1
+export const NIMBLE_RULES_VERSION = 2
 
 const PF2E_SKILLS: [string, Pf2eAttr][] = [
   ['Acrobatics', 'DEX'],
@@ -212,9 +213,9 @@ export function normalizeSheet<K extends GameSystem>(system: K, stored: unknown)
 /**
  * Brings a sheet (or a level-history snapshot of one) built from class data up to
  * the current rules version. Bonuses are added on top of the saved values, so
- * hand edits stay.
+ * hand edits stay. `level` is the hero's level in that sheet.
  */
-function upgradeRules(target: Record<string, unknown>) {
+function upgradeRules(target: Record<string, unknown>, level: number) {
   const from = typeof target.rulesVersion === 'number' ? target.rulesVersion : 0
   if (from >= NIMBLE_RULES_VERSION) return
   const cls = typeof target.classSlug === 'string' ? classBySlug(target.classSlug) : undefined
@@ -223,6 +224,27 @@ function upgradeRules(target: Record<string, unknown>) {
     const picks = Object.values(target.choices).flatMap((v) => (Array.isArray(v) ? v : []))
     for (const name of picks)
       if (typeof name === 'string') target.woundsMax += poolOptionWounds(cls, name)
+  }
+  if (cls && from < 2 && isPlainObject(target.choices)) {
+    // v2: pool options that change speed (Unstoppable Protector) or max Hit Dice
+    // (Fiendish Boon) now apply it. Fiendish Boon's +1 stat is left to the player.
+    const picks = Object.values(target.choices).flatMap((v) => (Array.isArray(v) ? v : []))
+    for (const name of picks) {
+      const option = typeof name === 'string' ? poolOptionByName(cls, name) : undefined
+      if (option?.speed && typeof target.speed === 'string')
+        target.speed = String((Number.parseInt(target.speed, 10) || BASE_SPEED) + option.speed)
+      if (option?.hitDice && typeof target.hitDice === 'number')
+        target.hitDice = Math.max(1, target.hitDice + option.hitDice)
+    }
+  }
+  if (cls && from < 2 && level > 0) {
+    // v2: class-table bonuses (Zephyr: Swift Feet +LVL Initiative, Iron Defense (2)
+    // doubles Armor). Level-ups add only the change from the level before.
+    // (Inlined classFlagAt from utils/nimbleBuild, which imports this file.)
+    const has = (flag: 'initiativePerLevel' | 'armorDoubled') =>
+      Array.from({ length: level }, (_, i) => cls.levels[i + 1]?.[flag]).some(Boolean)
+    if (typeof target.initMod === 'number' && has('initiativePerLevel')) target.initMod += level
+    if (typeof target.ac === 'number' && has('armorDoubled')) target.ac *= 2
   }
   target.rulesVersion = NIMBLE_RULES_VERSION
 }
@@ -233,12 +255,12 @@ function migrateNimble(sheet: NimbleSheet, stored: unknown) {
   const loose = sheet as unknown as Record<string, unknown>
   // mergeDefaults filled in the current version; the save's own version decides.
   loose.rulesVersion = saved.rulesVersion
-  upgradeRules(loose)
+  upgradeRules(loose, Number.parseInt(String(saved.level), 10) || 0)
   if (Array.isArray(sheet.levelHistory))
     sheet.levelHistory = sheet.levelHistory.map((entry) => {
       if (!isPlainObject(entry?.before)) return entry
       const before = { ...entry.before }
-      upgradeRules(before)
+      upgradeRules(before, entry.level - 1)
       return { ...entry, before }
     })
 

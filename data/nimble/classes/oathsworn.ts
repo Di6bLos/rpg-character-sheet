@@ -90,6 +90,7 @@ export const oathsworn: ClassDef = {
         {
           name: 'Unstoppable Protector',
           desc: 'Gain +1 speed. You may Interpose even if you are restrained, stunned, or otherwise incapacitated. If you Interpose for a non-combatant NPC, you may Interpose again this round.',
+          speed: 1,
         },
         { name: 'Well Armored', desc: 'Whenever you Interpose, gain temp HP equal to your STR.' },
       ],

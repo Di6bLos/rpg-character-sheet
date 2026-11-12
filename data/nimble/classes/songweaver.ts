@@ -67,7 +67,7 @@ export const songweaver: ClassDef = {
         },
         {
           name: 'Rhapsody of the Normal',
-          desc: 'When you roll 4 or more on your Vicious Mockery, you may spend a Songweaver’s Inspiration charge to suppress the target’s special abilities until the end of their next turn: they can only attack once for 1d4 damage and move up to 6 spaces (no armor, spellcasting, flying, regeneration, or other features).',
+          desc: 'When you roll 4 or more on your Vicious Mockery, you may spend a Songweaver’s Inspiration charge to suppress the target’s special abilities until the end of their next turn: they can do only what an untrained average villager can do: attack once for 1d4 damage and move up to 6 spaces (no armor, spellcasting, flying, regeneration, or other inherent or trained features).',
         },
         {
           name: 'Song of Domination',
@@ -82,19 +82,19 @@ export const songweaver: ClassDef = {
       options: [
         {
           name: 'Stompy',
-          desc: '3 actions: Summon a huge hill giant for 1 round. As he enters adjacent to you, use Stompy’s Stomp: make a DC 10 Influence check. On a success, he moves 6 spaces in a direction you choose; on a failure, he moves towards YOU (“YOU NOT FRIEND!”). He deals everything in his path damage equal to LVL+Influence check. ANY creature within 6 spaces of Stompy can use this ability once instead of an attack.',
+          desc: '(1/Safe Rest) 3 actions: Summon a huge hill giant for 1 round. As he enters adjacent to you, use Stompy’s Stomp: make a DC 10 Influence check. On a success, he moves 6 spaces in a direction you choose; on a failure, he moves towards YOU (“YOU NOT FRIEND!”). He deals everything in his path damage equal to LVL+Influence check. ANY creature within 6 spaces of Stompy can use this ability once instead of an attack.',
         },
         {
           name: 'Mal, the Malevolent Imp',
-          desc: 'Summon a tiny fiend for 1 night. He can find out dangerous information you have no right to know, or “take care” of a problem with only the slightest chance of things going wrong. Make an Influence check to convince him (advantage for mischievous or fun requests; disadvantage for good or menial ones).',
+          desc: '(1/Safe Rest) Summon a tiny fiend for 1 night. He can find out dangerous information you have no right to know, or “take care” of a problem with only the slightest chance of things going wrong. Make an Influence check to convince him (advantage for mischievous or fun requests; disadvantage for good or menial ones).',
         },
         {
           name: 'Gran Gran (NOT a hag)',
-          desc: 'When resting, summon her for 1 hour to soothe your wounds (and hassle you for not eating enough). She hands out pastries equal to your WIL+INT; eating one recovers one mana, Hit Die, or Wound. They expire in 10 minutes.',
+          desc: '(1/Safe Rest) When resting, summon her for 1 hour to soothe your wounds (and hassle you for not eating enough). She hands out pastries equal to your WIL+INT; eating one recovers one mana, Hit Die, or Wound. They expire in 10 minutes.',
         },
         {
           name: 'Linos, the Everfriendly',
-          desc: 'Summon a legendary flying (but friendly) creature to take you and your party wherever you need to go. He may request a very large amount of food as payment.',
+          desc: '(1/Safe Rest) Summon a legendary flying (but friendly) creature to take you and your party wherever you need to go. He may request a very large amount of food as payment.',
         },
       ],
     },
@@ -106,7 +106,7 @@ export const songweaver: ClassDef = {
       abilities: [
         {
           name: 'Wind Spellcasting and…',
-          desc: 'You know cantrips from the Wind school and 1 other school of your choice, plus the cantrip Vicious Mockery (Range 12, 1d4+INT psychic ignoring armor; on hit the target is Taunted during their next turn).',
+          desc: 'You know cantrips from the Wind school and 1 other school of your choice, plus the cantrip Vicious Mockery (Range 12, 1d4+INT psychic ignoring armor; on hit the target is Taunted during their next turn; High Levels: +2 damage every 5 levels).',
         },
         {
           name: 'Songweaver’s Inspiration',
@@ -167,7 +167,7 @@ export const songweaver: ClassDef = {
       abilities: [
         {
           name: 'A “People” Person',
-          desc: 'You’ve met many people in your travels; some have agreed to come to your aid should you need it. You can temporarily summon your chosen friends via song (1/Safe Rest each).',
+          desc: 'You’ve met many people in your travels; some have agreed to come to your aid should you need it. You can temporarily summon your chosen friends via song; each friend can be summoned once per Safe Rest.',
         },
       ],
       statIncrease: inc('STR', 'DEX'),
@@ -254,7 +254,7 @@ export const songweaver: ClassDef = {
           abilities: [
             {
               name: 'Words Like Swords',
-              desc: 'Your Vicious Mockery damage becomes 1d6+INT+WIL.',
+              desc: 'Your Vicious Mockery damage becomes 1d6+INT+WIL (this replaces the 1d4+INT on the spell card; the High Levels bonus still applies).',
             },
           ],
         },

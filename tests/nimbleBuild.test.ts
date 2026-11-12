@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { ANCESTRIES, ancestryBySlug } from '../data/nimble/ancestries'
 import { BACKGROUNDS, backgroundBySlug } from '../data/nimble/backgrounds'
-import { NIMBLE_CLASSES, classBySlug } from '../data/nimble/classes'
+import { NIMBLE_CLASSES, classBySlug, poolOptionByName } from '../data/nimble/classes'
 import { weaponByName } from '../data/nimble/core'
 import { SPELLS } from '../data/nimble/spells'
 import type { ChoiceDef, ClassDef } from '../data/nimble/types'
-import type { NimbleSheet } from '../types/sheets'
+import type { NimbleSheet, NimbleStat } from '../types/sheets'
 import { parseDice } from '../utils/dice'
 import {
   abilityBaseName,
   applyNimbleLevel,
+  classArmor,
   changeSubclass,
   creationChoices,
   keyStatValue,
@@ -19,7 +20,26 @@ import {
   subclassChangeChoices,
 } from '../utils/nimbleBuild'
 import { restoreLevel } from '../utils/levelHistory'
-import { autoPick, build, human, levelTo, survivalist } from './helpers/nimble'
+import { autoPick, build, human, levelTo, pickLevel, survivalist } from './helpers/nimble'
+
+/** Hit Dice the hero's picked pool options add or remove (Fiendish Boon: -1). */
+function poolHitDice(cls: ClassDef, sheet: NimbleSheet): number {
+  return sheet.abilities.reduce((n, a) => n + (poolOptionByName(cls, a.name)?.hitDice ?? 0), 0)
+}
+
+/** Levels up once with first-valid picks, making sure `option` is among them. */
+function levelWith(sheet: NimbleSheet, level: number, option: string, subclassSlug?: string) {
+  const picks = pickLevel(sheet, level, subclassSlug)
+  const plan = nimbleLevelPlan(sheet, level, { subclassSlug })!
+  const choice = plan.choices.find((c) => c.options.some((o) => o.value === option))
+  expect(choice, `${option} offered at ${level}`).toBeDefined()
+  const list = picks[choice!.key] ?? []
+  if (!list.includes(option)) picks[choice!.key] = [option, ...list.slice(1)]
+  const bumps: Partial<Record<NimbleStat, number>> = {}
+  if (plan.statIncrease)
+    plan.statIncrease.stats.slice(0, plan.statIncrease.count).forEach((st) => (bumps[st] = 1))
+  applyNimbleLevel(sheet, level, { hpGain: 5, statBumps: bumps, subclassSlug, picks })
+}
 
 /** Every choice a class can ask for: class levels, subclass levels and subclass intros. */
 function choiceDefs(cls: ClassDef): [number | 'intro', ChoiceDef, string][] {
@@ -252,6 +272,119 @@ describe('buildNimbleSheet', () => {
   })
 })
 
+describe('rules fixes from the class audits', () => {
+  it('applies Fiendish Boon: +1 to the higher of INT/DEX and 1 fewer max Hit Dice', () => {
+    const cls = classBySlug('shadowmancer')!
+    const sheet = build(cls)
+    levelTo(sheet, 3, 'red-dragon')
+    const before = { ...sheet.stats, hitDice: sheet.hitDice }
+    levelWith(sheet, 4, 'Fiendish Boon')
+    const statBumps = nimbleLevelPlan(sheet, 4) && cls.levels[4]?.statIncrease
+    const raised = statBumps ? statBumps.stats.slice(0, statBumps.count) : []
+    const intGain = sheet.stats.INT - before.INT - (raised.includes('INT') ? 1 : 0)
+    const dexGain = sheet.stats.DEX - before.DEX - (raised.includes('DEX') ? 1 : 0)
+    expect(intGain + dexGain).toBe(1)
+    expect(sheet.hitDice).toBe(before.hitDice) // +1 for the level, -1 for the boon
+  })
+
+  it('gives Unstoppable Protector +1 speed', () => {
+    const sheet = build(classBySlug('oathsworn')!)
+    levelTo(sheet, 2, 'vengeance')
+    const speed = Number(sheet.speed)
+    levelWith(sheet, 3, 'Unstoppable Protector', 'vengeance')
+    expect(Number(sheet.speed)).toBe(speed + 1)
+  })
+
+  it('works out the Zephyr’s Initiative, melee damage and doubled armor', () => {
+    const cls = classBySlug('zephyr')!
+    const sheet = build(cls)
+    const init1 = sheet.initMod
+    levelTo(sheet, 4, 'pain')
+    expect(sheet.initMod - init1 - (sheet.stats.DEX - build(cls).stats.DEX)).toBe(4)
+    const unarmed = () => sheet.attacks.find((a) => a.name === 'Unarmed Strike')!.dmg
+    const beforeStrikes = unarmed()
+    levelTo2(sheet, 5, 5)
+    expect(unarmed()).not.toBe(beforeStrikes)
+    levelTo2(sheet, 6, 13)
+    expect(sheet.ac).toBe(classArmor(cls, sheet.stats, 13))
+    expect(sheet.ac).toBe(2 * (sheet.stats.DEX + sheet.stats.STR))
+    const mod = sheet.stats.STR + 13
+    expect(unarmed()).toMatch(new RegExp(`\\+${mod}$`))
+  })
+
+  it('doubles the Zephyr’s ancestry Armor too at level 13', () => {
+    const cls = classBySlug('zephyr')!
+    const sheet = build(cls, ancestryBySlug('turtlefolk')!)
+    levelTo(sheet, 4, 'pain')
+    levelTo2(sheet, 5, 12)
+    expect(sheet.ac).toBe(classArmor(cls, sheet.stats, 12) + 4)
+    levelTo2(sheet, 13, 13)
+    expect(sheet.ac).toBe(2 * (classArmor(cls, sheet.stats, 12) + 4))
+  })
+
+  it('takes Weapon Mastery and Combat Tactic picks from a Spellblade but keeps +1 Combat Dice', () => {
+    const cls = classBySlug('commander')!
+    const sheet = build(cls)
+    levelTo(sheet, 20, 'spellblade')
+    expect(sheet.abilities.some((a) => abilityBaseName(a.name) === 'Weapon Mastery')).toBe(false)
+    expect(sheet.spells.learned).toContain('Enchant Weapon')
+    const fresh = build(cls)
+    levelTo(fresh, 5, 'spellblade')
+    const fit = nimbleLevelPlan(fresh, 6)!.choices.find(
+      (c) => c.def.id === 'fit-for-any-battlefield',
+    )
+    expect(fit?.options.map((o) => o.value)).toContain('+1 max Combat Dice')
+  })
+
+  it('replaces Unparalleled Tactics with Captain of Legions at 20', () => {
+    const sheet = build(classBySlug('commander')!)
+    levelTo(sheet, 20, 'bulwark')
+    const names = sheet.abilities.map((a) => a.name)
+    expect(names).toContain('Captain of Legions')
+    expect(names).not.toContain('Unparalleled Tactics')
+  })
+
+  it('swaps Leave No Trace for Professional Skulker and grows the Sneak Attack die', () => {
+    const sheet = build(classBySlug('cheat')!)
+    levelTo(sheet, 15, 'silent-blade')
+    const names = sheet.abilities.map((a) => a.name)
+    expect(names).toContain('Professional Skulker')
+    expect(names).not.toContain('Leave No Trace')
+    expect(sheet.resource.die).toBe(20)
+  })
+
+  it('has the Beastmaster companion take the place of the first 2 Thrill of the Hunt picks', () => {
+    const cls = classBySlug('hunter')!
+    const pool = cls.pools.find((p) => p.id === 'thrill-of-the-hunt')!
+    const thrill = (sh: NimbleSheet) =>
+      sh.abilities.filter((a) => pool.options.some((o) => o.name === a.name))
+    const keeper = build(cls)
+    levelTo(keeper, 3, cls.subclasses[0]!.slug)
+    const beast = build(cls)
+    levelTo(beast, 3, 'beastmaster')
+    expect(thrill(beast).length).toBe(Math.max(0, thrill(keeper).length - 2))
+
+    // Changing away gives the dropped picks back (in place, without level history).
+    const held = thrill(keeper).length
+    beast.levelHistory = []
+    const sub = cls.subclasses[0]!.slug
+    changeSubclass(beast, 3, sub, autoPick(subclassChangeChoices(beast, 3, sub).choices))
+    expect(thrill(beast).length).toBe(held)
+  })
+})
+
+/** Levels from `from` to `to` with first-valid picks (the subclass is already set). */
+function levelTo2(sheet: NimbleSheet, from: number, to: number) {
+  for (let level = from; level <= to; level++) {
+    const plan = nimbleLevelPlan(sheet, level)!
+    const picks = pickLevel(sheet, level)
+    const bumps: Partial<Record<NimbleStat, number>> = {}
+    if (plan.statIncrease)
+      plan.statIncrease.stats.slice(0, plan.statIncrease.count).forEach((st) => (bumps[st] = 1))
+    applyNimbleLevel(sheet, level, { hpGain: 5, statBumps: bumps, picks })
+  }
+}
+
 describe('levelling', () => {
   for (const cls of NIMBLE_CLASSES)
     for (const sub of cls.subclasses.filter((s) => !s.story))
@@ -259,7 +392,7 @@ describe('levelling', () => {
         const sheet = build(cls)
         levelTo(sheet, 20, sub.slug)
         expect(sheet.subclassSlug).toBe(sub.slug)
-        expect(sheet.hitDice).toBe(21)
+        expect(sheet.hitDice).toBe(21 + poolHitDice(cls, sheet))
         expect(sheet.hpMax).toBeGreaterThan(cls.startingHp + 19 * 5 - 1)
         expect(sheet.abilities.some((a) => a.name === 'Epic Boon')).toBe(true)
         // Level 15 adds a subclass ability, or upgrades one ("Master of Forms (2)").
@@ -277,7 +410,7 @@ describe('levelling', () => {
         const sheet = build(cls)
         levelTo(sheet, 20, sub.slug)
         expect(sheet.subclassSlug).toBe(sub.slug)
-        expect(sheet.hitDice).toBe(21)
+        expect(sheet.hitDice).toBe(21 + poolHitDice(cls, sheet))
         for (const name of sub.replacesAbilities ?? [])
           expect(sheet.abilities.some((a) => abilityBaseName(a.name) === name)).toBe(false)
       })
