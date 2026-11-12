@@ -94,7 +94,7 @@ export const useNpcStore = defineStore('npc', () => {
 
   /**
    * Publishes to the pool (or updates the user's own pool entry). Returns the
-   * pool id: the one passed in when the pool is off, null when a new entry fails.
+   * pool id: the one passed in when the pool is off, null when the write fails.
    */
   async function publish(draft: NpcDraft, poolId: string | null): Promise<string | null> {
     const site = useSiteStore()
@@ -112,7 +112,15 @@ export const useNpcStore = defineStore('npc', () => {
     if (poolId) {
       // Only the author's own entry changes; for official or other GMs' entries
       // the update matches no rows and the campaign copy simply diverges.
-      await supabase.from('npcs').update(row).eq('id', poolId).eq('created_by', auth.userId!)
+      const { error } = await supabase
+        .from('npcs')
+        .update(row)
+        .eq('id', poolId)
+        .eq('created_by', auth.userId!)
+      if (error) {
+        console.warn('Could not update the NPC in the library', error)
+        return null
+      }
       return poolId
     }
     const { data, error } = await supabase.from('npcs').insert(row).select('id').single()
@@ -177,13 +185,18 @@ export const useNpcStore = defineStore('npc', () => {
 
   /** Copies a pool NPC into a campaign's index (once; returns the existing copy if there is one). */
   async function pull(cid: string, npc: PoolNpc): Promise<CampaignNpc> {
-    const { data: found } = await supabase
-      .from('campaign_npcs')
-      .select('*')
-      .eq('campaign_id', cid)
-      .eq('pool_npc_id', npc.id)
-      .maybeSingle()
-    if (found) return found as CampaignNpc
+    const findCopy = async () => {
+      const { data: found, error: findError } = await supabase
+        .from('campaign_npcs')
+        .select('*')
+        .eq('campaign_id', cid)
+        .eq('pool_npc_id', npc.id)
+        .limit(1)
+      if (findError) throw findError
+      return ((found ?? [])[0] as CampaignNpc | undefined) ?? null
+    }
+    const found = await findCopy()
+    if (found) return found
     const { data, error } = await supabase
       .from('campaign_npcs')
       .insert({
@@ -200,7 +213,12 @@ export const useNpcStore = defineStore('npc', () => {
       })
       .select()
       .single()
-    if (error) throw error
+    if (error) {
+      // 23505: another tab pulled it first (one copy per campaign); use that one.
+      const theirs = error.code === '23505' ? await findCopy() : null
+      if (theirs) return theirs
+      throw error
+    }
     const saved = data as CampaignNpc
     if (campaignId.value === cid) {
       campaignNpcs.value = [...campaignNpcs.value, saved].sort((a, b) =>
