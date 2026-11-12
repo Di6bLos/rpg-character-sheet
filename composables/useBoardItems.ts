@@ -5,6 +5,9 @@ import { plural, safeFileName } from '~/utils/format'
 
 export const CAMPAIGN_BUCKET = 'campaign-files'
 export const MAX_CAMPAIGN_FILE = 25 * 1024 * 1024
+/** Signed URLs live an hour (useSignedUrl); renew after 45 minutes, checking every 5. */
+const URL_RENEW_MS = 45 * 60 * 1000
+const URL_CHECK_MS = 5 * 60 * 1000
 
 export function titleFromFile(name: string) {
   return (
@@ -24,13 +27,24 @@ export function useBoardItems(campaignId: Ref<string>) {
   const loading = ref(true)
   const uploading = ref(false)
   let channel: RealtimeChannel | null = null
+  let renewTimer: ReturnType<typeof setInterval> | null = null
+  /** When each item's signed URL was made; they last an hour. */
+  const signedAt = new Map<string, number>()
 
+  /** Signs URLs for new items and renews any close to expiring. */
   async function loadUrls() {
-    const missing = items.value.filter((i) => !urls.value[i.id])
-    const signed = await Promise.all(missing.map((i) => signedUrl(CAMPAIGN_BUCKET, i.file_path)))
-    missing.forEach((item, idx) => {
+    const now = Date.now()
+    const due = items.value.filter(
+      (i) => !urls.value[i.id] || now - (signedAt.get(i.id) ?? 0) > URL_RENEW_MS,
+    )
+    const signed = await Promise.all(
+      due.map((i) => signedUrl(CAMPAIGN_BUCKET, i.file_path, !!urls.value[i.id])),
+    )
+    due.forEach((item, idx) => {
       const url = signed[idx]
-      if (url) urls.value[item.id] = url
+      if (!url) return
+      urls.value[item.id] = url
+      signedAt.set(item.id, now)
     })
   }
 
@@ -62,7 +76,11 @@ export function useBoardItems(campaignId: Ref<string>) {
           },
           () => void load(),
         )
+        // A map the GM hides no longer passes players' RLS, so realtime drops that
+        // update; the GM's client sends this instead and everyone refetches.
+        .on('broadcast', { event: 'refresh' }, () => void load())
         .subscribe()
+      if (!renewTimer) renewTimer = setInterval(() => void loadUrls(), URL_CHECK_MS)
     } catch (err) {
       snackbar.error(err, 'Could not load the board')
     } finally {
@@ -73,6 +91,7 @@ export function useBoardItems(campaignId: Ref<string>) {
   onMounted(init)
   watch(campaignId, init)
   onBeforeUnmount(() => {
+    if (renewTimer) clearInterval(renewTimer)
     if (channel) void supabase.removeChannel(channel)
   })
 
@@ -130,6 +149,7 @@ export function useBoardItems(campaignId: Ref<string>) {
       .eq('id', item.id)
     if (error) return snackbar.error(error, 'Could not change visibility')
     item.hidden = !item.hidden
+    void channel?.send({ type: 'broadcast', event: 'refresh', payload: {} })
     snackbar.show(item.hidden ? 'Hidden from players' : 'Revealed to the party')
   }
 
