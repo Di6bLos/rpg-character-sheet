@@ -11,6 +11,7 @@ const store = useCharacterStore()
 
 const character = ref<Character<AnySheet> | null>(null)
 const campaignName = ref('Not in a campaign')
+const campaignId = ref<string | null>(null)
 const loading = ref(true)
 const failed = ref(false)
 
@@ -21,12 +22,18 @@ async function load() {
     const id = String(route.params.id)
     const [found, seat] = await Promise.all([
       store.fetchOne(id),
-      supabase.from('campaign_members').select('campaigns(name)').eq('character_id', id).limit(1),
+      supabase
+        .from('campaign_members')
+        .select('campaign_id, campaigns(name)')
+        .eq('character_id', id)
+        .limit(1),
     ])
     character.value = found
-    const campaign = (seat.data?.[0] as { campaigns: { name: string } | null } | undefined)
-      ?.campaigns
-    campaignName.value = campaign?.name ?? 'Not in a campaign'
+    const row = seat.data?.[0] as
+      | { campaign_id: string; campaigns: { name: string } | null }
+      | undefined
+    campaignName.value = row?.campaigns?.name ?? 'Not in a campaign'
+    campaignId.value = row?.campaigns ? row.campaign_id : null
   } catch {
     failed.value = true
   } finally {
@@ -63,6 +70,7 @@ const canEdit = computed(() => character.value?.user_id === auth.userId && !auth
     :character="character"
     :can-edit="canEdit"
     :campaign-name="campaignName"
+    :campaign-id="campaignId"
     @deleted="navigateTo('/characters')"
   />
 </template>

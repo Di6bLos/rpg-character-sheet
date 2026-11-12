@@ -12,6 +12,7 @@ import {
 } from '../utils/dice'
 import { LEVEL_UP_RULES, averageHp, canBump, hpGain } from '../utils/levelUp'
 import { accentVars, contrast, readableAccent, resolveAccent } from '../utils/themes'
+import { normalizeSheet } from '../utils/sheetDefaults'
 
 /** Deterministic rng that yields the given die faces for a die of `sides`. */
 function faces(sides: number, ...values: number[]) {
@@ -161,5 +162,21 @@ describe('level up', () => {
     const rules = LEVEL_UP_RULES.nimble
     expect(rules.keys).toEqual(['STR', 'DEX', 'INT', 'WIL'])
     expect(canBump(rules, { STR: 1 }, 'DEX')).toBe(false)
+  })
+})
+
+describe('sheet defaults', () => {
+  it('gives older saves of every system an empty background story', () => {
+    for (const system of ['nimble', 'pf2e', 'dnd5e'] as const) {
+      const sheet = normalizeSheet(system, { notes: 'kept' })
+      expect(sheet.backstory).toBe('')
+      expect(sheet.notes).toBe('kept')
+    }
+  })
+
+  it('keeps a saved background story', () => {
+    expect(normalizeSheet('nimble', { backstory: 'Raised by wolves' }).backstory).toBe(
+      'Raised by wolves',
+    )
   })
 })

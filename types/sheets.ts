@@ -16,6 +16,8 @@ export interface SheetCommon {
   xpNext: number
   inventory: InventoryItem[]
   notes: string
+  /** The player's free-text story of where the character comes from (not the rules background). */
+  backstory: string
   /**
    * The sheet as it was before each level-up, so lowering the level can undo
    * what the higher levels granted. Added by the level-up dialog.

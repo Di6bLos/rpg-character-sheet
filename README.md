@@ -2,7 +2,7 @@
 
 Character sheets and campaign tools for a tabletop group.
 
-- Character sheets for D&D 5e, Pathfinder 2e and Nimble, with dice rollers and a level-up flow
+- Character sheets for Nimble, Pathfinder 2e and D&D 5e, with dice rollers and a level-up flow
 - Campaigns with a board for maps and images, a journal, party and secret messages, and a GM console with an initiative tracker
 - A shared document library
 - Four themes (Classic, Gothic, Eldritch, Cursed) and a per-player accent colour

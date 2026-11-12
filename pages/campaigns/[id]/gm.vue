@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { authorLabel } from '~/utils/roster'
 import { supabase } from '~/lib/supabase'
 import type { Combatant, Encounter, Message, RosterEntry } from '~/types'
 import { rollDie } from '~/utils/dice'
@@ -235,8 +236,11 @@ const sending = ref(false)
 const composer = ref<HTMLTextAreaElement | null>(null)
 const canMessage = computed(() => auth.can('can_send_messages'))
 
+/** Inline name for a recipient list: the character, with the player in brackets. */
 function nameOf(userId: string) {
-  return roster.value.find((r) => r.user_id === userId)?.display_name ?? 'Former player'
+  const { primary, secondary } = authorLabel(roster.value, userId)
+  if (primary === 'Former member') return 'Former player'
+  return secondary ? `${primary} (${secondary})` : primary
 }
 
 function toggleRecipient(userId: string) {

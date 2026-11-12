@@ -12,7 +12,7 @@ const store = useCampaignStore()
 const snackbar = useSnackbarStore()
 
 const name = ref('')
-const system = ref<GameSystem>('dnd5e')
+const system = ref<GameSystem>('nimble')
 const pitch = ref('')
 const cover = ref<File | null>(null)
 const draft = ref('')

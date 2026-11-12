@@ -9,7 +9,7 @@ useHead({ title: 'Characters · Lantern' })
       <div>
         <h1>Characters</h1>
         <p>
-          Up to five heroes across D&amp;D 5e, Pathfinder 2e and Nimble. Open one to play or edit
+          Up to five heroes across Nimble, Pathfinder 2e and D&amp;D 5e. Open one to play or edit
           it.
         </p>
       </div>

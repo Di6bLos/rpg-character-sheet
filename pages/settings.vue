@@ -81,8 +81,8 @@ async function save() {
 }
 
 const toggles = [
-  { key: 'secret', label: 'Secret messages from the GM' },
-  { key: 'journal', label: 'New journal entries in my campaigns' },
+  { key: 'secret', label: 'Secret messages sent to me' },
+  { key: 'journal', label: 'Journal entries and party messages in my campaigns' },
   { key: 'board', label: 'Maps and images added to the board' },
 ] as const
 </script>
