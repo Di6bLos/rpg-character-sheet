@@ -10,13 +10,27 @@ export default defineNuxtPlugin(async () => {
 
   // Journal entries and messages are announced on every screen while signed in.
   const notifications = useNotificationsStore()
+  const site = useSiteStore()
+  const aiKeys = useAiKeysStore()
+  const npcs = useNpcStore()
   const router = useRouter()
   watch(
     () => authStore.userId,
     (id) => {
       notifications.stop()
-      if (id) notifications.start(router)
+      site.reset()
+      aiKeys.reset()
+      npcs.reset()
+      if (id) {
+        notifications.start(router)
+        // Site switches (NPC pool, AI) gate parts of the UI; failures leave the defaults.
+        site.fetch().catch(() => undefined)
+      }
     },
     { immediate: true },
   )
+  // Admins can flip the site switches at any time; pick changes up as people move around.
+  router.afterEach(() => {
+    if (authStore.userId) site.fetch().catch(() => undefined)
+  })
 })

@@ -58,7 +58,7 @@ Effective HP assumes 1 defensive action per turn (Armor × rounds). Damage per t
 
 ## Monster design (CK 11–18)
 
-These are guidelines from the CK. The per-level monster HP and damage tables are in the **GM's Guide, which isn't in `.local/`.** Until it is, use the derived budgets below and label them "derived".
+Per-level monster numbers come from the **GM's Guide** and are transcribed in `data/nimble/monsters.ts`: the Monster Builder (HP by armor, damage per round, sample dice, save DC; p. 29), the Legendary Monster Builder (by party level; p. 43) and minion die sizes (p. 26). Encounters: total monster levels = total hero levels is Hard; under half is Easy; 150%+ is Very Deadly; 1–4 monsters per hero (pp. 25–26). Each special ability costs one row of HP or damage. `utils/npcBudget.ts` turns them into the AI generator's targets and checks drafts.
 
 - Monster groups share one simple flavour ability (goblins laugh when you miss). They span a wide level band (Kobolds 1/3–1, Bandits 1/3–4).
 - Roles: Melee, Ranged, Controller, Support, AoE, Summoner, Striker, Ambusher, Defender.
@@ -68,13 +68,6 @@ These are guidelines from the CK. The per-level monster HP and damage tables are
 - Statblock format: `Name` / `Lvl N, size | armor (–/M/H) | speed` / one or two bullet actions / flavour ability. Example: "Goblin Taskmaster, Lvl 2, small | M | 30. Meat Shield… • Stab. 1d6+2 (or Shoot, Range 8)…" (CK 13).
 - GM guidance sections (CK 16): Lore, Loot, Premade Encounters, Increasing and Decreasing the Difficulty, Names, What to Say in Combat, Defeat/Parley.
 - **Legendary** (CK 17–18): ~15 hero turns to the Last Stand; Bloodied and Last Stand phases shift the tide; Medium armor is recommended. **HP multiplier vs unarmored: Medium ×0.8, Heavy ×0.6.** Give it a script (opening, crit, bloodied, last stand, death lines).
-
-### Derived budgets (not book rules; label them "derived" when used)
-
-- _Standard encounter, total monster HP_ ≈ heroes × hero dmg/turn (at party level) × 3.5 rounds, then × 0.8 for Medium armor or × 0.6 for Heavy.
-- _Standard encounter, total monster damage per round_ ≈ (heroes × hero Effective HP) ÷ 3.5 ÷ 2. This takes about half the party's effective HP over the fight, which is tense but not deadly. Raise it toward ÷ 1.5 for a hard fight.
-- _Legendary HP_ ≈ 15 × hero dmg/turn (at party level) to reach the Last Stand, then apply the armor multiplier.
-- Check every number against the hero curve above and say which line you used.
 
 ## How the repo encodes Nimble
 

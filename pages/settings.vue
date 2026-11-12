@@ -211,6 +211,8 @@ const toggles = [
             :label="tg.label"
           />
         </section>
+
+        <SettingsAiProviders />
       </div>
 
       <aside class="settings__preview" aria-label="Live preview">

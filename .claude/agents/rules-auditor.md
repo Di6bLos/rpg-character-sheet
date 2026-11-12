@@ -18,7 +18,7 @@ The caller names a system (default `nimble`) and a class slug, optionally narrow
 3. Get the source pages. Convert printed → PDF pages with `books.md`, then:
    ```bash
    S=.claude/skills/source-extract/scripts/pdf-pages.sh
-   $S extract .local/nimble-heroes.pdf <first> <last>   # no-op if already cached
+   $S extract .local/nimble/nimble-heroes.pdf <first> <last>   # no-op if already cached
    $S show nimble-heroes <pdfPage>
    ```
    `-layout` text interleaves two columns per printed page. Read across the gutter carefully. If a passage is ambiguous after extraction, say so in the report rather than guessing.

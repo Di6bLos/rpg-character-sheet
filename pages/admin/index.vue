@@ -147,6 +147,8 @@ function confirmSuspend() {
       </div>
     </div>
 
+    <AdminSiteFeatures />
+
     <AdminReportsQueue />
 
     <div class="split">

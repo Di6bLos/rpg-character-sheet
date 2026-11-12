@@ -7,11 +7,12 @@ PDFs live in `.local/` (gitignored, never committed). Cache and search them with
 
 Some PDFs are two-page **spreads**: one PDF page holds two printed pages. Citations in the repo always use **printed** pages.
 
-| Book                     | File                        | Cache slug       | Layout  | Printed page → PDF page | License                           |
-| ------------------------ | --------------------------- | ---------------- | ------- | ----------------------- | --------------------------------- |
-| Nimble Core Rules        | `.local/core-rules.pdf`     | `core-rules`     | spreads | `floor(p / 2) + 1`      | Nimble 3PCL                       |
-| Nimble Heroes            | `.local/nimble-heroes.pdf`  | `nimble-heroes`  | spreads | `floor(p / 2) + 1`      | Nimble 3PCL                       |
-| Nimble Creator's Kit 1.2 | `.local/CreatorsKit1.2.pdf` | `CreatorsKit1.2` | single  | same                    | Nimble 3PCL (guidance, not rules) |
+| Book                     | File                         | Cache slug       | Layout  | Printed page → PDF page              | License                           |
+| ------------------------ | ---------------------------- | ---------------- | ------- | ------------------------------------ | --------------------------------- |
+| Nimble Core Rules        | `.local/nimble/core-rules.pdf`      | `core-rules`     | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL                       |
+| Nimble Heroes            | `.local/nimble/nimble-heroes.pdf`   | `nimble-heroes`  | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL                       |
+| Nimble Creator's Kit 1.2 | `.local/nimble/CreatorsKit1.2.pdf`  | `CreatorsKit1.2` | single  | same                                 | Nimble 3PCL (guidance, not rules) |
+| Nimble GM's Guide 1.0    | `.local/nimble/GMG-v1.0.pdf` | `GMG-v1.0`       | spreads | read the footer (PDF 16 = pp. 29–30) | Nimble 3PCL                       |
 
 The PDF → printed direction on spreads: PDF page `n` holds printed pages `2n−2` (left) and `2n−1` (right). The printed number sits on the page's footer line.
 
@@ -20,6 +21,8 @@ The PDF → printed direction on spreads: PDF page `n` holds printed pages `2n�
 **Core Rules**: character creation 18–21 · ancestries 22–27 · backgrounds 28–29 · equipment 32–36 · spells 44–53 · combat, heroic reactions, monsters & armor, minions 14–15 · conditions ~10–11 · dying & wounds ~8–9 · rests ~16–17 · license 56–57.
 
 **Heroes**: Berserker 6–11 · Cheat 12–17 · Commander 18–23 · Hunter 24–29 · Mage 30–35 · Oathsworn 36–41 · Shadowmancer 42–47 · Shepherd 48–53 · Songweaver 54–59 · Stormshifter 60–65 · Zephyr 66–71 · story subclasses: Oathbreaker 74–75, Spellblade 76–77, Reaver 78–79, Beastmaster 80–81.
+
+**GM's Guide** (footer numbers): encounter guidelines, armor mix, minions 25–26 · Monster Builder table and flavour abilities 29–30 · bestiary 31–41 · legendary monsters 41–42, Legendary Monster Builder 43–44. The contents page numbers run one higher than the footers.
 
 **Creator's Kit** (single pages): fiddliness and conditions 3–6 · designing classes and the level framework 7–9 · average hero stats 10 · designing monsters 11–16 · legendary monsters 17–18 · magic items 19–20 · spell framework and average spell damage 21–22 · adventures 23–24 · license 2.
 

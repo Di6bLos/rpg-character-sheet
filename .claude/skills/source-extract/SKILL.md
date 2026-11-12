@@ -13,7 +13,7 @@ Load the `rpg-rules` skill first. `references/books.md` lists the books and page
 
 ```bash
 S=.claude/skills/source-extract/scripts/pdf-pages.sh
-$S extract .local/nimble-heroes.pdf          # cache every page (skips cached ones)
+$S extract .local/nimble/nimble-heroes.pdf          # cache every page (skips cached ones)
 $S search nimble-heroes "Savage Arsenal"     # which PDF pages mention it, with hit counts
 $S show nimble-heroes 5                      # print one cached page
 ```
