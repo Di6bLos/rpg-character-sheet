@@ -110,6 +110,17 @@ export interface RosterEntry {
     ac?: number
     passivePerception?: number
     initMod?: number
+    classSlug?: string
+    speed?: string | number
+    tempHp?: number
+    conditions?: string[]
+    wounds?: number
+    woundsMax?: number
+    dying?: boolean | number
+    deathSaves?: { successes: number; failures: number }
+    concentration?: string
+    actionsSpent?: number
+    backstory?: string
   } | null
 }
 
@@ -139,9 +150,34 @@ export interface JournalEntry {
   title: string
   body: string
   visibility: 'party' | 'gm'
+  section: JournalSection
+  image_path: string | null
+  campaign_npc_id: string | null
+  fields: JournalFields
+  /** Set when the title or text was changed after posting. */
+  edited_at: string | null
   created_at: string
   author: Pick<Profile, 'display_name'> | null
   journal_attachments: JournalAttachment[]
+}
+
+export type JournalSection = 'log' | 'character' | 'npc' | 'bestiary'
+
+/** A stat-block fact the GM has revealed to the party (hidden facts are never stored here). */
+export interface JournalFact {
+  k: string
+  v: string
+}
+
+/** Player-written notes on NPC and bestiary entries, plus the GM's revealed facts. */
+export interface JournalFields {
+  role?: string
+  attitude?: string
+  notes?: string
+  met?: string
+  facts?: JournalFact[]
+  /** Character a 'character' section note is about (GM secrets, hooks). */
+  character_id?: string
 }
 
 export interface Message {
@@ -170,6 +206,101 @@ export interface Combatant {
   hp_max: number
   ac: number
   character_id: string | null
+  campaign_npc_id: string | null
+  portrait_path: string | null
+  group_label: string | null
+  created_at: string
+}
+
+/** A row of `campaign_initiative()`: what every member sees; hp/ac are null for players. */
+export interface InitiativeRow {
+  id: string
+  name: string
+  kind: Combatant['kind']
+  initiative: number
+  character_id: string | null
+  campaign_npc_id: string | null
+  portrait_path: string | null
+  group_label: string | null
+  hp: number | null
+  hp_max: number | null
+  ac: number | null
+  hp_band: HpBand | null
+}
+
+export type HpBand = 'Unhurt' | 'Hurt' | 'Bloodied' | 'Down'
+
+export type NpcKind = 'monster' | 'humanoid'
+export type NpcSource = 'official' | 'homebrew'
+
+/** One named entry in a stat block (trait, action, reaction…). */
+export interface StatEntry {
+  n: string
+  t: string
+}
+
+/**
+ * System-agnostic stat block. `top` holds the headline lines (AC, HP, speed…),
+ * `stats` the ability row, `lines` the secondary lines, `sections` the named groups.
+ */
+export interface StatBlock {
+  type?: string
+  size?: string
+  alignment?: string
+  top?: [string, string][]
+  stats?: [string, string][]
+  lines?: [string, string][]
+  sections?: { title: string; items: StatEntry[] }[]
+  /** Numbers the initiative tracker reads. */
+  hp?: number
+  ac?: number
+  initMod?: number
+}
+
+export interface PoolNpc {
+  id: string
+  system: GameSystem
+  kind: NpcKind
+  name: string
+  level: string
+  stat_block: StatBlock
+  image_path: string | null
+  source: NpcSource
+  source_ref: string | null
+  ai_generated: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CampaignNpc {
+  id: string
+  campaign_id: string
+  pool_npc_id: string | null
+  system: GameSystem
+  kind: NpcKind
+  name: string
+  level: string
+  stat_block: StatBlock
+  image_path: string | null
+  source: NpcSource
+  ai_generated: boolean
+  gm_notes: string
+  created_at: string
+  updated_at: string
+}
+
+export interface SiteSettings {
+  npc_pool_enabled: boolean
+  ai_enabled: boolean
+}
+
+export type AiProvider = 'anthropic' | 'google' | 'openai'
+
+export interface AiKeyInfo {
+  provider: AiProvider
+  last4: string
+  is_default: boolean
   created_at: string
 }
 

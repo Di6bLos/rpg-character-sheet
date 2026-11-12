@@ -28,7 +28,7 @@ Follow the Creator's Kit guidance summarised in `nimble.md`:
 
 Every stat block gets a **Balance notes** section that shows:
 
-- The yardstick used: the hero curve row for the party level, and the official table or the **derived** budget from `nimble.md` (label it "derived" when it is).
+- The yardstick used: the GM's Guide row (`data/nimble/monsters.ts`: Monster Builder, or Legendary Monster Builder by party level) and the hero curve row for the party level.
 - The arithmetic: average damage per round vs. the budget; HP vs. party damage per turn × expected rounds; the armor multiplier applied.
 - One line each on how to make it easier or harder.
 

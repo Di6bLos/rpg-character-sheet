@@ -3,8 +3,16 @@ import { defineStore } from 'pinia'
 import type { Router } from 'vue-router'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
-import type { JournalEntry, Message, RosterEntry } from '~/types'
+import type { JournalEntry, JournalSection, Message, RosterEntry } from '~/types'
 import { authorLabel } from '~/utils/roster'
+
+/** Journal section → its URL segment (`pages/campaigns/[id]/board/journal/[[section]].vue`). */
+const JOURNAL_SLUG: Record<JournalSection, string> = {
+  log: 'log',
+  character: 'characters',
+  npc: 'npcs',
+  bestiary: 'bestiary',
+}
 
 export interface Notice {
   id: number
@@ -96,9 +104,17 @@ export const useNotificationsStore = defineStore('notifications', () => {
   async function onJournal(row: JournalEntry) {
     const auth = useAuthStore()
     if (row.author_id === auth.userId || !auth.profile?.notify_journal) return
-    const to = `/campaigns/${row.campaign_id}/board`
-    // The board shows it as it arrives.
-    if (currentPath() === to) return
+    const slug = JOURNAL_SLUG[row.section ?? 'log'] ?? 'log'
+    const suffix = slug === 'log' ? '' : `/${slug}`
+    // The board sends the GM on to the console with the same path.
+    const to = `/campaigns/${row.campaign_id}/board/journal${suffix}`
+    // That section of the journal shows it as it arrives (board or GM console).
+    const here = currentPath().replace(/\/$/, '')
+    const open = ['board', 'gm'].flatMap((mode) => {
+      const base = `/campaigns/${row.campaign_id}/${mode}/journal`
+      return slug === 'log' ? [base, `${base}/log`] : [`${base}/${slug}`]
+    })
+    if (open.includes(here)) return
     const started = session
     const subtitle = await who(row.campaign_id, row.author_id)
     if (started !== session) return
@@ -116,9 +132,12 @@ export const useNotificationsStore = defineStore('notifications', () => {
     if (row.sender_id === auth.userId) return
     const secret = Boolean(row.recipient_ids)
     if (secret ? !auth.profile?.notify_secret : !auth.profile?.notify_journal) return
-    const to = '/dashboard'
+    const to = `/campaigns/${row.campaign_id}/board/party`
+    // The board's chat shows it as it arrives (board or GM console).
+    const here = currentPath()
+    if (here === to || here === `/campaigns/${row.campaign_id}/gm/party`) return
     // The dashboard lists party messages as they arrive; a secret is still called out.
-    if (!secret && currentPath() === to) return
+    if (!secret && here === '/dashboard') return
     const started = session
     const subtitle = await who(row.campaign_id, row.sender_id)
     if (started !== session) return

@@ -95,4 +95,37 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [] Update the pdf viewer with page selection, and zoom functions
 - [] Add click and drag feature to the map board
 - [] Monster creator, with a text area to describe the monster and ai generates it.
-- [] 
+
+## Phase 7 · Campaign board revamp (`design/screens/BoardShell.dc.html`)
+Plan: board and GM console become routed pages on one shell; shared NPC pool; AI keys.
+
+### 7.1 Data
+- [x] Migration `20261112073855_board_revamp.sql`: `site_settings`, `npcs` (pool), `campaign_npcs`, combatant NPC links + portraits, journal sections / fields, `user_ai_keys` in Vault, `npc-images` bucket
+- [x] Players read the turn order through `campaign_initiative()` (enemy HP shown as a band) and get live updates from `encounters`
+- [x] Journal NPC / bestiary entries: members edit their notes, only the GM reveals facts (trigger)
+- [x] Types, `utils/initiative.ts` (group letters, copies, HP band) and `utils/npcJournal.ts` (journal stub, facts) with tests
+- [x] Apply the migration to the hosted project and run the security advisors (plus FK indexes; `generate-npc` deployed)
+
+### 7.2 Routed board
+- [x] `BoardShell` layout with routed tabs: `/board/{party,journal,maps}`, `/gm/{party,journal,maps,npcs}`
+- [x] Shared initiative strip with portraits for the whole party
+- [x] `UiAvatar`: character portraits (Nimble sigil fallback) instead of initials everywhere
+- [x] Journal sections: session log, characters, NPCs, bestiary (GM reveals facts)
+- [x] Party chat with private threads between any members and unread badges; map zoom with drag-to-pan
+
+### 7.3 NPCs
+- [x] GM NPC index (Monsters / Humanoids, source filter, search) and stat block per system
+- [x] Manual NPC builder; every saved NPC goes to the shared pool
+- [x] Add to initiative ×N (Goblin A–E) and the automatic journal entry; "Add to party journal" for NPCs met but not fought
+- [x] Library NPCs tab with Official / Homebrew filters and "Add to campaign"
+- [x] Admin "Site features": NPC pool and AI generator switches
+
+### 7.4 AI
+- [x] Settings "AI providers": Claude, Gemini, ChatGPT keys (encrypted), default provider, test
+- [x] `generate-npc` Edge Function and the AI assistant in the generator
+- [x] Level picker and GM's Guide targets (Monster Builder, Legendary Monster Builder, minion dice) sent to the AI; drafts checked against them
+- [ ] 5e CR table and PF2e creature-building targets
+
+### 7.5 Official content
+- [ ] Official monsters transcribed (Nimble 3PCL, SRD 5.2, PF2e ORC) with citations, seed script, attributions page
+

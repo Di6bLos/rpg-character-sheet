@@ -61,6 +61,8 @@ export default defineNuxtConfig({
 
   typescript: {
     strict: true,
+    // Edge Functions are Deno code, checked by Deno (supabase/functions/deno.json).
+    tsConfig: { exclude: ['../supabase/functions'] },
   },
 
   imports: {
