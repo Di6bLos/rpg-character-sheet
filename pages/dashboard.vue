@@ -55,8 +55,12 @@ async function loadRosters() {
   const missing = [...new Set(messages.value.map((m) => m.campaign_id))].filter(
     (id) => !rosters.value[id],
   )
-  const rows = await Promise.all(missing.map((id) => campaigns.roster(id).catch(() => [])))
-  missing.forEach((id, i) => (rosters.value[id] = rows[i] ?? []))
+  const rows = await Promise.allSettled(missing.map((id) => campaigns.roster(id)))
+  // Only successes are cached, so a failed campaign is retried on the next refresh.
+  missing.forEach((id, i) => {
+    const row = rows[i]
+    if (row?.status === 'fulfilled') rosters.value[id] = row.value
+  })
 }
 
 function tagLabel(m: DashMessage) {
