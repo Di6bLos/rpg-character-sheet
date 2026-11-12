@@ -11,6 +11,7 @@ const PLAY_STATE = new Set([
   'hp',
   'inventory',
   'notes',
+  'backstory',
   'gold',
   'coins',
   'xp',

@@ -82,6 +82,7 @@ function dnd5e(): Dnd5eSheet {
     features: [],
     inventory: [],
     notes: '',
+    backstory: '',
   }
 }
 
@@ -126,6 +127,7 @@ function pf2e(): Pf2eSheet {
     bulkLimit: 5,
     coins: { gp: 15, sp: 0, cp: 0 },
     notes: '',
+    backstory: '',
   }
 }
 
@@ -177,6 +179,7 @@ function nimble(): NimbleSheet {
     languages: '',
     heightWeight: '',
     notes: '',
+    backstory: '',
   }
 }
 

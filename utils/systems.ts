@@ -1,9 +1,9 @@
 import type { GameSystem } from '~/types'
 
 export const SYSTEMS: { id: GameSystem; label: string; long: string }[] = [
-  { id: 'dnd5e', label: 'D&D 5e', long: 'Dungeons & Dragons' },
-  { id: 'pf2e', label: 'Pathfinder 2e', long: 'Pathfinder 2e' },
   { id: 'nimble', label: 'Nimble', long: 'Nimble' },
+  { id: 'pf2e', label: 'Pathfinder 2e', long: 'Pathfinder 2e' },
+  { id: 'dnd5e', label: 'D&D 5e', long: 'Dungeons & Dragons' },
 ]
 
 export function systemLabel(id: GameSystem | null | undefined): string {

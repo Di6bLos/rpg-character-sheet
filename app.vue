@@ -3,4 +3,5 @@
     <NuxtPage />
   </NuxtLayout>
   <UiToast />
+  <UiNotifications />
 </template>

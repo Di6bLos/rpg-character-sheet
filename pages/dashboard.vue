@@ -3,6 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
 import type { BoardItem, Message, RosterEntry } from '~/types'
 import { plural, sessionDate, timeAgo } from '~/utils/format'
+import { authorLabel } from '~/utils/roster'
 import { systemLabel } from '~/utils/systems'
 
 definePageMeta({ middleware: 'auth' })
@@ -17,6 +18,8 @@ type DashMessage = Message & { sender: { display_name: string } | null }
 
 const messages = ref<DashMessage[]>([])
 const roster = ref<RosterEntry[]>([])
+/** Rosters of every campaign with a message in the list, to name senders by character. */
+const rosters = ref<Record<string, RosterEntry[]>>({})
 const latestBoard = ref<BoardItem | null>(null)
 const latestBoardUrl = ref<string | null>(null)
 const draft = ref('')
@@ -41,9 +44,23 @@ const newCount = computed(
 
 function fromLabel(m: DashMessage) {
   const c = campaignOf(m.campaign_id)
-  const name = m.sender_id === auth.userId ? 'You' : (m.sender?.display_name ?? 'Someone')
   const gm = c && m.sender_id === c.created_by ? ' (GM)' : ''
-  return name + gm
+  if (m.sender_id === auth.userId) return { primary: 'You' + gm, secondary: null }
+  const label = authorLabel(rosters.value[m.campaign_id] ?? [], m.sender_id, m.sender?.display_name)
+  return { ...label, primary: label.primary + gm }
+}
+
+/** Loads the rosters of campaigns in the message list that aren't cached yet. */
+async function loadRosters() {
+  const missing = [...new Set(messages.value.map((m) => m.campaign_id))].filter(
+    (id) => !rosters.value[id],
+  )
+  const rows = await Promise.allSettled(missing.map((id) => campaigns.roster(id)))
+  // Only successes are cached, so a failed campaign is retried on the next refresh.
+  missing.forEach((id, i) => {
+    const row = rows[i]
+    if (row?.status === 'fulfilled') rosters.value[id] = row.value
+  })
 }
 
 function tagLabel(m: DashMessage) {
@@ -72,6 +89,7 @@ async function loadMessages() {
     .limit(12)
   if (error) throw error
   messages.value = (data ?? []) as unknown as DashMessage[]
+  await loadRosters()
 }
 
 async function loadCurrent() {
@@ -87,6 +105,7 @@ async function loadCurrent() {
       .limit(1),
   ])
   roster.value = rosterRows
+  rosters.value[c.id] = rosterRows
   latestBoard.value = ((board.data ?? [])[0] as BoardItem | undefined) ?? null
   latestBoardUrl.value = latestBoard.value
     ? await signedUrl('campaign-files', latestBoard.value.file_path)
@@ -101,10 +120,8 @@ function subscribe() {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
       const row = payload.new as Message
       if (!campaignIds.value.includes(row.campaign_id)) return
+      // The global notifications store announces it; here the list just refreshes.
       void loadMessages()
-      if (row.sender_id !== auth.userId && row.recipient_ids && auth.profile?.notify_secret) {
-        snackbar.show('You have a new secret message', 'info')
-      }
     })
     .subscribe()
 }
@@ -246,7 +263,12 @@ const libDocs = computed(() => library.documents.slice(0, 4))
           </div>
           <div class="msg__body">
             <div class="row" style="gap: 8px">
-              <strong>{{ fromLabel(m) }}</strong>
+              <span class="msg__from">
+                <strong>{{ fromLabel(m).primary }}</strong>
+                <span v-if="fromLabel(m).secondary" class="msg__player">{{
+                  fromLabel(m).secondary
+                }}</span>
+              </span>
               <span class="msg__tag">{{ tagLabel(m) }}</span>
               <span class="small muted" style="font-size: 12px">{{ timeAgo(m.created_at) }}</span>
             </div>
@@ -430,6 +452,17 @@ const libDocs = computed(() => library.documents.slice(0, 4))
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+}
+
+.msg__from {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.msg__player {
+  font-size: 13px;
+  color: var(--page-muted);
 }
 
 .msg__tag {

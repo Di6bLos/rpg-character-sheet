@@ -14,7 +14,7 @@ const store = useCharacterStore()
 const snackbar = useSnackbarStore()
 
 const createOpen = ref(false)
-const newSystem = ref<GameSystem>('dnd5e')
+const newSystem = ref<GameSystem>('nimble')
 const newName = ref('')
 const creating = ref(false)
 const campaignByCharacter = ref<Record<string, string>>({})

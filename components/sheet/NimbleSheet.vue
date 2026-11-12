@@ -138,6 +138,8 @@ const skills = computed(() =>
   </div>
 
   <NimbleSheetAbilities />
+
+  <NimbleSheetStory />
 </template>
 
 <style scoped lang="scss">
