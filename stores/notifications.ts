@@ -96,7 +96,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   async function onJournal(row: JournalEntry) {
     const auth = useAuthStore()
     if (row.author_id === auth.userId || !auth.profile?.notify_journal) return
-    const to = `/campaigns/${row.campaign_id}/board`
+    const to = `/campaigns/${row.campaign_id}/board/journal`
     // The board shows it as it arrives.
     if (currentPath() === to) return
     const started = session
@@ -116,9 +116,12 @@ export const useNotificationsStore = defineStore('notifications', () => {
     if (row.sender_id === auth.userId) return
     const secret = Boolean(row.recipient_ids)
     if (secret ? !auth.profile?.notify_secret : !auth.profile?.notify_journal) return
-    const to = '/dashboard'
+    const to = `/campaigns/${row.campaign_id}/board/party`
+    // The board's chat shows it as it arrives (board or GM console).
+    const here = currentPath()
+    if (here === to || here === `/campaigns/${row.campaign_id}/gm/party`) return
     // The dashboard lists party messages as they arrive; a secret is still called out.
-    if (!secret && currentPath() === to) return
+    if (!secret && here === '/dashboard') return
     const started = session
     const subtitle = await who(row.campaign_id, row.sender_id)
     if (started !== session) return
