@@ -373,6 +373,32 @@ describe('nimble sheet upgrades', () => {
     expect(normalizeSheet('nimble', JSON.parse(JSON.stringify(boon))).hitDice).toBe(4)
   })
 
+  it('gives older Zephyr saves the Swift Feet Initiative and doubled Armor', () => {
+    const old = {
+      classSlug: 'zephyr',
+      rulesVersion: 1,
+      level: '13',
+      initMod: 4,
+      ac: 12,
+      choices: {},
+      levelHistory: [
+        { level: 13, before: { classSlug: 'zephyr', choices: {}, initMod: 4, ac: 12 } },
+        { level: 2, before: { classSlug: 'zephyr', choices: {}, initMod: 3, ac: 5 } },
+      ],
+    }
+    const sheet = normalizeSheet('nimble', old)
+    expect(sheet).toMatchObject({ initMod: 17, ac: 24 })
+    // Level 12 (not doubled yet) and level 1 (no Swift Feet yet).
+    expect(sheet.levelHistory?.map((e) => [e.before.initMod, e.before.ac])).toEqual([
+      [16, 12],
+      [3, 5],
+    ])
+    expect(normalizeSheet('nimble', JSON.parse(JSON.stringify(sheet)))).toMatchObject({
+      initMod: 17,
+      ac: 24,
+    })
+  })
+
   it('keeps coins that were already saved', () => {
     const sheet = normalizeSheet('nimble', { gold: '99 gp', coins: { gp: 3, sp: 4 } })
     expect(sheet.coins).toEqual({ gp: 3, sp: 4 })

@@ -213,9 +213,9 @@ export function normalizeSheet<K extends GameSystem>(system: K, stored: unknown)
 /**
  * Brings a sheet (or a level-history snapshot of one) built from class data up to
  * the current rules version. Bonuses are added on top of the saved values, so
- * hand edits stay.
+ * hand edits stay. `level` is the hero's level in that sheet.
  */
-function upgradeRules(target: Record<string, unknown>) {
+function upgradeRules(target: Record<string, unknown>, level: number) {
   const from = typeof target.rulesVersion === 'number' ? target.rulesVersion : 0
   if (from >= NIMBLE_RULES_VERSION) return
   const cls = typeof target.classSlug === 'string' ? classBySlug(target.classSlug) : undefined
@@ -237,6 +237,15 @@ function upgradeRules(target: Record<string, unknown>) {
         target.hitDice = Math.max(1, target.hitDice + option.hitDice)
     }
   }
+  if (cls && from < 2 && level > 0) {
+    // v2: class-table bonuses (Zephyr: Swift Feet +LVL Initiative, Iron Defense (2)
+    // doubles Armor). Level-ups add only the change from the level before.
+    // (Inlined classFlagAt from utils/nimbleBuild, which imports this file.)
+    const has = (flag: 'initiativePerLevel' | 'armorDoubled') =>
+      Array.from({ length: level }, (_, i) => cls.levels[i + 1]?.[flag]).some(Boolean)
+    if (typeof target.initMod === 'number' && has('initiativePerLevel')) target.initMod += level
+    if (typeof target.ac === 'number' && has('armorDoubled')) target.ac *= 2
+  }
   target.rulesVersion = NIMBLE_RULES_VERSION
 }
 
@@ -246,12 +255,12 @@ function migrateNimble(sheet: NimbleSheet, stored: unknown) {
   const loose = sheet as unknown as Record<string, unknown>
   // mergeDefaults filled in the current version; the save's own version decides.
   loose.rulesVersion = saved.rulesVersion
-  upgradeRules(loose)
+  upgradeRules(loose, Number.parseInt(String(saved.level), 10) || 0)
   if (Array.isArray(sheet.levelHistory))
     sheet.levelHistory = sheet.levelHistory.map((entry) => {
       if (!isPlainObject(entry?.before)) return entry
       const before = { ...entry.before }
-      upgradeRules(before)
+      upgradeRules(before, entry.level - 1)
       return { ...entry, before }
     })
 
