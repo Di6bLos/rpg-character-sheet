@@ -178,7 +178,11 @@ const libDocs = computed(() => library.documents.slice(0, 4))
         </p>
         <p v-else>Create a character, then start or join a campaign.</p>
       </div>
-      <NuxtLink v-if="current" :to="`/campaigns/${current.id}/board`" class="btn">
+      <NuxtLink
+        v-if="current"
+        :to="`/campaigns/${current.id}/${current.myRole === 'gm' ? 'gm' : 'board'}/party`"
+        class="btn"
+      >
         <svg
           width="18"
           height="18"
@@ -320,23 +324,16 @@ const libDocs = computed(() => library.documents.slice(0, 4))
             </div>
             <div class="row" style="gap: 10px">
               <NuxtLink
-                :to="`/campaigns/${current.id}/board`"
+                :to="`/campaigns/${current.id}/${current.myRole === 'gm' ? 'gm' : 'board'}/party`"
                 class="btn btn--ghost"
                 style="flex: 1 1 140px"
-                >Campaign board</NuxtLink
+                >{{ current.myRole === 'gm' ? 'GM console' : 'Campaign board' }}</NuxtLink
               >
               <NuxtLink
-                :to="`/campaigns/${current.id}/board#jr-h`"
+                :to="`/campaigns/${current.id}/${current.myRole === 'gm' ? 'gm' : 'board'}/journal`"
                 class="btn btn--ghost"
                 style="flex: 1 1 140px"
                 >Campaign journal</NuxtLink
-              >
-              <NuxtLink
-                v-if="current.myRole === 'gm'"
-                :to="`/campaigns/${current.id}/gm`"
-                class="btn"
-                style="flex: 1 1 100%"
-                >GM console</NuxtLink
               >
             </div>
           </div>

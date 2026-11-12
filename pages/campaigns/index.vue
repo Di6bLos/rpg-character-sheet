@@ -214,14 +214,13 @@ async function create() {
             </div>
             <span class="small muted" style="font-size: 13px">{{ meta(c) }}</span>
           </div>
-          <div class="row" style="gap: 8px">
-            <NuxtLink :to="`/campaigns/${c.id}/board`" class="btn btn--ghost"
-              >Board &amp; journal</NuxtLink
-            >
-            <NuxtLink v-if="c.myRole === 'gm'" :to="`/campaigns/${c.id}/gm`" class="btn"
-              >Manage</NuxtLink
-            >
-          </div>
+          <!-- GMs land on the console's Party tab (turn controls); players on the board's. -->
+          <NuxtLink
+            :to="`/campaigns/${c.id}/${c.myRole === 'gm' ? 'gm' : 'board'}/party`"
+            class="btn"
+            :aria-label="`Enter ${c.name}`"
+            >Enter</NuxtLink
+          >
         </article>
       </section>
 

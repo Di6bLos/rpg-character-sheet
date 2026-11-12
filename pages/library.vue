@@ -10,6 +10,13 @@ useHead({ title: 'Library · Lantern' })
 
 const auth = useAuthStore()
 const store = useLibraryStore()
+const site = useSiteStore()
+const route = useRoute()
+
+/** Documents, or the shared NPC pool (hidden when admins switch the pool off). */
+const tab = computed(() =>
+  route.query.tab === 'npcs' && site.settings.npc_pool_enabled ? 'npcs' : 'documents',
+)
 const snackbar = useSnackbarStore()
 
 const cat = ref<'All' | LibraryCategory>('All')
@@ -178,7 +185,12 @@ function report(doc: LibraryDocument) {
           Campaign-specific notes go in that campaign’s journal.
         </p>
       </div>
-      <button v-if="canUpload" type="button" class="btn" @click="fileInput?.click()">
+      <button
+        v-if="canUpload && tab === 'documents'"
+        type="button"
+        class="btn"
+        @click="fileInput?.click()"
+      >
         <svg
           width="16"
           height="16"
@@ -206,133 +218,154 @@ function report(doc: LibraryDocument) {
       />
     </header>
 
-    <RestrictedNotice v-if="!canUpload" title="Uploads are turned off for your account">
-      You can still open everything in the library.
-    </RestrictedNotice>
-
-    <div class="toolbar">
-      <div class="chips" role="group" aria-label="Category">
-        <button
-          v-for="c in categories"
-          :key="c.label"
-          type="button"
-          class="chip"
-          :aria-pressed="cat === c.label"
-          @click="cat = c.label"
-        >
-          {{ c.label }} <span>{{ c.count }}</span>
-        </button>
-      </div>
-      <div class="search">
-        <label for="lib-q" class="sr-only">Search documents</label>
-        <input id="lib-q" v-model="q" class="input" type="search" placeholder="Search documents" />
-      </div>
-    </div>
-
-    <section class="panel panel--flush" aria-label="Documents">
-      <div
-        v-if="store.loading && !store.loaded"
-        class="spinner"
-        role="status"
-        aria-label="Loading documents"
-      />
-      <div
-        v-else
-        class="table-wrap"
-        tabindex="0"
-        role="region"
-        aria-label="Table, scroll sideways for more"
+    <nav v-if="site.settings.npc_pool_enabled" aria-label="Library sections" class="lib-tabs">
+      <NuxtLink to="/library" :aria-current="tab === 'documents' ? 'page' : undefined"
+        >Documents</NuxtLink
       >
-        <table class="table" style="min-width: 820px; font-size: 14px">
-          <thead>
-            <tr>
-              <th scope="col" style="padding-left: 20px">Name</th>
-              <th scope="col">System</th>
-              <th scope="col">Category</th>
-              <th scope="col">Added by</th>
-              <th scope="col">Date</th>
-              <th scope="col">Size</th>
-              <th scope="col" style="text-align: right; padding-right: 20px">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="d in shown" :key="d.id">
-              <td style="padding-left: 20px">
-                <button type="button" class="name" @click="open(d)">
-                  <span class="ext">{{ d.ext.toUpperCase() }}</span>
-                  <strong>{{ d.name }}</strong>
-                </button>
-              </td>
-              <td>
-                <span class="badge" :class="`badge--${d.system ?? 'any'}`">{{
-                  systemLabel(d.system)
-                }}</span>
-              </td>
-              <td class="soft">{{ d.category }}</td>
-              <td class="soft">{{ d.uploader?.display_name ?? 'Former member' }}</td>
-              <td class="soft">{{ shortDate(d.created_at) }}</td>
-              <td class="soft" style="white-space: nowrap">{{ formatSize(d.size) }}</td>
-              <td style="padding-right: 20px">
-                <div class="row" style="justify-content: flex-end; gap: 6px; flex-wrap: nowrap">
-                  <button
-                    type="button"
-                    class="btn btn--ghost btn--sm"
-                    :aria-label="`Open ${d.name}`"
-                    @click="open(d)"
-                  >
-                    Open
-                  </button>
-                  <button
-                    v-if="d.uploaded_by === auth.userId || auth.isStaff"
-                    type="button"
-                    class="btn btn--quiet btn--sm"
-                    :aria-label="`Remove ${d.name}`"
-                    @click="removeTarget = d"
-                  >
-                    Remove
-                  </button>
-                  <button
-                    v-if="d.uploaded_by !== auth.userId"
-                    type="button"
-                    class="btn btn--quiet btn--sm"
-                    :aria-label="`Report ${d.name}`"
-                    @click="report(d)"
-                  >
-                    Report
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="!shown.length">
-              <td colspan="7" class="muted" style="padding: 24px 20px">
-                {{
-                  store.documents.length
-                    ? 'No documents match that search.'
-                    : 'The library is empty. Upload the first document.'
-                }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <NuxtLink
+        :to="{ path: '/library', query: { tab: 'npcs' } }"
+        :aria-current="tab === 'npcs' ? 'page' : undefined"
+        >NPCs &amp; monsters</NuxtLink
+      >
+    </nav>
 
-    <div
-      v-if="canUpload"
-      class="drop"
-      :class="{ 'is-over': dragging }"
-      role="button"
-      tabindex="0"
-      @click="fileInput?.click()"
-      @keydown.enter.prevent="fileInput?.click()"
-      @keydown.space.prevent="fileInput?.click()"
-      @dragover.prevent="dragging = true"
-      @dragleave="dragging = false"
-      @drop.prevent="onDrop"
-    >
-      <strong>Drop files here to share with everyone</strong>
-      <span>PDF, Word, text or Markdown · up to 50 MB</span>
-    </div>
+    <LibraryNpcPool v-if="tab === 'npcs'" />
+
+    <template v-else>
+      <RestrictedNotice v-if="!canUpload" title="Uploads are turned off for your account">
+        You can still open everything in the library.
+      </RestrictedNotice>
+
+      <div class="toolbar">
+        <div class="chips" role="group" aria-label="Category">
+          <button
+            v-for="c in categories"
+            :key="c.label"
+            type="button"
+            class="chip"
+            :aria-pressed="cat === c.label"
+            @click="cat = c.label"
+          >
+            {{ c.label }} <span>{{ c.count }}</span>
+          </button>
+        </div>
+        <div class="search">
+          <label for="lib-q" class="sr-only">Search documents</label>
+          <input
+            id="lib-q"
+            v-model="q"
+            class="input"
+            type="search"
+            placeholder="Search documents"
+          />
+        </div>
+      </div>
+
+      <section class="panel panel--flush" aria-label="Documents">
+        <div
+          v-if="store.loading && !store.loaded"
+          class="spinner"
+          role="status"
+          aria-label="Loading documents"
+        />
+        <div
+          v-else
+          class="table-wrap"
+          tabindex="0"
+          role="region"
+          aria-label="Table, scroll sideways for more"
+        >
+          <table class="table" style="min-width: 820px; font-size: 14px">
+            <thead>
+              <tr>
+                <th scope="col" style="padding-left: 20px">Name</th>
+                <th scope="col">System</th>
+                <th scope="col">Category</th>
+                <th scope="col">Added by</th>
+                <th scope="col">Date</th>
+                <th scope="col">Size</th>
+                <th scope="col" style="text-align: right; padding-right: 20px">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="d in shown" :key="d.id">
+                <td style="padding-left: 20px">
+                  <button type="button" class="name" @click="open(d)">
+                    <span class="ext">{{ d.ext.toUpperCase() }}</span>
+                    <strong>{{ d.name }}</strong>
+                  </button>
+                </td>
+                <td>
+                  <span class="badge" :class="`badge--${d.system ?? 'any'}`">{{
+                    systemLabel(d.system)
+                  }}</span>
+                </td>
+                <td class="soft">{{ d.category }}</td>
+                <td class="soft">{{ d.uploader?.display_name ?? 'Former member' }}</td>
+                <td class="soft">{{ shortDate(d.created_at) }}</td>
+                <td class="soft" style="white-space: nowrap">{{ formatSize(d.size) }}</td>
+                <td style="padding-right: 20px">
+                  <div class="row" style="justify-content: flex-end; gap: 6px; flex-wrap: nowrap">
+                    <button
+                      type="button"
+                      class="btn btn--ghost btn--sm"
+                      :aria-label="`Open ${d.name}`"
+                      @click="open(d)"
+                    >
+                      Open
+                    </button>
+                    <button
+                      v-if="d.uploaded_by === auth.userId || auth.isStaff"
+                      type="button"
+                      class="btn btn--quiet btn--sm"
+                      :aria-label="`Remove ${d.name}`"
+                      @click="removeTarget = d"
+                    >
+                      Remove
+                    </button>
+                    <button
+                      v-if="d.uploaded_by !== auth.userId"
+                      type="button"
+                      class="btn btn--quiet btn--sm"
+                      :aria-label="`Report ${d.name}`"
+                      @click="report(d)"
+                    >
+                      Report
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!shown.length">
+                <td colspan="7" class="muted" style="padding: 24px 20px">
+                  {{
+                    store.documents.length
+                      ? 'No documents match that search.'
+                      : 'The library is empty. Upload the first document.'
+                  }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div
+        v-if="canUpload"
+        class="drop"
+        :class="{ 'is-over': dragging }"
+        role="button"
+        tabindex="0"
+        @click="fileInput?.click()"
+        @keydown.enter.prevent="fileInput?.click()"
+        @keydown.space.prevent="fileInput?.click()"
+        @dragover.prevent="dragging = true"
+        @dragleave="dragging = false"
+        @drop.prevent="onDrop"
+      >
+        <strong>Drop files here to share with everyone</strong>
+        <span>PDF, Word, text or Markdown · up to 50 MB</span>
+      </div>
+    </template>
 
     <UiDialog v-model="uploadOpen" title="Add to the library" width="520px">
       <form class="stack" @submit.prevent="confirmUpload">
@@ -457,6 +490,29 @@ function report(doc: LibraryDocument) {
   &:hover {
     border-color: var(--accent);
     background: var(--accent-tint);
+  }
+}
+.lib-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 18px;
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--page-muted);
+    text-decoration: none;
+
+    &[aria-current='page'] {
+      color: var(--page-text);
+      box-shadow: inset 0 -3px 0 var(--accent);
+    }
   }
 }
 </style>
