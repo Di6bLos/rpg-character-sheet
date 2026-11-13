@@ -2,7 +2,8 @@
 // GM console → NPCs → Index: this campaign's creatures and people, plus the
 // shared pool (Official / Homebrew). Add several to initiative at once, or
 // record a meeting in the party journal.
-import type { CampaignNpc, NpcKind, NpcSource, PoolNpc } from '~/types'
+import type { CampaignNpc, CreatureType, NpcKind, NpcSourceFilter, PoolNpc } from '~/types'
+import { CREATURE_TYPES, SOURCE_FILTERS } from '~/utils/creatureTypes'
 import { plural } from '~/utils/format'
 
 const route = useRoute()
@@ -15,7 +16,14 @@ const { campaign, campaignId } = useCampaignBoard()
 type Where = 'campaign' | 'pool'
 const kind = ref<NpcKind>(route.query.kind === 'humanoid' ? 'humanoid' : 'monster')
 const where = ref<Where>(route.query.where === 'pool' ? 'pool' : 'campaign')
-const source = ref<NpcSource | 'mine' | null>(null)
+const source = ref<NpcSourceFilter | 'mine' | null>(null)
+const creatureType = ref<CreatureType | null>(null)
+/** Source options; "Mine" only means something in the shared library. */
+const sourceOptions = computed(() =>
+  where.value === 'pool'
+    ? [...SOURCE_FILTERS, { value: 'mine' as const, label: 'Made by me' }]
+    : SOURCE_FILTERS,
+)
 const q = ref('')
 const selectedId = ref<string | null>(typeof route.query.id === 'string' ? route.query.id : null)
 
@@ -48,6 +56,8 @@ const campaignList = computed(() =>
   npcs.campaignNpcs.filter(
     (n) =>
       n.kind === kind.value &&
+      (!creatureType.value || n.stat_block.creatureType === creatureType.value) &&
+      (!source.value || (source.value === 'ai' ? n.ai_generated : n.source === source.value)) &&
       (!needle.value ||
         n.name.toLowerCase().includes(needle.value) ||
         (n.stat_block.type ?? '').toLowerCase().includes(needle.value)),
@@ -70,6 +80,7 @@ async function loadPool() {
     pool.value = await npcs.searchPool({
       system: campaign.value.system,
       kind: kind.value,
+      creatureType: creatureType.value,
       source: source.value === 'mine' ? null : source.value,
       mine: source.value === 'mine',
       q: q.value,
@@ -80,7 +91,7 @@ async function loadPool() {
     poolLoading.value = false
   }
 }
-watch([where, kind, source], () => void loadPool(), { immediate: true })
+watch([where, kind, source, creatureType], () => void loadPool(), { immediate: true })
 watch(q, () => {
   clearTimeout(poolTimer)
   poolTimer = setTimeout(() => void loadPool(), 250)
@@ -187,18 +198,30 @@ async function confirmRemove() {
   }
 }
 
+// --- Scrolling list -------------------------------------------------------------------
+// The entries scroll inside the list panel under its controls; the page stays put.
+const rootEl = ref<HTMLElement | null>(null)
+const asideEl = ref<HTMLElement | null>(null)
+const itemsEl = ref<HTMLElement | null>(null)
+const { height: itemsHeight } = useFillViewport(itemsEl, {
+  panel: asideEl,
+  root: rootEl,
+  observe: [asideEl],
+})
+// A new search or filter starts at the top of the list.
+watch([kind, where, source, creatureType, q], () => itemsEl.value?.scrollTo({ top: 0 }))
+
 function pickKind(k: NpcKind) {
   kind.value = k
   selectedId.value = null
 }
 function pickWhere(w: Where) {
   where.value = w
+  if (w === 'campaign' && source.value === 'mine') source.value = null
   selectedId.value = null
 }
-function pickSource(s: NpcSource | 'mine' | null) {
-  source.value = s
-  selectedId.value = null
-}
+// A new filter starts with its first match selected.
+watch([source, creatureType], () => (selectedId.value = null))
 
 watch(selectedId, () => {
   status.value = ''
@@ -207,7 +230,7 @@ watch(selectedId, () => {
 </script>
 
 <template>
-  <div class="npcs">
+  <div ref="rootEl" class="npcs">
     <NpcTabs current="index" />
 
     <div class="npcs__kinds" role="tablist" aria-label="Creature kind">
@@ -225,7 +248,7 @@ watch(selectedId, () => {
     </div>
 
     <div class="npcs__cols">
-      <aside class="panel npcs__list" aria-labelledby="npc-h">
+      <aside ref="asideEl" class="panel npcs__list" aria-labelledby="npc-h">
         <div class="npcs__list-head">
           <h2 id="npc-h">{{ kind === 'monster' ? 'Monsters' : 'Humanoids' }}</h2>
           <span class="small muted"
@@ -253,25 +276,22 @@ watch(selectedId, () => {
             Library
           </button>
         </div>
-        <div v-if="where === 'pool'" class="chips" role="group" aria-label="Source">
-          <button
-            v-for="s in [null, 'official', 'homebrew', 'mine'] as const"
-            :key="String(s)"
-            type="button"
-            class="chip"
-            :aria-pressed="source === s"
-            @click="pickSource(s)"
-          >
-            {{
-              s === null
-                ? 'All'
-                : s === 'official'
-                  ? 'Official'
-                  : s === 'homebrew'
-                    ? 'Homebrew'
-                    : 'Mine'
-            }}
-          </button>
+        <div class="npcs__filters">
+          <label>
+            <span class="sr-only">Source</span>
+            <select v-model="source" class="input">
+              <option v-for="o in sourceOptions" :key="String(o.value)" :value="o.value">
+                {{ o.label }}
+              </option>
+            </select>
+          </label>
+          <label>
+            <span class="sr-only">Creature type</span>
+            <select v-model="creatureType" class="input">
+              <option :value="null">All creature types</option>
+              <option v-for="t in CREATURE_TYPES" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </label>
         </div>
         <label for="npc-q" class="sr-only">Search creatures</label>
         <input
@@ -287,7 +307,12 @@ watch(selectedId, () => {
           role="status"
           aria-label="Searching the library"
         />
-        <ul v-else class="npcs__items">
+        <ul
+          v-else
+          ref="itemsEl"
+          class="npcs__items"
+          :style="itemsHeight ? { '--list-h': `${itemsHeight}px` } : undefined"
+        >
           <li v-for="it in list" :key="it.npc.id">
             <button
               type="button"
@@ -303,7 +328,10 @@ watch(selectedId, () => {
               <span class="npcs__item-text">
                 <strong>{{ it.npc.name }}</strong>
                 <small>{{
-                  [it.npc.stat_block.type, it.npc.level ? `Level ${it.npc.level}` : '']
+                  [
+                    it.npc.stat_block.type || it.npc.stat_block.creatureType,
+                    it.npc.level ? `Level ${it.npc.level}` : '',
+                  ]
                     .filter(Boolean)
                     .join(' · ')
                 }}</small>
@@ -517,6 +545,17 @@ watch(selectedId, () => {
   }
 }
 
+.npcs__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  label {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
+}
+
 .seg {
   display: flex;
   gap: 4px;
@@ -544,8 +583,12 @@ watch(selectedId, () => {
 
 .npcs__items {
   list-style: none;
-  margin: 0;
-  padding: 0;
+  // Scrolls under the controls above it; the negative margin keeps focus rings unclipped.
+  max-height: var(--list-h, 65vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: -3px;
+  padding: 3px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -702,5 +745,13 @@ watch(selectedId, () => {
   border: 1.5px dashed var(--line-strong);
   text-align: center;
   color: var(--page-muted);
+}
+
+// Phones: the list sits above the stat block, so let the page do the scrolling.
+@media (max-width: 640px) {
+  .npcs__items {
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 </style>

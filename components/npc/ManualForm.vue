@@ -2,6 +2,7 @@
 // Manual stat block builder, system-aware. The parent owns the form (v-model)
 // and shows the live preview beside it.
 import type { GameSystem } from '~/types'
+import { CREATURE_TYPES } from '~/utils/creatureTypes'
 import { LEVEL_LABEL, STAT_KEYS, TOP_FIELDS, type NpcForm } from '~/utils/npcStatBlock'
 
 const form = defineModel<NpcForm>({ required: true })
@@ -84,13 +85,20 @@ function addItem(si: number) {
         />
       </div>
       <div class="field">
+        <label :for="`${id}-ctype`">Creature type</label>
+        <select :id="`${id}-ctype`" v-model="form.creatureType" class="input">
+          <option value="">Not set</option>
+          <option v-for="t in CREATURE_TYPES" :key="t" :value="t">{{ t }}</option>
+        </select>
+      </div>
+      <div class="field">
         <label :for="`${id}-type`">Type</label>
         <input
           :id="`${id}-type`"
           v-model="form.type"
           class="input"
           maxlength="60"
-          placeholder="Undead"
+          placeholder="Skeleton archer"
         />
       </div>
       <div class="field">

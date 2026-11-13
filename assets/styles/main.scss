@@ -493,6 +493,23 @@ select.input {
   }
 }
 
+// A bar that pins to the top of the window while the content under it scrolls on
+// (filter bars, sub-navs). Painting the page's own fixed background makes it blend in
+// wherever it sticks. Add `is-stuck` (see useStuck) to draw a divider once pinned.
+.sticky-bar {
+  position: sticky;
+  top: var(--sticky-top, 0px);
+  z-index: 2;
+  background: var(--page-bg);
+  background-color: var(--page-base);
+  background-attachment: fixed;
+  transition: box-shadow 0.15s;
+
+  &.is-stuck {
+    box-shadow: 0 1px 0 var(--line);
+  }
+}
+
 .table-wrap {
   // position: relative keeps visually-hidden children from widening the page.
   position: relative;
