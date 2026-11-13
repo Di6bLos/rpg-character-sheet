@@ -13,6 +13,12 @@ const { system, kind, source, q, list, loading, loadingMore, hasMore, loadMore, 
   useNpcPoolSearch(60)
 onMounted(() => void campaigns.fetchMine())
 
+// The filter bar pins under the Library sub-nav while the cards slide up under it.
+const filtersEl = ref<HTMLElement | null>(null)
+const filtersStuck = useStuck(filtersEl)
+// A new search starts at the top of the list.
+watch([system, kind, source, q], () => nextTick(() => revealAfterStickyBar(filtersEl.value)))
+
 // --- Detail -------------------------------------------------------------------------
 const open = ref<PoolNpc | null>(null)
 const detailOpen = computed({
@@ -70,7 +76,7 @@ async function remove() {
       you.
     </p>
 
-    <div class="pool__filters">
+    <div ref="filtersEl" class="pool__filters sticky-bar" :class="{ 'is-stuck': filtersStuck }">
       <div class="chips" role="group" aria-label="Source">
         <button
           v-for="s in [null, 'official', 'homebrew'] as const"
@@ -190,6 +196,10 @@ async function remove() {
 }
 
 .pool__filters {
+  --sticky-top: var(--subnav-h, 0px);
+  // Breathing room while pinned, without changing the resting layout.
+  margin-block: -10px;
+  padding-block: 10px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
