@@ -187,6 +187,19 @@ async function confirmRemove() {
   }
 }
 
+// --- Scrolling list -------------------------------------------------------------------
+// The entries scroll inside the list panel under its controls; the page stays put.
+const rootEl = ref<HTMLElement | null>(null)
+const asideEl = ref<HTMLElement | null>(null)
+const itemsEl = ref<HTMLElement | null>(null)
+const { height: itemsHeight } = useFillViewport(itemsEl, {
+  panel: asideEl,
+  root: rootEl,
+  observe: [asideEl],
+})
+// A new search or filter starts at the top of the list.
+watch([kind, where, source, q], () => itemsEl.value?.scrollTo({ top: 0 }))
+
 function pickKind(k: NpcKind) {
   kind.value = k
   selectedId.value = null
@@ -207,7 +220,7 @@ watch(selectedId, () => {
 </script>
 
 <template>
-  <div class="npcs">
+  <div ref="rootEl" class="npcs">
     <NpcTabs current="index" />
 
     <div class="npcs__kinds" role="tablist" aria-label="Creature kind">
@@ -225,7 +238,7 @@ watch(selectedId, () => {
     </div>
 
     <div class="npcs__cols">
-      <aside class="panel npcs__list" aria-labelledby="npc-h">
+      <aside ref="asideEl" class="panel npcs__list" aria-labelledby="npc-h">
         <div class="npcs__list-head">
           <h2 id="npc-h">{{ kind === 'monster' ? 'Monsters' : 'Humanoids' }}</h2>
           <span class="small muted"
@@ -287,7 +300,12 @@ watch(selectedId, () => {
           role="status"
           aria-label="Searching the library"
         />
-        <ul v-else class="npcs__items">
+        <ul
+          v-else
+          ref="itemsEl"
+          class="npcs__items"
+          :style="itemsHeight ? { '--list-h': `${itemsHeight}px` } : undefined"
+        >
           <li v-for="it in list" :key="it.npc.id">
             <button
               type="button"
@@ -544,8 +562,12 @@ watch(selectedId, () => {
 
 .npcs__items {
   list-style: none;
-  margin: 0;
-  padding: 0;
+  // Scrolls under the controls above it; the negative margin keeps focus rings unclipped.
+  max-height: var(--list-h, 65vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: -3px;
+  padding: 3px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -702,5 +724,13 @@ watch(selectedId, () => {
   border: 1.5px dashed var(--line-strong);
   text-align: center;
   color: var(--page-muted);
+}
+
+// Phones: the list sits above the stat block, so let the page do the scrolling.
+@media (max-width: 640px) {
+  .npcs__items {
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 </style>

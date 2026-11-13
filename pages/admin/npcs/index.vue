@@ -16,6 +16,20 @@ const { system, kind, source, q, list, loading, loadingMore, hasMore, loadMore, 
   useNpcPoolSearch(100)
 onMounted(() => void site.fetch().catch(() => undefined))
 
+// --- Scrolling table ------------------------------------------------------------------
+// The rows scroll inside the panel under the filters instead of the page growing.
+const rootEl = ref<HTMLElement | null>(null)
+const panelEl = ref<HTMLElement | null>(null)
+const headEl = ref<HTMLElement | null>(null)
+const tableEl = ref<HTMLElement | null>(null)
+const { height: tableHeight } = useFillViewport(tableEl, {
+  panel: panelEl,
+  root: rootEl,
+  observe: [headEl, panelEl],
+})
+// A new search starts at the top of the table.
+watch([system, kind, source, q], () => tableEl.value?.scrollTo({ top: 0 }))
+
 const poolNote = computed(() => {
   const s = site.settings
   if (!s.npc_pool_campaign && !s.npc_pool_library)
@@ -67,7 +81,7 @@ async function remove() {
 </script>
 
 <template>
-  <div class="page" style="max-width: 1200px; gap: 24px">
+  <div ref="rootEl" class="page" style="max-width: 1200px; gap: 24px">
     <header class="page-head">
       <div>
         <h1>NPCs</h1>
@@ -78,8 +92,8 @@ async function remove() {
 
     <p v-if="poolNote" class="notice">{{ poolNote }}</p>
 
-    <section class="panel panel--flush" aria-labelledby="pool-h">
-      <div class="head">
+    <section ref="panelEl" class="panel panel--flush" aria-labelledby="pool-h">
+      <div ref="headEl" class="head">
         <h2 id="pool-h">Pool</h2>
         <div class="filters">
           <div class="chips" role="group" aria-label="Source">
@@ -123,7 +137,9 @@ async function remove() {
       <div v-if="loading && !list.length" class="spinner" role="status" aria-label="Loading NPCs" />
       <div
         v-else
-        class="table-wrap"
+        ref="tableEl"
+        class="table-wrap pool-table"
+        :style="tableHeight ? { '--list-h': `${tableHeight}px` } : undefined"
         tabindex="0"
         role="region"
         aria-label="Table, scroll sideways for more"
@@ -260,6 +276,30 @@ async function remove() {
 
   h2 {
     font-size: 20px;
+  }
+}
+
+// Rows scroll under the sticky column headings; the page itself stays put.
+.pool-table {
+  max-height: var(--list-h, 65vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--panel-bg);
+    // Collapsed borders don't stick with the heading, so draw the rule here.
+    border-bottom: 0;
+    box-shadow: inset 0 -1px 0 var(--line);
+  }
+}
+
+// Phones: one scroll (the page) is easier to handle than a box inside it.
+@media (max-width: 640px) {
+  .pool-table {
+    max-height: none;
   }
 }
 
