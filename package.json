@@ -13,7 +13,8 @@
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:bestiary": "tsx scripts/bestiary-seed.ts"
   },
   "dependencies": {
     "@pinia/nuxt": "^0.10.1",
