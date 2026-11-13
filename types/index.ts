@@ -232,6 +232,24 @@ export type HpBand = 'Unhurt' | 'Hurt' | 'Bloodied' | 'Down'
 
 export type NpcKind = 'monster' | 'humanoid'
 export type NpcSource = 'official' | 'homebrew'
+/** Source filter in the NPC lists: a stored source, or AI drafts (any source). */
+export type NpcSourceFilter = NpcSource | 'ai'
+/** Broad creature type every NPC list can filter by (list in `utils/creatureTypes.ts`). */
+export type CreatureType =
+  | 'Aberration'
+  | 'Beast'
+  | 'Celestial'
+  | 'Construct'
+  | 'Dragon'
+  | 'Elemental'
+  | 'Fey'
+  | 'Fiend'
+  | 'Giant'
+  | 'Humanoid'
+  | 'Monstrosity'
+  | 'Ooze'
+  | 'Plant'
+  | 'Undead'
 
 /** One named entry in a stat block (trait, action, reaction…). */
 export interface StatEntry {
@@ -244,6 +262,8 @@ export interface StatEntry {
  * `stats` the ability row, `lines` the secondary lines, `sections` the named groups.
  */
 export interface StatBlock {
+  /** Broad type the lists filter by; `type` stays free text ("Owlbear", "Humanoid (any)"). */
+  creatureType?: CreatureType
   type?: string
   size?: string
   alignment?: string

@@ -3,6 +3,7 @@
 // build new ones (Official or Homebrew) with the generator.
 import type { PoolNpc } from '~/types'
 import { shortDate } from '~/utils/format'
+import { CREATURE_TYPES, SOURCE_FILTERS } from '~/utils/creatureTypes'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
 
 definePageMeta({ layout: 'admin', middleware: 'staff' })
@@ -12,7 +13,7 @@ const npcs = useNpcStore()
 const site = useSiteStore()
 const snackbar = useSnackbarStore()
 
-const { system, kind, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
+const { system, creatureType, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
   useNpcPoolSearch(100)
 onMounted(() => void site.fetch().catch(() => undefined))
 
@@ -28,7 +29,7 @@ const { height: tableHeight } = useFillViewport(tableEl, {
   observe: [headEl, panelEl],
 })
 // A new search starts at the top of the table.
-watch([system, kind, source, q], () => tableEl.value?.scrollTo({ top: 0 }))
+watch([system, creatureType, source, q], () => tableEl.value?.scrollTo({ top: 0 }))
 
 const poolNote = computed(() => {
   const s = site.settings
@@ -96,30 +97,21 @@ async function remove() {
       <div ref="headEl" class="head">
         <h2 id="pool-h">Pool</h2>
         <div class="filters">
-          <div class="chips" role="group" aria-label="Source">
-            <button
-              v-for="s in [null, 'official', 'homebrew'] as const"
-              :key="String(s)"
-              type="button"
-              class="chip"
-              :aria-pressed="source === s"
-              @click="source = s"
-            >
-              {{ s === null ? 'All' : s === 'official' ? 'Official' : 'Homebrew' }}
-            </button>
-          </div>
-          <div class="chips" role="group" aria-label="Kind">
-            <button
-              v-for="k in [null, 'monster', 'humanoid'] as const"
-              :key="String(k)"
-              type="button"
-              class="chip"
-              :aria-pressed="kind === k"
-              @click="kind = k"
-            >
-              {{ k === null ? 'Everything' : k === 'monster' ? 'Monsters' : 'Humanoids' }}
-            </button>
-          </div>
+          <label>
+            <span class="sr-only">Source</span>
+            <select v-model="source" class="input">
+              <option v-for="o in SOURCE_FILTERS" :key="String(o.value)" :value="o.value">
+                {{ o.label }}
+              </option>
+            </select>
+          </label>
+          <label>
+            <span class="sr-only">Creature type</span>
+            <select v-model="creatureType" class="input">
+              <option :value="null">All creature types</option>
+              <option v-for="t in CREATURE_TYPES" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </label>
           <label>
             <span class="sr-only">Game system</span>
             <select v-model="system" class="input">
@@ -168,8 +160,15 @@ async function remove() {
                   <div class="stack" style="gap: 0; min-width: 0">
                     <strong>{{ n.name }}</strong>
                     <span class="small muted" style="font-size: 12px">
-                      {{ n.kind === 'monster' ? 'Monster' : 'Humanoid'
-                      }}{{ n.stat_block.type ? ` · ${n.stat_block.type}` : '' }}
+                      {{
+                        [
+                          n.stat_block.creatureType ??
+                            (n.kind === 'monster' ? 'Monster' : 'Humanoid'),
+                          n.stat_block.type,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      }}
                     </span>
                   </div>
                 </div>

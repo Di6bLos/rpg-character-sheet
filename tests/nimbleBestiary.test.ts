@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BESTIARY } from '../data/nimble/bestiary'
 import { bestiaryRows } from '../utils/bestiary'
+import { isCreatureType } from '../utils/creatureTypes'
 
 const monsters = BESTIARY.flatMap((f) => f.monsters.map((m) => ({ family: f, m })))
 const rows = bestiaryRows(BESTIARY)
@@ -22,6 +23,10 @@ describe('Nimble GM’s Guide bestiary', () => {
       expect(r.name.length).toBeGreaterThan(0)
       expect(r.name.length).toBeLessThanOrEqual(80)
     }
+  })
+
+  it('gives every monster a creature type the lists can filter by', () => {
+    for (const r of rows) expect(isCreatureType(r.stat_block.creatureType), r.name).toBe(true)
   })
 
   it('uses printed levels', () => {

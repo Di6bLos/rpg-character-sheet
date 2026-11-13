@@ -4,7 +4,7 @@
 // Loot tables, sample encounters and flavour are left out. Art from the books is never used.
 // Seeded into the shared NPC pool as official rows by `npm run seed:bestiary`.
 
-import type { NpcKind, StatEntry } from '~/types'
+import type { CreatureType, NpcKind, StatEntry } from '~/types'
 
 export type BestiaryArmor = 'None' | 'Medium' | 'Heavy'
 export type BestiarySection = 'bestiary' | 'legendary' | 'adventure'
@@ -18,6 +18,8 @@ export interface BestiaryMonster {
   size?: string
   /** Creature type, mostly for legendary monsters ("Owlbear", "Floral Dragon"). */
   type?: string
+  /** Broad type the NPC lists filter by. */
+  creatureType: CreatureType
   kind: NpcKind
   armor: BestiaryArmor
   /** null = minion (no HP; follows the minion rules). */
@@ -92,6 +94,7 @@ const KOBOLDS = family(
   [
     {
       name: 'Kobold Minion',
+      creatureType: 'Humanoid',
       level: '1/4',
       size: 'Small',
       hp: null,
@@ -100,6 +103,7 @@ const KOBOLDS = family(
     },
     {
       name: 'Kobold',
+      creatureType: 'Humanoid',
       level: '1/3',
       size: 'Small',
       hp: 12,
@@ -107,6 +111,7 @@ const KOBOLDS = family(
     },
     {
       name: 'Kobold Sneak',
+      creatureType: 'Humanoid',
       level: '1/2',
       size: 'Small',
       hp: 15,
@@ -117,6 +122,7 @@ const KOBOLDS = family(
     },
     {
       name: 'Kobold Clanger',
+      creatureType: 'Humanoid',
       level: '1',
       armor: 'Heavy',
       hp: 16,
@@ -127,6 +133,7 @@ const KOBOLDS = family(
     },
     {
       name: 'Kobold Trapper',
+      creatureType: 'Humanoid',
       level: '1',
       size: 'Small',
       hp: 26,
@@ -140,6 +147,7 @@ const KOBOLDS = family(
     },
     {
       name: 'Kobold Denwarden',
+      creatureType: 'Humanoid',
       level: '1',
       armor: 'Medium',
       hp: 20,
@@ -158,6 +166,7 @@ const GOBLINS = family(
   [
     {
       name: 'Goblin Minion',
+      creatureType: 'Humanoid',
       level: '1/4',
       size: 'Small',
       hp: null,
@@ -166,6 +175,7 @@ const GOBLINS = family(
     },
     {
       name: 'Goblin',
+      creatureType: 'Humanoid',
       level: '1/3',
       size: 'Small',
       hp: 15,
@@ -173,6 +183,7 @@ const GOBLINS = family(
     },
     {
       name: 'Bugbear',
+      creatureType: 'Humanoid',
       level: '2',
       armor: 'Medium',
       hp: 30,
@@ -180,6 +191,7 @@ const GOBLINS = family(
     },
     {
       name: 'Goblin Taskmaster',
+      creatureType: 'Humanoid',
       level: '2',
       size: 'Small',
       armor: 'Medium',
@@ -192,6 +204,7 @@ const GOBLINS = family(
     },
     {
       name: 'Goblin Ratrider',
+      creatureType: 'Humanoid',
       level: '2',
       hp: 30,
       speed: '10',
@@ -215,6 +228,7 @@ const BANDITS = family(
   [
     {
       name: 'Bandit Minion',
+      creatureType: 'Humanoid',
       level: '1/4',
       hp: null,
       traits: [MINION],
@@ -222,12 +236,14 @@ const BANDITS = family(
     },
     {
       name: 'Bandit',
+      creatureType: 'Humanoid',
       level: '1/3',
       hp: 12,
       actions: [e('Stab', '1d8+1 (or Shoot, Range 8).')],
     },
     {
       name: 'Bandit Bruiser',
+      creatureType: 'Humanoid',
       level: '2',
       armor: 'Medium',
       hp: 24,
@@ -235,6 +251,7 @@ const BANDITS = family(
     },
     {
       name: 'Bandit Captain',
+      creatureType: 'Humanoid',
       level: '4',
       armor: 'Medium',
       hp: 36,
@@ -242,12 +259,14 @@ const BANDITS = family(
     },
     {
       name: 'Bandit Hunter',
+      creatureType: 'Humanoid',
       level: '1',
       hp: 22,
       actions: [e('Battlebow', '2d8+2 (Range 12).')],
     },
     {
       name: 'Bandit Assassin',
+      creatureType: 'Humanoid',
       level: '2',
       hp: 24,
       traits: [e('Sneak', 'You are invisible until you attack.')],
@@ -255,6 +274,7 @@ const BANDITS = family(
     },
     {
       name: 'Bandit Mage',
+      creatureType: 'Humanoid',
       level: '4',
       hp: 41,
       traits: [e('Spark Step', 'When damaged, teleport up to 4 spaces.')],
@@ -278,6 +298,7 @@ const SNAKEMEN = family(
   [
     {
       name: 'Snakeman Minion',
+      creatureType: 'Monstrosity',
       level: '1/4',
       hp: null,
       traits: [MINION],
@@ -285,12 +306,14 @@ const SNAKEMEN = family(
     },
     {
       name: 'Snakeman',
+      creatureType: 'Monstrosity',
       level: '1',
       hp: 26,
       actions: [e('Slash', '1d6+6 (or Spit, Range 8).')],
     },
     {
       name: 'Cobra Captain',
+      creatureType: 'Monstrosity',
       level: '4',
       armor: 'Medium',
       hp: 36,
@@ -298,6 +321,7 @@ const SNAKEMEN = family(
     },
     {
       name: 'Giant Cobra',
+      creatureType: 'Beast',
       level: '8',
       size: 'Large',
       armor: 'Medium',
@@ -321,6 +345,7 @@ const STIRGES = family(
   [
     {
       name: 'Stirge',
+      creatureType: 'Beast',
       level: '1/2',
       size: 'Tiny',
       hp: 10,
@@ -328,6 +353,7 @@ const STIRGES = family(
     },
     {
       name: 'Greater Stirge',
+      creatureType: 'Beast',
       level: '6',
       size: 'Small',
       hp: 60,
@@ -351,6 +377,7 @@ const MIMICS = family(
   [
     {
       name: 'Tiny Mimic',
+      creatureType: 'Monstrosity',
       level: '1',
       hp: 28,
       traits: [e('Disguise', 'Cup, shoe, apple, candlestick, potion, pebble.')],
@@ -358,6 +385,7 @@ const MIMICS = family(
     },
     {
       name: 'Small Mimic',
+      creatureType: 'Monstrosity',
       level: '2',
       hp: 41,
       traits: [e('Disguise', 'Backpack, shield/weapon, chair, crate, tree stump.')],
@@ -368,6 +396,7 @@ const MIMICS = family(
     },
     {
       name: 'Medium Mimic',
+      creatureType: 'Monstrosity',
       level: '6',
       hp: 79,
       traits: [e('Disguise', 'Table, treasure chest, barrel, bookshelf, door, bed.')],
@@ -397,12 +426,14 @@ const OOZES = family(
   [
     {
       name: 'Gray Ooze',
+      creatureType: 'Ooze',
       level: '1',
       hp: 28,
       actions: [e('Acidic Touch (2×)', '1d6+2.')],
     },
     {
       name: 'Ochre Jelly',
+      creatureType: 'Ooze',
       level: '4',
       size: 'Large',
       hp: 52,
@@ -410,6 +441,7 @@ const OOZES = family(
     },
     {
       name: 'Black Pudding',
+      creatureType: 'Ooze',
       level: '8',
       size: 'Large',
       hp: 90,
@@ -417,6 +449,7 @@ const OOZES = family(
     },
     {
       name: 'Elder Ooze',
+      creatureType: 'Ooze',
       level: '12',
       size: 'Huge',
       hp: 150,
@@ -434,12 +467,14 @@ const GNOLLS = family(
   [
     {
       name: 'Gnoll',
+      creatureType: 'Humanoid',
       level: '1',
       hp: 28,
       actions: [e('Ravage (2×)', '1d10. OR:'), e('Shoot', '(Range 12) 1d10.')],
     },
     {
       name: 'Gnoll Packleader',
+      creatureType: 'Humanoid',
       level: '4',
       armor: 'Medium',
       hp: 39,
@@ -457,6 +492,7 @@ const HILL_AND_FIELD = family(
   [
     {
       name: 'Worg',
+      creatureType: 'Monstrosity',
       level: '1',
       size: 'Large',
       hp: 28,
@@ -466,6 +502,7 @@ const HILL_AND_FIELD = family(
     },
     {
       name: 'Hill Giant',
+      creatureType: 'Giant',
       level: '12',
       size: 'Huge',
       hp: 140,
@@ -475,6 +512,7 @@ const HILL_AND_FIELD = family(
     },
     {
       name: 'Bulette',
+      creatureType: 'Monstrosity',
       level: '10',
       size: 'Large',
       armor: 'Heavy',
@@ -493,6 +531,7 @@ const HILL_AND_FIELD = family(
     },
     {
       name: 'Troll',
+      creatureType: 'Giant',
       level: '10',
       size: 'Large',
       armor: 'Medium',
@@ -512,6 +551,7 @@ const HILL_AND_FIELD = family(
     },
     {
       name: 'Blue Drake',
+      creatureType: 'Dragon',
       level: '2',
       hp: 34,
       speed: 'Fly 12',
@@ -520,6 +560,7 @@ const HILL_AND_FIELD = family(
     },
     {
       name: 'Griffon',
+      creatureType: 'Monstrosity',
       level: '4',
       size: 'Large',
       hp: 50,
@@ -531,6 +572,7 @@ const HILL_AND_FIELD = family(
     },
     {
       name: 'Roc',
+      creatureType: 'Monstrosity',
       level: '17',
       size: 'Gargantuan',
       armor: 'Medium',
@@ -556,24 +598,28 @@ const UNDEAD = family(
   [
     {
       name: 'Skeleton',
+      creatureType: 'Undead',
       level: '1/3',
       hp: 10,
       actions: [e('Grave Arrow', '1d4+3 (Range 8).')],
     },
     {
       name: 'Zombie',
+      creatureType: 'Undead',
       level: '1/2',
       hp: 15,
       actions: [e('Crunch', '1d4+4. On damage: Grappled.')],
     },
     {
       name: 'Ghoul',
+      creatureType: 'Undead',
       level: '1',
       hp: 20,
       actions: [e('Sickening Claw', '1d4+8. On damage: Dazed.')],
     },
     {
       name: 'Specter',
+      creatureType: 'Undead',
       level: '3',
       hp: 30,
       speed: 'Fly',
@@ -581,6 +627,7 @@ const UNDEAD = family(
     },
     {
       name: 'Ogre Zombie',
+      creatureType: 'Undead',
       level: '5',
       size: 'Large',
       hp: 46,
@@ -588,12 +635,14 @@ const UNDEAD = family(
     },
     {
       name: 'Mummy',
+      creatureType: 'Undead',
       level: '6',
       hp: 54,
       actions: [e('Slam (2×)', '1d4+8. On damage: Dazed.')],
     },
     {
       name: 'Giant Zombie',
+      creatureType: 'Undead',
       level: '8',
       size: 'Huge',
       hp: 73,
@@ -601,6 +650,7 @@ const UNDEAD = family(
     },
     {
       name: 'Wraith',
+      creatureType: 'Undead',
       level: '10',
       hp: 94,
       speed: 'Fly',
@@ -608,6 +658,7 @@ const UNDEAD = family(
     },
     {
       name: 'Mummy Lord',
+      creatureType: 'Undead',
       level: '21',
       hp: 280,
       traits: [e('Cursed Gaze', 'When crit: DC 20 INT save, or suffer 1 Wound.')],
@@ -628,6 +679,7 @@ const FOREST = family(
   [
     {
       name: 'Duskprowler',
+      creatureType: 'Monstrosity',
       level: '6',
       size: 'Large',
       hp: 70,
@@ -641,6 +693,7 @@ const FOREST = family(
     },
     {
       name: 'Basilisk',
+      creatureType: 'Monstrosity',
       level: '7',
       armor: 'Heavy',
       hp: 48,
@@ -657,6 +710,7 @@ const FOREST = family(
     },
     {
       name: 'Druid',
+      creatureType: 'Humanoid',
       level: '8',
       kind: 'humanoid',
       hp: 90,
@@ -680,6 +734,7 @@ const BRIARBANES = family(
   [
     {
       name: 'Seedling',
+      creatureType: 'Plant',
       level: '1/2',
       size: 'Small',
       armor: 'Heavy',
@@ -688,6 +743,7 @@ const BRIARBANES = family(
     },
     {
       name: 'Acidpod',
+      creatureType: 'Plant',
       level: '1',
       size: 'Small',
       armor: 'Heavy',
@@ -697,6 +753,7 @@ const BRIARBANES = family(
     },
     {
       name: 'Tangler',
+      creatureType: 'Plant',
       level: '2',
       armor: 'Heavy',
       hp: 20,
@@ -709,6 +766,7 @@ const BRIARBANES = family(
     },
     {
       name: 'Rootbreaker',
+      creatureType: 'Plant',
       level: '5',
       size: 'Large',
       armor: 'Heavy',
@@ -717,6 +775,7 @@ const BRIARBANES = family(
     },
     {
       name: 'Treant',
+      creatureType: 'Plant',
       level: '14',
       size: 'Huge',
       armor: 'Heavy',
@@ -746,6 +805,7 @@ const CULTISTS = family(
   [
     {
       name: 'Cultist',
+      creatureType: 'Humanoid',
       level: '1',
       hp: 28,
       actions: [
@@ -759,6 +819,7 @@ const CULTISTS = family(
     },
     {
       name: 'Fanatic',
+      creatureType: 'Humanoid',
       level: '3',
       hp: 41,
       actions: [
@@ -774,6 +835,7 @@ const CULTISTS = family(
     },
     {
       name: 'Doomsayer',
+      creatureType: 'Humanoid',
       level: '5',
       hp: 58,
       actions: [
@@ -797,6 +859,7 @@ const HORRORS = family(
   [
     {
       name: 'Stenchling',
+      creatureType: 'Fiend',
       level: '1/2',
       size: 'Small',
       hp: 18,
@@ -805,6 +868,7 @@ const HORRORS = family(
     },
     {
       name: 'Spiny Fiend',
+      creatureType: 'Fiend',
       level: '4',
       hp: 49,
       traits: [e('Spines', 'Melee attackers take 3 damage.')],
@@ -812,6 +876,7 @@ const HORRORS = family(
     },
     {
       name: 'Glabrezu',
+      creatureType: 'Fiend',
       level: '14',
       size: 'Large',
       armor: 'Heavy',
@@ -841,6 +906,7 @@ const UNDERGROUND = family(
   [
     {
       name: 'Giant Spider',
+      creatureType: 'Beast',
       level: '2',
       armor: 'Medium',
       hp: 27,
@@ -851,6 +917,7 @@ const UNDERGROUND = family(
     },
     {
       name: 'Ettercap',
+      creatureType: 'Monstrosity',
       level: '4',
       hp: 49,
       traits: [
@@ -865,6 +932,7 @@ const UNDERGROUND = family(
     },
     {
       name: 'Nestweaver',
+      creatureType: 'Monstrosity',
       level: '6',
       size: 'Large',
       armor: 'Medium',
@@ -877,6 +945,7 @@ const UNDERGROUND = family(
     },
     {
       name: 'Great Worm',
+      creatureType: 'Monstrosity',
       level: '16',
       size: 'Huge',
       armor: 'Heavy',
@@ -899,6 +968,7 @@ const UNDERGROUND = family(
     },
     {
       name: 'Cloaker',
+      creatureType: 'Aberration',
       level: '13',
       size: 'Large',
       hp: 110,
@@ -920,6 +990,7 @@ const UNDERGROUND = family(
     },
     {
       name: 'Umber Hulk',
+      creatureType: 'Monstrosity',
       level: '10',
       size: 'Large',
       armor: 'Heavy',
@@ -951,6 +1022,7 @@ const LEGENDARY_EXAMPLES = family(
   [
     {
       name: 'Pudge the Blunderer',
+      creatureType: 'Giant',
       level: '2',
       type: 'Dumb Ogre',
       armor: 'Medium',
@@ -974,6 +1046,7 @@ const LEGENDARY_EXAMPLES = family(
     },
     {
       name: 'Kelebek, Entomancer',
+      creatureType: 'Humanoid',
       level: '3',
       type: 'Bug Druid',
       kind: 'humanoid',
@@ -1002,6 +1075,7 @@ const LEGENDARY_EXAMPLES = family(
     },
     {
       name: 'Poppy, Giant Stinkbug',
+      creatureType: 'Beast',
       level: '3',
       type: 'Stinkbug',
       armor: 'Heavy',
@@ -1031,6 +1105,7 @@ const LEGENDARY = family(
   [
     {
       name: 'Grimbeak, the Unyielding',
+      creatureType: 'Monstrosity',
       level: '3',
       size: 'Large',
       type: 'Owlbear',
@@ -1060,6 +1135,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Thorn Quickblade',
+      creatureType: 'Humanoid',
       level: '4',
       type: 'Human Criminal',
       kind: 'humanoid',
@@ -1090,6 +1166,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Ravager of the Lowlands',
+      creatureType: 'Monstrosity',
       level: '5',
       size: 'Large',
       type: 'Manticore',
@@ -1116,6 +1193,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Queen Aranya, Broodmother',
+      creatureType: 'Monstrosity',
       level: '6',
       size: 'Large',
       type: 'Matriarch of Spiders',
@@ -1154,6 +1232,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Nalzar, Apex Predator',
+      creatureType: 'Dragon',
       level: '6',
       size: 'Large',
       type: 'Grey Drake',
@@ -1186,6 +1265,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Florindris, Bane of the Forest',
+      creatureType: 'Dragon',
       level: '7',
       size: 'Large',
       type: 'Floral Dragon',
@@ -1228,6 +1308,7 @@ const LEGENDARY = family(
     },
     {
       name: 'General Flameheart',
+      creatureType: 'Giant',
       level: '8',
       size: 'Huge',
       type: 'Flame Titan',
@@ -1268,6 +1349,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Vael, Undying Necromancer',
+      creatureType: 'Humanoid',
       level: '9',
       type: 'Luminary of Malice',
       kind: 'humanoid',
@@ -1304,6 +1386,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Titan of the Deep Woods',
+      creatureType: 'Undead',
       level: '10',
       size: 'Gargantuan',
       type: 'Skeleton',
@@ -1339,6 +1422,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Ul’vek, Psionic Despot',
+      creatureType: 'Aberration',
       level: '11',
       size: 'Medium',
       type: 'Brain-Eating Aberration',
@@ -1385,6 +1469,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Dravok, All-Seeing Tyrant',
+      creatureType: 'Aberration',
       level: '12',
       size: 'Large',
       type: 'Aberration, all TEETH & EYES',
@@ -1441,6 +1526,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Azriel, Lord of Pain & Flame',
+      creatureType: 'Fiend',
       level: '14',
       size: 'Huge',
       type: 'Balor',
@@ -1472,6 +1558,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Gloomwing the Cruel',
+      creatureType: 'Dragon',
       level: '15',
       size: 'Huge',
       type: 'Rot Dragon',
@@ -1510,6 +1597,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Alaric Draegoth, the Crimson Count',
+      creatureType: 'Undead',
       level: '16',
       type: 'Vampire Lord',
       hp: 320,
@@ -1559,6 +1647,7 @@ const LEGENDARY = family(
     },
     {
       name: 'Caerys, the Hollow Star',
+      creatureType: 'Celestial',
       level: '20',
       type: 'World-Ending Cataclysm, She Who Is Our Desire & End',
       armor: 'Heavy',
@@ -1629,6 +1718,7 @@ const ADVENTURE = family(
   [
     {
       name: 'Krogg, Goblin King',
+      creatureType: 'Humanoid',
       level: '2',
       type: 'Angry Bugbear',
       armor: 'Medium',
@@ -1650,6 +1740,7 @@ const ADVENTURE = family(
     },
     {
       name: 'Greenthumb, Lichling',
+      creatureType: 'Humanoid',
       level: '3',
       type: 'Botanical Wizard',
       kind: 'humanoid',

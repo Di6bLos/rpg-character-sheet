@@ -2,6 +2,7 @@
 // Library → NPCs & monsters: the shared pool every GM's NPCs land in, plus
 // official ones from the rulebooks. GMs can pull any of them into a campaign.
 import type { PoolNpc } from '~/types'
+import { CREATURE_TYPES, SOURCE_FILTERS } from '~/utils/creatureTypes'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
 
 const auth = useAuthStore()
@@ -9,7 +10,7 @@ const campaigns = useCampaignStore()
 const npcs = useNpcStore()
 const snackbar = useSnackbarStore()
 
-const { system, kind, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
+const { system, creatureType, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
   useNpcPoolSearch(60)
 onMounted(() => void campaigns.fetchMine())
 
@@ -17,7 +18,9 @@ onMounted(() => void campaigns.fetchMine())
 const filtersEl = ref<HTMLElement | null>(null)
 const filtersStuck = useStuck(filtersEl)
 // A new search starts at the top of the list.
-watch([system, kind, source, q], () => nextTick(() => revealAfterStickyBar(filtersEl.value)))
+watch([system, creatureType, source, q], () =>
+  nextTick(() => revealAfterStickyBar(filtersEl.value)),
+)
 
 // --- Detail -------------------------------------------------------------------------
 const open = ref<PoolNpc | null>(null)
@@ -77,30 +80,21 @@ async function remove() {
     </p>
 
     <div ref="filtersEl" class="pool__filters sticky-bar" :class="{ 'is-stuck': filtersStuck }">
-      <div class="chips" role="group" aria-label="Source">
-        <button
-          v-for="s in [null, 'official', 'homebrew'] as const"
-          :key="String(s)"
-          type="button"
-          class="chip"
-          :aria-pressed="source === s"
-          @click="source = s"
-        >
-          {{ s === null ? 'All' : s === 'official' ? 'Official' : 'Homebrew' }}
-        </button>
-      </div>
-      <div class="chips" role="group" aria-label="Kind">
-        <button
-          v-for="k in [null, 'monster', 'humanoid'] as const"
-          :key="String(k)"
-          type="button"
-          class="chip"
-          :aria-pressed="kind === k"
-          @click="kind = k"
-        >
-          {{ k === null ? 'Everything' : k === 'monster' ? 'Monsters' : 'Humanoids' }}
-        </button>
-      </div>
+      <label class="pool__sys">
+        <span class="sr-only">Source</span>
+        <select v-model="source" class="input">
+          <option v-for="o in SOURCE_FILTERS" :key="String(o.value)" :value="o.value">
+            {{ o.label }}
+          </option>
+        </select>
+      </label>
+      <label class="pool__sys">
+        <span class="sr-only">Creature type</span>
+        <select v-model="creatureType" class="input">
+          <option :value="null">All creature types</option>
+          <option v-for="t in CREATURE_TYPES" :key="t" :value="t">{{ t }}</option>
+        </select>
+      </label>
       <label class="pool__sys">
         <span class="sr-only">Game system</span>
         <select v-model="system" class="input">
@@ -130,7 +124,9 @@ async function remove() {
           <span class="pool__text">
             <strong>{{ n.name }}</strong>
             <small>{{
-              [n.stat_block.type, n.level ? `Level ${n.level}` : ''].filter(Boolean).join(' · ')
+              [n.stat_block.type || n.stat_block.creatureType, n.level ? `Level ${n.level}` : '']
+                .filter(Boolean)
+                .join(' · ')
             }}</small>
             <span class="pool__tags">
               <span class="badge" :class="`badge--${n.system}`">{{ systemLabel(n.system) }}</span>

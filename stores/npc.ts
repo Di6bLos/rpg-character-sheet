@@ -1,7 +1,16 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '~/lib/supabase'
-import type { CampaignNpc, GameSystem, NpcKind, NpcSource, PoolNpc, StatBlock } from '~/types'
+import type {
+  CampaignNpc,
+  CreatureType,
+  GameSystem,
+  NpcKind,
+  NpcSource,
+  NpcSourceFilter,
+  PoolNpc,
+  StatBlock,
+} from '~/types'
 import { safeFileName } from '~/utils/format'
 import { buildCopies, combatantName } from '~/utils/initiative'
 import { journalStub } from '~/utils/npcJournal'
@@ -22,7 +31,9 @@ export interface NpcDraft {
 export interface PoolFilter {
   system?: GameSystem | null
   kind?: NpcKind | null
-  source?: NpcSource | null
+  creatureType?: CreatureType | null
+  /** A stored source, or 'ai' for AI drafts of either source. */
+  source?: NpcSourceFilter | null
   q?: string
   /** Only NPCs this user made. */
   mine?: boolean
@@ -83,7 +94,9 @@ export const useNpcStore = defineStore('npc', () => {
       .range(offset, offset + limit - 1)
     if (filter.system) query = query.eq('system', filter.system)
     if (filter.kind) query = query.eq('kind', filter.kind)
-    if (filter.source) query = query.eq('source', filter.source)
+    if (filter.creatureType) query = query.eq('stat_block->>creatureType', filter.creatureType)
+    if (filter.source === 'ai') query = query.eq('ai_generated', true)
+    else if (filter.source) query = query.eq('source', filter.source)
     if (filter.mine && auth.userId) query = query.eq('created_by', auth.userId)
     const q = filter.q?.trim()
     if (q) query = query.ilike('name', `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`)

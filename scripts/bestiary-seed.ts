@@ -1,10 +1,11 @@
 // Writes the seed migration for the Nimble GM's Guide monsters (`data/nimble/bestiary.ts`)
-// into the shared NPC pool as official rows. Re-running it rewrites the same migration file;
-// the upsert on `slug` updates rows that already exist.
+// into the shared NPC pool as official rows. Each run writes a NEW migration (applied
+// migrations must never change); the upsert on `slug` updates rows that already exist.
+// If you regenerate before applying, delete the unapplied file from the previous run.
 //
 //   npm run seed:bestiary
 
-import { readdirSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { BESTIARY } from '../data/nimble/bestiary'
 import { bestiaryRows } from '../utils/bestiary'
@@ -18,8 +19,7 @@ function timestamp() {
   return new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
 }
 
-const existing = readdirSync(DIR).find((f) => f.endsWith(SUFFIX))
-const file = join(DIR, existing ?? `${timestamp()}${SUFFIX}`)
+const file = join(DIR, `${timestamp()}${SUFFIX}`)
 
 const rows = bestiaryRows(BESTIARY)
 const values = rows

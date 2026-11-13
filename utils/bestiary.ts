@@ -30,6 +30,7 @@ export function bestiaryStatBlock(family: BestiaryFamily, m: BestiaryMonster): S
     { title: 'Last Stand', items: m.lastStand ?? [] },
   ].filter((s) => s.items.length)
   return {
+    creatureType: m.creatureType,
     type: m.type,
     size: m.size,
     top,

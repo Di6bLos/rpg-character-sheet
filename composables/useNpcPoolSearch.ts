@@ -1,4 +1,4 @@
-import type { GameSystem, NpcKind, NpcSource, PoolNpc } from '~/types'
+import type { CreatureType, GameSystem, NpcSourceFilter, PoolNpc } from '~/types'
 
 /**
  * Filtered, paged search of the shared NPC pool for the Library and Admin → NPCs.
@@ -10,8 +10,8 @@ export function useNpcPoolSearch(pageSize = 60) {
   const snackbar = useSnackbarStore()
 
   const system = ref<GameSystem | null>(null)
-  const kind = ref<NpcKind | null>(null)
-  const source = ref<NpcSource | null>(null)
+  const creatureType = ref<CreatureType | null>(null)
+  const source = ref<NpcSourceFilter | null>(null)
   const q = ref('')
 
   const list = ref<PoolNpc[]>([])
@@ -23,7 +23,7 @@ export function useNpcPoolSearch(pageSize = 60) {
 
   const filter = () => ({
     system: system.value,
-    kind: kind.value,
+    creatureType: creatureType.value,
     source: source.value,
     q: q.value,
   })
@@ -73,7 +73,7 @@ export function useNpcPoolSearch(pageSize = 60) {
     list.value = list.value.filter((n) => n.id !== id)
   }
 
-  watch([system, kind, source], () => void load())
+  watch([system, creatureType, source], () => void load())
   watch(q, () => {
     clearTimeout(timer)
     timer = setTimeout(() => void load(), 250)
@@ -84,5 +84,17 @@ export function useNpcPoolSearch(pageSize = 60) {
     generation++
   })
 
-  return { system, kind, source, q, list, loading, loadingMore, hasMore, load, loadMore, forget }
+  return {
+    system,
+    creatureType,
+    source,
+    q,
+    list,
+    loading,
+    loadingMore,
+    hasMore,
+    load,
+    loadMore,
+    forget,
+  }
 }
