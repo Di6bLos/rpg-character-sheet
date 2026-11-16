@@ -130,22 +130,32 @@ export const useNpcSubmissionStore = defineStore('npcSubmissions', () => {
     pendingCount.value = count ?? 0
   }
 
-  /** Approves into the pool; returns the new pool id. */
-  async function approve(id: string, source: NpcSource, edits?: NpcApprovalEdits) {
+  /**
+   * Approves into the pool; returns the new pool id. A name the pool already has
+   * in that system fails with code 23505 unless `allowDuplicate`.
+   */
+  async function approve(
+    id: string,
+    source: NpcSource,
+    edits?: NpcApprovalEdits,
+    allowDuplicate = false,
+  ) {
     const { data, error } = await supabase.rpc('staff_approve_npc_submission', {
       p_id: id,
       p_source: source,
       p_edits: edits ?? null,
+      p_allow_duplicate: allowDuplicate,
     })
     if (error) throw error
-    pendingCount.value = Math.max(0, pendingCount.value - 1)
+    // Re-count rather than decrement: another reviewer may be working the queue too.
+    void refreshPendingCount()
     return data as string
   }
 
   async function reject(id: string, note: string) {
     const { error } = await supabase.rpc('staff_reject_npc_submission', { p_id: id, p_note: note })
     if (error) throw error
-    pendingCount.value = Math.max(0, pendingCount.value - 1)
+    void refreshPendingCount()
   }
 
   function reset() {

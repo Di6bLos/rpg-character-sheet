@@ -49,12 +49,20 @@ const detailOpen = computed({
   },
 })
 const matches = ref<PoolNpc[]>([])
+/** The pool already has this exact name in this system: approving needs a confirmation. */
+const exactMatch = computed(
+  () =>
+    !!open.value &&
+    matches.value.some((m) => m.name.toLowerCase() === open.value!.name.toLowerCase()),
+)
+const allowDuplicate = ref(false)
 const rejecting = ref(false)
 const rejectNote = ref('')
 const busy = ref(false)
 
 watch(open, async (s) => {
   matches.value = []
+  allowDuplicate.value = false
   rejecting.value = false
   rejectNote.value = ''
   if (!s) return
@@ -76,7 +84,7 @@ async function approve(source: NpcSource) {
   if (!s) return
   busy.value = true
   try {
-    await store.approve(s.id, source)
+    await store.approve(s.id, source, undefined, allowDuplicate.value)
     snackbar.show(
       `${s.name} added to the pool as ${source === 'official' ? 'Official' : 'Homebrew'}`,
     )
@@ -231,6 +239,11 @@ async function reject() {
               >
             </li>
           </ul>
+          <UiSwitch
+            v-if="exactMatch && open.status === 'pending'"
+            v-model="allowDuplicate"
+            label="Same name, different creature: approve anyway"
+          />
         </div>
         <p v-if="open.status === 'rejected' && open.review_note" class="small review__why">
           <strong>Sent back:</strong> {{ open.review_note }}
@@ -277,12 +290,17 @@ async function reject() {
             <button
               type="button"
               class="btn btn--ghost"
-              :disabled="busy"
+              :disabled="busy || (exactMatch && !allowDuplicate)"
               @click="approve('official')"
             >
               Approve as Official
             </button>
-            <button type="button" class="btn" :disabled="busy" @click="approve('homebrew')">
+            <button
+              type="button"
+              class="btn"
+              :disabled="busy || (exactMatch && !allowDuplicate)"
+              @click="approve('homebrew')"
+            >
               Approve as Homebrew
             </button>
           </template>

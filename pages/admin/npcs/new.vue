@@ -129,20 +129,37 @@ async function save() {
 }
 
 /** Approves the suggestion with the reviewer's edits (system stays the player's). */
+/** Set when approving hit a name the pool already has; the reviewer renames or confirms. */
+const nameTaken = ref(false)
+const allowDuplicate = ref(false)
+watch(
+  () => form.value.name,
+  () => {
+    nameTaken.value = false
+    allowDuplicate.value = false
+  },
+)
+
 async function approveSubmission(id: string) {
   try {
-    await suggestions.approve(id, source.value, {
-      name: form.value.name.trim(),
-      kind: form.value.kind,
-      level: form.value.level.trim(),
-      stat_block: preview.value,
-      image_path: image.value,
-    })
+    await suggestions.approve(
+      id,
+      source.value,
+      {
+        name: form.value.name.trim(),
+        kind: form.value.kind,
+        level: form.value.level.trim(),
+        stat_block: preview.value,
+        image_path: image.value,
+      },
+      allowDuplicate.value,
+    )
     snackbar.show(
       `${form.value.name.trim()} approved as ${source.value === 'official' ? 'Official' : 'Homebrew'}`,
     )
     await navigateTo('/admin/npcs/suggestions')
   } catch (err) {
+    if ((err as { code?: string }).code === '23505') nameTaken.value = true
     snackbar.error(err, 'Could not approve it')
   } finally {
     saving.value = false
@@ -250,6 +267,11 @@ const note = computed(() =>
         <div class="gen__note">
           <span class="gen__sys">{{ systemLabel(system) }}</span>
           <span class="muted">{{ note }}</span>
+        </div>
+        <div v-if="nameTaken" class="notice" role="alert">
+          The pool already has an entry with this name for {{ systemLabel(system) }}. Rename it, or
+          confirm it’s a different creature.
+          <UiSwitch v-model="allowDuplicate" label="Different creature: approve anyway" />
         </div>
         <div v-if="loadingSource" class="spinner" role="status" aria-label="Loading the NPC" />
         <NpcManualForm
