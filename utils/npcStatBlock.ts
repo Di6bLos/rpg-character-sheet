@@ -1,10 +1,13 @@
-import type { GameSystem, NpcKind, StatBlock, StatEntry } from '~/types'
+import type { CreatureType, GameSystem, NpcKind, StatBlock, StatEntry } from '~/types'
+import { inferCreatureType, isCreatureType } from '~/utils/creatureTypes'
 
 /** The editable shape of an NPC in the manual builder; `toStatBlock` turns it into the stored JSON. */
 export interface NpcForm {
   name: string
   kind: NpcKind
   level: string
+  /** Broad type for the list filters; '' until chosen. */
+  creatureType: CreatureType | ''
   type: string
   size: string
   alignment: string
@@ -75,6 +78,7 @@ export function blankNpcForm(system: GameSystem, kind: NpcKind = 'monster'): Npc
     name: '',
     kind,
     level: '',
+    creatureType: kind === 'humanoid' ? 'Humanoid' : '',
     type: '',
     size: system === 'pf2e' ? '' : 'Medium',
     alignment: '',
@@ -125,6 +129,7 @@ export function toStatBlock(form: NpcForm, system: GameSystem): StatBlock {
     initMod = form.storedInit.mod
   }
   const block: StatBlock = {
+    creatureType: form.creatureType || inferCreatureType(form.type, form.kind),
     type: form.type.trim() || undefined,
     size: form.size.trim() || undefined,
     alignment: form.alignment.trim() || undefined,
@@ -156,6 +161,11 @@ export function fromStatBlock(
   form.name = meta.name
   form.level = meta.level
   form.type = block.type ?? ''
+  // Older entries and AI drafts carry only the free-text type: guess from it.
+  form.creatureType =
+    (isCreatureType(block.creatureType) ? block.creatureType : undefined) ??
+    inferCreatureType(block.type, meta.kind) ??
+    ''
   form.size = block.size ?? form.size
   form.alignment = block.alignment ?? ''
   form.gmNotes = meta.gmNotes ?? ''

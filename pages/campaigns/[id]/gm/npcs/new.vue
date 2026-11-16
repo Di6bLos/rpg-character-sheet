@@ -90,7 +90,7 @@ async function save() {
   if (!form.value.name.trim() || loadingSource.value) return
   saving.value = true
   try {
-    const { saved, published } = await npcs.save(
+    const saved = await npcs.save(
       campaignId.value,
       {
         system: system.value,
@@ -104,19 +104,7 @@ async function save() {
       },
       editId.value,
     )
-    if (!published)
-      snackbar.show(
-        `${saved.name} saved to your index, but it could not be added to the library`,
-        'error',
-      )
-    else
-      snackbar.show(
-        editId.value
-          ? `${saved.name} saved`
-          : site.settings.npc_pool_publish
-            ? `${saved.name} saved to your index and the library`
-            : `${saved.name} saved to your index`,
-      )
+    snackbar.show(editId.value ? `${saved.name} saved` : `${saved.name} saved to your index`)
     await navigateTo({
       path: `/campaigns/${campaignId.value}/gm/npcs`,
       query: { kind: saved.kind === 'humanoid' ? 'humanoid' : undefined, id: saved.id },

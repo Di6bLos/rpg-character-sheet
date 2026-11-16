@@ -75,8 +75,10 @@ Rules work goes through these so it stays consistent and cites its sources:
 | `/campaigns/:id/gm` | GM console | campaign GM |
 | `/join/:token` | Join by invite link | user |
 | `/library` | Document library | user |
-| `/settings` | Theme, accent, notifications | user |
+| `/settings` | Theme, accent, notifications, AI keys, suggested NPCs | user |
+| `/settings/npcs/new` | Suggest an NPC for the shared pool (`?edit=`, `?from=<campaignNpcId>`) | user |
 | `/admin`, `/admin/reports`, `/admin/campaigns`, `/admin/documents`, `/admin/npcs` | Admin area (NPCs: shared pool list + generator, Official / Homebrew) | admin, moderator |
+| `/admin/npcs/suggestions` | Review players' NPC suggestions (approve / edit & approve / send back) | admin, moderator |
 
 ## Data model
 
@@ -86,6 +88,7 @@ Schema lives in `supabase/migrations/`; every table has RLS. Key points:
 - `characters.sheet` is JSON typed per system (`types/sheets.ts`); a trigger caps characters at 5 per user. Shared keys (`class`, `lineage`, `hp`, `hpMax`, `ac`, `initMod`, `passivePerception`) feed the `campaign_roster` RPC.
 - A character joins a campaign through `campaign_members.character_id`.
 - `messages.recipient_ids` null = whole party; otherwise a secret message to those users.
+- NPCs: `npcs` is the shared pool (official + approved homebrew); only staff write it. Players suggest entries through `npc_submissions` (pending → approved/rejected via the `staff_approve_npc_submission` / `staff_reject_npc_submission` RPCs). `campaign_npcs` are a campaign's own copies and never reach the pool on their own.
 - Policy helpers live in the `private` schema (`is_staff`, `can`, `is_campaign_member`, `is_campaign_gm`).
 - Storage buckets: `portraits` (public), `campaign-files` (`{campaign_id}/…`, members only), `library` (`{user_id}/…`, any signed-in user can read).
 

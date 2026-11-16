@@ -31,11 +31,6 @@ const GROUPS: { title: string; features: Feature[] }[] = [
         label: 'NPCs in the Library',
         help: 'Everyone sees the “NPCs & monsters” tab in the Library. Off: the tab is hidden, the GM console can still use the pool.',
       },
-      {
-        key: 'npc_pool_publish',
-        label: 'Publish GM NPCs',
-        help: 'NPCs that GMs save are also added to the pool as homebrew. Off: they stay in their campaign. Staff can always add to the pool from Admin → NPCs.',
-      },
     ],
   },
   {
