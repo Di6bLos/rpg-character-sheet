@@ -120,6 +120,8 @@ export interface RosterEntry {
     deathSaves?: { successes: number; failures: number }
     concentration?: string
     actionsSpent?: number
+    /** Nimble mana pool. */
+    mana?: { current: number; max: number; temp: number }
     backstory?: string
   } | null
 }
