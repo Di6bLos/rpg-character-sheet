@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// Library → NPCs & monsters: the shared pool every GM's NPCs land in, plus
-// official ones from the rulebooks. GMs can pull any of them into a campaign.
+// Library → NPCs & monsters: the shared pool (official entries from the rulebooks
+// and approved player suggestions). GMs can pull any of them into a campaign.
 import type { PoolNpc } from '~/types'
+import { CREATURE_TYPES, SOURCE_FILTERS } from '~/utils/creatureTypes'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
 
 const auth = useAuthStore()
@@ -9,9 +10,20 @@ const campaigns = useCampaignStore()
 const npcs = useNpcStore()
 const snackbar = useSnackbarStore()
 
-const { system, kind, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
+const { system, creatureType, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
   useNpcPoolSearch(60)
 onMounted(() => void campaigns.fetchMine())
+// ?q= opens the tab on one name (Settings → "View" an approved suggestion).
+const route = useRoute()
+if (typeof route.query.q === 'string') q.value = route.query.q
+
+// The filter bar pins under the Library sub-nav while the cards slide up under it.
+const filtersEl = ref<HTMLElement | null>(null)
+const filtersStuck = useStuck(filtersEl)
+// A new search starts at the top of the list.
+watch([system, creatureType, source, q], () =>
+  nextTick(() => revealAfterStickyBar(filtersEl.value)),
+)
 
 // --- Detail -------------------------------------------------------------------------
 const open = ref<PoolNpc | null>(null)
@@ -65,36 +77,28 @@ async function remove() {
 <template>
   <div class="pool">
     <p class="muted pool__intro">
-      Every NPC a GM saves is shared here for other GMs to use. <strong>Official</strong> entries
-      are transcribed from the rulebooks; <strong>Homebrew</strong> ones were made by players like
-      you.
+      NPCs and monsters any GM can add to a campaign. <strong>Official</strong> entries are
+      transcribed from the rulebooks; <strong>Homebrew</strong> ones were suggested by players and
+      approved by our moderators.
+      <NuxtLink to="/settings#npc-suggestions">Suggest your own</NuxtLink>.
     </p>
 
-    <div class="pool__filters">
-      <div class="chips" role="group" aria-label="Source">
-        <button
-          v-for="s in [null, 'official', 'homebrew'] as const"
-          :key="String(s)"
-          type="button"
-          class="chip"
-          :aria-pressed="source === s"
-          @click="source = s"
-        >
-          {{ s === null ? 'All' : s === 'official' ? 'Official' : 'Homebrew' }}
-        </button>
-      </div>
-      <div class="chips" role="group" aria-label="Kind">
-        <button
-          v-for="k in [null, 'monster', 'humanoid'] as const"
-          :key="String(k)"
-          type="button"
-          class="chip"
-          :aria-pressed="kind === k"
-          @click="kind = k"
-        >
-          {{ k === null ? 'Everything' : k === 'monster' ? 'Monsters' : 'Humanoids' }}
-        </button>
-      </div>
+    <div ref="filtersEl" class="pool__filters sticky-bar" :class="{ 'is-stuck': filtersStuck }">
+      <label class="pool__sys">
+        <span class="sr-only">Source</span>
+        <select v-model="source" class="input">
+          <option v-for="o in SOURCE_FILTERS" :key="String(o.value)" :value="o.value">
+            {{ o.label }}
+          </option>
+        </select>
+      </label>
+      <label class="pool__sys">
+        <span class="sr-only">Creature type</span>
+        <select v-model="creatureType" class="input">
+          <option :value="null">All creature types</option>
+          <option v-for="t in CREATURE_TYPES" :key="t" :value="t">{{ t }}</option>
+        </select>
+      </label>
       <label class="pool__sys">
         <span class="sr-only">Game system</span>
         <select v-model="system" class="input">
@@ -110,7 +114,7 @@ async function remove() {
 
     <div v-if="loading" class="spinner" role="status" aria-label="Loading NPCs" />
     <p v-else-if="!list.length" class="empty">
-      Nothing here yet. NPCs appear as GMs save them in their consoles.
+      Nothing matches. Try another filter, or suggest an entry from Settings.
     </p>
     <ul v-else class="pool__grid">
       <li v-for="n in list" :key="n.id">
@@ -124,7 +128,9 @@ async function remove() {
           <span class="pool__text">
             <strong>{{ n.name }}</strong>
             <small>{{
-              [n.stat_block.type, n.level ? `Level ${n.level}` : ''].filter(Boolean).join(' · ')
+              [n.stat_block.type || n.stat_block.creatureType, n.level ? `Level ${n.level}` : '']
+                .filter(Boolean)
+                .join(' · ')
             }}</small>
             <span class="pool__tags">
               <span class="badge" :class="`badge--${n.system}`">{{ systemLabel(n.system) }}</span>
@@ -190,6 +196,10 @@ async function remove() {
 }
 
 .pool__filters {
+  --sticky-top: var(--subnav-h, 0px);
+  // Breathing room while pinned, without changing the resting layout.
+  margin-block: -10px;
+  padding-block: 10px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Admin → NPCs → Generator: build a pool NPC by hand (live preview) or with the
 // AI assistant, in any system, as Official or Homebrew. ?edit=<poolId> edits an
-// existing pool entry.
+// existing pool entry; ?submission=<id> reviews a player's suggestion, and saving
+// approves it with the reviewer's edits.
 import type { GameSystem, NpcSource } from '~/types'
 import { blankNpcForm, fromStatBlock, toStatBlock, type NpcForm } from '~/utils/npcStatBlock'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
@@ -20,6 +21,11 @@ const site = useSiteStore()
 const npcs = useNpcStore()
 
 const editId = ref<string | null>(typeof route.query.edit === 'string' ? route.query.edit : null)
+const submissionId = ref<string | null>(
+  typeof route.query.submission === 'string' ? route.query.submission : null,
+)
+const submitter = ref<string | null>(null)
+const suggestions = useNpcSubmissionStore()
 const system = ref<GameSystem>('nimble')
 const source = ref<NpcSource>('official')
 const mode = ref<'manual' | 'ai'>('manual')
@@ -37,6 +43,7 @@ const checks = ref<string[]>([])
 
 onMounted(async () => {
   void site.fetch().catch(() => undefined)
+  if (submissionId.value) return loadSubmission(submissionId.value)
   if (!editId.value) return
   loadingSource.value = true
   try {
@@ -58,6 +65,29 @@ onMounted(async () => {
   }
 })
 
+async function loadSubmission(id: string) {
+  loadingSource.value = true
+  try {
+    const s = await suggestions.get(id)
+    if (s.status !== 'pending') throw new Error('That suggestion was already reviewed')
+    system.value = s.system
+    source.value = 'homebrew'
+    form.value = fromStatBlock(s.stat_block, s.system, {
+      name: s.name,
+      kind: s.kind,
+      level: s.level,
+    })
+    image.value = s.image_path
+    submitter.value = s.submitter ? `@${s.submitter.handle}` : 'a deleted account'
+  } catch (err) {
+    snackbar.error(err, 'Could not open that suggestion')
+    submissionId.value = null
+    await navigateTo('/admin/npcs/suggestions')
+  } finally {
+    loadingSource.value = false
+  }
+}
+
 /** A new system starts a blank form (stat block fields differ per system). */
 function pickSystem(event: Event) {
   const next = (event.target as HTMLSelectElement).value as GameSystem
@@ -72,6 +102,7 @@ function pickSystem(event: Event) {
 async function save() {
   if (!form.value.name.trim() || loadingSource.value) return
   saving.value = true
+  if (submissionId.value) return approveSubmission(submissionId.value)
   try {
     const saved = await npcs.savePool(
       {
@@ -97,6 +128,44 @@ async function save() {
   }
 }
 
+/** Approves the suggestion with the reviewer's edits (system stays the player's). */
+/** Set when approving hit a name the pool already has; the reviewer renames or confirms. */
+const nameTaken = ref(false)
+const allowDuplicate = ref(false)
+watch(
+  () => form.value.name,
+  () => {
+    nameTaken.value = false
+    allowDuplicate.value = false
+  },
+)
+
+async function approveSubmission(id: string) {
+  try {
+    await suggestions.approve(
+      id,
+      source.value,
+      {
+        name: form.value.name.trim(),
+        kind: form.value.kind,
+        level: form.value.level.trim(),
+        stat_block: preview.value,
+        image_path: image.value,
+      },
+      allowDuplicate.value,
+    )
+    snackbar.show(
+      `${form.value.name.trim()} approved as ${source.value === 'official' ? 'Official' : 'Homebrew'}`,
+    )
+    await navigateTo('/admin/npcs/suggestions')
+  } catch (err) {
+    if ((err as { code?: string }).code === '23505') nameTaken.value = true
+    snackbar.error(err, 'Could not approve it')
+  } finally {
+    saving.value = false
+  }
+}
+
 // --- AI draft -----------------------------------------------------------------------
 function onDraft(draft: { form: NpcForm; assumptions: string[]; checks: string[] }) {
   form.value = draft.form
@@ -117,10 +186,26 @@ const note = computed(() =>
   <div class="page" style="max-width: 1320px; gap: 20px">
     <header class="page-head">
       <div>
-        <h1>{{ editId ? `Edit ${form.name || 'NPC'}` : 'New NPC' }}</h1>
-        <p>Saved straight to the shared pool, whatever the pool switches say.</p>
+        <h1>
+          {{
+            submissionId
+              ? `Review ${form.name || 'suggestion'}`
+              : editId
+                ? `Edit ${form.name || 'NPC'}`
+                : 'New NPC'
+          }}
+        </h1>
+        <p v-if="submissionId">
+          Suggested by {{ submitter ?? '…' }}. Fix anything that needs it; saving approves it into
+          the pool, credited to them.
+        </p>
+        <p v-else>Saved straight to the shared pool, whatever the pool switches say.</p>
       </div>
-      <NuxtLink to="/admin/npcs" class="btn btn--ghost">Back to NPCs</NuxtLink>
+      <NuxtLink
+        :to="submissionId ? '/admin/npcs/suggestions' : '/admin/npcs'"
+        class="btn btn--ghost"
+        >{{ submissionId ? 'Back to suggestions' : 'Back to NPCs' }}</NuxtLink
+      >
     </header>
 
     <div class="gen__cols">
@@ -132,7 +217,7 @@ const note = computed(() =>
               id="gen-system"
               class="input"
               :value="system"
-              :disabled="!!editId || loadingSource"
+              :disabled="!!editId || !!submissionId || loadingSource"
               @change="pickSystem"
             >
               <option v-for="s in SYSTEMS" :key="s.id" :value="s.id">{{ s.label }}</option>
@@ -155,7 +240,12 @@ const note = computed(() =>
           </div>
         </div>
 
-        <div v-if="!editId" role="tablist" aria-label="How to build it" class="seg">
+        <div
+          v-if="!editId && !submissionId"
+          role="tablist"
+          aria-label="How to build it"
+          class="seg"
+        >
           <button
             type="button"
             role="tab"
@@ -178,6 +268,11 @@ const note = computed(() =>
           <span class="gen__sys">{{ systemLabel(system) }}</span>
           <span class="muted">{{ note }}</span>
         </div>
+        <div v-if="nameTaken" class="notice" role="alert">
+          The pool already has an entry with this name for {{ systemLabel(system) }}. Rename it, or
+          confirm it’s a different creature.
+          <UiSwitch v-model="allowDuplicate" label="Different creature: approve anyway" />
+        </div>
         <div v-if="loadingSource" class="spinner" role="status" aria-label="Loading the NPC" />
         <NpcManualForm
           v-else-if="mode === 'manual'"
@@ -185,7 +280,7 @@ const note = computed(() =>
           v-model:image="image"
           :system="system"
           :busy="saving || loadingSource"
-          :save-label="editId ? 'Save changes' : 'Save to pool'"
+          :save-label="submissionId ? 'Approve' : editId ? 'Save changes' : 'Save to pool'"
           hide-notes
           @save="save"
         />

@@ -10,7 +10,6 @@ export const useSiteStore = defineStore('site', () => {
   const settings = ref<SiteSettings>({
     npc_pool_campaign: true,
     npc_pool_library: true,
-    npc_pool_publish: true,
     ai_enabled: true,
   })
   const loaded = ref(false)
@@ -22,7 +21,7 @@ export const useSiteStore = defineStore('site', () => {
     fetchedAt = Date.now()
     const { data, error } = await supabase
       .from('site_settings')
-      .select('npc_pool_campaign, npc_pool_library, npc_pool_publish, ai_enabled')
+      .select('npc_pool_campaign, npc_pool_library, ai_enabled')
       .maybeSingle()
     if (error) {
       fetchedAt = 0

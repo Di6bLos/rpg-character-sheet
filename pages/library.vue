@@ -19,8 +19,31 @@ const tab = computed(() =>
 )
 const snackbar = useSnackbarStore()
 
+// --- Pinned bars ----------------------------------------------------------------------
+// The page scrolls until the sub-nav reaches the top of the window; then the sub-nav and
+// the tab's filter bar stay pinned and the list keeps sliding up under them.
+const subnavEl = ref<HTMLElement | null>(null)
+const toolbarEl = ref<HTMLElement | null>(null)
+const subnavH = ref(0)
+const toolbarStuck = useStuck(toolbarEl)
+let subnavObserver: ResizeObserver | null = null
+watch(
+  subnavEl,
+  (node) => {
+    subnavObserver?.disconnect()
+    subnavH.value = node?.offsetHeight ?? 0
+    if (!node) return
+    subnavObserver = new ResizeObserver(() => (subnavH.value = node.offsetHeight))
+    subnavObserver.observe(node)
+  },
+  { flush: 'post' },
+)
+onBeforeUnmount(() => subnavObserver?.disconnect())
+
 const cat = ref<'All' | LibraryCategory>('All')
 const q = ref('')
+// A new search starts at the top of the documents list.
+watch([cat, q], () => nextTick(() => revealAfterStickyBar(toolbarEl.value)))
 const dragging = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
@@ -173,7 +196,7 @@ function report(doc: LibraryDocument) {
 </script>
 
 <template>
-  <div class="page" style="gap: 24px">
+  <div class="page lib" style="gap: 24px" :style="{ '--subnav-measured': `${subnavH}px` }">
     <header class="page-head">
       <div>
         <div class="eyebrow" style="letter-spacing: 0.14em; font-size: 11px">
@@ -218,7 +241,12 @@ function report(doc: LibraryDocument) {
       />
     </header>
 
-    <nav v-if="site.settings.npc_pool_library" aria-label="Library sections" class="lib-tabs">
+    <nav
+      v-if="site.settings.npc_pool_library"
+      ref="subnavEl"
+      aria-label="Library sections"
+      class="lib-tabs sticky-bar"
+    >
       <NuxtLink to="/library" :aria-current="tab === 'documents' ? 'page' : undefined"
         >Documents</NuxtLink
       >
@@ -236,7 +264,7 @@ function report(doc: LibraryDocument) {
         You can still open everything in the library.
       </RestrictedNotice>
 
-      <div class="toolbar">
+      <div ref="toolbarEl" class="toolbar sticky-bar" :class="{ 'is-stuck': toolbarStuck }">
         <div class="chips" role="group" aria-label="Category">
           <button
             v-for="c in categories"
@@ -422,7 +450,20 @@ function report(doc: LibraryDocument) {
 </template>
 
 <style scoped lang="scss">
+// Pinned bars: the sub-nav sticks at the very top, the tab's filters right under it.
+.lib {
+  --subnav-h: var(--subnav-measured, 0px);
+}
+
+.lib-tabs {
+  z-index: 3;
+}
+
 .toolbar {
+  --sticky-top: var(--subnav-h);
+  // Breathing room while pinned, without changing the resting layout.
+  margin-block: -10px;
+  padding-block: 10px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -513,6 +554,17 @@ function report(doc: LibraryDocument) {
       color: var(--page-text);
       box-shadow: inset 0 -3px 0 var(--accent);
     }
+  }
+}
+
+// Phones: only the filter bar pins, so the sticky area stays small.
+@media (max-width: 640px) {
+  .lib {
+    --subnav-h: 0px;
+  }
+
+  .lib-tabs {
+    position: static;
   }
 }
 </style>

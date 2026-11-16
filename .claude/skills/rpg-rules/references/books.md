@@ -22,7 +22,7 @@ The PDF → printed direction on spreads: PDF page `n` holds printed pages `2n�
 
 **Heroes**: Berserker 6–11 · Cheat 12–17 · Commander 18–23 · Hunter 24–29 · Mage 30–35 · Oathsworn 36–41 · Shadowmancer 42–47 · Shepherd 48–53 · Songweaver 54–59 · Stormshifter 60–65 · Zephyr 66–71 · story subclasses: Oathbreaker 74–75, Spellblade 76–77, Reaver 78–79, Beastmaster 80–81.
 
-**GM's Guide** (footer numbers): encounter guidelines, armor mix, minions 25–26 · Monster Builder table and flavour abilities 29–30 · bestiary 31–41 · legendary monsters 41–42, Legendary Monster Builder 43–44. The contents page numbers run one higher than the footers.
+**GM's Guide** (footer numbers): encounter guidelines, armor mix, minions 25–26 · Monster Builder table and flavour abilities 29–30 · bestiary 31–41 · legendary monsters 41–42, Legendary Monster Builder 43–44 (examples on 44) · legendary stat blocks 45–60 · sample-adventure bosses 67, 71 (all transcribed in `data/nimble/bestiary.ts`). The contents page numbers run one higher than the footers.
 
 **Creator's Kit** (single pages): fiddliness and conditions 3–6 · designing classes and the level framework 7–9 · average hero stats 10 · designing monsters 11–16 · legendary monsters 17–18 · magic items 19–20 · spell framework and average spell damage 21–22 · adventures 23–24 · license 2.
 

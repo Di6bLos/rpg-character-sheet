@@ -8,15 +8,28 @@ const links = computed(() => [
   { to: '/admin/campaigns', label: 'Campaigns' },
   { to: '/admin/documents', label: 'Documents' },
   { to: '/admin/npcs', label: 'NPCs' },
+  { to: '/admin/npcs/suggestions', label: 'NPC suggestions' },
 ])
 
-/** Sections with sub-pages (NPCs → generator) stay highlighted on them. */
+/** Sections with sub-pages (NPCs → generator) stay highlighted on them; the most specific link wins. */
+const current = computed(() => {
+  const hits = links.value.filter((l) =>
+    l.to === '/admin'
+      ? route.path === l.to
+      : route.path === l.to || route.path.startsWith(`${l.to}/`),
+  )
+  return hits.sort((a, b) => b.to.length - a.to.length)[0]?.to ?? null
+})
 function isCurrent(to: string) {
-  return to === '/admin' ? route.path === to : route.path === to || route.path.startsWith(`${to}/`)
+  return current.value === to
 }
 
 const { openCount, refresh } = useOpenReports()
-onMounted(refresh)
+const suggestions = useNpcSubmissionStore()
+onMounted(() => {
+  void refresh()
+  void suggestions.refreshPendingCount()
+})
 </script>
 
 <template>
@@ -36,6 +49,12 @@ onMounted(refresh)
           <span>{{ link.label }}</span>
           <span v-if="link.to === '/admin/reports' && openCount > 0" class="badge badge--accent">
             {{ openCount }}
+          </span>
+          <span
+            v-if="link.to === '/admin/npcs/suggestions' && suggestions.pendingCount > 0"
+            class="badge badge--accent"
+          >
+            {{ suggestions.pendingCount }}
           </span>
         </NuxtLink>
       </nav>
