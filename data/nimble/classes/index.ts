@@ -1,4 +1,5 @@
 import type { ClassDef, PoolOption, SubclassDef } from '../types'
+import { artificer } from './artificer'
 import { berserker } from './berserker'
 import { cheat } from './cheat'
 import { commander } from './commander'
@@ -11,7 +12,7 @@ import { songweaver } from './songweaver'
 import { stormshifter } from './stormshifter'
 import { zephyr } from './zephyr'
 
-/** In the order the Heroes book lists them. */
+/** In the order the Heroes book lists them, then classes from standalone PDFs. */
 export const NIMBLE_CLASSES: ClassDef[] = [
   berserker,
   cheat,
@@ -24,6 +25,7 @@ export const NIMBLE_CLASSES: ClassDef[] = [
   songweaver,
   stormshifter,
   zephyr,
+  artificer,
 ]
 
 export function classBySlug(slug: string): ClassDef | undefined {

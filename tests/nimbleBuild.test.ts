@@ -17,9 +17,11 @@ import {
   knownSpells,
   nimbleLevelPlan,
   recommendedStats,
+  sheetResource,
   subclassChangeChoices,
 } from '../utils/nimbleBuild'
 import { restoreLevel } from '../utils/levelHistory'
+import { abilityCounters } from '../utils/nimblePlay'
 import { autoPick, build, human, levelTo, pickLevel, survivalist } from './helpers/nimble'
 
 /** Hit Dice the hero's picked pool options add or remove (Fiendish Boon: -1). */
@@ -55,8 +57,8 @@ function choiceDefs(cls: ClassDef): [number | 'intro', ChoiceDef, string][] {
 }
 
 describe('nimble data', () => {
-  it('has the 11 classes, each with 2 regular subclasses', () => {
-    expect(NIMBLE_CLASSES).toHaveLength(11)
+  it('has the 12 classes, each with 2 regular subclasses', () => {
+    expect(NIMBLE_CLASSES).toHaveLength(12)
     for (const cls of NIMBLE_CLASSES)
       expect(
         cls.subclasses.filter((s) => !s.story),
@@ -122,14 +124,23 @@ describe('nimble data', () => {
   })
 
   it('has unique, resolvable options in every pool', () => {
-    for (const cls of NIMBLE_CLASSES)
+    for (const cls of NIMBLE_CLASSES) {
+      // A requirement is another pool option, or an ability the class or a subclass
+      // grants (Artificer upgrades need Thunder Gauntlets or the Tethercoil).
+      const granted = new Set([
+        ...cls.pools.flatMap((p) => p.options.map((o) => o.name)),
+        ...[cls, ...cls.subclasses].flatMap((t) =>
+          Object.values(t.levels).flatMap((d) => (d?.abilities ?? []).map((a) => a.name)),
+        ),
+      ])
       for (const pool of cls.pools) {
         const names = pool.options.map((o) => o.name)
         expect(new Set(names).size, `${cls.slug}/${pool.id} duplicate names`).toBe(names.length)
         for (const o of pool.options)
           if (o.requires)
-            expect(names, `${cls.slug}/${pool.id}: ${o.name} requires`).toContain(o.requires)
+            expect(granted.has(o.requires), `${cls.slug}/${pool.id}: ${o.name} requires`).toBe(true)
       }
+    }
   })
 
   it('names real abilities in replacesAbilities and resource.ability', () => {
@@ -571,6 +582,63 @@ describe('changeSubclass leaves nothing of the old subclass behind', () => {
                 expect(sheet.spells.schools).not.toContain(s)
             expect(sheet.hpMax).toBe(hpMax - hpBonus(from) + hpBonus(to))
           })
+})
+
+describe('Artificer', () => {
+  const artificer = classBySlug('artificer')!
+
+  it('starts with INT+DEX armor and the gauntlet prototype', () => {
+    const sheet = build(artificer)
+    expect(sheet.ac).toBe(classArmor(artificer, sheet.stats))
+    expect(classArmor(artificer, { STR: 2, DEX: 1, INT: 2, WIL: 0 })).toBe(3)
+    expect(sheet.attacks.map((a) => a.name)).toEqual(['Thunder Gauntlets Prototype'])
+  })
+
+  it('swaps the prototype for Thunder Gauntlets at level 2', () => {
+    const sheet = build(artificer)
+    levelTo(sheet, 2, 'inventor')
+    const names = sheet.abilities.map((a) => a.name)
+    expect(names).toContain('Thunder Gauntlets')
+    expect(names).not.toContain('Thunder Gauntlets Prototype')
+    expect(sheet.attacks[0]?.name).toBe('Thunder Gauntlets')
+    expect(sheet.attacks[0]?.dmg).toMatch(/^1d6/)
+  })
+
+  it('offers upgrades only for what the hero has invented', () => {
+    const sheet = build(artificer)
+    levelWith(sheet, 2, 'Manablade')
+    const plan = nimbleLevelPlan(sheet, 3, { subclassSlug: 'gadgeteer' })!
+    const offered = plan.choices.flatMap((c) => c.options.map((o) => o.value))
+    expect(offered).toContain('Manablade: Arc Module')
+    expect(offered).toContain('Thunder Gauntlets: Paired Resonators')
+    expect(offered).not.toContain('Manabolt Cannon: Amplified Conduit')
+  })
+
+  it('grows the Mana Dice: d12s and 3 extra max for an Inventor at 18', () => {
+    const sheet = build(artificer)
+    levelTo(sheet, 18, 'inventor')
+    const res = sheetResource(sheet, 18)!
+    expect(res.die).toBe(12)
+    expect(res.bonus).toBe(3)
+    const gadgeteer = build(artificer)
+    levelTo(gadgeteer, 14, 'gadgeteer')
+    expect(sheetResource(gadgeteer, 14)).toMatchObject({ die: 10, bonus: 1 })
+  })
+
+  it('reads use limits from the ability text', () => {
+    const sheet = build(artificer)
+    levelWith(sheet, 2, 'Stim Pack')
+    levelWith(sheet, 3, 'Stim Pack: Long-Range Construct', 'inventor')
+    for (let l = 4; l <= 7; l++)
+      applyNimbleLevel(sheet, l, { hpGain: 5, statBumps: {}, picks: pickLevel(sheet, l) })
+    const rule = (name: string) =>
+      abilityCounters(sheet, 7)
+        .find((e) => abilityBaseName(e.ability.name) === name)
+        ?.counters.map((c) => `${c.rule}/${c.period}`)
+    expect(rule('Stim Pack')).toEqual(['2/rest'])
+    expect(rule('Percussive Maintenance')).toEqual(['3/encounter'])
+    expect(rule('I’ve Got JUST the Thing!')).toEqual(['1/rest'])
+  })
 })
 
 describe('Reaver', () => {

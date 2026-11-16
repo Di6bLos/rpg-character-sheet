@@ -94,6 +94,10 @@ export interface LevelDef {
   spells?: { learn?: string[]; lose?: string[] }
   /** New size of the class resource die (Fury d6, Judgment d10…). */
   resourceDie?: number
+  /** Extra max class resource from this level on (Artificer: +1 max Mana Die). */
+  resourceBonus?: number
+  /** Renames an attack so it's rebuilt from another weapon (Thunder Gauntlets Prototype → Thunder Gauntlets). */
+  swapAttack?: { from: string; to: string }
   /** Hit Dice upgrade (Wild Heart d10). */
   hitDie?: number
   /** Flat bonus to max HP. */
@@ -189,7 +193,14 @@ export interface ClassDef {
   /** Names from WEAPONS that become attacks on the sheet. */
   startingWeapons: string[]
   /** How starting armor is worked out from gear: base, DEX cap, shield bonus. */
-  armorCalc: { base: number; dexMax?: number; shield?: number; addStr?: boolean }
+  armorCalc: {
+    base: number
+    dexMax?: number
+    shield?: number
+    addStr?: boolean
+    /** Add INT too (Artificer's Armor Prototype: INT+DEX). */
+    addInt?: boolean
+  }
   /** Formula text for the mana pool, and how to compute it. */
   mana?: { label: string; stat: NimbleStat; mult: number }
   resource?: ResourceDef

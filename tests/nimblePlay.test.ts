@@ -432,6 +432,7 @@ describe('class resources', () => {
 
   it('covers the classes that track one', () => {
     expect(withResource.map((c) => c.slug).sort()).toEqual([
+      'artificer',
       'berserker',
       'cheat',
       'commander',
