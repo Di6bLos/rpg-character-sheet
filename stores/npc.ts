@@ -41,8 +41,8 @@ export interface PoolFilter {
 
 /**
  * NPCs: a campaign's own index (`campaign_npcs`, GM only) and the shared pool
- * (`npcs`). Every NPC a GM saves is also published to the pool while the
- * admins have it switched on; the campaign keeps its own copy either way.
+ * (`npcs`). Only staff write the pool (Admin → NPCs, approved suggestions from
+ * `useNpcSubmissionStore`); GMs pull copies of its entries into a campaign.
  */
 export const useNpcStore = defineStore('npc', () => {
   const campaignNpcs = ref<CampaignNpc[]>([])
@@ -118,54 +118,10 @@ export const useNpcStore = defineStore('npc', () => {
   }
 
   /**
-   * Publishes to the pool (or updates the user's own pool entry). Returns the
-   * pool id: the one passed in when the pool is off, null when the write fails.
+   * Creates or updates a campaign NPC. It stays in the campaign: the pool only
+   * takes entries staff add or approve (players suggest them from Settings).
    */
-  async function publish(draft: NpcDraft, poolId: string | null): Promise<string | null> {
-    const site = useSiteStore()
-    const auth = useAuthStore()
-    if (!site.settings.npc_pool_publish) return poolId
-    const row = {
-      system: draft.system,
-      kind: draft.kind,
-      name: draft.name,
-      level: draft.level,
-      stat_block: draft.stat_block,
-      image_path: draft.image_path,
-      ai_generated: draft.ai_generated ?? false,
-    }
-    if (poolId) {
-      // Only the author's own entry changes; for official or other GMs' entries
-      // the update matches no rows and the campaign copy simply diverges.
-      const { error } = await supabase
-        .from('npcs')
-        .update(row)
-        .eq('id', poolId)
-        .eq('created_by', auth.userId!)
-      if (error) {
-        console.warn('Could not update the NPC in the library', error)
-        return null
-      }
-      return poolId
-    }
-    const { data, error } = await supabase.from('npcs').insert(row).select('id').single()
-    if (error) {
-      console.warn('Could not publish the NPC to the pool', error)
-      return null
-    }
-    return (data as { id: string }).id
-  }
-
-  /**
-   * Creates or updates a campaign NPC, then keeps the pool in step. The
-   * campaign copy is saved first, so a failed save never publishes anything;
-   * `published` is false when the pool is on but publishing failed.
-   */
-  async function save(
-    cid: string,
-    draft: NpcDraft,
-    id?: string | null,
-  ): Promise<{ saved: CampaignNpc; published: boolean }> {
+  async function save(cid: string, draft: NpcDraft, id?: string | null): Promise<CampaignNpc> {
     const existing = id ? campaignNpcs.value.find((n) => n.id === id) : undefined
     const row = {
       campaign_id: cid,
@@ -184,19 +140,7 @@ export const useNpcStore = defineStore('npc', () => {
       ? await supabase.from('campaign_npcs').update(row).eq('id', existing.id).select().single()
       : await supabase.from('campaign_npcs').insert(row).select().single()
     if (res.error) throw res.error
-    let saved = res.data as CampaignNpc
-    const site = useSiteStore()
-    const poolId = await publish(draft, saved.pool_npc_id)
-    const published = !site.settings.npc_pool_publish || poolId !== null
-    if (poolId && poolId !== saved.pool_npc_id) {
-      const link = await supabase
-        .from('campaign_npcs')
-        .update({ pool_npc_id: poolId })
-        .eq('id', saved.id)
-        .select()
-        .single()
-      if (!link.error) saved = link.data as CampaignNpc
-    }
+    const saved = res.data as CampaignNpc
     if (campaignId.value === cid) {
       const i = campaignNpcs.value.findIndex((n) => n.id === saved.id)
       if (i >= 0) campaignNpcs.value[i] = saved
@@ -205,7 +149,7 @@ export const useNpcStore = defineStore('npc', () => {
           a.name.localeCompare(b.name),
         )
     }
-    return { saved, published }
+    return saved
   }
 
   /** One pool NPC by id. */
@@ -217,7 +161,7 @@ export const useNpcStore = defineStore('npc', () => {
 
   /**
    * Staff (Admin → NPCs): creates or updates a pool NPC directly, Official or
-   * Homebrew, with no campaign copy. RLS lets staff write whatever the switches say.
+   * Homebrew, with no campaign copy. RLS lets only staff write the pool.
    */
   async function savePool(
     draft: Omit<NpcDraft, 'gm_notes'> & { source: NpcSource },

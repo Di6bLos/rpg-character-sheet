@@ -213,6 +213,7 @@ const toggles = [
         </section>
 
         <SettingsAiProviders />
+        <SettingsNpcSuggestions />
       </div>
 
       <aside class="settings__preview" aria-label="Live preview">

@@ -11,6 +11,7 @@ useHead({ title: 'NPCs · Lantern admin' })
 
 const npcs = useNpcStore()
 const site = useSiteStore()
+const suggestions = useNpcSubmissionStore()
 const snackbar = useSnackbarStore()
 
 const { system, creatureType, source, q, list, loading, loadingMore, hasMore, loadMore, forget } =
@@ -92,6 +93,12 @@ async function remove() {
     </header>
 
     <p v-if="poolNote" class="notice">{{ poolNote }}</p>
+    <p v-if="suggestions.pendingCount" class="notice">
+      {{ suggestions.pendingCount }}
+      {{ suggestions.pendingCount === 1 ? 'player suggestion is' : 'player suggestions are' }}
+      waiting for review.
+      <NuxtLink to="/admin/npcs/suggestions">Review them</NuxtLink>
+    </p>
 
     <section ref="panelEl" class="panel panel--flush" aria-labelledby="pool-h">
       <div ref="headEl" class="head">

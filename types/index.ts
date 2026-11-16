@@ -310,13 +310,37 @@ export interface CampaignNpc {
   updated_at: string
 }
 
+export type NpcSubmissionStatus = 'pending' | 'approved' | 'rejected'
+
+/** A player's suggested stat block for the shared pool, waiting for staff review. */
+export interface NpcSubmission {
+  id: string
+  system: GameSystem
+  kind: NpcKind
+  name: string
+  level: string
+  stat_block: StatBlock
+  image_path: string | null
+  /** The player's note to the reviewers. */
+  note: string
+  status: NpcSubmissionStatus
+  /** Why it wasn't approved (shown to the player). */
+  review_note: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  pool_npc_id: string | null
+  submitted_by: string
+  created_at: string
+  updated_at: string
+  /** Joined for the review queue. */
+  submitter?: { handle: string; display_name: string } | null
+}
+
 export interface SiteSettings {
   /** GMs browse the pool and pull NPCs into a campaign. */
   npc_pool_campaign: boolean
   /** The Library "NPCs & monsters" tab. */
   npc_pool_library: boolean
-  /** NPCs GMs save are also published to the pool. */
-  npc_pool_publish: boolean
   ai_enabled: boolean
 }
 

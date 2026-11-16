@@ -113,6 +113,13 @@ const pulled = computed(() =>
     ? (npcs.campaignNpcs.find((n) => n.pool_npc_id === selected.value!.npc.id) ?? null)
     : null,
 )
+/** The GM's own homebrew (not a copy of a pool entry) can be suggested for the Library. */
+const suggestLink = computed(() => {
+  const item = selected.value
+  if (item?.from !== 'campaign' || item.npc.pool_npc_id || item.npc.source !== 'homebrew')
+    return null
+  return { path: '/settings/npcs/new', query: { from: item.npc.id, campaign: campaignId.value } }
+})
 
 // --- Actions --------------------------------------------------------------------
 const count = ref(1)
@@ -344,7 +351,7 @@ watch(selectedId, () => {
         <p v-if="!list.length && !(where === 'pool' && poolLoading)" class="small muted">
           {{
             where === 'pool'
-              ? 'Nothing in the library matches. Every NPC a GM saves lands here.'
+              ? 'Nothing in the library matches. Players can suggest new entries from Settings.'
               : q
                 ? 'Nothing matches.'
                 : `No ${kind === 'monster' ? 'monsters' : 'humanoids'} yet. Build one, or pull one from the library.`
@@ -417,6 +424,9 @@ watch(selectedId, () => {
                 >Edit</NuxtLink
               >
               <NuxtLink :to="editLink('dup')" class="btn btn--ghost btn--sm">Duplicate</NuxtLink>
+              <NuxtLink v-if="suggestLink" :to="suggestLink" class="btn btn--ghost btn--sm"
+                >Suggest for the Library</NuxtLink
+              >
               <button
                 v-if="selected.from === 'campaign'"
                 type="button"

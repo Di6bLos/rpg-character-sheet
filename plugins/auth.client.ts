@@ -13,6 +13,7 @@ export default defineNuxtPlugin(async () => {
   const site = useSiteStore()
   const aiKeys = useAiKeysStore()
   const npcs = useNpcStore()
+  const suggestions = useNpcSubmissionStore()
   const router = useRouter()
   watch(
     () => authStore.userId,
@@ -21,6 +22,7 @@ export default defineNuxtPlugin(async () => {
       site.reset()
       aiKeys.reset()
       npcs.reset()
+      suggestions.reset()
       if (id) {
         notifications.start(router)
         // Site switches (NPC pool, AI) gate parts of the UI; failures leave the defaults.
