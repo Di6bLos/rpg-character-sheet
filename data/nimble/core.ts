@@ -67,6 +67,23 @@ export const WEAPONS: WeaponDef[] = [
     props: '2-handed, Range 12',
     melee: false,
   },
+  // Artificer 1.7 (p. 3). Damage type is the player's choice (p. 5), so it's left blank.
+  {
+    name: 'Thunder Gauntlets Prototype',
+    dice: '1d4',
+    stat: 'INT',
+    type: '',
+    props: 'Reach 4, may roll +1d4: each 1 pushes you back 1 space and knocks you Prone',
+    melee: true,
+  },
+  {
+    name: 'Thunder Gauntlets',
+    dice: '1d6',
+    stat: 'INT',
+    type: '',
+    props: 'Reach 4, + Mana Dice (push 1 space per die)',
+    melee: true,
+  },
 ]
 
 export function weaponByName(name: string): WeaponDef | undefined {
