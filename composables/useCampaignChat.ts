@@ -114,7 +114,8 @@ export function useCampaignChat(campaignId: Ref<string>) {
     markRead(t)
   }
 
-  async function send(body: string): Promise<boolean> {
+  /** Sends to the open thread, or to `to` (e.g. 'party') without switching threads. */
+  async function send(body: string, to: ThreadId = thread.value): Promise<boolean> {
     const text = body.trim()
     if (!text) return false
     sending.value = true
@@ -124,14 +125,14 @@ export function useCampaignChat(campaignId: Ref<string>) {
         .insert({
           campaign_id: campaignId.value,
           body: text,
-          recipient_ids: thread.value === 'party' ? null : [thread.value],
+          recipient_ids: to === 'party' ? null : [to],
         })
         .select()
         .single()
       if (error) throw error
       const row = data as Message
       if (!messages.value.some((m) => m.id === row.id)) messages.value.unshift(row)
-      markRead(thread.value)
+      markRead(to)
       return true
     } catch (err) {
       snackbar.error(err, 'Could not send the message')
