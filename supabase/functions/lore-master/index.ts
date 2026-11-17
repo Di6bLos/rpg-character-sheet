@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
           .limit(40),
         asUser
           .from('journal_entries')
-          .select('title, body, section, visibility, created_at')
+          .select('title, body, fields, section, visibility, created_at')
           .eq('campaign_id', body.campaignId)
           .order('created_at', { ascending: false })
           .limit(30),

@@ -96,6 +96,14 @@ export interface NpcRow {
 export interface JournalRow {
   title: string
   body: string
+  /** NPC and bestiary entries keep their text here, with an empty body. */
+  fields?: {
+    role?: string
+    attitude?: string
+    notes?: string
+    met?: string
+    facts?: { k: string; v: string }[]
+  } | null
   section: string
   visibility: string
   created_at: string
@@ -107,6 +115,21 @@ export interface GmContextInput {
   characters: CharacterRow[]
   npcs: NpcRow[]
   journal: JournalRow[]
+}
+
+/** An entry's text: the body, then any NPC or bestiary fields. */
+function journalText(j: JournalRow): string {
+  const f = j.fields ?? {}
+  return [
+    j.body,
+    f.role && `Role: ${f.role}`,
+    f.attitude && `Attitude: ${f.attitude}`,
+    f.met && `Met: ${f.met}`,
+    f.notes,
+    ...(f.facts ?? []).filter((x) => x.k && x.v).map((x) => `${x.k}: ${x.v}`),
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 /** Everything the GM's co-pilot may see about the campaign, newest journal first. */
@@ -145,7 +168,7 @@ export function gmContext(input: GmContextInput): string {
       '## Journal (newest first)',
       ...input.journal.slice(0, 30).map((j) => {
         const tag = j.visibility === 'gm' ? 'GM only' : 'party'
-        return `### ${j.title} [${j.section}, ${tag}, ${j.created_at.slice(0, 10)}]\n${clip(j.body, 700)}`
+        return `### ${j.title} [${j.section}, ${tag}, ${j.created_at.slice(0, 10)}]\n${clip(journalText(j), 700)}`
       }),
     )
   }
