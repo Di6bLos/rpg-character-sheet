@@ -10,7 +10,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev          # Start dev server (http://localhost:3000)
+npm run dev          # Start dev server (http://localhost:3000) against .env.local (the hosted project)
+npm run dev:local    # Local testing: starts the local Supabase stack, seeds test accounts, serves http://localhost:3100
+npm run dev:seed     # Re-seed the local test accounts and "Test Table" (`-- --reset` rebuilds the hero's sheet)
 npm run build        # Production build (nuxt build)
 npm run generate     # Static site generation (nuxt generate)
 npm run type-check   # TypeScript check (nuxt typecheck)
@@ -108,7 +110,7 @@ VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-Local database: `supabase start` runs a local stack on ports 5542x (see `supabase/config.toml`) and applies the migrations. Point the dev server at it by setting `VITE_SUPABASE_URL=http://127.0.0.1:55421` and the local anon key in the environment.
+Local testing: `npm run dev:local` is the one command. It starts the local stack (ports 5542x, see `supabase/config.toml`) if needed, runs `scripts/dev-seed.ts`, and serves on the fixed port 3100 with the local URL and anon key (process env beats `.env.local`). If 3100 is taken it names the process and stops instead of picking another port (`DEV_LOCAL_PORT` overrides). The seed is re-runnable and creates, in the local stack only, `admin@test.local` (site admin), `gm@test.local` and `player@test.local` (password in `utils/devAccounts.ts`) plus the Nimble campaign "Test Table" with the player's level 5 Mage "Iriel" seated. Against the local stack in dev, the sign-in page shows one-click Admin / GM / Player buttons.
 
 ## TypeScript
 
