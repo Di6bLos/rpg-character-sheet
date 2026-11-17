@@ -119,8 +119,23 @@ describe('lore-master context', () => {
           visibility: 'gm',
           created_at: '2026-11-01T00:00:00Z',
         },
+        {
+          title: 'Mira the fence',
+          body: '',
+          fields: {
+            role: 'Fence',
+            notes: 'Owes the party a favour',
+            facts: [{ k: 'Weakness', v: 'Gold' }],
+          },
+          section: 'npc',
+          visibility: 'party',
+          created_at: '2026-11-02T00:00:00Z',
+        },
       ],
     })
+    expect(text).toContain('Role: Fence')
+    expect(text).toContain('Owes the party a favour')
+    expect(text).toContain('Weakness: Gold')
     expect(text).toContain('Goblin King')
     expect(text).toContain('Weak to fire')
     expect(text).toContain('GM only')
