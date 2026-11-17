@@ -13,8 +13,18 @@ import {
   type NpcKind,
   type Threat,
 } from './prompt.ts'
-
-type Provider = 'anthropic' | 'google' | 'openai'
+import {
+  ATTEMPT_TIMEOUT_MS,
+  HttpError,
+  LABELS,
+  NPC_MODELS as MODELS,
+  cors,
+  fetchWithRetry,
+  json,
+  pingProvider,
+  providerError,
+  type Provider,
+} from '../_shared/ai.ts'
 
 interface InFile {
   name: string
@@ -41,132 +51,15 @@ interface Body {
   files?: InFile[]
 }
 
-const MODELS: Record<Provider, string> = {
-  anthropic: 'claude-opus-5-5',
-  google: 'gemini-3.8-flash',
-  openai: 'gpt-6-astra',
-}
-const LABELS: Record<Provider, string> = {
-  anthropic: 'Claude',
-  google: 'Gemini',
-  openai: 'ChatGPT',
-}
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
 const TEXT_TYPES = new Set(['text/plain', 'text/markdown'])
 const MAX_FILES = 4
 /** Base64 length of ~8 MB of files. */
 const MAX_BASE64 = 11_500_000
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
-class HttpError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message)
-  }
-}
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  })
-}
-
 function decodeText(b64: string): string {
   const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
   return new TextDecoder().decode(bytes).slice(0, 60_000)
-}
-
-function providerError(provider: Provider, status: number, detail: string): HttpError {
-  const who = LABELS[provider]
-  // Gemini answers a bad key with 400 API_KEY_INVALID rather than 401.
-  const badKey = /API_KEY_INVALID|API key not valid|invalid_api_key|Incorrect API key/i.test(detail)
-  if (status === 401 || status === 403 || badKey) {
-    return new HttpError(400, `${who} rejected your API key. Check it in Settings → AI providers.`)
-  }
-  if (status === 429) {
-    return new HttpError(
-      429,
-      `${who} says you're over your rate limit or out of credit. Try again later.`,
-    )
-  }
-  console.error(`${provider} error ${status}: ${detail.slice(0, 500)}`)
-  if (status === 503 || status === 529 || /overloaded|high demand|UNAVAILABLE/i.test(detail)) {
-    return new HttpError(
-      503,
-      `${who} is overloaded right now (that's on their side, not your key). Try again in a minute, or pick another provider.`,
-    )
-  }
-  if (status === 504 || status === 408) {
-    return new HttpError(
-      504,
-      `${who} took too long to answer. Try again, maybe with a shorter description.`,
-    )
-  }
-  return new HttpError(502, `${who} couldn't draft that right now (error ${status}). Try again.`)
-}
-
-/** Temporary provider failures worth retrying: overloaded, rate-spike, server errors. */
-const TRANSIENT = new Set([500, 502, 503, 504, 529])
-/** Each provider attempt gets this long before we give up on it. */
-const ATTEMPT_TIMEOUT_MS = 90_000
-
-/**
- * fetch with two quick retries (1.5 s, then 4 s) on transient errors, so a
- * momentary "high demand" spike doesn't fail the GM's request.
- */
-async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
-  const delays = [1500, 4000]
-  for (let attempt = 0; ; attempt++) {
-    let res: Response
-    try {
-      res = await fetch(url, { ...init, signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) })
-    } catch (err) {
-      if (
-        err instanceof DOMException &&
-        (err.name === 'TimeoutError' || err.name === 'AbortError')
-      ) {
-        res = new Response('timeout', { status: 504 })
-      } else {
-        throw err
-      }
-    }
-    const delay = delays[attempt]
-    if (!TRANSIENT.has(res.status) || delay === undefined) return res
-    await res.body?.cancel()
-    await new Promise((r) => setTimeout(r, delay))
-  }
-}
-
-// --- Providers ---------------------------------------------------------------------------
-
-async function pingProvider(provider: Provider, key: string): Promise<void> {
-  // Listing models costs no tokens and fails fast on a bad key.
-  if (provider === 'anthropic') {
-    try {
-      await new Anthropic({ apiKey: key, maxRetries: 0 }).models.list({ limit: 1 })
-    } catch (err) {
-      const status = err instanceof Anthropic.APIError ? (err.status ?? 502) : 502
-      throw providerError(provider, status, String(err))
-    }
-    return
-  }
-  const res =
-    provider === 'google'
-      ? await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', {
-          headers: { 'x-goog-api-key': key },
-        })
-      : await fetch('https://api.openai.com/v1/models', {
-          headers: { Authorization: `Bearer ${key}` },
-        })
-  if (!res.ok) throw providerError(provider, res.status, await res.text())
 }
 
 async function draftWithClaude(key: string, system: string, user: string, files: InFile[]) {

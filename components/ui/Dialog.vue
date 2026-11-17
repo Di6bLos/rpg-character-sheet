@@ -5,8 +5,10 @@ const props = withDefaults(
     title: string
     width?: string
     alert?: boolean
+    /** On phones, slide up from the bottom edge as a sheet instead of centring. */
+    sheet?: boolean
   }>(),
-  { width: '560px', alert: false },
+  { width: '560px', alert: false, sheet: false },
 )
 
 const open = defineModel<boolean>({ required: true })
@@ -32,6 +34,7 @@ function onBackdrop(event: MouseEvent) {
   <dialog
     ref="el"
     class="dialog"
+    :class="{ 'dialog--sheet': props.sheet }"
     :role="props.alert ? 'alertdialog' : undefined"
     :aria-labelledby="titleId"
     :style="{ '--dialog-width': props.width }"
@@ -39,6 +42,7 @@ function onBackdrop(event: MouseEvent) {
     @click="onBackdrop"
   >
     <div v-if="open" class="dialog__body panel">
+      <span v-if="props.sheet" class="dialog__grip" aria-hidden="true" />
       <header class="dialog__head">
         <div class="grow">
           <slot name="eyebrow" />
@@ -119,5 +123,71 @@ function onBackdrop(event: MouseEvent) {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 12px;
+}
+
+// --- Sheet variant ------------------------------------------------------------
+.dialog__grip {
+  display: none;
+}
+
+.dialog--sheet {
+  &[open] .dialog__body {
+    animation: dialog-rise 0.22s ease-out;
+  }
+
+  &[open]::backdrop {
+    animation: dialog-fade 0.22s ease-out;
+  }
+}
+
+@media (max-width: 560px) {
+  .dialog--sheet {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 88dvh;
+    margin: auto 0 0;
+
+    .dialog__body {
+      max-height: 88dvh;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      border-bottom-width: 0;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+
+    &[open] .dialog__body {
+      animation: dialog-slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .dialog__grip {
+      display: block;
+      flex: none;
+      width: 40px;
+      height: 4px;
+      margin: -8px auto -8px;
+      border-radius: 2px;
+      background: currentColor;
+      opacity: 0.25;
+    }
+  }
+}
+
+@keyframes dialog-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes dialog-slide-up {
+  from {
+    transform: translateY(100%);
+  }
 }
 </style>

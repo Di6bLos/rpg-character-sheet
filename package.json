@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "nuxt prepare",
     "dev": "nuxt dev",
+    "dev:local": "tsx scripts/dev-local.ts",
+    "dev:seed": "tsx scripts/dev-seed.ts",
     "build": "nuxt build",
     "preview": "nuxt preview",
     "generate": "nuxt generate",

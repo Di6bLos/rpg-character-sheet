@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Party tab: shared initiative strip, roster and chat. In the console the GM
 // also gets the add-combatants dialog and table management (invites, session, players).
+// Side panels: the player's quick actions (left) and the Lore Master (right).
 import type { Combatant } from '~/types'
 import { plural } from '~/utils/format'
 import { combatantName, groupLabels } from '~/utils/initiative'
@@ -109,7 +110,10 @@ async function addCustom() {
 
 <template>
   <div class="party-layout">
+    <!-- Below 1200px the side panels open from tabs stacked here (they teleport in). -->
+    <div class="edge-tabs" />
     <BoardActionPanel v-if="mode === 'board'" />
+    <BoardLorePanel />
     <div class="party">
       <BoardInitiative :init="init" :roster="roster" :gm="gmControls" @add="addOpen = true" />
 

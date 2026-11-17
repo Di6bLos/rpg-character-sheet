@@ -280,6 +280,31 @@ async function saveEdit(e: JournalEntry) {
   }
 }
 
+// --- Backstory modal ---------------------------------------------------------------
+function heroLine(r: RosterEntry) {
+  const who = [r.summary?.lineage, r.summary?.class].filter(Boolean).join(' ') || 'Adventurer'
+  return `${who} ${r.character_level} · played by ${r.display_name}`
+}
+const storyHero = ref<RosterEntry | null>(null)
+/** The whole backstory; the roster only carries a 4,000-character preview. */
+const storyFull = ref<string | null>(null)
+watch(storyHero, async (hero) => {
+  storyFull.value = null
+  if (!hero?.character_id) return
+  const { data, error } = await supabase.rpc('campaign_backstory', {
+    p_campaign: campaignId.value,
+    p_character: hero.character_id,
+  })
+  // Keep showing the preview if this fails or another hero was opened meanwhile.
+  if (!error && typeof data === 'string' && storyHero.value === hero) storyFull.value = data
+})
+const storyOpen = computed({
+  get: () => storyHero.value !== null,
+  set: (v) => {
+    if (!v) storyHero.value = null
+  },
+})
+
 const removeTarget = ref<JournalEntry | null>(null)
 const removeOpen = computed({
   get: () => removeTarget.value !== null,
@@ -516,31 +541,48 @@ async function confirmRemove() {
       <!-- Characters -->
       <div v-else-if="section === 'characters'" class="chars">
         <article v-for="r in shownHeroes" :key="r.user_id" class="panel char">
-          <div class="char__who">
-            <UiAvatar
-              :name="r.character_name ?? r.display_name"
-              :portrait-path="r.portrait_path"
-              :class-slug="r.summary?.classSlug ?? null"
-              :size="64"
-            />
-            <span class="char__names">
-              <h3>{{ r.character_name }}</h3>
-              <span>
-                {{
-                  [r.summary?.lineage, r.summary?.class].filter(Boolean).join(' ') || 'Adventurer'
-                }}
-                {{ r.character_level }} · played by {{ r.display_name }}
+          <button
+            v-if="r.summary?.backstory"
+            type="button"
+            class="char__open"
+            @click="storyHero = r"
+          >
+            <span class="char__who">
+              <UiAvatar
+                :name="r.character_name ?? r.display_name"
+                :portrait-path="r.portrait_path"
+                :class-slug="r.summary?.classSlug ?? null"
+                :size="64"
+              />
+              <span class="char__names">
+                <span class="char__name">{{ r.character_name }}</span>
+                <span>{{ heroLine(r) }}</span>
               </span>
             </span>
-          </div>
-          <p v-if="r.summary?.backstory" class="char__bg">{{ r.summary.backstory }}</p>
-          <p v-else class="small muted">
-            {{
-              r.user_id === auth.userId
-                ? 'Add a background story on your sheet and it shows here.'
-                : 'No background story yet.'
-            }}
-          </p>
+            <span class="char__bg">{{ r.summary.backstory }}</span>
+            <span class="char__more">Read full story →</span>
+          </button>
+          <template v-else>
+            <div class="char__who">
+              <UiAvatar
+                :name="r.character_name ?? r.display_name"
+                :portrait-path="r.portrait_path"
+                :class-slug="r.summary?.classSlug ?? null"
+                :size="64"
+              />
+              <span class="char__names">
+                <h3 class="char__name">{{ r.character_name }}</h3>
+                <span>{{ heroLine(r) }}</span>
+              </span>
+            </div>
+            <p class="small muted">
+              {{
+                r.user_id === auth.userId
+                  ? 'Add a background story on your sheet and it shows here.'
+                  : 'No background story yet.'
+              }}
+            </p>
+          </template>
           <template v-if="gmControls">
             <div v-for="s in secretsFor(r.character_id!)" :key="s.id" class="char__secret">
               <span class="char__secret-label">GM secret · {{ shortDate(s.created_at) }}</span>
@@ -586,6 +628,27 @@ async function confirmRemove() {
     </div>
 
     <ReportDialog :target="reportTarget" @close="reportTarget = null" />
+
+    <UiDialog
+      v-model="storyOpen"
+      :title="storyHero?.character_name ?? storyHero?.display_name ?? ''"
+      width="640px"
+      sheet
+    >
+      <template #eyebrow>
+        <span class="story__meta">
+          <UiAvatar
+            v-if="storyHero"
+            :name="storyHero.character_name ?? storyHero.display_name"
+            :portrait-path="storyHero.portrait_path"
+            :class-slug="storyHero.summary?.classSlug ?? null"
+            :size="40"
+          />
+          <span>{{ storyHero ? heroLine(storyHero) : '' }}</span>
+        </span>
+      </template>
+      <p class="story__text">{{ storyFull ?? storyHero?.summary?.backstory }}</p>
+    </UiDialog>
 
     <UiDialog
       v-model="removeOpen"
@@ -945,24 +1008,76 @@ async function confirmRemove() {
   gap: 2px;
   min-width: 0;
 
-  h3 {
-    margin: 0;
-    font-family: var(--font-heading);
-    font-size: 23px;
-    line-height: 1.15;
-  }
-
   span {
     font-size: 14px;
     color: var(--page-muted);
   }
+
+  .char__name {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: 23px;
+    line-height: 1.15;
+    color: var(--page-text);
+  }
+}
+
+// The whole top of the card opens the story.
+.char__open {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: -8px;
+  padding: 8px;
+  border: 0;
+  border-radius: min(var(--radius-control), 8px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--field);
+  }
+
+  &:hover .char__more,
+  &:focus-visible .char__more {
+    text-decoration: underline;
+  }
 }
 
 .char__bg {
-  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
   font-size: 16px;
   line-height: 1.6;
   color: var(--page-soft);
+}
+
+.char__more {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.story__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--page-muted);
+}
+
+.story__text {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.7;
   white-space: pre-wrap;
 }
 

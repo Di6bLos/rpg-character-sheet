@@ -93,7 +93,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    await supabase.auth.signOut()
+    // This browser only: the default ("global") ends the account's sessions in every
+    // other tab and device too, which then fail with 401s until they sign in again.
+    await supabase.auth.signOut({ scope: 'local' })
     session.value = null
     profile.value = null
     permissions.value = null
