@@ -34,13 +34,21 @@ export function useLoreMaster() {
   const free = computed(() => aiKeys.loaded && aiKeys.keys.length === 0)
   /** Free questions left today; null when on their own key or not known yet. */
   const freeRemaining = ref<number | null>(null)
+  /** UTC day the allowance was read for; a new day renews it. */
+  let freeDay = ''
+  let midnightTimer: ReturnType<typeof setTimeout> | undefined
 
   async function loadFreeRemaining() {
+    clearTimeout(midnightTimer)
     if (!free.value || !auth.userId) {
       freeRemaining.value = null
       return
     }
-    const today = new Date().toISOString().slice(0, 10)
+    const now = new Date()
+    const today = now.toISOString().slice(0, 10)
+    freeDay = today
+    const nextUtcDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+    midnightTimer = setTimeout(() => void loadFreeRemaining(), nextUtcDay - now.getTime() + 1000)
     const { data } = await supabase
       .from('ai_free_usage')
       .select('count')
@@ -51,6 +59,20 @@ export function useLoreMaster() {
   }
   watch([free, () => site.settings.free_ai_daily_limit], () => void loadFreeRemaining(), {
     immediate: true,
+  })
+  // Timers sleep in background tabs: re-read when the tab comes back on a new day.
+  function onVisible() {
+    if (
+      document.visibilityState === 'visible' &&
+      freeDay !== new Date().toISOString().slice(0, 10)
+    ) {
+      void loadFreeRemaining()
+    }
+  }
+  document.addEventListener('visibilitychange', onVisible)
+  onScopeDispose(() => {
+    clearTimeout(midnightTimer)
+    document.removeEventListener('visibilitychange', onVisible)
   })
 
   const storageKey = computed(() => `lantern:lore:${campaignId.value}:${auth.userId ?? ''}`)
