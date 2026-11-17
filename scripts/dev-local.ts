@@ -61,11 +61,11 @@ async function main() {
     process.exit(1)
   }
 
-  let stack = localStack()
+  let stack = await localStack()
   if (!stack) {
     console.log('Starting the local Supabase stack…')
     execFileSync('supabase', ['start'], { stdio: 'inherit' })
-    stack = localStack()
+    stack = await localStack()
     if (!stack) throw new Error('The local Supabase stack did not start.')
   }
 

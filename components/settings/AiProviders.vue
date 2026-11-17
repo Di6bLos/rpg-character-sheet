@@ -79,6 +79,10 @@ async function makeDefault(p: AiProvider) {
       provider. Keys are encrypted on the server and never shown again; only the last four
       characters are kept for you to recognise them.
     </p>
+    <p v-if="site.settings.ai_enabled && site.settings.free_ai_enabled" class="small muted">
+      No key? The Lore Master still works on the site's free agent, up to
+      {{ site.settings.free_ai_daily_limit }} questions a day.
+    </p>
     <p v-if="!site.settings.ai_enabled" class="small ai__off" role="note">
       An admin has turned the AI features off for now. Your saved keys stay put.
     </p>

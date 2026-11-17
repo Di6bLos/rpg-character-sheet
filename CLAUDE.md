@@ -2,7 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+- Before making any updates, cut a new branch from an up-to-date `stage` (`git checkout stage && git pull && git checkout -b <type>/<short-name>`). Never commit directly to `stage` or `main`; PRs target `stage`.
+
 - when working on a 'feature' from the `_features.md` list, check off the tasks as you complete them.
+- After adding or changing a feature, run a quick browser smoke test before calling it done: open it on the local stack (`npm run dev:local`, sign in with the matching test account), click through its buttons, menus, dialogs and forms, and read the browser console and failed network requests. Fix any warning or error the app causes; name any that come from outside the app (browser extensions, an expired session) instead of chasing them. Headless Playwright is fine when the MCP browsers are busy.
 - Run the ui-ux-reviewer only after major UI changes (layout changes, new components or pages), not after every sprint of updates
 
 ## Commands
@@ -50,6 +53,9 @@ npm run preview      # Preview production build locally
 - `components/nimble/` — `HeroCard`, `Sigil`, `ChoicePicker` (shared by creation, level-up, subclass change), `SubclassDialog`; the panels of the Nimble sheet: `SheetVitals`, `SheetResources` (mana, class resource, concentration), `SheetTurn` (action tracker, New turn / New encounter), `SheetActions` (attacks, reactions, the limited-use abilities with their counters), `SheetAbilities` (every ability with its text), `SheetSpells`, `SheetConditions`, `SheetInventory`
 - `composables/useNimbleActions.ts`, `useNimbleSpells.ts` — attack rolls, reactions, ability counters and spell casting for the Nimble sheet in the current sheet editor; shared by the sheet panels and the board's quick-action panel (`onResult` gets each result message)
 - `components/board/ActionPanel*.vue` — the player's quick-action panel on the Party tab (Nimble only): docked in the page margin left of the content (≥1200px, collapsible; the shell shifts right to make room) or a drawer behind an edge tab; one `<dialog>` for both so its sheet editor stays mounted. Results post to party chat
+- `components/board/LorePanel*.vue` — the Lore Master AI chat on the Party tab, for GMs (co-GM) and players (rules and their own hero), all systems; shown when `site_settings.ai_enabled` and the user has an AI key or the free agent is on (`site_settings.free_ai_enabled`: keyless users ask on the site's Gemini key, `FREE_AI_GEMINI_KEY`, up to `free_ai_daily_limit` questions a day). Docked in the right margin (≥1200px) or a drawer behind a "Lore" edge tab. `composables/useLoreMaster.ts` keeps the chat (sessionStorage) and calls the `lore-master` Edge Function; `utils/loreContext.ts` builds the public Nimble rules pack; `utils/loreText.ts` renders replies as escaped markdown
+- `composables/useDockedPanel.ts` — the one-`<dialog>` dock/drawer logic both side panels share. Their edge tabs teleport into PartyView's `.edge-tabs` stack; the shell shift for both margins lives in `assets/styles/_board-dock.scss`
+- `supabase/functions/` — Edge Functions on the user's own AI key (Supabase Vault): `generate-npc`, `lore-master` (falls back to the free agent's key when the user has none); shared HTTP, retry and provider-error helpers in `_shared/ai.ts`
 - `utils/nimblePlay.ts` — table-side Nimble rules (damage and dying, rests, mana, turn tracker, inventory slots) and `abilityCounters()`, which reads use limits ("1/encounter", "WIL times/Safe Rest", pools) from ability text; only abilities with a limit show in the Actions panel; covered by `tests/nimblePlay.test.ts`. A class's resource panel comes from `ClassDef.resource` via `sheetResource()` in `utils/nimbleBuild.ts`
 - Components in subfolders are auto-registered with the folder as prefix (`components/ui/Dialog.vue` is `<UiDialog>`)
 - All components use `<script setup lang="ts">`
@@ -94,6 +100,8 @@ Schema lives in `supabase/migrations/`; every table has RLS. Key points:
 - `messages.recipient_ids` null = whole party; otherwise a secret message to those users. `messages.kind` is `'chat'` (typed) or `'action'` (rolls and casts the quick-action panel posts; the chat shows them as a compact log row only when the viewer turns on "Battle log" (off by default, remembered per browser); they raise no notifications and the dashboard skips them).
 - NPCs: `npcs` is the shared pool (official + approved homebrew); only staff write it. Players suggest entries through `npc_submissions` (pending → approved/rejected via the `staff_approve_npc_submission` / `staff_reject_npc_submission` RPCs). `campaign_npcs` are a campaign's own copies and never reach the pool on their own.
 - Policy helpers live in the `private` schema (`is_staff`, `can`, `is_campaign_member`, `is_campaign_gm`).
+- Lore Master context is chosen in the Edge Function from the caller's `campaign_members.role`: a GM gets the campaign (roster, sheets, NPCs, journal); a player gets only their own character, so campaign secrets never reach a player's prompt.
+- Free Lore Master allowance: `ai_free_usage` (one row per user per UTC day, users read their own). Only the service role calls `use_free_ai` (atomic take, returns questions left or -1) and `refund_free_ai` (when the provider call fails); admins set the cap with `admin_set_free_ai_limit`.
 - Storage buckets: `portraits` (public), `campaign-files` (`{campaign_id}/…`, members only), `library` (`{user_id}/…`, any signed-in user can read).
 
 ## Environment
@@ -104,7 +112,7 @@ VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-Local testing: `npm run dev:local` is the one command. It starts the local stack (ports 5542x, see `supabase/config.toml`) if needed, runs `scripts/dev-seed.ts`, and serves on the fixed port 3100 with the local URL and anon key (process env beats `.env.local`). If 3100 is taken it names the process and stops instead of picking another port (`DEV_LOCAL_PORT` overrides). The seed is re-runnable and creates, in the local stack only, `admin@test.local` (site admin), `gm@test.local` and `player@test.local` (password in `utils/devAccounts.ts`) plus the Nimble campaign "Test Table" with the player's level 5 Mage "Iriel" seated. Against the local stack in dev, the sign-in page shows one-click Admin / GM / Player buttons.
+Local testing: `npm run dev:local` is the one command. It starts the local stack (ports 5542x, see `supabase/config.toml`) if needed, runs `scripts/dev-seed.ts`, and serves on the fixed port 3100 with the local URL and anon key (process env beats `.env.local`). If 3100 is taken it names the process and stops instead of picking another port (`DEV_LOCAL_PORT` overrides). The seed is re-runnable and creates, in the local stack only, `admin@test.local` (site admin), `gm@test.local` and `player@test.local` (password in `utils/devAccounts.ts`) plus the Nimble campaign "Test Table" with the player's level 5 Mage "Iriel" seated. Against the local stack in dev, the sign-in page shows one-click Admin / GM / Player buttons. To try the free Lore Master locally, put `FREE_AI_GEMINI_KEY=…` in `supabase/functions/.env` (gitignored), restart the stack so the edge runtime picks it up, and turn on "Free Lore Master" in Admin → Site features.
 
 ## TypeScript
 

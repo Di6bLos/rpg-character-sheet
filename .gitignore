@@ -57,3 +57,4 @@ ux-review/
 
 # Local source material (rule PDFs)
 .local/
+supabase/functions/.env
