@@ -286,6 +286,18 @@ function heroLine(r: RosterEntry) {
   return `${who} ${r.character_level} · played by ${r.display_name}`
 }
 const storyHero = ref<RosterEntry | null>(null)
+/** The whole backstory; the roster only carries a 4,000-character preview. */
+const storyFull = ref<string | null>(null)
+watch(storyHero, async (hero) => {
+  storyFull.value = null
+  if (!hero?.character_id) return
+  const { data, error } = await supabase.rpc('campaign_backstory', {
+    p_campaign: campaignId.value,
+    p_character: hero.character_id,
+  })
+  // Keep showing the preview if this fails or another hero was opened meanwhile.
+  if (!error && typeof data === 'string' && storyHero.value === hero) storyFull.value = data
+})
 const storyOpen = computed({
   get: () => storyHero.value !== null,
   set: (v) => {
@@ -635,7 +647,7 @@ async function confirmRemove() {
           <span>{{ storyHero ? heroLine(storyHero) : '' }}</span>
         </span>
       </template>
-      <p class="story__text">{{ storyHero?.summary?.backstory }}</p>
+      <p class="story__text">{{ storyFull ?? storyHero?.summary?.backstory }}</p>
     </UiDialog>
 
     <UiDialog
