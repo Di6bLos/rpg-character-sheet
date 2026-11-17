@@ -15,12 +15,15 @@ import {
   json,
   providerError,
   type Provider,
+  type RetryOptions,
 } from '../_shared/ai.ts'
 import {
   MAX_RULES_PACK,
   cleanTurns,
   clip,
+  freeAgentError,
   gmContext,
+  pickKeySource,
   serializeSheet,
   type CharacterRow,
   type ChatTurn,
@@ -39,6 +42,16 @@ interface Body {
 }
 
 const MAX_TOKENS = 16000
+/**
+ * The free agent's models, aliases Google keeps current: the lite model answers
+ * fast on the free tier; the full one is the second try when it's busy.
+ * FREE_AI_MODEL replaces the first.
+ */
+const FREE_MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest']
+/** One 30 s attempt per model, so a busy free tier fails in about a minute, not past the gateway. */
+const FREE_ATTEMPT: RetryOptions = { timeoutMs: 30_000, delays: [] }
+/** Busy-provider statuses worth trying the other model for. */
+const FREE_RETRY = new Set([429, 500, 502, 503, 504])
 
 // --- Providers ---------------------------------------------------------------------------
 
@@ -75,9 +88,15 @@ async function chatWithClaude(key: string, system: string, turns: ChatTurn[]): P
   return response.stop_reason === 'max_tokens' ? `${text}\n\n*(The answer was cut off.)*` : text
 }
 
-async function chatWithGemini(key: string, system: string, turns: ChatTurn[]): Promise<string> {
+async function chatWithGemini(
+  key: string,
+  system: string,
+  turns: ChatTurn[],
+  model: string = CHAT_MODELS.google,
+  retry?: RetryOptions,
+): Promise<string> {
   const res = await fetchWithRetry(
-    `https://generativelanguage.googleapis.com/v1beta/models/${CHAT_MODELS.google}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: 'POST',
       headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
@@ -89,6 +108,7 @@ async function chatWithGemini(key: string, system: string, turns: ChatTurn[]): P
         })),
       }),
     },
+    retry,
   )
   if (!res.ok) throw providerError('google', res.status, await res.text())
   const data = await res.json()
@@ -156,7 +176,10 @@ Deno.serve(async (req) => {
     if (turns.at(-1)?.role !== 'user') throw new HttpError(400, 'Ask a question first.')
     const rulesPack = clip(typeof body.rulesPack === 'string' ? body.rulesPack : '', MAX_RULES_PACK)
 
-    const { data: settings } = await admin.from('site_settings').select('ai_enabled').maybeSingle()
+    const { data: settings } = await admin
+      .from('site_settings')
+      .select('ai_enabled, free_ai_enabled')
+      .maybeSingle()
     if (!settings?.ai_enabled) throw new HttpError(403, 'An admin has turned the AI features off.')
 
     const { data: member } = await asUser
@@ -178,7 +201,14 @@ Deno.serve(async (req) => {
     })
     if (keyError) throw keyError
     const keyRow = (keyRows as { provider: Provider; api_key: string }[] | null)?.[0]
-    if (!keyRow) {
+    const freeKey = Deno.env.get('FREE_AI_GEMINI_KEY') ?? ''
+    const source = pickKeySource({
+      hasOwnKey: !!keyRow,
+      requestedProvider: body.provider,
+      freeEnabled: !!settings.free_ai_enabled,
+      freeKeySet: !!freeKey,
+    })
+    if (source === 'none') {
       throw new HttpError(
         400,
         body.provider
@@ -238,18 +268,63 @@ Deno.serve(async (req) => {
       system = playerPrompt(campaign.system, sheet, rulesPack)
     }
 
+    const role = member.role === 'gm' ? 'gm' : 'player'
+
+    if (source === 'free') {
+      // Taken before the call (so parallel requests can't overshoot), given back on failure.
+      const { data: left, error: quotaError } = await admin.rpc('use_free_ai', { p_user: user.id })
+      if (quotaError) throw quotaError
+      if ((left as number) < 0) {
+        throw new HttpError(
+          429,
+          "You've used today's free questions. Add your own key in Settings → AI providers for unlimited use.",
+        )
+      }
+      const models = [Deno.env.get('FREE_AI_MODEL') || FREE_MODELS[0]!, FREE_MODELS[1]!]
+      let model = models[0]!
+      let reply: string
+      try {
+        try {
+          reply = await chatWithGemini(freeKey, system, turns, model, FREE_ATTEMPT)
+        } catch (err) {
+          // Free-tier capacity comes and goes: try the other model before giving up.
+          if (!(err instanceof HttpError) || !FREE_RETRY.has(err.status)) throw err
+          model = models[1]!
+          reply = await chatWithGemini(freeKey, system, turns, model, FREE_ATTEMPT)
+        }
+      } catch (err) {
+        await admin.rpc('refund_free_ai', { p_user: user.id })
+        if (err instanceof HttpError) {
+          const free = freeAgentError(err.status, err.message)
+          throw new HttpError(free.status, free.message)
+        }
+        throw err
+      }
+      return json({
+        reply,
+        role,
+        provider: 'google',
+        model,
+        free: true,
+        freeRemaining: left as number,
+      })
+    }
+
+    const own = keyRow!
     const reply =
-      keyRow.provider === 'anthropic'
-        ? await chatWithClaude(keyRow.api_key, system, turns)
-        : keyRow.provider === 'google'
-          ? await chatWithGemini(keyRow.api_key, system, turns)
-          : await chatWithOpenAI(keyRow.api_key, system, turns)
+      own.provider === 'anthropic'
+        ? await chatWithClaude(own.api_key, system, turns)
+        : own.provider === 'google'
+          ? await chatWithGemini(own.api_key, system, turns)
+          : await chatWithOpenAI(own.api_key, system, turns)
 
     return json({
       reply,
-      role: member.role === 'gm' ? 'gm' : 'player',
-      provider: keyRow.provider,
-      model: CHAT_MODELS[keyRow.provider],
+      role,
+      provider: own.provider,
+      model: CHAT_MODELS[own.provider],
+      free: false,
+      freeRemaining: null,
     })
   } catch (err) {
     if (err instanceof HttpError) return json({ error: err.message }, err.status)

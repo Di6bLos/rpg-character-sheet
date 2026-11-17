@@ -151,3 +151,37 @@ export function gmContext(input: GmContextInput): string {
   }
   return clip(parts.join('\n\n'), MAX_GM_CONTEXT)
 }
+
+export type KeySource = 'own' | 'free' | 'none'
+
+/**
+ * Whose key answers: the user's own key always wins; the site's free Gemini key
+ * only stands in when the user has none and didn't ask for a specific provider.
+ */
+export function pickKeySource(input: {
+  hasOwnKey: boolean
+  requestedProvider: string | null | undefined
+  freeEnabled: boolean
+  freeKeySet: boolean
+}): KeySource {
+  if (input.hasOwnKey) return 'own'
+  if (!input.requestedProvider && input.freeEnabled && input.freeKeySet) return 'free'
+  return 'none'
+}
+
+/**
+ * Provider errors on the free key are about the site's key, not the user's:
+ * reword them so nobody is told to check a key they never added.
+ */
+export function freeAgentError(
+  status: number,
+  message: string,
+): { status: number; message: string } {
+  if (status === 422) return { status, message }
+  if (status === 429)
+    return { status: 503, message: 'The free agent is busy right now. Try again in a minute.' }
+  return {
+    status: 503,
+    message: "The free agent couldn't answer right now. Try again in a minute.",
+  }
+}

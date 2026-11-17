@@ -2,6 +2,8 @@
 // sessionStorage (per campaign and user) and is gone when the tab closes.
 // Questions go to the `lore-master` Edge Function, which picks the GM or
 // player context on the server; this side only adds the public rules pack.
+// Users without a key of their own ask the free agent (the site's Gemini key),
+// which has a daily allowance per user.
 import { supabase } from '~/lib/supabase'
 import { functionError } from '~/stores/aiKeys'
 import type { NimbleSheet } from '~/types/sheets'
@@ -20,12 +22,36 @@ const KEEP_TURNS = 60
 export function useLoreMaster() {
   const auth = useAuthStore()
   const aiKeys = useAiKeysStore()
+  const site = useSiteStore()
   const characters = useCharacterStore()
   const { campaign, campaignId, isGm } = useCampaignBoard()
 
   const messages = ref<LoreMessage[]>([])
   const pending = ref(false)
   const error = ref('')
+
+  /** On the site's free key: no key of their own. */
+  const free = computed(() => aiKeys.loaded && aiKeys.keys.length === 0)
+  /** Free questions left today; null when on their own key or not known yet. */
+  const freeRemaining = ref<number | null>(null)
+
+  async function loadFreeRemaining() {
+    if (!free.value || !auth.userId) {
+      freeRemaining.value = null
+      return
+    }
+    const today = new Date().toISOString().slice(0, 10)
+    const { data } = await supabase
+      .from('ai_free_usage')
+      .select('count')
+      .eq('user_id', auth.userId)
+      .eq('day', today)
+      .maybeSingle()
+    freeRemaining.value = Math.max(site.settings.free_ai_daily_limit - (data?.count ?? 0), 0)
+  }
+  watch([free, () => site.settings.free_ai_daily_limit], () => void loadFreeRemaining(), {
+    immediate: true,
+  })
 
   const storageKey = computed(() => `lantern:lore:${campaignId.value}:${auth.userId ?? ''}`)
 
@@ -91,12 +117,17 @@ export function useLoreMaster() {
       })
       if (key !== storageKey.value) return
       if (invokeError) throw invokeError
-      const reply = (data as { reply?: string } | null)?.reply
-      if (!reply) throw new Error('The Lore Master had nothing to say. Try again.')
-      messages.value.push({ role: 'assistant', content: reply })
+      const result = data as { reply?: string; free?: boolean; freeRemaining?: number } | null
+      if (!result?.reply) throw new Error('The Lore Master had nothing to say. Try again.')
+      messages.value.push({ role: 'assistant', content: result.reply })
       persist()
+      if (result.free && typeof result.freeRemaining === 'number') {
+        freeRemaining.value = result.freeRemaining
+      }
     } catch (err) {
       if (key === storageKey.value) error.value = await functionError(err)
+      // A failed free question is refunded, or the allowance just ran out: re-read it.
+      if (free.value) void loadFreeRemaining()
     } finally {
       pending.value = false
     }
@@ -116,5 +147,5 @@ export function useLoreMaster() {
     persist()
   }
 
-  return { messages, pending, error, send, retry, clear }
+  return { messages, pending, error, free, freeRemaining, send, retry, clear }
 }

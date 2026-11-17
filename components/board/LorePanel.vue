@@ -2,7 +2,7 @@
 // The Lore Master on the Party tab: an AI chat for GMs (co-GM with the whole
 // campaign) and players (rules and their own hero only; enforced by the
 // lore-master Edge Function). Shown when AI is on site-wide and the user has
-// saved a provider key. From 1200px it docks in the page's right margin and
+// saved a provider key, or the free agent (site's Gemini key) is on. From 1200px it docks in the page's right margin and
 // folds to a slim tab; below that a "Lore" tab under "Actions" opens it as a
 // drawer from the left. Same one-<dialog> approach as the quick-action panel.
 const site = useSiteStore()
@@ -14,7 +14,12 @@ onMounted(() => {
   aiKeys.fetch().catch(() => undefined)
 })
 
-const visible = computed(() => site.settings.ai_enabled && aiKeys.keys.length > 0)
+const visible = computed(
+  () =>
+    site.settings.ai_enabled &&
+    aiKeys.loaded &&
+    (aiKeys.keys.length > 0 || site.settings.free_ai_enabled),
+)
 
 const panelId = useId()
 const { el, wide, drawerOpen, folded, setCollapsed, onClose, onBackdrop, dismiss } = useDockedPanel(

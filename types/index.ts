@@ -348,7 +348,16 @@ export interface SiteSettings {
   /** The Library "NPCs & monsters" tab. */
   npc_pool_library: boolean
   ai_enabled: boolean
+  /** Users without their own key get the Lore Master on the site's Gemini key. */
+  free_ai_enabled: boolean
+  /** Free Lore Master questions per user per UTC day. */
+  free_ai_daily_limit: number
 }
+
+/** The SiteSettings switches `admin_set_site_setting` flips. */
+export type SiteSwitch = {
+  [K in keyof SiteSettings]: SiteSettings[K] extends boolean ? K : never
+}[keyof SiteSettings]
 
 export type AiProvider = 'anthropic' | 'google' | 'openai'
 

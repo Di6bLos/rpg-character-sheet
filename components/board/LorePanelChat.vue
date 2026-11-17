@@ -8,15 +8,28 @@ const emit = defineEmits<{ dismiss: [] }>()
 
 const aiKeys = useAiKeysStore()
 const { isGm } = useCampaignBoard()
-const { messages, pending, error, send, retry, clear } = useLoreMaster()
+const { messages, pending, error, free, freeRemaining, send, retry, clear } = useLoreMaster()
 
 const question = ref('')
 const list = ref<HTMLElement | null>(null)
 const box = ref<HTMLTextAreaElement | null>(null)
 
 const provider = computed(() =>
-  aiKeys.defaultKey ? providerLabel(aiKeys.defaultKey.provider) : '',
+  free.value ? 'Free' : aiKeys.defaultKey ? providerLabel(aiKeys.defaultKey.provider) : '',
 )
+/** The free allowance is used up for today. */
+const outOfFree = computed(() => free.value && freeRemaining.value === 0)
+const site = useSiteStore()
+/** "18 / 25 free questions left today", while on the free agent. */
+const freeCount = computed(() =>
+  free.value && freeRemaining.value !== null && !outOfFree.value
+    ? `${freeRemaining.value} / ${site.settings.free_ai_daily_limit} free questions left today`
+    : '',
+)
+const freeHelp = computed(() => {
+  const left = freeRemaining.value === null ? '' : ` (${freeRemaining.value} left today)`
+  return `Free questions run on the site's Gemini key${left}. Google may use free-tier requests to improve its products. Add your own key in Settings for unlimited, private use.`
+})
 
 const suggestions = computed(() =>
   isGm.value
@@ -61,10 +74,11 @@ onMounted(() => {
     <header class="lore__head">
       <div class="lore__who">
         <strong>Lore Master</strong>
-        <span
+        <span class="lore__sub"
           >{{ isGm ? 'Co-GM' : 'Rules & your hero'
-          }}<template v-if="provider"> · {{ provider }}</template></span
-        >
+          }}<template v-if="provider"> · {{ provider }}</template
+          ><UiHelp v-if="free" label="About the free Lore Master" :text="freeHelp"
+        /></span>
       </div>
       <button
         v-if="messages.length"
@@ -127,7 +141,11 @@ onMounted(() => {
       </div>
     </div>
 
-    <form class="lore__ask" @submit.prevent="ask()">
+    <p v-if="outOfFree" class="lore__limit">
+      Today's free questions are used up.
+      <NuxtLink to="/settings">Add your own key</NuxtLink> to keep going.
+    </p>
+    <form v-else class="lore__ask" @submit.prevent="ask()">
       <label :for="`lore-q-${isGm ? 'gm' : 'pc'}`" class="sr-only">Ask the Lore Master</label>
       <textarea
         :id="`lore-q-${isGm ? 'gm' : 'pc'}`"
@@ -141,6 +159,7 @@ onMounted(() => {
       />
       <button type="submit" class="btn btn--sm" :disabled="pending || !question.trim()">Ask</button>
     </form>
+    <p v-if="freeCount" class="lore__count" aria-live="polite">{{ freeCount }}</p>
   </div>
 </template>
 
@@ -171,11 +190,28 @@ onMounted(() => {
     font-family: var(--font-heading);
     font-size: 16px;
   }
+}
 
-  span {
-    font-size: 12px;
-    color: var(--page-muted);
-  }
+.lore__sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--page-muted);
+}
+
+.lore__count {
+  margin: -2px 0 0;
+  font-size: 12px;
+  color: var(--page-muted);
+  text-align: right;
+}
+
+.lore__limit {
+  margin: 0;
+  font-size: 13px;
+  color: var(--page-muted);
 }
 
 .lore__icon {

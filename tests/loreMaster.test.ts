@@ -7,7 +7,9 @@ import { loreHtml } from '~/utils/loreText'
 import {
   MAX_TURNS,
   cleanTurns,
+  freeAgentError,
   gmContext,
+  pickKeySource,
   serializeSheet,
 } from '../supabase/functions/lore-master/context'
 import { gmPrompt, playerPrompt } from '../supabase/functions/lore-master/prompt'
@@ -153,5 +155,35 @@ describe('loreHtml', () => {
 
   it('leaves multiplication and snake_case alone', () => {
     expect(loreHtml('2 * 3 * 4 and my_var_name')).toBe('<p>2 * 3 * 4 and my_var_name</p>')
+  })
+})
+
+describe('free agent', () => {
+  const base = { hasOwnKey: false, requestedProvider: null, freeEnabled: true, freeKeySet: true }
+
+  it("uses the user's own key whenever they have one", () => {
+    expect(pickKeySource({ ...base, hasOwnKey: true })).toBe('own')
+    expect(pickKeySource({ ...base, hasOwnKey: true, freeEnabled: false })).toBe('own')
+  })
+
+  it('falls back to the free key only when it is on and configured', () => {
+    expect(pickKeySource(base)).toBe('free')
+    expect(pickKeySource({ ...base, freeEnabled: false })).toBe('none')
+    expect(pickKeySource({ ...base, freeKeySet: false })).toBe('none')
+  })
+
+  it('does not stand in for a provider the user asked for by name', () => {
+    expect(pickKeySource({ ...base, requestedProvider: 'anthropic' })).toBe('none')
+  })
+
+  it("never tells the user to check a key they didn't add", () => {
+    for (const status of [400, 429, 502, 503, 504]) {
+      const { message } = freeAgentError(status, 'Gemini rejected your API key.')
+      expect(message).not.toMatch(/your (API )?key/i)
+    }
+    expect(freeAgentError(422, 'Gemini returned no answer.')).toEqual({
+      status: 422,
+      message: 'Gemini returned no answer.',
+    })
   })
 })

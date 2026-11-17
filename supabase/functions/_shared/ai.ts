@@ -80,16 +80,26 @@ const TRANSIENT = new Set([500, 502, 503, 504, 529])
 /** Each provider attempt gets this long before we give up on it. */
 export const ATTEMPT_TIMEOUT_MS = 90_000
 
+export interface RetryOptions {
+  /** How long one attempt may take. */
+  timeoutMs?: number
+  /** Waits before each retry; [] for a single attempt. */
+  delays?: number[]
+}
+
 /**
  * fetch with two quick retries (1.5 s, then 4 s) on transient errors, so a
  * momentary "high demand" spike doesn't fail the request.
  */
-export async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
-  const delays = [1500, 4000]
+export async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  { timeoutMs = ATTEMPT_TIMEOUT_MS, delays = [1500, 4000] }: RetryOptions = {},
+): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     let res: Response
     try {
-      res = await fetch(url, { ...init, signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) })
+      res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) })
     } catch (err) {
       if (
         err instanceof DOMException &&
