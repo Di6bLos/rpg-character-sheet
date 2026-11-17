@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+- Before making any updates, cut a new branch from an up-to-date `stage` (`git checkout stage && git pull && git checkout -b <type>/<short-name>`). Never commit directly to `stage` or `main`; PRs target `stage`.
+
 - when working on a 'feature' from the `_features.md` list, check off the tasks as you complete them.
 - Run the ui-ux-reviewer only after major UI changes (layout changes, new components or pages), not after every sprint of updates
 
