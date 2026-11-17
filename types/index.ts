@@ -120,6 +120,8 @@ export interface RosterEntry {
     deathSaves?: { successes: number; failures: number }
     concentration?: string
     actionsSpent?: number
+    /** Nimble mana pool. */
+    mana?: { current: number; max: number; temp: number }
     backstory?: string
   } | null
 }
@@ -186,8 +188,12 @@ export interface Message {
   sender_id: string
   body: string
   recipient_ids: string[] | null
+  /** 'action': a game-generated line (a roll or cast from the quick-action panel). */
+  kind: MessageKind
   created_at: string
 }
+
+export type MessageKind = 'chat' | 'action'
 
 export interface Encounter {
   campaign_id: string

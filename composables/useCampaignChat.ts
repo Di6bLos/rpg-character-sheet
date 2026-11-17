@@ -1,7 +1,7 @@
 import type { InjectionKey } from 'vue'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
-import type { Message } from '~/types'
+import type { Message, MessageKind } from '~/types'
 import { threadsOf, type ThreadId } from '~/utils/chat'
 
 export type { ThreadId }
@@ -9,6 +9,10 @@ export type { ThreadId }
 /** Per user, so two people sharing a browser keep their own read positions. */
 function readKey(userId: string, campaignId: string, thread: ThreadId) {
   return `lantern:chat-read:${userId}:${campaignId}:${thread}`
+}
+
+function actionsKey(userId: string) {
+  return `lantern:chat-show-actions:${userId}`
 }
 
 /** When this user last read a thread on the board (ISO time, '' if never). The dashboard reads it too. */
@@ -33,6 +37,34 @@ export function useCampaignChat(campaignId: Ref<string>) {
   let channel: RealtimeChannel | null = null
 
   const me = computed(() => auth.userId ?? '')
+
+  /** Game lines (rolls and casts from the quick-action panel): hidden unless the viewer turns them on. */
+  const showActions = ref(false)
+  watch(
+    me,
+    (id) => {
+      try {
+        showActions.value = !!id && localStorage.getItem(actionsKey(id)) === '1'
+      } catch {
+        showActions.value = false
+      }
+    },
+    { immediate: true },
+  )
+
+  function setShowActions(on: boolean) {
+    showActions.value = on
+    try {
+      localStorage.setItem(actionsKey(me.value), on ? '1' : '0')
+    } catch {
+      // Not remembered; fine.
+    }
+  }
+
+  /** Messages this viewer sees in the chat: game lines only when turned on. */
+  const shown = computed(() =>
+    showActions.value ? messages.value : messages.value.filter((m) => m.kind !== 'action'),
+  )
 
   async function load() {
     const { data, error } = await supabase
@@ -82,19 +114,19 @@ export function useCampaignChat(campaignId: Ref<string>) {
 
   /** Newest first, like the design's column-reverse log. */
   const inThread = computed(() =>
-    messages.value.filter((m) => threadsOf(m, me.value).includes(thread.value)),
+    shown.value.filter((m) => threadsOf(m, me.value).includes(thread.value)),
   )
 
   function unread(t: ThreadId): number {
     const since = lastRead.value[t] ?? chatReadAt(me.value, campaignId.value, t)
-    return messages.value.filter(
+    return shown.value.filter(
       (m) => m.sender_id !== me.value && threadsOf(m, me.value).includes(t) && m.created_at > since,
     ).length
   }
 
   const totalUnread = computed(() => {
     const ids = new Set<ThreadId>()
-    for (const m of messages.value) for (const t of threadsOf(m, me.value)) ids.add(t)
+    for (const m of shown.value) for (const t of threadsOf(m, me.value)) ids.add(t)
     return [...ids].reduce((n, t) => n + unread(t), 0)
   })
 
@@ -114,7 +146,15 @@ export function useCampaignChat(campaignId: Ref<string>) {
     markRead(t)
   }
 
-  async function send(body: string): Promise<boolean> {
+  /**
+   * Sends to the open thread, or to `to` (e.g. 'party') without switching threads.
+   * `kind: 'action'` marks a game-generated line, which the chat shows as a log entry.
+   */
+  async function send(
+    body: string,
+    to: ThreadId = thread.value,
+    kind: MessageKind = 'chat',
+  ): Promise<boolean> {
     const text = body.trim()
     if (!text) return false
     sending.value = true
@@ -124,14 +164,15 @@ export function useCampaignChat(campaignId: Ref<string>) {
         .insert({
           campaign_id: campaignId.value,
           body: text,
-          recipient_ids: thread.value === 'party' ? null : [thread.value],
+          recipient_ids: to === 'party' ? null : [to],
+          kind,
         })
         .select()
         .single()
       if (error) throw error
       const row = data as Message
       if (!messages.value.some((m) => m.id === row.id)) messages.value.unshift(row)
-      markRead(thread.value)
+      markRead(to)
       return true
     } catch (err) {
       snackbar.error(err, 'Could not send the message')
@@ -165,6 +206,8 @@ export function useCampaignChat(campaignId: Ref<string>) {
     thread,
     inThread,
     sending,
+    showActions,
+    setShowActions,
     unread,
     totalUnread,
     open,

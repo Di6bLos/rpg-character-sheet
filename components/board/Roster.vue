@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Party roster cards: HP, temp HP, conditions; Nimble gets single-column long
-// cards with wounds, armor, actions and concentration.
+// cards with wounds, mana, armor, actions and concentration.
 import type { GameSystem, RosterEntry } from '~/types'
 import { plural } from '~/utils/format'
 
@@ -204,6 +204,11 @@ function actions(r: RosterEntry) {
               />
               <span class="hp__temp" :style="{ left: hp(r).pct, width: hp(r).tempPct }" />
             </div>
+            <BoardManaGauge
+              v-if="r.summary?.mana?.max"
+              :mana="r.summary.mana"
+              :name="r.character_name ?? r.display_name"
+            />
             <div
               class="wounds"
               role="img"

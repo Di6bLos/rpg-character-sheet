@@ -130,6 +130,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
   async function onMessage(row: Message) {
     const auth = useAuthStore()
     if (row.sender_id === auth.userId) return
+    // Rolls and casts from the quick-action panel are a game log, not news.
+    if (row.kind === 'action') return
     const secret = Boolean(row.recipient_ids)
     if (secret ? !auth.profile?.notify_secret : !auth.profile?.notify_journal) return
     const to = `/campaigns/${row.campaign_id}/board/party`
