@@ -99,14 +99,7 @@ onMounted(() => {
 
     <div ref="list" class="lore__list" aria-live="polite">
       <div v-if="!messages.length" class="lore__empty">
-        <p v-if="isGm">
-          Ask about rules, your party, monsters and NPCs, or how to run a scene. I can see the
-          campaign's roster, NPCs and journal.
-        </p>
-        <p v-else>
-          Ask about the rules or your hero's stats, abilities and spells. Questions about monsters,
-          places or the story are for your GM.
-        </p>
+        <p v-if="isGm">Ask about rules, the party, NPCs or running a scene.</p>
         <div class="lore__suggest">
           <button
             v-for="s in suggestions"
@@ -148,7 +141,6 @@ onMounted(() => {
       />
       <button type="submit" class="btn btn--sm" :disabled="pending || !question.trim()">Ask</button>
     </form>
-    <p v-if="!isGm" class="lore__note">Rules and your character only. Your GM has the final say.</p>
   </div>
 </template>
 
@@ -310,10 +302,5 @@ onMounted(() => {
   max-height: 140px;
   resize: vertical;
   font-size: 14px;
-}
-
-.lore__note {
-  font-size: 12px;
-  color: var(--page-muted);
 }
 </style>
