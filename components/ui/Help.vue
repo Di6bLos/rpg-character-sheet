@@ -145,6 +145,8 @@ onBeforeUnmount(() => {
   z-index: 40;
   width: max-content;
   max-width: min(320px, calc(100vw - 24px));
+  // Wraps even inside a nowrap parent (a one-line subtitle, a table cell).
+  white-space: normal;
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--line-strong);
