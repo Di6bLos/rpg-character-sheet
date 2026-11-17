@@ -1,20 +1,25 @@
 <script setup lang="ts">
 // The quick-action dropdowns: attacks, spells, reactions and limited-use
-// abilities. Same rules as the sheet (useNimbleActions / useNimbleSpells); each
-// result also goes to party chat.
+// abilities. Same rules as the sheet (useNimbleActions /
+// useNimbleSpells); each result also goes to party chat.
 import type { NimbleSheet } from '~/types/sheets'
-import { actionsLeft, manaPool, turnActions } from '~/utils/nimblePlay'
+import { actionsLeft, manaPool, stopCasting, turnActions } from '~/utils/nimblePlay'
 
 defineProps<{ drawer: boolean }>()
 const emit = defineEmits<{ dismiss: [] }>()
 
-const { draft, canEdit, lastRoll } = useSheet<NimbleSheet>()
+const { draft, canEdit, lastRoll, say } = useSheet<NimbleSheet>()
 const { campaignId } = useCampaignBoard()
 const chat = useBoardChat()
 const sheet = computed(() => draft.value.sheet)
+const uid = useId()
+
+/** Bumped on every result, so a repeated message is still announced. */
+const seq = ref(0)
 
 function announce(message: string) {
-  void chat.send(`${draft.value.name} · ${message}`, 'party')
+  seq.value += 1
+  void chat.send(`${draft.value.name} · ${message}`, 'party', 'action')
 }
 
 const { attacks, reactions, toggleReaction, abilities, spend } = useNimbleActions({
@@ -28,6 +33,26 @@ const mana = computed(() => (sheet.value.mana.max > 0 ? manaPool(sheet.value) : 
 const spellCount = computed(() => tiers.value.reduce((n, t) => n + t.spells.length, 0))
 const reactionsLeft = computed(() => reactions.value.filter((r) => !r.used).length)
 const sheetLink = computed(() => `/character/${draft.value.id}?campaign=${campaignId.value}`)
+const casting = computed(() => sheet.value.casting)
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** Shows in the panel only; it isn't news for the party. */
+function cancelCasting() {
+  if (!canEdit.value) return
+  say(stopCasting(sheet.value))
+  seq.value += 1
+}
+
+/** Spells with why each can't be cast right now ('' when it can). */
+const spellGroups = computed(() =>
+  tiers.value.map((g) => ({
+    ...g,
+    spells: g.spells.map((s) => ({
+      ...s,
+      blocked: s.busy ? 'Finish casting first' : s.short ? `Needs ${s.at} mana` : '',
+    })),
+  })),
+)
 
 /** One row per counter, so an ability with two limits gets two buttons. */
 const abilityRows = computed(() =>
@@ -51,10 +76,15 @@ const abilityRows = computed(() =>
       <div class="apm__who">
         <strong>{{ draft.name }}</strong>
         <span class="apm__meta">
-          <span :title="`${left} of ${perTurn} actions left this turn`"
-            >{{ left }}/{{ perTurn }} actions</span
+          <span
+            ><span class="sr-only">Actions left this turn: </span>{{ left }}/{{ perTurn }}
+            <span aria-hidden="true">actions</span></span
           >
-          <span v-if="mana !== null" title="Mana left">· {{ mana }} mana</span>
+          <span v-if="mana !== null"
+            ><span aria-hidden="true">·</span> {{ mana }} mana<span class="sr-only">
+              left</span
+            ></span
+          >
         </span>
       </div>
       <NuxtLink
@@ -77,15 +107,44 @@ const abilityRows = computed(() =>
       <button
         type="button"
         class="btn btn--ghost btn--icon apm__icon"
+        data-ap-dismiss
         :aria-label="drawer ? 'Close quick actions' : 'Collapse quick actions'"
         :title="drawer ? 'Close' : 'Collapse'"
         @click="emit('dismiss')"
       >
-        <span aria-hidden="true">{{ drawer ? '×' : '‹' }}</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path
+            :d="drawer ? 'M6 6l12 12M18 6L6 18' : 'M15 5l-7 7 7 7'"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </button>
     </header>
 
     <p v-if="!canEdit" class="apm__note">Read only.</p>
+
+    <div v-if="casting.actions" class="apm__turn">
+      <p class="apm__casting">
+        Casting {{ casting.spell }}: {{ plural(casting.actions, 'more action') }} next turn
+      </p>
+      <button
+        type="button"
+        class="btn btn--sm btn--ghost"
+        :disabled="!canEdit"
+        title="Give up on the spell; what it cost is not refunded"
+        @click="cancelCasting"
+      >
+        Stop casting
+      </button>
+    </div>
+
+    <p class="apm__result" :class="{ 'apm__result--empty': !lastRoll }" role="status">
+      <span :key="seq">{{ lastRoll }}</span>
+    </p>
 
     <details name="action-panel" class="apm__menu" open>
       <summary>
@@ -101,13 +160,18 @@ const abilityRows = computed(() =>
           <button
             type="button"
             class="apm__row"
-            :disabled="!canEdit"
-            :title="w.props || undefined"
-            @click="w.roll"
+            :aria-disabled="!canEdit || undefined"
+            :aria-label="`${w.name}, ${w.dmg} damage${w.rushed ? `, ${w.rushed}× disadvantage` : ''}`"
+            :aria-describedby="w.props ? `${uid}-w${i}` : undefined"
+            @click="canEdit && w.roll()"
           >
             <span class="apm__name">{{ w.name }}</span>
             <span class="apm__tag">{{ w.dmg }}</span>
-            <span v-if="w.rushed" class="apm__sub">{{ w.rushed }}× disadvantage</span>
+            <span v-if="w.props || w.rushed" :id="`${uid}-w${i}`" class="apm__sub">
+              <template v-if="w.rushed">{{ w.rushed }}× disadvantage</template>
+              <template v-if="w.props && w.rushed"> · </template>
+              {{ w.props }}
+            </span>
           </button>
         </li>
       </ul>
@@ -120,37 +184,34 @@ const abilityRows = computed(() =>
         <UiHelp label="About spells" :text="spellHelp" />
         <small>{{ spellCount }}</small>
       </summary>
-      <div v-for="g in tiers" :key="g.tier" class="apm__group">
+      <div v-for="g in spellGroups" :key="g.tier" class="apm__group">
         <div class="apm__caps">{{ g.label }}</div>
         <ul class="apm__list">
-          <li v-for="s in g.spells" :key="s.name" class="apm__split">
+          <li v-for="(s, j) in g.spells" :key="s.name" class="apm__split">
             <button
               type="button"
               class="apm__row"
-              :disabled="!canEdit || s.short || s.busy"
-              :title="
-                s.busy
-                  ? `Still casting ${sheet.casting.spell}`
-                  : s.short
-                    ? 'Not enough mana'
-                    : `${s.cast}. ${s.desc}`
-              "
-              @click="cast(s)"
+              :aria-disabled="!canEdit || !!s.blocked || undefined"
+              :aria-label="`${s.name}, ${s.cost}${s.actions ? `, ${plural(s.actions, 'action')}` : ''}${s.blocked ? `. ${s.blocked}` : ''}`"
+              :aria-describedby="`${uid}-s${g.tier}-${j}`"
+              :title="`${s.cast}. ${s.desc}`"
+              @click="canEdit && !s.blocked && cast(s)"
             >
               <span class="apm__name">{{ s.name }}</span>
               <span class="apm__tag">{{ s.cost }}</span>
-              <span v-if="s.actions" class="apm__sub"
-                >{{ s.actions }} action{{ s.actions === 1 ? '' : 's' }}</span
-              >
+              <span class="apm__sub" :class="{ 'apm__sub--warn': s.blocked }">
+                {{ s.blocked || (s.actions ? plural(s.actions, 'action') : '') }}
+              </span>
+              <span :id="`${uid}-s${g.tier}-${j}`" class="sr-only">{{ s.cast }}. {{ s.desc }}</span>
             </button>
             <button
               v-if="s.bloodLabel"
               type="button"
               class="apm__alt"
-              :disabled="!canEdit || s.busy"
+              :aria-disabled="!canEdit || s.busy || undefined"
               :aria-label="`Cast ${s.name} by taking 1 Wound`"
               title="Take 1 Wound instead (My Blood, My Power)"
-              @click="cast(s, true)"
+              @click="canEdit && !s.busy && cast(s, true)"
             >
               Wound
             </button>
@@ -169,18 +230,21 @@ const abilityRows = computed(() =>
         <small>{{ reactionsLeft }}/{{ reactions.length }}</small>
       </summary>
       <ul class="apm__list">
-        <li v-for="r in reactions" :key="r.name">
+        <li v-for="(r, k) in reactions" :key="r.name">
           <button
             type="button"
             class="apm__row"
             :class="{ 'apm__row--used': r.used }"
             :aria-pressed="r.used"
-            :disabled="!canEdit"
+            :aria-disabled="!canEdit || undefined"
+            :aria-label="`Mark ${r.name} used, 1 action`"
+            :aria-describedby="`${uid}-r${k}`"
             :title="r.desc"
-            @click="toggleReaction(r.name)"
+            @click="canEdit && toggleReaction(r.name)"
           >
             <span class="apm__name">{{ r.name }}</span>
             <span class="apm__tag">{{ r.used ? 'Used' : '1 act' }}</span>
+            <span :id="`${uid}-r${k}`" class="sr-only">{{ r.desc }}</span>
           </button>
         </li>
       </ul>
@@ -196,24 +260,31 @@ const abilityRows = computed(() =>
         <small>{{ abilityRows.length }}</small>
       </summary>
       <ul class="apm__list">
-        <li v-for="a in abilityRows" :key="a.id">
+        <li v-for="(a, n) in abilityRows" :key="a.id">
           <button
             type="button"
             class="apm__row"
-            :disabled="!canEdit || a.left === 0"
-            :title="a.desc"
+            :aria-disabled="!canEdit || a.left === 0 || undefined"
             :aria-label="`Use ${a.name}${a.label ? ` (${a.label})` : ''}, ${a.left} of ${a.max} left`"
-            @click="spend(a.counter, a.name, 1)"
+            :aria-describedby="`${uid}-a${n}`"
+            :title="a.desc"
+            @click="canEdit && a.left > 0 && spend(a.counter, a.name, 1)"
           >
             <span class="apm__name">{{ a.name }}</span>
             <span class="apm__tag">{{ a.left }}/{{ a.max }}</span>
-            <span v-if="a.label" class="apm__sub">{{ a.label }}</span>
+            <span
+              v-if="a.label || a.left === 0"
+              class="apm__sub"
+              :class="{ 'apm__sub--warn': a.left === 0 }"
+            >
+              {{ a.left === 0 ? 'None left' : '' }}{{ a.left === 0 && a.label ? ' · ' : ''
+              }}{{ a.label }}
+            </span>
+            <span :id="`${uid}-a${n}`" class="sr-only">{{ a.desc }}</span>
           </button>
         </li>
       </ul>
     </details>
-
-    <p v-if="lastRoll" class="apm__result" role="status">{{ lastRoll }}</p>
   </div>
 </template>
 
@@ -291,7 +362,14 @@ const abilityRows = computed(() =>
       content: '▾';
       font-size: 12px;
       color: var(--page-muted);
-      transition: rotate 0.15s;
+
+      @media (prefers-reduced-motion: no-preference) {
+        transition: rotate 0.15s;
+      }
+    }
+
+    &:focus-visible {
+      outline-offset: -2px;
     }
 
     small {
@@ -318,7 +396,7 @@ const abilityRows = computed(() =>
 
 .apm__caps {
   padding: 4px 10px 2px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -359,13 +437,25 @@ const abilityRows = computed(() =>
   text-align: left;
   font-size: 13px;
 
-  &:hover:not(:disabled) {
+  &:hover:not([aria-disabled='true']) {
     background: color-mix(in srgb, var(--accent) 14%, transparent);
   }
 
-  &:disabled {
-    opacity: 0.5;
+  &:focus-visible {
+    outline-offset: -2px;
+  }
+
+  // Unavailable rows stay readable and focusable; the sub line says why.
+  &[aria-disabled='true'] {
     cursor: not-allowed;
+
+    .apm__name {
+      color: var(--page-soft);
+    }
+
+    .apm__tag {
+      color: var(--page-muted);
+    }
   }
 
   &--used .apm__name {
@@ -376,9 +466,13 @@ const abilityRows = computed(() =>
 
 .apm__name {
   font-weight: 600;
+  // Two lines at most, so long names stay whole in the narrow panel.
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .apm__tag {
@@ -391,21 +485,37 @@ const abilityRows = computed(() =>
 
 .apm__sub {
   grid-column: 1 / -1;
-  font-size: 11px;
-  color: var(--page-muted);
+  font-size: 12px;
+  color: var(--page-soft);
+
+  &:empty {
+    display: none;
+  }
+
+  &--warn {
+    font-weight: 600;
+    color: var(--page-text);
+  }
 }
 
 .apm__alt {
+  min-width: 56px;
   padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: transparent;
   color: var(--page-soft);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 
-  &:disabled {
-    opacity: 0.5;
+  &:focus-visible {
+    outline-offset: -2px;
+  }
+
+  &[aria-disabled='true'] {
+    cursor: not-allowed;
+    color: var(--page-muted);
+    border-style: dashed;
   }
 }
 
@@ -415,6 +525,19 @@ const abilityRows = computed(() =>
   color: var(--page-muted);
 }
 
+.apm__turn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.apm__casting {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--page-text);
+}
+
 .apm__result {
   padding: 8px 10px;
   border-radius: 6px;
@@ -422,9 +545,16 @@ const abilityRows = computed(() =>
   font-size: 12px;
   line-height: 1.45;
   color: var(--page-soft);
+
+  // Stays rendered while empty (a live region that appears later may not be read).
+  &--empty {
+    margin-top: -8px;
+    padding: 0;
+    background: none;
+  }
 }
 
-@media (pointer: coarse) {
+@media (any-pointer: coarse) {
   .apm__row,
   .apm__alt,
   .apm__menu > summary {

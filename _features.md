@@ -131,3 +131,51 @@ Plan: board and GM console become routed pages on one shell; shared NPC pool; AI
 ### 7.5 Official content
 - [ ] Official monsters transcribed (Nimble 3PCL, SRD 5.2, PF2e ORC) with citations, seed script, attributions page
 
+
+## Party quick-action panel · UI/UX review (PR #27)
+From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chrome-devtools, local stack; Playwright was locked).
+
+### High
+- [x] Folded tab clipped off-screen below ~1320px: the shell now keeps a 40px shift while folded (tab at x = 21 at 1200)
+- [x] Unavailable rows stay focusable (`aria-disabled`), say why on the sub line ("Finish casting first", "Needs N mana", "None left") and aren't dimmed (parchment: name 8.5:1, tag 6.7:1)
+- [x] Stop casting in the panel, with the "Casting X: N more actions next turn" line (New turn left to the GM)
+- [x] Focus moves to the unfold tab on collapse and back to the collapse button on unfold
+- [x] Descriptions reachable without hover: attack properties on the sub line; spell, reaction and ability text via `aria-describedby` (hover `title` kept for mouse users)
+- [x] 44px targets under `any-pointer: coarse`; edge tab 44px wide; Wound button min 56px, 12px text
+- [x] ~~Cursed tags invisible~~: false alarm, my test switched `data-theme` without recomputing `--accent-ink`; through Settings they measure 6.65:1
+
+### Medium
+- [x] ~~`UiHelp` toggles the dropdown~~: false alarm; a real click, Enter or Space on "?" doesn't toggle (the first test clicked the wrapper span)
+- [x] Edge tab no longer covers content on narrow screens (shell `padding-left: 52px` while the tab shows)
+- [x] Result line under the header; each result re-renders its node so repeats are announced
+- [ ] Decide: keep one-open-at-a-time dropdowns or allow several open
+- [x] Header meta has screen-reader wording ("Actions left this turn: 0/3, 12 mana left")
+- [x] Shell shift animates (0.2s), skipped under reduced motion
+- [x] Unfold button named by its visible "Actions", with `aria-expanded` + `aria-controls`
+
+### Accessibility
+- [x] `:focus-visible` outline inset on rows, summaries and the Wound button (the 3px global offset was clipped by the scrolling panel)
+- [x] Attack and spell rows have explicit names ("Ignite, 1 mana, 2 actions")
+- [x] Reaction rows are named "Mark Defend used, 1 action" (`aria-pressed` = used)
+- [x] Mana gauge: `aria-valuetext` ("12 of 14, plus 3 temporary"); meter max includes temp, matching the bar
+- [x] Dropdown arrow rotation only with `prefers-reduced-motion: no-preference`
+
+### Visual
+- [x] 12px sub lines and Wound button; tier captions 11px uppercase (matches the roster's caps labels, also kept for the mana label)
+- [x] Long names wrap to two lines
+- [x] SVG icons for collapse and close
+- [ ] Edge tab shadow and drawer backdrop still use rgb() values, as UiHelp and UiDialog do; no shadow token exists yet
+- [x] Temp mana segment striped, not just lighter
+
+### Browser check
+- [x] 1920 / 1440 / 1200: docked beside the content, no overlap, no horizontal scroll; folded tab on screen
+- [x] 1024 / 500 (Chrome's minimum width): drawer opens, focus lands inside, closes back to the edge tab; no horizontal scroll or overlap
+- [x] Cursed theme via Settings: panel text ≥ 6.6:1
+- [ ] 390px on a real phone or device emulation
+- [ ] GM view hides the panel (code: `!isGm`; not rechecked in the browser)
+
+### Chat: game lines vs party messages
+- [x] `messages.kind` (`chat` / `action`, migration `20261117100000_message_kind.sql`); the panel posts `action`
+- [x] Chat shows game lines as a compact full-width log row (dice icon, bold name, 13px, accent rule); typed messages keep the bubbles
+- [x] Game lines raise no notifications
+- [ ] Apply `20261117100000_message_kind.sql` to the hosted project before this ships

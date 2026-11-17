@@ -1,7 +1,7 @@
 import type { InjectionKey } from 'vue'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
-import type { Message } from '~/types'
+import type { Message, MessageKind } from '~/types'
 import { threadsOf, type ThreadId } from '~/utils/chat'
 
 export type { ThreadId }
@@ -114,8 +114,15 @@ export function useCampaignChat(campaignId: Ref<string>) {
     markRead(t)
   }
 
-  /** Sends to the open thread, or to `to` (e.g. 'party') without switching threads. */
-  async function send(body: string, to: ThreadId = thread.value): Promise<boolean> {
+  /**
+   * Sends to the open thread, or to `to` (e.g. 'party') without switching threads.
+   * `kind: 'action'` marks a game-generated line, which the chat shows as a log entry.
+   */
+  async function send(
+    body: string,
+    to: ThreadId = thread.value,
+    kind: MessageKind = 'chat',
+  ): Promise<boolean> {
     const text = body.trim()
     if (!text) return false
     sending.value = true
@@ -126,6 +133,7 @@ export function useCampaignChat(campaignId: Ref<string>) {
           campaign_id: campaignId.value,
           body: text,
           recipient_ids: to === 'party' ? null : [to],
+          kind,
         })
         .select()
         .single()

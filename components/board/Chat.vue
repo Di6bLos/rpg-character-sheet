@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// Party chat with private threads to each member and unread badges.
+// Party chat with private threads to each member and unread badges. Game lines
+// (kind 'action': rolls and casts from the quick-action panel) show as a compact
+// log row, not a speech bubble.
 import type { Message, RosterEntry } from '~/types'
 import { authorLabel } from '~/utils/roster'
 import { plural, timeAgo } from '~/utils/format'
@@ -59,6 +61,12 @@ function groupNote(m: Message): string | null {
     .filter((id) => id !== m.sender_id)
     .map((id) => (id === auth.userId ? 'you' : who(id)))
   return `to ${names.join(', ')}`
+}
+
+/** "Iriel · Cast Zap (cantrip)." → ['Iriel', 'Cast Zap (cantrip).'] */
+function actionParts(body: string): [string, string] {
+  const i = body.indexOf(' · ')
+  return i > 0 ? [body.slice(0, i), body.slice(i + 3)] : ['', body]
 }
 
 async function send() {
@@ -137,27 +145,52 @@ onBeforeUnmount(() => chat.setVisible(false))
       {{ note }}
     </div>
     <ol role="log" :aria-label="`${current.label} messages`" class="chat__log">
-      <li
-        v-for="m in chat.inThread.value"
-        :key="m.id"
-        :class="{ 'is-me': m.sender_id === auth.userId }"
-      >
-        <UiAvatar
-          v-if="m.sender_id !== auth.userId"
-          :name="who(m.sender_id)"
-          :portrait-path="entryOf(m.sender_id)?.portrait_path ?? null"
-          :class-slug="entryOf(m.sender_id)?.summary?.classSlug ?? null"
-          :size="30"
-        />
-        <div class="chat__msg">
-          <span class="chat__meta"
-            ><b>{{ m.sender_id === auth.userId ? 'You' : who(m.sender_id) }}</b>
-            <template v-if="groupNote(m)"> {{ groupNote(m) }}</template> ·
-            {{ timeAgo(m.created_at) }}</span
+      <template v-for="m in chat.inThread.value" :key="m.id">
+        <li v-if="m.kind === 'action'" class="is-action">
+          <svg
+            class="chat__die"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linejoin="round"
+            aria-hidden="true"
           >
-          <span class="chat__bubble">{{ m.body }}</span>
-        </div>
-      </li>
+            <rect x="4" y="4" width="16" height="16" rx="3" />
+            <circle cx="9" cy="9" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="15" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="9" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="9" cy="15" r="1.2" fill="currentColor" stroke="none" />
+          </svg>
+          <p class="chat__action">
+            <span class="sr-only">Game: </span>
+            <b v-if="actionParts(m.body)[0]">{{ actionParts(m.body)[0] }}</b>
+            {{ actionParts(m.body)[1] }}
+          </p>
+          <time class="chat__action-time" :datetime="m.created_at">{{
+            timeAgo(m.created_at)
+          }}</time>
+        </li>
+        <li v-else :class="{ 'is-me': m.sender_id === auth.userId }">
+          <UiAvatar
+            v-if="m.sender_id !== auth.userId"
+            :name="who(m.sender_id)"
+            :portrait-path="entryOf(m.sender_id)?.portrait_path ?? null"
+            :class-slug="entryOf(m.sender_id)?.summary?.classSlug ?? null"
+            :size="30"
+          />
+          <div class="chat__msg">
+            <span class="chat__meta"
+              ><b>{{ m.sender_id === auth.userId ? 'You' : who(m.sender_id) }}</b>
+              <template v-if="groupNote(m)"> {{ groupNote(m) }}</template> ·
+              {{ timeAgo(m.created_at) }}</span
+            >
+            <span class="chat__bubble">{{ m.body }}</span>
+          </div>
+        </li>
+      </template>
       <li v-if="!chat.inThread.value.length" class="chat__empty">No messages here yet.</li>
     </ol>
     <RestrictedNotice v-if="!canMessage" title="Messaging is turned off for your account" />
@@ -322,6 +355,51 @@ onBeforeUnmount(() => chat.setVisible(false))
     background: var(--accent);
     color: var(--on-accent);
   }
+}
+
+// Game lines: a slim, full-width log row with an accent rule, so they read as
+// the table's record rather than someone talking.
+.chat__log li.is-action {
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 10px;
+  border-left: 2px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--inset) 60%, transparent);
+  color: var(--page-soft);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+// Runs of game lines sit closer together, as one block of log (the log is
+// column-reverse, so the next item in the DOM is the one shown above).
+.chat__log li.is-action + li.is-action {
+  margin-bottom: -6px;
+}
+
+.chat__die {
+  flex: none;
+  align-self: center;
+  color: var(--accent-text);
+}
+
+.chat__action {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+
+  b {
+    color: var(--page-text);
+    font-weight: 700;
+  }
+}
+
+.chat__action-time {
+  flex: none;
+  font-size: 11px;
+  color: var(--page-muted);
+  white-space: nowrap;
 }
 
 .chat__empty {

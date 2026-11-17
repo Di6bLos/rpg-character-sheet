@@ -16,7 +16,9 @@ const g = computed(() => {
     temp,
     pct: `${Math.round((now / total) * 100)}%`,
     tempPct: `${Math.round((temp / total) * 100)}%`,
-    label: `${props.name}: ${now} of ${max} mana${temp ? `, plus ${temp} temporary` : ''}`,
+    total: max + temp,
+    label: `${props.name}: mana`,
+    text: `${now} of ${max}${temp ? `, plus ${temp} temporary` : ''}`,
   }
 })
 </script>
@@ -29,8 +31,9 @@ const g = computed(() => {
       role="meter"
       :aria-label="g.label"
       aria-valuemin="0"
-      :aria-valuemax="g.max"
-      :aria-valuenow="g.now"
+      :aria-valuemax="g.total"
+      :aria-valuenow="g.now + g.temp"
+      :aria-valuetext="g.text"
     >
       <span class="mana__fill" :style="{ width: g.pct }" />
       <span class="mana__temp" :style="{ left: g.pct, width: g.tempPct }" />
@@ -77,7 +80,12 @@ const g = computed(() => {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: color-mix(in srgb, var(--secondary) 45%, transparent);
+  // Striped, so it reads as different from the pool without relying on colour.
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--secondary) 0 3px,
+    color-mix(in srgb, var(--secondary) 35%, transparent) 3px 6px
+  );
 }
 
 .mana__txt {

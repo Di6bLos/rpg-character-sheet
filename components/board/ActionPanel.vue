@@ -66,6 +66,11 @@ function setCollapsed(on: boolean) {
   } catch {
     // Not remembered; fine.
   }
+  // The button that was pressed is hidden now: hand focus to its counterpart.
+  nextTick(() => {
+    const target = on ? '.ap__unfold' : '[data-ap-dismiss]'
+    el.value?.querySelector<HTMLElement>(target)?.focus()
+  })
 }
 
 /** Opens the dialog in the mode the screen calls for. */
@@ -137,14 +142,15 @@ const folded = computed(() => wide.value && collapsed.value)
         v-if="folded"
         type="button"
         class="ap__unfold"
-        aria-label="Show quick actions"
         title="Show quick actions"
+        aria-expanded="false"
+        :aria-controls="`${panelId}-inner`"
         @click="setCollapsed(false)"
       >
         <span aria-hidden="true">›</span>
         <span class="ap__unfold-label">Actions</span>
       </button>
-      <div v-show="!folded" class="ap__inner">
+      <div v-show="!folded" :id="`${panelId}-inner`" class="ap__inner">
         <BoardActionPanelBody
           :key="character.id"
           :character="character"
@@ -189,7 +195,7 @@ const folded = computed(() => wide.value && collapsed.value)
   }
 
   &::backdrop {
-    background: rgba(0, 0, 0, 0.5);
+    background: rgb(0 0 0 / 50%);
   }
 }
 
@@ -225,8 +231,8 @@ const folded = computed(() => wide.value && collapsed.value)
   z-index: 40;
   translate: 0 -50%;
   writing-mode: vertical-rl;
-  min-width: 36px;
-  padding: 16px 8px;
+  min-width: 44px;
+  padding: 16px 12px;
   border: 1px solid var(--line-strong);
   border-left: 0;
   border-radius: 0 10px 10px 0;
@@ -269,14 +275,33 @@ const folded = computed(() => wide.value && collapsed.value)
 
 <style lang="scss">
 // Docked panel: keep the board shell (max 1280px, 48px side padding) far enough
-// right that the panel fits in its left margin: 16px edge + 264px + 24px gap.
+// right that the panel fits in its left margin: 16px edge + panel + 24px gap.
+// `.page.shell` is the board frame (layouts/default.vue's root is a bare `.shell`).
 @media (min-width: 1200px) {
-  // `.page.shell` is the board frame (layouts/default.vue's root is a bare `.shell`).
-  .page.shell:has(.ap-slot:not(.ap-slot--folded)) {
-    --ap-shift: max(calc((100% - 1280px) / 2), 256px);
+  .page.shell:has(.ap-slot) {
+    // Folded: 16 + 44 + 24 = 84px before the content, 48 of it the shell's padding.
+    --ap-shift: max(calc((100% - 1280px) / 2), 40px);
     width: min(1280px, calc(100% - var(--ap-shift)));
     margin-left: var(--ap-shift);
     margin-right: auto;
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition:
+        margin-left 0.2s ease,
+        width 0.2s ease;
+    }
+  }
+
+  // Open: 16 + 264 + 24 = 304px.
+  .page.shell:has(.ap-slot:not(.ap-slot--folded)) {
+    --ap-shift: max(calc((100% - 1280px) / 2), 256px);
+  }
+}
+
+// Edge tab: keep the content clear of it.
+@media not all and (min-width: 1200px) {
+  .page.shell:has(.ap-tab) {
+    padding-left: 52px;
   }
 }
 </style>
