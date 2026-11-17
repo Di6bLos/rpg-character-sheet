@@ -180,3 +180,18 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [x] Game lines raise no notifications and don't show on the dashboard
 - [x] "Battle log" switch beside the Messages heading: off by default, remembered per user in the browser; hidden game lines don't count as unread
 - [x] Apply `20261117100000_message_kind.sql` to the hosted project
+
+## Lore Master (AI chat on the Party tab)
+- [x] `lore-master` Edge Function on the user's own key (Claude Sonnet 5.5, Gemini, ChatGPT); shared helpers moved to `supabase/functions/_shared/ai.ts`
+- [x] Role worked out on the server from `campaign_members`; non-members get 403
+- [x] GM context: campaign, live roster, character sheets, campaign NPCs (with GM notes), recent journal (both visibilities)
+- [x] Player context: rules and their own character only; the prompt refuses monsters, surroundings, plot and published-adventure content
+- [x] Nimble rules pack from `data/nimble` (`utils/loreContext.ts`): core rules plus the hero's class, subclass, ancestry, background and spells; the GM also gets the monster budgets, bestiary index and every spell
+- [x] Panel docked in the right margin from 1200px (folds to a tab); below that a "Lore" edge tab under "Actions" opens a drawer from the left
+- [x] Only shown when AI is on site-wide and the user has saved a key; history kept per browser session
+- [x] Shared `useDockedPanel` for both side panels; shell shift for both margins in `assets/styles/_board-dock.scss`
+- [x] Tests: rules pack contents and size, sheet serialization, turn trimming, prompt limits, escaped markdown (`tests/loreMaster.test.ts`)
+- [x] Browser check (headless, local stack): 1440 / 1200 docked both sides, 1100 / 390 stacked tabs and drawer, Escape closes, GM console shows Lore alone, no horizontal scroll
+- [ ] Answers checked with a real provider key (player refusals, GM context use)
+- [ ] Deploy `lore-master` and redeploy `generate-npc` to the hosted project
+- [ ] ui-ux-reviewer pass

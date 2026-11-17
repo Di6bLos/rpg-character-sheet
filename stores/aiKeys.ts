@@ -108,7 +108,7 @@ export async function functionError(error: unknown): Promise<string> {
       if (body?.error) return body.error
       // The gateway's own errors ({ message }) mean the function never ran.
       if (ctx.status === 404 || ctx.status === 503 || ctx.status === 502) {
-        return 'The AI service isn’t available right now (the generate-npc function isn’t running or deployed).'
+        return 'The AI service isn’t available right now (the AI function isn’t running or deployed).'
       }
       if (body?.message) return body.message
     } catch {

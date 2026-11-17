@@ -3,13 +3,11 @@
 // From 1200px: docked in the page's left margin, outside the content column,
 // sticky and collapsible to a slim tab (the board shell moves right when the
 // margin is too narrow). Below that: a tab on the left edge opens it as a drawer.
-// One <dialog> serves both (non-modal when docked, modal as a drawer), so the
-// sheet editor inside stays mounted and unsaved changes survive a resize.
+// One <dialog> serves both (useDockedPanel), so the sheet editor inside stays
+// mounted and unsaved changes survive a resize. The edge tab joins the stack in
+// PartyView's `.edge-tabs`, above the Lore Master's.
 import type { Character } from '~/types'
 import type { AnySheet } from '~/types/sheets'
-
-const WIDE_QUERY = '(min-width: 1200px)'
-const COLLAPSED_KEY = 'lantern:action-panel-collapsed'
 
 const auth = useAuthStore()
 const characters = useCharacterStore()
@@ -39,96 +37,29 @@ watch(
 
 // --- Docked or drawer ------------------------------------------------------------
 const panelId = useId()
-const el = ref<HTMLDialogElement | null>(null)
-const wide = ref(true)
-const drawerOpen = ref(false)
-const collapsed = ref(false)
-
-let media: MediaQueryList | null = null
-const onMedia = () => (wide.value = !!media?.matches)
-
-onMounted(() => {
-  media = window.matchMedia(WIDE_QUERY)
-  onMedia()
-  media.addEventListener('change', onMedia)
-  try {
-    collapsed.value = localStorage.getItem(COLLAPSED_KEY) === '1'
-  } catch {
-    // Storage blocked: start expanded.
-  }
-})
-onBeforeUnmount(() => media?.removeEventListener('change', onMedia))
-
-function setCollapsed(on: boolean) {
-  collapsed.value = on
-  try {
-    localStorage.setItem(COLLAPSED_KEY, on ? '1' : '0')
-  } catch {
-    // Not remembered; fine.
-  }
-  // The button that was pressed is hidden now: hand focus to its counterpart.
-  nextTick(() => {
-    const target = on ? '.ap__unfold' : '[data-ap-dismiss]'
-    el.value?.querySelector<HTMLElement>(target)?.focus()
-  })
-}
-
-/** Opens the dialog in the mode the screen calls for. */
-function sync() {
-  const dialog = el.value
-  if (!dialog) return
-  const modal = dialog.open && dialog.matches(':modal')
-  if (wide.value) {
-    if (modal) dialog.close()
-    if (!dialog.open) {
-      // show() focuses the first control; docked, the panel shouldn't take focus from the page.
-      const before = document.activeElement
-      dialog.show()
-      if (before instanceof HTMLElement && before !== document.body) before.focus()
-      else (document.activeElement as HTMLElement | null)?.blur()
-    }
-  } else if (drawerOpen.value) {
-    if (!modal) {
-      if (dialog.open) dialog.close()
-      dialog.showModal()
-    }
-  } else if (dialog.open) {
-    dialog.close()
-  }
-}
-
-watch([el, wide, drawerOpen], sync, { flush: 'post' })
-
-function onClose() {
-  drawerOpen.value = false
-  // Closing the drawer when the screen widened mid-way: dock it again.
-  if (wide.value) nextTick(sync)
-}
-
-function onBackdrop(event: MouseEvent) {
-  if (!wide.value && event.target === el.value) drawerOpen.value = false
-}
-
-function dismiss() {
-  if (wide.value) setCollapsed(true)
-  else drawerOpen.value = false
-}
-
-const folded = computed(() => wide.value && collapsed.value)
+const { el, wide, drawerOpen, folded, setCollapsed, onClose, onBackdrop, dismiss } = useDockedPanel(
+  {
+    collapsedKey: 'lantern:action-panel-collapsed',
+    unfoldSelector: '.ap__unfold',
+    dismissSelector: '[data-ap-dismiss]',
+  },
+)
 </script>
 
 <template>
   <div v-if="character" class="ap-slot" :class="{ 'ap-slot--folded': folded }">
-    <button
-      v-if="!wide"
-      type="button"
-      class="ap-tab"
-      :aria-controls="panelId"
-      :aria-expanded="drawerOpen"
-      @click="drawerOpen = true"
-    >
-      Actions
-    </button>
+    <Teleport to=".edge-tabs" defer>
+      <button
+        v-if="!wide"
+        type="button"
+        class="edge-tab edge-tab--actions"
+        :aria-controls="panelId"
+        :aria-expanded="drawerOpen"
+        @click="drawerOpen = true"
+      >
+        Actions
+      </button>
+    </Teleport>
     <dialog
       :id="panelId"
       ref="el"
@@ -224,27 +155,6 @@ const folded = computed(() => wide.value && collapsed.value)
   text-transform: uppercase;
 }
 
-.ap-tab {
-  position: fixed;
-  left: 0;
-  top: 50%;
-  z-index: 40;
-  translate: 0 -50%;
-  writing-mode: vertical-rl;
-  min-width: 44px;
-  padding: 16px 12px;
-  border: 1px solid var(--line-strong);
-  border-left: 0;
-  border-radius: 0 10px 10px 0;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-}
-
 // Docked: a full-height slot just left of the Party content, in the page margin.
 @media (min-width: 1200px) {
   .ap-slot {
@@ -269,39 +179,6 @@ const folded = computed(() => wide.value && collapsed.value)
 
   .ap:not(:modal) {
     display: none;
-  }
-}
-</style>
-
-<style lang="scss">
-// Docked panel: keep the board shell (max 1280px, 48px side padding) far enough
-// right that the panel fits in its left margin: 16px edge + panel + 24px gap.
-// `.page.shell` is the board frame (layouts/default.vue's root is a bare `.shell`).
-@media (min-width: 1200px) {
-  .page.shell:has(.ap-slot) {
-    // Folded: 16 + 44 + 24 = 84px before the content, 48 of it the shell's padding.
-    --ap-shift: max(calc((100% - 1280px) / 2), 40px);
-    width: min(1280px, calc(100% - var(--ap-shift)));
-    margin-left: var(--ap-shift);
-    margin-right: auto;
-
-    @media (prefers-reduced-motion: no-preference) {
-      transition:
-        margin-left 0.2s ease,
-        width 0.2s ease;
-    }
-  }
-
-  // Open: 16 + 264 + 24 = 304px.
-  .page.shell:has(.ap-slot:not(.ap-slot--folded)) {
-    --ap-shift: max(calc((100% - 1280px) / 2), 256px);
-  }
-}
-
-// Edge tab: keep the content clear of it.
-@media not all and (min-width: 1200px) {
-  .page.shell:has(.ap-tab) {
-    padding-left: 52px;
   }
 }
 </style>
