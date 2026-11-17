@@ -3,7 +3,7 @@
 // abilities. Same rules as the sheet (useNimbleActions /
 // useNimbleSpells); each result also goes to party chat.
 import type { NimbleSheet } from '~/types/sheets'
-import { actionsLeft, manaPool, stopCasting, turnActions } from '~/utils/nimblePlay'
+import { stopCasting } from '~/utils/nimblePlay'
 
 defineProps<{ drawer: boolean }>()
 const emit = defineEmits<{ dismiss: [] }>()
@@ -27,9 +27,6 @@ const { attacks, reactions, toggleReaction, abilities, spend } = useNimbleAction
 })
 const { tiers, help: spellHelp, cast } = useNimbleSpells({ onResult: announce })
 
-const left = computed(() => actionsLeft(sheet.value))
-const perTurn = computed(() => turnActions(sheet.value))
-const mana = computed(() => (sheet.value.mana.max > 0 ? manaPool(sheet.value) : null))
 const spellCount = computed(() => tiers.value.reduce((n, t) => n + t.spells.length, 0))
 const reactionsLeft = computed(() => reactions.value.filter((r) => !r.used).length)
 const sheetLink = computed(() => `/character/${draft.value.id}?campaign=${campaignId.value}`)
@@ -75,17 +72,6 @@ const abilityRows = computed(() =>
     <header class="apm__head">
       <div class="apm__who">
         <strong>{{ draft.name }}</strong>
-        <span class="apm__meta">
-          <span
-            ><span class="sr-only">Actions left this turn: </span>{{ left }}/{{ perTurn }}
-            <span aria-hidden="true">actions</span></span
-          >
-          <span v-if="mana !== null"
-            ><span aria-hidden="true">·</span> {{ mana }} mana<span class="sr-only">
-              left</span
-            ></span
-          >
-        </span>
       </div>
       <NuxtLink
         :to="sheetLink"
@@ -316,14 +302,6 @@ const abilityRows = computed(() =>
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-}
-
-.apm__meta {
-  display: flex;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--page-muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .apm__icon {

@@ -149,7 +149,7 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [x] Edge tab no longer covers content on narrow screens (shell `padding-left: 52px` while the tab shows)
 - [x] Result line under the header; each result re-renders its node so repeats are announced
 - [ ] Decide: keep one-open-at-a-time dropdowns or allow several open
-- [x] Header meta has screen-reader wording ("Actions left this turn: 0/3, 12 mana left")
+- [x] ~~Header meta label~~: actions left and mana removed from the panel header; the roster card beside it shows both
 - [x] Shell shift animates (0.2s), skipped under reduced motion
 - [x] Unfold button named by its visible "Actions", with `aria-expanded` + `aria-controls`
 
@@ -177,5 +177,6 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 ### Chat: game lines vs party messages
 - [x] `messages.kind` (`chat` / `action`, migration `20261117100000_message_kind.sql`); the panel posts `action`
 - [x] Chat shows game lines as a compact full-width log row (dice icon, bold name, 13px, accent rule); typed messages keep the bubbles
-- [x] Game lines raise no notifications
-- [ ] Apply `20261117100000_message_kind.sql` to the hosted project before this ships
+- [x] Game lines raise no notifications and don't show on the dashboard
+- [x] "Battle log" switch beside the Messages heading: off by default, remembered per user in the browser; hidden game lines don't count as unread
+- [x] Apply `20261117100000_message_kind.sql` to the hosted project

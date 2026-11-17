@@ -12,6 +12,10 @@ const auth = useAuthStore()
 const chat = useBoardChat()
 const draft = ref('')
 const canMessage = computed(() => auth.can('can_send_messages'))
+const showActions = computed({
+  get: () => chat.showActions.value,
+  set: (on: boolean) => chat.setShowActions(on),
+})
 
 const others = computed(() => props.roster.filter((r) => r.user_id !== auth.userId))
 
@@ -82,7 +86,15 @@ onBeforeUnmount(() => chat.setVisible(false))
 <template>
   <section class="panel chat" aria-labelledby="chat-h">
     <div class="chat__head">
-      <h2 id="chat-h">Messages</h2>
+      <div class="chat__title">
+        <h2 id="chat-h">Messages</h2>
+        <UiSwitch
+          v-model="showActions"
+          class="chat__toggle"
+          label="Battle log"
+          title="Show rolls and casts from the quick-action panel"
+        />
+      </div>
       <div role="tablist" aria-label="Conversations" class="chat__tabs">
         <button
           v-for="t in tabs"
@@ -233,6 +245,42 @@ onBeforeUnmount(() => chat.setVisible(false))
     margin: 0;
     font-family: var(--font-heading);
     font-size: 22px;
+  }
+}
+
+.chat__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+// A compact switch beside the heading.
+.chat__toggle {
+  min-height: 32px;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--page-muted);
+
+  :deep(.switch__track) {
+    width: 36px;
+    height: 20px;
+  }
+
+  :deep(.switch__knob) {
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+  }
+
+  :deep(.switch__track[aria-checked='true'] .switch__knob) {
+    left: 19px;
+  }
+
+  // The label is part of the target, so the row is easy to hit on touch screens.
+  @media (any-pointer: coarse) {
+    min-height: 44px;
   }
 }
 
