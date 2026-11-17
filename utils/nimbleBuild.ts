@@ -88,9 +88,9 @@ export function classFlagAt(
 
 /** Armor from the class formula at a level; Iron Defense (2) doubles it from level 13. */
 export function classArmor(cls: ClassDef, stats: Record<NimbleStat, number>, level = 1): number {
-  const { base, dexMax, shield, addStr } = cls.armorCalc
+  const { base, dexMax, shield, addStr, addInt } = cls.armorCalc
   const dex = dexMax === undefined ? stats.DEX : Math.min(stats.DEX, dexMax)
-  const armor = base + dex + (shield ?? 0) + (addStr ? stats.STR : 0)
+  const armor = base + dex + (shield ?? 0) + (addStr ? stats.STR : 0) + (addInt ? stats.INT : 0)
   return classFlagAt(cls, level, 'armorDoubled') ? armor * 2 : armor
 }
 
@@ -475,6 +475,11 @@ function applyLevelDef(sheet: NimbleSheet, def: LevelDef | undefined, src: strin
       pushUnique(sheet.spells.utility, ...utilitySpells(school).map((s) => s.name))
   }
   if (def.resourceDie) sheet.resource.die = def.resourceDie
+  if (def.swapAttack) {
+    const { from, to } = def.swapAttack
+    // syncDerived rebuilds the attack from the new weapon's dice.
+    for (const a of sheet.attacks) if (a.name === from) a.name = to
+  }
   if (def.hitDie) sheet.hitDie = Math.max(sheet.hitDie, def.hitDie)
   if (def.hpBonus) {
     sheet.hpMax += def.hpBonus
@@ -904,9 +909,12 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
     const ability = sheet.abilities.find((a) => abilityBaseName(a.name) === def.ability)
     if (!ability) return null
     let die = def.die
+    let bonus = def.bonus && level >= def.bonus.level ? def.bonus.amount : 0
     const sub = cls.subclasses.find((s) => s.slug === sheet.subclassSlug)
-    for (let l = 1; l <= level; l++)
+    for (let l = 1; l <= level; l++) {
       die = sub?.levels[l]?.resourceDie ?? cls.levels[l]?.resourceDie ?? die
+      bonus += (cls.levels[l]?.resourceBonus ?? 0) + (sub?.levels[l]?.resourceBonus ?? 0)
+    }
     const pool = cls.pools.find((p) => p.id === def.movesPool)
     const moves = pool
       ? sheet.abilities.filter((a) => pool.options.some((o) => o.name === a.name))
@@ -919,7 +927,7 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
       ability: ability.name,
       desc: ability.desc,
       stat: def.stat,
-      bonus: def.bonus && level >= def.bonus.level ? def.bonus.amount : 0,
+      bonus,
       moves,
     }
   }

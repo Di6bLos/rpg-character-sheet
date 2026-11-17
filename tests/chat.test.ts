@@ -8,6 +8,7 @@ const msg = (patch: Partial<Message>): Message => ({
   sender_id: 'gm',
   body: 'hi',
   recipient_ids: null,
+  kind: 'chat',
   created_at: '',
   ...patch,
 })

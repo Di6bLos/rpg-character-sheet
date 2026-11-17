@@ -108,107 +108,118 @@ async function addCustom() {
 </script>
 
 <template>
-  <div class="party">
-    <BoardInitiative :init="init" :roster="roster" :gm="gmControls" @add="addOpen = true" />
+  <div class="party-layout">
+    <BoardActionPanel v-if="mode === 'board'" />
+    <div class="party">
+      <BoardInitiative :init="init" :roster="roster" :gm="gmControls" @add="addOpen = true" />
 
-    <div class="party__cols">
-      <BoardRoster
-        v-if="campaign"
-        class="party__roster"
-        :roster="roster"
-        :system="campaign.system"
-        :turn-character-id="turnCharacterId"
-      />
-      <BoardChat class="party__chat" :roster="roster" />
-    </div>
+      <div class="party__cols">
+        <BoardRoster
+          v-if="campaign"
+          class="party__roster"
+          :roster="roster"
+          :system="campaign.system"
+          :turn-character-id="turnCharacterId"
+        />
+        <BoardChat class="party__chat" :roster="roster" />
+      </div>
 
-    <BoardTableAdmin v-if="mode === 'console'" />
+      <BoardTableAdmin v-if="mode === 'console'" />
 
-    <UiDialog v-model="addOpen" title="Add to initiative" width="540px">
-      <div class="stack">
-        <div v-if="partyMissing.length" class="row" style="justify-content: space-between">
-          <span class="small"
-            >{{ plural(partyMissing.length, 'party character') }} not in the order yet.</span
-          >
-          <button type="button" class="btn btn--ghost" :disabled="adding" @click="addParty">
-            Add the party
-          </button>
-        </div>
-        <p v-if="mode === 'console'" class="small muted">
-          To add creatures from your index (with their portraits and a journal entry for the party),
-          use
-          <NuxtLink :to="`/campaigns/${campaignId}/gm/npcs`" @click="addOpen = false">NPCs</NuxtLink
-          >.
-        </p>
-        <form class="stack" @submit.prevent="addCustom">
-          <div class="add-grid add-grid--top">
-            <div class="field">
-              <label for="cb-name">Name</label>
-              <input
-                id="cb-name"
-                v-model="draft.name"
-                class="input"
-                maxlength="76"
-                placeholder="Bandit"
-                required
-              />
-            </div>
-            <div class="field">
-              <label for="cb-count">How many</label>
-              <input
-                id="cb-count"
-                v-model.number="draft.count"
-                class="input"
-                type="number"
-                min="1"
-                max="20"
-              />
-            </div>
-          </div>
-          <div class="add-grid">
-            <div class="field">
-              <label for="cb-kind">Kind</label>
-              <select id="cb-kind" v-model="draft.kind" class="input">
-                <option value="monster">Monster</option>
-                <option value="npc">NPC</option>
-                <option value="pc">PC</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="cb-init">Initiative</label>
-              <input id="cb-init" v-model.number="draft.initiative" class="input" type="number" />
-            </div>
-            <div class="field">
-              <label for="cb-mod">Init. modifier</label>
-              <input id="cb-mod" v-model.number="draft.init_mod" class="input" type="number" />
-            </div>
-            <div class="field">
-              <label for="cb-hp">Hit points</label>
-              <input id="cb-hp" v-model.number="draft.hp" class="input" type="number" min="0" />
-            </div>
-            <div class="field">
-              <label for="cb-ac">Armor</label>
-              <input id="cb-ac" v-model.number="draft.ac" class="input" type="number" />
-            </div>
-          </div>
-          <p v-if="customLabels.length > 1 && customLabels[0]" class="small muted">
-            Adds {{ draft.name.trim() }} {{ customLabels[0] }} to {{ draft.name.trim() }}
-            {{ customLabels[customLabels.length - 1] }}.
-          </p>
-          <div class="row" style="justify-content: flex-end">
-            <button type="button" class="btn btn--ghost" @click="addOpen = false">Cancel</button>
-            <button type="submit" class="btn" :disabled="adding || !draft.name.trim()">
-              {{ draft.count > 1 ? `Add ${Math.min(20, draft.count)}` : 'Add combatant' }}
+      <UiDialog v-model="addOpen" title="Add to initiative" width="540px">
+        <div class="stack">
+          <div v-if="partyMissing.length" class="row" style="justify-content: space-between">
+            <span class="small"
+              >{{ plural(partyMissing.length, 'party character') }} not in the order yet.</span
+            >
+            <button type="button" class="btn btn--ghost" :disabled="adding" @click="addParty">
+              Add the party
             </button>
           </div>
-        </form>
-      </div>
-    </UiDialog>
+          <p v-if="mode === 'console'" class="small muted">
+            To add creatures from your index (with their portraits and a journal entry for the
+            party), use
+            <NuxtLink :to="`/campaigns/${campaignId}/gm/npcs`" @click="addOpen = false"
+              >NPCs</NuxtLink
+            >.
+          </p>
+          <form class="stack" @submit.prevent="addCustom">
+            <div class="add-grid add-grid--top">
+              <div class="field">
+                <label for="cb-name">Name</label>
+                <input
+                  id="cb-name"
+                  v-model="draft.name"
+                  class="input"
+                  maxlength="76"
+                  placeholder="Bandit"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="cb-count">How many</label>
+                <input
+                  id="cb-count"
+                  v-model.number="draft.count"
+                  class="input"
+                  type="number"
+                  min="1"
+                  max="20"
+                />
+              </div>
+            </div>
+            <div class="add-grid">
+              <div class="field">
+                <label for="cb-kind">Kind</label>
+                <select id="cb-kind" v-model="draft.kind" class="input">
+                  <option value="monster">Monster</option>
+                  <option value="npc">NPC</option>
+                  <option value="pc">PC</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="cb-init">Initiative</label>
+                <input id="cb-init" v-model.number="draft.initiative" class="input" type="number" />
+              </div>
+              <div class="field">
+                <label for="cb-mod">Init. modifier</label>
+                <input id="cb-mod" v-model.number="draft.init_mod" class="input" type="number" />
+              </div>
+              <div class="field">
+                <label for="cb-hp">Hit points</label>
+                <input id="cb-hp" v-model.number="draft.hp" class="input" type="number" min="0" />
+              </div>
+              <div class="field">
+                <label for="cb-ac">Armor</label>
+                <input id="cb-ac" v-model.number="draft.ac" class="input" type="number" />
+              </div>
+            </div>
+            <p v-if="customLabels.length > 1 && customLabels[0]" class="small muted">
+              Adds {{ draft.name.trim() }} {{ customLabels[0] }} to {{ draft.name.trim() }}
+              {{ customLabels[customLabels.length - 1] }}.
+            </p>
+            <div class="row" style="justify-content: flex-end">
+              <button type="button" class="btn btn--ghost" @click="addOpen = false">Cancel</button>
+              <button type="submit" class="btn" :disabled="adding || !draft.name.trim()">
+                {{ draft.count > 1 ? `Add ${Math.min(20, draft.count)}` : 'Add combatant' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </UiDialog>
+    </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+// Anchor for the player's quick-action panel (board only), which docks in the
+// page margin to the left of this content on wide screens.
+.party-layout {
+  position: relative;
+}
+
 .party {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
