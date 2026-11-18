@@ -302,6 +302,14 @@ describe('transformations and other statuses', () => {
     expect(sheet).toMatchObject({ hp: 0, dying: true, tempHp: 0 })
   })
 
+  it('ends Dragonform before a Safe Rest restores HP', () => {
+    const sheet = hero([], { hp: 40, hpMax: 40, woundsMax: 6, wounds: 1 })
+    applyCastEffect(sheet, 17, 'Dragonform')
+    expect(safeRest(sheet, 17)).toMatch(/restored.*First: .*Dragonform ends: you drop to 0 HP/)
+    expect(sheet).toMatchObject({ hp: 40, dying: false, wounds: 1, tempHp: 0 })
+    expect(sheet.effects).toEqual([])
+  })
+
   it('keeps a concentration spell’s status when it replaces another concentration', () => {
     const sheet = hero([], { concentration: 'Shadow Trap' })
     castSpell(sheet, 'Boisterous Winds', 1, 5)

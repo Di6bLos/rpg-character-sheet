@@ -1,5 +1,11 @@
 <script setup lang="ts">
-const props = defineProps<{ label: string; action: string; alt?: string; disabled?: boolean }>()
+const props = defineProps<{
+  label: string
+  action: string
+  alt?: string
+  disabled?: boolean
+  signed?: boolean
+}>()
 const emit = defineEmits<{ submit: [values: number[]]; alt: [values: number[]] }>()
 
 const id = useId()
@@ -8,7 +14,7 @@ const values = computed(() =>
   text.value
     .split(/[\s,+]+/)
     .map((v) => Number(v))
-    .filter((v) => Number.isFinite(v) && v > 0),
+    .filter((v) => Number.isFinite(v) && (props.signed || v > 0)),
 )
 
 function send(kind: 'submit' | 'alt') {
@@ -26,7 +32,7 @@ function send(kind: 'submit' | 'alt') {
       :id="id"
       v-model="text"
       class="input"
-      inputmode="numeric"
+      :inputmode="props.signed ? 'text' : 'numeric'"
       :placeholder="props.label"
       :disabled="props.disabled"
     />

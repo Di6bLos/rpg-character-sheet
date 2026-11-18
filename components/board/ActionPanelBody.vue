@@ -30,23 +30,19 @@ const { reloadRoster } = useCampaignBoard()
 const chat = useBoardChat()
 
 watch(
-  () => props.turnCharacterId,
-  (now, before) => {
-    if (!editor.canEdit.value || now === before) return
+  () => [props.turnCharacterId, props.round] as const,
+  ([now, round], [before, prevRound]) => {
+    if (!editor.canEdit.value) return
     const sheet = editor.draft.value.sheet as NimbleSheet
     const level = editor.draft.value.level
     const mine = props.character.id
-    if (before === mine && sheet.turnActive) editor.say(endTurn(sheet, level))
-    if (now === mine && !sheet.turnActive) editor.say(startTurn(sheet, level))
-  },
-)
-
-watch(
-  () => props.round,
-  (now, before) => {
-    if (!editor.canEdit.value || now === null || before === null || now <= before) return
-    const sheet = editor.draft.value.sheet as NimbleSheet
-    if (sheet.inEncounter) editor.say(newRound(sheet, editor.draft.value.level))
+    const wrapped = round !== null && prevRound !== null && round > prevRound
+    const again = wrapped && now === before && now === mine
+    if ((before === mine && now !== mine) || again)
+      if (sheet.turnActive) editor.say(endTurn(sheet, level))
+    if (wrapped && sheet.inEncounter) editor.say(newRound(sheet, level))
+    if (now === mine && (now !== before || again) && !sheet.turnActive)
+      editor.say(startTurn(sheet, level))
   },
 )
 

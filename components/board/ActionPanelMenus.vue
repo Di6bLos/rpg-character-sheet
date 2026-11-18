@@ -461,6 +461,7 @@ const effectRows = computed(() =>
       v-if="sheet.ownDice && !sheet.inEncounter"
       label="Your Initiative total"
       action="New encounter"
+      signed
       :disabled="!canEdit"
       @submit="startEncounter"
     />

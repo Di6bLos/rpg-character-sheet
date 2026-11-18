@@ -255,6 +255,7 @@ export function fieldRest(
 
 /** A Safe Rest restores HP, Hit Dice, mana and limited uses, and heals 1 Wound. */
 export function safeRest(sheet: NimbleSheet, level: number): string {
+  const ended = endEffects(sheet, 'rest')
   sheet.turnActive = false
   sheet.inEncounter = false
   sheet.turnDone = false
@@ -274,8 +275,8 @@ export function safeRest(sheet: NimbleSheet, level: number): string {
   sheet.casting = { ...NOT_CASTING }
   const refilled = refillResource(sheet, level, 'rest')
   const gone = summonsGone(endSummons(sheet, 'rest'))
-  const ended = endEffects(sheet, 'rest')
-  return `Safe Rest: HP, Hit Dice, mana and limited uses restored; 1 Wound healed; temp HP expired.${refilled}${gone}${ended}`
+  const before = ended ? ` First:${ended}` : ''
+  return `Safe Rest: HP, Hit Dice, mana and limited uses restored; 1 Wound healed; temp HP expired.${before}${refilled}${gone}`
 }
 
 function summonsGone(names: string[]): string {
