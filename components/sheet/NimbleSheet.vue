@@ -7,6 +7,8 @@ import type { NimbleSheet, NimbleStat } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
 import { hasTransforms } from '~/utils/nimbleEffects'
+import { isDead } from '~/utils/nimblePlay'
+import { DEAD_PORTRAIT } from '~/utils/deadPortrait'
 import { availableSummons } from '~/utils/nimbleSummons'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
@@ -21,6 +23,8 @@ const ownDice = computed({
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
 
 const cls = computed(() => classBySlug(sheet.value.classSlug))
+const dead = computed(() => isDead(sheet.value))
+const deadImageFailed = ref(false)
 
 const hasForms = computed(() => hasTransforms(sheet.value))
 
@@ -74,6 +78,17 @@ const skills = computed(() =>
       <template v-if="cls" #empty>
         <NimbleSigil :slug="cls.slug" :size="140" class="nb-sigil" />
       </template>
+      <template v-if="dead" #overlay>
+        <div class="dead-overlay" role="img" :aria-label="`${draft.name} is dead`">
+          <img
+            v-if="!deadImageFailed"
+            :src="DEAD_PORTRAIT"
+            alt=""
+            @error="deadImageFailed = true"
+          />
+          <UiSkull v-else :size="96" />
+        </div>
+      </template>
     </SheetPortrait>
     <div class="identity__body">
       <div class="stack" style="gap: 8px">
@@ -81,7 +96,7 @@ const skills = computed(() =>
           <span class="badge badge--nimble">Nimble</span>
           <span class="small muted"><SheetCampaignLink /></span>
         </div>
-        <h1>{{ draft.name }}</h1>
+        <h1>{{ draft.name }}<span v-if="dead" class="dead-tag"> (dead)</span></h1>
         <UiSwitch
           v-model="ownDice"
           label="I roll my own dice (the app only checks things off)"
@@ -163,6 +178,26 @@ const skills = computed(() =>
 </template>
 
 <style scoped lang="scss">
+.dead-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #0d0b0a;
+  color: #d9d2c5;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.dead-tag {
+  font-size: 0.6em;
+  color: var(--danger);
+}
+
 .own-dice {
   justify-content: flex-start;
   gap: 10px;

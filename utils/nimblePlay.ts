@@ -129,6 +129,14 @@ export function isDead(sheet: NimbleSheet): boolean {
   return sheet.wounds >= Math.max(1, sheet.woundsMax)
 }
 
+export function resurrect(sheet: NimbleSheet): string {
+  if (!isDead(sheet)) return ''
+  sheet.wounds = Math.max(0, Math.max(1, sheet.woundsMax) - 1)
+  sheet.hp = Math.max(1, sheet.hp)
+  sheet.dying = false
+  return `Resurrected: back at ${sheet.hp} HP with ${sheet.wounds} Wounds.`
+}
+
 function hasText(sheet: NimbleSheet, pattern: RegExp): boolean {
   return sheet.abilities.some((a) => pattern.test(a.desc))
 }

@@ -55,6 +55,11 @@ function dyingLine(r: RosterEntry) {
   return 'Dying'
 }
 
+function dead(r: RosterEntry) {
+  const w = wounds(r)
+  return !!r.character_id && w.max > 0 && w.n >= w.max
+}
+
 function wounds(r: RosterEntry) {
   const max = Math.max(0, r.summary?.woundsMax ?? 6)
   const n = Math.min(max, Math.max(0, r.summary?.wounds ?? 0))
@@ -89,11 +94,15 @@ function actions(r: RosterEntry) {
             :portrait-path="r.summary?.portraitOverride || r.portrait_path"
             :class-slug="r.summary?.classSlug ?? null"
             :faded="down(r)"
+            :dead="dead(r)"
             :size="52"
           />
           <span class="card__names">
             <span class="card__line">
-              <h3>{{ r.character_name ?? 'No character yet' }}</h3>
+              <h3>
+                {{ r.character_name ?? 'No character yet'
+                }}<span v-if="dead(r)" class="dead-tag"> (dead)</span>
+              </h3>
               <span v-if="r.character_id && r.character_id === turnCharacterId" class="turn"
                 >Their turn</span
               >
@@ -168,11 +177,15 @@ function actions(r: RosterEntry) {
             :portrait-path="r.summary?.portraitOverride || r.portrait_path"
             :class-slug="r.summary?.classSlug ?? null"
             :faded="down(r)"
+            :dead="dead(r)"
             :size="56"
           />
           <span class="card__names">
             <span class="card__line">
-              <h3>{{ r.character_name ?? 'No character yet' }}</h3>
+              <h3>
+                {{ r.character_name ?? 'No character yet'
+                }}<span v-if="dead(r)" class="dead-tag"> (dead)</span>
+              </h3>
               <span v-if="r.character_id && r.character_id === turnCharacterId" class="turn"
                 >Their turn</span
               >
@@ -291,6 +304,11 @@ function actions(r: RosterEntry) {
 </template>
 
 <style scoped lang="scss">
+.dead-tag {
+  font-size: 0.8em;
+  color: var(--danger);
+}
+
 .roster {
   display: flex;
   flex-direction: column;

@@ -11,6 +11,7 @@ import {
   gainAction,
   heal,
   isHollowOne,
+  isDead,
   takeDamage,
   newEncounter,
   newRound,
@@ -272,7 +273,7 @@ const effectRows = computed(() =>
   <div class="apm">
     <header class="apm__head">
       <div class="apm__who">
-        <strong>{{ draft.name }}</strong>
+        <strong>{{ draft.name }}<span v-if="isDead(sheet)" class="apm__dead"> (dead)</span></strong>
         <UiSwitch
           :model-value="sheet.ownDice"
           label="I roll my own dice"
@@ -1552,6 +1553,11 @@ const effectRows = computed(() =>
 
 .apm__entry {
   padding: 4px 8px;
+}
+
+.apm__dead {
+  color: var(--danger);
+  font-size: 0.85em;
 }
 
 .apm__own {

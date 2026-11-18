@@ -14,6 +14,7 @@ import {
   isBloodied,
   isDead,
   safeRest,
+  resurrect,
   takeDamage,
   turnActions,
   woundCharges,
@@ -61,6 +62,10 @@ const tiles = computed(() => [
 const restOpen = ref(false)
 
 const crit = ref(false)
+
+function revive() {
+  if (canEdit.value) say(resurrect(sheet.value))
+}
 
 function damage(amount = 1) {
   if (!canEdit.value) return
@@ -141,8 +146,11 @@ function confirmRest() {
     <UiFold name="Vitals" />
     <h2 id="vit-h">Vitals</h2>
 
-    <div v-if="dead" class="notice notice--error" role="alert">
+    <div v-if="dead" class="notice notice--error dead-notice" role="alert">
       <strong>{{ woundsMax }} Wounds: your hero has died.</strong>
+      <button type="button" class="btn btn--sm" :disabled="!canEdit" @click="revive">
+        Resurrect
+      </button>
     </div>
     <div v-else-if="dying" class="notice notice--error" role="alert">
       <strong>Dying.</strong> {{ dyingRules }} Damage: 2 Wounds (crit 3).
@@ -333,6 +341,14 @@ function confirmRest() {
 </template>
 
 <style scoped lang="scss">
+.dead-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: space-between;
+}
+
 .is-changed {
   color: var(--warn-text);
 }

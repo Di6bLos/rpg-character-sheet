@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import type { NimbleSheet } from '../types/sheets'
 import { parseDice, rollNimble } from '../utils/dice'
 import { addCondition, conditionMods, removeCondition } from '../utils/nimbleConditions'
-import { actionsLeft, endEncounter, endTurn, newRound, startTurn } from '../utils/nimblePlay'
+import {
+  actionsLeft,
+  endEncounter,
+  endTurn,
+  isDead,
+  newRound,
+  resurrect,
+  startTurn,
+} from '../utils/nimblePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
 
 function hero(patch: Partial<NimbleSheet> = {}): NimbleSheet {
@@ -55,5 +63,13 @@ describe('conditions', () => {
     let i = 0
     const roll = rollNimble(parseDice('1d6')!, null, () => ((faces[i++] ?? 1) - 1) / 6 + 0.001, -1)
     expect(roll).toMatchObject({ miss: false, total: 5 })
+  })
+
+  it('resurrects a dead hero one Wound short of death', () => {
+    const sheet = hero({ woundsMax: 6, wounds: 6, hp: 0, dying: true })
+    expect(isDead(sheet)).toBe(true)
+    expect(resurrect(sheet)).toMatch(/Resurrected: back at 1 HP with 5 Wounds/)
+    expect(sheet).toMatchObject({ hp: 1, wounds: 5, dying: false })
+    expect(resurrect(sheet)).toBe('')
   })
 })
