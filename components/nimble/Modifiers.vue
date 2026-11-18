@@ -15,12 +15,14 @@ const { draft, canEdit } = useSheet<NimbleSheet>()
 const { abilities, spend, inventions } = useNimbleActions()
 
 const mods = computed(() =>
-  props.summon
-    ? summonModifiers(draft.value.sheet, props.summon)
-    : abilityModifiers(draft.value.sheet, props.target ?? '', [
-        ...(props.weapon !== undefined ? weaponAliases(props.weapon) : []),
-        ...(props.aliases ?? []),
-      ]).filter((m) => !props.skip?.includes(m.ability)),
+  !props.summon && !props.target
+    ? []
+    : props.summon
+      ? summonModifiers(draft.value.sheet, props.summon)
+      : abilityModifiers(draft.value.sheet, props.target ?? '', [
+          ...(props.weapon !== undefined ? weaponAliases(props.weapon) : []),
+          ...(props.aliases ?? []),
+        ]).filter((m) => !props.skip?.includes(m.ability)),
 )
 
 const items = computed(() =>

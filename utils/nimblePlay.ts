@@ -19,7 +19,13 @@ import {
   endEffects,
   setMalfunction,
 } from '~/utils/nimbleEffects'
-import { addSummon, endSummons, initiativeSummons, summonFromSpell } from '~/utils/nimbleSummons'
+import {
+  addSummon,
+  endCustomSummons,
+  endSummons,
+  initiativeSummons,
+  summonFromSpell,
+} from '~/utils/nimbleSummons'
 
 /** Fury dice a Rage can hold before the player has to pick which to keep. */
 export const MAX_RAGE_DICE = 6
@@ -72,7 +78,10 @@ export function endEncounter(sheet: NimbleSheet, level: number): string {
   const lost = !!r && (r.kind === 'counter' || r.kind === 'dice') && sheet.resource.count > 0
   if (lost) sheet.resource.count = 0
   const rage = endRage(sheet)
-  const gone = summonsGone(endSummons(sheet, 'encounter'))
+  const gone = summonsGone([
+    ...endSummons(sheet, 'encounter'),
+    ...endCustomSummons(sheet, 'combat'),
+  ])
   return `Encounter over.${lost ? ` Unused ${r.name} lost.` : ''}${rage ? ` ${rage}` : ''}${expired}${gone}`
 }
 
@@ -730,7 +739,7 @@ export function safeRest(sheet: NimbleSheet, level: number): string {
   sheet.reactionsUsed = []
   sheet.casting = { ...NOT_CASTING }
   const refilled = refillResource(sheet, level, 'rest')
-  const gone = summonsGone(endSummons(sheet, 'rest'))
+  const gone = summonsGone([...endSummons(sheet, 'rest'), ...endCustomSummons(sheet, 'rest')])
   const ended = endEffects(sheet, 'rest')
   return `Safe Rest: HP, Hit Dice, mana and limited uses restored; 1 Wound healed; temp HP expired.${refilled}${gone}${ended}`
 }

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { NimbleSheet } from '~/types/sheets'
 import { syncCompanions } from '~/utils/nimbleBuild'
-import { summonLookKey } from '~/utils/nimbleSummons'
+import type { NimbleCustomSummon } from '~/types/sheets'
+import { CUSTOM_KINDS, CUSTOM_LASTS, summonLookKey } from '~/utils/nimbleSummons'
+import { parseDice } from '~/utils/dice'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const { companionOptions } = useNimbleActions()
@@ -46,32 +48,87 @@ const cards = computed(() =>
       const last = list.at(-1)
       if (!first || !last) return []
       const title = list.length > 1 ? first.name.replace(/ [A-Z]$/, '') : first.name
+      const custom = first.custom
       const stats = [
         first.hpMax ? `${first.hpMax} HP` : g.permanent ? 'HP abstracted' : 'Immune to harm',
-        g.attack,
+        custom?.armor ? `Armor ${custom.armor}` : '',
+        custom?.speed ? `Speed ${custom.speed}` : '',
+        custom?.attack
+          ? `${custom.attack.name}: ${custom.attack.dice}${custom.attack.type ? ` ${custom.attack.type.toLowerCase()}` : ''}${custom.attack.reach ? ` · Reach ${custom.attack.reach}` : ''}`
+          : g.attack,
         first.charges !== undefined ? `${first.charges} heals left` : '',
       ]
         .filter(Boolean)
         .join(' · ')
       const looks = g.id === 'custom' ? [summonLookKey(first)] : g.looks
       const kindLine = [
-        title.toLowerCase() === g.name.toLowerCase() || g.id === 'custom' ? '' : g.name,
+        custom
+          ? (CUSTOM_KINDS.find((k) => k.value === custom.kind)?.label.replace(/ \(.*\)$/, '') ?? '')
+          : title.toLowerCase() === g.name.toLowerCase() || g.id === 'custom'
+            ? ''
+            : g.name,
         g.cap ? `${g.members.length} / ${g.cap}` : '',
       ]
         .filter(Boolean)
         .join(' · ')
       const key = g.id === 'custom' ? first.id : g.id
-      return [{ key, g, list, first, last, title, kindLine, stats, looks }]
+      const desc = custom ? (custom.notes ?? '') : g.desc
+      const duration = custom
+        ? (CUSTOM_LASTS.find((l) => l.value === custom.lasts)?.label ?? '')
+        : g.duration
+      return [{ key, g, list, first, last, title, kindLine, stats, looks, desc, duration }]
     }),
   ),
 )
-const customName = ref('')
-const customHp = ref(0)
+const building = ref(false)
+const blankCustom = () => ({
+  name: '',
+  hp: 1,
+  count: 1,
+  kind: 'companion' as NimbleCustomSummon['kind'],
+  lasts: 'slain' as NimbleCustomSummon['lasts'],
+  armor: 0,
+  speed: 6,
+  hasAttack: true,
+  attackName: 'Attack',
+  dice: '1d6',
+  type: '',
+  reach: 1,
+  actions: 1,
+  notes: '',
+})
+const draftSummon = ref(blankCustom())
+const diceOk = computed(() => !draftSummon.value.hasAttack || !!parseDice(draftSummon.value.dice))
+const ready = computed(() => !!draftSummon.value.name.trim() && diceOk.value)
 
 function submitCustom() {
-  addCustom(customName.value, customHp.value)
-  customName.value = ''
-  customHp.value = 0
+  const d = draftSummon.value
+  if (!ready.value) return
+  addCustom(
+    d.name,
+    d.hp,
+    {
+      kind: d.kind,
+      lasts: d.lasts,
+      armor: d.armor,
+      speed: d.speed,
+      notes: d.notes,
+      ...(d.hasAttack
+        ? {
+            attack: {
+              name: d.attackName,
+              dice: d.dice,
+              type: d.type,
+              reach: d.reach,
+              actions: d.actions,
+            },
+          }
+        : {}),
+    },
+    d.count,
+  )
+  draftSummon.value = blankCustom()
+  building.value = false
 }
 </script>
 
@@ -210,11 +267,11 @@ function submitCustom() {
           </p>
           <details class="companion__abilities">
             <summary>Abilities</summary>
-            <p v-if="c.g.desc && !c.g.options.length" class="group__desc">{{ c.g.desc }}</p>
+            <p v-if="c.desc && !c.g.options.length" class="group__desc">{{ c.desc }}</p>
             <p v-for="n in c.g.notes" :key="n" class="group__desc">{{ n }}</p>
             <NimbleModifiers v-if="c.g.id !== 'custom'" :summon="c.g.id" />
-            <p v-if="c.g.duration" class="group__desc">
-              <em>{{ c.g.duration }}</em>
+            <p v-if="c.duration" class="group__desc">
+              <em>{{ c.duration }}</em>
             </p>
             <div v-for="o in limited(c.g.options)" :key="o.name" class="opt">
               <div class="opt__head">
@@ -280,26 +337,105 @@ function submitCustom() {
           + {{ a.name }}
         </button>
       </div>
-      <form class="row custom" @submit.prevent="submitCustom">
-        <label for="nb-sum-name" class="sr-only">Other summon</label>
-        <input
-          id="nb-sum-name"
-          v-model="customName"
-          class="input"
-          placeholder="Other summon (name)"
-          maxlength="60"
-        />
-        <label for="nb-sum-hp" class="sr-only">Its HP</label>
-        <input
-          id="nb-sum-hp"
-          v-model.number="customHp"
-          class="input custom__hp"
-          type="number"
-          min="0"
-          max="999"
-          placeholder="HP"
-        />
-        <button type="submit" class="btn btn--ghost" :disabled="!customName.trim()">Add</button>
+      <button
+        type="button"
+        class="btn btn--ghost btn--sm builder__toggle"
+        :aria-expanded="building"
+        :disabled="!canEdit"
+        @click="building = !building"
+      >
+        {{ building ? 'Cancel custom summon' : '+ Build a custom summon or companion' }}
+      </button>
+      <form v-if="building" class="tile builder" @submit.prevent="submitCustom">
+        <div class="builder__row">
+          <label class="field grow"
+            ><span class="caps">Name</span
+            ><input
+              v-model="draftSummon.name"
+              class="input"
+              maxlength="60"
+              placeholder="Bramble the wolf"
+          /></label>
+          <label class="field"
+            ><span class="caps">Type</span
+            ><select v-model="draftSummon.kind" class="input">
+              <option v-for="k in CUSTOM_KINDS" :key="k.value" :value="k.value">
+                {{ k.label }}
+              </option>
+            </select></label
+          >
+        </div>
+        <div class="builder__row">
+          <label class="field num"
+            ><span class="caps">HP</span
+            ><input v-model.number="draftSummon.hp" class="input" type="number" min="0" max="999"
+          /></label>
+          <label class="field num"
+            ><span class="caps">Armor</span
+            ><input v-model.number="draftSummon.armor" class="input" type="number" min="0" max="99"
+          /></label>
+          <label class="field num"
+            ><span class="caps">Speed</span
+            ><input v-model.number="draftSummon.speed" class="input" type="number" min="0" max="99"
+          /></label>
+          <label class="field num"
+            ><span class="caps">How many</span
+            ><input v-model.number="draftSummon.count" class="input" type="number" min="1" max="20"
+          /></label>
+          <label class="field grow"
+            ><span class="caps">Lasts</span
+            ><select v-model="draftSummon.lasts" class="input">
+              <option v-for="l in CUSTOM_LASTS" :key="l.value" :value="l.value">
+                {{ l.label }}
+              </option>
+            </select></label
+          >
+        </div>
+        <UiSwitch v-model="draftSummon.hasAttack" label="It attacks" class="builder__switch" />
+        <div v-if="draftSummon.hasAttack" class="builder__row">
+          <label class="field grow"
+            ><span class="caps">Attack name</span
+            ><input
+              v-model="draftSummon.attackName"
+              class="input"
+              maxlength="40"
+              placeholder="Bite"
+          /></label>
+          <label class="field num"
+            ><span class="caps">Damage</span
+            ><input v-model="draftSummon.dice" class="input" maxlength="12" placeholder="1d8+2"
+          /></label>
+          <NimbleDamageTypes v-model="draftSummon.type" class="field grow" />
+          <label class="field num"
+            ><span class="caps">Reach</span
+            ><input v-model.number="draftSummon.reach" class="input" type="number" min="0" max="99"
+          /></label>
+          <label class="field num"
+            ><span class="caps">Actions</span
+            ><select v-model.number="draftSummon.actions" class="input">
+              <option :value="0">Free</option>
+              <option :value="1">1</option>
+              <option :value="2">2</option>
+              <option :value="3">3</option>
+            </select></label
+          >
+        </div>
+        <p v-if="!diceOk" class="small" style="color: var(--danger)">
+          Damage looks like 1d8 or 2d6+3.
+        </p>
+        <label class="field"
+          ><span class="caps">Abilities and notes</span
+          ><textarea
+            v-model="draftSummon.notes"
+            class="input"
+            rows="2"
+            maxlength="600"
+            placeholder="Pack Tactics: advantage when an ally is adjacent to the target."
+          />
+        </label>
+        <button type="submit" class="btn btn--sm" :disabled="!ready">
+          Add {{ draftSummon.count > 1 ? `${draftSummon.count} summons` : 'summon' }}
+        </button>
       </form>
     </div>
   </section>
@@ -492,17 +628,37 @@ function submitCustom() {
   color: var(--page-soft);
 }
 
-.custom {
-  gap: 8px;
-  flex-wrap: nowrap;
+.builder__toggle {
+  align-self: flex-start;
+}
 
-  .input {
-    flex: 1 1 auto;
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.builder__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+
+  .grow {
+    flex: 1 1 160px;
     min-width: 0;
   }
 
-  .custom__hp {
-    flex: 0 0 72px;
+  .num {
+    flex: 0 0 84px;
   }
+}
+
+.builder__switch {
+  align-self: flex-start;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 32px;
 }
 </style>

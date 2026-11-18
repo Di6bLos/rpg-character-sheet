@@ -182,12 +182,22 @@ export interface NimbleAttack {
   onCrit?: string[]
 }
 
+export interface NimbleCustomSummon {
+  kind: 'minion' | 'companion' | 'spirit' | 'construct' | 'other'
+  armor?: number
+  speed?: number
+  attack?: { name: string; dice: string; type?: string; reach?: number; actions: number }
+  notes?: string
+  lasts: 'slain' | 'combat' | 'rest'
+}
+
 export interface NimbleSummon {
   id: string
   def: string
   name: string
   hp: number
   hpMax: number
+  custom?: NimbleCustomSummon
   tier?: number
   charges?: number
   portrait?: string

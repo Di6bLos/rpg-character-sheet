@@ -2,8 +2,14 @@ import { beastBySlug, beastsFor } from '~/data/nimble/beasts'
 import { spellByName } from '~/data/nimble/spells'
 import { SUMMONS, SUMMON_MODS, summonById, summonBySource } from '~/data/nimble/summons'
 import type { SummonDef, SummonMod } from '~/data/nimble/types'
-import type { NimbleAttack, NimbleSheet, NimbleSummon, NimbleSummonLook } from '~/types/sheets'
-import { rollDie, type Rng } from '~/utils/dice'
+import type {
+  NimbleAttack,
+  NimbleCustomSummon,
+  NimbleSheet,
+  NimbleSummon,
+  NimbleSummonLook,
+} from '~/types/sheets'
+import { parseDice, rollDie, rollNimble, type Rng } from '~/utils/dice'
 import { letter } from '~/utils/initiative'
 import {
   abilityBaseName,
@@ -281,23 +287,116 @@ export function addSummon(
   return `${names} summoned${capNote}.`
 }
 
-export function addCustomSummon(sheet: NimbleSheet, name: string, hp: number): string {
+export const CUSTOM_KINDS: { value: NimbleCustomSummon['kind']; label: string }[] = [
+  { value: 'companion', label: 'Companion' },
+  { value: 'minion', label: 'Minion (a 1 misses, no crits)' },
+  { value: 'spirit', label: 'Spirit' },
+  { value: 'construct', label: 'Construct' },
+  { value: 'other', label: 'Other' },
+]
+
+export const CUSTOM_LASTS: { value: NimbleCustomSummon['lasts']; label: string }[] = [
+  { value: 'slain', label: 'Until slain or dismissed' },
+  { value: 'combat', label: 'Until combat ends' },
+  { value: 'rest', label: 'Until a Safe Rest' },
+]
+
+function cleanCustom(custom: NimbleCustomSummon | undefined): NimbleCustomSummon | undefined {
+  if (!custom) return undefined
+  const num = (n: number | undefined, max: number) =>
+    n === undefined || !Number.isFinite(n) ? undefined : Math.max(0, Math.min(max, Math.floor(n)))
+  const dice = custom.attack?.dice.replace(/\s+/g, '') ?? ''
+  const attack =
+    custom.attack && parseDice(dice)
+      ? {
+          name: custom.attack.name.trim().slice(0, 40) || 'Attack',
+          dice,
+          ...(custom.attack.type?.trim() ? { type: custom.attack.type.trim().slice(0, 40) } : {}),
+          ...(num(custom.attack.reach, 99) ? { reach: num(custom.attack.reach, 99) } : {}),
+          actions: num(custom.attack.actions, 3) ?? 1,
+        }
+      : undefined
+  return {
+    kind: custom.kind,
+    lasts: custom.lasts,
+    ...(num(custom.armor, 99) ? { armor: num(custom.armor, 99) } : {}),
+    ...(num(custom.speed, 99) ? { speed: num(custom.speed, 99) } : {}),
+    ...(attack ? { attack } : {}),
+    ...(custom.notes?.trim() ? { notes: custom.notes.trim().slice(0, 600) } : {}),
+  }
+}
+
+export function addCustomSummon(
+  sheet: NimbleSheet,
+  name: string,
+  hp: number,
+  custom?: NimbleCustomSummon,
+  count = 1,
+): string {
   const label = name.trim().slice(0, 60)
   if (!label) return ''
   const max = Math.max(0, Math.floor(hp) || 0)
   const portrait = sheet.summonLooks[`custom:${label}`]?.portrait
+  const n = Math.max(1, Math.min(20, Math.floor(count) || 1))
+  const clean = cleanCustom(custom)
+  const letters = 'ABCDEFGHIJKLMNOPQRST'
   sheet.summons = [
     ...sheet.summons,
-    {
+    ...Array.from({ length: n }, (_, i) => ({
       id: crypto.randomUUID(),
       def: '',
-      name: label,
+      name: n > 1 ? `${label} ${letters[i]}` : label,
       hp: max,
       hpMax: max,
       ...(portrait ? { portrait } : {}),
-    },
+      ...(clean ? { custom: clean } : {}),
+    })),
   ]
-  return `${label} summoned.`
+  return n > 1 ? `${n} ${label} summoned.` : `${label} summoned.`
+}
+
+export function endCustomSummons(sheet: NimbleSheet, when: 'combat' | 'rest'): string[] {
+  const ended = sheet.summons.filter(
+    (s) =>
+      !s.def &&
+      s.custom &&
+      (s.custom.lasts === when || (when === 'rest' && s.custom.lasts === 'combat')),
+  )
+  remove(
+    sheet,
+    ended.map((s) => s.id),
+  )
+  return ended.map((s) => s.name)
+}
+
+export function customSummonAttack(
+  sheet: NimbleSheet,
+  members: NimbleSummon[],
+  rng: Rng = Math.random,
+): string {
+  const attack = members[0]?.custom?.attack
+  const expr = attack && parseDice(attack.dice)
+  if (!attack || !expr || !members.length) return ''
+  const label =
+    members.length > 1
+      ? `${members[0]!.name.replace(/ [A-Z]$/, '')} ×${members.length}`
+      : members[0]!.name
+  const type = attack.type ? ` ${attack.type.toLowerCase()}` : ''
+  if (sheet.ownDice)
+    return `${label} — ${attack.name}: roll ${attack.dice}${members.length > 1 ? ` for each of ${members.length}` : ''}${type} yourself; a 1 misses.`
+  const minion = members[0]!.custom?.kind === 'minion'
+  const parts = members.map(() => {
+    if (minion) {
+      const dice = Array.from({ length: expr.count }, () => rollDie(expr.sides, rng))
+      return dice[0] === 1 ? 0 : dice.reduce((a, b) => a + b, 0) + expr.mod
+    }
+    const roll = rollNimble(expr, null, rng, 0)
+    return roll.miss ? 0 : roll.total
+  })
+  const total = parts.reduce((a, b) => a + b, 0)
+  if (!total) return `${label} — ${attack.name}: miss (a 1 on the first die).`
+  const shown = parts.length > 1 ? ` (${parts.map((p) => (p ? `${p}` : 'miss')).join(', ')})` : ''
+  return `${label} — ${attack.name}: ${total}${type} damage${shown}.`
 }
 
 export function summonFromSpell(

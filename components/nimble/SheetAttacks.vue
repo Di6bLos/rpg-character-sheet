@@ -285,7 +285,7 @@ const hasAttacks = computed(
               </div>
               <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
             </div>
-            <NimbleModifiers :summon="a.summon" />
+            <NimbleModifiers v-if="a.summon" :summon="a.summon" />
             <button
               type="button"
               class="btn btn--wrap"

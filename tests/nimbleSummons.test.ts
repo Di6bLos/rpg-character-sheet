@@ -25,6 +25,9 @@ import {
   sacrificeSummon,
   slaySummon,
   spiritAct,
+  addCustomSummon,
+  customSummonAttack,
+  endCustomSummons,
   summonFromAbility,
 } from '../utils/nimbleSummons'
 import { defaultSheet } from '../utils/sheetDefaults'
@@ -434,5 +437,31 @@ describe('class options on summons', () => {
     expect(sacrificeMinions(sheet, 1, 3)).toBe(
       ' Vengeful Blast: you may cast Shadow Blast as a reaction.',
     )
+  })
+})
+
+describe('custom summons', () => {
+  it('builds named summons with an attack, rolls them together and ends them on time', () => {
+    const sheet = shepherd()
+    expect(
+      addCustomSummon(
+        sheet,
+        'Wolf',
+        11,
+        {
+          kind: 'minion',
+          lasts: 'combat',
+          armor: 2,
+          attack: { name: 'Bite', dice: '1d6+1', type: 'Piercing', reach: 1, actions: 1 },
+        },
+        2,
+      ),
+    ).toBe('2 Wolf summoned.')
+    expect(sheet.summons.map((s) => s.name)).toEqual(['Wolf A', 'Wolf B'])
+    expect(customSummonAttack(sheet, sheet.summons, () => 0.99)).toBe(
+      'Wolf ×2 — Bite: 14 piercing damage (7, 7).',
+    )
+    expect(endCustomSummons(sheet, 'combat')).toEqual(['Wolf A', 'Wolf B'])
+    expect(sheet.summons).toEqual([])
   })
 })
