@@ -788,11 +788,12 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const noActions =
         left.value < Math.max(i.actions, i.use === 'plate' || i.use === 'jerkin' ? 1 : 0)
       const r = resource.value
+      const attack = i.use === 'cannon' || i.use === 'blade'
       return {
         ...i,
         inoperable,
         noActions,
-        attack: i.use === 'cannon' || i.use === 'blade',
+        attack,
         desc: sheet.value.abilities.find((a) => abilityBaseName(a.name) === i.name)?.desc ?? '',
         cost:
           i.use === 'plate' || i.use === 'jerkin'
@@ -802,11 +803,13 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               : `${i.actions} action${i.actions === 1 ? '' : 's'}`,
         why: inoperable
           ? 'Inoperable'
-          : readied.value < i.min
-            ? `Ready at least ${i.min} ${r?.diceName ?? 'Mana'} Die`
-            : noActions
-              ? 'Not enough actions left'
-              : '',
+          : attack && offTurn.value
+            ? NOT_TURN
+            : readied.value < i.min
+              ? `Ready at least ${i.min} ${r?.diceName ?? 'Mana'} Die`
+              : noActions
+                ? 'Not enough actions left'
+                : '',
         label: readied.value ? `Use with ${readied.value}d${r?.die ?? 0}` : 'Use',
       }
     }),
@@ -1007,6 +1010,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   function operate(name: string, mode?: 'tether' | 'coil') {
     if (!canEdit.value) return
     const invention = inventions.value.find((i) => i.name === name)
+    if (invention?.attack && offTurn.value) return report(`${name}: ${NOT_TURN}.`)
     const actions = mode === 'coil' ? 2 : mode === 'tether' ? 1 : (invention?.actions ?? 0)
     if (mode ? left.value < actions : invention?.noActions)
       return report(
