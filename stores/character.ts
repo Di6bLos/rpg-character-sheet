@@ -76,20 +76,27 @@ export const useCharacterStore = defineStore('character', () => {
     // sheet page was opened directly.
     const { data: row } = await supabase
       .from('characters')
-      .select('portrait_path')
+      .select('portrait_path, sheet')
       .eq('id', id)
       .maybeSingle()
     const { error } = await supabase.from('characters').delete().eq('id', id)
     if (error) throw error
-    const portrait = (row as { portrait_path: string | null } | null)?.portrait_path
-    if (portrait) await removePortrait(portrait)
+    const found = row as { portrait_path: string | null; sheet: unknown } | null
+    const paths = [found?.portrait_path, ...sheetImages(found?.sheet)].filter(
+      (p): p is string => !!p,
+    )
+    if (paths.length) await removePortraits([...new Set(paths)])
     characters.value = characters.value.filter((c) => c.id !== id)
   }
 
   /** Best-effort removal of a portrait file that is no longer referenced. */
   async function removePortrait(path: string) {
-    const { error } = await supabase.storage.from('portraits').remove([path])
-    if (error) console.warn('Could not remove old portrait', path, error.message)
+    await removePortraits([path])
+  }
+
+  async function removePortraits(paths: string[]) {
+    const { error } = await supabase.storage.from('portraits').remove(paths)
+    if (error) console.warn('Could not remove old portraits', paths, error.message)
   }
 
   /** Uploads a portrait and returns its storage path. */
@@ -123,6 +130,18 @@ export const useCharacterStore = defineStore('character', () => {
     reset,
   }
 })
+
+/** Images a Nimble sheet keeps besides the portrait: transformation and summon images. */
+export function sheetImages(sheet: unknown): string[] {
+  const s = (sheet ?? {}) as {
+    formPortraits?: Record<string, string>
+    summonLooks?: Record<string, { portrait?: string }>
+  }
+  return [
+    ...Object.values(s.formPortraits ?? {}),
+    ...Object.values(s.summonLooks ?? {}).map((l) => l.portrait ?? ''),
+  ].filter((p) => typeof p === 'string' && p !== '')
+}
 
 export function portraitUrl(path: string | null | undefined): string | null {
   if (!path) return null

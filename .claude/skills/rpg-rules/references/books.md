@@ -3,6 +3,8 @@
 PDFs live in `.local/` (gitignored, never committed). Cache and search them with
 `.claude/skills/source-extract/scripts/pdf-pages.sh` (see the `source-extract` skill).
 
+Structured, page-cited rules references built from these PDFs live in `.local/rules/` (also gitignored): `core-rules.md`, `heroes-1.md` (Berserker–Oathsworn), `heroes-2.md` (Shadowmancer–Zephyr, story subclasses), `artificer.md`, `gm-guide.md`. Read those first; fall back to the PDF text when they mark something `[unclear]`.
+
 ## Page numbering
 
 Some PDFs are two-page **spreads**: one PDF page holds two printed pages. Citations in the repo always use **printed** pages.
@@ -11,7 +13,7 @@ Some PDFs are two-page **spreads**: one PDF page holds two printed pages. Citati
 | ------------------------ | ---------------------------- | ---------------- | ------- | ------------------------------------ | --------------------------------- |
 | Nimble Core Rules        | `.local/nimble/core-rules.pdf`      | `core-rules`     | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL                       |
 | Nimble Heroes            | `.local/nimble/nimble-heroes.pdf`   | `nimble-heroes`  | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL                       |
-| Nimble Artificer 1.7     | `.local/nimble/Artificer1.7.pdf`    | `Artificer1.7`   | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL (assumed; no license page) |
+| Nimble Artificer 1.7     | `.local/nimble/Artificer1.7.pdf`    | `Artificer1.7`   | spreads | `ceil(p / 2)` (PDF 2 = pp. 3–4)      | Nimble 3PCL (assumed; no license page) |
 | Nimble Creator's Kit 1.2 | `.local/nimble/CreatorsKit1.2.pdf`  | `CreatorsKit1.2` | single  | same                                 | Nimble 3PCL (guidance, not rules) |
 | Nimble GM's Guide 1.0    | `.local/nimble/GMG-v1.0.pdf` | `GMG-v1.0`       | spreads | read the footer (PDF 16 = pp. 29–30) | Nimble 3PCL                       |
 
@@ -19,7 +21,7 @@ The PDF → printed direction on spreads: PDF page `n` holds printed pages `2n�
 
 ## Where things are (printed pages)
 
-**Core Rules**: character creation 18–21 · ancestries 22–27 · backgrounds 28–29 · equipment 32–36 · spells 44–53 · combat, heroic reactions, monsters & armor, minions 14–15 · conditions ~10–11 · dying & wounds ~8–9 · rests ~16–17 · license 56–57.
+**Core Rules**: character creation 18–21 · ancestries 22–27 · backgrounds 28–29 · equipment 32–36 · spells 44–53 · skills 6–8 · combat actions 12–13 · heroic reactions, monsters & armor, minions 14 · starting combat and turns 14–15 · concentration, cover, grappling 10 · conditions 11 · HP, dying & wounds 8–9 · rests 16–17 · license (3PCL) 2.
 
 **Heroes**: Berserker 6–11 · Cheat 12–17 · Commander 18–23 · Hunter 24–29 · Mage 30–35 · Oathsworn 36–41 · Shadowmancer 42–47 · Shepherd 48–53 · Songweaver 54–59 · Stormshifter 60–65 · Zephyr 66–71 · story subclasses: Oathbreaker 74–75, Spellblade 76–77, Reaver 78–79, Beastmaster 80–81.
 

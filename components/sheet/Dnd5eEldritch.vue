@@ -9,7 +9,6 @@ const {
   successes,
   failures,
   canEdit,
-  campaignName,
   portrait,
   uploadingPortrait,
   onPortrait,
@@ -67,7 +66,7 @@ const byline = computed(() =>
       </div>
     </div>
     <div class="identity__text">
-      <div class="identity__kicker">D&amp;D 5e · {{ campaignName }}</div>
+      <div class="identity__kicker">D&amp;D 5e · <SheetCampaignLink /></div>
       <h1>{{ draft.name }}</h1>
       <div class="identity__byline">{{ byline || 'A name not yet spoken' }}</div>
     </div>

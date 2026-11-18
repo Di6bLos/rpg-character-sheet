@@ -1,5 +1,6 @@
 import { classBySlug, poolOptionByName, poolOptionWounds } from '~/data/nimble/classes'
 import { BASE_SPEED } from '~/data/nimble/core'
+import { abilityArmor } from '~/utils/nimbleArmor'
 import type { GameSystem } from '~/types'
 import type {
   AnySheet,
@@ -15,7 +16,7 @@ import type {
  * Bump when a class-data change has to be applied to existing saves, and add the
  * upgrade to `upgradeRules`.
  */
-export const NIMBLE_RULES_VERSION = 2
+export const NIMBLE_RULES_VERSION = 4
 
 const PF2E_SKILLS: [string, Pf2eAttr][] = [
   ['Acrobatics', 'DEX'],
@@ -167,8 +168,28 @@ function nimble(): NimbleSheet {
     concentration: '',
     casting: { spell: '', actions: 0 },
     conditions: [],
-    resource: { name: '', diceName: '', kind: 'rage', active: false, dice: 0, die: 4, count: 0 },
+    conditionEnds: {},
+    resource: {
+      name: '',
+      diceName: '',
+      kind: 'rage',
+      active: false,
+      dice: 0,
+      die: 4,
+      count: 0,
+      rolls: [],
+    },
     uses: {},
+    malfunctions: [],
+    summons: [],
+    summonLooks: {},
+    formPortraits: {},
+    portraitOverride: '',
+    ownDice: false,
+    turnActive: false,
+    inEncounter: false,
+    turnDone: false,
+    effects: [],
     attacks: [],
     skills: NIMBLE_SKILLS.map(([name, stat]) => ({ name, stat, points: 0 })),
     abilities: [],
@@ -248,6 +269,32 @@ function upgradeRules(target: Record<string, unknown>, level: number) {
       Array.from({ length: level }, (_, i) => cls.levels[i + 1]?.[flag]).some(Boolean)
     if (typeof target.initMod === 'number' && has('initiativePerLevel')) target.initMod += level
     if (typeof target.ac === 'number' && has('armorDoubled')) target.ac *= 2
+  }
+  if (from < 3 && Array.isArray(target.attacks)) {
+    // v3: an Unarmed Strike rolls 1d4 to hit and deals 1+STR (Swift Fists makes it 1d4+STR).
+    const abilities = Array.isArray(target.abilities) ? target.abilities : []
+    const swift = abilities.some((a) => isPlainObject(a) && a.name === 'Swift Fists')
+    for (const attack of target.attacks) {
+      if (swift || !isPlainObject(attack) || attack.name !== 'Unarmed Strike') continue
+      const m = /^1d4([+-]\d+)?$/.exec(String(attack.dmg).replace(/\s+/g, ''))
+      if (!m || 'flat' in attack) continue
+      attack.dmg = '1d4'
+      attack.flat = 1 + Number(m[1] ?? 0)
+    }
+  }
+  if (
+    from < 4 &&
+    typeof target.ac === 'number' &&
+    Array.isArray(target.abilities) &&
+    isPlainObject(target.stats)
+  ) {
+    const abilities = target.abilities.filter(
+      (a): a is { desc: string } => isPlainObject(a) && typeof a.desc === 'string',
+    )
+    target.ac += abilityArmor({
+      abilities,
+      stats: target.stats as Record<NimbleStat, number>,
+    })
   }
   target.rulesVersion = NIMBLE_RULES_VERSION
 }

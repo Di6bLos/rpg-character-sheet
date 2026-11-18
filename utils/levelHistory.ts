@@ -18,6 +18,8 @@ const PLAY_STATE = new Set([
   'xpNext',
   'wounds',
   'conditions',
+  'conditionEnds',
+  'conditionHold',
   'deathSaves',
   'tempHp',
   'dying',
@@ -30,6 +32,16 @@ const PLAY_STATE = new Set([
   'concentration',
   'casting',
   'uses',
+  'malfunctions',
+  'summons',
+  'summonLooks',
+  'formPortraits',
+  'portraitOverride',
+  'ownDice',
+  'turnActive',
+  'inEncounter',
+  'turnDone',
+  'effects',
   'languages',
   'heightWeight',
 ])
@@ -47,6 +59,7 @@ const LIVE_FIELDS: { obj: string; field: string; max?: string }[] = [
   { obj: 'resource', field: 'active' },
   { obj: 'resource', field: 'dice' },
   { obj: 'resource', field: 'count' },
+  { obj: 'resource', field: 'rolls' },
   { obj: 'focus', field: 'current', max: 'max' },
   { obj: 'shield', field: 'hp', max: 'hpMax' },
   { obj: 'shield', field: 'raised' },
@@ -118,11 +131,27 @@ export function restoreLevel(sheet: AnySheet, target: number): boolean {
     return false
   }
 
+  applySnapshot(sheet, entry.before)
+  sheet.levelHistory = history.filter((e) => e.level <= target)
+  return true
+}
+
+/**
+ * Puts the sheet back to a freshly built level 1 sheet (a reconfigured creation),
+ * keeping play state the same way an undone level does. Level history is cleared.
+ */
+export function restoreBuild(sheet: AnySheet, built: AnySheet): void {
+  applySnapshot(sheet, snapshot(built))
+  sheet.levelHistory = []
+}
+
+function applySnapshot(sheet: AnySheet, snap: Loose) {
+  const loose = sheet as unknown as Loose
   const handMade = Array.isArray(loose.abilities)
     ? (loose.abilities as { name: string; level?: number }[]).filter((a) => !a.level)
     : []
   const live = liveFields(loose)
-  const before = JSON.parse(JSON.stringify(entry.before)) as Loose
+  const before = JSON.parse(JSON.stringify(snap)) as Loose
 
   Object.assign(loose, before)
 
@@ -132,6 +161,4 @@ export function restoreLevel(sheet: AnySheet, target: number): boolean {
     const list = loose.abilities as { name: string; level?: number }[]
     for (const a of handMade) if (!list.some((b) => !b.level && b.name === a.name)) list.push(a)
   }
-  sheet.levelHistory = history.filter((e) => e.level <= target)
-  return true
 }

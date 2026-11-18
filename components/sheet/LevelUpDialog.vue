@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { classBySlug } from '~/data/nimble/classes'
-import type { Dnd5eSheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
+import type { Dnd5eSheet, NimbleLevelInput, NimbleSheet, Pf2eSheet } from '~/types/sheets'
 import { abilityMod, rollDie, sign } from '~/utils/dice'
 import { LEVEL_UP_RULES, MAX_LEVEL, averageHp, canBump, hpGain, pointsUsed } from '~/utils/levelUp'
 import { recordLevel } from '~/utils/levelHistory'
@@ -14,6 +14,10 @@ import {
 import { systemLabel } from '~/utils/systems'
 
 const open = defineModel<boolean>({ required: true })
+const props = defineProps<{
+  previous?: NimbleLevelInput
+  progress?: string
+}>()
 const { draft, save } = useSheet()
 const snackbar = useSnackbarStore()
 
@@ -50,6 +54,15 @@ watch(open, (isOpen) => {
   picks.value = {}
   skillPoint.value = ''
   showErrors.value = false
+  const was = props.previous
+  if (!was) return
+  hpOverride.value = was.hpGain
+  bumps.value = Object.fromEntries(
+    Object.entries(was.statBumps).filter((e): e is [string, number] => !!e[1]),
+  )
+  skillPoint.value = was.skillPoint ?? ''
+  subclassPick.value = was.subclassSlug ?? ''
+  picks.value = JSON.parse(JSON.stringify(was.picks)) as Picks
 })
 
 const nimbleSheet = computed(() =>
@@ -197,7 +210,7 @@ async function confirmNimble() {
   draft.value.level = next
   open.value = false
   await save()
-  snackbar.show(`${draft.value.name} is now level ${next}`)
+  if (!props.progress) snackbar.show(`${draft.value.name} is now level ${next}`)
 }
 
 async function confirm() {
@@ -281,6 +294,7 @@ async function confirm() {
       <div class="row" style="gap: 10px; margin-bottom: 8px">
         <span class="badge" :class="`badge--${system}`">{{ systemLabel(system) }}</span>
         <span class="small" style="color: var(--page-soft)">{{ draft.name }}</span>
+        <span v-if="progress" class="badge badge--outline">{{ progress }}</span>
       </div>
     </template>
 
@@ -530,7 +544,14 @@ async function confirm() {
 
     <template #actions>
       <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
-      <button v-if="level < MAX_LEVEL" type="button" class="btn" @click="confirm">
+      <button
+        v-if="level < MAX_LEVEL"
+        type="button"
+        class="btn"
+        :disabled="!!plan && nimbleProblems.length > 0"
+        :title="plan && nimbleProblems.length ? nimbleProblems.join('\n') : undefined"
+        @click="confirm"
+      >
         Confirm level {{ level + 1 }}
       </button>
     </template>

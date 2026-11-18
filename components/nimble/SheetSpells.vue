@@ -5,10 +5,10 @@ import type { SpellSchool } from '~/data/nimble/types'
 import type { NimbleSheet } from '~/types/sheets'
 import { keyStatValue } from '~/utils/nimbleBuild'
 
-const { draft, canEdit } = useSheet<NimbleSheet>()
+const { draft } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const keyValue = computed(() => keyStatValue(sheet.value))
-const { known, utility, maxTier, tiers, help, setUpcast, cast } = useNimbleSpells()
+const { known, utility, tiers, help, setUpcast } = useNimbleSpells()
 
 const schools = computed(() =>
   sheet.value.spells.schools.map((s) => SCHOOL_LABELS[s as SpellSchool] ?? s).join(' · '),
@@ -17,6 +17,7 @@ const schools = computed(() =>
 
 <template>
   <section class="panel stack" style="gap: 16px" aria-labelledby="sp-h">
+    <UiFold name="Spells" />
     <div class="panel-title" style="margin: 0">
       <div class="title-help">
         <h2 id="sp-h">Spells</h2>
@@ -25,86 +26,89 @@ const schools = computed(() =>
       <span v-if="schools" class="small muted" style="font-size: 12px">{{ schools }}</span>
     </div>
 
-    <div v-for="g in tiers" :key="g.tier" class="stack" style="gap: 8px">
-      <div class="caps">{{ g.label }}</div>
-      <div class="spell-grid">
-        <details v-for="s in g.spells" :key="s.name" name="nimble-spell" class="tile spell">
-          <summary class="spell__head">
-            <strong>{{ s.name }}</strong>
-            <span class="school" :class="`school--${s.school}`">{{ SCHOOL_LABELS[s.school] }}</span>
-            <small>{{ s.cast }}</small>
+    <NimbleSpellPool />
+    <NimbleSpellshaper />
+
+    <details class="tier spell-list" open>
+      <summary class="caps">Spell list</summary>
+      <div class="stack" style="gap: 16px">
+        <details v-for="g in tiers" :key="g.tier" class="tier" open>
+          <summary class="caps">
+            {{ g.label }}
           </summary>
-          <div class="spell__body">
-            <p><NimbleRulesText :text="s.desc" :key-value="keyValue" /></p>
-            <div class="row" style="gap: 8px">
-              <div v-if="s.canUpcast" class="row" style="gap: 4px">
-                <button
-                  type="button"
-                  class="step step--xs"
-                  :aria-label="`Lower the cast tier of ${s.name}`"
-                  :disabled="!canEdit || s.at <= s.tier"
-                  @click="setUpcast(s, s.at - 1)"
-                >
-                  −
-                </button>
-                <span class="spell__tier" aria-live="polite">Tier {{ s.at }}</span>
-                <button
-                  type="button"
-                  class="step step--xs"
-                  :aria-label="`Upcast ${s.name}`"
-                  :disabled="!canEdit || s.at >= maxTier"
-                  @click="setUpcast(s, s.at + 1)"
-                >
-                  +
-                </button>
-              </div>
-              <button
-                type="button"
-                class="btn btn--sm cast"
-                :class="{ 'btn--ghost': s.tier === 0 }"
-                :disabled="!canEdit || s.short || s.busy"
-                :title="
-                  s.busy
-                    ? `Still casting ${sheet.casting.spell}`
-                    : s.short
-                      ? 'Not enough mana'
-                      : undefined
-                "
-                @click="cast(s)"
-              >
-                {{ s.label }}
-              </button>
-              <button
-                v-if="s.bloodLabel"
-                type="button"
-                class="btn btn--sm btn--ghost cast"
-                :disabled="!canEdit || s.busy"
-                @click="cast(s, true)"
-              >
-                {{ s.bloodLabel }}
-              </button>
-            </div>
+          <div class="spell-grid">
+            <NimbleSpellCard
+              v-for="s in g.spells"
+              :key="s.name"
+              :spell="s"
+              @upcast="setUpcast(s, $event)"
+            />
+          </div>
+        </details>
+        <p v-if="!known.length" class="empty">No combat spells yet.</p>
+
+        <details v-if="utility.length" class="tier" open>
+          <summary class="caps">Utility spells</summary>
+          <div class="stack" style="gap: 8px">
+            <details v-for="s in utility" :key="s.name" name="nimble-utility" class="tile utility">
+              <summary>
+                <strong>{{ s.name }}</strong>
+                <span class="school" :class="`school--${s.school}`">{{
+                  SCHOOL_LABELS[s.school]
+                }}</span>
+                <small>{{ s.cast }}</small>
+              </summary>
+              <p><NimbleRulesText :text="s.desc" :key-value="keyValue" /></p>
+              <NimbleModifiers :target="s.name" />
+            </details>
           </div>
         </details>
       </div>
-    </div>
-    <p v-if="!known.length" class="empty">No combat spells yet.</p>
-
-    <div v-if="utility.length" class="stack" style="gap: 8px">
-      <div class="caps">Utility spells</div>
-      <details v-for="s in utility" :key="s.name" name="nimble-utility" class="tile utility">
-        <summary>
-          <strong>{{ s.name }}</strong>
-          <span class="school" :class="`school--${s.school}`">{{ SCHOOL_LABELS[s.school] }}</span>
-          <small>{{ s.cast }}</small>
-        </summary>
-        <p><NimbleRulesText :text="s.desc" :key-value="keyValue" /></p>
-      </details>
-    </div>
+    </details>
   </section>
 </template>
 
 <style scoped lang="scss">
+.tier {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    small {
+      font-size: 11px;
+      letter-spacing: normal;
+      color: var(--page-muted);
+    }
+
+    &::after {
+      content: '▾';
+      margin-left: auto;
+      font-size: 12px;
+      letter-spacing: normal;
+      color: var(--accent-text);
+    }
+  }
+
+  &[open] > summary {
+    margin-bottom: 8px;
+
+    &::after {
+      content: '▴';
+    }
+  }
+}
+
 // Two columns on wider panels, like the reactions.
 .spell-grid {
   display: grid;
@@ -113,35 +117,6 @@ const schools = computed(() =>
   align-items: start;
 }
 
-.spell {
-  padding: 0;
-  gap: 0;
-
-  summary {
-    min-height: 44px;
-    padding: 10px 14px;
-    cursor: pointer;
-  }
-
-  p {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--page-soft);
-  }
-
-  &[open] {
-    border-color: var(--accent);
-  }
-}
-
-.spell__body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 14px 12px;
-}
-
-.spell__head,
 .utility summary {
   display: flex;
   align-items: center;
@@ -157,17 +132,6 @@ const schools = computed(() =>
     font-size: 12px;
     color: var(--page-muted);
   }
-}
-
-.spell__tier {
-  min-width: 52px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.cast {
-  margin-left: auto;
 }
 
 // Each school tints its chip; mixing with the theme's own field and text keeps

@@ -67,6 +67,7 @@ export interface NimbleRoll {
   crit: boolean
   total: number
   bonus: number
+  dice: number[]
 }
 
 /**
@@ -82,20 +83,20 @@ export function rollNimble(
   rng: Rng = Math.random,
   disadvantage = 0,
 ): NimbleRoll {
-  const extra = Math.max(0, Math.floor(disadvantage))
+  const extra = Math.abs(Math.floor(disadvantage))
   const rolled = Array.from({ length: Math.max(1, expr.count) + extra }, () =>
     rollDie(expr.sides, rng),
   )
   const dropped = new Set(
     rolled
       .map((value, index) => ({ value, index }))
-      .sort((a, b) => b.value - a.value)
+      .sort((a, b) => (disadvantage > 0 ? b.value - a.value : a.value - b.value))
       .slice(0, extra)
       .map((d) => d.index),
   )
   const kept = rolled.filter((_, i) => !dropped.has(i))
   const first = kept[0] ?? 1
-  if (first === 1) return { miss: true, crit: false, total: 0, bonus: 0 }
+  if (first === 1) return { miss: true, crit: false, total: 0, bonus: 0, dice: kept }
   let total = kept.reduce((sum, v) => sum + v, 0)
   let crit = false
   let last = first
@@ -106,5 +107,5 @@ export function rollNimble(
   }
   let bonus = 0
   if (bonusDice) for (let i = 0; i < bonusDice.count; i++) bonus += rollDie(bonusDice.sides, rng)
-  return { miss: false, crit, total: total + expr.mod + bonus, bonus }
+  return { miss: false, crit, total: total + expr.mod + bonus, bonus, dice: kept }
 }

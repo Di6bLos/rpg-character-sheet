@@ -38,8 +38,9 @@ export const cheat: ClassDef = {
     name: 'Sneak Attack',
     diceName: 'Sneak Attack',
     die: 6,
-    kind: 'info',
+    kind: 'crit',
     ability: 'Sneak Attack',
+    roll: 1,
   },
   swapRule: {
     name: 'Trade Secrets',
@@ -146,7 +147,10 @@ export const cheat: ClassDef = {
       ],
       choices: [underhanded(2)],
     },
-    7: { abilities: [{ name: 'Sneak Attack (3)', desc: 'Your Sneak Attack becomes 2d8.' }] },
+    7: {
+      resourceRoll: 2,
+      abilities: [{ name: 'Sneak Attack (3)', desc: 'Your Sneak Attack becomes 2d8.' }],
+    },
     8: { abilities: [], statIncrease: inc('DEX', 'INT'), choices: [underhanded(3)] },
     9: {
       abilities: [{ name: 'Sneak Attack (4)', desc: 'Your Sneak Attack becomes 2d10.' }],
@@ -172,6 +176,7 @@ export const cheat: ClassDef = {
     },
     16: { abilities: [], statIncrease: inc('DEX', 'INT'), choices: [underhanded(7)] },
     17: {
+      resourceRoll: 3,
       abilities: [{ name: 'Sneak Attack (7)', desc: 'Your Sneak Attack becomes 3d20.' }],
       statIncrease: inc('WIL', 'STR'),
     },

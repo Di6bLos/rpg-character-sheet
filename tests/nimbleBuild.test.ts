@@ -2,14 +2,19 @@ import { describe, expect, it } from 'vitest'
 import { ANCESTRIES, ancestryBySlug } from '../data/nimble/ancestries'
 import { BACKGROUNDS, backgroundBySlug } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES, classBySlug, poolOptionByName } from '../data/nimble/classes'
-import { weaponByName } from '../data/nimble/core'
+import { armorByName, weaponByName } from '../data/nimble/core'
 import { SPELLS } from '../data/nimble/spells'
 import type { ChoiceDef, ClassDef } from '../data/nimble/types'
 import type { NimbleSheet, NimbleStat } from '../types/sheets'
 import { parseDice } from '../utils/dice'
+import { defaultSheet } from '../utils/sheetDefaults'
 import {
   abilityBaseName,
   applyNimbleLevel,
+  buildNimbleSheet,
+  creationInput,
+  malfunctionRisks,
+  weaponAttack,
   classArmor,
   changeSubclass,
   creationChoices,
@@ -19,8 +24,10 @@ import {
   recommendedStats,
   sheetResource,
   subclassChangeChoices,
+  abilityModifiers,
+  weaponAliases,
 } from '../utils/nimbleBuild'
-import { restoreLevel } from '../utils/levelHistory'
+import { restoreBuild, restoreLevel } from '../utils/levelHistory'
 import { abilityCounters } from '../utils/nimblePlay'
 import { autoPick, build, human, levelTo, pickLevel, survivalist } from './helpers/nimble'
 
@@ -86,6 +93,37 @@ describe('nimble data', () => {
         expect(cls.levels[l]?.statIncrease?.count, `${cls.slug} L${l}`).toBe(1)
       expect(cls.levels[20]?.statIncrease?.count).toBe(2)
     }
+  })
+
+  it('lets only the inventions that break or lock up malfunction', () => {
+    const cls = classBySlug('artificer')!
+    const risky = cls.pools.flatMap((p) =>
+      p.options.filter((o) => o.malfunction).map((o) => o.name),
+    )
+    expect(risky).toEqual(['Manabolt Cannon', 'Manablade', 'Manaforged Plate'])
+    const sheet = build(cls)
+    sheet.abilities.push(
+      { name: 'Manablade', src: 'Artificer', desc: '' },
+      { name: 'Aethertuned Jerkin', src: 'Artificer', desc: '' },
+    )
+    expect(malfunctionRisks(sheet)).toEqual([
+      { name: 'Manablade', label: 'Inoperable', fix: 'DC 12 Arcana check to fix' },
+    ])
+  })
+
+  it('rolls 1d4 to hit with an Unarmed Strike and deals 1+STR, or 1d4+STR with Swift Fists', () => {
+    const stats = { STR: 2, DEX: 0, INT: 0, WIL: 0 }
+    expect(weaponAttack('Unarmed Strike', stats, [])).toMatchObject({ dmg: '1d4', flat: 3 })
+    const swift = [{ name: 'Swift Fists', src: 'Zephyr', desc: '' }]
+    expect(weaponAttack('Unarmed Strike', stats, swift)).toMatchObject({ dmg: '1d4+2' })
+    expect(weaponAttack('Unarmed Strike', stats, swift)?.flat).toBeUndefined()
+  })
+
+  it('lists the armor and shields each class starts with', () => {
+    const worn = ['Adventurer’s Garb', 'Cheap Hides', 'Rusty Mail', 'Wooden Buckler']
+    for (const cls of NIMBLE_CLASSES)
+      for (const g of cls.startingGear)
+        if (worn.includes(g.name)) expect(armorByName(g.name), g.name).toBeDefined()
   })
 
   it('only references weapons and spells that exist', () => {
@@ -625,6 +663,14 @@ describe('Artificer', () => {
     expect(sheetResource(gadgeteer, 14)).toMatchObject({ die: 10, bonus: 1 })
   })
 
+  it('counts Survey the Battlefield’s +1 max Combat Dice once', () => {
+    const at10 = build(classBySlug('commander')!)
+    levelTo(at10, 10, 'vanguard')
+    const at11 = build(classBySlug('commander')!)
+    levelTo(at11, 11, 'vanguard')
+    expect(sheetResource(at11, 11)!.bonus).toBe(sheetResource(at10, 10)!.bonus + 1)
+  })
+
   it('reads use limits from the ability text', () => {
     const sheet = build(artificer)
     levelWith(sheet, 2, 'Stim Pack')
@@ -704,6 +750,65 @@ describe('lowering the level', () => {
     expect(sheet.subclassSlug).toBe('')
   })
 
+  for (const cls of NIMBLE_CLASSES)
+    it(`reads back a ${cls.slug}'s level 1 choices and rebuilds them (reconfigure)`, () => {
+      const sheet = build(cls)
+      levelTo(sheet, 6, cls.subclasses[0]!.slug)
+      const before = strip(sheet)
+      const input = creationInput(sheet, 6)!
+      expect(input.skillPoints).toEqual({ Might: 2 })
+      const inputs = sheet.levelHistory!.map((e) => e.nimble!)
+      restoreBuild(sheet, buildNimbleSheet(input))
+      expect(sheet.levelHistory).toEqual([])
+      inputs.forEach((i, n) => applyNimbleLevel(sheet, n + 2, i))
+      expect(strip(sheet)).toEqual(before)
+    })
+
+  it('rebuilds level 1 with new stats and keeps play state', () => {
+    const cls = classBySlug('berserker')!
+    const sheet = build(cls)
+    sheet.inventory.push({ name: 'Lucky coin', qty: '1' })
+    sheet.wounds = 1
+    const input = creationInput(sheet, 1)!
+    restoreBuild(sheet, buildNimbleSheet({ ...input, stats: { STR: 2, DEX: -1, INT: 0, WIL: 2 } }))
+    expect(sheet.stats).toEqual({ STR: 2, DEX: -1, INT: 0, WIL: 2 })
+    expect(sheet.inventory.map((i) => i.name)).toContain('Lucky coin')
+    expect(sheet.wounds).toBe(1)
+  })
+
+  it('keeps conditions with when they end', () => {
+    const sheet = build(classBySlug('berserker')!)
+    levelTo(sheet, 4, 'mountainheart')
+    sheet.conditions = ['Dazed']
+    sheet.conditionEnds = { Dazed: 'round' }
+    restoreLevel(sheet, 2)
+    expect(sheet.conditionEnds).toEqual({ Dazed: 'round' })
+  })
+
+  for (const cls of NIMBLE_CLASSES)
+    it(`rebuilds a ${cls.slug} from its recorded picks after going back (reconfigure)`, () => {
+      const sheet = build(cls)
+      levelTo(sheet, 9, cls.subclasses[0]!.slug)
+      const before = strip(sheet)
+      const inputs = sheet.levelHistory!.filter((e) => e.level > 2).map((e) => e.nimble!)
+      restoreLevel(sheet, 2)
+      inputs.forEach((input, i) => applyNimbleLevel(sheet, i + 3, input))
+      expect(strip(sheet)).toEqual(before)
+    })
+
+  it('keeps held Judgment Dice and malfunctions when a level is undone, even from old snapshots', () => {
+    const cls = classBySlug('oathsworn')!
+    const sheet = build(cls)
+    levelTo(sheet, 2, cls.subclasses[0]!.slug)
+    const old = sheet.levelHistory!.at(-1)!.before as { resource: Record<string, unknown> }
+    delete old.resource.rolls
+    sheet.resource.rolls = [5, 6]
+    sheet.malfunctions = ['Manablade']
+    expect(restoreLevel(sheet, 1)).toBe(true)
+    expect(sheet.resource.rolls).toEqual([5, 6])
+    expect(sheet.malfunctions).toEqual(['Manablade'])
+  })
+
   it('keeps live mana and class resource state while restoring their maximums', () => {
     const sheet = build(classBySlug('shadowmancer')!)
     levelTo(sheet, 6, 'red-dragon')
@@ -741,5 +846,67 @@ describe('keyStatValue', () => {
     sheet.stats.INT = 1
     sheet.stats.DEX = 3
     expect(keyStatValue(sheet)).toEqual({ value: 3, stats: ['INT', 'DEX'] })
+  })
+})
+
+describe('ability upgrades', () => {
+  const sheetWith = (abilities: [string, string][]) => ({
+    ...defaultSheet('nimble'),
+    abilities: abilities.map(([name, desc]) => ({ name, src: 'Class', desc })),
+  })
+
+  it('lists invocations on Shadow Blast and, through the spell, on Bonescythe', () => {
+    const sheet = sheetWith([
+      ['Shadow Spear', 'Your Shadow Blast can target creatures twice as far away.'],
+      ['Reap', 'When your Bonescythe crits, or kills a creature, summon a shadow minion for free.'],
+      [
+        'Shadowmancer',
+        'Your Patron grants you knowledge of the cantrips Shadow Blast and Summon Shadows.',
+      ],
+    ])
+    expect(abilityModifiers(sheet, 'Shadow Blast').map((m) => m.name)).toEqual(['Shadow Spear'])
+    expect(abilityModifiers(sheet, 'Bonescythe').map((m) => m.name)).toEqual([
+      'Shadow Spear',
+      'Reap',
+    ])
+  })
+
+  it('lists Weapon Mastery on the attacks of its damage type', () => {
+    const sheet = sheetWith([
+      ['Slashing Mastery', 'Your attacks with slashing weapons cannot miss unarmored enemies.'],
+      ['Piercing Mastery', 'Your attacks with piercing weapons ignore Medium Armor.'],
+    ])
+    const names = (props: string) =>
+      abilityModifiers(sheet, 'Longsword', weaponAliases(props)).map((m) => m.name)
+    expect(names('Slashing, 2-handed')).toEqual(['Slashing Mastery'])
+    expect(names('Bludgeoning')).toEqual([])
+  })
+
+  it('lists named upgrade options and orders another ability empowers', () => {
+    const sheet = sheetWith([
+      ['Aethertuned Jerkin', 'Armor: 3+DEX.'],
+      [
+        'Aethertuned Jerkin: Autothrusters',
+        'If you spend 2 or more Mana Dice when you Defend, do so for free.',
+      ],
+      [
+        'Empowered Orders',
+        'Face Me! (Glimmering Decree): the enemy also takes STR d8 radiant damage. Reposition! (Wings of Light): fly.',
+      ],
+    ])
+    expect(abilityModifiers(sheet, 'Aethertuned Jerkin')).toEqual([
+      {
+        name: 'Autothrusters',
+        text: 'If you spend 2 or more Mana Dice when you Defend, do so for free.',
+        ability: 'Aethertuned Jerkin: Autothrusters',
+      },
+    ])
+    expect(abilityModifiers(sheet, 'Face Me!')).toEqual([
+      {
+        name: 'Empowered Orders',
+        text: 'Face Me! (Glimmering Decree): the enemy also takes STR d8 radiant damage.',
+        ability: 'Empowered Orders',
+      },
+    ])
   })
 })

@@ -129,9 +129,10 @@ export const artificer: ClassDef = {
     name: 'Mana Accumulator',
     diceName: 'Mana',
     die: 4,
-    kind: 'dice',
+    kind: 'power',
     ability: 'Mana Accumulator',
     stat: 'STR',
+    refill: 'turn',
   },
   swapRule: {
     name: 'Reconfigure!',
@@ -145,14 +146,21 @@ export const artificer: ClassDef = {
       options: [
         {
           name: 'Manabolt Cannon',
+          malfunction: { label: 'Inoperable', fix: 'DC 12 Finesse check to fix' },
           desc: 'Range 8, 2 actions, 1d12 damage (req. 1+ Mana Dice). Add INT to each Mana Die rolled and deal that much extra damage to your target and ALL creatures between you and it. Mishap: Arcane Overload. After the attack, suffer 2 damage per Mana Die rolled; the weapon becomes inoperable (DC 12 Finesse check to fix).',
         },
         {
           name: 'Manablade',
+          malfunction: { label: 'Inoperable', fix: 'DC 12 Arcana check to fix' },
           desc: 'Reach 1 (req. 1+ Mana Dice). Deal damage equal to 2× (the sum of the Mana Dice rolled + STR). Treat Heavy armor as Medium, and Medium as unarmored. Mishap: Arcane Rebound. Afterwards, suffer damage equal to the sum rolled; the blade becomes inoperable (DC 12 Arcana check to fix).',
         },
         {
           name: 'Manaforged Plate',
+          malfunction: {
+            label: 'Locked up',
+            fix: 'Restrained; escape DC 10',
+            condition: 'Restrained',
+          },
           desc: 'Armor: 8+STR. Autoshields: (1/round) reduce the damage of an attack by INT for free. Mana Infusion: when you Defend, gain 2×STR armor per Mana Die spent. Mishap: Armor Lockup! Restrained (escape DC 10). Only 1 kind of armor can be worn at a time.',
         },
         {

@@ -3,8 +3,7 @@ import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { mapPenalties, parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
 import { PF2E_CONDITIONS } from '~/utils/sheetDefaults'
 
-const { draft, canEdit, campaignName, hpPct, xpPct, xpLabel, adjustHp, lastRoll, say } =
-  useSheet<Pf2eSheet>()
+const { draft, canEdit, hpPct, xpPct, xpLabel, adjustHp, lastRoll, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
 
 const RANK_NAME: Record<Pf2eRank, string> = {
@@ -120,7 +119,7 @@ const bulkPct = computed(() =>
         <div class="stack" style="gap: 6px">
           <div class="row" style="gap: 10px">
             <span class="badge badge--pf2e">Pathfinder 2e</span>
-            <span class="small muted">{{ campaignName }}</span>
+            <span class="small muted"><SheetCampaignLink /></span>
           </div>
           <h1>{{ draft.name }}</h1>
         </div>

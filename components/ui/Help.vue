@@ -8,6 +8,7 @@ const GAP = 6
 /** Time to cross the gap between the button and the tooltip before it closes. */
 const HIDE_DELAY = 200
 
+const slots = useSlots()
 const id = useId()
 const root = ref<HTMLElement>()
 const button = ref<HTMLButtonElement>()
@@ -86,6 +87,7 @@ onBeforeUnmount(() => {
       ref="button"
       type="button"
       class="help__btn"
+      :class="{ 'help__btn--text': slots.default }"
       :aria-label="props.label"
       :aria-describedby="open ? id : undefined"
       :aria-expanded="open"
@@ -94,7 +96,7 @@ onBeforeUnmount(() => {
       @blur="hide"
       @keydown.esc="hide"
     >
-      ?
+      <slot>?</slot>
     </button>
     <span v-show="open" :id="id" ref="tip" role="tooltip" class="help__tip" :style="position">
       {{ props.text }}
@@ -132,11 +134,30 @@ onBeforeUnmount(() => {
 
   // A 44px touch target around the small circle.
   @media (pointer: coarse) {
-    &::after {
+    &:not(.help__btn--text)::after {
       content: '';
       position: absolute;
       inset: -12px;
     }
+  }
+}
+
+.help__btn--text {
+  display: inline;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline dotted var(--page-muted);
+  text-underline-offset: 3px;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    color: inherit;
+    text-decoration-color: var(--accent);
   }
 }
 
@@ -159,5 +180,6 @@ onBeforeUnmount(() => {
   line-height: 1.5;
   letter-spacing: normal;
   text-transform: none;
+  white-space: pre-line;
 }
 </style>

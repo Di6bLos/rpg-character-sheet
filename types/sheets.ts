@@ -50,6 +50,36 @@ export interface InventoryItem {
   slots?: number
   /** Nimble: short label such as Weapon or Armor. */
   tag?: string
+  custom?: CustomItem
+}
+
+export type CustomItemEffectKind =
+  | 'hit'
+  | 'crit'
+  | 'condition'
+  | 'heal'
+  | 'resist'
+  | 'returning'
+  | 'light'
+
+export interface CustomItemEffect {
+  kind: CustomItemEffectKind
+  dice?: string
+  type?: string
+  condition?: string
+}
+
+export interface CustomItem {
+  kind: 'weapon' | 'armor' | 'shield' | 'gear'
+  dice?: string
+  stat?: NimbleStat
+  damageType?: string
+  props?: string
+  melee?: boolean
+  armor?: string
+  rarity?: string
+  effects?: CustomItemEffect[]
+  desc?: string
 }
 
 export interface NamedEntry {
@@ -147,6 +177,41 @@ export interface NimbleAttack {
   props: string
   dmg: string
   melee: boolean
+  flat?: number
+  onHit?: string[]
+  onCrit?: string[]
+}
+
+export type ConditionEnd = 'turnStart' | 'turnEnd' | 'round' | 'encounter'
+
+export interface NimbleCustomSummon {
+  kind: 'minion' | 'companion' | 'spirit' | 'construct' | 'other'
+  armor?: number
+  speed?: number
+  attack?: { name: string; dice: string; type?: string; reach?: number; actions: number }
+  notes?: string
+  abilities?: string[]
+  resist?: string
+  lasts: 'slain' | 'combat' | 'rest'
+}
+
+export interface NimbleSummon {
+  id: string
+  def: string
+  name: string
+  hp: number
+  hpMax: number
+  custom?: NimbleCustomSummon
+  tier?: number
+  charges?: number
+  portrait?: string
+  beast?: string
+}
+
+export interface NimbleSummonLook {
+  name?: string
+  portrait?: string
+  beast?: string
 }
 
 export interface NimbleSkill {
@@ -176,7 +241,15 @@ export interface NimbleSpells {
 }
 
 /** How the class resource panel behaves on the Nimble sheet. */
-export type NimbleResourceKind = 'rage' | 'dice' | 'counter' | 'uses' | 'info'
+export type NimbleResourceKind =
+  | 'rage'
+  | 'dice'
+  | 'counter'
+  | 'uses'
+  | 'info'
+  | 'power'
+  | 'judgment'
+  | 'crit'
 
 /** Uses spent of a limited ability. The limit comes from its rules text unless `max` is set. */
 export interface NimbleUses {
@@ -220,11 +293,16 @@ export interface NimbleSheet extends SheetCommon {
   /** What the hero is concentrating on; empty when not concentrating. */
   concentration: string
   /** A spell that needs more actions than the turn had: the actions still owed. */
-  casting: { spell: string; actions: number }
+  casting: { spell: string; actions: number; at?: number }
   conditions: string[]
+  conditionEnds: Record<string, ConditionEnd>
+  /** Conditions ending at turn end that were set during this turn, so they last through the next one. */
+  conditionHold?: string[]
   /**
    * Class resource. `active` and `dice` are a Berserker's Rage and Fury dice (added to
-   * melee damage); `count` holds the dice, charges or uses of the other kinds.
+   * melee damage); `count` holds the dice, charges or uses of the other kinds (for
+   * `crit`, 1 once it's used this turn). `rolls` are rolled Judgment Dice waiting for
+   * the next melee attack.
    */
   resource: {
     name: string
@@ -234,9 +312,23 @@ export interface NimbleSheet extends SheetCommon {
     dice: number
     die: number
     count: number
+    rolls: number[]
   }
   /** Use counters by `AbilityCounter.id` (see utils/nimblePlay). */
   uses: Record<string, NimbleUses>
+  malfunctions: string[]
+  summons: NimbleSummon[]
+  summonLooks: Record<string, NimbleSummonLook>
+  formPortraits: Record<string, string>
+  portraitOverride: string
+  ownDice: boolean
+  /** Between Start turn and End turn. */
+  turnActive: boolean
+  /** From New encounter until a Safe Rest. */
+  inEncounter: boolean
+  /** Your turn is over for this round. */
+  turnDone: boolean
+  effects: { condition: string; source: string; ends: string[]; skip?: number; tempHp?: number }[]
   attacks: NimbleAttack[]
   skills: NimbleSkill[]
   abilities: NimbleAbility[]

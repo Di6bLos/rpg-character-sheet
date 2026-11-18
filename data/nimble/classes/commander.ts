@@ -42,6 +42,9 @@ export const commander: ClassDef = {
     kind: 'dice',
     ability: 'Fit for Any Battlefield',
     stat: 'STR',
+    movesPool: 'combat-tactics',
+    refill: 'initiative',
+    maxPick: '+1 max Combat Dice',
   },
   swapRule: {
     name: 'Rigorous Training',

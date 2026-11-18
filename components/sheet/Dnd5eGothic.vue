@@ -10,7 +10,6 @@ const {
   failures,
   byline,
   canEdit,
-  campaignName,
   hpPct,
   xpPct,
   adjustHp,
@@ -40,7 +39,7 @@ const quick = computed(() => [
     <div class="identity__body">
       <div class="identity__kicker">
         <span class="accent">D&amp;D 5e</span><span aria-hidden="true">✦</span
-        ><span>{{ campaignName }}</span>
+        ><span><SheetCampaignLink /></span>
       </div>
       <h1>{{ draft.name }}</h1>
       <div class="identity__byline">{{ byline || 'An unwritten soul' }}</div>

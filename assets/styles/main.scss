@@ -165,6 +165,18 @@ img {
 // Panels: inside a panel, text tokens switch to the panel palette so that the
 // Cursed theme's parchment stays readable.
 // ---------------------------------------------------------------------------
+.panel:has(> .ui-fold) {
+  position: relative;
+
+  > .ui-fold + * {
+    padding-right: 40px;
+  }
+
+  &:has(> .ui-fold[aria-expanded='false']) > .ui-fold + * ~ * {
+    display: none !important;
+  }
+}
+
 .panel {
   background: var(--panel-bg);
   color: var(--panel-text);
@@ -279,6 +291,13 @@ img {
 
   &--block {
     width: 100%;
+  }
+
+  &--wrap {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.3;
+    padding-block: 6px;
   }
 
   &--icon {

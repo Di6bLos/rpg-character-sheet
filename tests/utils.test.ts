@@ -121,13 +121,19 @@ describe('dice', () => {
 
   it('explodes a Nimble crit on the first die maximum', () => {
     const result = rollNimble({ count: 1, sides: 12, mod: 3 }, null, faces(12, 12, 12, 5))
-    expect(result).toEqual({ miss: false, crit: true, total: 12 + 12 + 5 + 3, bonus: 0 })
+    expect(result).toEqual({
+      miss: false,
+      crit: true,
+      total: 12 + 12 + 5 + 3,
+      bonus: 0,
+      dice: [12],
+    })
   })
 
   it('adds Nimble bonus dice on a hit', () => {
     const result = rollNimble({ count: 1, sides: 12, mod: 3 }, { count: 2, sides: 4 }, () => 0.5)
     // d12 -> 7, two d4 -> 3 each
-    expect(result).toEqual({ miss: false, crit: false, total: 7 + 3 + 6, bonus: 6 })
+    expect(result).toEqual({ miss: false, crit: false, total: 7 + 3 + 6, bonus: 6, dice: [7] })
   })
 })
 

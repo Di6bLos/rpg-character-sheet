@@ -4,15 +4,21 @@
 // Side panels: the player's quick actions (left) and the Lore Master (right).
 import type { Combatant } from '~/types'
 import { plural } from '~/utils/format'
-import { combatantName, groupLabels } from '~/utils/initiative'
+import { combatantName, downSummonKeys, groupLabels } from '~/utils/initiative'
 
 const snackbar = useSnackbarStore()
 const { mode, campaign, campaignId, isGm, gmControls, roster, reloadRoster } = useCampaignBoard()
 
 const init = useInitiative(campaignId, isGm)
 
+const downSummons = computed(() => downSummonKeys(init.rows.value))
+
 const turnCharacterId = computed(
   () => init.order.value.find((c) => c.id === init.activeId.value)?.character_id ?? null,
+)
+const encounterRound = computed(() => (init.turnId.value ? init.round.value : null))
+const actingCharacterId = computed(
+  () => init.order.value.find((c) => c.id === init.turnId.value)?.character_id ?? null,
 )
 
 // Roster HP and conditions change on the players' sheets; refresh with the turn,
@@ -112,7 +118,12 @@ async function addCustom() {
   <div class="party-layout">
     <!-- Below 1200px the side panels open from tabs stacked here (they teleport in). -->
     <div class="edge-tabs" />
-    <BoardActionPanel v-if="mode === 'board'" />
+    <BoardActionPanel
+      v-if="mode === 'board'"
+      :down-summons="downSummons"
+      :turn-character-id="actingCharacterId"
+      :round="encounterRound"
+    />
     <BoardLorePanel />
     <div class="party">
       <BoardInitiative :init="init" :roster="roster" :gm="gmControls" @add="addOpen = true" />

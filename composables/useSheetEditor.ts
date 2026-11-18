@@ -11,6 +11,7 @@ export interface SheetEditor<T extends AnySheet = AnySheet> {
   saving: Ref<boolean>
   lastRoll: Ref<string>
   campaignName: Ref<string>
+  campaignId: Ref<string | null>
   portrait: Ref<string | null>
   uploadingPortrait: Ref<boolean>
   hpPct: Ref<number>
@@ -19,6 +20,8 @@ export interface SheetEditor<T extends AnySheet = AnySheet> {
   adjustHp: (delta: number) => void
   say: (message: string) => void
   save: () => Promise<void>
+  /** Saves right away, even before the change watcher has marked the draft dirty. */
+  saveNow: () => Promise<void>
   onPortrait: (event: Event) => Promise<void>
 }
 
@@ -35,7 +38,7 @@ const AUTOSAVE_MS = 1500
 /** Creates and provides the editing state for one character sheet page. */
 export function provideSheetEditor(
   source: Character<AnySheet>,
-  options: { canEdit: boolean; campaignName: string },
+  options: { canEdit: boolean; campaignName: string; campaignId?: string | null },
 ): SheetEditor {
   const store = useCharacterStore()
   const snackbar = useSnackbarStore()
@@ -46,6 +49,7 @@ export function provideSheetEditor(
   const saving = ref(false)
   const lastRoll = ref('')
   const campaignName = ref(options.campaignName)
+  const campaignId = ref(options.campaignId ?? null)
   const uploadingPortrait = ref(false)
   let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -91,6 +95,11 @@ export function provideSheetEditor(
     }
   }
 
+  function saveNow(): Promise<void> {
+    dirty.value = true
+    return save()
+  }
+
   /** save() for fire-and-forget callers; errors are already shown as a toast. */
   function saveQuietly() {
     save().catch(() => {})
@@ -134,7 +143,7 @@ export function provideSheetEditor(
     try {
       uploaded = await store.uploadPortrait(draft.value.id, file)
       draft.value.portrait_path = uploaded
-      await save()
+      await saveNow()
       if (previous && previous !== uploaded) await store.removePortrait(previous)
     } catch (err) {
       if (uploaded && draft.value.portrait_path === uploaded) {
@@ -156,8 +165,12 @@ export function provideSheetEditor(
     saving,
     lastRoll,
     campaignName,
+    campaignId,
     uploadingPortrait,
-    portrait: computed(() => portraitUrl(draft.value.portrait_path)),
+    portrait: computed(() => {
+      const override = (draft.value.sheet as { portraitOverride?: string }).portraitOverride
+      return portraitUrl(override || draft.value.portrait_path)
+    }),
     hpPct: computed(() => {
       const { hp, hpMax } = draft.value.sheet
       return hpMax > 0 ? Math.round((Math.min(hp, hpMax) / hpMax) * 100) : 0
@@ -173,6 +186,7 @@ export function provideSheetEditor(
     adjustHp,
     say: (message: string) => (lastRoll.value = message),
     save,
+    saveNow,
     onPortrait,
   }
 

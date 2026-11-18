@@ -1,7 +1,16 @@
 <script setup lang="ts">
 // Conditions: tap to toggle. Bloodied, Dying and Wounded follow HP and Wounds.
 import { AUTO_CONDITIONS, CONDITIONS } from '~/data/nimble/core'
-import type { NimbleSheet } from '~/types/sheets'
+import type { ConditionEnd, NimbleSheet } from '~/types/sheets'
+import {
+  END_LABELS,
+  SPELL_STATUSES,
+  addCondition,
+  conditionMods,
+  removeCondition,
+  setConditionEnd,
+} from '~/utils/nimbleConditions'
+import { clearEffect, effectDef, endEffect } from '~/utils/nimbleEffects'
 import { isBloodied } from '~/utils/nimblePlay'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
@@ -14,7 +23,7 @@ const auto = computed<Record<string, boolean>>(() => ({
 }))
 
 const conditions = computed(() =>
-  CONDITIONS.map((c) => {
+  [...CONDITIONS, ...SPELL_STATUSES].map((c) => {
     const automatic = AUTO_CONDITIONS.includes(c.name)
     return {
       ...c,
@@ -23,21 +32,59 @@ const conditions = computed(() =>
     }
   }),
 )
-const active = computed(() => conditions.value.filter((c) => c.on))
+const active = computed(() =>
+  conditions.value
+    .filter((c) => c.on)
+    .map((c) => ({
+      ...c,
+      end: sheet.value.conditionEnds?.[c.name] ?? ('manual' as const),
+      fromEffect: sheet.value.effects.some((e) => e.condition === c.name),
+    })),
+)
+const effects = computed(() => {
+  const m = conditionMods(sheet.value)
+  return [
+    ...m.notes.map((n) => `${n} on attacks and attack spells`),
+    m.speedNote ? `${m.speedNote}${m.speed !== null ? ` (Speed ${m.speed})` : ''}` : '',
+    m.incapacitated ? `${m.incapacitated}: you can’t attack or cast` : '',
+    sheet.value.conditions.includes('Dazed')
+      ? 'Dazed: you lose 1 action when your turn starts'
+      : '',
+  ].filter(Boolean)
+})
+const SPELL_NAMES = new Set(SPELL_STATUSES.map((s) => s.name))
+const ENDS = Object.entries(END_LABELS) as [ConditionEnd | 'manual', string][]
+
+function setEnd(name: string, end: ConditionEnd | 'manual') {
+  if (canEdit.value) setConditionEnd(sheet.value, name, end)
+}
+const statuses = computed(() =>
+  sheet.value.effects.map((e) => ({
+    source: e.source,
+    label: e.condition === e.source ? e.source : `${e.condition} (${e.source})`,
+    until: effectDef(e.source)?.until ?? '',
+  })),
+)
+
+function end(source: string) {
+  if (canEdit.value) endEffect(sheet.value, source)
+}
 
 function toggle(name: string) {
   if (!canEdit.value) return
-  const list = sheet.value.conditions
-  sheet.value.conditions = list.includes(name) ? list.filter((c) => c !== name) : [...list, name]
+  if (sheet.value.conditions.includes(name)) {
+    clearEffect(sheet.value, name)
+    removeCondition(sheet.value, name)
+  } else addCondition(sheet.value, name)
 }
 </script>
 
 <template>
-  <section class="panel stack" style="gap: 12px" aria-labelledby="cond-h">
-    <h2 id="cond-h">Conditions</h2>
+  <div class="conditions stack" style="gap: 10px">
+    <div class="caps">Conditions</div>
     <div class="chips" style="gap: 6px">
       <button
-        v-for="c in conditions"
+        v-for="c in conditions.filter((x) => !SPELL_NAMES.has(x.name))"
         :key="c.name"
         type="button"
         class="chip cond"
@@ -49,15 +96,116 @@ function toggle(name: string) {
         {{ c.name }}
       </button>
     </div>
-    <div v-if="active.length" class="tile" style="gap: 6px">
-      <span v-for="c in active" :key="c.name" class="cond-line">
-        <strong>{{ c.name }}.</strong> {{ c.desc }}
-      </span>
+    <div class="chips" style="gap: 6px">
+      <span class="cond-group">Spell statuses</span>
+      <button
+        v-for="c in conditions.filter((x) => SPELL_NAMES.has(x.name))"
+        :key="c.name"
+        type="button"
+        class="chip cond"
+        :aria-pressed="c.on"
+        :disabled="!canEdit"
+        :title="c.desc"
+        @click="toggle(c.name)"
+      >
+        {{ c.name }}
+      </button>
     </div>
-  </section>
+    <ul v-if="statuses.length" class="statuses">
+      <li v-for="st in statuses" :key="st.source">
+        <span class="grow"
+          ><strong>{{ st.label }}</strong> <small>{{ st.until }}</small></span
+        >
+        <button
+          type="button"
+          class="btn btn--quiet btn--sm"
+          :disabled="!canEdit"
+          :aria-label="`End ${st.label}`"
+          @click="end(st.source)"
+        >
+          End
+        </button>
+      </li>
+    </ul>
+    <div v-if="active.length" class="tile active" style="gap: 8px">
+      <div v-for="c in active" :key="c.name" class="cond-line">
+        <span class="grow"
+          ><strong>{{ c.name }}.</strong> {{ c.desc }}</span
+        >
+        <label v-if="!c.automatic && !c.fromEffect" class="cond-end">
+          <span class="sr-only">When {{ c.name }} ends</span>
+          <select
+            class="input"
+            :value="c.end"
+            :disabled="!canEdit"
+            @change="
+              setEnd(c.name, ($event.target as HTMLSelectElement).value as ConditionEnd | 'manual')
+            "
+          >
+            <option v-for="[value, label] in ENDS" :key="value" :value="value">
+              Ends {{ label }}
+            </option>
+          </select>
+        </label>
+      </div>
+      <ul v-if="effects.length" class="cond-effects">
+        <li v-for="e in effects" :key="e">{{ e }}</li>
+      </ul>
+    </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
+.cond-group {
+  align-self: center;
+  margin-right: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--page-muted);
+}
+
+.active .cond-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.cond-end select {
+  min-height: 32px;
+  padding: 2px 30px 2px 8px;
+  font-size: 12px;
+}
+
+.cond-effects {
+  margin: 0;
+  padding: 6px 0 0 16px;
+  border-top: 1px solid var(--track);
+  font-size: 12px;
+  color: var(--warn-text);
+}
+
+.statuses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    border-bottom: 1px solid var(--track);
+    font-size: 13px;
+  }
+
+  small {
+    color: var(--page-muted);
+  }
+}
+
 .cond {
   min-height: 34px;
   padding: 0 12px;

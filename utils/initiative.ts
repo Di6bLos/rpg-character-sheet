@@ -1,4 +1,5 @@
-import type { CampaignNpc, Combatant, HpBand, NpcKind } from '~/types'
+import type { CampaignNpc, Combatant, HpBand, InitiativeRow, NpcKind, RosterEntry } from '~/types'
+import { summonById } from '~/data/nimble/summons'
 import { rollDie, type Rng } from './dice'
 
 /** A, B, …, Z, AA, AB… (spreadsheet-style letters for group members). */
@@ -124,4 +125,91 @@ export function buildCopies(npc: CampaignNpc, opts: AddCopiesOptions): NewCombat
     portrait_path: npc.image_path,
     group_label: label,
   }))
+}
+
+export interface NewSummonCombatant {
+  name: string
+  kind: 'summon'
+  initiative: number
+  init_mod: number
+  hp: number
+  hp_max: number
+  ac: number
+  character_id: null
+  campaign_npc_id: null
+  portrait_path: null
+  group_label: null
+  summon_key: string
+}
+
+export function summonKey(characterId: string, summonId: string): string {
+  return `${characterId}:${summonId}`
+}
+
+export function summonOwner(key: string): string {
+  return key.slice(0, key.indexOf(':'))
+}
+
+export function syncSummonRows(
+  roster: Pick<RosterEntry, 'character_id' | 'character_name' | 'display_name' | 'summary'>[],
+  rows: Pick<Combatant, 'id' | 'kind' | 'character_id' | 'initiative' | 'summon_key'>[],
+): { add: NewSummonCombatant[]; remove: string[] } {
+  const seated = new Set(rows.map((r) => r.summon_key).filter((k): k is string => !!k))
+  const add: NewSummonCombatant[] = []
+  const live = new Map<string, Set<string>>()
+  for (const r of roster) {
+    if (!r.character_id) continue
+    const characterId = r.character_id
+    const summons = r.summary?.summons ?? []
+    live.set(characterId, new Set(summons.map((s) => summonKey(characterId, s.id))))
+    const summoner = rows.find((c) => c.kind === 'pc' && c.character_id === characterId)
+    if (!summoner) continue
+    for (const s of summons) {
+      if (!summonById(s.def)?.combatant) continue
+      const key = summonKey(characterId, s.id)
+      if (seated.has(key)) continue
+      const hp = Math.max(0, s.hpMax)
+      add.push({
+        name: combatantName(`${s.name} (${r.character_name ?? r.display_name})`, null),
+        kind: 'summon',
+        initiative: summoner.initiative,
+        init_mod: 0,
+        hp,
+        hp_max: hp,
+        ac: 10,
+        character_id: null,
+        campaign_npc_id: null,
+        portrait_path: null,
+        group_label: null,
+        summon_key: key,
+      })
+    }
+  }
+  const remove = rows
+    .filter((c) => {
+      if (!c.summon_key) return false
+      const keys = live.get(summonOwner(c.summon_key))
+      return !!keys && !keys.has(c.summon_key)
+    })
+    .map((c) => c.id)
+  return { add, remove }
+}
+
+export function isSlainSummon(
+  row: Pick<InitiativeRow, 'kind' | 'hp' | 'hp_max' | 'hp_band'>,
+): boolean {
+  if (row.kind !== 'summon') return false
+  return row.hp_band === 'Down' || ((row.hp_max ?? 0) > 0 && row.hp !== null && row.hp <= 0)
+}
+
+export function downSummonKeys(
+  rows: Pick<InitiativeRow, 'summon_key' | 'hp' | 'hp_max' | 'hp_band'>[],
+): string[] {
+  return rows
+    .filter(
+      (c) =>
+        !!c.summon_key &&
+        (c.hp_band === 'Down' || ((c.hp_max ?? 0) > 0 && c.hp !== null && c.hp <= 0)),
+    )
+    .map((c) => c.summon_key as string)
 }

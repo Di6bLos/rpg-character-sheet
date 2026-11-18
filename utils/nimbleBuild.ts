@@ -1,8 +1,12 @@
 // Pure rules logic that turns Nimble class data (data/nimble) into a sheet:
 // the level 1 build, what each level-up grants, and applying a level-up.
+import { abilityArmor } from '~/utils/nimbleArmor'
+import { ancestryBySlug } from '~/data/nimble/ancestries'
+import { backgroundBySlug } from '~/data/nimble/backgrounds'
 import { classBySlug, poolOptionByName, subclassBySlug } from '~/data/nimble/classes'
 import { BASE_SPEED, BASE_WOUNDS, MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
+import { SUMMONS } from '~/data/nimble/summons'
 import type {
   AbilityDef,
   AncestryDef,
@@ -10,6 +14,7 @@ import type {
   ChoiceDef,
   ClassDef,
   LevelDef,
+  PoolOption,
   SpellDef,
   SpellSchool,
   StatIncrease,
@@ -114,7 +119,7 @@ const WEAPON_PERKS: Record<string, { ability: string; props: string }> = {
   'Unarmed Strike': { ability: 'Swift Fists', props: 'Swift Fists: no Rushed Attack disadvantage' },
 }
 
-function weaponAttack(
+export function weaponAttack(
   name: string,
   stats: Record<NimbleStat, number>,
   abilities: NimbleAbility[],
@@ -125,6 +130,14 @@ function weaponAttack(
   const mod = stats[w.stat] + (w.melee ? meleeBonus : 0)
   const perk = WEAPON_PERKS[w.name]
   const perkProps = perk && abilities.some((a) => a.name === perk.ability) ? perk.props : ''
+  if (w.name === 'Unarmed Strike' && !perkProps)
+    return {
+      name: w.name,
+      props: [w.type, 'on a hit: 1+STR damage'].filter(Boolean).join(', '),
+      dmg: w.dice,
+      melee: w.melee,
+      flat: 1 + mod,
+    }
   return {
     name: w.name,
     props: [w.type, w.props, perkProps].filter(Boolean).join(', '),
@@ -559,6 +572,7 @@ export function applyNimbleLevel(sheet: NimbleSheet, level: number, input: Level
   if (!plan) return
   recordLevel(sheet, level, input)
   const before = { ...sheet.stats }
+  const armorBefore = abilityArmor(sheet)
 
   sheet.hpMax += input.hpGain
   sheet.hp += input.hpGain
@@ -587,6 +601,8 @@ export function applyNimbleLevel(sheet: NimbleSheet, level: number, input: Level
   for (const choice of plan.choices)
     applyChoice(sheet, cls, choice, input.picks[choice.key] ?? [], level)
   syncDerived(sheet, cls, before, level, level - 1)
+  sheet.ac += abilityArmor(sheet) - armorBefore
+  syncCompanions(sheet)
 }
 
 /** Level at which the class table asks for a subclass (3 for every class). */
@@ -804,6 +820,7 @@ export function changeSubclass(
   }
 
   const before = { ...sheet.stats }
+  const armorBefore = abilityArmor(sheet)
   removeSubclass(sheet, cls, level)
   enterSubclass(sheet, sub, entry)
   for (const def of sub.introChoices ?? []) {
@@ -820,6 +837,8 @@ export function changeSubclass(
     }
   }
   syncDerived(sheet, cls, before, level, level)
+  sheet.ac += abilityArmor(sheet) - armorBefore
+  syncCompanions(sheet)
 }
 
 /** Choices a subclass change will ask for (intro plus past subclass levels). */
@@ -875,10 +894,22 @@ export function subclassChangeChoices(
   return { abilities, choices, spells }
 }
 
-/** The value KEY stands for in rules text: the higher of the class's two Key Stats. */
+export { abilityArmor }
+
 /** Base name of an ability: "Sneak Attack (3)" is "Sneak Attack". */
 export function abilityBaseName(name: string): string {
   return UPGRADE.exec(name)?.[1] ?? name
+}
+
+export function malfunctionRisks(
+  sheet: NimbleSheet,
+): ({ name: string } & NonNullable<PoolOption['malfunction']>)[] {
+  const cls = classBySlug(sheet.classSlug)
+  if (!cls) return []
+  return sheet.abilities.flatMap((a) => {
+    const rule = poolOptionByName(cls, a.name)?.malfunction
+    return rule ? [{ name: a.name, ...rule }] : []
+  })
 }
 
 export interface SheetResource {
@@ -894,6 +925,10 @@ export interface SheetResource {
   bonus: number
   /** Picked options that spend one (Thrill of the Hunt abilities). */
   moves: NimbleAbility[]
+  max: number
+  refill?: 'turn' | 'initiative'
+  roll: number
+  advantage: boolean
 }
 
 /**
@@ -909,16 +944,31 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
     const ability = sheet.abilities.find((a) => abilityBaseName(a.name) === def.ability)
     if (!ability) return null
     let die = def.die
+    let roll = def.roll ?? 0
     let bonus = def.bonus && level >= def.bonus.level ? def.bonus.amount : 0
     const sub = cls.subclasses.find((s) => s.slug === sheet.subclassSlug)
     for (let l = 1; l <= level; l++) {
       die = sub?.levels[l]?.resourceDie ?? cls.levels[l]?.resourceDie ?? die
+      roll = sub?.levels[l]?.resourceRoll ?? cls.levels[l]?.resourceRoll ?? roll
       bonus += (cls.levels[l]?.resourceBonus ?? 0) + (sub?.levels[l]?.resourceBonus ?? 0)
     }
+    bonus += sheet.abilities.filter((a) => def.maxPick && a.name === def.maxPick).length
+    const extraMax = new RegExp(`\\+(\\d+) max ${def.name}\\b`)
+    bonus += sheet.abilities
+      .filter((a) => a.name !== def.maxPick)
+      .reduce((sum, a) => sum + Number(extraMax.exec(a.desc)?.[1] ?? 0), 0)
+    const rollText = `roll ${def.diceName} Dice, roll`
+    roll += sheet.abilities
+      .map((a) => a.desc.split(`${rollText} 1 more`).length - 1)
+      .reduce((a, b) => a + b, 0)
     const pool = cls.pools.find((p) => p.id === def.movesPool)
-    const moves = pool
-      ? sheet.abilities.filter((a) => pool.options.some((o) => o.name === a.name))
-      : []
+    const spends = new RegExp(`\\bSpend 1 ${def.name} charge\\b`)
+    const moves = [
+      ...(pool
+        ? sheet.abilities.filter((a) => pool.options.some((o) => o.name === a.name))
+        : maneuvers(ability.desc)),
+      ...sheet.abilities.filter((a) => a !== ability && spends.test(a.desc)),
+    ]
     return {
       name: def.name,
       diceName: def.diceName,
@@ -929,6 +979,10 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
       stat: def.stat,
       bonus,
       moves,
+      max: def.stat ? Math.max(0, sheet.stats[def.stat]) + bonus : 0,
+      refill: def.refill,
+      roll,
+      advantage: sheet.abilities.some((a) => a.desc.includes(`${rollText} with advantage`)),
     }
   }
   const res = sheet.resource
@@ -942,9 +996,22 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
     desc: '',
     bonus: 0,
     moves: [],
+    max: 0,
+    roll: 0,
+    advantage: false,
   }
 }
 
+export function maneuvers(desc: string): NimbleAbility[] {
+  const list = /\bmaneuver for free: (.+)$/.exec(desc)?.[1] ?? ''
+  return [...list.matchAll(/([A-Z][a-z]+(?: [A-Z][a-z]+)?) \(([^)]+)\)/g)].map((m) => ({
+    name: m[1]!,
+    src: 'Maneuver',
+    desc: `${m[2]!.charAt(0).toUpperCase()}${m[2]!.slice(1)}.`,
+  }))
+}
+
+/** The value KEY stands for in rules text: the higher of the class's two Key Stats. */
 export function keyStatValue(sheet: NimbleSheet): { value: number; stats: NimbleStat[] } | null {
   const cls = classBySlug(sheet.classSlug)
   if (!cls) return null
@@ -1024,6 +1091,7 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
       dice: 0,
       die: cls.resource.die,
       count: 0,
+      rolls: [],
     }
   sheet.languages = ['Common', ancestry.language].filter(Boolean).join(', ')
 
@@ -1042,7 +1110,178 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
     .map((w) => weaponAttack(w, stats, sheet.abilities, classMeleeDamage(cls, 1)))
     .filter((a): a is NimbleAttack => !!a)
   sheet.mana.max = sheet.mana.current = manaMax(cls, sheet, 1)
+  sheet.ac += abilityArmor(sheet)
+  syncCompanions(sheet)
   return sheet
+}
+
+/**
+ * The level 1 choices a hero was built with (stats, skill points, class and
+ * background picks), read back from their sheet at level 1, so Reconfigure can
+ * offer them again. Null for hand-made sheets or when level 1 was not recorded.
+ */
+export function creationInput(sheet: NimbleSheet, level: number): NimbleBuildInput | null {
+  const base =
+    level <= 1
+      ? sheet
+      : (sheet.levelHistory?.find((e) => e.level === 2)?.before as NimbleSheet | undefined)
+  const cls = classBySlug(sheet.classSlug)
+  const ancestry = ancestryBySlug(sheet.ancestrySlug)
+  const background = backgroundBySlug(sheet.backgroundSlug)
+  if (!base?.stats || !base.skills || !cls || !ancestry || !background) return null
+  const skillPoints: Record<string, number> = {}
+  for (const s of base.skills) {
+    const placed =
+      s.points -
+      (ancestry.skills?.all ?? 0) -
+      (ancestry.skills?.named?.[s.name] ?? 0) -
+      (background.skills?.[s.name] ?? 0)
+    if (placed > 0) skillPoints[s.name] = placed
+  }
+  const chosen = base.choices ?? {}
+  const picks: Picks = {}
+  for (const c of creationChoices(cls, background, chosen))
+    if (chosen[c.key]) picks[c.key] = [...chosen[c.key]!]
+  return { cls, ancestry, background, stats: { ...base.stats }, skillPoints, picks }
+}
+
+export function syncCompanions(sheet: NimbleSheet): void {
+  for (const def of SUMMONS.filter((d) => d.permanent)) {
+    const held = sheet.abilities.some((a) => abilityBaseName(a.name) === def.source)
+    const present = sheet.summons.some((s) => s.def === def.id)
+    if (held && !present)
+      sheet.summons = [
+        ...sheet.summons,
+        { id: crypto.randomUUID(), def: def.id, name: def.name, hp: def.hp, hpMax: def.hp },
+      ]
+    if (!held && present) sheet.summons = sheet.summons.filter((s) => s.def !== def.id)
+  }
+}
+
+const NOT_A_CHANGE = /knowledge of|no longer|stole a secret|Invocations affecting|\bChoose a\b/i
+
+/**
+ * What upgrades an ability, spell or summoned weapon on this hero: upgrade options named
+ * after it ("Aethertuned Jerkin: Autothrusters") and other abilities' lines that name it
+ * ("Your Shadow Blast also Slows", "Face Me! (Glimmering Decree): …"). A spell that says
+ * "Any Invocations affecting Shadow Blast affect your Bonescythe" picks those up too.
+ */
+export function abilityModifiers(
+  sheet: NimbleSheet,
+  target: string,
+  aliases: string[] = [],
+): { name: string; text: string; ability: string }[] {
+  const base = abilityBaseName(target)
+  const also = /Invocations affecting ([A-Z][\w ]+?) (?:also )?affect/.exec(
+    spellByName(base)?.desc ?? '',
+  )?.[1]
+  const names = [base.replace(/[!?.]+$/, ''), ...(also ? [also] : []), ...aliases].map(
+    (t) => new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}s?(?![\\w])`),
+  )
+  const found = new Map<string, { text: string; ability: string }>()
+  for (const a of sheet.abilities) {
+    const own = abilityBaseName(a.name)
+    if (own === base) continue
+    if (own.startsWith(`${base}: `)) {
+      found.set(own.slice(base.length + 2), { text: a.desc, ability: own })
+      continue
+    }
+    const lines = a.desc
+      .split(/(?<=\.)\s+(?=[A-Z(])/)
+      .filter((t) => names.some((n) => n.test(t)) && !NOT_A_CHANGE.test(t))
+    if (lines.length) found.set(own, { text: lines.join(' '), ability: own })
+  }
+  return [...found].map(([name, m]) => ({ name, ...m }))
+}
+
+/** How abilities refer to a weapon by its damage type ("slashing weapons", "all weapon types"). */
+export function weaponAliases(props: string): string[] {
+  return [
+    ...['slashing', 'bludgeoning', 'piercing']
+      .filter((t) => new RegExp(`\\b${t}\\b`, 'i').test(props))
+      .flatMap((t) => [`${t} weapon`, `${t} weapons`]),
+    'all weapon types',
+  ]
+}
+
+export interface SummonChoice {
+  held: string
+  options: { name: string; level: number }[]
+}
+
+/**
+ * Class pools whose options each call up a summon (the Beastmaster's Small, Medium
+ * or Large Companion): the one held and the ones it can switch to, with the level
+ * each needs ("Req. level 3").
+ */
+export function summonChoices(sheet: NimbleSheet): SummonChoice[] {
+  const cls = classBySlug(sheet.classSlug)
+  if (!cls) return []
+  const held = new Set(sheet.abilities.map((a) => abilityBaseName(a.name)))
+  return cls.pools.flatMap((pool) => {
+    const summons = pool.options.filter((o) => SUMMONS.some((d) => d.source === o.name))
+    const mine = summons.find((o) => held.has(o.name))
+    if (!mine || summons.length < 2) return []
+    return [
+      {
+        held: mine.name,
+        options: summons.map((o) => ({
+          name: o.name,
+          level: Number(/\(Req\. level (\d+)\)/.exec(o.desc)?.[1] ?? 1),
+        })),
+      },
+    ]
+  })
+}
+
+function swapIn(list: unknown, from: string, to: string, desc: string) {
+  if (!Array.isArray(list)) return list
+  return list.map((a: NimbleAbility) =>
+    abilityBaseName(a.name) === from ? { ...a, name: to, desc } : a,
+  )
+}
+
+function swapPicks(picks: unknown, from: string, to: string) {
+  if (!picks || typeof picks !== 'object') return picks
+  return Object.fromEntries(
+    Object.entries(picks as Record<string, string[]>).map(([k, v]) => [
+      k,
+      Array.isArray(v) ? v.map((p) => (p === from ? to : p)) : v,
+    ]),
+  )
+}
+
+/**
+ * Trades one held pool option for another from the same pool, everywhere the pick
+ * is remembered (abilities, choices and the level history), so rebuilding a level
+ * keeps it.
+ */
+export function swapPoolOption(sheet: NimbleSheet, from: string, to: string): boolean {
+  const cls = classBySlug(sheet.classSlug)
+  const option = cls && poolOptionByName(cls, to)
+  if (!cls || !option || !sheet.abilities.some((a) => abilityBaseName(a.name) === from))
+    return false
+  const armorBefore = abilityArmor(sheet)
+  sheet.abilities = swapIn(sheet.abilities, from, to, option.desc) as NimbleAbility[]
+  sheet.choices = swapPicks(sheet.choices, from, to) as NimbleSheet['choices']
+  sheet.levelHistory = (sheet.levelHistory ?? []).map((entry) => ({
+    ...entry,
+    before: {
+      ...entry.before,
+      ...('abilities' in entry.before
+        ? { abilities: swapIn(entry.before.abilities, from, to, option.desc) }
+        : {}),
+      ...('choices' in entry.before ? { choices: swapPicks(entry.before.choices, from, to) } : {}),
+    },
+    ...(entry.nimble
+      ? { nimble: { ...entry.nimble, picks: swapPicks(entry.nimble.picks, from, to) as Picks } }
+      : {}),
+  }))
+  applyPoolEffects(sheet, cls, from, -1)
+  applyPoolEffects(sheet, cls, to, 1)
+  sheet.ac += abilityArmor(sheet) - armorBefore
+  syncCompanions(sheet)
+  return true
 }
 
 /** Recommended stat placement: the array's two highest values in the class's key stats. */
