@@ -611,6 +611,11 @@ export function commandMinions(sheet: NimbleSheet, level: number, rng: Rng = Mat
   return `Minions attack (${reach}): ${parts.join(', ')} = ${total} damage.${after.length ? ` ${after.join(' ')}` : ''}`
 }
 
+export function spiritDie(sheet: NimbleSheet, level: number, tier: number | undefined): number {
+  const stats = summonStats(sheet, level, summonById('lifebinding-spirit')!)
+  return stepDie(6, Math.max(0, (tier ?? 1) - 1), stats.maxDie)
+}
+
 export function spiritAct(
   sheet: NimbleSheet,
   level: number,
@@ -621,7 +626,7 @@ export function spiritAct(
   if (!spirit) return ''
   const def = summonById('lifebinding-spirit')!
   const stats = summonStats(sheet, level, def)
-  const die = stepDie(6, Math.max(0, (spirit.tier ?? 1) - 1), stats.maxDie)
+  const die = spiritDie(sheet, level, spirit.tier)
   if (sheet.ownDice) {
     const plus = mode === 'attack' && stats.damageStat ? `+WIL+${stats.damageStat}` : '+WIL'
     if (mode === 'attack')

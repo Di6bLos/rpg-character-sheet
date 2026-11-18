@@ -183,6 +183,10 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
 
   function nextTurn() {
     if (!order.value.length) return
+    if (!turnId.value) {
+      void saveEncounter({ active_combatant: order.value[0]!.id })
+      return
+    }
     const idx = order.value.findIndex((c) => c.id === activeId.value)
     if (idx + 1 >= order.value.length) {
       void saveEncounter({ active_combatant: order.value[0]!.id, round: round.value + 1 })
@@ -192,7 +196,7 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
   }
 
   function prevTurn() {
-    if (!order.value.length) return
+    if (!order.value.length || !turnId.value) return
     const idx = order.value.findIndex((c) => c.id === activeId.value)
     if (idx <= 0) {
       if (round.value <= 1) return

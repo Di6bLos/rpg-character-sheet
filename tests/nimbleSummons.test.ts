@@ -28,6 +28,7 @@ import {
   addCustomSummon,
   customSummonAttack,
   endCustomSummons,
+  spiritDie,
   summonFromAbility,
 } from '../utils/nimbleSummons'
 import { defaultSheet } from '../utils/sheetDefaults'
@@ -175,6 +176,12 @@ describe('shadow minions', () => {
 })
 
 describe('Lifebinding Spirit', () => {
+  it('shows the die an upcast spirit rolls', () => {
+    const sheet = shepherd()
+    expect(spiritDie(sheet, 5, 1)).toBe(6)
+    expect(spiritDie(sheet, 5, 3)).toBe(10)
+  })
+
   it('heals as many times as the mana spent, then fades; recasting replaces it', () => {
     const sheet = shepherd()
     addSummon(sheet, 3, 'lifebinding-spirit', { tier: 2 })

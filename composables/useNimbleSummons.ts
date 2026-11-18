@@ -16,6 +16,7 @@ import {
   sacrificeSummon,
   slaySummon,
   spiritAct,
+  spiritDie,
   summonLookKey,
   summonOptions,
   summonStats,
@@ -167,7 +168,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         name: `${spirit.value.name} attacks`,
         who: summonById('lifebinding-spirit')?.name ?? '',
         summon: 'lifebinding-spirit',
-        dmg: `${stats.diceMult}d${stats.die}+WIL`,
+        dmg: `${stats.diceMult}d${spiritDie(sheet.value, level.value, spirit.value.tier)}+WIL`,
         props: `${stats.damageType}, Reach ${stats.reach}, ignoring armor`,
         cost: spiritCost() ? '1 action' : 'free',
         why: !sheet.value.turnActive
