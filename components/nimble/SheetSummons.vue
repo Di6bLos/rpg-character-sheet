@@ -41,7 +41,7 @@ const {
   spiritCost,
   summonAttacks,
 } = useNimbleSummons()
-const { summonSpells } = useNimbleSpells()
+const { summonSpells, setUpcast } = useNimbleSpells()
 const isFull = (id: string) => !!available.value.find((a) => a.id === id)?.full
 
 function stackAttack(g: { id: string }, first: { name: string; custom?: NimbleCustomSummon }) {
@@ -368,6 +368,7 @@ function submitCustom() {
           :key="s.name"
           :spell="s"
           :blocked="s.blocked || (isFull(s.summon) ? 'At the max' : '')"
+          @upcast="setUpcast(s, $event)"
         />
       </div>
       <button
