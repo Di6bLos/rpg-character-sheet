@@ -466,15 +466,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         const has = (upgrade: string) =>
           sheet.value.abilities.some((a) => a.name === `${i.name}: ${upgrade}`)
         const perDie = INT + (has('Amplified Conduit') ? 2 : 0)
-        const dice = `${n}d${r.die}`
-        const dmg =
-          i.use === 'cannon'
-            ? n
-              ? `1d12+${dice}+${n * perDie}`
-              : '1d12 + Mana Dice'
-            : n
-              ? `2×(${dice}+${STR})`
-              : '2×(Mana Dice+STR)'
+        const count = Math.max(n, i.min)
+        const dice = `${count}d${r.die}`
+        const dmg = i.use === 'cannon' ? `1d12+${dice}+${count * perDie}` : `2×(${dice}+${STR})`
         return {
           name: i.name,
           dmg,
@@ -482,7 +476,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             i.use === 'cannon'
               ? `Range 8 · the Mana Dice damage also hits ALL creatures between · +${perDie} per die`
               : 'Reach 1 · Heavy armor counts as Medium, Medium as none',
-          cost: `${i.actions} action${i.actions === 1 ? '' : 's'} · ${n} of ${sheet.value.resource.count} ${r.diceName} Dice readied`,
+          cost: `${i.actions} action${i.actions === 1 ? '' : 's'}`,
           why: i.inoperable
             ? 'Inoperable'
             : n < i.min
