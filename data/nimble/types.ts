@@ -285,6 +285,8 @@ export interface SummonDef {
   cap?: 'int-or-lvl' | number
   endsOn?: ('rest' | 'encounter' | 'turn')[]
   permanent?: boolean
+  /** Counts as this kind of minion for sacrifice and death rules (My Favored Pet). */
+  minionOf?: string
   combatant?: boolean
   weapon?: { count: number; die: number; perDie: NimbleStat; reach: number; levelStep: number }
 }

@@ -308,14 +308,15 @@ export function sacrificeSummon(sheet: NimbleSheet, level: number, id: string): 
   const summon = sheet.summons.find((s) => s.id === id)
   const def = summon && summonById(summon.def)
   if (!summon || !def) return ''
-  const effect = summonStats(sheet, level, def).sacrifice.join(' ')
+  const rules = summonById(def.minionOf ?? def.id) ?? def
+  const effect = summonStats(sheet, level, rules).sacrifice.join(' ')
   remove(sheet, [id])
   const rounds = summon.def === 'lifebinding-spirit' ? ` (${summon.charges ?? 0} rounds)` : ''
   return `${summon.name} sacrificed.${effect ? ` ${effect}${rounds}` : ''}${minionDeathNotes(sheet, level, summon.def)}`
 }
 
 function minionDeathNotes(sheet: NimbleSheet, level: number, defId: string): string {
-  if (defId !== 'shadow-minion' && defId !== 'greater-shadow') return ''
+  if (!COMMANDED.includes(defId) && defId !== 'greater-shadow') return ''
   const notes = summonStats(sheet, level, summonById('shadow-minion')!).onDeath
   return notes.length ? ` ${notes.join(' ')}` : ''
 }

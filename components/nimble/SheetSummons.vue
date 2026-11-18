@@ -161,7 +161,7 @@ function submitCustom() {
                 {{ c.list.length > 1 ? 'Sacrifice one' : 'Sacrifice' }}
               </button>
               <button
-                v-if="!c.g.permanent"
+                v-if="c.g.dismissable"
                 type="button"
                 class="btn btn--quiet btn--sm companion__danger"
                 :aria-label="`Dismiss ${c.last.name}`"
@@ -173,11 +173,41 @@ function submitCustom() {
             <button
               v-if="canEdit"
               type="button"
-              class="btn btn--quiet btn--sm companion__customize"
+              class="companion__customize"
               :aria-expanded="customizing === c.key"
+              :aria-label="customizing === c.key ? 'Done customizing' : `Customize ${c.title}`"
+              :title="customizing === c.key ? 'Done' : 'Customize name and picture'"
               @click="customizing = customizing === c.key ? '' : c.key"
             >
-              {{ customizing === c.key ? 'Done' : 'Customize' }}
+              <svg
+                v-if="customizing !== c.key"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              <svg
+                v-else
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m5 12 5 5L20 7" />
+              </svg>
             </button>
           </div>
           <small v-if="c.kindLine" class="companion__kind">{{ c.kindLine }}</small>
@@ -299,7 +329,21 @@ function submitCustom() {
   }
 
   .companion__customize {
-    margin: -4px -6px -4px auto;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    margin: -4px -4px -4px auto;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--accent-text);
+    cursor: pointer;
+
+    &[aria-expanded='true'] {
+      border-color: var(--accent);
+    }
   }
 }
 

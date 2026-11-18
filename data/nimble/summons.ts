@@ -27,6 +27,7 @@ export const SUMMONS: SummonDef[] = [
     desc: 'One of your shadow minions that tolerates you outside of combat and (very creepily) does menial tasks. It attacks with your other minions when you command them.',
     cap: 1,
     permanent: true,
+    minionOf: 'shadow-minion',
   },
   {
     id: 'greater-shadow',

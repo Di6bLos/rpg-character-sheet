@@ -100,7 +100,7 @@ const summonStacks = computed(() =>
           first,
           last,
           hp: first.hpMax ? `${first.hpMax} HP` : '',
-          permanent: g.permanent,
+          dismissable: g.dismissable,
           canSacrifice: g.canSacrifice,
         },
       ]
@@ -855,7 +855,7 @@ const effectRows = computed(() =>
             Sacrifice
           </button>
           <button
-            v-if="!st.permanent"
+            v-if="st.dismissable"
             type="button"
             class="apm__alt"
             :aria-disabled="!canEdit || undefined"

@@ -291,6 +291,16 @@ describe('class options on summons', () => {
     expect(summonOptions(sheet, 'shadow-minion')).toEqual([])
   })
 
+  it('sacrifices the favored pet like any shadow minion', () => {
+    const sheet = shadowmancer(['My Favored Pet', 'Martyr Spawn'])
+    syncCompanions(sheet)
+    const pet = sheet.summons.find((m) => m.def === 'favored-pet')!
+    expect(sacrificeSummon(sheet, 5, pet.id)).toMatch(
+      /Favored pet sacrificed\. Martyr Spawn: when you Defend, take no damage\./,
+    )
+    expect(sheet.summons).toEqual([])
+  })
+
   it('gives a new minion the first free letter', () => {
     const sheet = shadowmancer()
     addSummon(sheet, 5, 'shadow-minion', { count: 3, ignoreCap: true })

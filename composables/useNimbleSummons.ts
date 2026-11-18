@@ -56,8 +56,11 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
             ? `${def.attack.label ?? 'Attack'}: ${def.attack.dice.replace(/LVL/g, ' LVL')}`
             : `${def.attack.label ?? 'Attack'}: ${stats?.diceMult ?? 1}d${stats?.die ?? 0}${stats?.reach ? ` · Reach ${stats.reach}` : ''}`
           : '',
-        canSacrifice: !!stats?.sacrifice.length,
+        canSacrifice: !!(def?.minionOf
+          ? summonStats(sheet.value, level.value, summonById(def.minionOf) ?? def).sacrifice.length
+          : stats?.sacrifice.length),
         permanent: !!def?.permanent,
+        dismissable: !def?.permanent || !!def.minionOf,
       }
     })
   })
