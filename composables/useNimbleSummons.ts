@@ -161,7 +161,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         why: !sheet.value.turnActive
           ? 'Not your turn'
           : commandUsed.value
-            ? 'Once per turn'
+            ? 'Used this turn'
             : left.value < 1
               ? 'No actions left'
               : '',

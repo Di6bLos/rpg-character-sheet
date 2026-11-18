@@ -70,6 +70,7 @@ import {
   rage,
   endRage,
   spendFury,
+  usedUpLabel,
 } from '~/utils/nimblePlay'
 
 /** Up to this many uses show as pips; larger pools (Lay on Hands) show a bar. */
@@ -615,7 +616,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const mana = manaCost(first.text || a.desc)
       const why =
         left === 0
-          ? 'None left'
+          ? usedUpLabel(list.find((c) => c.left === 0))
           : charges > sheet.value.resource.count
             ? `Needs ${charges} ${resource.value?.diceName.toLowerCase() || 'charge'}${charges === 1 ? '' : 's'}`
             : mana > manaPool(sheet.value)
