@@ -5,6 +5,7 @@
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'
+import { summonById } from '~/data/nimble/summons'
 import { isSlainSummon, summonKey, summonOwner } from '~/utils/initiative'
 
 const props = defineProps<{
@@ -50,7 +51,32 @@ function heroSummons(c: TurnRow) {
 
 const opened = computed(() => {
   const c = props.init.order.value.find((x) => x.id === openSummons.value)
-  return c ? { hero: c, list: heroSummons(c) } : null
+  if (!c) return null
+  const kinds = new Map<string, ReturnType<typeof heroSummons>>()
+  for (const s of heroSummons(c)) kinds.set(s.member.def, [...(kinds.get(s.member.def) ?? []), s])
+  return {
+    hero: c,
+    kinds: [...kinds].map(([defId, list]) => {
+      const def = summonById(defId)
+      const first = list[0]?.member
+      const attack = def?.attack
+      return {
+        id: defId || 'custom',
+        name: def?.name ?? 'Other summons',
+        hp: def?.permanent
+          ? 'HP abstracted'
+          : (first?.hpMax ?? 0) > 0
+            ? `${first?.hpMax} HP`
+            : 'Dies to any damage',
+        attack: attack
+          ? `${attack.label ?? 'Attack'}: ${attack.dice.replace(/LVL/g, ' LVL')}${attack.reach ? ` · Reach ${attack.reach}` : ''}${attack.actions ? ` · ${plural(attack.actions, 'action')}` : ''}`
+          : '',
+        desc: def?.desc ?? '',
+        duration: def?.duration ?? '',
+        list,
+      }
+    }),
+  }
 })
 
 /** The GM's list: each hero followed by their summons in initiative. */
@@ -249,27 +275,46 @@ function onInit(c: TurnRow, event: Event) {
           Close
         </button>
       </div>
-      <ul>
-        <li v-for="s in opened.list" :key="s.member.id">
-          <UiAvatar
-            :name="s.member.name"
-            :portrait-path="s.member.portrait ?? null"
-            :beast="s.member.beast ?? null"
-            :size="36"
-          />
-          <span class="ini__summon-name">{{ s.member.name }}</span>
-          <span class="ini__summon-state">{{ summonState(s.row) }}</span>
-          <button
-            v-if="gm && s.row && (s.row.hp_max ?? 0) > 0"
-            type="button"
-            class="btn btn--quiet btn--sm"
-            :aria-label="`${s.member.name} is slain`"
-            @click="init.adjustHp(s.row, -(s.row.hp ?? 0))"
-          >
-            Slain
-          </button>
-        </li>
-      </ul>
+      <details v-for="k in opened.kinds" :key="k.id" class="ini__kind">
+        <summary>
+          <span class="ini__stack">
+            <UiAvatar
+              :name="k.list[0]?.member.name ?? k.name"
+              :portrait-path="k.list[0]?.member.portrait ?? null"
+              :beast="k.list[0]?.member.beast ?? null"
+              :size="40"
+            />
+            <span v-if="k.list.length > 1" class="ini__stack-count">×{{ k.list.length }}</span>
+          </span>
+          <span class="ini__kind-name">
+            <strong>{{ k.list.length > 1 ? k.name : (k.list[0]?.member.name ?? k.name) }}</strong>
+            <small
+              >{{ k.hp }}<template v-if="k.attack"> · {{ k.attack }}</template></small
+            >
+          </span>
+        </summary>
+        <div class="ini__kind-body">
+          <p v-if="k.desc">{{ k.desc }}</p>
+          <p v-if="k.duration">
+            <em>{{ k.duration }}</em>
+          </p>
+          <ul>
+            <li v-for="s in k.list" :key="s.member.id">
+              <span class="ini__summon-name">{{ s.member.name }}</span>
+              <span class="ini__summon-state">{{ summonState(s.row) }}</span>
+              <button
+                v-if="gm && s.row && (s.row.hp_max ?? 0) > 0"
+                type="button"
+                class="btn btn--quiet btn--sm"
+                :aria-label="`${s.member.name} is slain`"
+                @click="init.adjustHp(s.row, -(s.row.hp ?? 0))"
+              >
+                Slain
+              </button>
+            </li>
+          </ul>
+        </div>
+      </details>
     </div>
 
     <template v-if="gm && init.order.value.length">
@@ -506,6 +551,86 @@ function onInit(c: TurnRow, event: Event) {
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+}
+
+.ini__kind {
+  border-top: 1px solid var(--track);
+
+  > summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: '▾';
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--page-muted);
+    }
+  }
+
+  &[open] > summary::after {
+    content: '▴';
+  }
+}
+
+.ini__stack {
+  position: relative;
+  display: inline-flex;
+}
+
+.ini__stack-count {
+  position: absolute;
+  right: -10px;
+  bottom: -4px;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--on-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.ini__kind-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  small {
+    font-size: 12px;
+    color: var(--accent-text);
+  }
+}
+
+.ini__kind-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 10px 52px;
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--page-soft);
+  }
+
+  em {
+    font-size: 12px;
+    color: var(--page-muted);
   }
 }
 
