@@ -16,8 +16,6 @@ const {
   hasMark,
   held,
   resource,
-  opportunity,
-  attackFocus,
 } = useNimbleActions()
 const { summonAttacks } = useNimbleSummons()
 const { spellAttacks, spellAttackTiers: spellTiers, pool, maxTier, setUpcast } = useNimbleSpells()
@@ -45,15 +43,6 @@ const abilityBadge = computed(() => {
   const count = sheet.value.resource.count
   return `${r.name} ${r.max ? `${count}/${r.max}` : count}`
 })
-const panel = ref<HTMLElement | null>(null)
-const weapons = ref<HTMLDetailsElement | null>(null)
-watch(opportunity, async (now) => {
-  if (!now) return
-  await nextTick()
-  if (weapons.value) weapons.value.open = true
-  panel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-})
-
 const hasAttacks = computed(
   () =>
     attacks.value.length +
@@ -66,8 +55,8 @@ const hasAttacks = computed(
 </script>
 
 <template>
-  <section ref="panel" class="panel stack" style="gap: 14px" aria-labelledby="atk-h">
-    <UiFold name="Attacks" :open="sheet.turnActive || attackFocus" />
+  <section class="panel stack" style="gap: 14px" aria-labelledby="atk-h">
+    <UiFold name="Attacks" :open="sheet.turnActive" />
     <div class="title-help">
       <h2 id="atk-h">Attacks</h2>
       <UiHelp
@@ -96,12 +85,7 @@ const hasAttacks = computed(
       </button>
     </div>
     <template v-if="hasAttacks">
-      <details
-        v-if="attacks.length || inventionAttacks.length"
-        ref="weapons"
-        class="atk-group"
-        open
-      >
+      <details v-if="attacks.length || inventionAttacks.length" class="atk-group" open>
         <summary>
           <span class="caps">Weapons</span>
           <span v-if="weaponBadge" class="badge badge--outline">{{ weaponBadge }}</span>

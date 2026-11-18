@@ -129,14 +129,12 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const zealot = computed(() => Math.min(zeal.value, zealMax.value))
   const prepaid = useState(`nimble-prepaid-${draft.value.id}`, () => 0)
   const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
-  const attackFocus = useState(`nimble-attack-focus-${draft.value.id}`, () => false)
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
       if (on !== was) {
         prepaid.value = 0
         opportunity.value = false
-        attackFocus.value = false
         nextAttack.value = { flat: 0, clean: false, note: '' }
       }
     },
@@ -278,6 +276,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           .filter(Boolean)
           .join(' · '),
         zealot: zealous,
+        melee: w.melee,
         rushed: Math.max(0, odds),
         advantage: Math.max(0, -odds),
         poweredBy: poweredBy(r, w.props),
@@ -401,6 +400,33 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     }),
   )
 
+  const opportunityOptions = computed(() => {
+    const used = sheet.value.reactionsUsed.includes('Opportunity Attack')
+    const paid = used && opportunity.value && prepaid.value > 0
+    return attacks.value
+      .filter((w) => w.melee)
+      .map((w) => ({
+        name: w.name,
+        dmg: w.dmg,
+        odds: (frenzyOpportunity.value ? 0 : 1) + cond.value.disadvantage,
+        why: cond.value.incapacitated
+          ? cond.value.incapacitated
+          : used && !paid
+            ? 'Used this round'
+            : !paid && left.value === 0
+              ? 'No actions left'
+              : '',
+        roll: () => {
+          if (!canEdit.value) return
+          if (!paid) {
+            if (used || left.value === 0) return report(NO_ACTIONS)
+            toggleReaction('Opportunity Attack')
+          }
+          attacks.value.find((a) => a.name === w.name)?.roll()
+        },
+      }))
+  })
+
   const limitedNames = computed(
     () =>
       new Set(
@@ -506,7 +532,6 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     if (!attack) return report(`${name}: ${paid}.${judgment}${extras}`)
     prepaid.value += 1
     opportunity.value = true
-    attackFocus.value = true
     report(`${name}: ${paid}; roll a melee attack next, it costs no more.`)
   }
 
@@ -1054,7 +1079,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     companionOptions,
     prepaid: readonly(prepaid),
     opportunity: readonly(opportunity),
-    attackFocus: readonly(attackFocus),
+    opportunityOptions,
     spend,
     resource,
     readied,

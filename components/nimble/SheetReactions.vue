@@ -3,7 +3,8 @@ import type { NimbleSheet } from '~/types/sheets'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
-const { reactions, toggleReaction, abilities, abilityActions, inventions } = useNimbleActions()
+const { reactions, toggleReaction, abilities, abilityActions, inventions, opportunityOptions } =
+  useNimbleActions()
 const { reactionSpells, cast } = useNimbleSpells()
 const { claim, resultIn, unclaimed } = useResultOwner()
 const noActionsPanel = computed(
@@ -30,7 +31,45 @@ const message = computed(
     <div class="stack" style="gap: 8px">
       <div class="cards">
         <div v-for="r in reactions" :key="r.name" class="reaction-wrap">
+          <details
+            v-if="r.name === 'Opportunity Attack' && opportunityOptions.length"
+            class="tile card reaction oa"
+            :class="{ 'is-used': r.used }"
+          >
+            <summary class="reaction__head">
+              <strong>{{ r.name }}</strong>
+              <em>{{ r.used ? 'Used' : r.costText }}</em>
+            </summary>
+            <span class="oa__desc">{{ r.desc }}</span>
+            <div class="oa__list">
+              <div v-for="o in opportunityOptions" :key="o.name" class="oa__opt">
+                <span class="oa__name"
+                  ><strong>{{ o.name }}</strong> <small>{{ o.dmg }}</small></span
+                >
+                <button
+                  type="button"
+                  class="btn btn--sm btn--wrap"
+                  :disabled="!canEdit || !!o.why"
+                  :title="o.why || undefined"
+                  @click="claim(`reaction:${r.name}`, o.roll)"
+                >
+                  {{ o.why || 'Roll'
+                  }}<template v-if="!o.why && o.odds > 0"> · {{ o.odds }}× disadvantage</template>
+                </button>
+              </div>
+              <button
+                v-if="r.used"
+                type="button"
+                class="btn btn--quiet btn--sm"
+                :disabled="!canEdit"
+                @click="toggleReaction(r.name)"
+              >
+                Undo
+              </button>
+            </div>
+          </details>
           <button
+            v-else
             type="button"
             class="tile card reaction"
             :aria-pressed="r.used"
@@ -68,6 +107,59 @@ const message = computed(
 </template>
 
 <style scoped lang="scss">
+.oa {
+  > summary {
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: '▾';
+      margin-left: 6px;
+      color: var(--accent-text);
+    }
+  }
+
+  &[open] > summary::after {
+    content: '▴';
+  }
+
+  &.is-used em {
+    color: var(--page-muted);
+  }
+}
+
+.oa__desc {
+  display: block;
+  margin-top: 4px;
+}
+
+.oa__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.oa__opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .oa__name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  small {
+    color: var(--accent-text);
+    font-weight: 700;
+  }
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));

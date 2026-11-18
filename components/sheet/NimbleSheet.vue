@@ -11,8 +11,6 @@ import { availableSummons } from '~/utils/nimbleSummons'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
-const attackFocus = useState(`nimble-attack-focus-${draft.value.id}`, () => false)
-const attacksFirst = computed(() => sheet.value.turnActive || attackFocus.value)
 const ownDice = computed({
   get: () => sheet.value.ownDice,
   set: (on: boolean) => {
@@ -130,8 +128,8 @@ const skills = computed(() =>
     </div>
     <div class="play__col">
       <NimbleSheetTurn style="order: 2" />
-      <NimbleSheetAttacks :style="{ order: attacksFirst ? 3 : 4 }" />
-      <NimbleSheetReactions :style="{ order: attacksFirst ? 4 : 3 }" />
+      <NimbleSheetAttacks :style="{ order: sheet.turnActive ? 3 : 4 }" />
+      <NimbleSheetReactions :style="{ order: sheet.turnActive ? 4 : 3 }" />
       <NimbleSheetResources style="order: 5" />
       <NimbleSheetActions style="order: 6" />
       <NimbleSheetForms v-if="hasForms" style="order: 9" />

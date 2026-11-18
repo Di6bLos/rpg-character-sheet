@@ -72,6 +72,7 @@ const {
   inventionAttacks,
   attackAbilities,
   attackAbilityKeys,
+  opportunityOptions,
 } = useNimbleActions({ onResult: announce })
 const {
   tiers,
@@ -1113,7 +1114,45 @@ const effectRows = computed(() =>
       </summary>
       <ul class="apm__list">
         <li v-for="(r, k) in reactions" :key="r.name">
+          <details
+            v-if="r.name === 'Opportunity Attack' && opportunityOptions.length"
+            class="apm__spell"
+          >
+            <summary class="apm__row" :class="{ 'apm__row--used': r.used }">
+              <span class="apm__name">{{ r.name }}</span>
+              <span class="apm__tag">{{ r.used ? 'Used' : r.free ? 'Free' : '1 act' }}</span>
+              <span class="apm__sub">Melee · pick a weapon</span>
+            </summary>
+            <ul class="apm__list apm__oa">
+              <li v-for="o in opportunityOptions" :key="o.name">
+                <button
+                  type="button"
+                  class="apm__row"
+                  :aria-disabled="!canEdit || !!o.why || undefined"
+                  :aria-label="`Opportunity Attack with ${o.name}, ${o.dmg}${o.why ? `. ${o.why}` : ''}`"
+                  @click="canEdit && !o.why && o.roll()"
+                >
+                  <span class="apm__name">{{ o.name }}</span>
+                  <span class="apm__tag">{{ o.dmg }}</span>
+                  <span class="apm__sub" :class="{ 'apm__sub--warn': o.why }">
+                    {{ o.why || (o.odds > 0 ? `${o.odds}× disadvantage` : 'Roll') }}
+                  </span>
+                </button>
+              </li>
+              <li v-if="r.used">
+                <button
+                  type="button"
+                  class="apm__row"
+                  :aria-disabled="!canEdit || undefined"
+                  @click="canEdit && toggleReaction(r.name)"
+                >
+                  <span class="apm__name">Undo Opportunity Attack</span>
+                </button>
+              </li>
+            </ul>
+          </details>
           <button
+            v-else
             type="button"
             class="apm__row"
             :class="{ 'apm__row--used': r.used }"
@@ -1347,6 +1386,10 @@ const effectRows = computed(() =>
   &[open] > summary {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
+}
+
+.apm__oa {
+  margin: 2px 0 6px 10px;
 }
 
 .apm__tier {
