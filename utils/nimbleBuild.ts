@@ -569,6 +569,7 @@ export function applyNimbleLevel(sheet: NimbleSheet, level: number, input: Level
   if (!plan) return
   recordLevel(sheet, level, input)
   const before = { ...sheet.stats }
+  const armorBefore = abilityArmor(sheet)
 
   sheet.hpMax += input.hpGain
   sheet.hp += input.hpGain
@@ -597,6 +598,7 @@ export function applyNimbleLevel(sheet: NimbleSheet, level: number, input: Level
   for (const choice of plan.choices)
     applyChoice(sheet, cls, choice, input.picks[choice.key] ?? [], level)
   syncDerived(sheet, cls, before, level, level - 1)
+  sheet.ac += abilityArmor(sheet) - armorBefore
   syncCompanions(sheet)
 }
 
@@ -815,6 +817,7 @@ export function changeSubclass(
   }
 
   const before = { ...sheet.stats }
+  const armorBefore = abilityArmor(sheet)
   removeSubclass(sheet, cls, level)
   enterSubclass(sheet, sub, entry)
   for (const def of sub.introChoices ?? []) {
@@ -831,6 +834,7 @@ export function changeSubclass(
     }
   }
   syncDerived(sheet, cls, before, level, level)
+  sheet.ac += abilityArmor(sheet) - armorBefore
   syncCompanions(sheet)
 }
 
@@ -889,6 +893,17 @@ export function subclassChangeChoices(
 
 /** The value KEY stands for in rules text: the higher of the class's two Key Stats. */
 /** Base name of an ability: "Sneak Attack (3)" is "Sneak Attack". */
+const ABILITY_ARMOR =
+  /(?:^|[.!]\s)Gain \+?(STR|DEX|INT|WIL|\d+) armor\b(?!\s+(?:if|while|when|until)\b)/
+
+export function abilityArmor(sheet: NimbleSheet): number {
+  return sheet.abilities.reduce((sum, a) => {
+    const m = ABILITY_ARMOR.exec(a.desc)?.[1]
+    if (!m) return sum
+    return sum + (/^\d+$/.test(m) ? Number(m) : sheet.stats[m as NimbleStat])
+  }, 0)
+}
+
 export function abilityBaseName(name: string): string {
   return UPGRADE.exec(name)?.[1] ?? name
 }
@@ -1097,6 +1112,7 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
     .map((w) => weaponAttack(w, stats, sheet.abilities, classMeleeDamage(cls, 1)))
     .filter((a): a is NimbleAttack => !!a)
   sheet.mana.max = sheet.mana.current = manaMax(cls, sheet, 1)
+  sheet.ac += abilityArmor(sheet)
   syncCompanions(sheet)
   return sheet
 }
@@ -1217,6 +1233,7 @@ export function swapPoolOption(sheet: NimbleSheet, from: string, to: string): bo
   const option = cls && poolOptionByName(cls, to)
   if (!cls || !option || !sheet.abilities.some((a) => abilityBaseName(a.name) === from))
     return false
+  const armorBefore = abilityArmor(sheet)
   sheet.abilities = swapIn(sheet.abilities, from, to, option.desc) as NimbleAbility[]
   sheet.choices = swapPicks(sheet.choices, from, to) as NimbleSheet['choices']
   sheet.levelHistory = (sheet.levelHistory ?? []).map((entry) => ({
@@ -1234,6 +1251,7 @@ export function swapPoolOption(sheet: NimbleSheet, from: string, to: string): bo
   }))
   applyPoolEffects(sheet, cls, from, -1)
   applyPoolEffects(sheet, cls, to, 1)
+  sheet.ac += abilityArmor(sheet) - armorBefore
   syncCompanions(sheet)
   return true
 }

@@ -4,7 +4,12 @@ import { BACKGROUNDS } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import type { NimbleSheet } from '../types/sheets'
 import { rollNimble } from '../utils/dice'
-import { abilityBaseName, abilityModifiers, sheetResource } from '../utils/nimbleBuild'
+import {
+  abilityArmor,
+  abilityBaseName,
+  abilityModifiers,
+  sheetResource,
+} from '../utils/nimbleBuild'
 import {
   abilityCounters,
   actionsLeft,
@@ -23,8 +28,12 @@ import {
   fieldRestDice,
   heal,
   hitDiceLeft,
+  attackBonus,
   manaCost,
+  noteMiss,
   selfGains,
+  stealActions,
+  zealotMax,
   spellshape,
   spellshapeCost,
   initiativeRecharges,
@@ -1275,5 +1284,76 @@ describe('class wiring', () => {
     expect(sheet.mana.current).toBe(3)
     expect(spellshape(sheet, 5, 'Stretch Time')).toMatch(/already used Spellshaper/)
     expect(sheet.mana.current).toBe(3)
+  })
+
+  it('counts permanent armor from abilities, not conditional armor', () => {
+    const sheet = hero({
+      stats: { STR: 1, DEX: 2, INT: 3, WIL: 2 },
+      abilities: [
+        ability('Misdirection', 'Gain INT armor. Whenever you Defend, you may halve the damage.'),
+        ability('Unparalleled Survivalist', 'Gain +WIL armor. When you attack…'),
+        ability('Scurry', 'Gain +2 armor if you moved on your last turn.'),
+      ],
+    })
+    expect(abilityArmor(sheet)).toBe(5)
+  })
+
+  it('adds damage bonuses from abilities to attacks', () => {
+    const sheet = hero({
+      stats: { STR: 3, DEX: 2, INT: 0, WIL: 2 },
+      abilities: [
+        ability('Keen Eye, Steady Hand', 'Add WIL to your ranged weapon damage.'),
+        ability(
+          'Unending Judgment',
+          'While you have no Judgment Dice, gain +5 damage to melee attacks.',
+        ),
+        ability(
+          'Kinetic Barrage',
+          'Whenever you miss an attack, gain a cumulative +STR bonus to all damage you do for the rest of this encounter.',
+        ),
+      ],
+    })
+    expect(attackBonus(sheet, 5, { melee: false }, 0).flat).toBe(2)
+    expect(attackBonus(sheet, 5, { melee: true }, 0).flat).toBe(5)
+    expect(attackBonus(sheet, 5, { melee: true }, 4).flat).toBe(0)
+    noteMiss(sheet)
+    noteMiss(sheet)
+    expect(attackBonus(sheet, 5, { melee: true }, 4)).toEqual({
+      flat: 6,
+      notes: ['Kinetic Barrage +6'],
+    })
+  })
+
+  it('caps Zealot mana at the highest spell tier and the mana left', () => {
+    const sheet = hero({
+      mana: { current: 2, max: 8, temp: 0 },
+      abilities: [
+        ability(
+          'Zealot',
+          'Whenever you attack with a melee weapon, you may spend mana (up to your highest unlocked spell tier) to choose one for each mana spent.',
+        ),
+      ],
+    })
+    sheet.spells.tier = 3
+    expect(zealotMax(sheet)).toBe(2)
+  })
+
+  it('steals actions from the next turn, then waits a turn', () => {
+    const sheet = hero({
+      stats: { STR: 0, DEX: 2, INT: 2, WIL: 0 },
+      abilities: [
+        ability(
+          '“Creative” Accounting',
+          'Steal up to INT actions from your next turn (gain up to INT actions now). You cannot use this 2 turns in a row.',
+        ),
+      ],
+    })
+    expect(stealActions(sheet)).toMatch(/Gained 2 actions/)
+    expect(actionsLeft(sheet)).toBe(5)
+    expect(stealActions(sheet)).toMatch(/already stole/)
+    expect(endTurn(sheet, 5)).toMatch(/1 of 3 actions back/)
+    expect(stealActions(sheet)).toMatch(/2 turns in a row/)
+    endTurn(sheet, 5)
+    expect(stealActions(sheet)).toMatch(/Gained 2 actions/)
   })
 })

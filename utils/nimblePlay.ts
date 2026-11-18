@@ -3,7 +3,7 @@
 // return the line to show in the roll log.
 import { weaponByName } from '~/data/nimble/core'
 import { spellByName } from '~/data/nimble/spells'
-import type { InventoryItem, NimbleAbility, NimbleSheet } from '~/types/sheets'
+import type { InventoryItem, NimbleAbility, NimbleSheet, NimbleStat } from '~/types/sheets'
 import { rollDie, sign, type NimbleRoll, type Rng } from '~/utils/dice'
 import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
 import {
@@ -64,6 +64,8 @@ export function endEncounter(sheet: NimbleSheet, level: number): string {
   sheet.rushed = 0
   sheet.reactionsUsed = []
   refill(sheet, ['turn', 'encounter'])
+  for (const key of Object.keys(sheet.uses))
+    if (/@(?:stolen|cooldown)$/.test(key)) sheet.uses[key] = { used: 0 }
   const r = sheetResource(sheet, level)
   const lost = !!r && (r.kind === 'counter' || r.kind === 'dice') && sheet.resource.count > 0
   if (lost) sheet.resource.count = 0
@@ -203,13 +205,104 @@ export function spendMana(sheet: NimbleSheet, cost: number): boolean {
   return true
 }
 
+const STATS = /^(STR|DEX|INT|WIL)$/
+const KINETIC = 'Kinetic Barrage@encounter'
+
+export function attackBonus(
+  sheet: NimbleSheet,
+  level: number,
+  attack: { melee: boolean },
+  judgmentHeld: number,
+): { flat: number; notes: string[] } {
+  let flat = 0
+  const notes: string[] = []
+  const stat = (s: string) => (STATS.test(s) ? sheet.stats[s as NimbleStat] : Number(s) || 0)
+  for (const a of sheet.abilities) {
+    const name = abilityBaseName(a.name)
+    const ranged = /\bAdd (STR|DEX|INT|WIL) to your ranged weapon damage\b/.exec(a.desc)?.[1]
+    if (ranged && !attack.melee) {
+      flat += stat(ranged)
+      notes.push(`${name} +${stat(ranged)}`)
+    }
+    const unending =
+      /\bWhile you have no Judgment Dice, gain \+(\d+) damage to melee attacks\b/.exec(a.desc)?.[1]
+    if (unending && attack.melee && judgmentHeld === 0) {
+      flat += Number(unending)
+      notes.push(`${name} +${unending}`)
+    }
+    const kinetic = /\bcumulative \+(STR|DEX|INT|WIL) bonus to all damage\b/.exec(a.desc)?.[1]
+    const misses = sheet.uses[KINETIC]?.used ?? 0
+    if (kinetic && misses > 0) {
+      flat += stat(kinetic) * misses
+      notes.push(`${name} +${stat(kinetic) * misses}`)
+    }
+    if (/\bmarked as your quarry\b.*\+LVL damage/.test(a.desc))
+      notes.push(`vs quarry: advantage or +${level}`)
+  }
+  return { flat, notes }
+}
+
+export function noteMiss(sheet: NimbleSheet): void {
+  if (
+    !sheet.abilities.some((a) =>
+      /\bcumulative \+(?:STR|DEX|INT|WIL) bonus to all damage\b/.test(a.desc),
+    )
+  )
+    return
+  sheet.uses[KINETIC] = { ...sheet.uses[KINETIC], used: (sheet.uses[KINETIC]?.used ?? 0) + 1 }
+}
+
+export function zealotMax(sheet: NimbleSheet): number {
+  const zealot = sheet.abilities.some((a) =>
+    /\bspend mana \(up to your highest unlocked spell tier\)/.test(a.desc),
+  )
+  return zealot ? Math.min(sheet.spells.tier, manaPool(sheet)) : 0
+}
+
+const STEAL = /\bSteal up to (STR|DEX|INT|WIL) actions from your next turn\b/
+
+export function stealState(
+  sheet: NimbleSheet,
+): { key: string; max: number; pending: number; cooldown: boolean } | null {
+  const ability = sheet.abilities.find((a) => STEAL.test(a.desc))
+  const stat = ability && (STEAL.exec(ability.desc)?.[1] as NimbleStat | undefined)
+  if (!ability || !stat) return null
+  const key = abilityBaseName(ability.name)
+  return {
+    key,
+    max: Math.max(0, sheet.stats[stat]),
+    pending: sheet.uses[`${key}@stolen`]?.used ?? 0,
+    cooldown: !!sheet.uses[`${key}@cooldown`]?.used,
+  }
+}
+
+export function stealActions(sheet: NimbleSheet): string {
+  const steal = stealState(sheet)
+  if (!steal || steal.max < 1) return ''
+  if (steal.pending) return `${steal.key}: already stole from your next turn.`
+  if (steal.cooldown) return `${steal.key}: you cannot use this 2 turns in a row.`
+  sheet.uses[`${steal.key}@stolen`] = { used: steal.max }
+  return `${steal.key}: ${gainAction(sheet, steal.max)} Your next turn starts ${steal.max} short.`
+}
+
+function settleStolen(sheet: NimbleSheet): string {
+  const steal = stealState(sheet)
+  if (!steal) return ''
+  sheet.uses[`${steal.key}@cooldown`] = { used: 0 }
+  if (!steal.pending) return ''
+  sheet.uses[`${steal.key}@stolen`] = { used: 0 }
+  sheet.uses[`${steal.key}@cooldown`] = { used: 1 }
+  sheet.actionsSpent = Math.min(turnActions(sheet), steal.pending)
+  return ` ${steal.pending} action${steal.pending === 1 ? '' : 's'} stolen last turn.`
+}
+
 export function manaCost(text: string): number {
   return Number(/\b[Ss]pend (\d+) mana\b/.exec(text)?.[1] ?? 0)
 }
 
 export function selfGains(sheet: NimbleSheet, level: number, text: string): string {
   const notes: string[] = []
-  if (/\byou may suffer (?:1|a) Wound\b/.test(text)) {
+  if (/\byou may (?:suffer|gain) (?:1|a) Wound\b/.test(text)) {
     addWounds(sheet, 1)
     notes.push('Took 1 Wound.')
   }
@@ -457,10 +550,11 @@ export function endTurn(sheet: NimbleSheet, level: number): string {
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
+  const stolen = settleStolen(sheet)
   const n = turnActions(sheet)
   const recharged = refillResource(sheet, level, 'turnEnd')
   const ended = endEffects(sheet, 'turnEnd')
-  return `End of turn: all ${n} actions back, reactions ready.${recharged}${ended}`
+  return `End of turn: ${stolen ? `${n - sheet.actionsSpent} of ${n}` : `all ${n}`} actions back, reactions ready.${stolen}${recharged}${ended}`
 }
 
 export function furyMax(sheet: NimbleSheet): number {

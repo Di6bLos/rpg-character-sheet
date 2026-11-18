@@ -16,6 +16,9 @@ const {
   abilityActions,
   readied,
   setReady,
+  zealot,
+  zealMax,
+  setZealot,
   resource,
 } = useNimbleActions()
 const { summonAttacks } = useNimbleSummons()
@@ -69,6 +72,29 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
               +
             </button>
             <small class="ready__of">of {{ sheet.resource.count }}</small>
+          </div>
+          <div v-if="w.zealot" class="ready">
+            <span>Zealot mana</span>
+            <button
+              type="button"
+              class="step step--xs"
+              aria-label="Spend 1 less mana on Zealot"
+              :disabled="!canEdit || zealot === 0"
+              @click="setZealot(zealot - 1)"
+            >
+              −
+            </button>
+            <strong aria-live="polite">{{ zealot }}</strong>
+            <button
+              type="button"
+              class="step step--xs"
+              aria-label="Spend 1 more mana on Zealot"
+              :disabled="!canEdit || zealot >= zealMax"
+              @click="setZealot(zealot + 1)"
+            >
+              +
+            </button>
+            <small class="ready__of">+5 radiant each · up to {{ zealMax }}</small>
           </div>
           <button
             type="button"

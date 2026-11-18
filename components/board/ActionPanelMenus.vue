@@ -229,7 +229,7 @@ const spellGroups = computed(() =>
         : s.noActions
           ? 'No actions left'
           : s.short
-            ? `Needs ${s.usesMinions ? s.cost : `${s.at} mana`}`
+            ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
             : '',
     })),
   })),

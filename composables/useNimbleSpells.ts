@@ -5,8 +5,14 @@
 import { SPELL_RULES } from '~/data/nimble/spells'
 import type { SpellDef } from '~/data/nimble/types'
 import type { NimbleSheet } from '~/types/sheets'
-import { knownSpells, knownUtilitySpells, sheetResource } from '~/utils/nimbleBuild'
 import {
+  abilityBaseName,
+  knownSpells,
+  knownUtilitySpells,
+  sheetResource,
+} from '~/utils/nimbleBuild'
+import {
+  abilityCounters,
   actionsLeft,
   castingBlocks,
   castSpell,
@@ -52,6 +58,15 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     return stat ? Math.max(0, sheet.value.stats[stat]) : 0
   })
 
+  const archmage = computed(() => {
+    const counter = abilityCounters(sheet.value, draft.value.level).find(
+      (e) =>
+        abilityBaseName(e.ability.name) === 'Archmage' &&
+        /costs 1 action less and 5 fewer mana/.test(e.ability.desc),
+    )?.counters[0]
+    return counter && counter.used < counter.max ? counter : null
+  })
+
   /** Tier each spell is set to be cast at, when upcast. */
   const upcast = reactive<Record<string, number>>({})
 
@@ -76,17 +91,21 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
               : `Tier ${tier} · ${tier} mana`,
       spells: list.map((s) => {
         const at = castTier(s)
-        const actions = spellActions(s.cast)
+        const usesPact = !!pact.value && s.tier > 0
+        const usesMinions = reaver.value && s.tier > 0
+        const discount = !!archmage.value && s.tier > 0 && !usesPact && !usesMinions
+        const actions = Math.max(0, spellActions(s.cast) - (discount ? 1 : 0))
+        const mana = discount ? Math.max(0, at - 5) : at
         const left = actionsLeft(sheet.value)
         const spread = actions > left && left > 0
         const acts = spread ? ` · ${left} of ${actions} act` : actions ? ` · ${actions} act` : ''
         const verb = spread ? 'Start casting' : 'Cast'
-        const usesPact = !!pact.value && s.tier > 0
-        const usesMinions = reaver.value && s.tier > 0
         const n = minionCost.value
         return {
           ...s,
           at,
+          mana,
+          discount,
           actions,
           usesPact,
           usesMinions,
@@ -94,7 +113,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
           canUpcast: !pact.value && !reaver.value && s.tier > 0 && maxTier.value > s.tier,
           short: usesMinions
             ? n > sheet.value.summons.filter((m) => m.def === 'shadow-minion').length
-            : !usesPact && at > manaPool(sheet.value),
+            : !usesPact && mana > manaPool(sheet.value),
           spread,
           busy: castingBlocks(sheet.value, actions),
           noActions: actions > 0 && actionsLeft(sheet.value) === 0,
@@ -106,7 +125,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
                 ? `${n} minion${n === 1 ? '' : 's'}`
                 : usesPact
                   ? '1 use'
-                  : `${at} mana`,
+                  : `${mana} mana`,
           label:
             s.tier === 0
               ? `${verb} · free${acts}`
@@ -114,7 +133,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
                 ? `${verb} at tier ${at} · ${n} minion${n === 1 ? '' : 's'}${acts}`
                 : usesPact
                   ? `${verb} at tier ${at} · 1 use${acts}`
-                  : `${verb} · ${at} mana${acts}`,
+                  : `${verb} · ${mana} mana${discount ? ' (Archmage)' : ''}${acts}`,
         }
       }),
     }))
@@ -161,8 +180,13 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         notes.push(takeDamage(sheet.value, hurt))
       }
     } else {
-      if (!spendMana(sheet.value, s.at)) return
-      notes.push(`Cast ${s.name}${s.at > s.tier ? ` upcast to tier ${s.at}` : ''} · ${s.at} mana.`)
+      if (!spendMana(sheet.value, s.mana)) return
+      notes.push(
+        `Cast ${s.name}${s.at > s.tier ? ` upcast to tier ${s.at}` : ''} · ${s.mana} mana${s.discount ? ' (Archmage: 1 action and 5 mana less)' : ''}.`,
+      )
+      const counter = s.discount ? archmage.value : null
+      if (counter)
+        sheet.value.uses[counter.id] = { ...sheet.value.uses[counter.id], used: counter.used + 1 }
     }
     // Actions the turn can't cover carry over; Concentration starts once it is cast.
     const progress = castSpell(sheet.value, s.name, s.actions, draft.value.level, s.at).trim()
@@ -190,7 +214,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
             : s.short
               ? s.usesMinions
                 ? `Needs ${s.cost}`
-                : `Needs ${s.at} mana`
+                : `Needs ${s.mana} mana`
               : '',
       })),
   )

@@ -33,12 +33,17 @@ import {
   dyingAttackSave,
   endTurn,
   expendJudgment,
+  attackBonus,
   manaCost,
   manaPool,
+  noteMiss,
+  zealotMax,
   payCost,
   refundActions,
   selfGains,
   spendMana,
+  stealActions,
+  stealState,
   shortMessage,
   heldInventions,
   operateInvention,
@@ -89,6 +94,9 @@ function resourcePattern(r: { name: string; ability: string; kind: string; diceN
 const CLASS_REACTION = /^(?:\([^)]*\)\s*)?Reaction\b/
 const STARTS_AS_ACTION =
   /^(?:\([^)]*\)\s*)?(?:Action(?::|\/Reaction\b)|\d+ actions?:|Spend \d+ actions?\b|You may spend \d+ actions?\b)/
+const WOUND_USE = /\byou may gain (?:1|a) Wound to\b/
+const EXTRA_ACTIONS = /\byou may spend (\d+) additional actions? to\b/
+const STEAL = /\bSteal up to (?:STR|DEX|INT|WIL) actions from your next turn\b/
 const FREE_ATTACK = /\bmake (?:an?|\d+) (?:melee |ranged )?attacks?\b[^.]*\bfor free\b/i
 
 export function useNimbleActions(options: NimbleResultOptions = {}) {
@@ -100,6 +108,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   )
   const ready = useState(`nimble-power-${draft.value.id}`, () => 0)
   const readied = computed(() => Math.min(ready.value, sheet.value.resource.count))
+  const zeal = useState(`nimble-zealot-${draft.value.id}`, () => 0)
+  const zealMax = computed(() => zealotMax(sheet.value))
+  const zealot = computed(() => Math.min(zeal.value, zealMax.value))
   const prepaid = useState(`nimble-prepaid-${draft.value.id}`, () => 0)
   watch(
     () => sheet.value.turnActive,
@@ -162,6 +173,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
                 : `${r.name} used this turn`
               : ''
       const sneak = r?.kind === 'crit' && res.count === 0 ? note : ''
+      const bonus = attackBonus(sheet.value, draft.value.level, w, held.value)
+      const zealous = w.melee && zealMax.value > 0
+      const zealDamage = zealous ? zealot.value * 5 : 0
       return {
         name: w.name,
         props: w.props,
@@ -169,8 +183,11 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           (w.flat !== undefined ? `${w.flat} (${w.dmg} to hit)` : w.dmg) +
           (fury ? ` +${fury}` : '') +
           (powered ? ` +${readied.value}d${die}` : '') +
-          (judged ? ` +${held.value}` : ''),
-        boost: note,
+          (judged ? ` +${held.value}` : '') +
+          (bonus.flat ? ` +${bonus.flat}` : '') +
+          (zealDamage ? ` +${zealDamage}` : ''),
+        boost: [note, ...bonus.notes].filter(Boolean).join(' · '),
+        zealot: zealous,
         rushed,
         poweredBy: poweredBy(r, w.props),
         mishap: poweredBy(r, w.props) ? WEAPON_MISHAPS[w.name] : undefined,
@@ -190,6 +207,15 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             }
             if (judged) notes.push(`${expendJudgment(sheet.value)} Add it on a hit`)
             if (fury) notes.push(`add ${fury} Fury`)
+            if (bonus.flat) notes.push(`add ${bonus.flat} (${bonus.notes.join(', ')})`)
+            if (zealDamage) {
+              const n = zealot.value
+              spendMana(sheet.value, n)
+              zeal.value = 0
+              notes.push(
+                `Zealot: spent ${n} mana; on a hit add +${zealDamage} radiant (or use Blessed Aim)`,
+              )
+            }
             if (w.onHit?.length) notes.push(`on a hit, add ${w.onHit.join(' + ')}`)
             if (w.onCrit?.length) notes.push(`on a crit, add ${w.onCrit.join(' + ')}`)
             if (sneak)
@@ -214,6 +240,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             ? { total: 0, note: '' }
             : rollRiders([...(w.onHit ?? []), ...(result.crit ? (w.onCrit ?? []) : [])])
           result.total += riders.total
+          let zealNote = ''
+          if (zealDamage) {
+            const n = zealot.value
+            spendMana(sheet.value, n)
+            zeal.value = 0
+            zealNote = ` Zealot: spent ${n} mana${result.miss ? '' : `, +${zealDamage} radiant`}.`
+            if (!result.miss) result.total += zealDamage
+          }
+          if (result.miss) noteMiss(sheet.value)
+          else result.total += bonus.flat
           const extra = resourceOnAttack(sheet.value, draft.value.level, w, result, ready.value)
           if (poweredBy(resource.value, w.props)) ready.value = 0
           const form = afterEffectAttack(sheet.value, draft.value.level, w.name, result)
@@ -226,14 +262,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             ? ' Dying: DC 10 STR save or take 1 Wound.'
             : ''
           if (result.miss)
-            report(`${w.name}: miss (first die rolled a 1).${extra.note}${after}${dying}`)
+            report(
+              `${w.name}: miss (first die rolled a 1).${zealNote}${extra.note}${after}${dying}`,
+            )
           else
             report(
               `${w.name}: ${result.total + extra.extra} damage${riders.note}${result.crit ? ' · critical!' : ''}${
                 result.bonus
                   ? ` (incl. ${result.bonus} ${resource.value?.diceName.toLowerCase() || 'bonus'})`
                   : ''
-              }.${extra.note}${after}${dying}`,
+              }.${zealNote}${extra.note}${after}${dying}`,
             )
           spendAttackAction()
           sheet.value.rushed += 1
@@ -260,6 +298,18 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       .map((a) => ({ name: abilityBaseName(a.name), desc: a.desc.replace(/^Reaction\s*/, '') })),
   )
 
+  function reactionMax(name: string): number {
+    const expert =
+      name === 'Defend' &&
+      sheet.value.abilities.some((a) => /\byou may Defend 2× each round\b/.test(a.desc)) &&
+      sheet.value.inventory.some((i) => i.tag === 'Shield' || i.custom?.kind === 'shield')
+    return expert ? 2 : 1
+  }
+
+  function reactionCount(name: string): number {
+    return sheet.value.reactionsUsed.filter((n) => n === name).length
+  }
+
   function freeReaction(name: string): boolean {
     const texts = sheet.value.abilities.map((a) => a.desc)
     if (name === 'Interpose') return texts.some((t) => /\bYou can Interpose for free\b/.test(t))
@@ -270,16 +320,41 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     )
   }
 
+  function reactionExtras(name: string): string {
+    const notes: string[] = []
+    for (const a of sheet.value.abilities) {
+      const own = abilityBaseName(a.name)
+      const temp = new RegExp(
+        `\\bWhenever you ${name}, gain temp HP equal to your (STR|DEX|INT|WIL)\\b`,
+      ).exec(a.desc)?.[1] as keyof NimbleSheet['stats'] | undefined
+      if (temp) {
+        const amount = Math.max(0, sheet.value.stats[temp])
+        sheet.value.tempHp = Math.max(sheet.value.tempHp, amount)
+        notes.push(`${own}: ${amount} temp HP.`)
+      }
+      const strike = new RegExp(
+        `\\bWhen you ${name}, you may first make an unarmed strike\\b[^.]*\\bfor free\\b`,
+      )
+      if (strike.test(a.desc)) {
+        prepaid.value += 1
+        notes.push(`${own}: your next attack roll is free.`)
+      }
+    }
+    return notes.length ? ` ${notes.join(' ')}` : ''
+  }
+
   const reactions = computed(() =>
     [...REACTIONS, ...classReactions.value].map((r) => {
-      const used = sheet.value.reactionsUsed.includes(r.name)
+      const count = reactionCount(r.name)
+      const max = reactionMax(r.name)
+      const used = count >= max
       const free = freeReaction(r.name)
       return {
         ...r,
         desc: r.name === 'Defend' ? `${r.desc} Your Armor is ${sheet.value.ac}.` : r.desc,
         used,
         free,
-        costText: free ? 'Free' : 'Costs 1 action',
+        costText: `${free ? 'Free' : 'Costs 1 action'}${max > 1 ? ` · ${max - count} of ${max} left` : ''}`,
         blocked: !used && !free && left.value === 0,
       }
     }),
@@ -290,8 +365,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     const used = sheet.value.reactionsUsed
     const attack = name === 'Opportunity Attack'
     const free = freeReaction(name)
-    if (used.includes(name)) {
-      sheet.value.reactionsUsed = used.filter((n) => n !== name)
+    if (reactionCount(name) >= reactionMax(name)) {
+      const at = used.lastIndexOf(name)
+      sheet.value.reactionsUsed = used.filter((_, i) => i !== at)
       if (!free) refundActions(sheet.value, 1)
       if (attack) prepaid.value = Math.max(0, prepaid.value - 1)
       return
@@ -304,7 +380,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     const judgment = /\bexpend your Judgment Dice\b/i.test(text)
       ? ` ${expendJudgment(sheet.value)}`
       : ''
-    if (!attack) return report(`${name}: ${paid}.${judgment}`)
+    const extras = reactionExtras(name)
+    if (!attack) return report(`${name}: ${paid}.${judgment}${extras}`)
     prepaid.value += 1
     report(`${name}: ${paid}; roll the attack next, it costs no more.`)
   }
@@ -563,9 +640,37 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const key = abilityBaseName(a.name)
       if (limitedNames.value.has(key) || moves.has(a.name) || inventionNames.has(key)) return []
       if (key === resourceKey.value || summonBySource(key)) return []
-      if (!STARTS_AS_ACTION.test(a.desc) || CLASS_REACTION.test(a.desc)) return []
-      const cost = counterCost(a.desc)
-      if (!cost || cost.reaction) return []
+      if (STEAL.test(a.desc)) {
+        const steal = stealState(sheet.value)
+        const why = steal?.pending
+          ? 'Repaid next turn'
+          : steal?.cooldown
+            ? 'Not 2 turns in a row'
+            : ''
+        return [
+          {
+            name: a.name,
+            key,
+            desc: a.desc,
+            costText: `Gain ${steal?.max ?? 0} actions`,
+            short: !!why,
+            why,
+            use: () => {
+              if (canEdit.value) report(stealActions(sheet.value))
+            },
+          },
+        ]
+      }
+      const woundUse = WOUND_USE.test(a.desc)
+      const extra = Number(EXTRA_ACTIONS.exec(a.desc)?.[1] ?? 0)
+      if (!woundUse && !extra && (!STARTS_AS_ACTION.test(a.desc) || CLASS_REACTION.test(a.desc)))
+        return []
+      const cost: CounterCost | undefined = woundUse
+        ? undefined
+        : extra
+          ? { actions: extra }
+          : counterCost(a.desc)
+      if (!woundUse && (!cost || cost.reaction)) return []
       const mana = manaCost(a.desc)
       const short = costShort(sheet.value, cost)
       const why = short
@@ -578,7 +683,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           name: a.name,
           key,
           desc: a.desc,
-          costText: [costLabel(cost), mana ? `${mana} mana` : ''].filter(Boolean).join(' · '),
+          costText: [woundUse ? 'Free · 1 Wound' : costLabel(cost), mana ? `${mana} mana` : '']
+            .filter(Boolean)
+            .join(' · '),
           short: !!why,
           why,
           use: () => {
@@ -586,10 +693,10 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             if (mana > manaPool(sheet.value)) return report(`${a.name} needs ${mana} mana.`)
             const before = sheet.value.actionsSpent
             const paid = payCost(sheet.value, cost)
-            if (paid === null) return report(shortMessage(sheet.value, a.name, cost))
+            if (paid === null && cost) return report(shortMessage(sheet.value, a.name, cost))
             paidFor(cost, before)
             const spent = mana && spendMana(sheet.value, mana) ? ` Spent ${mana} mana.` : ''
-            const free = !cost.attack && FREE_ATTACK.test(a.desc)
+            const free = !cost?.attack && FREE_ATTACK.test(a.desc)
             if (free) prepaid.value += 1
             const effect = applyEffect(sheet.value, draft.value.level, key)
             report(
@@ -664,6 +771,10 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     report(message)
   }
 
+  function setZealot(n: number) {
+    zeal.value = Math.max(0, Math.min(zealMax.value, Math.floor(n) || 0))
+  }
+
   function setReady(n: number) {
     ready.value = Math.max(0, Math.min(sheet.value.resource.count, Math.floor(n) || 0))
   }
@@ -727,6 +838,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     readied,
     held,
     setReady,
+    zealot,
+    zealMax,
+    setZealot,
     malfunctions,
     toggleMalfunction,
     inventions,
