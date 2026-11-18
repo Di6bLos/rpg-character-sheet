@@ -1,6 +1,6 @@
 import type { SpellDef } from '~/data/nimble/types'
 import type { NimbleSheet, NimbleStat } from '~/types/sheets'
-import { parseDice, rollDie, rollNimble, type Rng } from '~/utils/dice'
+import { parseDice, rollDie, rollNimble, sign, type Rng } from '~/utils/dice'
 import { keyStatValue } from '~/utils/nimbleBuild'
 
 export interface SpellDamage {
@@ -63,9 +63,13 @@ export function spellDamage(
     const at0 = DIE_STEPS.indexOf(sides)
     if (at0 >= 0) sides = DIE_STEPS[Math.min(DIE_STEPS.length - 1, at0 + steps)]!
   }
-  const upcast = /Upcast: \+(\d+) damage\b/.exec(spell.desc)
-  if (upcast && at > spell.tier) flat += Number(upcast[1]) * (at - spell.tier)
-  const dice = `${count}d${sides}${flat ? `+${flat}` : ''}`
+  const upcast = /Upcast: \+(\d+)(d\d+)? damage\b/.exec(spell.desc)
+  if (upcast && at > spell.tier) {
+    const extra = Number(upcast[1]) * (at - spell.tier)
+    if (upcast[2]) count += extra
+    else flat += extra
+  }
+  const dice = `${count}d${sides}${flat ? sign(flat) : ''}`
   return { dice, text: dice, type, single, rollable: true }
 }
 

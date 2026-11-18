@@ -42,6 +42,15 @@ describe('spell damage', () => {
     expect(spellDamage(hero(), 5, spellByName('Arc Lightning')!, 3)?.dice).toBe('3d8+8')
   })
 
+  it('adds dice for dice upcasts and writes negative modifiers as one minus sign', () => {
+    const creeping = spellByName('Creeping Death')!
+    expect(spellDamage(hero(), 20, creeping, creeping.tier + 1)?.dice).toBe('5d20')
+    const weak = hero({ stats: { STR: -1, DEX: -1, INT: -1, WIL: -1 } })
+    const blast = spellDamage(weak, 1, spellByName('Shadow Blast')!)!
+    expect(blast.dice).toBe('1d12-1')
+    expect(rollSpellDamage(blast, () => 0.5)).not.toBeNull()
+  })
+
   it('leaves unusual dice to the player and rolls the rest', () => {
     expect(spellDamage(hero(), 12, spellByName('Glacier Strike')!)).toMatchObject({
       rollable: false,
