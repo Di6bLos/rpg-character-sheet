@@ -99,8 +99,13 @@ watch(
   }
 
   &--dead {
-    background: #1a1614;
+    background: #000;
     color: #d9d2c5;
+
+    img {
+      transform: scale(0.92);
+      object-fit: contain;
+    }
   }
 
   &--faded {
