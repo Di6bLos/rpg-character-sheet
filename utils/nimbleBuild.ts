@@ -1095,7 +1095,7 @@ export function syncCompanions(sheet: NimbleSheet): void {
     if (held && !present)
       sheet.summons = [
         ...sheet.summons,
-        { id: crypto.randomUUID(), def: def.id, name: def.name, hp: 0, hpMax: 0 },
+        { id: crypto.randomUUID(), def: def.id, name: def.name, hp: def.hp, hpMax: def.hp },
       ]
     if (!held && present) sheet.summons = sheet.summons.filter((s) => s.def !== def.id)
   }

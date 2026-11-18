@@ -58,7 +58,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
 
   const available = computed(() =>
     availableSummons(sheet.value)
-      .filter((def) => !def.permanent)
+      .filter((def) => !def.permanent || !sheet.value.summons.some((s) => s.def === def.id))
       .map((def) => {
         const stats = summonStats(sheet.value, level.value, def)
         const have = sheet.value.summons.filter((s) => s.def === def.id).length
@@ -68,7 +68,9 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
 
   const minions = computed(() => minionCount(sheet.value))
   const spirit = computed(() => sheet.value.summons.find((s) => s.def === 'lifebinding-spirit'))
-  const companion = computed(() => sheet.value.summons.find((s) => summonById(s.def)?.permanent))
+  const companion = computed(() =>
+    sheet.value.summons.find((s) => summonById(s.def)?.permanent && summonById(s.def)?.attack),
+  )
   const armorOfShadows = computed(() =>
     sheet.value.abilities.some((a) => a.name === 'Armor of Shadows') ? minions.value : 0,
   )

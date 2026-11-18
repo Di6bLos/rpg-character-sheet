@@ -18,6 +18,17 @@ export const SUMMONS: SummonDef[] = [
     endsOn: ['rest', 'encounter'],
   },
   {
+    id: 'favored-pet',
+    combatant: true,
+    name: 'Favored pet',
+    source: 'My Favored Pet',
+    hp: 1,
+    duration: 'Stays with you, even outside of combat',
+    desc: 'One of your shadow minions that tolerates you outside of combat and (very creepily) does menial tasks. It attacks with your other minions when you command them.',
+    cap: 1,
+    permanent: true,
+  },
+  {
     id: 'greater-shadow',
     combatant: true,
     name: 'Greater Shadow',

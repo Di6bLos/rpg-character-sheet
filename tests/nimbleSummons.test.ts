@@ -144,10 +144,11 @@ describe('shadow minions', () => {
 
   it('clears minions on a new encounter (keeping a favored pet) and adds the Patron’s two', () => {
     const sheet = shadowmancer(['My Favored Pet', 'I’m the Patron Now!'])
+    syncCompanions(sheet)
     addSummon(sheet, 9, 'shadow-minion')
     addSummon(sheet, 9, 'shadow-minion')
     expect(newEncounter(sheet, 9)).toMatch(
-      /Shadow minion B is gone\. 2 shadow minions join you for free\./,
+      /Shadow minion A, Shadow minion B are gone\. 2 shadow minions join you for free\./,
     )
     expect(minionCount(sheet)).toBe(3)
     addSummon(sheet, 9, 'shadow-minion')
@@ -378,9 +379,12 @@ describe('class options on summons', () => {
 
   it('keeps a favored pet minion through a Safe Rest and sends Stompy home after a round', () => {
     const sheet = shadowmancer(['My Favored Pet', 'Stompy'])
+    syncCompanions(sheet)
     addSummon(sheet, 5, 'shadow-minion')
     safeRest(sheet, 5)
+    expect(sheet.summons.map((m) => [m.def, m.hpMax])).toEqual([['favored-pet', 1]])
     expect(minionCount(sheet)).toBe(1)
+    expect(commandMinions(sheet, 5, faces(12, 7))).toMatch(/7/)
     summonFromAbility(sheet, 5, 'Stompy')
     expect(startTurn(sheet, 5)).toMatch(/Stompy is gone\./)
   })

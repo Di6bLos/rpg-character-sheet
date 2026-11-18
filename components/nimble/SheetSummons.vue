@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NimbleSheet } from '~/types/sheets'
+import { syncCompanions } from '~/utils/nimbleBuild'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const { companionOptions } = useNimbleActions()
@@ -13,6 +14,9 @@ function limited(options: { name: string; text: string; passive: boolean }[]) {
     })
 }
 const sheet = computed(() => draft.value.sheet)
+onMounted(() => {
+  if (canEdit.value) syncCompanions(sheet.value)
+})
 const {
   groups,
   available,

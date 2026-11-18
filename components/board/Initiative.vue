@@ -67,11 +67,12 @@ const opened = computed(() => {
           list.length > 1
             ? (first?.name.replace(/ [A-Z]$/, '') ?? def?.name ?? 'Summons')
             : (first?.name ?? def?.name ?? 'Summon'),
-        hp: def?.permanent
-          ? 'HP abstracted'
-          : (first?.hpMax ?? 0) > 0
-            ? `${first?.hpMax} HP`
-            : 'Dies to any damage',
+        hp:
+          def?.permanent && !def.hp
+            ? 'HP abstracted'
+            : (first?.hpMax ?? 0) > 0
+              ? `${first?.hpMax} HP`
+              : 'Dies to any damage',
         attack: attack
           ? `${attack.label ?? 'Attack'}: ${attack.dice.replace(/LVL/g, ' LVL')}${attack.reach ? ` · Reach ${attack.reach}` : ''}${attack.actions ? ` · ${plural(attack.actions, 'action')}` : ''}`
           : '',

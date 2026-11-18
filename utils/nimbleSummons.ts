@@ -291,7 +291,7 @@ export function slaySummon(sheet: NimbleSheet, level: number, id: string): strin
   const summon = sheet.summons.find((s) => s.id === id)
   if (!summon) return ''
   remove(sheet, [id])
-  const minionDied = summon.def === 'shadow-minion' || summon.def === 'greater-shadow'
+  const minionDied = COMMANDED.includes(summon.def) || summon.def === 'greater-shadow'
   const def = summonById(minionDied ? 'shadow-minion' : summon.def)
   const notes = def ? summonStats(sheet, level, def).onDeath : []
   let burst = ''
@@ -334,22 +334,14 @@ export function sacrificeMinions(sheet: NimbleSheet, count: number, level = 1): 
     : notes
 }
 
+const COMMANDED = ['shadow-minion', 'favored-pet']
+
 export function minionCount(sheet: NimbleSheet): number {
-  return sheet.summons.filter((s) => s.def === 'shadow-minion' || s.def === 'greater-shadow').length
+  return sheet.summons.filter((s) => COMMANDED.includes(s.def) || s.def === 'greater-shadow').length
 }
 
 export function endSummons(sheet: NimbleSheet, when: 'rest' | 'encounter' | 'turn'): string[] {
-  const keepPet = when !== 'turn' && hasAbility(sheet, 'My Favored Pet')
-  let pet = false
-  const ended = sheet.summons.filter((s) => {
-    const def = summonById(s.def)
-    if (!def?.endsOn?.includes(when)) return false
-    if (keepPet && s.def === 'shadow-minion' && !pet) {
-      pet = true
-      return false
-    }
-    return true
-  })
+  const ended = sheet.summons.filter((s) => summonById(s.def)?.endsOn?.includes(when))
   remove(
     sheet,
     ended.map((s) => s.id),
@@ -383,7 +375,7 @@ function rollMinion(sides: number, rng: Rng): { value: number; miss: boolean; ma
 export function commandMinions(sheet: NimbleSheet, level: number, rng: Rng = Math.random): string {
   const def = summonById('shadow-minion')!
   const stats = summonStats(sheet, level, def)
-  const minions = sheet.summons.filter((s) => s.def === 'shadow-minion')
+  const minions = sheet.summons.filter((s) => COMMANDED.includes(s.def))
   const greater = sheet.summons.find((s) => s.def === 'greater-shadow')
   if (!minions.length && !greater) return ''
   if (sheet.uses['Command minions@turn']?.used)
@@ -484,7 +476,9 @@ function companionLimits(sheet: NimbleSheet, level: number, def: SummonDef) {
 }
 
 export function companionBlocked(sheet: NimbleSheet, level: number): string {
-  const companion = sheet.summons.find((s) => summonById(s.def)?.permanent)
+  const companion = sheet.summons.find(
+    (s) => summonById(s.def)?.permanent && summonById(s.def)?.attack,
+  )
   const def = companion && summonById(companion.def)
   const attack = def?.attack
   if (!def || !attack) return ''
@@ -501,7 +495,9 @@ export function companionBlocked(sheet: NimbleSheet, level: number): string {
 }
 
 export function companionAttack(sheet: NimbleSheet, level: number, rng: Rng = Math.random): string {
-  const companion = sheet.summons.find((s) => summonById(s.def)?.permanent)
+  const companion = sheet.summons.find(
+    (s) => summonById(s.def)?.permanent && summonById(s.def)?.attack,
+  )
   const def = companion && summonById(companion.def)
   const attack = def?.attack
   if (!companion || !attack) return ''
