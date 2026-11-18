@@ -50,6 +50,11 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         beasts: beastsFor(defId).length > 0,
         cap: stats && Number.isFinite(stats.cap) && stats.cap > 1 ? stats.cap : 0,
         notes: stats?.notes ?? [],
+        attack: def?.attack
+          ? def.attack.dice.includes('LVL')
+            ? `${def.attack.label ?? 'Attack'}: ${def.attack.dice.replace(/LVL/g, ' LVL')}`
+            : `${def.attack.label ?? 'Attack'}: ${stats?.diceMult ?? 1}d${stats?.die ?? 0}${stats?.reach ? ` · Reach ${stats.reach}` : ''}`
+          : '',
         canSacrifice: !!stats?.sacrifice.length,
         permanent: !!def?.permanent,
       }

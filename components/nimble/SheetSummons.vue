@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NimbleSheet } from '~/types/sheets'
 import { syncCompanions } from '~/utils/nimbleBuild'
+import { summonLookKey } from '~/utils/nimbleSummons'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const { companionOptions } = useNimbleActions()
@@ -36,6 +37,29 @@ const {
 } = useNimbleSummons()
 
 const customizing = ref('')
+
+/** One card per summon kind (a stack of identical minions); hand-added ones each get their own. */
+const cards = computed(() =>
+  groups.value.flatMap((g) =>
+    (g.id === 'custom' ? g.members.map((m) => [m]) : [g.members]).flatMap((list) => {
+      const first = list[0]
+      const last = list.at(-1)
+      if (!first || !last) return []
+      const title = list.length > 1 ? first.name.replace(/ [A-Z]$/, '') : first.name
+      const stats = [
+        first.hpMax ? `${first.hpMax} HP` : g.permanent ? 'HP abstracted' : 'Immune to harm',
+        g.attack,
+        first.charges !== undefined ? `${first.charges} heals left` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
+      const looks = g.id === 'custom' ? [summonLookKey(first)] : g.looks
+      return [
+        { key: g.id === 'custom' ? first.id : g.id, g, list, first, last, title, stats, looks },
+      ]
+    }),
+  ),
+)
 const customName = ref('')
 const customHp = ref(0)
 
@@ -90,122 +114,116 @@ function submitCustom() {
       Armor of Shadows: take {{ armorOfShadows }} less damage from every hit.
     </p>
 
-    <div v-for="g in groups" :key="g.id" class="tile group">
+    <div v-for="c in cards" :key="c.key" class="tile group">
       <div class="group__head">
-        <strong>{{ g.name }}</strong>
-        <small v-if="g.cap">{{ g.members.length }} / {{ g.cap }}</small>
-        <small v-if="g.duration">{{ g.duration }}</small>
+        <small>{{ c.g.name }}</small>
+        <small v-if="c.g.cap">{{ c.g.members.length }} / {{ c.g.cap }}</small>
         <button
           v-if="canEdit"
           type="button"
           class="btn btn--quiet btn--sm group__edit"
-          :aria-expanded="customizing === g.id"
-          @click="customizing = customizing === g.id ? '' : g.id"
+          :aria-expanded="customizing === c.key"
+          @click="customizing = customizing === c.key ? '' : c.key"
         >
-          {{ customizing === g.id ? 'Done' : g.beasts ? 'Customize companion' : 'Customize' }}
+          {{ customizing === c.key ? 'Done' : 'Customize' }}
         </button>
       </div>
-      <template v-if="customizing === g.id">
+      <template v-if="customizing === c.key">
         <NimbleSummonLook
-          v-for="k in g.looks"
+          v-for="k in c.looks"
           :key="k"
           :look-key="k"
           @switch="customizing = $event"
         />
       </template>
-      <p v-if="g.desc && !g.options.length" class="group__desc">{{ g.desc }}</p>
-      <p v-for="n in g.notes" :key="n" class="group__desc">{{ n }}</p>
-      <ul class="members">
-        <li v-for="m in g.members" :key="m.id" :class="{ companion: g.permanent }">
+      <div class="companion">
+        <span class="stack-pic">
           <UiAvatar
-            v-if="g.permanent"
-            :name="m.name"
-            :portrait-path="m.portrait ?? null"
-            :beast="m.beast ?? null"
+            :name="c.title"
+            :portrait-path="c.first.portrait ?? null"
+            :beast="c.first.beast ?? null"
             :size="88"
           />
-          <div v-if="g.permanent" class="companion__body">
-            <strong>{{ m.name }}</strong>
-            <p v-for="o in g.options.filter((x) => x.passive)" :key="o.name" class="group__desc">
-              <strong>{{ o.name }}</strong> {{ o.text }}
+          <span v-if="c.list.length > 1" class="stack-pic__count">×{{ c.list.length }}</span>
+        </span>
+        <div class="companion__body">
+          <strong>{{ c.title }}</strong>
+          <small class="companion__stats">{{ c.stats }}</small>
+          <p v-for="o in c.g.options.filter((x) => x.passive)" :key="o.name" class="group__desc">
+            <strong>{{ o.name }}</strong> {{ o.text }}
+          </p>
+          <details class="companion__abilities">
+            <summary>Abilities</summary>
+            <p v-if="c.g.desc && !c.g.options.length" class="group__desc">{{ c.g.desc }}</p>
+            <p v-for="n in c.g.notes" :key="n" class="group__desc">{{ n }}</p>
+            <p v-if="c.g.duration" class="group__desc">
+              <em>{{ c.g.duration }}</em>
             </p>
-            <details v-if="g.options.some((x) => !x.passive)" class="companion__abilities">
-              <summary>Abilities</summary>
-              <div v-for="o in limited(g.options)" :key="o.name" class="opt">
-                <div class="opt__head">
-                  <strong>{{ o.name }}</strong>
-                  <span v-if="o.card" class="opt__pips" aria-hidden="true">
-                    <i v-for="n in o.card.max" :key="n" :class="{ on: n <= o.card.left }" />
-                  </span>
-                  <small v-if="o.card">{{ o.card.period }}</small>
-                  <em v-if="o.card?.costText">{{ o.card.costText }}</em>
-                </div>
-                <p class="opt__text">{{ o.text }}</p>
-                <div v-if="o.card" class="opt__actions">
-                  <button
-                    v-if="o.card.used"
-                    type="button"
-                    class="btn btn--quiet btn--sm"
-                    :disabled="!canEdit"
-                    :aria-label="`Undo ${o.name}`"
-                    @click="o.card.undo()"
-                  >
-                    Undo
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn--sm"
-                    :disabled="!canEdit || o.card.off"
-                    :title="o.card.why || undefined"
-                    :aria-label="`Use ${o.name}, ${o.card.uses}`"
-                    @click="o.card.use()"
-                  >
-                    {{ o.card.why || 'Use' }}
-                  </button>
-                </div>
+            <div v-for="o in limited(c.g.options)" :key="o.name" class="opt">
+              <div class="opt__head">
+                <strong>{{ o.name }}</strong>
+                <span v-if="o.card" class="opt__pips" aria-hidden="true">
+                  <i v-for="n in o.card.max" :key="n" :class="{ on: n <= o.card.left }" />
+                </span>
+                <small v-if="o.card">{{ o.card.period }}</small>
+                <em v-if="o.card?.costText">{{ o.card.costText }}</em>
               </div>
-            </details>
+              <p class="opt__text">{{ o.text }}</p>
+              <div v-if="o.card" class="opt__actions">
+                <button
+                  v-if="o.card.used"
+                  type="button"
+                  class="btn btn--quiet btn--sm"
+                  :disabled="!canEdit"
+                  :aria-label="`Undo ${o.name}`"
+                  @click="o.card.undo()"
+                >
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--sm"
+                  :disabled="!canEdit || o.card.off"
+                  :title="o.card.why || undefined"
+                  :aria-label="`Use ${o.name}, ${o.card.uses}`"
+                  @click="o.card.use()"
+                >
+                  {{ o.card.why || 'Use' }}
+                </button>
+              </div>
+            </div>
+          </details>
+          <div v-if="canEdit" class="companion__actions">
+            <button
+              v-if="c.first.hpMax"
+              type="button"
+              class="btn btn--quiet btn--sm"
+              :aria-label="c.list.length > 1 ? `One ${c.title} is slain` : `${c.title} is slain`"
+              @click="slay(c.last.id)"
+            >
+              {{ c.list.length > 1 ? 'One slain' : 'Slain' }}
+            </button>
+            <button
+              v-if="c.g.canSacrifice"
+              type="button"
+              class="btn btn--quiet btn--sm"
+              :aria-label="`Sacrifice ${c.last.name}`"
+              @click="sacrifice(c.last.id)"
+            >
+              {{ c.list.length > 1 ? 'Sacrifice one' : 'Sacrifice' }}
+            </button>
+            <button
+              v-if="!c.g.permanent"
+              type="button"
+              class="btn btn--quiet btn--sm"
+              :aria-label="`Dismiss ${c.last.name}`"
+              @click="dismiss(c.last.id)"
+            >
+              {{ c.list.length > 1 ? 'Dismiss one' : 'Dismiss' }}
+            </button>
           </div>
-          <UiAvatar
-            v-else-if="m.portrait || m.beast"
-            :name="m.name"
-            :portrait-path="m.portrait ?? null"
-            :beast="m.beast ?? null"
-            :size="32"
-          />
-          <span v-if="!g.permanent" class="grow">{{ m.name }}</span>
-          <small v-if="m.hpMax">{{ m.hpMax }} HP</small>
-          <small v-if="m.charges !== undefined">{{ m.charges }} heals</small>
-          <button
-            v-if="m.hpMax"
-            type="button"
-            class="btn btn--quiet btn--sm"
-            :disabled="!canEdit"
-            @click="slay(m.id)"
-          >
-            Slain
-          </button>
-          <button
-            v-if="g.canSacrifice"
-            type="button"
-            class="btn btn--quiet btn--sm"
-            :disabled="!canEdit"
-            @click="sacrifice(m.id)"
-          >
-            Sacrifice
-          </button>
-          <button
-            v-if="!g.permanent"
-            type="button"
-            class="btn btn--quiet btn--sm"
-            :disabled="!canEdit"
-            :aria-label="`Dismiss ${m.name}`"
-            @click="dismiss(m.id)"
-          >
-            Dismiss
-          </button>
-        </li>
-      </ul>
+        </div>
+      </div>
     </div>
     <p v-if="!sheet.summons.length" class="empty">Nothing summoned right now.</p>
 
@@ -277,7 +295,8 @@ function submitCustom() {
   margin-left: auto;
 }
 
-.members li.companion {
+.companion {
+  display: flex;
   align-items: flex-start;
   gap: 14px;
   padding: 12px 0 4px;
@@ -364,6 +383,40 @@ function submitCustom() {
   gap: 6px;
 }
 
+.companion__stats {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.companion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stack-pic {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.stack-pic__count {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  min-width: 30px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--on-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 26px;
+  text-align: center;
+}
+
 .companion__abilities {
   summary {
     cursor: pointer;
@@ -381,26 +434,6 @@ function submitCustom() {
   font-size: 13px;
   line-height: 1.5;
   color: var(--page-soft);
-}
-
-.members {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 40px;
-    border-top: 1px solid var(--track);
-    font-size: 14px;
-  }
-
-  small {
-    font-size: 12px;
-    color: var(--page-muted);
-  }
 }
 
 .custom {

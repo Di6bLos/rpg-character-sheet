@@ -77,13 +77,36 @@ const {
   dismiss,
   slay,
   sacrifice,
-  sacrificeable,
   command,
   spiritAttack,
   spiritHeal,
   left: summonLeft,
   spiritCost,
+  groups: summonGroups,
 } = useNimbleSummons({ onResult: announce })
+
+/** One row per summon kind, a stack for identical minions; hand-added ones each get a row. */
+const summonStacks = computed(() =>
+  summonGroups.value.flatMap((g) =>
+    (g.id === 'custom' ? g.members.map((m) => [m]) : [g.members]).flatMap((list) => {
+      const first = list[0]
+      const last = list.at(-1)
+      if (!first || !last) return []
+      return [
+        {
+          key: g.id === 'custom' ? first.id : g.id,
+          title: list.length > 1 ? first.name.replace(/ [A-Z]$/, '') : first.name,
+          count: list.length,
+          first,
+          last,
+          hp: first.hpMax ? `${first.hpMax} HP` : '',
+          permanent: g.permanent,
+          canSacrifice: g.canSacrifice,
+        },
+      ]
+    }),
+  ),
+)
 const summonMenu = computed(() => sheet.value.summons.length > 0 || summonable.value.length > 0)
 
 const spellCount = computed(() => tiers.value.reduce((n, t) => n + t.spells.length, 0))
@@ -796,45 +819,48 @@ const effectRows = computed(() =>
             </span>
           </button>
         </li>
-        <li v-for="m in sheet.summons" :key="m.id" class="apm__split apm__member">
+        <li v-for="st in summonStacks" :key="st.key" class="apm__split apm__member">
           <div class="apm__row">
             <UiAvatar
-              v-if="m.portrait || m.beast"
               class="apm__avatar"
-              :name="m.name"
-              :portrait-path="m.portrait ?? null"
-              :beast="m.beast ?? null"
+              :name="st.title"
+              :portrait-path="st.first.portrait ?? null"
+              :beast="st.first.beast ?? null"
               :size="24"
             />
-            <span class="apm__name">{{ m.name }}</span>
-            <span class="apm__tag">{{ m.hpMax ? `${m.hpMax} HP` : '' }}</span>
+            <span class="apm__name">{{ st.title }}</span>
+            <span class="apm__tag"
+              >{{ st.count > 1 ? `×${st.count}` : '' }}{{ st.count > 1 && st.hp ? ' · ' : ''
+              }}{{ st.hp }}</span
+            >
           </div>
           <button
-            v-if="m.hpMax"
+            v-if="st.first.hpMax"
             type="button"
             class="apm__alt"
             :aria-disabled="!canEdit || undefined"
-            :aria-label="`${m.name} is slain`"
-            @click="canEdit && slay(m.id)"
+            :aria-label="st.count > 1 ? `One ${st.title} is slain` : `${st.title} is slain`"
+            @click="canEdit && slay(st.last.id)"
           >
             Slain
           </button>
           <button
-            v-if="sacrificeable.has(m.def)"
+            v-if="st.canSacrifice"
             type="button"
             class="apm__alt"
             :aria-disabled="!canEdit || undefined"
-            :aria-label="`Sacrifice ${m.name}`"
-            @click="canEdit && sacrifice(m.id)"
+            :aria-label="`Sacrifice ${st.last.name}`"
+            @click="canEdit && sacrifice(st.last.id)"
           >
             Sacrifice
           </button>
           <button
+            v-if="!st.permanent"
             type="button"
             class="apm__alt"
             :aria-disabled="!canEdit || undefined"
-            :aria-label="`Dismiss ${m.name}`"
-            @click="canEdit && dismiss(m.id)"
+            :aria-label="`Dismiss ${st.last.name}`"
+            @click="canEdit && dismiss(st.last.id)"
           >
             Dismiss
           </button>
