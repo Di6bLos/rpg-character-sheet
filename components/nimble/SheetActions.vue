@@ -62,6 +62,20 @@ const abilityBadge = computed(() => {
   const count = sheet.value.resource.count
   return `${r.name} ${r.max ? `${count}/${r.max}` : count}`
 })
+const usedKey = ref('')
+const usedMessage = ref('')
+const shownOnCard = computed(() => !!usedKey.value && lastRoll.value === usedMessage.value)
+
+function used(key: string, run: () => void) {
+  run()
+  usedKey.value = key
+  usedMessage.value = lastRoll.value
+}
+
+function resultFor(key: string): string {
+  return usedKey.value === key && shownOnCard.value ? lastRoll.value : ''
+}
+
 const otherActions = computed(() => abilityActions.value.filter((a) => !a.attack))
 const hasAttacks = computed(
   () =>
@@ -174,11 +188,14 @@ const hasAttacks = computed(
                 class="btn"
                 :disabled="!canEdit || w.blocked"
                 :title="w.blocked ? 'No actions left' : undefined"
-                @click="w.roll"
+                @click="used(`w:${i}`, w.roll)"
               >
                 {{ sheet.ownDice ? 'Attack' : 'Roll'
                 }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template>
               </button>
+              <p v-if="resultFor(`w:${i}`)" class="roll-status attack__result" role="status">
+                {{ resultFor(`w:${i}`) }}
+              </p>
             </div>
             <div
               v-for="inv in inventionAttacks"
@@ -227,10 +244,17 @@ const hasAttacks = computed(
                 class="btn btn--wrap"
                 :disabled="!canEdit || !!inv.why"
                 :title="inv.why || undefined"
-                @click="inv.run"
+                @click="used(`inv:${inv.name}`, inv.run)"
               >
                 {{ inv.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
               </button>
+              <p
+                v-if="resultFor(`inv:${inv.name}`)"
+                class="roll-status attack__result"
+                role="status"
+              >
+                {{ resultFor(`inv:${inv.name}`) }}
+              </p>
             </div>
           </div>
         </details>
@@ -269,10 +293,13 @@ const hasAttacks = computed(
                   class="btn btn--wrap"
                   :disabled="!canEdit || !!a.why"
                   :title="a.why || undefined"
-                  @click="a.run"
+                  @click="used(a.key, a.run)"
                 >
                   {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll') }}
                 </button>
+                <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
+                  {{ resultFor(a.key) }}
+                </p>
               </div>
             </div>
           </details>
@@ -299,10 +326,13 @@ const hasAttacks = computed(
                 class="btn btn--wrap"
                 :disabled="!canEdit || !!a.why"
                 :title="a.why || undefined"
-                @click="a.run"
+                @click="used(a.key, a.run)"
               >
                 {{ a.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
               </button>
+              <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
+                {{ resultFor(a.key) }}
+              </p>
             </div>
             <div v-for="a in attackAbilities" :key="a.key" class="tile attack attack--ability">
               <div class="attack__head">
@@ -318,16 +348,19 @@ const hasAttacks = computed(
                 class="btn btn--wrap"
                 :disabled="!canEdit || !!a.why"
                 :title="a.why || 'Pays the cost; roll a weapon attack next, it costs no more'"
-                @click="a.use"
+                @click="used(a.key, a.use)"
               >
                 {{ a.why || 'Use · then roll a weapon' }}
               </button>
+              <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
+                {{ resultFor(a.key) }}
+              </p>
             </div>
           </div>
         </details>
       </template>
       <p v-else class="empty">No attacks yet. Use “Edit sheet” to add one.</p>
-      <div v-if="lastRoll" class="roll-status" role="status">{{ lastRoll }}</div>
+      <div v-if="lastRoll && !shownOnCard" class="roll-status" role="status">{{ lastRoll }}</div>
     </section>
 
     <section class="panel stack" style="gap: 18px" aria-labelledby="act-h">
@@ -418,6 +451,11 @@ const hasAttacks = computed(
 </template>
 
 <style scoped lang="scss">
+.attack__result {
+  margin: 0;
+  font-size: 13px;
+}
+
 .atk-group {
   display: flex;
   flex-direction: column;
@@ -456,18 +494,21 @@ const hasAttacks = computed(
 }
 
 .atk-tier {
-  margin-left: 2px;
+  margin-left: 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
 
   & + & {
-    margin-top: 10px;
+    margin-top: 8px;
   }
 
   > summary {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 11px;
-    letter-spacing: 0.1em;
+    gap: 6px;
+    min-height: 28px;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
     color: var(--page-muted);
     cursor: pointer;
     list-style: none;
@@ -476,20 +517,28 @@ const hasAttacks = computed(
       display: none;
     }
 
-    &::after {
-      content: '▾';
-      margin-left: auto;
-      font-size: 11px;
+    &::before {
+      content: '▸';
+      font-size: 10px;
       letter-spacing: normal;
       color: var(--accent-text);
+      transition: transform 0.15s ease;
     }
+
+    &::after {
+      content: none;
+    }
+  }
+
+  &[open] {
+    border-left-color: color-mix(in srgb, var(--accent) 45%, var(--line));
   }
 
   &[open] > summary {
     margin-bottom: 8px;
 
-    &::after {
-      content: '▴';
+    &::before {
+      transform: rotate(90deg);
     }
   }
 }

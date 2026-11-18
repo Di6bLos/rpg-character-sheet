@@ -28,6 +28,7 @@ import {
   fieldRestDice,
   heal,
   hitDiceLeft,
+  abilityTrigger,
   afterAttack,
   attackBonus,
   manaCost,
@@ -1543,5 +1544,23 @@ describe('class wiring', () => {
     expect(message).toMatch(/Initiative 10/)
     expect(message).toMatch(/Cheat: 3 raised to 10/)
     expect(message).toMatch(/You may: Firebrand: cast Enchant Weapon for free/)
+  })
+
+  it('turns what an ability grants into a trigger button', () => {
+    const sheet = hero({ stats: { STR: 0, DEX: 1, INT: 4, WIL: 0 } })
+    const frost = abilityTrigger(
+      sheet,
+      7,
+      'Your Shadow Blast and minions can deal cold or necrotic damage, and whenever they would crit, you gain INT+LVL temp HP.',
+    )
+    expect(frost?.label).toBe('Gain 11 temp HP')
+    frost?.fire()
+    expect(sheet.tempHp).toBe(11)
+    expect(abilityTrigger(sheet, 7, '(1/encounter) When crit, gain 1 action.')?.label).toBe(
+      'Gain 1 action',
+    )
+    expect(
+      abilityTrigger(sheet, 7, 'Your allies within 12 spaces who can hear you gain WIL temp HP.'),
+    ).toBeNull()
   })
 })

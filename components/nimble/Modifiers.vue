@@ -56,6 +56,7 @@ function use(item: (typeof items.value)[number]) {
         <small v-if="m.counters.length" class="mod__uses">{{ m.uses }}</small>
       </summary>
       <p>{{ m.text }}</p>
+      <NimbleTrigger :name="m.name" :text="m.text" class="mod__trigger" />
       <NimbleInventionUse v-if="m.invention" :name="m.ability" class="mod__invention" />
       <div v-if="m.counters.length" class="mod__use">
         <small v-if="m.cost">{{ m.cost }}</small>
@@ -128,6 +129,10 @@ function use(item: (typeof items.value)[number]) {
     line-height: 1.45;
     color: var(--page-soft);
   }
+}
+
+.mod__trigger {
+  margin-bottom: 6px;
 }
 
 .mod__invention {

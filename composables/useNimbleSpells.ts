@@ -16,6 +16,7 @@ import {
   actionsLeft,
   castingBlocks,
   castSpell,
+  critTriggers,
   gainWounds,
   isHollowOne,
   manaPool,
@@ -359,7 +360,8 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const result = rollSpellDamage(damage)
     if (!result) return ''
     if (result.miss) return `Miss (first die rolled a 1) [${result.detail}].`
-    return `${result.total}${type} damage${result.crit ? ' · critical' : ''} [${damage.dice}: ${result.detail}].`
+    const crit = result.crit ? ` ${critTriggers(sheet.value, draft.value.level, s.name)}` : ''
+    return `${result.total}${type} damage${result.crit ? ' · critical' : ''} [${damage.dice}: ${result.detail}].${crit.trimEnd()}`
   }
 
   const spellAttacks = computed(() =>

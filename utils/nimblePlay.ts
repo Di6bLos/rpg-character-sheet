@@ -19,7 +19,7 @@ import {
   endEffects,
   setMalfunction,
 } from '~/utils/nimbleEffects'
-import { endSummons, initiativeSummons, summonFromSpell } from '~/utils/nimbleSummons'
+import { addSummon, endSummons, initiativeSummons, summonFromSpell } from '~/utils/nimbleSummons'
 
 /** Fury dice a Rage can hold before the player has to pick which to keep. */
 export const MAX_RAGE_DICE = 6
@@ -498,6 +498,71 @@ function settleStolen(sheet: NimbleSheet): string {
   sheet.uses[`${steal.key}@cooldown`] = { used: 1 }
   sheet.actionsSpent = Math.min(turnActions(sheet), steal.pending)
   return ` ${steal.pending} action${steal.pending === 1 ? '' : 's'} stolen last turn.`
+}
+
+const TRIGGERS: {
+  pattern: RegExp
+  label: (m: RegExpExecArray, sheet: NimbleSheet, level: number) => string
+  fire: (m: RegExpExecArray, sheet: NimbleSheet, level: number) => string
+}[] = [
+  {
+    pattern:
+      /(?:^|[,.;:]\s*|\band )you gain ((?:STR|DEX|INT|WIL|LVL|\d+)(?:\+(?:STR|DEX|INT|WIL|LVL|\d+))*) temp HP\b/,
+    label: (m, sheet, level) => `Gain ${limitValue(m[1]!, sheet, level)} temp HP`,
+    fire: (m, sheet, level) => {
+      const amount = limitValue(m[1]!, sheet, level)
+      sheet.tempHp = Math.max(sheet.tempHp, amount)
+      return `${amount} temp HP (${sheet.tempHp} now).`
+    },
+  },
+  {
+    pattern: /(?:^|[,.;:]\s*|\band |\byou )gain (\d+) actions?\b/,
+    label: (m) => `Gain ${m[1]} action${m[1] === '1' ? '' : 's'}`,
+    fire: (m, sheet) => gainAction(sheet, Number(m[1])),
+  },
+  {
+    pattern: /\bgain (\d+) Fury Dice?\b/,
+    label: (m) => `Gain ${m[1]} Fury Die`,
+    fire: (m, sheet, level) =>
+      sheet.resource.active ? addFury(sheet, level, Number(m[1])) : 'Not raging: no Fury Die.',
+  },
+  {
+    pattern: /\b[Gg]ain (?:a|1) (Thrill of the Hunt charge|Burst of Speed)\b/,
+    label: (m) => `Gain a ${m[1]}`,
+    fire: (m, sheet) => {
+      sheet.resource.count += 1
+      return `+1 ${m[1]} (${sheet.resource.count}).`
+    },
+  },
+  {
+    pattern: /\bsummon (?:a|another) shadow minion\b/,
+    label: () => 'Summon a shadow minion',
+    fire: (_m, sheet, level) => addSummon(sheet, level, 'shadow-minion'),
+  },
+]
+
+export function abilityTrigger(
+  sheet: NimbleSheet,
+  level: number,
+  text: string,
+): { label: string; fire: () => string } | null {
+  for (const t of TRIGGERS) {
+    const m = t.pattern.exec(text)
+    if (m) return { label: t.label(m, sheet, level), fire: () => t.fire(m, sheet, level) }
+  }
+  return null
+}
+
+export function critTriggers(sheet: NimbleSheet, level: number, source: string): string {
+  const notes: string[] = []
+  for (const a of sheet.abilities) {
+    const about = new RegExp(`\\bYour ${source}\\b[^.]*\\bwhenever they would crit\\b`)
+    if (!about.test(a.desc)) continue
+    const crit = a.desc.slice(a.desc.indexOf('whenever they would crit'))
+    const trigger = abilityTrigger(sheet, level, crit)
+    if (trigger) notes.push(`${abilityBaseName(a.name)}: ${trigger.fire()}`)
+  }
+  return notes.join(' ')
 }
 
 export function manaCost(text: string): number {
