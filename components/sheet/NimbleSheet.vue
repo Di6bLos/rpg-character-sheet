@@ -190,9 +190,9 @@ const skills = computed(() =>
 
   img {
     position: absolute;
-    inset: 6% 0;
+    inset: 3% 0;
     width: 100%;
-    height: 88%;
+    height: 94%;
     object-fit: contain;
   }
 }

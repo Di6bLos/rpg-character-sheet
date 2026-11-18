@@ -103,7 +103,7 @@ watch(
     color: #d9d2c5;
 
     img {
-      transform: scale(0.92);
+      transform: scale(0.96);
       object-fit: contain;
     }
   }
