@@ -14,6 +14,7 @@ const risks = computed(() => new Map(malfunctions.value.map((m) => [m.name, m]))
 
 <template>
   <section class="panel stack" style="gap: 12px" aria-labelledby="ab-h">
+    <UiFold name="All abilities" />
     <h2 id="ab-h">All abilities</h2>
     <div class="abilities">
       <article

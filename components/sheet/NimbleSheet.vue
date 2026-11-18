@@ -112,6 +112,7 @@ const skills = computed(() =>
       <NimbleSheetVitals style="order: 1" />
       <NimbleSheetActions style="order: 4" />
       <section class="panel stack" style="gap: 6px; order: 9" aria-labelledby="sk-h">
+        <UiFold name="Skills" />
         <div class="title-help" style="margin: 0 0 6px">
           <h2 id="sk-h">Skills</h2>
           <UiHelp

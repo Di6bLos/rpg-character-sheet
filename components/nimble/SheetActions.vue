@@ -16,6 +16,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
 <template>
   <div class="stack" style="gap: 24px; min-width: 0">
     <section class="panel stack" style="gap: 14px" aria-labelledby="atk-h">
+      <UiFold name="Attacks" />
       <div class="title-help">
         <h2 id="atk-h">Attacks</h2>
         <UiHelp
@@ -72,6 +73,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
     </section>
 
     <section class="panel stack" style="gap: 18px" aria-labelledby="act-h">
+      <UiFold name="Actions" />
       <div class="title-help">
         <h2 id="act-h">Actions</h2>
         <UiHelp

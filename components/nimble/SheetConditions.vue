@@ -47,6 +47,7 @@ function toggle(name: string) {
 
 <template>
   <section class="panel stack" style="gap: 12px" aria-labelledby="cond-h">
+    <UiFold name="Conditions" />
     <h2 id="cond-h">Conditions</h2>
     <div class="chips" style="gap: 6px">
       <button

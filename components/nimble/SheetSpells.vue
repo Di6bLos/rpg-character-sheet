@@ -9,7 +9,6 @@ const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const keyValue = computed(() => keyStatValue(sheet.value))
 const { known, utility, maxTier, tiers, help, setUpcast, cast } = useNimbleSpells()
-const folded = ref(false)
 
 const schools = computed(() =>
   sheet.value.spells.schools.map((s) => SCHOOL_LABELS[s as SpellSchool] ?? s).join(' · '),
@@ -18,25 +17,16 @@ const schools = computed(() =>
 
 <template>
   <section class="panel stack" style="gap: 16px" aria-labelledby="sp-h">
+    <UiFold name="Spells" />
     <div class="panel-title" style="margin: 0">
       <div class="title-help">
         <h2 id="sp-h">Spells</h2>
         <UiHelp label="About spells" :text="help" />
       </div>
       <span v-if="schools" class="small muted" style="font-size: 12px">{{ schools }}</span>
-      <button
-        type="button"
-        class="fold"
-        :aria-expanded="!folded"
-        aria-controls="sp-body"
-        :aria-label="folded ? 'Show spells' : 'Hide spells'"
-        @click="folded = !folded"
-      >
-        {{ folded ? '▾' : '▴' }}
-      </button>
     </div>
 
-    <div v-show="!folded" id="sp-body" class="stack" style="gap: 16px">
+    <div class="stack" style="gap: 16px">
       <details v-for="g in tiers" :key="g.tier" class="tier" open>
         <summary class="caps">
           {{ g.label }} <small>{{ g.spells.length }}</small>
@@ -136,19 +126,6 @@ const schools = computed(() =>
 </template>
 
 <style scoped lang="scss">
-.fold {
-  margin-left: auto;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--accent-text);
-  font-size: 13px;
-  cursor: pointer;
-}
-
 .tier {
   display: flex;
   flex-direction: column;

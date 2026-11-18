@@ -70,6 +70,7 @@ const ownDice = computed({
 
 <template>
   <section class="panel stack" style="gap: 12px" aria-labelledby="turn-h">
+    <UiFold name="Turn" />
     <div class="title-help">
       <h2 id="turn-h">Turn</h2>
       <UiHelp

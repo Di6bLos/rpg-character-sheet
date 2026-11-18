@@ -110,6 +110,7 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
 
 <template>
   <section class="panel stack" style="gap: 10px" aria-labelledby="inv-h">
+    <UiFold name="Inventory" />
     <div class="panel-title" style="margin: 0">
       <h2 id="inv-h">Inventory</h2>
       <span class="slots" :class="{ over }">{{ slots.used }} / {{ slots.max }} slots</span>

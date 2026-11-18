@@ -77,6 +77,7 @@ function submitCustom() {
 
 <template>
   <section class="panel stack" style="gap: 14px" aria-labelledby="sum-h">
+    <UiFold name="Summons" />
     <div class="title-help">
       <h2 id="sum-h">Summons</h2>
       <UiHelp

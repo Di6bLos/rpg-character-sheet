@@ -114,6 +114,7 @@ function confirmRest() {
 
 <template>
   <section class="panel stack" aria-labelledby="vit-h">
+    <UiFold name="Vitals" />
     <h2 id="vit-h">Vitals</h2>
 
     <div v-if="dead" class="notice notice--error" role="alert">

@@ -76,6 +76,7 @@ async function removeImage(source: string) {
 
 <template>
   <section class="panel stack" style="gap: 12px" aria-labelledby="forms-h">
+    <UiFold name="Transformations" />
     <div class="title-help">
       <h2 id="forms-h">Transformations</h2>
       <UiHelp

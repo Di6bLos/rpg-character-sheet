@@ -106,6 +106,7 @@ function endConcentration() {
 <template>
   <div class="stack" style="gap: 24px; min-width: 0">
     <section v-if="hasMana" class="panel stack mana" aria-labelledby="mana-h">
+      <UiFold name="Mana" />
       <div class="panel-title" style="margin: 0">
         <h2 id="mana-h">Mana</h2>
         <span v-if="manaFormula" class="badge badge--outline">{{ manaFormula }}</span>
@@ -202,6 +203,7 @@ function endConcentration() {
       :class="{ 'is-raging': resource.kind === 'rage' && res.active }"
       aria-labelledby="res-h"
     >
+      <UiFold :name="resource.name" />
       <div class="panel-title" style="margin: 0">
         <span class="title-help">
           <h2 id="res-h">{{ resource.name }}</h2>
@@ -505,6 +507,7 @@ function endConcentration() {
     </section>
 
     <section class="panel stack conc" aria-labelledby="conc-h">
+      <UiFold name="Concentration" />
       <div class="title-help">
         <h2 id="conc-h">Concentration</h2>
         <UiHelp
