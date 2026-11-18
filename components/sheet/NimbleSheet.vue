@@ -183,10 +183,14 @@ const skills = computed(() =>
   inset: 0;
   display: grid;
   place-items: center;
+  overflow: hidden;
+  border-radius: inherit;
   background: #0d0b0a;
   color: #d9d2c5;
 
   img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
