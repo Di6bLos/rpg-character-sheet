@@ -141,10 +141,39 @@ function submitCustom() {
         <div class="companion__body">
           <div class="companion__top">
             <strong>{{ c.title }}</strong>
+            <span v-if="canEdit" class="companion__actions">
+              <button
+                v-if="c.first.hpMax"
+                type="button"
+                class="btn btn--quiet btn--sm companion__danger"
+                :aria-label="c.list.length > 1 ? `One ${c.title} is slain` : `${c.title} is slain`"
+                @click="slay(c.last.id)"
+              >
+                {{ c.list.length > 1 ? 'One slain' : 'Slain' }}
+              </button>
+              <button
+                v-if="c.g.canSacrifice"
+                type="button"
+                class="btn btn--quiet btn--sm companion__danger"
+                :aria-label="`Sacrifice ${c.last.name}`"
+                @click="sacrifice(c.last.id)"
+              >
+                {{ c.list.length > 1 ? 'Sacrifice one' : 'Sacrifice' }}
+              </button>
+              <button
+                v-if="!c.g.permanent"
+                type="button"
+                class="btn btn--quiet btn--sm companion__danger"
+                :aria-label="`Dismiss ${c.last.name}`"
+                @click="dismiss(c.last.id)"
+              >
+                {{ c.list.length > 1 ? 'Dismiss one' : 'Dismiss' }}
+              </button>
+            </span>
             <button
               v-if="canEdit"
               type="button"
-              class="btn btn--quiet btn--sm"
+              class="btn btn--quiet btn--sm companion__customize"
               :aria-expanded="customizing === c.key"
               @click="customizing = customizing === c.key ? '' : c.key"
             >
@@ -198,35 +227,6 @@ function submitCustom() {
               </div>
             </div>
           </details>
-          <div v-if="canEdit" class="companion__actions">
-            <button
-              v-if="c.first.hpMax"
-              type="button"
-              class="btn btn--quiet btn--sm"
-              :aria-label="c.list.length > 1 ? `One ${c.title} is slain` : `${c.title} is slain`"
-              @click="slay(c.last.id)"
-            >
-              {{ c.list.length > 1 ? 'One slain' : 'Slain' }}
-            </button>
-            <button
-              v-if="c.g.canSacrifice"
-              type="button"
-              class="btn btn--quiet btn--sm"
-              :aria-label="`Sacrifice ${c.last.name}`"
-              @click="sacrifice(c.last.id)"
-            >
-              {{ c.list.length > 1 ? 'Sacrifice one' : 'Sacrifice' }}
-            </button>
-            <button
-              v-if="!c.g.permanent"
-              type="button"
-              class="btn btn--quiet btn--sm"
-              :aria-label="`Dismiss ${c.last.name}`"
-              @click="dismiss(c.last.id)"
-            >
-              {{ c.list.length > 1 ? 'Dismiss one' : 'Dismiss' }}
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -289,8 +289,8 @@ function submitCustom() {
 .companion__top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
 
   strong {
     font-family: var(--font-heading);
@@ -298,8 +298,8 @@ function submitCustom() {
     line-height: 1.2;
   }
 
-  .btn {
-    margin: -4px -6px -4px 0;
+  .companion__customize {
+    margin: -4px -6px -4px auto;
   }
 }
 
@@ -390,14 +390,19 @@ function submitCustom() {
 }
 
 .companion__actions {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 2px;
-  margin-left: -8px;
+}
 
-  .btn {
-    min-height: 30px;
-    padding: 2px 8px;
+.companion__danger {
+  min-height: 24px;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--danger, #e2735f);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger, #e2735f) 12%, transparent);
   }
 }
 
