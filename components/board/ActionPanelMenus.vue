@@ -68,6 +68,7 @@ const {
   useEffect,
   stopEffect,
   prepaid,
+  inventionAttacks,
 } = useNimbleActions({ onResult: announce })
 const {
   tiers,
@@ -502,7 +503,10 @@ const effectRows = computed(() =>
           prepaid > 0 ? 'Paid' : actionsNow === 0 ? 'No actions left' : attacks.length
         }}</small>
       </summary>
-      <ul v-if="attacks.length || summonAttacks.length" class="apm__list">
+      <ul
+        v-if="attacks.length || summonAttacks.length || inventionAttacks.length"
+        class="apm__list"
+      >
         <li v-for="(w, i) in attacks" :key="i">
           <button
             type="button"
@@ -520,6 +524,22 @@ const effectRows = computed(() =>
                   .filter(Boolean)
                   .join(' · ')
               }}
+            </span>
+          </button>
+        </li>
+        <li v-for="inv in inventionAttacks" :key="inv.name">
+          <button
+            type="button"
+            class="apm__row"
+            :aria-disabled="!canEdit || !!inv.why || undefined"
+            :aria-label="`${inv.name}, ${inv.dmg}, ${inv.cost}${inv.why ? `. ${inv.why}` : ''}`"
+            :title="inv.props"
+            @click="canEdit && !inv.why && inv.run()"
+          >
+            <span class="apm__name">{{ inv.name }}</span>
+            <span class="apm__tag">{{ inv.dmg }}</span>
+            <span class="apm__sub" :class="{ 'apm__sub--warn': inv.why }">
+              {{ [inv.why, inv.cost].filter(Boolean).join(' · ') }}
             </span>
           </button>
         </li>
