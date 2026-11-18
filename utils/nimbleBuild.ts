@@ -1,5 +1,6 @@
 // Pure rules logic that turns Nimble class data (data/nimble) into a sheet:
 // the level 1 build, what each level-up grants, and applying a level-up.
+import { abilityArmor } from '~/utils/nimbleArmor'
 import { classBySlug, poolOptionByName, subclassBySlug } from '~/data/nimble/classes'
 import { BASE_SPEED, BASE_WOUNDS, MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
@@ -891,19 +892,9 @@ export function subclassChangeChoices(
   return { abilities, choices, spells }
 }
 
-/** The value KEY stands for in rules text: the higher of the class's two Key Stats. */
+export { abilityArmor }
+
 /** Base name of an ability: "Sneak Attack (3)" is "Sneak Attack". */
-const ABILITY_ARMOR =
-  /(?:^|[.!]\s)Gain \+?(STR|DEX|INT|WIL|\d+) armor\b(?!\s+(?:if|while|when|until)\b)/
-
-export function abilityArmor(sheet: NimbleSheet): number {
-  return sheet.abilities.reduce((sum, a) => {
-    const m = ABILITY_ARMOR.exec(a.desc)?.[1]
-    if (!m) return sum
-    return sum + (/^\d+$/.test(m) ? Number(m) : sheet.stats[m as NimbleStat])
-  }, 0)
-}
-
 export function abilityBaseName(name: string): string {
   return UPGRADE.exec(name)?.[1] ?? name
 }
@@ -1018,6 +1009,7 @@ export function maneuvers(desc: string): NimbleAbility[] {
   }))
 }
 
+/** The value KEY stands for in rules text: the higher of the class's two Key Stats. */
 export function keyStatValue(sheet: NimbleSheet): { value: number; stats: NimbleStat[] } | null {
   const cls = classBySlug(sheet.classSlug)
   if (!cls) return null

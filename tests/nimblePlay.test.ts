@@ -512,6 +512,21 @@ describe('nimble sheet upgrades', () => {
     expect(swift.attacks[0]).toEqual(fist)
   })
 
+  it('adds permanent ability armor to older saves once', () => {
+    const save = {
+      rulesVersion: 3,
+      ac: 12,
+      stats: { STR: 1, DEX: 3, INT: 2, WIL: 0 },
+      abilities: [
+        { name: 'Misdirection', src: 'Cheat', desc: 'Gain INT armor. Whenever you Defend…' },
+        { name: 'Scurry', src: 'Ancestry', desc: 'Gain +2 armor if you moved on your last turn.' },
+      ],
+    }
+    const sheet = normalizeSheet('nimble', save)
+    expect(sheet.ac).toBe(14)
+    expect(normalizeSheet('nimble', sheet).ac).toBe(14)
+  })
+
   it('gives older saves the speed and Hit Dice of picked pool options', () => {
     const sheet = normalizeSheet('nimble', {
       classSlug: 'oathsworn',

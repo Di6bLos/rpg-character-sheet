@@ -2,17 +2,32 @@
 const props = defineProps<{
   hp: number
   max: number
+  temp?: number
   tone: '' | 'accent' | 'danger'
   disabled?: boolean
 }>()
 const emit = defineEmits<{ change: [delta: number] }>()
 
+const DRAG_PX = 4
+
 const track = ref<HTMLElement | null>(null)
 const preview = ref<number | null>(null)
 const dragging = ref(false)
+const moved = ref(false)
+let startX = 0
 
 const shown = computed(() => preview.value ?? props.hp)
 const delta = computed(() => shown.value - props.hp)
+const damage = computed(() => Math.max(0, -delta.value))
+const absorbed = computed(() => Math.min(Math.max(0, props.temp ?? 0), damage.value))
+const result = computed(() =>
+  delta.value < 0 ? props.hp - (damage.value - absorbed.value) : shown.value,
+)
+const label = computed(() =>
+  delta.value < 0
+    ? `−${damage.value} damage → ${result.value} HP${absorbed.value ? ` (${absorbed.value} temp absorbed)` : ''}`
+    : `+${delta.value} healing → ${result.value} HP`,
+)
 const pct = (n: number) => (props.max > 0 ? Math.round((n / props.max) * 100) : 0)
 
 function valueAt(x: number): number {
@@ -26,15 +41,24 @@ function start(event: PointerEvent) {
   if (props.disabled) return
   const target = event.currentTarget as HTMLElement
   target.setPointerCapture(event.pointerId)
+  startX = event.clientX
+  moved.value = false
   dragging.value = true
-  preview.value = valueAt(event.clientX)
 }
 
 function move(event: PointerEvent) {
-  if (dragging.value) preview.value = valueAt(event.clientX)
+  if (!dragging.value) return
+  if (!moved.value && Math.abs(event.clientX - startX) < DRAG_PX) return
+  moved.value = true
+  preview.value = valueAt(event.clientX)
 }
 
-function commit() {
+function release() {
+  if (dragging.value && !moved.value) return cancel()
+  apply()
+}
+
+function apply() {
   dragging.value = false
   const change = delta.value
   preview.value = null
@@ -54,7 +78,7 @@ function key(event: KeyboardEvent) {
     preview.value = Math.max(0, base - step)
   else if (event.key === 'ArrowRight' || event.key === 'ArrowUp')
     preview.value = Math.min(props.max, base + step)
-  else if (event.key === 'Enter') return commit()
+  else if (event.key === 'Enter') return apply()
   else if (event.key === 'Escape') return cancel()
   else return
   event.preventDefault()
@@ -71,10 +95,10 @@ function key(event: KeyboardEvent) {
     :aria-valuemin="0"
     :aria-valuemax="max"
     :aria-valuenow="shown"
-    :aria-valuetext="delta ? `${shown} HP (${delta > 0 ? '+' : ''}${delta})` : `${shown} HP`"
+    :aria-valuetext="delta ? label : `${hp} HP`"
     @pointerdown="start"
     @pointermove="move"
-    @pointerup="commit"
+    @pointerup="release"
     @pointercancel="cancel"
     @keydown="key"
     @blur="preview !== null && !dragging && cancel()"
@@ -84,11 +108,11 @@ function key(event: KeyboardEvent) {
       class="meter"
       :class="{ 'meter--accent': tone === 'accent', 'meter--danger': tone === 'danger' }"
     >
-      <span :style="{ width: pct(Math.min(shown, hp)) + '%' }" />
+      <span :style="{ width: pct(Math.min(result, hp)) + '%' }" />
       <i
-        v-if="delta < 0"
+        v-if="delta < 0 && result < hp"
         class="hpbar__loss"
-        :style="{ left: pct(shown) + '%', width: pct(-delta) + '%' }"
+        :style="{ left: pct(result) + '%', width: pct(hp - result) + '%' }"
       />
       <i
         v-if="delta > 0"
@@ -104,7 +128,7 @@ function key(event: KeyboardEvent) {
       :style="{ left: Math.min(80, Math.max(20, pct(shown))) + '%' }"
       aria-live="polite"
     >
-      {{ delta < 0 ? `−${-delta} damage` : `+${delta} healing` }} → {{ shown }}
+      {{ label }}
     </span>
   </div>
 </template>
@@ -115,7 +139,7 @@ function key(event: KeyboardEvent) {
   margin: -8px 0;
   padding: 8px 0;
   cursor: ew-resize;
-  touch-action: none;
+  touch-action: pan-y;
 
   &.is-locked {
     cursor: default;

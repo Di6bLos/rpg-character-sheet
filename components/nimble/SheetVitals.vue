@@ -178,6 +178,7 @@ function confirmRest() {
         <NimbleHpBar
           :hp="sheet.hp"
           :max="sheet.hpMax"
+          :temp="sheet.tempHp"
           :tone="sheet.hp === 0 ? 'danger' : bloodied ? 'accent' : ''"
           :disabled="!canEdit"
           @change="changeHp"
