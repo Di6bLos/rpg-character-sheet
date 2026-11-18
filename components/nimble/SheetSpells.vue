@@ -29,13 +29,11 @@ const schools = computed(() =>
     <NimbleSpellPool />
 
     <details class="tier spell-list" open>
-      <summary class="caps">
-        Spell list <small>{{ known.length + utility.length }}</small>
-      </summary>
+      <summary class="caps">Spell list</summary>
       <div class="stack" style="gap: 16px">
         <details v-for="g in tiers" :key="g.tier" class="tier" open>
           <summary class="caps">
-            {{ g.label }} <small>{{ g.spells.length }}</small>
+            {{ g.label }}
           </summary>
           <div class="spell-grid">
             <details v-for="s in g.spells" :key="s.name" name="nimble-spell" class="tile spell">
@@ -110,9 +108,7 @@ const schools = computed(() =>
         <p v-if="!known.length" class="empty">No combat spells yet.</p>
 
         <details v-if="utility.length" class="tier" open>
-          <summary class="caps">
-            Utility spells <small>{{ utility.length }}</small>
-          </summary>
+          <summary class="caps">Utility spells</summary>
           <div class="stack" style="gap: 8px">
             <details v-for="s in utility" :key="s.name" name="nimble-utility" class="tile utility">
               <summary>
