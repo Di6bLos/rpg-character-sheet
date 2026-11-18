@@ -80,6 +80,16 @@ describe('conditions', () => {
     expect(sheet.conditionEnds).toEqual({})
   })
 
+  it('keeps a turn-end condition set during your turn until the end of your next turn', () => {
+    const sheet = hero()
+    startTurn(sheet, 1)
+    addCondition(sheet, 'Slowed')
+    expect(endTurn(sheet, 1)).not.toMatch(/No longer Slowed/)
+    expect(sheet.conditions).toContain('Slowed')
+    startTurn(sheet, 1)
+    expect(endTurn(sheet, 1)).toMatch(/No longer Slowed/)
+  })
+
   it('rolls advantage by dropping the lowest die', () => {
     const faces = [1, 5]
     let i = 0
