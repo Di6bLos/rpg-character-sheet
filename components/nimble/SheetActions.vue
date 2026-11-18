@@ -49,8 +49,10 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           <div class="attack__head">
             <div class="stack" style="gap: 2px">
               <strong style="font-size: 16px">{{ a.name }}</strong>
+              <span v-if="a.who" class="attack__who">{{ a.who }}</span>
               <span class="muted" style="font-size: 12px">{{ a.props }}</span>
               <span class="boost">{{ a.cost }}</span>
+              <NimbleModifiers :summon="a.summon" />
             </div>
             <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
           </div>
@@ -128,6 +130,12 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
 </template>
 
 <style scoped lang="scss">
+.attack__who {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--page-soft);
+}
+
 .boost {
   font-size: 12px;
   font-weight: 600;

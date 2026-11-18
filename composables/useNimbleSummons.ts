@@ -122,6 +122,8 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
     const out: {
       key: string
       name: string
+      who: string
+      summon: string
       dmg: string
       props: string
       cost: string
@@ -130,11 +132,24 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
     }[] = []
     if (minions.value) {
       const stats = summonStats(sheet.value, level.value, summonById('shadow-minion')!)
+      const who = groups.value
+        .filter(
+          (g) => g.id === 'shadow-minion' || g.id === 'favored-pet' || g.id === 'greater-shadow',
+        )
+        .map((g) => {
+          const first = g.members[0]?.name ?? g.name
+          return g.members.length > 1
+            ? `${first.replace(/ [A-Z]$/, '')} ×${g.members.length}`
+            : first
+        })
+        .join(' · ')
       out.push({
         key: 'minions',
         name: 'Command minions',
+        who,
+        summon: 'shadow-minion',
         dmg: `${minions.value}× 1d${stats.die}`,
-        props: `Each minion moves 6 then attacks · Reach ${stats.reach} · a 1 misses, no crits`,
+        props: `${stats.damageType} · each moves 6 then attacks · Reach ${stats.reach} · a 1 misses, no crits`,
         cost: '1 action · 1/turn',
         why: commandUsed.value ? 'Once per turn' : left.value < 1 ? 'No actions left' : '',
         run: command,
@@ -145,6 +160,8 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
       out.push({
         key: 'spirit',
         name: `${spirit.value.name} attacks`,
+        who: summonById('lifebinding-spirit')?.name ?? '',
+        summon: 'lifebinding-spirit',
         dmg: `${stats.diceMult}d${stats.die}+WIL`,
         props: `${stats.damageType}, Reach ${stats.reach}, ignoring armor`,
         cost: spiritCost() ? '1 action' : 'free',
@@ -158,6 +175,8 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
       out.push({
         key: 'companion',
         name: `${pet.name}: ${attack.label ?? 'Attack'}`,
+        who: summonById(pet.def)?.name ?? '',
+        summon: pet.def,
         dmg: attack.dice.replace(
           /\+(?:(\d+)×)?LVL$/,
           (_, mult?: string) => `+${Number(mult ?? 1) * level.value}`,

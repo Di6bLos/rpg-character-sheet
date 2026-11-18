@@ -517,7 +517,7 @@ const effectRows = computed(() =>
             <span class="apm__name">{{ a.name }}</span>
             <span class="apm__tag">{{ a.dmg }}</span>
             <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
-              {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
+              {{ [a.why, a.who, a.cost].filter(Boolean).join(' · ') }}
             </span>
           </button>
         </li>
