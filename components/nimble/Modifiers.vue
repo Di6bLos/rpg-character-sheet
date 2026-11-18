@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NimbleSheet } from '~/types/sheets'
 import { abilityModifiers, weaponAliases } from '~/utils/nimbleBuild'
+import { usedUpLabel } from '~/utils/nimblePlay'
 import { summonModifiers } from '~/utils/nimbleSummons'
 
 const props = defineProps<{
@@ -38,7 +39,12 @@ const items = computed(() =>
       counters,
       uses: counters.map((c) => `${c.left}/${c.max} ${c.label}`).join(' · '),
       cost: counters[0]?.costText ?? '',
-      why: left === 0 ? 'None left' : short ? 'Not enough actions' : '',
+      why:
+        left === 0
+          ? usedUpLabel(counters.find((c) => c.left === 0))
+          : short
+            ? 'Not enough actions'
+            : '',
     }
   }),
 )

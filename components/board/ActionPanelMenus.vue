@@ -19,6 +19,7 @@ import {
   stopCasting,
   toggleActionPip,
   turnActions,
+  usedUpLabel,
 } from '~/utils/nimblePlay'
 
 defineProps<{ drawer: boolean }>()
@@ -275,7 +276,7 @@ const counterRows = computed(() =>
       left: c.left,
       max: c.max,
       off: c.left === 0 || c.short,
-      warn: c.left === 0 ? 'None left' : c.short ? 'Not enough actions' : '',
+      warn: c.left === 0 ? usedUpLabel(c) : c.short ? 'Not enough actions' : '',
       linked: a.companion || (c.linked && !!diceMenu.value) || attackAbilityKeys.value.has(a.key),
       counter: c,
     })),
@@ -738,7 +739,7 @@ const effectRows = computed(() =>
               <span class="apm__sub">
                 {{
                   sheet.uses['Rage@turn']?.used
-                    ? 'Once per turn'
+                    ? 'Used this turn'
                     : `Roll a d${diceMenu.die} Fury Die`
                 }}
               </span>
