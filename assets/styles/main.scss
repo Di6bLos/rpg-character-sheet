@@ -293,6 +293,13 @@ img {
     width: 100%;
   }
 
+  &--wrap {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.3;
+    padding-block: 6px;
+  }
+
   &--icon {
     width: 44px;
     padding: 0;

@@ -57,6 +57,7 @@ const inventionOf = (name: string) => INVENTIONS.find((i) => i.name === abilityB
             :text="splitMishap(a.desc).mishap!.text"
           />
         </template>
+        <NimbleTrigger :name="a.name" :text="a.desc" />
         <NimbleModifiers :target="a.name" />
         <button
           v-if="effectBy.get(a.name)"

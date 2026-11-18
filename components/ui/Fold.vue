@@ -1,16 +1,27 @@
 <script setup lang="ts">
-const props = defineProps<{ name: string }>()
+const props = withDefaults(defineProps<{ name: string; open?: boolean }>(), { open: undefined })
 
 const storageKey = computed(() => `lantern:fold:${props.name}`)
 const folded = ref(false)
 
 onMounted(() => {
+  if (props.open !== undefined) {
+    folded.value = !props.open
+    return
+  }
   try {
     folded.value = localStorage.getItem(storageKey.value) === '1'
   } catch {
     folded.value = false
   }
 })
+
+watch(
+  () => props.open,
+  (open) => {
+    if (open !== undefined) folded.value = !open
+  },
+)
 
 function toggle() {
   folded.value = !folded.value

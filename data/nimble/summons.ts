@@ -7,6 +7,7 @@ import type { SummonDef, SummonMod } from './types'
 export const SUMMONS: SummonDef[] = [
   {
     id: 'shadow-minion',
+    damageType: 'necrotic',
     combatant: true,
     name: 'Shadow minion',
     source: 'Summon Shadows',
@@ -31,6 +32,7 @@ export const SUMMONS: SummonDef[] = [
   },
   {
     id: 'greater-shadow',
+    damageType: 'necrotic',
     combatant: true,
     name: 'Greater Shadow',
     source: 'Greater Shadow',
@@ -43,6 +45,7 @@ export const SUMMONS: SummonDef[] = [
   },
   {
     id: 'lifebinding-spirit',
+    damageType: 'radiant',
     name: 'Lifebinding Spirit',
     source: 'Lifebinding Spirit',
     hp: 0,
@@ -248,8 +251,14 @@ export const SUMMON_MODS: SummonMod[] = [
     ability: 'Draconic Crimson Rite',
     summon: 'shadow-minion',
     onCrit: 'Draconic Crimson Rite: the crit inflicts Smoldering.',
+    damageType: 'fire',
   },
-  { ability: 'Master of Nightfrost', summon: 'shadow-minion', critTempHp: 'INT+LVL' },
+  {
+    ability: 'Master of Nightfrost',
+    summon: 'shadow-minion',
+    critTempHp: 'INT+LVL',
+    damageType: 'cold',
+  },
   {
     ability: 'Safety Buddy: Advanced Propulsion System',
     summon: 'safety-buddy',

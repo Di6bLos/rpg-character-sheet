@@ -24,6 +24,12 @@ const openSummons = ref<string | null>(null)
 
 const KIND_LABEL = { pc: 'PC', npc: 'NPC', monster: 'Monster', summon: 'Summon' } as const
 
+function heroDead(c: TurnRow) {
+  const summary = c.kind === 'pc' ? rosterFor(c)?.summary : undefined
+  const max = summary?.woundsMax ?? 0
+  return !!summary && max > 0 && (summary.wounds ?? 0) >= max
+}
+
 function rosterFor(c: TurnRow) {
   return c.character_id ? props.roster.find((r) => r.character_id === c.character_id) : undefined
 }
@@ -245,6 +251,7 @@ function onInit(c: TurnRow, event: Event) {
               :class-slug="rosterFor(c)?.summary?.classSlug ?? null"
               :square="c.kind === 'monster'"
               :faded="isDown(c)"
+              :dead="heroDead(c)"
               :size="60"
             />
             <span
@@ -257,7 +264,9 @@ function onInit(c: TurnRow, event: Event) {
               heroSummons(c).length
             }}</span>
           </span>
-          <span class="ini__name">{{ rowName(c) }}</span>
+          <span class="ini__name"
+            >{{ rowName(c) }}<span v-if="heroDead(c)" class="dead-tag"> (dead)</span></span
+          >
         </component>
         <span class="ini__state" :class="{ 'is-low': isDown(c) || c.hp_band === 'Bloodied' }">{{
           status(c)
@@ -395,6 +404,10 @@ function onInit(c: TurnRow, event: Event) {
 </template>
 
 <style scoped lang="scss">
+.dead-tag {
+  color: var(--danger);
+}
+
 .ini {
   padding: 16px 18px;
   display: flex;

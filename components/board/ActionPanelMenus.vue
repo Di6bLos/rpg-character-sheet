@@ -11,12 +11,14 @@ import {
   gainAction,
   heal,
   isHollowOne,
+  isDead,
   takeDamage,
   newEncounter,
   newRound,
   stopCasting,
   toggleActionPip,
   turnActions,
+  usedUpLabel,
 } from '~/utils/nimblePlay'
 
 defineProps<{ drawer: boolean }>()
@@ -64,24 +66,32 @@ const {
   toggleMalfunction,
   inventions,
   operate,
+  abilityActions,
   effects,
   useEffect,
   stopEffect,
   prepaid,
   inventionAttacks,
+  attackAbilities,
+  attackAbilityKeys,
+  opportunityOptions,
 } = useNimbleActions({ onResult: announce })
 const {
   tiers,
   help: spellHelp,
   cast,
   reactionSpells,
+  spellAttacks,
+  spellAttackTiers,
+  maxTier,
+  setUpcast,
   pool: spellPool,
+  summonSpells,
 } = useNimbleSpells({ onResult: announce })
 const {
   available: summonable,
   minions,
   spirit,
-  summon,
   dismiss,
   slay,
   sacrifice,
@@ -93,6 +103,7 @@ const {
   groups: summonGroups,
   summonAttacks,
 } = useNimbleSummons({ onResult: announce })
+const isFull = (id: string) => !!summonable.value.find((a) => a.id === id)?.full
 
 /** One row per summon kind, a stack for identical minions; hand-added ones each get a row. */
 const summonStacks = computed(() =>
@@ -146,7 +157,7 @@ function startEncounter(values?: number[]) {
 
 function damageOne() {
   if (!canEdit.value) return
-  const message = takeDamage(sheet.value, 1)
+  const message = takeDamage(sheet.value, 1, draft.value.level)
   if (message) {
     say(message)
     announce(message)
@@ -228,7 +239,7 @@ const spellGroups = computed(() =>
         : s.noActions
           ? 'No actions left'
           : s.short
-            ? `Needs ${s.usesMinions ? s.cost : `${s.at} mana`}`
+            ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
             : '',
     })),
   })),
@@ -246,13 +257,14 @@ const counterRows = computed(() =>
       left: c.left,
       max: c.max,
       off: c.left === 0 || c.short,
-      warn: c.left === 0 ? 'None left' : c.short ? 'Not enough actions' : '',
-      linked: a.companion || (c.linked && !!diceMenu.value),
+      warn: c.left === 0 ? usedUpLabel(c) : c.short ? 'Not enough actions' : '',
+      linked: a.companion || (c.linked && !!diceMenu.value) || attackAbilityKeys.value.has(a.key),
       counter: c,
     })),
   ),
 )
 const abilityRows = computed(() => counterRows.value.filter((r) => !r.linked))
+const otherActions = computed(() => abilityActions.value.filter((a) => !a.attack))
 const linkedOptions = computed(() => (diceMenu.value ? allLinked.value : []))
 const effectRows = computed(() =>
   effects.value.filter((e) => !counterRows.value.some((a) => a.name === e.source)),
@@ -263,7 +275,15 @@ const effectRows = computed(() =>
   <div class="apm">
     <header class="apm__head">
       <div class="apm__who">
-        <strong>{{ draft.name }}</strong>
+        <strong>{{ draft.name }}<span v-if="isDead(sheet)" class="apm__dead"> (dead)</span></strong>
+        <UiSwitch
+          :model-value="sheet.ownDice"
+          label="I roll my own dice"
+          small
+          :disabled="!canEdit"
+          class="apm__own"
+          @update:model-value="setOwnDice"
+        />
       </div>
       <NuxtLink
         :to="sheetLink"
@@ -465,13 +485,6 @@ const effectRows = computed(() =>
       :disabled="!canEdit"
       @submit="startEncounter"
     />
-    <UiSwitch
-      :model-value="sheet.ownDice"
-      label="I roll my own dice"
-      :disabled="!canEdit"
-      class="apm__own"
-      @update:model-value="setOwnDice"
-    />
 
     <p class="apm__result" :class="{ 'apm__result--empty': !lastRoll }" role="status">
       <span :key="seq">{{ lastRoll }}</span>
@@ -504,8 +517,15 @@ const effectRows = computed(() =>
           prepaid > 0 ? 'Paid' : actionsNow === 0 ? 'No actions left' : attacks.length
         }}</small>
       </summary>
+      <NimbleAttackSituation class="apm__situation" />
       <ul
-        v-if="attacks.length || summonAttacks.length || inventionAttacks.length"
+        v-if="
+          attacks.length ||
+          summonAttacks.length ||
+          inventionAttacks.length ||
+          spellAttacks.length ||
+          attackAbilities.length
+        "
         class="apm__list"
       >
         <li v-for="(w, i) in attacks" :key="i">
@@ -515,6 +535,7 @@ const effectRows = computed(() =>
             :aria-disabled="!canEdit || w.blocked || undefined"
             :aria-label="`${sheet.ownDice ? 'Attack: ' : ''}${w.name}, ${w.dmg} damage${w.rushed ? `, ${w.rushed}× disadvantage` : ''}${w.blocked ? '. No actions left' : ''}`"
             :aria-describedby="w.props ? `${uid}-w${i}` : undefined"
+            :title="w.oddsWhy || undefined"
             @click="canEdit && !w.blocked && w.roll()"
           >
             <span class="apm__name">{{ w.name }}</span>
@@ -533,14 +554,18 @@ const effectRows = computed(() =>
             type="button"
             class="apm__row"
             :aria-disabled="!canEdit || !!inv.why || undefined"
-            :aria-label="`${inv.name}, ${inv.dmg}, ${inv.cost}${inv.why ? `. ${inv.why}` : ''}`"
-            :title="inv.props"
+            :aria-label="`${inv.name}, ${inv.dmg}, ${inv.cost}${inv.rushed ? `, ${inv.rushed}× disadvantage` : ''}${inv.why ? `. ${inv.why}` : ''}`"
+            :title="[inv.props, inv.oddsWhy].filter(Boolean).join(' · ')"
             @click="canEdit && !inv.why && inv.run()"
           >
             <span class="apm__name">{{ inv.name }}</span>
             <span class="apm__tag">{{ inv.dmg }}</span>
             <span class="apm__sub" :class="{ 'apm__sub--warn': inv.why }">
-              {{ [inv.why, inv.cost].filter(Boolean).join(' · ') }}
+              {{
+                [inv.why, inv.rushed ? `${inv.rushed}× disadvantage` : '', inv.cost]
+                  .filter(Boolean)
+                  .join(' · ')
+              }}
             </span>
           </button>
         </li>
@@ -557,6 +582,75 @@ const effectRows = computed(() =>
             <span class="apm__tag">{{ a.dmg }}</span>
             <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
               {{ [a.why, a.who, a.cost].filter(Boolean).join(' · ') }}
+            </span>
+          </button>
+        </li>
+        <li v-if="spellAttacks.length">
+          <details class="apm__spell apm__spells">
+            <summary class="apm__row">
+              <span class="apm__name">Spells</span>
+              <span class="apm__tag">{{ spellAttacks.length }}</span>
+              <span v-if="spellPool" class="apm__sub" :class="{ 'apm__sub--warn': spellPool.low }">
+                {{ spellPool.label }} {{ spellPool.value }}
+              </span>
+            </summary>
+            <details v-for="g in spellAttackTiers" :key="g.tier" class="apm__spell apm__tier" open>
+              <summary class="apm__caps">{{ g.label }}</summary>
+              <ul class="apm__list">
+                <li v-for="a in g.spells" :key="a.key">
+                  <details class="apm__spell">
+                    <summary class="apm__row">
+                      <span class="apm__name">{{ a.name }}</span>
+                      <span class="apm__tag">{{ a.dmg }}</span>
+                      <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
+                        {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
+                      </span>
+                    </summary>
+                    <div class="apm__spell-body">
+                      <small>{{ a.props }}</small>
+                      <NimbleModifiers :target="a.name" />
+                      <NimbleUpcast
+                        v-if="a.spell.canUpcast"
+                        :name="a.name"
+                        :tier="a.spell.tier"
+                        :at="a.spell.at"
+                        :max="maxTier"
+                        :price="a.price"
+                        :disabled="!canEdit"
+                        @set="setUpcast(a.spell, $event)"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn--sm btn--wrap"
+                        :disabled="!canEdit || !!a.why"
+                        :title="a.why || a.oddsWhy || undefined"
+                        @click="a.run()"
+                      >
+                        {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll')
+                        }}<template v-if="!a.why && a.rushed">
+                          · {{ a.rushed }}× disadvantage</template
+                        >
+                      </button>
+                    </div>
+                  </details>
+                </li>
+              </ul>
+            </details>
+          </details>
+        </li>
+        <li v-for="a in attackAbilities" :key="a.key">
+          <button
+            type="button"
+            class="apm__row"
+            :aria-disabled="!canEdit || !!a.why || undefined"
+            :aria-label="`Use ${a.name}, ${a.costText}${a.why ? `. ${a.why}` : ''}`"
+            :title="a.desc"
+            @click="canEdit && !a.why && a.use()"
+          >
+            <span class="apm__name">{{ a.name }}</span>
+            <span class="apm__tag">Use</span>
+            <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
+              {{ [a.why, a.costText].filter(Boolean).join(' · ') }}
             </span>
           </button>
         </li>
@@ -598,7 +692,7 @@ const effectRows = computed(() =>
               <span class="apm__sub">
                 {{
                   sheet.uses['Rage@turn']?.used
-                    ? 'Once per turn'
+                    ? 'Used this turn'
                     : `Roll a d${diceMenu.die} Fury Die`
                 }}
               </span>
@@ -921,17 +1015,19 @@ const effectRows = computed(() =>
             Dismiss
           </button>
         </li>
-        <li v-if="summonable.length" class="apm__caps" aria-hidden="true">Add by hand (no cost)</li>
-        <li v-for="a in summonable" :key="a.id">
+        <li v-if="summonSpells.length" class="apm__caps" aria-hidden="true">Summoning spells</li>
+        <li v-for="sp in summonSpells" :key="sp.name">
           <button
             type="button"
             class="apm__row"
-            :aria-label="`Add ${a.name} by hand, without casting or spending a use`"
-            :aria-disabled="!canEdit || a.full || undefined"
-            @click="canEdit && !a.full && summon(a.id)"
+            :aria-label="`Cast ${sp.name}, ${sp.cost}${sp.blocked ? `. ${sp.blocked}` : ''}`"
+            :aria-disabled="!canEdit || !!sp.blocked || isFull(sp.summon) || undefined"
+            :title="sp.desc"
+            @click="canEdit && !sp.blocked && !isFull(sp.summon) && cast(sp)"
           >
-            <span class="apm__name">+ {{ a.name }}</span>
-            <span class="apm__tag">{{ a.full ? 'Max' : 'Add' }}</span>
+            <span class="apm__name">{{ sp.name }}</span>
+            <span class="apm__tag">{{ isFull(sp.summon) ? 'Max' : sp.cost }}</span>
+            <span v-if="sp.blocked" class="apm__sub apm__sub--warn">{{ sp.blocked }}</span>
           </button>
         </li>
       </ul>
@@ -971,6 +1067,16 @@ const effectRows = computed(() =>
                 <small>{{ s.cast }}</small>
                 <p>{{ s.desc }}</p>
                 <NimbleModifiers :target="s.name" />
+                <NimbleUpcast
+                  v-if="s.canUpcast"
+                  :name="s.name"
+                  :tier="s.tier"
+                  :at="s.at"
+                  :max="maxTier"
+                  :price="s.cost"
+                  :disabled="!canEdit"
+                  @set="setUpcast(s, $event)"
+                />
                 <div class="row" style="gap: 6px; flex-wrap: wrap">
                   <button
                     type="button"
@@ -991,6 +1097,17 @@ const effectRows = computed(() =>
                   >
                     {{ s.bloodLabel }}
                   </button>
+                  <button
+                    v-for="a in s.alts"
+                    :key="a.key"
+                    type="button"
+                    class="btn btn--ghost btn--sm btn--wrap"
+                    :disabled="!canEdit || s.busy || s.noActions || !!a.why"
+                    :title="a.why || undefined"
+                    @click="cast(s, false, a.key)"
+                  >
+                    {{ a.why || a.label }}
+                  </button>
                 </div>
               </div>
             </details>
@@ -1010,19 +1127,57 @@ const effectRows = computed(() =>
       </summary>
       <ul class="apm__list">
         <li v-for="(r, k) in reactions" :key="r.name">
+          <details
+            v-if="r.name === 'Opportunity Attack' && opportunityOptions.length"
+            class="apm__spell"
+          >
+            <summary class="apm__row" :class="{ 'apm__row--used': r.used }">
+              <span class="apm__name">{{ r.name }}</span>
+              <span class="apm__tag">{{ r.used ? 'Used' : r.free ? 'Free' : '1 act' }}</span>
+              <span class="apm__sub">Melee · pick a weapon</span>
+            </summary>
+            <ul class="apm__list apm__oa">
+              <li v-for="o in opportunityOptions" :key="o.name">
+                <button
+                  type="button"
+                  class="apm__row"
+                  :aria-disabled="!canEdit || !!o.why || undefined"
+                  :aria-label="`Opportunity Attack with ${o.name}, ${o.dmg}${o.why ? `. ${o.why}` : ''}`"
+                  @click="canEdit && !o.why && o.roll()"
+                >
+                  <span class="apm__name">{{ o.name }}</span>
+                  <span class="apm__tag">{{ o.dmg }}</span>
+                  <span class="apm__sub" :class="{ 'apm__sub--warn': o.why }">
+                    {{ o.why || (o.odds > 0 ? `${o.odds}× disadvantage` : 'Roll') }}
+                  </span>
+                </button>
+              </li>
+              <li v-if="r.used">
+                <button
+                  type="button"
+                  class="apm__row"
+                  :aria-disabled="!canEdit || undefined"
+                  @click="canEdit && toggleReaction(r.name)"
+                >
+                  <span class="apm__name">Undo Opportunity Attack</span>
+                </button>
+              </li>
+            </ul>
+          </details>
           <button
+            v-else
             type="button"
             class="apm__row"
             :class="{ 'apm__row--used': r.used }"
             :aria-pressed="r.used"
             :aria-disabled="!canEdit || r.blocked || undefined"
-            :aria-label="`Mark ${r.name} used, 1 action${r.blocked ? '. No actions left' : ''}`"
+            :aria-label="`Mark ${r.name} used, ${r.free ? 'free' : '1 action'}${r.blocked ? '. No actions left' : ''}`"
             :aria-describedby="`${uid}-r${k}`"
             :title="r.desc"
             @click="canEdit && !r.blocked && toggleReaction(r.name)"
           >
             <span class="apm__name">{{ r.name }}</span>
-            <span class="apm__tag">{{ r.used ? 'Used' : '1 act' }}</span>
+            <span class="apm__tag">{{ r.used ? 'Used' : r.free ? 'Free' : '1 act' }}</span>
             <span :id="`${uid}-r${k}`" class="sr-only">{{ r.desc }}</span>
           </button>
         </li>
@@ -1046,7 +1201,7 @@ const effectRows = computed(() =>
     </details>
 
     <details
-      v-if="sheet.turnActive && (abilityRows.length || effectRows.length)"
+      v-if="sheet.turnActive && (abilityRows.length || effectRows.length || otherActions.length)"
       name="action-panel"
       class="apm__menu"
     >
@@ -1054,11 +1209,27 @@ const effectRows = computed(() =>
         <span>Abilities</span>
         <UiHelp
           label="About abilities"
-          text="Limited-use abilities. Use spends one; refills when your turn starts, on New encounter or on a Safe Rest."
+          text="Ability actions and limited-use abilities. Use pays the actions (and mana); limited uses refill when your turn starts, on New encounter or on a Safe Rest."
         />
-        <small>{{ abilityRows.length }}</small>
+        <small>{{ abilityRows.length + otherActions.length }}</small>
       </summary>
       <ul class="apm__list">
+        <li v-for="(a, n) in otherActions" :key="a.key">
+          <button
+            type="button"
+            class="apm__row"
+            :aria-disabled="!canEdit || a.short || undefined"
+            :aria-label="`Use ${a.name}, ${a.costText}${a.why ? `. ${a.why}` : ''}`"
+            :aria-describedby="`${uid}-x${n}`"
+            :title="a.desc"
+            @click="canEdit && !a.short && a.use()"
+          >
+            <span class="apm__name">{{ a.name }}</span>
+            <span class="apm__tag">{{ a.costText }}</span>
+            <span v-if="a.why" class="apm__sub apm__sub--warn">{{ a.why }}</span>
+            <span :id="`${uid}-x${n}`" class="sr-only">{{ a.desc }}</span>
+          </button>
+        </li>
         <li v-for="e in effectRows" :key="e.source">
           <button
             type="button"
@@ -1230,6 +1401,19 @@ const effectRows = computed(() =>
   }
 }
 
+.apm__oa {
+  margin: 2px 0 6px 10px;
+}
+
+.apm__tier {
+  margin: 4px 0 0 8px;
+
+  > summary {
+    padding: 2px 0;
+    cursor: pointer;
+  }
+}
+
 .apm__spell-body {
   display: flex;
   flex-direction: column;
@@ -1255,6 +1439,10 @@ const effectRows = computed(() =>
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--page-muted);
+}
+
+.apm__situation {
+  padding: 4px 8px 6px;
 }
 
 .apm__list {
@@ -1383,9 +1571,21 @@ const effectRows = computed(() =>
   padding: 4px 8px;
 }
 
+.apm__dead {
+  color: var(--danger);
+  font-size: 0.85em;
+}
+
 .apm__own {
-  min-height: 36px;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 28px;
   font-size: 12px;
+  color: var(--page-muted);
+
+  :deep(.switch__label) {
+    white-space: nowrap;
+  }
 }
 
 .apm__menu--off {

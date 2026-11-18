@@ -1,10 +1,10 @@
 <script setup lang="ts">
-defineProps<{ label: string; hideLabel?: boolean; disabled?: boolean }>()
+defineProps<{ label: string; hideLabel?: boolean; disabled?: boolean; small?: boolean }>()
 const checked = defineModel<boolean>({ required: true })
 </script>
 
 <template>
-  <label class="switch" :class="{ 'is-disabled': disabled }">
+  <label class="switch" :class="{ 'is-disabled': disabled, 'switch--small': small }">
     <span :class="{ 'sr-only': hideLabel }" class="switch__label">{{ label }}</span>
     <button
       type="button"
@@ -31,6 +31,26 @@ const checked = defineModel<boolean>({ required: true })
 
   &.is-disabled {
     cursor: not-allowed;
+  }
+}
+
+.switch--small {
+  gap: 10px;
+
+  .switch__track {
+    width: 36px;
+    height: 20px;
+
+    &[aria-checked='true'] .switch__knob {
+      left: 19px;
+    }
+  }
+
+  .switch__knob {
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
   }
 }
 

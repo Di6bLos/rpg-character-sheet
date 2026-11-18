@@ -7,14 +7,24 @@ import type { NimbleSheet, NimbleStat } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
 import { hasTransforms } from '~/utils/nimbleEffects'
+import { isDead } from '~/utils/nimblePlay'
+import { DEAD_PORTRAIT } from '~/utils/deadPortrait'
 import { availableSummons } from '~/utils/nimbleSummons'
 
-const { draft } = useSheet<NimbleSheet>()
+const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
+const ownDice = computed({
+  get: () => sheet.value.ownDice,
+  set: (on: boolean) => {
+    if (canEdit.value) sheet.value.ownDice = on
+  },
+})
 
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
 
 const cls = computed(() => classBySlug(sheet.value.classSlug))
+const dead = computed(() => isDead(sheet.value))
+const deadImageFailed = ref(false)
 
 const hasForms = computed(() => hasTransforms(sheet.value))
 
@@ -68,6 +78,17 @@ const skills = computed(() =>
       <template v-if="cls" #empty>
         <NimbleSigil :slug="cls.slug" :size="140" class="nb-sigil" />
       </template>
+      <template v-if="dead" #overlay>
+        <div class="dead-overlay" role="img" :aria-label="`${draft.name} is dead`">
+          <img
+            v-if="!deadImageFailed"
+            :src="DEAD_PORTRAIT"
+            alt=""
+            @error="deadImageFailed = true"
+          />
+          <UiSkull v-else :size="96" />
+        </div>
+      </template>
     </SheetPortrait>
     <div class="identity__body">
       <div class="stack" style="gap: 8px">
@@ -75,7 +96,14 @@ const skills = computed(() =>
           <span class="badge badge--nimble">Nimble</span>
           <span class="small muted"><SheetCampaignLink /></span>
         </div>
-        <h1>{{ draft.name }}</h1>
+        <h1>{{ draft.name }}<span v-if="dead" class="dead-tag"> (dead)</span></h1>
+        <UiSwitch
+          v-model="ownDice"
+          label="I roll my own dice (the app only checks things off)"
+          small
+          :disabled="!canEdit"
+          class="own-dice"
+        />
         <div class="identity__line">
           <span
             >Level <strong>{{ draft.level }}</strong></span
@@ -110,8 +138,18 @@ const skills = computed(() =>
   <div class="play">
     <div class="play__col">
       <NimbleSheetVitals style="order: 1" />
-      <NimbleSheetActions style="order: 4" />
-      <section class="panel stack" style="gap: 6px; order: 9" aria-labelledby="sk-h">
+      <NimbleSheetSummons v-if="hasSummons" style="order: 7" />
+      <NimbleSheetSpells v-if="hasSpells" style="order: 8" />
+      <NimbleSheetInventory style="order: 12" />
+    </div>
+    <div class="play__col">
+      <NimbleSheetTurn style="order: 2" />
+      <NimbleSheetAttacks :style="{ order: sheet.turnActive ? 3 : 4 }" />
+      <NimbleSheetReactions :style="{ order: sheet.turnActive ? 4 : 3 }" />
+      <NimbleSheetResources style="order: 5" />
+      <NimbleSheetActions style="order: 6" />
+      <NimbleSheetForms v-if="hasForms" style="order: 9" />
+      <section class="panel stack" style="gap: 6px; order: 11" aria-labelledby="sk-h">
         <UiFold name="Skills" />
         <div class="title-help" style="margin: 0 0 6px">
           <h2 id="sk-h">Skills</h2>
@@ -133,15 +171,6 @@ const skills = computed(() =>
         </div>
       </section>
     </div>
-    <div class="play__col">
-      <NimbleSheetTurn style="order: 2" />
-      <NimbleSheetResources style="order: 3" />
-      <NimbleSheetSpells v-if="hasSpells" style="order: 5" />
-      <NimbleSheetSummons v-if="hasSummons" style="order: 6" />
-      <NimbleSheetForms v-if="hasForms" style="order: 7" />
-      <NimbleSheetConditions style="order: 8" />
-      <NimbleSheetInventory style="order: 10" />
-    </div>
   </div>
 
   <NimbleSheetAbilities />
@@ -150,6 +179,38 @@ const skills = computed(() =>
 </template>
 
 <style scoped lang="scss">
+.dead-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #000;
+  color: #d9d2c5;
+
+  img {
+    position: absolute;
+    inset: 3% 0;
+    width: 100%;
+    height: 94%;
+    object-fit: contain;
+  }
+}
+
+.dead-tag {
+  font-size: 0.6em;
+  color: var(--danger);
+}
+
+.own-dice {
+  justify-content: flex-start;
+  gap: 10px;
+  align-self: flex-start;
+  font-size: 13px;
+  color: var(--page-soft);
+}
+
 .identity {
   display: flex;
   flex-wrap: wrap;

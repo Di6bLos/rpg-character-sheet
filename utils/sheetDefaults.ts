@@ -1,5 +1,6 @@
 import { classBySlug, poolOptionByName, poolOptionWounds } from '~/data/nimble/classes'
 import { BASE_SPEED } from '~/data/nimble/core'
+import { abilityArmor } from '~/utils/nimbleArmor'
 import type { GameSystem } from '~/types'
 import type {
   AnySheet,
@@ -15,7 +16,7 @@ import type {
  * Bump when a class-data change has to be applied to existing saves, and add the
  * upgrade to `upgradeRules`.
  */
-export const NIMBLE_RULES_VERSION = 3
+export const NIMBLE_RULES_VERSION = 4
 
 const PF2E_SKILLS: [string, Pf2eAttr][] = [
   ['Acrobatics', 'DEX'],
@@ -167,6 +168,7 @@ function nimble(): NimbleSheet {
     concentration: '',
     casting: { spell: '', actions: 0 },
     conditions: [],
+    conditionEnds: {},
     resource: {
       name: '',
       diceName: '',
@@ -279,6 +281,20 @@ function upgradeRules(target: Record<string, unknown>, level: number) {
       attack.dmg = '1d4'
       attack.flat = 1 + Number(m[1] ?? 0)
     }
+  }
+  if (
+    from < 4 &&
+    typeof target.ac === 'number' &&
+    Array.isArray(target.abilities) &&
+    isPlainObject(target.stats)
+  ) {
+    const abilities = target.abilities.filter(
+      (a): a is { desc: string } => isPlainObject(a) && typeof a.desc === 'string',
+    )
+    target.ac += abilityArmor({
+      abilities,
+      stats: target.stats as Record<NimbleStat, number>,
+    })
   }
   target.rulesVersion = NIMBLE_RULES_VERSION
 }

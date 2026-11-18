@@ -53,6 +53,22 @@ export interface InventoryItem {
   custom?: CustomItem
 }
 
+export type CustomItemEffectKind =
+  | 'hit'
+  | 'crit'
+  | 'condition'
+  | 'heal'
+  | 'resist'
+  | 'returning'
+  | 'light'
+
+export interface CustomItemEffect {
+  kind: CustomItemEffectKind
+  dice?: string
+  type?: string
+  condition?: string
+}
+
 export interface CustomItem {
   kind: 'weapon' | 'armor' | 'shield' | 'gear'
   dice?: string
@@ -62,6 +78,7 @@ export interface CustomItem {
   melee?: boolean
   armor?: string
   rarity?: string
+  effects?: CustomItemEffect[]
   desc?: string
 }
 
@@ -161,6 +178,21 @@ export interface NimbleAttack {
   dmg: string
   melee: boolean
   flat?: number
+  onHit?: string[]
+  onCrit?: string[]
+}
+
+export type ConditionEnd = 'turnStart' | 'turnEnd' | 'round' | 'encounter'
+
+export interface NimbleCustomSummon {
+  kind: 'minion' | 'companion' | 'spirit' | 'construct' | 'other'
+  armor?: number
+  speed?: number
+  attack?: { name: string; dice: string; type?: string; reach?: number; actions: number }
+  notes?: string
+  abilities?: string[]
+  resist?: string
+  lasts: 'slain' | 'combat' | 'rest'
 }
 
 export interface NimbleSummon {
@@ -169,6 +201,7 @@ export interface NimbleSummon {
   name: string
   hp: number
   hpMax: number
+  custom?: NimbleCustomSummon
   tier?: number
   charges?: number
   portrait?: string
@@ -262,6 +295,7 @@ export interface NimbleSheet extends SheetCommon {
   /** A spell that needs more actions than the turn had: the actions still owed. */
   casting: { spell: string; actions: number; at?: number }
   conditions: string[]
+  conditionEnds: Record<string, ConditionEnd>
   /**
    * Class resource. `active` and `dice` are a Berserker's Rage and Fury dice (added to
    * melee damage); `count` holds the dice, charges or uses of the other kinds (for

@@ -11,6 +11,8 @@ import { defaultSheet } from '../utils/sheetDefaults'
 import {
   abilityBaseName,
   applyNimbleLevel,
+  buildNimbleSheet,
+  creationInput,
   malfunctionRisks,
   weaponAttack,
   classArmor,
@@ -25,7 +27,7 @@ import {
   abilityModifiers,
   weaponAliases,
 } from '../utils/nimbleBuild'
-import { restoreLevel } from '../utils/levelHistory'
+import { restoreBuild, restoreLevel } from '../utils/levelHistory'
 import { abilityCounters } from '../utils/nimblePlay'
 import { autoPick, build, human, levelTo, pickLevel, survivalist } from './helpers/nimble'
 
@@ -739,6 +741,52 @@ describe('lowering the level', () => {
     expect(sheet.hp).toBeLessThanOrEqual(sheet.hpMax)
     expect(sheet.subclassSlug).toBe('')
   })
+
+  for (const cls of NIMBLE_CLASSES)
+    it(`reads back a ${cls.slug}'s level 1 choices and rebuilds them (reconfigure)`, () => {
+      const sheet = build(cls)
+      levelTo(sheet, 6, cls.subclasses[0]!.slug)
+      const before = strip(sheet)
+      const input = creationInput(sheet, 6)!
+      expect(input.skillPoints).toEqual({ Might: 2 })
+      const inputs = sheet.levelHistory!.map((e) => e.nimble!)
+      restoreBuild(sheet, buildNimbleSheet(input))
+      expect(sheet.levelHistory).toEqual([])
+      inputs.forEach((i, n) => applyNimbleLevel(sheet, n + 2, i))
+      expect(strip(sheet)).toEqual(before)
+    })
+
+  it('rebuilds level 1 with new stats and keeps play state', () => {
+    const cls = classBySlug('berserker')!
+    const sheet = build(cls)
+    sheet.inventory.push({ name: 'Lucky coin', qty: '1' })
+    sheet.wounds = 1
+    const input = creationInput(sheet, 1)!
+    restoreBuild(sheet, buildNimbleSheet({ ...input, stats: { STR: 2, DEX: -1, INT: 0, WIL: 2 } }))
+    expect(sheet.stats).toEqual({ STR: 2, DEX: -1, INT: 0, WIL: 2 })
+    expect(sheet.inventory.map((i) => i.name)).toContain('Lucky coin')
+    expect(sheet.wounds).toBe(1)
+  })
+
+  it('keeps conditions with when they end', () => {
+    const sheet = build(classBySlug('berserker')!)
+    levelTo(sheet, 4, 'mountainheart')
+    sheet.conditions = ['Dazed']
+    sheet.conditionEnds = { Dazed: 'round' }
+    restoreLevel(sheet, 2)
+    expect(sheet.conditionEnds).toEqual({ Dazed: 'round' })
+  })
+
+  for (const cls of NIMBLE_CLASSES)
+    it(`rebuilds a ${cls.slug} from its recorded picks after going back (reconfigure)`, () => {
+      const sheet = build(cls)
+      levelTo(sheet, 9, cls.subclasses[0]!.slug)
+      const before = strip(sheet)
+      const inputs = sheet.levelHistory!.filter((e) => e.level > 2).map((e) => e.nimble!)
+      restoreLevel(sheet, 2)
+      inputs.forEach((input, i) => applyNimbleLevel(sheet, i + 3, input))
+      expect(strip(sheet)).toEqual(before)
+    })
 
   it('keeps held Judgment Dice and malfunctions when a level is undone, even from old snapshots', () => {
     const cls = classBySlug('oathsworn')!

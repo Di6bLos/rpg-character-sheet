@@ -4,7 +4,12 @@ import { BACKGROUNDS } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import type { NimbleSheet } from '../types/sheets'
 import { rollNimble } from '../utils/dice'
-import { abilityBaseName, sheetResource } from '../utils/nimbleBuild'
+import {
+  abilityArmor,
+  abilityBaseName,
+  abilityModifiers,
+  sheetResource,
+} from '../utils/nimbleBuild'
 import {
   abilityCounters,
   actionsLeft,
@@ -23,6 +28,17 @@ import {
   fieldRestDice,
   heal,
   hitDiceLeft,
+  abilityTrigger,
+  afterAttack,
+  attackBonus,
+  manaCost,
+  noteMiss,
+  selfGains,
+  stealActions,
+  woundCharges,
+  zealotMax,
+  spellshape,
+  spellshapeCost,
   initiativeRecharges,
   inventorySlots,
   isBloodied,
@@ -32,6 +48,7 @@ import {
   expendJudgment,
   isMishap,
   newEncounter,
+  usedUpLabel,
   startTurn,
   resourceOnAttack,
   rollJudgment,
@@ -66,6 +83,16 @@ function faces(sides: number, ...values: number[]) {
 function hero(patch: Partial<NimbleSheet> = {}): NimbleSheet {
   return { ...defaultSheet('nimble'), hp: 20, hpMax: 20, hitDice: 3, hitDie: 8, ...patch }
 }
+
+describe('spent limits', () => {
+  it('say when they come back', () => {
+    expect(usedUpLabel({ label: 'per turn' })).toBe('Used this turn')
+    expect(usedUpLabel({ label: 'per round' })).toBe('Used this round')
+    expect(usedUpLabel({ label: 'per Safe Rest' })).toBe('Used this Safe Rest')
+    expect(usedUpLabel({ label: 'per day' })).toBe('Used today')
+    expect(usedUpLabel({ label: 'pool' })).toBe('None left')
+  })
+})
 
 describe('nimble damage and healing', () => {
   it('lets temp HP absorb damage first', () => {
@@ -319,9 +346,19 @@ describe('nimble turn tracker', () => {
     startTurn(sheet, 1)
     expect(rage(sheet, 1, false, faces(4, 1))).toMatch(/kept the best 2; Fury 7/)
     expect(sheet.resource.rolls).toEqual([4, 3])
-    expect(spendFury(sheet, 0)).toBe(
-      'Spent a Fury Die (4): That all you got?! reduces the damage by 3.',
+    sheet.abilities.push(
+      {
+        name: 'That all you got?!',
+        src: 'Berserker',
+        desc: 'When you are attacked, you may expend 1 or more Fury Dice to reduce the damage taken by STR+DEX for each die spent.',
+      },
+      {
+        name: 'Stone’s Resilience',
+        src: 'Mountainheart',
+        desc: 'Whenever you expend Fury Dice to reduce incoming damage, add the value of the die to the amount reduced.',
+      },
     )
+    expect(spendFury(sheet, 0)).toBe('Spent a Fury Die (4): reduce the damage by 7. 1 left.')
     expect(newEncounter(sheet, 1)).toBeTruthy()
     expect(sheet.resource).toMatchObject({ active: false, rolls: [] })
 
@@ -485,6 +522,21 @@ describe('nimble sheet upgrades', () => {
       abilities: [{ name: 'Swift Fists', src: 'Zephyr', desc: '' }],
     })
     expect(swift.attacks[0]).toEqual(fist)
+  })
+
+  it('adds permanent ability armor to older saves once', () => {
+    const save = {
+      rulesVersion: 3,
+      ac: 12,
+      stats: { STR: 1, DEX: 3, INT: 2, WIL: 0 },
+      abilities: [
+        { name: 'Misdirection', src: 'Cheat', desc: 'Gain INT armor. Whenever you Defend…' },
+        { name: 'Scurry', src: 'Ancestry', desc: 'Gain +2 armor if you moved on your last turn.' },
+      ],
+    }
+    const sheet = normalizeSheet('nimble', save)
+    expect(sheet.ac).toBe(14)
+    expect(normalizeSheet('nimble', sheet).ac).toBe(14)
   })
 
   it('gives older saves the speed and Hit Dice of picked pool options', () => {
@@ -1145,7 +1197,9 @@ describe('resources on Initiative and each turn', () => {
         ),
       ],
     })
-    expect(initiativeRecharges(commander)).toEqual([{ name: 'Coordinated Strike', count: 1 }])
+    expect(initiativeRecharges(commander)).toEqual([
+      { name: 'Coordinated Strike', count: 1, expires: true },
+    ])
   })
 
   it('rolls Elemental Surge as temporary mana on Initiative', () => {
@@ -1169,5 +1223,355 @@ describe('resources on Initiative and each turn', () => {
       return (value - 0.5) / sides
     })
     expect(sheet.mana.temp).toBe(5)
+  })
+})
+
+describe('class wiring', () => {
+  const ability = (name: string, desc: string, src = 'Class') => ({ name, src, desc })
+
+  it('reads Action/Reaction as a 1-action cost', () => {
+    expect(
+      counterCost('Action/Reaction (on an ally’s turn): Command 1 ally to move for free.'),
+    ).toEqual({ actions: 1 })
+  })
+
+  it('turns Zephyr maneuvers into moves limited to 1 per turn', () => {
+    const zephyr = NIMBLE_CLASSES.find((c) => c.slug === 'zephyr')!
+    const burst = Object.values(zephyr.levels)
+      .flatMap((l) => l?.abilities ?? [])
+      .find((a) => a.name === 'Burst of Speed')!
+    const sheet = hero({ classSlug: 'zephyr', abilities: [ability(burst.name, burst.desc)] })
+    sheet.resource.count = 3
+    const moves = sheetResource(sheet, 2)!.moves
+    expect(moves.map((m) => m.name)).toEqual([
+      'Slipstream',
+      'Whirling Defense',
+      'Swiftstrike',
+      'Windstep',
+    ])
+    expect(spendResourceMove(sheet, 2, 'Slipstream')).toMatch(/spent 1/)
+    expect(sheet.reactionsUsed).toContain('Defend')
+    expect(sheet.resource.count).toBe(2)
+    expect(spendResourceMove(sheet, 2, 'Windstep')).toMatch(/already used a maneuver/)
+    expect(sheet.resource.count).toBe(2)
+  })
+
+  it('counts abilities that spend a class charge as its moves', () => {
+    const sheet = hero({
+      classSlug: 'hunter',
+      abilities: [
+        ability('Thrill of the Hunt', 'Gain a charge.'),
+        ability(
+          'Final Takedown',
+          'Action: Spend 1 Thrill of the Hunt charge to make a melee attack.',
+        ),
+      ],
+    })
+    expect(sheetResource(sheet, 7)!.moves.map((m) => m.name)).toContain('Final Takedown')
+  })
+
+  it('links upgrades to abilities whose name ends in punctuation, and plurals', () => {
+    const sheet = hero({
+      abilities: [
+        ability('Coordinated Strike!', '(1/round) Free action: attack.'),
+        ability('Juggernaut', 'When you use Coordinated Strike, you deal extra damage.'),
+        ability(
+          'Master Commander',
+          'Attacks made from your Coordinated Strikes ignore disadvantage.',
+        ),
+      ],
+    })
+    expect(abilityModifiers(sheet, 'Coordinated Strike!').map((m) => m.name)).toEqual([
+      'Juggernaut',
+      'Master Commander',
+    ])
+  })
+
+  it('reads mana costs and what an ability does to the hero', () => {
+    expect(manaCost('(1/encounter) Action: Spend 3 mana to shift.')).toBe(3)
+    expect(manaCost('Spend 1 or more mana')).toBe(0)
+    const sheet = hero({ woundsMax: 6 })
+    expect(
+      selfGains(sheet, 5, '(1/turn) While Dying, you may suffer 1 Wound to gain 1 action.'),
+    ).toMatch(/Took 1 Wound\. Gained 1 action/)
+    expect(sheet.wounds).toBe(1)
+    expect(actionsLeft(sheet)).toBe(turnActions(sheet) + 1)
+    selfGains(sheet, 5, 'Attacks you make this round don’t miss, and you gain LVL temp HP.')
+    expect(sheet.tempHp).toBe(5)
+  })
+
+  it('spends Spellshaper mana once per turn', () => {
+    expect(spellshapeCost('(1 or more mana) +4 range.')).toMatchObject({ min: 1, more: true })
+    expect(spellshapeCost('(2×mana, min. 1 mana) Copy it.')).toMatchObject({ min: 1, more: true })
+    expect(
+      spellshapeCost('(–2 mana) Spend 1 additional action to reduce the mana cost by 2.'),
+    ).toMatchObject({
+      min: 0,
+      refund: 2,
+      actions: 1,
+    })
+    const sheet = hero({
+      mana: { current: 6, max: 10, temp: 0 },
+      abilities: [
+        ability('Spellshaper', 'Enhance your spells by spending additional mana (1/turn).'),
+        ability(
+          'Dimensional Compression',
+          '(1 or more mana) +4 range to a spell for each additional mana spent.',
+        ),
+        ability('Stretch Time', '(2 mana) Reduce the action cost of a spell by 1 (min 1).'),
+      ],
+    })
+    expect(spellshape(sheet, 5, 'Dimensional Compression', 3)).toMatch(/spent 3 mana/)
+    expect(sheet.mana.current).toBe(3)
+    expect(spellshape(sheet, 5, 'Stretch Time')).toMatch(/already used Spellshaper/)
+    expect(sheet.mana.current).toBe(3)
+  })
+
+  it('counts permanent armor from abilities, not conditional armor', () => {
+    const sheet = hero({
+      stats: { STR: 1, DEX: 2, INT: 3, WIL: 2 },
+      abilities: [
+        ability('Misdirection', 'Gain INT armor. Whenever you Defend, you may halve the damage.'),
+        ability('Unparalleled Survivalist', 'Gain +WIL armor. When you attack…'),
+        ability('Scurry', 'Gain +2 armor if you moved on your last turn.'),
+      ],
+    })
+    expect(abilityArmor(sheet)).toBe(5)
+  })
+
+  it('adds damage bonuses from abilities to attacks', () => {
+    const sheet = hero({
+      stats: { STR: 3, DEX: 2, INT: 0, WIL: 2 },
+      abilities: [
+        ability('Keen Eye, Steady Hand', 'Add WIL to your ranged weapon damage.'),
+        ability(
+          'Unending Judgment',
+          'While you have no Judgment Dice, gain +5 damage to melee attacks.',
+        ),
+        ability(
+          'Kinetic Barrage',
+          'Whenever you miss an attack, gain a cumulative +STR bonus to all damage you do for the rest of this encounter.',
+        ),
+      ],
+    })
+    expect(attackBonus(sheet, 5, { melee: false }, 0).flat).toBe(2)
+    expect(attackBonus(sheet, 5, { melee: true }, 0).flat).toBe(5)
+    expect(attackBonus(sheet, 5, { melee: true }, 4).flat).toBe(0)
+    noteMiss(sheet)
+    noteMiss(sheet)
+    expect(attackBonus(sheet, 5, { melee: true }, 4)).toEqual({
+      flat: 6,
+      notes: ['Kinetic Barrage +6'],
+    })
+  })
+
+  it('caps Zealot mana at the highest spell tier and the mana left', () => {
+    const sheet = hero({
+      mana: { current: 2, max: 8, temp: 0 },
+      abilities: [
+        ability(
+          'Zealot',
+          'Whenever you attack with a melee weapon, you may spend mana (up to your highest unlocked spell tier) to choose one for each mana spent.',
+        ),
+      ],
+    })
+    sheet.spells.tier = 3
+    expect(zealotMax(sheet)).toBe(2)
+  })
+
+  it('steals actions from the next turn, then waits a turn', () => {
+    const sheet = hero({
+      stats: { STR: 0, DEX: 2, INT: 2, WIL: 0 },
+      abilities: [
+        ability(
+          '“Creative” Accounting',
+          'Steal up to INT actions from your next turn (gain up to INT actions now). You cannot use this 2 turns in a row.',
+        ),
+      ],
+    })
+    expect(stealActions(sheet)).toMatch(/Gained 2 actions/)
+    expect(actionsLeft(sheet)).toBe(5)
+    expect(stealActions(sheet)).toMatch(/already stole/)
+    expect(endTurn(sheet, 5)).toMatch(/1 of 3 actions back/)
+    expect(stealActions(sheet)).toMatch(/2 turns in a row/)
+    endTurn(sheet, 5)
+    expect(stealActions(sheet)).toMatch(/Gained 2 actions/)
+  })
+
+  it('reacts to Wounds: Kinetic Momentum, Unyielding Resolve, Exploding Soul', () => {
+    const sheet = hero({
+      classSlug: 'zephyr',
+      woundsMax: 6,
+      inEncounter: true,
+      stats: { STR: 2, DEX: 3, INT: 0, WIL: 0 },
+      abilities: [
+        ability('Burst of Speed', 'When you roll Initiative, gain DEX Bursts of Speed.'),
+        ability('Kinetic Momentum', 'Whenever you gain a Wound, gain a Burst of Speed.'),
+        ability(
+          'Unyielding Resolve',
+          '(1/encounter) Ignore the first Wound you would suffer each encounter (when-Wounded abilities, such as Kinetic Momentum, still trigger).',
+        ),
+      ],
+    })
+    sheet.hp = 0
+    sheet.dying = true
+    expect(takeDamage(sheet, 1, 5)).toMatch(/1 Wound ignored.*Kinetic Momentum: \+2/)
+    expect(sheet.wounds).toBe(1)
+    expect(sheet.resource.count).toBe(2)
+    sheet.abilities.push(
+      ability(
+        'Exploding Soul',
+        'Whenever you gain a Wound, deal STR+Wounds damage to any creatures.',
+      ),
+    )
+    expect(woundCharges(sheet, 1, 5)).toMatch(/Exploding Soul: deal 3 damage/)
+  })
+
+  it('applies crits taken and Glorious Reprieve', () => {
+    const sheet = hero({
+      woundsMax: 6,
+      abilities: [
+        ability(
+          'Glorious Reprieve',
+          'You and allies in your aura cannot drop below 1 HP. Whenever this triggers, they gain 1 Wound instead.',
+        ),
+      ],
+    })
+    sheet.hp = 4
+    expect(takeDamage(sheet, 10, 5)).toMatch(/Glorious Reprieve/)
+    expect(sheet).toMatchObject({ hp: 1, wounds: 1, dying: false })
+    const dying = hero({ woundsMax: 6 })
+    dying.hp = 0
+    dying.dying = true
+    expect(takeDamage(dying, 3, 5, true)).toMatch(/\+3 Wounds/)
+  })
+
+  it('takes back unspent Initiative uses when combat ends', () => {
+    const sheet = hero({
+      classSlug: 'commander',
+      abilities: [
+        ability(
+          'Coordinated Strike!',
+          '(1/round) Free action. You can do this INT times/Safe Rest.',
+        ),
+        ability(
+          'Master Commander',
+          'When you roll Initiative, regain 1 spent use of Coordinated Strike (it is lost if not spent during that encounter).',
+        ),
+      ],
+    })
+    sheet.uses['Coordinated Strike!@rest'] = { used: 2 }
+    newEncounter(sheet, 5, faces(20, 10))
+    expect(sheet.uses['Coordinated Strike!@rest']?.used).toBe(1)
+    expect(endEncounter(sheet, 5)).toMatch(/Unspent Initiative uses lost: Coordinated Strike/)
+    expect(sheet.uses['Coordinated Strike!@rest']?.used).toBe(2)
+  })
+
+  it('reacts to attack results: Titan’s Fury, Steal Tempo, quarry charges', () => {
+    const berserker = hero({
+      classSlug: 'berserker',
+      inEncounter: true,
+      stats: { STR: 3, DEX: 2, INT: 0, WIL: 0 },
+      abilities: [
+        ability('Rage', '(1/turn) Action: Roll a Fury Die.'),
+        ability('Titan’s Fury', 'After you miss an attack or are crit by an enemy, Rage for free.'),
+      ],
+    })
+    const out = { melee: true, miss: true, crit: false, quarry: false }
+    expect(afterAttack(berserker, 3, out)).toMatch(/Titan’s Fury: Rage/)
+    expect(berserker.resource.active).toBe(true)
+
+    const cheat = hero({
+      abilities: [
+        ability(
+          'Steal Tempo',
+          'When you land a critical hit for the second time on a turn, your target loses 1 action and you gain 1 action.',
+        ),
+      ],
+    })
+    const crit = { melee: true, miss: false, crit: true, quarry: false }
+    expect(afterAttack(cheat, 5, crit)).toBe('')
+    expect(afterAttack(cheat, 5, crit)).toMatch(/Gained 1 action/)
+
+    const hunter = hero({
+      classSlug: 'hunter',
+      inEncounter: true,
+      abilities: [
+        ability(
+          'Thrill of the Hunt',
+          'Gain a charge to use your Thrill of the Hunt abilities during an encounter whenever: your quarry dies, or you hit your quarry in melee or crit your quarry at range.',
+        ),
+      ],
+    })
+    afterAttack(hunter, 5, { melee: false, miss: false, crit: false, quarry: true })
+    expect(hunter.resource.count).toBe(0)
+    afterAttack(hunter, 5, { melee: true, miss: false, crit: false, quarry: true })
+    expect(hunter.resource.count).toBe(1)
+  })
+
+  it('counts extra max Combat Dice from other abilities', () => {
+    const sheet = hero({
+      classSlug: 'commander',
+      stats: { STR: 3, DEX: 0, INT: 2, WIL: 0 },
+      abilities: [
+        ability('Fit for Any Battlefield', 'When you roll Initiative, gain STR Combat Dice.'),
+        ability(
+          'Survey the Battlefield',
+          'When you roll Initiative, regain 1 use of Coordinated Strike. +1 max Combat Dice.',
+        ),
+      ],
+    })
+    expect(sheetResource(sheet, 11)?.max).toBe(4)
+  })
+
+  it('sets a Judgment Die to max when attacked with Maximum Judgment', () => {
+    const sheet = hero({
+      classSlug: 'oathsworn',
+      abilities: [
+        ability(
+          'Radiant Judgment',
+          'Whenever an enemy attacks you, roll your Judgment Dice (2d6).',
+        ),
+        ability('Maximum Judgment', 'Whenever you are attacked, set a Judgment Die to its max.'),
+      ],
+    })
+    expect(rollJudgment(sheet, 1, faces(6, 2, 3))).toMatch(/Maximum Judgment: a die set to 6/)
+    expect(sheet.resource.rolls).toEqual([6, 3])
+    expect(rollJudgment(sheet, 1)).toMatch(/a die set to 6 \(6, 6/)
+  })
+
+  it('reminds of Initiative choices and lifts the Cheat to 10', () => {
+    const sheet = hero({
+      initMod: 0,
+      abilities: [
+        ability(
+          'Cheat',
+          '(1/round) Move or Hide. If you roll less than 10 on Initiative, you may change it to 10 instead.',
+        ),
+        ability('Firebrand', 'When you roll Initiative you may cast Enchant Weapon for free.'),
+      ],
+    })
+    const message = newEncounter(sheet, 5, faces(20, 3))
+    expect(message).toMatch(/Initiative 10/)
+    expect(message).toMatch(/Cheat: 3 raised to 10/)
+    expect(message).toMatch(/You may: Firebrand: cast Enchant Weapon for free/)
+  })
+
+  it('turns what an ability grants into a trigger button', () => {
+    const sheet = hero({ stats: { STR: 0, DEX: 1, INT: 4, WIL: 0 } })
+    const frost = abilityTrigger(
+      sheet,
+      7,
+      'Your Shadow Blast and minions can deal cold or necrotic damage, and whenever they would crit, you gain INT+LVL temp HP.',
+    )
+    expect(frost?.label).toBe('Gain 11 temp HP')
+    frost?.fire()
+    expect(sheet.tempHp).toBe(11)
+    expect(abilityTrigger(sheet, 7, '(1/encounter) When crit, gain 1 action.')?.label).toBe(
+      'Gain 1 action',
+    )
+    expect(
+      abilityTrigger(sheet, 7, 'Your allies within 12 spaces who can hear you gain WIL temp HP.'),
+    ).toBeNull()
   })
 })

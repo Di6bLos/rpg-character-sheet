@@ -69,6 +69,7 @@ const blank = (): CustomItem & { name: string } => ({
   props: '',
   armor: '',
   rarity: '',
+  effects: [],
   desc: '',
 })
 const draftItem = ref(blank())
@@ -234,22 +235,8 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
                 <option :value="false">Ranged</option>
               </select></label
             >
-            <label class="field grow"
-              ><span class="caps">Damage type</span
-              ><input
-                v-model="draftItem.damageType"
-                class="input"
-                placeholder="Slashing"
-                maxlength="30"
-            /></label>
-            <label class="field custom__wide"
-              ><span class="caps">Properties</span
-              ><input
-                v-model="draftItem.props"
-                class="input"
-                placeholder="2-handed, Reach 2, Thrown 4, Range 12, Light, Vicious, Load: 1 action"
-                maxlength="120"
-            /></label>
+            <NimbleDamageTypes v-model="draftItem.damageType" class="field grow" />
+            <NimbleWeaponProps v-model="draftItem.props" class="field custom__wide" />
           </div>
           <div v-else-if="draftItem.kind !== 'gear'" class="custom__row">
             <label class="field"
@@ -269,17 +256,22 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
                 <option v-for="r in RARITIES" :key="r" :value="r">{{ r }}</option>
               </select></label
             >
-            <label class="field custom__wide"
-              ><span class="caps">Effect / notes</span
-              ><textarea
-                v-model="draftItem.desc"
-                class="input"
-                rows="2"
-                maxlength="500"
-                placeholder="+1d4 cold damage on a hit; on a crit the target is Slowed."
-              />
-            </label>
+            <NimbleItemEffects
+              v-model="draftItem.effects"
+              :kind="draftItem.kind"
+              class="field custom__wide"
+            />
           </div>
+          <label class="field"
+            ><span class="caps">Notes</span
+            ><textarea
+              v-model="draftItem.desc"
+              class="input"
+              rows="2"
+              maxlength="500"
+              placeholder="Forged in the frost giants' halls; hums in cold weather."
+            />
+          </label>
           <p
             v-if="draftItem.kind === 'weapon' && !customReady && draftItem.name.trim()"
             class="small"

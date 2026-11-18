@@ -1,9 +1,11 @@
 import { beastsFor } from '~/data/nimble/beasts'
 import { summonById } from '~/data/nimble/summons'
-import type { NimbleSheet, NimbleSummon } from '~/types/sheets'
+import type { NimbleCustomSummon, NimbleSheet, NimbleSummon } from '~/types/sheets'
 import { actionsLeft, spendActions } from '~/utils/nimblePlay'
 import {
+  CUSTOM_ABILITIES,
   addCustomSummon,
+  customSummonAttack,
   addSummon,
   availableSummons,
   commandMinions,
@@ -149,7 +151,13 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         dmg: `${minions.value}× 1d${stats.die}`,
         props: `${stats.damageType} · each moves 6 then attacks · Reach ${stats.reach} · a 1 misses, no crits`,
         cost: '1 action · 1/turn',
-        why: commandUsed.value ? 'Once per turn' : left.value < 1 ? 'No actions left' : '',
+        why: !sheet.value.turnActive
+          ? 'Not your turn'
+          : commandUsed.value
+            ? 'Used this turn'
+            : left.value < 1
+              ? 'No actions left'
+              : '',
         run: command,
       })
     }
@@ -163,7 +171,11 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         dmg: `${stats.diceMult}d${spiritDie(sheet.value, level.value, spirit.value.tier)}+WIL`,
         props: `${stats.damageType}, Reach ${stats.reach}, ignoring armor`,
         cost: spiritCost() ? '1 action' : 'free',
-        why: left.value < spiritCost() ? 'No actions left' : '',
+        why: !sheet.value.turnActive
+          ? 'Not your turn'
+          : left.value < spiritCost()
+            ? 'No actions left'
+            : '',
         run: spiritAttack,
       })
     }
@@ -186,8 +198,45 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         ]
           .filter(Boolean)
           .join(' · '),
-        why: companionBlocked(sheet.value, level.value),
+        why: sheet.value.turnActive ? companionBlocked(sheet.value, level.value) : 'Not your turn',
         run: companionStrike,
+      })
+    }
+    const customs = new Map<string, NimbleSummon[]>()
+    for (const m of sheet.value.summons)
+      if (!m.def && m.custom?.attack) {
+        const key = `${m.name.replace(/ [A-Z]$/, '')}|${m.custom.attack.name}|${m.custom.attack.dice}`
+        customs.set(key, [...(customs.get(key) ?? []), m])
+      }
+    for (const [key, members] of customs) {
+      const first = members[0]!
+      const attack = first.custom!.attack!
+      const n = members.length
+      out.push({
+        key: `custom:${key}`,
+        name: `${n > 1 ? first.name.replace(/ [A-Z]$/, '') : first.name}: ${attack.name}`,
+        who: n > 1 ? `${n} summons` : '',
+        summon: '',
+        dmg: `${n > 1 ? `${n}× ` : ''}${attack.dice}`,
+        props: [
+          attack.type,
+          attack.reach ? `Reach ${attack.reach}` : '',
+          first.custom!.kind === 'minion' ? 'a 1 misses, no crits' : '',
+          ...(first.custom!.abilities ?? []).filter((a) =>
+            CUSTOM_ABILITIES.some((x) => x.name === a && x.onHit),
+          ),
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        cost: attack.actions
+          ? `${attack.actions} action${attack.actions === 1 ? '' : 's'}`
+          : 'free',
+        why: !sheet.value.turnActive
+          ? 'Not your turn'
+          : left.value < attack.actions
+            ? 'No actions left'
+            : '',
+        run: run(() => act(customSummonAttack(sheet.value, members), attack.actions)),
       })
     }
     return out
@@ -207,8 +256,8 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
     armorOfShadows,
     summon: (id: string) =>
       canEdit.value && report(addSummon(sheet.value, level.value, id, { ignoreCap: false })),
-    addCustom: (name: string, hp: number) =>
-      canEdit.value && report(addCustomSummon(sheet.value, name, hp)),
+    addCustom: (name: string, hp: number, custom?: NimbleCustomSummon, count = 1) =>
+      canEdit.value && report(addCustomSummon(sheet.value, name, hp, custom, count)),
     dismiss: (id: string) => canEdit.value && report(dismissSummon(sheet.value, id)),
     slay: (id: string) => canEdit.value && report(slaySummon(sheet.value, level.value, id)),
     sacrifice: (id: string) =>

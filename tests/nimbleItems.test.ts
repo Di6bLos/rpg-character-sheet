@@ -10,6 +10,7 @@ import {
   itemAttack,
   itemStat,
   itemSummary,
+  rollRiders,
 } from '../utils/nimbleItems'
 import { itemSlots } from '../utils/nimblePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
@@ -75,6 +76,40 @@ describe('custom items', () => {
     expect(itemSummary(sheet, axe, 5)).toBe(
       'Melee attack, 1 action: 1d10+3 damage\nCold, 2-handed, Rare magic\nOn a crit, the target is Slowed.',
     )
+  })
+
+  it('adds picked effects to the attack and rolls their extra dice', () => {
+    const sheet = hero()
+    const axe = customItem('Frostbite Axe', {
+      kind: 'weapon',
+      dice: '1d10',
+      damageType: 'Slashing',
+      effects: [
+        { kind: 'hit', dice: '1d4', type: 'Cold' },
+        { kind: 'crit', dice: 'bad', type: 'Fire' },
+        { kind: 'condition', condition: 'Slowed' },
+      ],
+    })!
+    expect(axe.custom?.effects).toEqual([
+      { kind: 'hit', dice: '1d4', type: 'Cold' },
+      { kind: 'condition', condition: 'Slowed' },
+    ])
+    expect(itemAttack(sheet, axe, 5)).toMatchObject({
+      props: 'Slashing, +1d4 cold damage on a hit, On a crit, the target is Slowed',
+      onHit: ['1d4 cold'],
+    })
+    expect(rollRiders(['1d4 cold', '2d6+1 fire'], () => 0.99)).toEqual({
+      total: 4 + 13,
+      note: ' (+4 cold, +13 fire)',
+    })
+    const cloak = customItem('Ember Cloak', {
+      kind: 'gear',
+      effects: [
+        { kind: 'resist', type: 'Fire' },
+        { kind: 'hit', dice: '1d4', type: 'Cold' },
+      ],
+    })!
+    expect(cloak.custom?.effects).toEqual([{ kind: 'resist', type: 'Fire' }])
   })
 
   it('describes custom armor, magic gear, wands and book items', () => {
