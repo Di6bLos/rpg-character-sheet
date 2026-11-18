@@ -43,6 +43,28 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             </div>
             <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
           </div>
+          <div v-if="w.poweredBy" class="ready">
+            <span>{{ resource?.diceName }} Dice readied</span>
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`Ready one fewer ${resource?.diceName} Die`"
+              :disabled="!canEdit || readied === 0"
+              @click="setReady(readied - 1)"
+            >
+              −
+            </button>
+            <strong aria-live="polite">{{ readied }}</strong>
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`Ready one more ${resource?.diceName} Die`"
+              :disabled="!canEdit || readied >= sheet.resource.count"
+              @click="setReady(readied + 1)"
+            >
+              +
+            </button>
+          </div>
           <NimbleModifiers :target="w.name" :weapon="w.props" />
           <button
             type="button"
