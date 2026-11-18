@@ -68,6 +68,7 @@ export function endEncounter(sheet: NimbleSheet, level: number): string {
   sheet.inEncounter = false
   sheet.turnActive = false
   sheet.turnDone = false
+  sheet.awaitingInitiative = false
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
@@ -1357,24 +1358,40 @@ export function encounterMana(sheet: NimbleSheet): number {
 }
 
 /**
- * Initiative is rolled: per-encounter and per-turn uses come back, abilities that
- * recharge on Initiative get one use back, encounter mana is gained, and the turn
- * starts fresh.
+ * Combat starts: per-encounter and per-turn uses come back and the turn starts
+ * fresh. Initiative is rolled next (`rollInitiative`).
  */
-export function newEncounter(
+export function beginEncounter(sheet: NimbleSheet): string {
+  endRage(sheet)
+  sheet.turnActive = false
+  sheet.inEncounter = true
+  sheet.turnDone = false
+  sheet.awaitingInitiative = true
+  refill(sheet, ['turn', 'encounter'])
+  expireGrants(sheet)
+  sheet.casting = { ...NOT_CASTING }
+  sheet.rushed = 0
+  sheet.reactionsUsed = []
+  const extra = [summonsGone(endSummons(sheet, 'encounter')), endEffects(sheet, 'encounter')].join(
+    '',
+  )
+  return `New encounter: per-encounter abilities and reactions ready. Roll Initiative.${extra}`
+}
+
+/**
+ * Initiative is rolled (or entered, when the player rolls their own dice):
+ * abilities that recharge on Initiative get one use back, encounter mana is
+ * gained, and the hero starts with actions by the roll.
+ */
+export function rollInitiative(
   sheet: NimbleSheet,
   level: number,
   rng: Rng = Math.random,
   initiative?: number,
 ): string {
-  endRage(sheet)
-  sheet.turnActive = false
-  sheet.inEncounter = true
-  sheet.turnDone = false
-  refill(sheet, ['turn', 'encounter'])
+  sheet.awaitingInitiative = false
   const recharged: string[] = []
   const pilfered = sheetResource(sheet, level)
-  expireGrants(sheet)
   for (const { name, count, expires } of initiativeRecharges(sheet)) {
     if (pilfered?.kind === 'uses' && name === pilfered.name) {
       if (sheet.resource.count > 0) {
@@ -1399,9 +1416,6 @@ export function newEncounter(
   const surge = elementalSurge(sheet, rng)
   const mana = encounterMana(sheet) + surge
   sheet.mana.temp = mana
-  sheet.casting = { ...NOT_CASTING }
-  sheet.rushed = 0
-  sheet.reactionsUsed = []
   const advantage = sheet.abilities.some(
     (a) =>
       /advantage on Initiative/i.test(a.desc) ||
@@ -1430,9 +1444,7 @@ export function newEncounter(
     recharged.length ? ` ${recharged.join(', ')} recharged.` : '',
     mana > 0 ? ` ${mana} encounter mana gained.` : '',
     refillResource(sheet, level, 'initiative'),
-    summonsGone(endSummons(sheet, 'encounter')),
     initiativeSummons(sheet, level),
-    endEffects(sheet, 'encounter'),
     initiativeReminders(sheet),
   ].join('')
   const how = entered
@@ -1445,7 +1457,18 @@ export function newEncounter(
     )
       ? ' Add your Elemental Surge d4s to temporary mana.'
       : ''
-  return `New encounter: Initiative ${roll} (${how}), you start with ${start} action${start === 1 ? '' : 's'}. Per-encounter abilities and reactions ready.${extra}${surgeDice}`
+  return `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}.${extra}${surgeDice}`
+}
+
+/** New encounter and Initiative in one step. */
+export function newEncounter(
+  sheet: NimbleSheet,
+  level: number,
+  rng: Rng = Math.random,
+  initiative?: number,
+): string {
+  const begun = beginEncounter(sheet).replace(' Roll Initiative.', '')
+  return `${begun} ${rollInitiative(sheet, level, rng, initiative)}`
 }
 
 const diceWord = (n: number) => (n === 1 ? 'Die' : 'Dice')

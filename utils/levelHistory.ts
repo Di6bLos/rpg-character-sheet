@@ -40,6 +40,7 @@ const PLAY_STATE = new Set([
   'turnActive',
   'inEncounter',
   'turnDone',
+  'awaitingInitiative',
   'effects',
   'languages',
   'heightWeight',

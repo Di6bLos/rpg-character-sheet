@@ -13,7 +13,8 @@ import {
   isHollowOne,
   isDead,
   takeDamage,
-  newEncounter,
+  beginEncounter,
+  rollInitiative,
   newRound,
   stopCasting,
   toggleActionPip,
@@ -146,9 +147,16 @@ function toggleAction(n: number) {
   if (canEdit.value) toggleActionPip(sheet.value, n)
 }
 
-function startEncounter(values?: number[]) {
+function startEncounter() {
   if (!canEdit.value) return
-  const message = newEncounter(sheet.value, draft.value.level, Math.random, values?.[0])
+  const message = beginEncounter(sheet.value)
+  say(message)
+  announce(message)
+}
+
+function initiative(values?: number[]) {
+  if (!canEdit.value) return
+  const message = rollInitiative(sheet.value, draft.value.level, Math.random, values?.[0])
   say(message)
   announce(message)
 }
@@ -424,14 +432,24 @@ const effectRows = computed(() =>
     </div>
     <div class="apm__steps">
       <button
-        v-if="!sheet.inEncounter && !sheet.ownDice"
+        v-if="!sheet.inEncounter"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"
-        title="Rolls Initiative for your starting actions and refills once-per-encounter abilities"
-        @click="startEncounter()"
+        title="Refills once-per-encounter abilities; then roll Initiative"
+        @click="startEncounter"
       >
         New encounter
+      </button>
+      <button
+        v-if="sheet.awaitingInitiative && !sheet.ownDice"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit"
+        title="Your starting actions: 9 or less 1, 10–19 2, 20+ all"
+        @click="initiative()"
+      >
+        Roll Initiative
       </button>
       <button
         v-if="sheet.inEncounter && !sheet.turnActive"
@@ -444,7 +462,9 @@ const effectRows = computed(() =>
         End encounter
       </button>
       <button
-        v-if="!sheet.turnActive && sheet.inEncounter && !sheet.turnDone"
+        v-if="
+          !sheet.turnActive && sheet.inEncounter && !sheet.turnDone && !sheet.awaitingInitiative
+        "
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
@@ -475,12 +495,12 @@ const effectRows = computed(() =>
       </button>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && !sheet.inEncounter"
+      v-if="sheet.ownDice && sheet.awaitingInitiative"
       label="Your Initiative total"
-      action="New encounter"
+      action="Set Initiative"
       signed
       :disabled="!canEdit"
-      @submit="startEncounter"
+      @submit="initiative"
     />
 
     <p class="apm__result" :class="{ 'apm__result--empty': !lastRoll }" role="status">
