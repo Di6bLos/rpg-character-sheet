@@ -89,6 +89,12 @@ describe('conditions from abilities', () => {
 })
 
 describe('gadget rolls', () => {
+  it('meets Heavy armor once per construct, rounding each down', () => {
+    expect(
+      abilityRoll(hero(['Scrapbot Swarm']), 'Scrapbot Swarm', faces(6, 3), 0, { armor: 'heavy' }),
+    ).toMatch(/^ Scrapbot Swarm: 5 damage through Heavy armor \(5d6: 3, 3, 3, 3, 3\)/)
+  })
+
   it('rolls INT+STR Scrapbots, with Dense Swarm and Sharpened Scrap', () => {
     expect(abilityRoll(hero(['Scrapbot Swarm']), 'Scrapbot Swarm', faces(6, 3))).toBe(
       ' Scrapbot Swarm: 15 damage (5d6: 3, 3, 3, 3, 3). Each construct hits any target within Reach 4.',

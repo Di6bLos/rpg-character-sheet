@@ -85,8 +85,9 @@ export function armorDice(dmg: string, ctx: ArmorContext, rolled = 0): string {
   if (ctx.vulnerable && ctx.armor === 'none') return `2×(${dmg})`
   const { armor } = effectiveArmor(ctx)
   if (armor === 'none') return ''
-  const times = /^(\d+×)\((.*)\)$/.exec(dmg.trim())
-  const body = times ? times[2]! : dmg
+  // "2×(2d4+3)" (one hit, doubled) or "3× 1d6" (three minions, each meeting the armor).
+  const times = /^(\d+×)\s*(?:\((.*)\)|(.*))$/.exec(dmg.trim())
+  const body = times ? (times[2] ?? times[3])! : dmg
   const terms = body.replace(/\s+/g, '').match(/[+-]?[^+-]+/g) ?? []
   const kept = terms
     .filter((t) => /d\d/.test(t) || t.startsWith('-'))
@@ -97,7 +98,8 @@ export function armorDice(dmg: string, ctx: ArmorContext, rolled = 0): string {
   const withRolled = [kept, rolled ? String(rolled) : ''].filter(Boolean).join('+')
   if (!withRolled) return '0'
   const dice = armor === 'heavy' ? `½(${withRolled})` : withRolled
-  return times ? `${times[1]}(${dice})` : dice
+  if (!times) return dice
+  return times[2] !== undefined ? `${times[1]}(${dice})` : `${times[1]}${dice}`
 }
 
 /** Why the shown damage differs from the weapon's own, for its tooltip. */

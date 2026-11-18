@@ -190,7 +190,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const left = computed(() => actionsLeft(sheet.value))
   const NO_ACTIONS = 'No actions left: they come back when your turn ends.'
   const NOT_TURN = 'Not your turn'
-  const offTurn = computed(() => !sheet.value.turnActive)
+  /** Waiting for your turn in combat; outside combat anything can be rolled. */
+  const offTurn = computed(() => sheet.value.inEncounter && !sheet.value.turnActive)
   const cond = computed(() => conditionMods(sheet.value, situation.value))
 
   function report(message: string) {

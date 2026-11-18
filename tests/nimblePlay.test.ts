@@ -4,12 +4,8 @@ import { BACKGROUNDS } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import type { NimbleSheet } from '../types/sheets'
 import { rollNimble } from '../utils/dice'
-import {
-  abilityArmor,
-  abilityBaseName,
-  abilityModifiers,
-  sheetResource,
-} from '../utils/nimbleBuild'
+import { abilityBaseName, abilityModifiers, sheetResource } from '../utils/nimbleBuild'
+import { abilityArmor } from '../utils/nimbleArmor'
 import {
   abilityCounters,
   actionsLeft,
