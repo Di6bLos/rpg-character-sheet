@@ -960,6 +960,10 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
       bonus += (cls.levels[l]?.resourceBonus ?? 0) + (sub?.levels[l]?.resourceBonus ?? 0)
     }
     bonus += sheet.abilities.filter((a) => def.maxPick && a.name === def.maxPick).length
+    const extraMax = new RegExp(`\\+(\\d+) max ${def.name}\\b`)
+    bonus += sheet.abilities
+      .filter((a) => a.name !== def.maxPick)
+      .reduce((sum, a) => sum + Number(extraMax.exec(a.desc)?.[1] ?? 0), 0)
     const rollText = `roll ${def.diceName} Dice, roll`
     roll += sheet.abilities
       .map((a) => a.desc.split(`${rollText} 1 more`).length - 1)

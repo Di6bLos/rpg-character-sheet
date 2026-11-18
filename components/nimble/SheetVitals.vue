@@ -15,9 +15,10 @@ import {
   safeRest,
   takeDamage,
   turnActions,
+  woundCharges,
 } from '~/utils/nimblePlay'
 
-const { draft, canEdit, hpPct, say } = useSheet<NimbleSheet>()
+const { draft, canEdit, say } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 
 const woundsMax = computed(() => Math.max(1, sheet.value.woundsMax || 6))
@@ -52,10 +53,23 @@ const tiles = computed(() => [
 
 const restOpen = ref(false)
 
-function damage() {
+const crit = ref(false)
+
+function damage(amount = 1) {
   if (!canEdit.value) return
-  const message = takeDamage(sheet.value, 1)
-  if (message) say(message)
+  const message = takeDamage(sheet.value, amount, draft.value.level, crit.value)
+  const was = crit.value ? ' (crit)' : ''
+  crit.value = false
+  say(
+    `Took ${amount} damage${was}: ${sheet.value.hp}/${sheet.value.hpMax} HP.${message ? ` ${message}` : ''}`,
+  )
+}
+
+function changeHp(delta: number) {
+  if (!canEdit.value) return
+  if (delta < 0) return damage(-delta)
+  heal(sheet.value, delta)
+  say(`Healed ${delta}: ${sheet.value.hp}/${sheet.value.hpMax} HP.`)
 }
 
 function healOne() {
@@ -69,7 +83,10 @@ function adjustTemp(delta: number) {
 
 function setWounds(n: number) {
   if (!canEdit.value) return
-  sheet.value.wounds = sheet.value.wounds === n ? n - 1 : n
+  const before = sheet.value.wounds
+  sheet.value.wounds = before === n ? n - 1 : n
+  const charges = woundCharges(sheet.value, sheet.value.wounds - before).trim()
+  if (charges) say(charges)
 }
 
 // Field Rest: the dice count follows the HP missing until the player sets it.
@@ -134,7 +151,7 @@ function confirmRest() {
               class="step"
               aria-label="Take 1 damage"
               :disabled="!canEdit"
-              @click="damage"
+              @click="damage(1)"
             >
               −
             </button>
@@ -152,11 +169,21 @@ function confirmRest() {
             </button>
           </div>
         </div>
-        <div class="meter" :class="{ 'meter--accent': bloodied, 'meter--danger': sheet.hp === 0 }">
-          <span :style="{ width: hpPct + '%' }" />
-        </div>
+        <NimbleHpBar
+          :hp="sheet.hp"
+          :max="sheet.hpMax"
+          :tone="sheet.hp === 0 ? 'danger' : bloodied ? 'accent' : ''"
+          :disabled="!canEdit"
+          @change="changeHp"
+        />
         <div class="vit-row">
-          <span class="hint">{{ hpState }}</span>
+          <span class="hint">
+            {{ hpState }}
+            <label class="crit" title="Your next damage is from a critical hit">
+              <input v-model="crit" type="checkbox" :disabled="!canEdit" />
+              Crit
+            </label>
+          </span>
           <div class="row" style="gap: 6px">
             <span class="temp-label">Temp HP</span>
             <button
@@ -294,6 +321,19 @@ function confirmRest() {
 </template>
 
 <style scoped lang="scss">
+.crit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-weight: 700;
+  cursor: pointer;
+
+  input {
+    accent-color: var(--danger);
+  }
+}
+
 .vit-top {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -16,6 +16,7 @@ import {
   actionsLeft,
   castingBlocks,
   castSpell,
+  gainWounds,
   isHollowOne,
   manaPool,
   payBloodCast,
@@ -67,6 +68,108 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     return counter && counter.used < counter.max ? counter : null
   })
 
+  const abilityMatch = (pattern: RegExp) => {
+    for (const a of sheet.value.abilities) {
+      const m = pattern.exec(a.desc)
+      if (m) return { name: abilityBaseName(a.name), m }
+    }
+    return null
+  }
+  const has = (pattern: RegExp) => sheet.value.abilities.some((a) => pattern.test(a.desc))
+  const chaos = computed(() =>
+    has(/\bWhenever you cast a spell, you can choose to spend 1 less mana\b/),
+  )
+
+  type AltKey = 'chaos' | 'self' | 'temp' | 'hp' | 'free' | 'wounds'
+  interface SpellAlt {
+    key: AltKey
+    label: string
+    why: string
+  }
+
+  function spellAlts(s: SpellDef, mana: number, plain: boolean): SpellAlt[] {
+    if (s.tier === 0) return []
+    const alts: SpellAlt[] = []
+    const pool = manaPool(sheet.value)
+    if (chaos.value && plain && mana >= 1)
+      alts.push({
+        key: 'chaos',
+        label: `Cast · ${mana - 1} mana · Invoke Chaos`,
+        why: mana - 1 > pool ? 'Not enough mana' : '',
+      })
+    const self = abilityMatch(
+      /\bYou may cast ([A-Z][\w ]+?) without Pilfering Power by including yourself in the damage\b/,
+    )
+    if (self?.m[1] === s.name && pact.value)
+      alts.push({ key: 'self', label: `Cast · you're in the blast (${self.name})`, why: '' })
+    const temp = abilityMatch(
+      /\bYou can cast ([A-Z][\w ]+?) or ([A-Z][\w ]+?) without Pilfering Power by expending (\d+) temp HP\b/,
+    )
+    if (temp && (temp.m[1] === s.name || temp.m[2] === s.name)) {
+      const n = Number(temp.m[3])
+      alts.push({
+        key: 'temp',
+        label: `Cast · ${n} temp HP (${temp.name})`,
+        why: sheet.value.tempHp < n ? `Needs ${n} temp HP` : '',
+      })
+    }
+    const hp = abilityMatch(/\bPay half your max HP to cast ANY (\w+) spell\b/)
+    if (hp && s.school === hp.m[1]!.toLowerCase()) {
+      const half = Math.floor(sheet.value.hpMax / 2)
+      alts.push({
+        key: 'hp',
+        label: `Cast · ${half} HP (${hp.name})`,
+        why: sheet.value.hp <= half ? 'Not enough HP' : '',
+      })
+    }
+    const free = abilityMatch(/\(1\/Safe Rest\) You can cast ([A-Z][\w ]+?) for 0 mana\b/)
+    if (free?.m[1] === s.name) {
+      const counter = freeCounter(free.name)
+      alts.push({
+        key: 'free',
+        label: `Cast · 0 mana (${free.name})`,
+        why: !counter || counter.used >= counter.max ? 'Used this Safe Rest' : '',
+      })
+    }
+    const wounds = abilityMatch(/\bGain 1d4 Wounds to cast ([A-Z][\w ]+)\b/)
+    if (wounds?.m[1]?.trim() === s.name)
+      alts.push({ key: 'wounds', label: `Cast · 1d4 Wounds (${wounds.name})`, why: '' })
+    return alts
+  }
+
+  function freeCounter(name: string) {
+    return abilityCounters(sheet.value, draft.value.level)
+      .find((e) => abilityBaseName(e.ability.name) === name)
+      ?.counters.find((c) => c.period === 'rest')
+  }
+
+  function primordial(s: SpellDef, spent: number): string {
+    if (spent < 2 || !has(/\bSpending 2\+ mana on a spell grants an additional effect\b/)) return ''
+    const wil = sheet.value.stats.WIL
+    if (s.school === 'ice') {
+      sheet.value.tempHp = Math.max(sheet.value.tempHp, wil)
+      return `Primordial Force: ${wil} temp HP.`
+    }
+    const effect: Record<string, string> = {
+      lightning: `deal ${wil} more damage`,
+      radiant: `you may heal a creature within 6 spaces ${wil} HP`,
+      wind: 'gain a flying speed this turn and move up to 6 spaces for free',
+    }
+    return effect[s.school] ? `Primordial Force: ${effect[s.school]}.` : ''
+  }
+
+  function greedyPact(hurt: number): string {
+    if (!has(/\bWhen you would take damage from Pilfer Power, make a STR save\b/))
+      return takeDamage(sheet.value, hurt, draft.value.level)
+    if (sheet.value.ownDice)
+      return `Greedy Pact: make a STR save (1–9: take ${hurt}; 10–19: take 10; 20+: no damage and the spell is 1 tier higher), then apply it.`
+    const save = 1 + Math.floor(Math.random() * 20) + sheet.value.stats.STR
+    if (save >= 20)
+      return `Greedy Pact: STR save ${save}, no damage and the spell is cast 1 tier higher.`
+    const taken = save >= 10 ? Math.min(10, hurt) : hurt
+    return `Greedy Pact: STR save ${save}, you take ${taken}. ${takeDamage(sheet.value, taken, draft.value.level)}`
+  }
+
   /** Tier each spell is set to be cast at, when upcast. */
   const upcast = reactive<Record<string, number>>({})
 
@@ -106,6 +209,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
           at,
           mana,
           discount,
+          alts: spellAlts(s, mana, !usesPact && !usesMinions),
           actions,
           usesPact,
           usesMinions,
@@ -153,7 +257,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     upcast[s.name] = Math.max(s.tier, Math.min(maxTier.value, tier))
   }
 
-  function cast(s: CastableSpell, withWound = false) {
+  function cast(s: CastableSpell, withWound = false, alt?: AltKey) {
     if (!canEdit.value || s.busy) return
     if (s.noActions) {
       const message = 'No actions left: they come back when your turn ends.'
@@ -161,10 +265,16 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       return
     }
     const notes: string[] = []
+    const option = alt ? s.alts.find((a) => a.key === alt) : undefined
+    if (alt && (!option || option.why)) return option?.why && say(`${s.name}: ${option.why}.`)
     if (s.tier === 0) notes.push(`Cast ${s.name} (cantrip).`)
-    else if (s.usesMinions && withWound) {
-      payBloodCast(sheet.value)
-      notes.push(`Cast ${s.name} at tier ${s.at} · took 1 Wound (My Blood, My Power).`)
+    else if (alt) {
+      const paid = payAlt(s, alt)
+      if (!paid) return
+      notes.push(`Cast ${s.name} at tier ${s.at} · ${paid}`)
+    } else if (s.usesMinions && withWound) {
+      const charges = payBloodCast(sheet.value, draft.value.level)
+      notes.push(`Cast ${s.name} at tier ${s.at} · took 1 Wound (My Blood, My Power).${charges}`)
     } else if (s.usesMinions) {
       const n = payShadowExploit(sheet.value)
       notes.push(
@@ -177,7 +287,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       if (res.count > pactLimit.value) {
         const hurt = Math.floor(sheet.value.hpMax / 2)
         notes.push(`Over your limit: your patron deals ${hurt} damage to you.`)
-        notes.push(takeDamage(sheet.value, hurt))
+        notes.push(greedyPact(hurt))
       }
     } else {
       if (!spendMana(sheet.value, s.mana)) return
@@ -187,6 +297,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       const counter = s.discount ? archmage.value : null
       if (counter)
         sheet.value.uses[counter.id] = { ...sheet.value.uses[counter.id], used: counter.used + 1 }
+      notes.push(primordial(s, s.mana))
     }
     // Actions the turn can't cover carry over; Concentration starts once it is cast.
     const progress = castSpell(sheet.value, s.name, s.actions, draft.value.level, s.at).trim()
@@ -197,6 +308,41 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const message = notes.filter(Boolean).join(' ')
     say(message)
     options.onResult?.(message)
+  }
+
+  function payAlt(s: CastableSpell, alt: AltKey): string {
+    const v = sheet.value
+    if (alt === 'chaos') {
+      if (!spendMana(v, s.mana - 1)) return ''
+      const twice = has(/\bWhenever you Invoke Chaos, you may roll twice\b/) ? ', twice' : ''
+      const adv = has(/\bWhenever you Invoke Chaos, roll with advantage\b/)
+        ? ', with advantage'
+        : ''
+      return `${s.mana - 1} mana. Invoke Chaos: roll on the Chaos Table${adv}${twice}. ${primordial(s, s.mana - 1)}`.trim()
+    }
+    if (alt === 'self')
+      return 'no Pilfered Power: you are in the damage too (advantage on the save).'
+    if (alt === 'temp') {
+      const n = Number(
+        /by expending (\d+) temp HP/.exec(v.abilities.map((a) => a.desc).join(' '))?.[1] ?? 0,
+      )
+      v.tempHp -= n
+      return `spent ${n} temp HP.`
+    }
+    if (alt === 'hp') {
+      const half = Math.floor(v.hpMax / 2)
+      v.hp -= half
+      return `paid ${half} HP. The next creature to hit you in melee this encounter takes ${Math.floor(half / 2)} cold damage.`
+    }
+    if (alt === 'free') {
+      const owner = s.alts.find((a) => a.key === 'free')?.label.match(/\(([^)]+)\)/)?.[1] ?? ''
+      const counter = freeCounter(owner)
+      if (counter) v.uses[counter.id] = { ...v.uses[counter.id], used: counter.used + 1 }
+      return `0 mana (${owner}).`
+    }
+    if (v.ownDice) return 'roll 1d4 and mark that many Wounds.'
+    const n = 1 + Math.floor(Math.random() * 4)
+    return `${n} Wound${n === 1 ? '' : 's'} (1d4).${gainWounds(v, n, draft.value.level)}`
   }
 
   /** Spells cast as a reaction ("Reaction: When attacked…"), offered beside the reactions. */

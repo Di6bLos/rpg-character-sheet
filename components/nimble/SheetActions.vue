@@ -19,6 +19,8 @@ const {
   zealot,
   zealMax,
   setZealot,
+  quarry,
+  hasMark,
   resource,
 } = useNimbleActions()
 const { summonAttacks } = useNimbleSummons()
@@ -37,6 +39,26 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           label="About attacks"
           text="No attack roll: a 1 on the first die misses, and its max explodes as a crit. Each attack after the first in a turn is Rushed and rolls with one more disadvantage."
         />
+      </div>
+      <div v-if="hasMark" class="quarry" role="radiogroup" aria-label="Target">
+        <span class="caps">Target</span>
+        <button
+          v-for="q in [
+            { value: '', label: 'Not your quarry' },
+            { value: 'damage', label: `Quarry · +${draft.level} damage` },
+            { value: 'advantage', label: 'Quarry · advantage' },
+          ] as const"
+          :key="q.value"
+          type="button"
+          role="radio"
+          class="chip"
+          :aria-checked="quarry === q.value"
+          :class="{ 'chip--on': quarry === q.value }"
+          :disabled="!canEdit"
+          @click="quarry = q.value"
+        >
+          {{ q.label }}
+        </button>
       </div>
       <div v-if="attacks.length || summonAttacks.length || inventionAttacks.length" class="attacks">
         <div v-for="(w, i) in attacks" :key="i" class="tile attack">
@@ -273,6 +295,19 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
 </template>
 
 <style scoped lang="scss">
+.quarry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+
+  .chip--on {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--page-text);
+  }
+}
+
 .act {
   padding: 0;
   gap: 0;

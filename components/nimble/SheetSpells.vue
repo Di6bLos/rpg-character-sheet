@@ -101,6 +101,17 @@ const schools = computed(() =>
                   >
                     {{ s.bloodLabel }}
                   </button>
+                  <button
+                    v-for="a in s.alts"
+                    :key="a.key"
+                    type="button"
+                    class="btn btn--ghost btn--sm btn--wrap"
+                    :disabled="!canEdit || s.busy || s.noActions || !!a.why"
+                    :title="a.why || undefined"
+                    @click="cast(s, false, a.key)"
+                  >
+                    {{ a.why || a.label }}
+                  </button>
                 </div>
               </div>
             </details>

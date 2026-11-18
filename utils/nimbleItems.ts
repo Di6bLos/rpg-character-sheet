@@ -134,6 +134,7 @@ export function itemEffectText(e: CustomItemEffect): string {
 export function rollRiders(
   riders: string[],
   rng: Rng = Math.random,
+  doubled = '',
 ): { total: number; note: string } {
   let total = 0
   const parts: string[] = []
@@ -143,6 +144,7 @@ export function rollRiders(
     if (!expr) continue
     let sum = expr.mod
     for (let i = 0; i < expr.count; i++) sum += rollDie(expr.sides, rng)
+    if (doubled && type.join(' ') === doubled) sum *= 2
     total += sum
     parts.push(`+${sum} ${type.join(' ')}`.trim())
   }
