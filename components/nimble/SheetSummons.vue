@@ -54,9 +54,14 @@ const cards = computed(() =>
         .filter(Boolean)
         .join(' · ')
       const looks = g.id === 'custom' ? [summonLookKey(first)] : g.looks
-      return [
-        { key: g.id === 'custom' ? first.id : g.id, g, list, first, last, title, stats, looks },
+      const kindLine = [
+        title.toLowerCase() === g.name.toLowerCase() || g.id === 'custom' ? '' : g.name,
+        g.cap ? `${g.members.length} / ${g.cap}` : '',
       ]
+        .filter(Boolean)
+        .join(' · ')
+      const key = g.id === 'custom' ? first.id : g.id
+      return [{ key, g, list, first, last, title, kindLine, stats, looks }]
     }),
   ),
 )
@@ -115,19 +120,6 @@ function submitCustom() {
     </p>
 
     <div v-for="c in cards" :key="c.key" class="tile group">
-      <div class="group__head">
-        <small>{{ c.g.name }}</small>
-        <small v-if="c.g.cap">{{ c.g.members.length }} / {{ c.g.cap }}</small>
-        <button
-          v-if="canEdit"
-          type="button"
-          class="btn btn--quiet btn--sm group__edit"
-          :aria-expanded="customizing === c.key"
-          @click="customizing = customizing === c.key ? '' : c.key"
-        >
-          {{ customizing === c.key ? 'Done' : 'Customize' }}
-        </button>
-      </div>
       <template v-if="customizing === c.key">
         <NimbleSummonLook
           v-for="k in c.looks"
@@ -142,12 +134,24 @@ function submitCustom() {
             :name="c.title"
             :portrait-path="c.first.portrait ?? null"
             :beast="c.first.beast ?? null"
-            :size="88"
+            :size="64"
           />
           <span v-if="c.list.length > 1" class="stack-pic__count">×{{ c.list.length }}</span>
         </span>
         <div class="companion__body">
-          <strong>{{ c.title }}</strong>
+          <div class="companion__top">
+            <strong>{{ c.title }}</strong>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="btn btn--quiet btn--sm"
+              :aria-expanded="customizing === c.key"
+              @click="customizing = customizing === c.key ? '' : c.key"
+            >
+              {{ customizing === c.key ? 'Done' : 'Customize' }}
+            </button>
+          </div>
+          <small v-if="c.kindLine" class="companion__kind">{{ c.kindLine }}</small>
           <small class="companion__stats">{{ c.stats }}</small>
           <p v-for="o in c.g.options.filter((x) => x.passive)" :key="o.name" class="group__desc">
             <strong>{{ o.name }}</strong> {{ o.text }}
@@ -273,34 +277,35 @@ function submitCustom() {
 <style scoped lang="scss">
 .group {
   gap: 6px;
-  padding: 12px 14px;
-}
-
-.group__head {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-
-  strong {
-    font-size: 14px;
-  }
-
-  small {
-    font-size: 12px;
-    color: var(--page-muted);
-  }
-}
-
-.group__edit {
-  margin-left: auto;
+  padding: 10px 12px;
 }
 
 .companion {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 12px 0 4px;
+  gap: 12px;
+}
+
+.companion__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  strong {
+    font-family: var(--font-heading);
+    font-size: 17px;
+    line-height: 1.2;
+  }
+
+  .btn {
+    margin: -4px -6px -4px 0;
+  }
+}
+
+.companion__kind {
+  font-size: 11px;
+  color: var(--page-muted);
 }
 
 .companion__body {
@@ -308,13 +313,7 @@ function submitCustom() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-
-  > strong {
-    font-family: var(--font-heading);
-    font-size: 20px;
-    line-height: 1.2;
-  }
+  gap: 4px;
 }
 
 .opt {
@@ -393,7 +392,13 @@ function submitCustom() {
 .companion__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px;
+  margin-left: -8px;
+
+  .btn {
+    min-height: 30px;
+    padding: 2px 8px;
+  }
 }
 
 .stack-pic {
