@@ -618,7 +618,7 @@ export function commandMinions(
     const big = greater
       ? ` and ${5 + Math.max(0, (greater.tier ?? 4) - 4)}d${stats.die} for the ${greater.name}`
       : ''
-    return `Minions attack (Reach ${stats.reach}): roll 1d${stats.die} for each of ${minions.length} minion${minions.length === 1 ? '' : 's'}${big} yourself; a 1 misses; tap Crit for each max roll.${armorRule(armor)}`
+    return `Minions attack (Reach ${stats.reach}): roll 1d${stats.die} for each of ${minions.length} minion${minions.length === 1 ? '' : 's'}${big} yourself; a 1 misses.${minionCritTriggers(sheet, level).length ? ' Tap It crit for each max roll.' : ''}${armorRule(armor)}`
   }
   const parts: string[] = []
   let total = 0

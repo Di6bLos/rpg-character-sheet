@@ -256,6 +256,17 @@ describe('class options on summons', () => {
     expect(sheet.tempHp).toBe(8)
   })
 
+  it('only mentions the Crit button when a max roll sets something off', () => {
+    const plain = shadowmancer([])
+    addSummon(plain, 5, 'shadow-minion')
+    plain.ownDice = true
+    expect(commandMinions(plain, 5)).not.toMatch(/It crit/)
+    const swarm = shadowmancer(['Swarming Shadows'])
+    addSummon(swarm, 5, 'shadow-minion')
+    swarm.ownDice = true
+    expect(commandMinions(swarm, 5)).toMatch(/Tap It crit for each max roll\./)
+  })
+
   it('gives Master of Nightfrost INT+LVL temp HP when a minion would crit', () => {
     const sheet = shadowmancer(['Master of Nightfrost'])
     addSummon(sheet, 5, 'shadow-minion')
