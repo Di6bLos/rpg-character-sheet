@@ -547,7 +547,9 @@ const TRIGGERS: {
   {
     pattern: /\b[Gg]ain (?:a|1) (Thrill of the Hunt charge|Burst of Speed)\b/,
     label: (m) => `Gain a ${m[1]}`,
-    fire: (m, sheet) => {
+    fire: (m, sheet, level) => {
+      const max = sheetResource(sheet, level)?.max || Infinity
+      if (sheet.resource.count >= max) return `${m[1]}: already at the max (${max}).`
       sheet.resource.count += 1
       return `+1 ${m[1]} (${sheet.resource.count}).`
     },

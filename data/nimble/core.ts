@@ -408,7 +408,7 @@ export const CONDITIONS = [
   { name: 'Poisoned', desc: 'Disadvantage on rolls.' },
   {
     name: 'Prone',
-    desc: 'Movement costs double; melee against you has advantage, ranged has disadvantage. Standing costs 3 spaces.',
+    desc: 'Movement costs double and your attacks have disadvantage; melee against you has advantage, ranged has disadvantage. Standing costs 3 spaces.',
   },
   {
     name: 'Riding',

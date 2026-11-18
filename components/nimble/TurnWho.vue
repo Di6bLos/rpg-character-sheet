@@ -4,6 +4,7 @@ const props = defineProps<{ campaignId: string; characterId: string; fallback: s
 const { order, turnId, round } = useInitiative(
   computed(() => props.campaignId),
   ref(false),
+  { channel: `turn-who-${props.characterId}` },
 )
 const acting = computed(() => order.value.find((c) => c.id === turnId.value) ?? null)
 const text = computed(() =>

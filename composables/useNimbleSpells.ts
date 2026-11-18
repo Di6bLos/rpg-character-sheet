@@ -178,13 +178,16 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     return `Greedy Pact: STR save ${save}, you take ${taken}. ${takeDamage(sheet.value, taken, draft.value.level)}`
   }
 
-  /** Tier each spell is set to be cast at, when upcast. */
-  const upcast = reactive<Record<string, number>>({})
+  /**
+   * Tier each spell is set to be cast at, when upcast. Shared per sheet, so the
+   * spell cards, the attack cards and the board's Cast menu all set the same one.
+   */
+  const upcast = useState<Record<string, number>>(`nimble-upcast-${draft.value.id}`, () => ({}))
 
   function castTier(s: SpellDef): number {
     if (s.tier === 0) return 0
     if (pact.value || reaver.value) return Math.max(s.tier, maxTier.value)
-    return Math.max(s.tier, Math.min(maxTier.value, upcast[s.name] ?? s.tier))
+    return Math.max(s.tier, Math.min(maxTier.value, upcast.value[s.name] ?? s.tier))
   }
 
   const tiers = computed(() => {
@@ -263,7 +266,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
   )
 
   function setUpcast(s: SpellDef, tier: number) {
-    upcast[s.name] = Math.max(s.tier, Math.min(maxTier.value, tier))
+    upcast.value = { ...upcast.value, [s.name]: Math.max(s.tier, Math.min(maxTier.value, tier)) }
   }
 
   function cast(s: CastableSpell, withWound = false, alt?: AltKey, roll = false) {
@@ -387,7 +390,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const odds = sheet.value.rushed + cond.disadvantage
         const why = cond.incapacitated
           ? cond.incapacitated
-          : !sheet.value.turnActive
+          : sheet.value.inEncounter && !sheet.value.turnActive
             ? 'Not your turn'
             : s.used
               ? 'Used this turn'
