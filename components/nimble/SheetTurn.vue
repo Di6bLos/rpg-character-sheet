@@ -10,7 +10,7 @@ import {
   toggleActionPip,
   endTurn,
   beginEncounter,
-  rollInitiative,
+  initiativeRoll,
   startTurn,
   stopCasting,
   turnActions,
@@ -61,8 +61,19 @@ function startEncounter() {
   if (canEdit.value) say(beginEncounter(sheet.value))
 }
 
-function initiative(values?: number[]) {
-  if (canEdit.value) say(rollInitiative(sheet.value, draft.value.level, Math.random, values?.[0]))
+const sendInitiative = useSendInitiative()
+
+async function initiative(values?: number[]) {
+  if (!canEdit.value) return
+  const { message, total } = initiativeRoll(
+    sheet.value,
+    draft.value.level,
+    Math.random,
+    values?.[0],
+  )
+  say(message)
+  const sent = await sendInitiative(total)
+  if (sent) say(`${message}${sent}`)
 }
 </script>
 

@@ -14,7 +14,7 @@ import {
   isDead,
   takeDamage,
   beginEncounter,
-  rollInitiative,
+  initiativeRoll,
   newRound,
   stopCasting,
   toggleActionPip,
@@ -154,11 +154,20 @@ function startEncounter() {
   announce(message)
 }
 
-function initiative(values?: number[]) {
+const sendInitiative = useSendInitiative()
+
+async function initiative(values?: number[]) {
   if (!canEdit.value) return
-  const message = rollInitiative(sheet.value, draft.value.level, Math.random, values?.[0])
+  const { message, total } = initiativeRoll(
+    sheet.value,
+    draft.value.level,
+    Math.random,
+    values?.[0],
+  )
   say(message)
   announce(message)
+  const sent = await sendInitiative(total)
+  if (sent) say(`${message}${sent}`)
 }
 
 function damageOne() {

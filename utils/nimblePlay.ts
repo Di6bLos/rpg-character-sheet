@@ -1389,6 +1389,16 @@ export function rollInitiative(
   rng: Rng = Math.random,
   initiative?: number,
 ): string {
+  return initiativeRoll(sheet, level, rng, initiative).message
+}
+
+/** `rollInitiative` with the total, for the GM's initiative tracker. */
+export function initiativeRoll(
+  sheet: NimbleSheet,
+  level: number,
+  rng: Rng = Math.random,
+  initiative?: number,
+): { message: string; total: number } {
   sheet.awaitingInitiative = false
   const recharged: string[] = []
   const pilfered = sheetResource(sheet, level)
@@ -1457,7 +1467,10 @@ export function rollInitiative(
     )
       ? ' Add your Elemental Surge d4s to temporary mana.'
       : ''
-  return `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}.${extra}${surgeDice}`
+  return {
+    message: `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}.${extra}${surgeDice}`,
+    total: roll,
+  }
 }
 
 /** New encounter and Initiative in one step. */

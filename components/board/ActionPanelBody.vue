@@ -17,16 +17,17 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ dismiss: [] }>()
 
+const { reloadRoster, campaignId } = useCampaignBoard()
 const editor = provideSheetEditor(props.character, {
   canEdit: props.canEdit,
   campaignName: props.campaignName,
+  campaignId: campaignId.value,
 })
 watch(
   () => props.canEdit,
   (on) => (editor.canEdit.value = on),
 )
 
-const { reloadRoster } = useCampaignBoard()
 const chat = useBoardChat()
 
 watch(
