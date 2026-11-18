@@ -63,6 +63,10 @@ const opened = computed(() => {
       return {
         id: defId || 'custom',
         name: def?.name ?? 'Other summons',
+        title:
+          list.length > 1
+            ? (first?.name.replace(/ [A-Z]$/, '') ?? def?.name ?? 'Summons')
+            : (first?.name ?? def?.name ?? 'Summon'),
         hp: def?.permanent
           ? 'HP abstracted'
           : (first?.hpMax ?? 0) > 0
@@ -88,12 +92,6 @@ const manageRows = computed(() =>
 
 function toggleSummons(c: TurnRow) {
   openSummons.value = openSummons.value === c.id ? null : c.id
-}
-
-function summonState(row: TurnRow | undefined) {
-  if (!row) return 'Not in initiative'
-  if (props.gm && (row.hp_max ?? 0) > 0) return `${row.hp} / ${row.hp_max} HP`
-  return row.hp_band && row.hp_band !== 'Unhurt' ? row.hp_band : 'Ready'
 }
 
 function rowName(c: TurnRow) {
@@ -287,7 +285,7 @@ function onInit(c: TurnRow, event: Event) {
             <span v-if="k.list.length > 1" class="ini__stack-count">×{{ k.list.length }}</span>
           </span>
           <span class="ini__kind-name">
-            <strong>{{ k.list.length > 1 ? k.name : (k.list[0]?.member.name ?? k.name) }}</strong>
+            <strong>{{ k.title }}</strong>
             <small
               >{{ k.hp }}<template v-if="k.attack"> · {{ k.attack }}</template></small
             >
@@ -298,21 +296,6 @@ function onInit(c: TurnRow, event: Event) {
           <p v-if="k.duration">
             <em>{{ k.duration }}</em>
           </p>
-          <ul>
-            <li v-for="s in k.list" :key="s.member.id">
-              <span class="ini__summon-name">{{ s.member.name }}</span>
-              <span class="ini__summon-state">{{ summonState(s.row) }}</span>
-              <button
-                v-if="gm && s.row && (s.row.hp_max ?? 0) > 0"
-                type="button"
-                class="btn btn--quiet btn--sm"
-                :aria-label="`${s.member.name} is slain`"
-                @click="init.adjustHp(s.row, -(s.row.hp ?? 0))"
-              >
-                Slain
-              </button>
-            </li>
-          </ul>
         </div>
       </details>
     </div>
