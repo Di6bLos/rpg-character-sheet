@@ -1364,16 +1364,19 @@ const effectRows = computed(() =>
 }
 
 .apm__vitals {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin: 0;
 
   > div {
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 6px 4px;
+    justify-content: center;
+    min-width: 0;
+    padding: 6px 8px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--field);
@@ -1411,7 +1414,7 @@ const effectRows = computed(() =>
   }
 }
 
-.apm__armor {
+.apm__vitals > .apm__armor {
   flex: 0 0 auto;
 
   dd {
@@ -1441,10 +1444,19 @@ const effectRows = computed(() =>
   }
 }
 
+.apm__vitals > .apm__hp {
+  flex: 2 1 auto;
+}
+
 .apm__hp dd {
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
+}
+
+.apm__vitals dt {
+  white-space: nowrap;
 }
 
 .apm__hp-btn {
