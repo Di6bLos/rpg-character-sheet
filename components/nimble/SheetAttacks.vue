@@ -158,7 +158,8 @@ const hasAttacks = computed(
               <template v-if="w.blocked">{{ w.why }}</template>
               <template v-else
                 >{{ sheet.ownDice ? 'Attack' : 'Roll'
-                }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template></template
+                }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template
+                ><template v-if="w.advantage"> · {{ w.advantage }}× advantage</template></template
               >
             </button>
             <p v-if="resultFor(`w:${i}`)" class="roll-status attack__result" role="status">
@@ -260,7 +261,8 @@ const hasAttacks = computed(
                 @click="claim(a.key, a.run)"
               >
                 {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll')
-                }}<template v-if="!a.why && a.rushed"> · {{ a.rushed }}× disadvantage</template>
+                }}<template v-if="!a.why && a.rushed"> · {{ a.rushed }}× disadvantage</template
+                ><template v-if="!a.why && a.advantage"> · {{ a.advantage }}× advantage</template>
               </button>
               <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
                 {{ resultFor(a.key) }}

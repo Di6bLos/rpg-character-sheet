@@ -29,6 +29,7 @@ import {
 } from '~/utils/nimblePlay'
 import { endEffects } from '~/utils/nimbleEffects'
 import { rollSpellDamage, spellDamage } from '~/utils/nimbleSpellDamage'
+import { conditionMods } from '~/utils/nimbleConditions'
 import { sacrificeMinions } from '~/utils/nimbleSummons'
 import type { NimbleResultOptions } from './useNimbleActions'
 
@@ -262,6 +263,8 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
 
   function cast(s: CastableSpell, withWound = false, alt?: AltKey, roll = false) {
     if (!canEdit.value || s.busy) return
+    const incapacitated = conditionMods(sheet.value).incapacitated
+    if (incapacitated) return say(`${s.name}: you are ${incapacitated} and can’t cast.`)
     if (s.used) return say(`${s.name}: already cast this turn (1/turn).`)
     if (s.noActions) {
       const message = 'No actions left: they come back when your turn ends.'
@@ -356,8 +359,9 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
     if (!damage) return ''
     const type = damage.type ? ` ${damage.type}` : ''
-    const rushed = sheet.value.rushed
-    const rush = rushed ? ` with ${rushed}× disadvantage (Rushed)` : ''
+    const rushed = sheet.value.rushed + conditionMods(sheet.value).disadvantage
+    const rush =
+      rushed > 0 ? ` with ${rushed}× disadvantage` : rushed < 0 ? ` with ${-rushed}× advantage` : ''
     if (sheet.value.ownDice || !damage.rollable)
       return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.`
     const result = rollSpellDamage(damage, Math.random, rushed)
@@ -374,19 +378,23 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
         if (!damage || /\bReaction:/.test(s.desc)) return []
         const range = /^(Range|Reach|Line|Cone)[^.]*/.exec(s.desc)?.[0] ?? ''
-        const why = !sheet.value.turnActive
-          ? 'Not your turn'
-          : s.used
-            ? 'Used this turn'
-            : s.busy
-              ? 'Finish casting first'
-              : s.noActions
-                ? 'No actions left'
-                : s.short
-                  ? s.usesMinions
-                    ? `Needs ${s.cost}`
-                    : 'Not enough mana'
-                  : ''
+        const cond = conditionMods(sheet.value)
+        const odds = sheet.value.rushed + cond.disadvantage
+        const why = cond.incapacitated
+          ? cond.incapacitated
+          : !sheet.value.turnActive
+            ? 'Not your turn'
+            : s.used
+              ? 'Used this turn'
+              : s.busy
+                ? 'Finish casting first'
+                : s.noActions
+                  ? 'No actions left'
+                  : s.short
+                    ? s.usesMinions
+                      ? `Needs ${s.cost}`
+                      : 'Not enough mana'
+                    : ''
         return [
           {
             key: `spell:${s.name}`,
@@ -402,7 +410,8 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
               .join(' · '),
             tier: s.tier,
             price: s.cost,
-            rushed: sheet.value.rushed,
+            rushed: Math.max(0, odds),
+            advantage: Math.max(0, -odds),
             cost: [
               `${s.actions} action${s.actions === 1 ? '' : 's'}`,
               s.at > s.tier || s.discount

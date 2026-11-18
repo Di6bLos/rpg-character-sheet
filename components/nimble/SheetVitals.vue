@@ -4,6 +4,7 @@
 import type { NimbleSheet } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { keyStatValue } from '~/utils/nimbleBuild'
+import { conditionMods } from '~/utils/nimbleConditions'
 import {
   dyingAttackSave,
   fieldRest,
@@ -41,8 +42,14 @@ const hpState = computed(() => {
 const diceLeft = computed(() => hitDiceLeft(sheet.value))
 const key = computed(() => keyStatValue(sheet.value))
 
+const cond = computed(() => conditionMods(sheet.value))
 const tiles = computed(() => [
-  { label: 'Speed', value: sheet.value.speed, sub: 'spaces' },
+  {
+    label: 'Speed',
+    value: cond.value.speed ?? sheet.value.speed,
+    sub: cond.value.speedNote || 'spaces',
+    changed: cond.value.speed !== null,
+  },
   { label: 'Initiative', value: sign(sheet.value.initMod), sub: 'added to the roll' },
   {
     label: 'Save DC',
@@ -299,10 +306,14 @@ function confirmRest() {
     <div class="vitals">
       <div v-for="v in tiles" :key="v.label" class="tile">
         <div class="tile__label">{{ v.label }}</div>
-        <div class="tile__value">{{ v.value }}</div>
+        <div class="tile__value" :class="{ 'is-changed': 'changed' in v && v.changed }">
+          {{ v.value }}
+        </div>
         <div class="hint" style="font-size: 11px">{{ v.sub }}</div>
       </div>
     </div>
+
+    <NimbleSheetConditions />
 
     <button type="button" class="btn btn--ghost" :disabled="!canEdit" @click="restOpen = true">
       Safe Rest
@@ -322,6 +333,10 @@ function confirmRest() {
 </template>
 
 <style scoped lang="scss">
+.is-changed {
+  color: var(--warn-text);
+}
+
 .crit {
   display: inline-flex;
   align-items: center;

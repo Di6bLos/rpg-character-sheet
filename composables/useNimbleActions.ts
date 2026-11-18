@@ -17,6 +17,7 @@ import {
   setMalfunction,
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
+import { conditionMods } from '~/utils/nimbleConditions'
 import {
   afterSummonedAttack,
   companionAttack,
@@ -150,6 +151,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const NO_ACTIONS = 'No actions left: they come back when your turn ends.'
   const NOT_TURN = 'Not your turn'
   const offTurn = computed(() => !sheet.value.turnActive)
+  const cond = computed(() => conditionMods(sheet.value))
 
   function report(message: string) {
     say(message)
@@ -176,6 +178,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       // Swift Fists and the like say so in the weapon's properties.
       const next = nextAttack.value
       const rushed = /no rushed/i.test(w.props) || next.clean ? 0 : sheet.value.rushed
+      const odds = rushed + cond.value.disadvantage
       const r = resource.value
       const powered = poweredBy(r, w.props) && readied.value > 0
       const judged = r?.kind === 'judgment' && w.melee && held.value > 0
@@ -244,14 +247,20 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           (judged ? ` +${held.value}` : '') +
           (flat ? ` +${flat}` : '') +
           (zealDamage ? ` +${zealDamage}` : ''),
-        boost: [note, ...bonus.notes, ...situational].filter(Boolean).join(' · '),
+        boost: [note, ...bonus.notes, ...situational, ...cond.value.notes, ...cond.value.hints]
+          .filter(Boolean)
+          .join(' · '),
         zealot: zealous,
-        rushed,
+        rushed: Math.max(0, odds),
+        advantage: Math.max(0, -odds),
         poweredBy: poweredBy(r, w.props),
         mishap: poweredBy(r, w.props) ? WEAPON_MISHAPS[w.name] : undefined,
-        blocked: (left.value === 0 || offTurn.value) && prepaid.value === 0,
-        why:
-          prepaid.value > 0
+        blocked:
+          !!cond.value.incapacitated ||
+          ((left.value === 0 || offTurn.value) && prepaid.value === 0),
+        why: cond.value.incapacitated
+          ? cond.value.incapacitated
+          : prepaid.value > 0
             ? ''
             : offTurn.value
               ? NOT_TURN
@@ -260,6 +269,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
                 : '',
         roll: () => {
           if (!canEdit.value) return
+          if (cond.value.incapacitated)
+            return report(`${w.name}: you are ${cond.value.incapacitated} and can’t act.`)
           if (offTurn.value && prepaid.value === 0)
             return report(
               `${w.name}: not your turn. Start your turn to attack (reactions still work).`,
@@ -295,14 +306,15 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             finish(false, false)
             spendAttackAction()
             sheet.value.rushed += 1
-            const rush = rushed ? ` with ${rushed}× disadvantage (Rushed)` : ''
+            const rush =
+              odds > 0 ? ` with ${odds}× disadvantage` : odds < 0 ? ` with ${-odds}× advantage` : ''
             return report(
               `${w.name}: attack made; roll ${w.flat !== undefined ? `${w.dmg} to hit, ${w.flat} damage` : w.dmg}${rush} yourself.${notes.length ? ` ${notes.join('. ')}.` : ''}${ended}`,
             )
           }
           const expr = parseDice(w.dmg)
           if (!expr) return say(`${w.name}: “${w.dmg}” isn’t a dice expression like 1d12+3`)
-          const result = rollNimble(expr, null, Math.random, rushed)
+          const result = rollNimble(expr, null, Math.random, odds)
           if (w.flat !== undefined && !result.miss) result.total = w.flat
           if (fury && !result.miss) {
             result.total += fury

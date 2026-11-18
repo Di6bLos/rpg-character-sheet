@@ -168,6 +168,7 @@ function nimble(): NimbleSheet {
     concentration: '',
     casting: { spell: '', actions: 0 },
     conditions: [],
+    conditionEnds: {},
     resource: {
       name: '',
       diceName: '',

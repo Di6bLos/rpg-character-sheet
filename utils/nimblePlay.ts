@@ -13,6 +13,7 @@ import {
   type SheetResource,
 } from '~/utils/nimbleBuild'
 import { INVENTIONS } from '~/data/nimble/effects'
+import { clearConditionsAt, dazedAtTurnStart } from '~/utils/nimbleConditions'
 import {
   applyCastEffect,
   applyMishapEffect,
@@ -73,7 +74,7 @@ export function endEncounter(sheet: NimbleSheet, level: number): string {
   for (const key of Object.keys(sheet.uses))
     if (/@(?:stolen|cooldown)$|~ready$/.test(key)) sheet.uses[key] = { used: 0 }
   expireSoulDice(sheet)
-  const expired = expireGrants(sheet)
+  const expired = expireGrants(sheet) + clearConditionsAt(sheet, 'encounter')
   const r = sheetResource(sheet, level)
   const lost = !!r && (r.kind === 'counter' || r.kind === 'dice') && sheet.resource.count > 0
   if (lost) sheet.resource.count = 0
@@ -89,7 +90,7 @@ export function endEncounter(sheet: NimbleSheet, level: number): string {
 export function newRound(sheet: NimbleSheet, level: number): string {
   sheet.turnDone = false
   for (const id of roundCounters(sheet, level)) if (sheet.uses[id]) sheet.uses[id]!.used = 0
-  return 'New round: per-round uses are back; start your turn when it comes.'
+  return `New round: per-round uses are back; start your turn when it comes.${clearConditionsAt(sheet, 'round')}`
 }
 
 /** Extra actions an ally or ability can grant beyond the turn's (Stim Pack, Chorus of Champions…). */
@@ -833,11 +834,15 @@ export function startTurn(sheet: NimbleSheet, level: number): string {
     sheet.resource.active = true
     fury = ' Enduring Rage: you Rage for free; roll your Fury Dice and add them.'
   } else if (enduring) fury = ` Enduring Rage: ${rage(sheet, level, true)}`
+  const dazed = dazedAtTurnStart(sheet)
   const casting = continueCasting(sheet, level)
   const charge = refillResource(sheet, level, 'turn')
-  const ended = endEffects(sheet, 'turn') + summonsGone(endSummons(sheet, 'turn'))
+  const ended =
+    endEffects(sheet, 'turn') +
+    summonsGone(endSummons(sheet, 'turn')) +
+    clearConditionsAt(sheet, 'turnStart')
   const n = actionsLeft(sheet)
-  return `Your turn: ${n} action${n === 1 ? '' : 's'}.${fury}${casting}${charge}${ended}`
+  return `Your turn: ${n} action${n === 1 ? '' : 's'}.${dazed}${fury}${casting}${charge}${ended}`
 }
 
 export function endTurn(sheet: NimbleSheet, level: number): string {
@@ -851,7 +856,7 @@ export function endTurn(sheet: NimbleSheet, level: number): string {
   const stolen = settleStolen(sheet)
   const n = turnActions(sheet)
   const recharged = refillResource(sheet, level, 'turnEnd')
-  const ended = endEffects(sheet, 'turnEnd')
+  const ended = endEffects(sheet, 'turnEnd') + clearConditionsAt(sheet, 'turnEnd')
   return `End of turn: ${stolen ? `${n - sheet.actionsSpent} of ${n}` : `all ${n}`} actions back, reactions ready.${stolen}${recharged}${ended}`
 }
 

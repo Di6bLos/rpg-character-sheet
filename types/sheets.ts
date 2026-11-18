@@ -182,6 +182,8 @@ export interface NimbleAttack {
   onCrit?: string[]
 }
 
+export type ConditionEnd = 'turnStart' | 'turnEnd' | 'round' | 'encounter'
+
 export interface NimbleCustomSummon {
   kind: 'minion' | 'companion' | 'spirit' | 'construct' | 'other'
   armor?: number
@@ -291,6 +293,7 @@ export interface NimbleSheet extends SheetCommon {
   /** A spell that needs more actions than the turn had: the actions still owed. */
   casting: { spell: string; actions: number; at?: number }
   conditions: string[]
+  conditionEnds: Record<string, ConditionEnd>
   /**
    * Class resource. `active` and `dice` are a Berserker's Rage and Fury dice (added to
    * melee damage); `count` holds the dice, charges or uses of the other kinds (for

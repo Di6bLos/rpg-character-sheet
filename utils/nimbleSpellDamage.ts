@@ -80,8 +80,10 @@ export function rollSpellDamage(
     const roll = rollNimble(expr, null, rng, disadvantage)
     return { total: roll.total, miss: roll.miss, crit: roll.crit, detail: roll.dice.join(', ') }
   }
-  const rolls = Array.from({ length: expr.count + disadvantage }, () => rollDie(expr.sides, rng))
-  const kept = [...rolls].sort((a, b) => a - b).slice(0, expr.count)
+  const extra = Math.abs(disadvantage)
+  const rolls = Array.from({ length: expr.count + extra }, () => rollDie(expr.sides, rng))
+  const sorted = [...rolls].sort((a, b) => (disadvantage >= 0 ? a - b : b - a))
+  const kept = sorted.slice(0, expr.count)
   return {
     total: kept.reduce((a, b) => a + b, 0) + expr.mod,
     miss: false,

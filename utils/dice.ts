@@ -83,14 +83,14 @@ export function rollNimble(
   rng: Rng = Math.random,
   disadvantage = 0,
 ): NimbleRoll {
-  const extra = Math.max(0, Math.floor(disadvantage))
+  const extra = Math.abs(Math.floor(disadvantage))
   const rolled = Array.from({ length: Math.max(1, expr.count) + extra }, () =>
     rollDie(expr.sides, rng),
   )
   const dropped = new Set(
     rolled
       .map((value, index) => ({ value, index }))
-      .sort((a, b) => b.value - a.value)
+      .sort((a, b) => (disadvantage > 0 ? b.value - a.value : a.value - b.value))
       .slice(0, extra)
       .map((d) => d.index),
   )
