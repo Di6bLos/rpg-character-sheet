@@ -2,6 +2,7 @@
 // Conditions: tap to toggle. Bloodied, Dying and Wounded follow HP and Wounds.
 import { AUTO_CONDITIONS, CONDITIONS } from '~/data/nimble/core'
 import type { NimbleSheet } from '~/types/sheets'
+import { clearEffect, effectDef, endEffect } from '~/utils/nimbleEffects'
 import { isBloodied } from '~/utils/nimblePlay'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
@@ -24,10 +25,22 @@ const conditions = computed(() =>
   }),
 )
 const active = computed(() => conditions.value.filter((c) => c.on))
+const statuses = computed(() =>
+  sheet.value.effects.map((e) => ({
+    source: e.source,
+    label: e.condition === e.source ? e.source : `${e.condition} (${e.source})`,
+    until: effectDef(e.source)?.until ?? '',
+  })),
+)
+
+function end(source: string) {
+  if (canEdit.value) endEffect(sheet.value, source)
+}
 
 function toggle(name: string) {
   if (!canEdit.value) return
   const list = sheet.value.conditions
+  if (list.includes(name)) clearEffect(sheet.value, name)
   sheet.value.conditions = list.includes(name) ? list.filter((c) => c !== name) : [...list, name]
 }
 </script>
@@ -49,6 +62,22 @@ function toggle(name: string) {
         {{ c.name }}
       </button>
     </div>
+    <ul v-if="statuses.length" class="statuses">
+      <li v-for="st in statuses" :key="st.source">
+        <span class="grow"
+          ><strong>{{ st.label }}</strong> <small>{{ st.until }}</small></span
+        >
+        <button
+          type="button"
+          class="btn btn--quiet btn--sm"
+          :disabled="!canEdit"
+          :aria-label="`End ${st.label}`"
+          @click="end(st.source)"
+        >
+          End
+        </button>
+      </li>
+    </ul>
     <div v-if="active.length" class="tile" style="gap: 6px">
       <span v-for="c in active" :key="c.name" class="cond-line">
         <strong>{{ c.name }}.</strong> {{ c.desc }}
@@ -58,6 +87,25 @@ function toggle(name: string) {
 </template>
 
 <style scoped lang="scss">
+.statuses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    border-bottom: 1px solid var(--track);
+    font-size: 13px;
+  }
+
+  small {
+    color: var(--page-muted);
+  }
+}
+
 .cond {
   min-height: 34px;
   padding: 0 12px;

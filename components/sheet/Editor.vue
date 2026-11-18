@@ -10,8 +10,9 @@ import type {
   Pf2eSheet,
 } from '~/types/sheets'
 import { canRestore, restoreLevel } from '~/utils/levelHistory'
+import { syncCompanions } from '~/utils/nimbleBuild'
 
-const { draft, save } = useSheet()
+const { draft, saveNow } = useSheet()
 const snackbar = useSnackbarStore()
 
 const system = computed(() => draft.value.system)
@@ -68,9 +69,10 @@ async function confirmLower() {
   lowering.value = true
   try {
     restoreLevel(draft.value.sheet, target)
+    if (draft.value.system === 'nimble') syncCompanions(draft.value.sheet as NimbleSheet)
     draft.value.level = target
     lowerOpen.value = false
-    await save()
+    await saveNow()
     snackbar.show(`${draft.value.name} is now level ${target}`)
   } finally {
     lowering.value = false

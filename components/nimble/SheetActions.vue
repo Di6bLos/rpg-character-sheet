@@ -3,45 +3,13 @@
 // (per turn, encounter or Safe Rest, or a pool), each with its counter. Abilities
 // the rules don't limit are listed only under All abilities.
 import type { NimbleSheet } from '~/types/sheets'
-import { keyStatValue } from '~/utils/nimbleBuild'
-
-const MAX_USES = 200
 
 const { draft, canEdit, lastRoll } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
-const keyValue = computed(() => keyStatValue(sheet.value))
-const { attacks, reactions, toggleReaction, abilities, spend } = useNimbleActions()
+const { attacks, reactions, toggleReaction, abilities } = useNimbleActions()
+const { reactionSpells, cast } = useNimbleSpells()
 
-const editing = ref('')
-/** Amount typed into a pool's Spend field, by counter. */
-const amounts = reactive<Record<string, number>>({})
-const uid = useId()
-const domId = (prefix: string, id: string) => `${uid}-${prefix}-${id.replace(/[^\w-]/g, '_')}`
-
-/** Opening or closing the max editor swaps the controls; keep keyboard focus with them. */
-async function focusOn(id: string) {
-  await nextTick()
-  document.getElementById(id)?.focus()
-}
-
-function toggleEdit(id: string) {
-  editing.value = editing.value === id ? '' : id
-  focusOn(domId(editing.value ? 'max' : 'link', id))
-}
-
-function setMax(id: string, event: Event) {
-  if (!canEdit.value) return
-  const value = Number((event.target as HTMLInputElement).value)
-  const max = Math.max(1, Math.min(MAX_USES, Math.floor(value) || 1))
-  const used = Math.min(sheet.value.uses[id]?.used ?? 0, max)
-  sheet.value.uses[id] = { max, used }
-}
-
-function resetMax(id: string, rule: number) {
-  if (!canEdit.value) return
-  sheet.value.uses[id] = { used: Math.min(sheet.value.uses[id]?.used ?? 0, rule) }
-  toggleEdit(id)
-}
+const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.companion))
 </script>
 
 <template>
@@ -60,11 +28,19 @@ function resetMax(id: string, rule: number) {
             <div class="stack" style="gap: 2px">
               <strong style="font-size: 16px">{{ w.name }}</strong>
               <span class="muted" style="font-size: 12px">{{ w.props }}</span>
+              <span v-if="w.boost" class="boost">{{ w.boost }}</span>
             </div>
             <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
           </div>
-          <button type="button" class="btn" :disabled="!canEdit" @click="w.roll">
-            Roll<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template>
+          <button
+            type="button"
+            class="btn"
+            :disabled="!canEdit || w.blocked"
+            :title="w.blocked ? 'No actions left' : undefined"
+            @click="w.roll"
+          >
+            {{ sheet.ownDice ? 'Attack' : 'Roll'
+            }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template>
           </button>
         </div>
       </div>
@@ -90,7 +66,7 @@ function resetMax(id: string, rule: number) {
             type="button"
             class="tile card reaction"
             :aria-pressed="r.used"
-            :disabled="!canEdit"
+            :disabled="!canEdit || r.blocked"
             @click="toggleReaction(r.name)"
           >
             <span class="reaction__head">
@@ -99,105 +75,28 @@ function resetMax(id: string, rule: number) {
             </span>
             <span>{{ r.desc }}</span>
           </button>
+          <button
+            v-for="s in reactionSpells"
+            :key="s.name"
+            type="button"
+            class="tile card reaction"
+            :disabled="!canEdit || !!s.blocked"
+            :title="s.blocked || `${s.cast}. ${s.desc}`"
+            @click="cast(s)"
+          >
+            <span class="reaction__head">
+              <strong>{{ s.name }}</strong>
+              <em>{{ s.blocked || `Spell · ${s.cost}` }}</em>
+            </span>
+            <span>{{ s.trigger }}</span>
+          </button>
         </div>
       </div>
 
-      <div class="stack" style="gap: 8px">
+      <div v-if="mine.length || !abilities.length" class="stack" style="gap: 8px">
         <div class="caps">Limited-use abilities</div>
-        <details
-          v-for="a in abilities"
-          :key="`${a.key}-${a.level ?? 0}`"
-          name="nimble-action"
-          class="tile ability"
-        >
-          <summary>
-            <strong>{{ a.name }}</strong>
-            <small>{{ a.src }}</small>
-            <span class="ability__left">
-              {{ a.counters.map((c) => `${c.left} / ${c.max}`).join(' · ') }}
-            </span>
-          </summary>
-          <div class="ability__body">
-            <p><NimbleRulesText :text="a.desc" :key-value="keyValue" /></p>
-            <div v-for="c in a.counters" :key="c.id" class="counter">
-              <div class="uses">
-                <div v-if="c.pips" class="row" style="gap: 6px" aria-hidden="true">
-                  <i v-for="n in c.max" :key="n" :class="{ on: n <= c.left }" />
-                </div>
-                <div v-else class="meter uses__bar"><span :style="{ width: c.pct + '%' }" /></div>
-                <span class="uses__left" aria-live="polite">
-                  {{ c.left }} of {{ c.max }} left {{ c.label }}
-                </span>
-                <div class="row" style="gap: 6px; margin-left: auto">
-                  <template v-if="!c.pips">
-                    <label class="sr-only" :for="domId('amt', c.id)">Amount of {{ a.name }}</label>
-                    <input
-                      :id="domId('amt', c.id)"
-                      v-model.number="amounts[c.id]"
-                      class="input"
-                      type="number"
-                      min="1"
-                      :max="c.max"
-                      placeholder="1"
-                      :disabled="!canEdit"
-                    />
-                  </template>
-                  <button
-                    type="button"
-                    class="btn btn--ghost btn--sm"
-                    :disabled="!canEdit || c.used === 0"
-                    :aria-label="`Regain ${a.name} (${c.label})`"
-                    @click="spend(c, a.name, -(c.pips ? 1 : amounts[c.id] || 1))"
-                  >
-                    {{ c.pips ? 'Undo' : 'Restore' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn--ghost btn--sm"
-                    :disabled="!canEdit || c.left === 0"
-                    :aria-label="`Use ${a.name} (${c.label})`"
-                    @click="spend(c, a.name, c.pips ? 1 : amounts[c.id] || 1)"
-                  >
-                    {{ c.pips ? 'Use' : 'Spend' }}
-                  </button>
-                </div>
-              </div>
-              <span v-if="c.hint && a.counters.length > 1" class="counter__hint">{{ c.hint }}</span>
-              <div v-if="editing === c.id" class="uses uses--edit">
-                <label :for="domId('max', c.id)">Uses {{ c.label }}</label>
-                <input
-                  :id="domId('max', c.id)"
-                  class="input"
-                  type="number"
-                  min="1"
-                  :max="MAX_USES"
-                  :value="c.max"
-                  @change="setMax(c.id, $event)"
-                />
-                <button
-                  v-if="c.max !== c.rule"
-                  type="button"
-                  class="btn btn--quiet btn--sm"
-                  style="margin-left: auto"
-                  @click="resetMax(c.id, c.rule)"
-                >
-                  Reset to {{ c.rule }}
-                </button>
-              </div>
-              <button
-                v-if="canEdit"
-                :id="domId('link', c.id)"
-                type="button"
-                class="link"
-                :aria-expanded="editing === c.id"
-                @click="toggleEdit(c.id)"
-              >
-                {{ editing === c.id ? 'Done' : 'Change max' }}
-              </button>
-            </div>
-          </div>
-        </details>
-        <p v-if="!abilities.length" class="empty">
+        <NimbleAbilityCounters :items="mine" />
+        <p v-if="!mine.length" class="empty">
           Nothing to count yet. Abilities with limited uses per turn, encounter or Safe Rest appear
           here; the rest are under All abilities.
         </p>
@@ -207,6 +106,12 @@ function resetMax(id: string, rule: number) {
 </template>
 
 <style scoped lang="scss">
+.boost {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
 .attacks {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
@@ -276,130 +181,5 @@ function resetMax(id: string, rule: number) {
 
 .reaction[aria-pressed='true'] em {
   color: var(--page-soft);
-}
-
-.ability {
-  padding: 0;
-  gap: 0;
-
-  summary {
-    display: flex;
-    align-items: baseline;
-    gap: 4px 8px;
-    flex-wrap: wrap;
-    min-height: 44px;
-    padding: 12px 14px;
-    cursor: pointer;
-
-    strong {
-      font-size: 14px;
-    }
-
-    small {
-      font-size: 11px;
-      color: var(--page-muted);
-    }
-  }
-
-  p {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--page-soft);
-    // Upgrades append "Level N: …" on new lines.
-    white-space: pre-line;
-  }
-
-  &[open] {
-    border-color: var(--accent);
-  }
-}
-
-.ability__left {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent-text);
-}
-
-.ability__body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 0 14px 12px;
-
-  .uses {
-    width: 100%;
-  }
-}
-
-.counter {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  width: 100%;
-}
-
-.counter__hint {
-  font-size: 12px;
-  color: var(--page-muted);
-}
-
-.link {
-  padding: 4px 0;
-  border: 0;
-  background: none;
-  color: var(--accent-text);
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.uses {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-
-  i {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 1.5px var(--line-strong);
-
-    &.on {
-      background: var(--accent);
-      box-shadow: none;
-    }
-  }
-
-  label {
-    font-size: 13px;
-    color: var(--page-soft);
-  }
-
-  .input {
-    width: 84px;
-    min-height: 36px;
-  }
-}
-
-.uses__bar {
-  flex: 1 1 120px;
-}
-
-.uses__left {
-  font-size: 13px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-@media (pointer: coarse) {
-  .link {
-    min-height: 44px;
-  }
 }
 </style>

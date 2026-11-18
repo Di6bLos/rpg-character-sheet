@@ -62,13 +62,19 @@ const schools = computed(() =>
                 type="button"
                 class="btn btn--sm cast"
                 :class="{ 'btn--ghost': s.tier === 0 }"
-                :disabled="!canEdit || s.short || s.busy"
+                :disabled="!canEdit || s.short || s.busy || s.noActions"
                 :title="
                   s.busy
                     ? `Still casting ${sheet.casting.spell}`
-                    : s.short
-                      ? 'Not enough mana'
-                      : undefined
+                    : s.noActions
+                      ? 'No actions left'
+                      : s.short
+                        ? s.usesMinions
+                          ? `Not enough shadow minions (needs ${s.cost})`
+                          : 'Not enough mana'
+                        : s.spread
+                          ? 'Spends the actions you have now and the rest on your next turns; it takes effect then. Keep Concentration and take no other actions or reactions meanwhile (Core p. 15).'
+                          : undefined
                 "
                 @click="cast(s)"
               >
@@ -78,7 +84,7 @@ const schools = computed(() =>
                 v-if="s.bloodLabel"
                 type="button"
                 class="btn btn--sm btn--ghost cast"
-                :disabled="!canEdit || s.busy"
+                :disabled="!canEdit || s.busy || s.noActions"
                 @click="cast(s, true)"
               >
                 {{ s.bloodLabel }}

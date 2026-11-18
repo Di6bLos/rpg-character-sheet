@@ -19,6 +19,8 @@ export interface SheetEditor<T extends AnySheet = AnySheet> {
   adjustHp: (delta: number) => void
   say: (message: string) => void
   save: () => Promise<void>
+  /** Saves right away, even before the change watcher has marked the draft dirty. */
+  saveNow: () => Promise<void>
   onPortrait: (event: Event) => Promise<void>
 }
 
@@ -91,6 +93,11 @@ export function provideSheetEditor(
     }
   }
 
+  function saveNow(): Promise<void> {
+    dirty.value = true
+    return save()
+  }
+
   /** save() for fire-and-forget callers; errors are already shown as a toast. */
   function saveQuietly() {
     save().catch(() => {})
@@ -134,7 +141,7 @@ export function provideSheetEditor(
     try {
       uploaded = await store.uploadPortrait(draft.value.id, file)
       draft.value.portrait_path = uploaded
-      await save()
+      await saveNow()
       if (previous && previous !== uploaded) await store.removePortrait(previous)
     } catch (err) {
       if (uploaded && draft.value.portrait_path === uploaded) {
@@ -157,7 +164,10 @@ export function provideSheetEditor(
     lastRoll,
     campaignName,
     uploadingPortrait,
-    portrait: computed(() => portraitUrl(draft.value.portrait_path)),
+    portrait: computed(() => {
+      const override = (draft.value.sheet as { portraitOverride?: string }).portraitOverride
+      return portraitUrl(override || draft.value.portrait_path)
+    }),
     hpPct: computed(() => {
       const { hp, hpMax } = draft.value.sheet
       return hpMax > 0 ? Math.round((Math.min(hp, hpMax) / hpMax) * 100) : 0
@@ -173,6 +183,7 @@ export function provideSheetEditor(
     adjustHp,
     say: (message: string) => (lastRoll.value = message),
     save,
+    saveNow,
     onPortrait,
   }
 

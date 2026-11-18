@@ -3,11 +3,20 @@
 import { classBySlug } from '~/data/nimble/classes'
 import type { NimbleSheet } from '~/types/sheets'
 import { abilityBaseName, keyStatValue, sheetResource } from '~/utils/nimbleBuild'
-import { MAX_RAGE_DICE, encounterMana, spendActions } from '~/utils/nimblePlay'
+import { endEffects } from '~/utils/nimbleEffects'
+import {
+  costLabel,
+  costShort,
+  counterCost,
+  encounterMana,
+  freeMove,
+  furyMax,
+  isHollowOne,
+} from '~/utils/nimblePlay'
 
 const MAX_COUNT = 12
 
-const { draft, canEdit, say } = useSheet<NimbleSheet>()
+const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const cls = computed(() => classBySlug(sheet.value.classSlug))
 const keyValue = computed(() => keyStatValue(sheet.value))
@@ -36,62 +45,61 @@ function adjustTempMana(delta: number) {
   sheet.value.mana.temp = Math.max(0, sheet.value.mana.temp + delta)
 }
 
-function gainSurge() {
-  if (!canEdit.value) return
-  const gain = Math.max(0, sheet.value.stats.WIL)
-  sheet.value.mana.temp = gain
-  say(`Elemental Surge: ${gain} temporary mana (add any dice it grants by hand).`)
-}
-
 // --- Class resource -------------------------------------------------------
-const resource = computed(() => sheetResource(sheet.value, draft.value.level))
-const res = computed(() => sheet.value.resource)
-const statValue = computed(() => {
-  const stat = resource.value?.stat
-  return stat ? Math.max(0, sheet.value.stats[stat]) + (resource.value?.bonus ?? 0) : 0
+const resource = computed(() => {
+  const r = sheetResource(sheet.value, draft.value.level)
+  return r?.kind === 'uses' && isHollowOne(sheet.value) ? null : r
 })
+const res = computed(() => sheet.value.resource)
+const {
+  readied,
+  held,
+  setReady,
+  rollPower,
+  rollJudgment,
+  expendJudgment,
+  useMove,
+  toggleCrit,
+  inventions,
+  operate,
+  rage,
+  left,
+  addFury,
+  endRage,
+  spendFury,
+  linkedOptions,
+} = useNimbleActions()
+const moves = computed(() =>
+  (resource.value?.moves ?? []).map((m) => {
+    const cost = counterCost(m.desc)
+    return { ...m, cost: costLabel(cost), short: costShort(sheet.value, cost) }
+  }),
+)
+const statValue = computed(() => resource.value?.max ?? 0)
 const usesLeft = computed(() => statValue.value - res.value.count)
 const badge = computed(() => {
   const r = resource.value
   if (!r) return ''
   if (r.kind === 'uses') return `${statValue.value} uses · ${r.stat}`
-  const die = r.kind === 'dice' || r.kind === 'rage' ? `d${r.die}` : ''
+  if (r.kind === 'judgment') return `${r.roll}d${r.die}${r.advantage ? ' · advantage' : ''}`
+  if (r.kind === 'crit') return `${r.roll}d${r.die} · 1/turn on a crit`
+  const die = ['dice', 'rage', 'power'].includes(r.kind) ? `d${r.die}` : ''
   const stat = r.bonus ? `${r.stat}+${r.bonus}` : r.stat
-  const from = r.stat ? `${stat} (${statValue.value}) on Initiative` : ''
+  const when = r.refill === 'turn' ? 'recharges at end of turn' : 'on Initiative'
+  const from = r.stat ? `${stat} (${statValue.value}) ${when}` : ''
   return [die, from].filter(Boolean).join(' · ')
 })
 
 function adjustCount(delta: number) {
   if (!canEdit.value) return
-  res.value.count = Math.max(0, Math.min(MAX_COUNT, res.value.count + delta))
-}
-
-function adjustRageDice(delta: number) {
-  if (!canEdit.value) return
-  res.value.dice = Math.max(0, Math.min(MAX_RAGE_DICE, res.value.dice + delta))
-}
-
-function toggleRage() {
-  if (!canEdit.value || !resource.value) return
-  const name = resource.value.name
-  if (res.value.active) {
-    res.value.active = false
-    say(`${name} ended.`)
-    return
-  }
-  res.value.active = true
-  spendActions(sheet.value)
-  say(`${name}! ${resource.value.diceName || 'Bonus'} dice add to your melee damage.`)
-}
-
-function useMove(name: string) {
-  if (!canEdit.value || res.value.count < 1) return
-  res.value.count -= 1
-  say(`${name}: spent 1 ${resource.value?.diceName.toLowerCase() || 'charge'}.`)
+  const max = resource.value?.refill ? statValue.value : MAX_COUNT
+  res.value.count = Math.max(0, Math.min(max, res.value.count + delta))
 }
 
 function endConcentration() {
-  if (canEdit.value) sheet.value.concentration = ''
+  if (!canEdit.value) return
+  sheet.value.concentration = ''
+  endEffects(sheet.value, 'concentration')
 }
 </script>
 
@@ -156,7 +164,8 @@ function endConcentration() {
       <div class="row temp-row">
         <span class="small" style="font-size: 13px">
           <template v-if="surge"
-            ><strong>Elemental Surge</strong>: temporary mana when you roll Initiative</template
+            ><strong>Elemental Surge</strong>: rolled on New encounter, lost when combat
+            ends</template
           >
           <template v-else-if="combatMana > 0"
             ><strong>Encounter mana</strong>: gained on New encounter, lost when combat
@@ -165,15 +174,6 @@ function endConcentration() {
           <template v-else>Temporary mana (spent first, lost when combat ends)</template>
         </span>
         <div class="row" style="gap: 6px; margin-left: auto">
-          <button
-            v-if="surge"
-            type="button"
-            class="btn btn--ghost btn--sm"
-            :disabled="!canEdit"
-            @click="gainSurge"
-          >
-            Gain
-          </button>
           <button
             type="button"
             class="step step--xs"
@@ -203,54 +203,76 @@ function endConcentration() {
       aria-labelledby="res-h"
     >
       <div class="panel-title" style="margin: 0">
-        <h2 id="res-h">{{ resource.name }}</h2>
+        <span class="title-help">
+          <h2 id="res-h">{{ resource.name }}</h2>
+          <UiHelp v-if="resource.desc" :label="`About ${resource.name}`" :text="resource.desc" />
+        </span>
         <span v-if="badge" class="badge badge--outline">{{ badge }}</span>
       </div>
-      <p v-if="resource.desc" class="res-desc">
-        <NimbleRulesText :text="resource.desc" :key-value="keyValue" />
-      </p>
 
-      <div v-if="resource.kind === 'rage'" class="row" style="gap: 10px">
-        <button
-          type="button"
-          class="btn"
-          :class="{ 'btn--ghost': !res.active }"
-          :aria-pressed="res.active"
-          :disabled="!canEdit"
-          @click="toggleRage"
-        >
-          {{ res.active ? `${resource.name} active` : `${resource.name} · 1 action` }}
-        </button>
-        <div class="row" style="gap: 8px; margin-left: auto">
+      <template v-if="resource.kind === 'rage'">
+        <div class="row" style="gap: 10px; flex-wrap: wrap">
           <button
+            v-if="!sheet.ownDice"
             type="button"
-            class="step step--sm"
-            :aria-label="`Spend a ${resource.diceName || 'bonus'} die`"
-            :disabled="!canEdit"
-            @click="adjustRageDice(-1)"
+            class="btn"
+            :class="{ 'btn--ghost': res.active }"
+            :disabled="!canEdit || !!sheet.uses['Rage@turn']?.used || left === 0"
+            @click="rage()"
           >
-            −
+            {{ res.active ? `${resource.name} again` : resource.name }} · 1 action
           </button>
-          <span class="res-dice" aria-live="polite">{{ res.dice }}d{{ resource.die }}</span>
           <button
+            v-if="res.active"
             type="button"
-            class="step step--sm"
-            :aria-label="`Gain a ${resource.diceName || 'bonus'} die`"
+            class="btn btn--ghost btn--sm"
             :disabled="!canEdit"
-            @click="adjustRageDice(1)"
+            @click="endRage"
           >
-            +
+            End {{ resource.name }}
+          </button>
+          <span class="small muted" style="font-size: 13px; margin-left: auto">
+            {{ res.rolls.length }} / {{ furyMax(sheet) }} {{ resource.diceName }} Dice · +{{
+              res.rolls.reduce((a, b) => a + b, 0)
+            }}
+            on STR attacks
+          </span>
+        </div>
+        <NimbleDiceEntry
+          v-if="sheet.ownDice"
+          :label="`Fury Dice you rolled (d${resource.die})`"
+          :action="`${res.active ? 'Rage again' : resource.name} · 1 action`"
+          alt="Add as free dice"
+          :disabled="!canEdit"
+          @submit="rage"
+          @alt="addFury"
+        />
+        <div v-if="res.rolls.length" class="row" style="gap: 6px" aria-live="polite">
+          <button
+            v-for="(v, i) in res.rolls"
+            :key="i"
+            type="button"
+            class="res-pip"
+            :disabled="!canEdit"
+            :aria-label="`Spend the ${v} ${resource.diceName} Die: That all you got?!`"
+            title="Spend it: That all you got?! (−STR+DEX damage when attacked)"
+            @click="spendFury(i)"
+          >
+            {{ v }}
           </button>
         </div>
-      </div>
+      </template>
 
-      <template v-else-if="resource.kind === 'dice' || resource.kind === 'counter'">
+      <template v-else-if="['dice', 'counter', 'power'].includes(resource.kind)">
         <div class="row" style="gap: 12px">
           <div class="row" style="gap: 6px" aria-live="polite">
             <span v-for="n in res.count" :key="n" class="res-pip">
-              {{ resource.kind === 'dice' ? `d${resource.die}` : n }}
+              {{ resource.kind === 'counter' ? n : `d${resource.die}` }}
             </span>
             <span v-if="res.count === 0" class="small muted" style="font-size: 13px">None</span>
+            <span v-if="resource.refill" class="small muted" style="font-size: 13px">
+              of {{ resource.max }}
+            </span>
             <span class="sr-only">{{ res.count }} {{ resource.name }}</span>
           </div>
           <div class="row" style="gap: 8px; margin-left: auto">
@@ -267,26 +289,137 @@ function endConcentration() {
               type="button"
               class="step step--sm"
               aria-label="Gain one"
-              :disabled="!canEdit"
+              :disabled="!canEdit || (!!resource.refill && res.count >= resource.max)"
               @click="adjustCount(1)"
             >
               +
             </button>
           </div>
         </div>
-        <div v-if="resource.moves.length" class="moves">
+        <div v-if="resource.kind === 'power'" class="row" style="gap: 8px">
+          <span class="small" style="font-size: 14px">Ready to spend</span>
           <button
-            v-for="m in resource.moves"
-            :key="m.name"
             type="button"
-            :disabled="!canEdit || res.count === 0"
-            @click="useMove(m.name)"
+            class="step step--sm"
+            :aria-label="`Ready one fewer ${resource.diceName} Die`"
+            :disabled="!canEdit || readied === 0"
+            @click="setReady(readied - 1)"
           >
-            <strong>{{ m.name }}</strong>
-            <span><NimbleRulesText :text="m.desc" :key-value="keyValue" /></span>
+            −
+          </button>
+          <span class="res-dice" aria-live="polite">{{ readied }}d{{ resource.die }}</span>
+          <button
+            type="button"
+            class="step step--sm"
+            :aria-label="`Ready one more ${resource.diceName} Die`"
+            :disabled="!canEdit || readied >= res.count"
+            @click="setReady(readied + 1)"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            class="btn btn--ghost btn--sm"
+            style="margin-left: auto"
+            :disabled="!canEdit || readied === 0"
+            @click="rollPower"
+          >
+            Roll {{ readied }}d{{ resource.die }}
           </button>
         </div>
+        <div
+          v-if="resource.kind === 'power' && inventions.length"
+          class="row"
+          style="gap: 6px; flex-wrap: wrap"
+        >
+          <button
+            v-for="inv in inventions"
+            :key="inv.name"
+            type="button"
+            class="btn btn--sm"
+            :disabled="!canEdit || inv.inoperable || readied < inv.min || inv.noActions"
+            :class="{ 'inv--broken': inv.inoperable }"
+            :aria-label="inv.inoperable ? `${inv.name}, inoperable` : undefined"
+            :title="
+              inv.inoperable
+                ? 'Inoperable: repair it first (flip its switch under All abilities)'
+                : readied < inv.min
+                  ? `Ready at least ${inv.min} ${resource.diceName} Die first`
+                  : inv.noActions
+                    ? 'Not enough actions left'
+                    : `Use with ${readied}d${resource.die}`
+            "
+            @click="operate(inv.name)"
+          >
+            <NimbleBrokenIcon v-if="inv.inoperable" />
+            {{ inv.name }}
+          </button>
+        </div>
+        <p v-if="resource.kind === 'power'" class="small muted" style="font-size: 13px">
+          Readied dice go on your next powered-weapon attack or Roll, then reset. Mishap if any die
+          rolls {{ readied || 'the number spent' }} or less.
+        </p>
       </template>
+
+      <template v-else-if="resource.kind === 'judgment'">
+        <div class="row" style="gap: 12px">
+          <div class="row" style="gap: 6px" aria-live="polite">
+            <span v-for="(v, i) in res.rolls" :key="i" class="res-pip">{{ v }}</span>
+            <span v-if="!res.rolls.length" class="small muted" style="font-size: 13px">
+              None held
+            </span>
+          </div>
+          <div class="row" style="gap: 8px; margin-left: auto">
+            <button
+              v-if="!sheet.ownDice"
+              type="button"
+              class="btn btn--ghost btn--sm"
+              :disabled="!canEdit || res.rolls.length > 0"
+              @click="rollJudgment()"
+            >
+              Roll {{ resource.roll }}d{{ resource.die }}
+            </button>
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm"
+              :disabled="!canEdit || !res.rolls.length"
+              @click="expendJudgment"
+            >
+              Expend
+            </button>
+          </div>
+        </div>
+        <NimbleDiceEntry
+          v-if="sheet.ownDice && !res.rolls.length"
+          :label="`Judgment Dice you rolled (${resource.roll}d${resource.die})`"
+          action="Hold them"
+          :disabled="!canEdit"
+          @submit="rollJudgment"
+        />
+        <p v-if="held" class="small" style="font-size: 13px">
+          +{{ held }} radiant on your next melee hit; spent whether it hits or misses.
+        </p>
+      </template>
+
+      <div v-else-if="resource.kind === 'crit'" class="row" style="gap: 12px">
+        <span class="small" style="font-size: 14px" aria-live="polite">
+          {{
+            res.count
+              ? 'Used this turn'
+              : `Ready: +${resource.roll}d${resource.die} on your next crit`
+          }}
+        </span>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm"
+          style="margin-left: auto"
+          :disabled="!canEdit"
+          :aria-pressed="res.count > 0"
+          @click="toggleCrit"
+        >
+          {{ res.count ? 'Mark ready' : 'Mark used' }}
+        </button>
+      </div>
 
       <template v-else-if="resource.kind === 'uses'">
         <div class="row" style="gap: 10px">
@@ -331,6 +464,44 @@ function endConcentration() {
           {{ Math.floor(sheet.hpMax / 2) }} HP.
         </div>
       </template>
+      <div v-if="moves.length || linkedOptions.length" class="moves">
+        <button
+          v-for="m in moves"
+          :key="m.name"
+          type="button"
+          :disabled="!canEdit || (res.count === 0 && !freeMove(m.desc)) || m.short"
+          :title="m.short ? 'Not enough actions left' : undefined"
+          @click="useMove(m.name)"
+        >
+          <strong>{{ m.name }}</strong>
+          <span><NimbleRulesText :text="m.desc" :key-value="keyValue" /></span>
+          <em v-if="m.cost">{{ m.cost }}</em>
+        </button>
+        <div v-for="o in linkedOptions" :key="o.key" class="opt">
+          <button
+            type="button"
+            :disabled="!canEdit || o.off"
+            :title="o.why || undefined"
+            @click="o.use()"
+          >
+            <strong>{{ o.name }}</strong>
+            <span><NimbleRulesText :text="o.text" :key-value="keyValue" /></span>
+            <em
+              >{{ o.uses }}<template v-if="o.costText"> · {{ o.costText }}</template></em
+            >
+          </button>
+          <button
+            v-if="o.used"
+            type="button"
+            class="opt__undo"
+            :disabled="!canEdit"
+            :aria-label="`Undo ${o.name}`"
+            @click="o.undo()"
+          >
+            Undo
+          </button>
+        </div>
+      </div>
     </section>
 
     <section class="panel stack conc" aria-labelledby="conc-h">
@@ -459,12 +630,12 @@ function endConcentration() {
   border: 1.5px solid var(--accent);
 }
 
-.res-desc {
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--page-soft);
-  // Upgrades append "Level N: …" on new lines.
-  white-space: pre-line;
+.inv--broken {
+  gap: 6px;
+  opacity: 1;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border: 1px dashed var(--danger);
 }
 
 .res-dice {
@@ -516,6 +687,36 @@ function endConcentration() {
       line-height: 1.4;
       color: var(--page-muted);
     }
+
+    em {
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--accent-text);
+    }
+  }
+}
+
+.opt {
+  position: relative;
+  display: flex;
+
+  > button:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .opt__undo {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--page-soft);
+    background: var(--panel-bg);
   }
 }
 

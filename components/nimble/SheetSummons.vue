@@ -1,0 +1,415 @@
+<script setup lang="ts">
+import type { NimbleSheet } from '~/types/sheets'
+
+const { draft, canEdit } = useSheet<NimbleSheet>()
+const { companionOptions } = useNimbleActions()
+
+function limited(options: { name: string; text: string; passive: boolean }[]) {
+  return options
+    .filter((o) => !o.passive)
+    .map((o) => {
+      const card = companionOptions.value.find((c) => c.name === o.name)
+      return { ...o, card, text: card?.text ?? o.text }
+    })
+}
+const sheet = computed(() => draft.value.sheet)
+const {
+  groups,
+  available,
+  minions,
+  spirit,
+  armorOfShadows,
+  summon,
+  addCustom,
+  dismiss,
+  slay,
+  sacrifice,
+  command,
+  spiritAttack,
+  spiritHeal,
+  left,
+  spiritCost,
+} = useNimbleSummons()
+
+const customizing = ref('')
+const customName = ref('')
+const customHp = ref(0)
+
+function submitCustom() {
+  addCustom(customName.value, customHp.value)
+  customName.value = ''
+  customHp.value = 0
+}
+</script>
+
+<template>
+  <section class="panel stack" style="gap: 14px" aria-labelledby="sum-h">
+    <div class="title-help">
+      <h2 id="sum-h">Summons</h2>
+      <UiHelp
+        label="About summons"
+        text="Minions, spirits, companions and friends your spells and abilities call up. Casting the spell or using the ability adds them; New encounter clears minions that abandon you outside combat, and a Safe Rest ends the rest. The GM can seat them in initiative with Sync summons."
+      />
+    </div>
+
+    <div v-if="minions || spirit" class="row" style="gap: 8px; flex-wrap: wrap">
+      <button
+        v-if="minions"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit || left < 1 || !!sheet.uses['Command minions@turn']?.used"
+        :title="sheet.uses['Command minions@turn']?.used ? 'Once per turn' : undefined"
+        @click="command"
+      >
+        Command minions · 1 action
+      </button>
+      <template v-if="spirit">
+        <button
+          type="button"
+          class="btn btn--sm"
+          :disabled="!canEdit || left < spiritCost()"
+          @click="spiritAttack"
+        >
+          Spirit attacks
+        </button>
+        <button
+          type="button"
+          class="btn btn--sm btn--ghost"
+          :disabled="!canEdit || !spirit.charges || left < spiritCost()"
+          @click="spiritHeal"
+        >
+          Spirit heals · {{ spirit.charges ?? 0 }} left
+        </button>
+      </template>
+    </div>
+    <p v-if="armorOfShadows" class="small" style="font-size: 13px">
+      Armor of Shadows: take {{ armorOfShadows }} less damage from every hit.
+    </p>
+
+    <div v-for="g in groups" :key="g.id" class="tile group">
+      <div class="group__head">
+        <strong>{{ g.name }}</strong>
+        <small v-if="g.cap">{{ g.members.length }} / {{ g.cap }}</small>
+        <small v-if="g.duration">{{ g.duration }}</small>
+        <button
+          v-if="canEdit"
+          type="button"
+          class="btn btn--quiet btn--sm group__edit"
+          :aria-expanded="customizing === g.id"
+          @click="customizing = customizing === g.id ? '' : g.id"
+        >
+          {{ customizing === g.id ? 'Done' : g.beasts ? 'Customize companion' : 'Customize' }}
+        </button>
+      </div>
+      <template v-if="customizing === g.id">
+        <NimbleSummonLook
+          v-for="k in g.looks"
+          :key="k"
+          :look-key="k"
+          @switch="customizing = $event"
+        />
+      </template>
+      <p v-if="g.desc && !g.options.length" class="group__desc">{{ g.desc }}</p>
+      <p v-for="n in g.notes" :key="n" class="group__desc">{{ n }}</p>
+      <ul class="members">
+        <li v-for="m in g.members" :key="m.id" :class="{ companion: g.permanent }">
+          <UiAvatar
+            v-if="g.permanent"
+            :name="m.name"
+            :portrait-path="m.portrait ?? null"
+            :beast="m.beast ?? null"
+            :size="88"
+          />
+          <div v-if="g.permanent" class="companion__body">
+            <strong>{{ m.name }}</strong>
+            <p v-for="o in g.options.filter((x) => x.passive)" :key="o.name" class="group__desc">
+              <strong>{{ o.name }}</strong> {{ o.text }}
+            </p>
+            <details v-if="g.options.some((x) => !x.passive)" class="companion__abilities">
+              <summary>Abilities</summary>
+              <div v-for="o in limited(g.options)" :key="o.name" class="opt">
+                <div class="opt__head">
+                  <strong>{{ o.name }}</strong>
+                  <span v-if="o.card" class="opt__pips" aria-hidden="true">
+                    <i v-for="n in o.card.max" :key="n" :class="{ on: n <= o.card.left }" />
+                  </span>
+                  <small v-if="o.card">{{ o.card.period }}</small>
+                  <em v-if="o.card?.costText">{{ o.card.costText }}</em>
+                </div>
+                <p class="opt__text">{{ o.text }}</p>
+                <div v-if="o.card" class="opt__actions">
+                  <button
+                    v-if="o.card.used"
+                    type="button"
+                    class="btn btn--quiet btn--sm"
+                    :disabled="!canEdit"
+                    :aria-label="`Undo ${o.name}`"
+                    @click="o.card.undo()"
+                  >
+                    Undo
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn--sm"
+                    :disabled="!canEdit || o.card.off"
+                    :title="o.card.why || undefined"
+                    :aria-label="`Use ${o.name}, ${o.card.uses}`"
+                    @click="o.card.use()"
+                  >
+                    {{ o.card.why || 'Use' }}
+                  </button>
+                </div>
+              </div>
+            </details>
+          </div>
+          <UiAvatar
+            v-else-if="m.portrait || m.beast"
+            :name="m.name"
+            :portrait-path="m.portrait ?? null"
+            :beast="m.beast ?? null"
+            :size="32"
+          />
+          <span v-if="!g.permanent" class="grow">{{ m.name }}</span>
+          <small v-if="m.hpMax">{{ m.hpMax }} HP</small>
+          <small v-if="m.charges !== undefined">{{ m.charges }} heals</small>
+          <button
+            v-if="m.hpMax"
+            type="button"
+            class="btn btn--quiet btn--sm"
+            :disabled="!canEdit"
+            @click="slay(m.id)"
+          >
+            Slain
+          </button>
+          <button
+            v-if="g.canSacrifice"
+            type="button"
+            class="btn btn--quiet btn--sm"
+            :disabled="!canEdit"
+            @click="sacrifice(m.id)"
+          >
+            Sacrifice
+          </button>
+          <button
+            v-if="!g.permanent"
+            type="button"
+            class="btn btn--quiet btn--sm"
+            :disabled="!canEdit"
+            :aria-label="`Dismiss ${m.name}`"
+            @click="dismiss(m.id)"
+          >
+            Dismiss
+          </button>
+        </li>
+      </ul>
+    </div>
+    <p v-if="!sheet.summons.length" class="empty">Nothing summoned right now.</p>
+
+    <div v-if="canEdit" class="stack" style="gap: 8px">
+      <span v-if="available.length" class="caps">Add by hand (no cost)</span>
+      <div v-if="available.length" class="chips" style="gap: 6px">
+        <button
+          v-for="a in available"
+          :key="a.id"
+          type="button"
+          class="chip"
+          :disabled="a.full"
+          :title="
+            a.full ? 'At the max' : `Add ${a.name} by hand, without casting or spending a use`
+          "
+          @click="summon(a.id)"
+        >
+          + {{ a.name }}
+        </button>
+      </div>
+      <form class="row custom" @submit.prevent="submitCustom">
+        <label for="nb-sum-name" class="sr-only">Other summon</label>
+        <input
+          id="nb-sum-name"
+          v-model="customName"
+          class="input"
+          placeholder="Other summon (name)"
+          maxlength="60"
+        />
+        <label for="nb-sum-hp" class="sr-only">Its HP</label>
+        <input
+          id="nb-sum-hp"
+          v-model.number="customHp"
+          class="input custom__hp"
+          type="number"
+          min="0"
+          max="999"
+          placeholder="HP"
+        />
+        <button type="submit" class="btn btn--ghost" :disabled="!customName.trim()">Add</button>
+      </form>
+    </div>
+  </section>
+</template>
+
+<style scoped lang="scss">
+.group {
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.group__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+
+  strong {
+    font-size: 14px;
+  }
+
+  small {
+    font-size: 12px;
+    color: var(--page-muted);
+  }
+}
+
+.group__edit {
+  margin-left: auto;
+}
+
+.members li.companion {
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0 4px;
+}
+
+.companion__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  > strong {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    line-height: 1.2;
+  }
+}
+
+.opt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field);
+}
+
+.opt__head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+
+  strong {
+    font-size: 14px;
+  }
+
+  small {
+    font-size: 11px;
+    color: var(--page-muted);
+  }
+
+  em {
+    margin-left: auto;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent-text);
+  }
+}
+
+.opt__pips {
+  display: inline-flex;
+  gap: 3px;
+
+  i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px var(--line-strong);
+
+    &.on {
+      background: var(--accent);
+      box-shadow: none;
+    }
+  }
+}
+
+.opt__text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--page-soft);
+}
+
+.opt__actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.companion__abilities {
+  summary {
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-text);
+  }
+
+  p {
+    margin-top: 6px;
+  }
+}
+
+.group__desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--page-soft);
+}
+
+.members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    border-top: 1px solid var(--track);
+    font-size: 14px;
+  }
+
+  small {
+    font-size: 12px;
+    color: var(--page-muted);
+  }
+}
+
+.custom {
+  gap: 8px;
+  flex-wrap: nowrap;
+
+  .input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .custom__hp {
+    flex: 0 0 72px;
+  }
+}
+</style>
