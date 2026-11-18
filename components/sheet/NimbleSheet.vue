@@ -100,6 +100,7 @@ const skills = computed(() =>
         <UiSwitch
           v-model="ownDice"
           label="I roll my own dice (the app only checks things off)"
+          small
           :disabled="!canEdit"
           class="own-dice"
         />
