@@ -153,7 +153,7 @@ describe('shadow minions', () => {
     addSummon(sheet, 9, 'shadow-minion')
     addSummon(sheet, 9, 'shadow-minion')
     expect(newEncounter(sheet, 9)).toMatch(
-      /Shadow minion A, Shadow minion B are gone\. 2 shadow minions join you for free\./,
+      /Shadow minion A, Shadow minion B are gone\..* 2 shadow minions join you for free\./,
     )
     expect(minionCount(sheet)).toBe(3)
     addSummon(sheet, 9, 'shadow-minion')

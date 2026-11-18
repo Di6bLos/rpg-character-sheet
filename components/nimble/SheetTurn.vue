@@ -9,7 +9,8 @@ import {
   newRound,
   toggleActionPip,
   endTurn,
-  newEncounter,
+  beginEncounter,
+  rollInitiative,
   startTurn,
   stopCasting,
   turnActions,
@@ -56,8 +57,12 @@ function finishTurn() {
   if (canEdit.value) say(endTurn(sheet.value, draft.value.level))
 }
 
-function startEncounter(values?: number[]) {
-  if (canEdit.value) say(newEncounter(sheet.value, draft.value.level, Math.random, values?.[0]))
+function startEncounter() {
+  if (canEdit.value) say(beginEncounter(sheet.value))
+}
+
+function initiative(values?: number[]) {
+  if (canEdit.value) say(rollInitiative(sheet.value, draft.value.level, Math.random, values?.[0]))
 }
 </script>
 
@@ -69,7 +74,7 @@ function startEncounter(values?: number[]) {
         <h2 id="turn-h">Turn</h2>
         <UiHelp
           label="About the turn tracker"
-          text="Attacks, spells and reactions spend actions for you; tap a circle to spend or restore one. Your actions come back at the END of your turn, so reactions you take on others’ turns come out of your next one. Start turn refills once-per-turn abilities and pays spells still being cast; New encounter rolls Initiative (9 or less: 1 action, 10–19: 2, 20+: all) and refills once-per-encounter abilities. On the board, Start and End turn happen by themselves as initiative reaches and leaves you."
+          text="Attacks, spells and reactions spend actions for you; tap a circle to spend or restore one. Your actions come back at the END of your turn, so reactions you take on others’ turns come out of your next one. Start turn refills once-per-turn abilities and pays spells still being cast; New encounter refills once-per-encounter abilities; then Roll Initiative (or type your total if you roll your own dice): 9 or less starts you with 1 action, 10–19 with 2, 20+ with all. On the board, Start and End turn happen by themselves as initiative reaches and leaves you."
         />
       </div>
       <span v-if="sheet.turnActive" class="turn-now">Your turn</span>
@@ -140,13 +145,22 @@ function startEncounter(values?: number[]) {
       </div>
       <div class="row" style="gap: 6px; margin-left: auto; flex-wrap: wrap">
         <button
-          v-if="!sheet.ownDice && !sheet.inEncounter"
+          v-if="!sheet.inEncounter"
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit"
-          @click="startEncounter()"
+          @click="startEncounter"
         >
           New encounter
+        </button>
+        <button
+          v-if="sheet.awaitingInitiative && !sheet.ownDice"
+          type="button"
+          class="btn btn--sm"
+          :disabled="!canEdit"
+          @click="initiative()"
+        >
+          Roll Initiative
         </button>
         <button
           v-if="sheet.inEncounter && !sheet.turnActive"
@@ -159,7 +173,9 @@ function startEncounter(values?: number[]) {
           End encounter
         </button>
         <button
-          v-if="!sheet.turnActive && sheet.inEncounter && !sheet.turnDone"
+          v-if="
+            !sheet.turnActive && sheet.inEncounter && !sheet.turnDone && !sheet.awaitingInitiative
+          "
           type="button"
           class="btn btn--sm"
           :disabled="!canEdit"
@@ -189,12 +205,12 @@ function startEncounter(values?: number[]) {
       </div>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && !sheet.inEncounter"
+      v-if="sheet.ownDice && sheet.awaitingInitiative"
       label="Your Initiative total"
-      action="New encounter"
+      action="Set Initiative"
       signed
       :disabled="!canEdit"
-      @submit="startEncounter"
+      @submit="initiative"
     />
   </section>
 </template>

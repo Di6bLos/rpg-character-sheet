@@ -14,6 +14,7 @@ import {
 } from '~/utils/nimbleBuild'
 import { INVENTIONS } from '~/data/nimble/effects'
 import { clearConditionsAt, dazedAtTurnStart } from '~/utils/nimbleConditions'
+import { armorHit, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
 import {
   applyCastEffect,
   applyMishapEffect,
@@ -67,6 +68,7 @@ export function endEncounter(sheet: NimbleSheet, level: number): string {
   sheet.inEncounter = false
   sheet.turnActive = false
   sheet.turnDone = false
+  sheet.awaitingInitiative = false
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
@@ -1356,24 +1358,40 @@ export function encounterMana(sheet: NimbleSheet): number {
 }
 
 /**
- * Initiative is rolled: per-encounter and per-turn uses come back, abilities that
- * recharge on Initiative get one use back, encounter mana is gained, and the turn
- * starts fresh.
+ * Combat starts: per-encounter and per-turn uses come back and the turn starts
+ * fresh. Initiative is rolled next (`rollInitiative`).
  */
-export function newEncounter(
+export function beginEncounter(sheet: NimbleSheet): string {
+  endRage(sheet)
+  sheet.turnActive = false
+  sheet.inEncounter = true
+  sheet.turnDone = false
+  sheet.awaitingInitiative = true
+  refill(sheet, ['turn', 'encounter'])
+  expireGrants(sheet)
+  sheet.casting = { ...NOT_CASTING }
+  sheet.rushed = 0
+  sheet.reactionsUsed = []
+  const extra = [summonsGone(endSummons(sheet, 'encounter')), endEffects(sheet, 'encounter')].join(
+    '',
+  )
+  return `New encounter: per-encounter abilities and reactions ready. Roll Initiative.${extra}`
+}
+
+/**
+ * Initiative is rolled (or entered, when the player rolls their own dice):
+ * abilities that recharge on Initiative get one use back, encounter mana is
+ * gained, and the hero starts with actions by the roll.
+ */
+export function rollInitiative(
   sheet: NimbleSheet,
   level: number,
   rng: Rng = Math.random,
   initiative?: number,
 ): string {
-  endRage(sheet)
-  sheet.turnActive = false
-  sheet.inEncounter = true
-  sheet.turnDone = false
-  refill(sheet, ['turn', 'encounter'])
+  sheet.awaitingInitiative = false
   const recharged: string[] = []
   const pilfered = sheetResource(sheet, level)
-  expireGrants(sheet)
   for (const { name, count, expires } of initiativeRecharges(sheet)) {
     if (pilfered?.kind === 'uses' && name === pilfered.name) {
       if (sheet.resource.count > 0) {
@@ -1398,9 +1416,6 @@ export function newEncounter(
   const surge = elementalSurge(sheet, rng)
   const mana = encounterMana(sheet) + surge
   sheet.mana.temp = mana
-  sheet.casting = { ...NOT_CASTING }
-  sheet.rushed = 0
-  sheet.reactionsUsed = []
   const advantage = sheet.abilities.some(
     (a) =>
       /advantage on Initiative/i.test(a.desc) ||
@@ -1429,9 +1444,7 @@ export function newEncounter(
     recharged.length ? ` ${recharged.join(', ')} recharged.` : '',
     mana > 0 ? ` ${mana} encounter mana gained.` : '',
     refillResource(sheet, level, 'initiative'),
-    summonsGone(endSummons(sheet, 'encounter')),
     initiativeSummons(sheet, level),
-    endEffects(sheet, 'encounter'),
     initiativeReminders(sheet),
   ].join('')
   const how = entered
@@ -1444,7 +1457,18 @@ export function newEncounter(
     )
       ? ' Add your Elemental Surge d4s to temporary mana.'
       : ''
-  return `New encounter: Initiative ${roll} (${how}), you start with ${start} action${start === 1 ? '' : 's'}. Per-encounter abilities and reactions ready.${extra}${surgeDice}`
+  return `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}.${extra}${surgeDice}`
+}
+
+/** New encounter and Initiative in one step. */
+export function newEncounter(
+  sheet: NimbleSheet,
+  level: number,
+  rng: Rng = Math.random,
+  initiative?: number,
+): string {
+  const begun = beginEncounter(sheet).replace(' Roll Initiative.', '')
+  return `${begun} ${rollInitiative(sheet, level, rng, initiative)}`
 }
 
 const diceWord = (n: number) => (n === 1 ? 'Die' : 'Dice')
@@ -1546,6 +1570,7 @@ export function operateInvention(
   rng: Rng = Math.random,
   mode: 'tether' | 'coil' = 'tether',
   disadvantage = 0,
+  armor: ArmorContext = { armor: 'none' },
 ): string {
   const r = sheetResource(sheet, level)
   const invention = INVENTIONS.find((i) => i.name === name)
@@ -1557,7 +1582,13 @@ export function operateInvention(
   if (sheet.ownDice) {
     res.count -= n
     const extra = invention.use === 'cannon' ? ' and the d12' : ''
-    return `${name}: spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die}${extra} yourself. Mishap if any die rolls ${n} or less: flip its Malfunction switch or set the condition. ${res.count} left.`
+    const against =
+      invention.use === 'blade'
+        ? armorRule({ ...armor, lighter: true })
+        : invention.use === 'cannon'
+          ? armorRule(armor)
+          : ''
+    return `${name}: spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die}${extra} yourself. Mishap if any die rolls ${n} or less: flip its Malfunction switch or set the condition.${against} ${res.count} left.`
   }
   const has = (upgrade: string) => sheet.abilities.some((a) => a.name === `${name}: ${upgrade}`)
   const attack = invention.use === 'blade' || invention.use === 'cannon'
@@ -1579,16 +1610,23 @@ export function operateInvention(
     const crit = primary === 12 ? explodeDie(12, rng) : []
     const perDie = sheet.stats.INT + (has('Amplified Conduit') ? 2 : 0)
     const extra = sum + n * perDie
+    const hit = armorHit(primary + total(crit) + extra, n * perDie, armor, !!crit.length)
     line =
       primary === 1
         ? `miss (the d12 rolled a 1); ${dice}`
-        : `${primary + total(crit) + extra} damage to the target and ${extra} to ALL creatures between${crit.length ? ' · critical' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
+        : `${hit.damage} damage to the target${hit.note} and ${extra} to ALL creatures between${crit.length ? ' · critical' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
   } else if (invention.use === 'blade') {
     const crit = rolls[0] === r.die ? explodeDie(r.die, rng) : []
+    const hit = armorHit(
+      2 * (sum + total(crit) + sheet.stats.STR),
+      2 * sheet.stats.STR,
+      { ...armor, lighter: true },
+      !!crit.length,
+    )
     line =
       rolls[0] === 1
         ? `miss (the first Mana Die rolled a 1); ${dice}`
-        : `${2 * (sum + total(crit) + sheet.stats.STR)} damage${crit.length ? ' · critical' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
+        : `${hit.damage} damage${hit.note}${crit.length ? ' · critical' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
   } else if (invention.use === 'plate') {
     line = `Defend with +${2 * Math.max(0, sheet.stats.STR) * n} Armor [${dice}]`
   } else if (invention.use === 'jerkin') {

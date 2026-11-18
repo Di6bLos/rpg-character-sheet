@@ -48,6 +48,8 @@ import {
   expendJudgment,
   isMishap,
   newEncounter,
+  beginEncounter,
+  rollInitiative,
   startTurn,
   resourceOnAttack,
   rollJudgment,
@@ -296,11 +298,22 @@ describe('nimble turn tracker', () => {
     expect(actionsLeft(sheet)).toBe(2)
   })
 
+  it('waits for Initiative after New encounter, then rolls it or takes the entered total', () => {
+    const sheet = hero({ initMod: 2 })
+    expect(beginEncounter(sheet)).toMatch(/^New encounter: .*Roll Initiative\./)
+    expect(sheet.awaitingInitiative).toBe(true)
+    expect(rollInitiative(sheet, 1, () => 0.5, 21)).toMatch(
+      /^Initiative 21 \(as you rolled it\): you start with 3 actions/,
+    )
+    expect(sheet.awaitingInitiative).toBe(false)
+    expect(actionsLeft(sheet)).toBe(3)
+  })
+
   it('starts combat with 1, 2 or all actions by the Initiative roll', () => {
     const roll = (value: number) => () => (value - 0.5) / 20
     const sheet = hero({ initMod: 2 })
     expect(newEncounter(sheet, 1, roll(5))).toMatch(
-      /Initiative 7 \(d20 5 \+2\), you start with 1 action\./,
+      /Initiative 7 \(d20 5 \+2\): you start with 1 action\./,
     )
     expect(actionsLeft(sheet)).toBe(1)
     newEncounter(sheet, 1, roll(12))
