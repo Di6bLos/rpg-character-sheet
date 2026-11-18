@@ -12,7 +12,6 @@ const sheet = computed(() => draft.value.sheet)
 const cls = computed(() => classBySlug(sheet.value.classSlug))
 const keyValue = computed(() => keyStatValue(sheet.value))
 
-const concId = useId()
 const combatMana = computed(() => encounterMana(sheet.value))
 const hasMana = computed(() => sheet.value.mana.max > 0 || combatMana.value > 0)
 const manaFormula = computed(() => {
@@ -206,24 +205,19 @@ function adjustUses(delta: number) {
         text="If you are hit by a crit, make a DC 10 STR save or lose concentration. Dropping to 0 HP ends it."
       />
     </div>
-    <div class="row" style="gap: 8px; flex-wrap: nowrap">
-      <label :for="concId" class="sr-only">Concentrating on</label>
-      <input
-        :id="concId"
-        v-model="sheet.concentration"
-        class="input"
-        :class="{ 'is-on': sheet.concentration.trim() }"
-        placeholder="Not concentrating"
-        maxlength="80"
-        :readonly="!canEdit"
-      />
+    <div class="row conc__line">
+      <span v-if="sheet.concentration.trim()" class="conc__on" role="status">
+        Concentrating on <strong>{{ sheet.concentration }}</strong>
+      </span>
+      <span v-else class="conc__off">Not concentrating</span>
       <button
+        v-if="sheet.concentration.trim()"
         type="button"
-        class="btn btn--ghost"
-        :disabled="!canEdit || !sheet.concentration"
+        class="btn btn--ghost btn--sm"
+        :disabled="!canEdit"
         @click="endConcentration"
       >
-        End
+        End concentration
       </button>
     </div>
   </div>
@@ -322,15 +316,24 @@ function adjustUses(delta: number) {
   }
 }
 
-.conc {
-  .input {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
+.conc__line {
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 36px;
+}
 
-  .is-on {
-    border-color: var(--secondary);
+.conc__on {
+  font-size: 14px;
+  color: var(--page-soft);
+
+  strong {
+    color: var(--secondary);
   }
+}
+
+.conc__off {
+  font-size: 13px;
+  color: var(--page-muted);
 }
 
 .use-pip {
