@@ -19,7 +19,13 @@ import {
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
 import { conditionMods, oddsReasons } from '~/utils/nimbleConditions'
-import { armorHit, armorRule } from '~/utils/nimbleTargetArmor'
+import {
+  armorDice,
+  armorDiceWhy,
+  armorHit,
+  armorRule,
+  ignoresArmor,
+} from '~/utils/nimbleTargetArmor'
 import {
   afterSummonedAttack,
   companionAttack,
@@ -122,18 +128,15 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const hasMark = computed(() =>
     sheet.value.abilities.some((a) => /\bmarked as your quarry\b.*\+LVL damage/.test(a.desc)),
   )
-  const nextAttack = useState(`nimble-next-attack-${draft.value.id}`, () => ({
-    flat: 0,
-    clean: false,
-    note: '',
-  }))
+  const NO_NEXT = { flat: 0, clean: false, note: '', ignoreArmor: '' }
+  const nextAttack = useState(`nimble-next-attack-${draft.value.id}`, () => ({ ...NO_NEXT }))
   const zealMax = computed(() => zealotMax(sheet.value))
   const zealot = computed(() => Math.min(zeal.value, zealMax.value))
   const prepaid = useState(`nimble-prepaid-${draft.value.id}`, () => 0)
   const paidUses = useState<string[]>(`nimble-paid-uses-${draft.value.id}`, () => [])
   const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
   const situation = useAttackSituation()
-  const targetArmor = useTargetArmor()
+  const target = useAttackTarget()
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
@@ -142,10 +145,21 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         paidUses.value = []
         opportunity.value = false
         situation.value = []
-        nextAttack.value = { flat: 0, clean: false, note: '' }
+        nextAttack.value = { ...NO_NEXT }
       }
+      if (on && !was) target.value = { ...target.value, sundered: false }
     },
   )
+
+  /** The target's armor as it meets this attack (Core p. 14), with what bypasses it. */
+  function armorFor(opts: { text?: string; melee?: boolean; ignore?: string; lighter?: boolean }) {
+    const t = target.value
+    const ignore =
+      opts.ignore ||
+      (opts.text && ignoresArmor(opts.text) ? 'ignores armor' : '') ||
+      (opts.melee && t.sundered ? 'Sunder Armor' : '')
+    return { armor: t.armor, vulnerable: t.vulnerable, ignore, lighter: opts.lighter }
+  }
 
   function spendAttackAction() {
     opportunity.value = false
@@ -161,8 +175,15 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       ),
   )
 
-  function paidFor(cost: CounterCost | undefined, before: number) {
-    if (cost?.attack && sheet.value.actionsSpent > before) prepaid.value += 1
+  /** An "Action: Attack" ability paid for the next attack roll; "ignoring their armor" carries over. */
+  function paidFor(cost: CounterCost | undefined, before: number, text = '', name = '') {
+    if (!cost?.attack || sheet.value.actionsSpent <= before) return
+    prepaid.value += 1
+    if (ignoresArmor(text))
+      nextAttack.value = {
+        ...nextAttack.value,
+        ignoreArmor: abilityBaseName(name) || 'ignores armor',
+      }
   }
   const held = computed(() => sheet.value.resource.rolls.reduce((a, b) => a + b, 0))
   const left = computed(() => actionsLeft(sheet.value))
@@ -223,6 +244,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const zealDamage = zealous ? zealot.value * 5 : 0
       const quarryFlat = hasMark.value && quarry.value === 'damage' ? draft.value.level : 0
       const flat = bonus.flat + quarryFlat + next.flat
+      const armor = armorFor({ text: w.props, melee: w.melee, ignore: next.ignoreArmor })
+      const diceDmg = `${w.flat !== undefined ? '' : w.dmg}${powered ? `+${readied.value}d${die}` : ''}`
+      const rolledDice = fury + (judged ? held.value : 0)
       const has = (pattern: RegExp) => sheet.value.abilities.some((a) => pattern.test(a.desc))
       const situational = [
         hasMark.value && quarry.value === 'advantage' ? 'advantage vs quarry' : '',
@@ -246,7 +270,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       ].filter(Boolean)
       const burning = has(/\bDouble any fire damage you deal\b/) ? 'fire' : ''
       const finish = (miss: boolean, crit: boolean) => {
-        nextAttack.value = { flat: 0, clean: false, note: '' }
+        nextAttack.value = { ...NO_NEXT }
         if (has(/\bGain advantage on the first attack you make each encounter\b/))
           sheet.value.uses['Ambusher@encounter'] = { used: 1 }
         return sheet.value.ownDice
@@ -268,6 +292,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           (judged ? ` +${held.value}` : '') +
           (flat ? ` +${flat}` : '') +
           (zealDamage ? ` +${zealDamage}` : ''),
+        armorDmg: armorDice(diceDmg, armor, rolledDice),
+        armorWhy: armorDiceWhy(diceDmg || w.dmg, armor),
         boost: [
           oa && !oaDisadvantage ? 'Opportunity Attack (no disadvantage: Opportunistic Frenzy)' : '',
           note,
@@ -342,7 +368,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             const rush =
               odds > 0 ? ` with ${odds}× disadvantage` : odds < 0 ? ` with ${-odds}× advantage` : ''
             return report(
-              `${w.name}: attack made; roll ${w.flat !== undefined ? `${w.dmg} to hit, ${w.flat} damage` : w.dmg}${rush} yourself.${notes.length ? ` ${notes.join('. ')}.` : ''}${armorRule(targetArmor.value, w.props)}${ended}`,
+              `${w.name}: attack made; roll ${w.flat !== undefined ? `${w.dmg} to hit, ${w.flat} damage` : w.dmg}${rush} yourself.${notes.length ? ` ${notes.join('. ')}.` : ''}${armorRule(armor)}${ended}`,
             )
           }
           const expr = parseDice(w.dmg)
@@ -384,10 +410,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             : ''
           const triggers = finish(result.miss, result.crit)
           const mods = (w.flat ?? expr.mod) + flat + zealDamage
-          const hit = armorHit(result.total + extra.extra, mods, targetArmor.value, {
-            crit: result.crit,
-            text: w.props,
-          })
+          const hit = armorHit(result.total + extra.extra, mods, armor, result.crit)
           const hints = situational.length ? ` (${situational.join(', ')})` : ''
           if (result.miss)
             report(
@@ -646,7 +669,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const before = sheet.value.actionsSpent
       const result = payCost(sheet.value, counter.cost)
       if (result === null) return report(shortMessage(sheet.value, label, counter.cost))
-      paidFor(counter.cost, before)
+      paidFor(counter.cost, before, counter.text || text, name)
       if (sheet.value.actionsSpent > before && !counter.cost.reaction)
         paidUses.value = [...paidUses.value, counter.id]
       paid = result
@@ -690,7 +713,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       source,
       Math.random,
       odds,
-      attack ? targetArmor.value : 'none',
+      attack ? armorFor({}) : { armor: 'none' },
     )
     if (attack && line) sheet.value.rushed += 1
     return line
@@ -714,6 +737,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         : '',
     ].filter(Boolean)
     nextAttack.value = {
+      ...NO_NEXT,
       flat: armor.length ? sheet.value.ac : 0,
       clean: clean.length > 0,
       note: notes.join(', '),
@@ -900,7 +924,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             const before = sheet.value.actionsSpent
             const paid = payCost(sheet.value, cost)
             if (paid === null && cost) return report(shortMessage(sheet.value, a.name, cost))
-            paidFor(cost, before)
+            paidFor(cost, before, a.desc, a.name)
             const spent = mana && spendMana(sheet.value, mana) ? ` Spent ${mana} mana.` : ''
             const free = !cost?.attack && FREE_ATTACK.test(a.desc) ? freeAttack(key) : ''
             const wound = woundUse ? ` ${sufferWound(sheet.value, draft.value.level)}` : ''
@@ -964,7 +988,12 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           use: o.use,
         })),
     ]
-    return list.map((a) => ({ ...a, why: offTurn.value ? NOT_TURN : a.why }))
+    return list.map((a) => ({
+      ...a,
+      why: offTurn.value ? NOT_TURN : a.why,
+      armorWhy: armorDiceWhy('', armorFor({ text: a.desc })),
+      ignoresArmor: target.value.armor !== 'none' && ignoresArmor(a.desc),
+    }))
   })
 
   const attackAbilityKeys = computed(
@@ -994,9 +1023,12 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         const stabilized = i.use === 'blade' && has('Stabilized Mana Core')
         const odds = sheet.value.rushed + cond.value.disadvantage - (stabilized ? 1 : 0)
         const dmg = i.use === 'cannon' ? `1d12+${dice}+${count * perDie}` : `2×(${dice}+${STR})`
+        const armor = armorFor({ lighter: i.use === 'blade' })
         return {
           name: i.name,
           dmg,
+          armorDmg: armorDice(dmg, armor),
+          armorWhy: armorDiceWhy(dmg, armor),
           props:
             i.use === 'cannon'
               ? `Range 8 · the Mana Dice damage also hits ALL creatures between · +${perDie} per die`
@@ -1047,7 +1079,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       invention?.use === 'blade' || invention?.use === 'cannon'
         ? sheet.value.rushed + cond.value.disadvantage
         : 0,
-      targetArmor.value,
+      armorFor({ lighter: invention?.use === 'blade' }),
     )
     if (!message) return
     if (actions && !/inoperable|needs at least/.test(message)) {
@@ -1106,7 +1138,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const move = resource.value?.moves.find((m) => m.name === name)
       const message = spendResourceMove(sheet.value, draft.value.level, name)
       act(message)
-      paidFor(counterCost(move?.desc ?? ''), before)
+      paidFor(counterCost(move?.desc ?? ''), before, move?.desc, name)
       if (move?.src === 'Maneuver' && /^Attack\b/.test(move.desc) && /spent 1/.test(message))
         prepaid.value += 1
     },

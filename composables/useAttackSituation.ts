@@ -10,8 +10,20 @@ export function useAttackSituation() {
   return useState<string[]>(`nimble-situation-${draft.value.id}`, () => [])
 }
 
-/** The armor of the creature the hero is attacking, shared like the situation. */
-export function useTargetArmor() {
+export interface AttackTarget {
+  armor: TargetArmor
+  /** The target is vulnerable to this attack's damage: armor ignored, or double if unarmored. */
+  vulnerable: boolean
+  /** Sunder Armor: melee attacks ignore its armor until the start of your next turn. */
+  sundered: boolean
+}
+
+/** The creature the hero is attacking, shared like the situation. */
+export function useAttackTarget() {
   const { draft } = useSheet<NimbleSheet>()
-  return useState<TargetArmor>(`nimble-target-armor-${draft.value.id}`, () => 'none')
+  return useState<AttackTarget>(`nimble-target-${draft.value.id}`, () => ({
+    armor: 'none',
+    vulnerable: false,
+    sundered: false,
+  }))
 }

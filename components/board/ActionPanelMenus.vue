@@ -557,7 +557,7 @@ const effectRows = computed(() =>
             @click="canEdit && !w.blocked && w.roll()"
           >
             <span class="apm__name">{{ w.name }}</span>
-            <span class="apm__tag">{{ w.dmg }}</span>
+            <NimbleDmg class="apm__tag" :dmg="w.dmg" :armor-dmg="w.armorDmg" :why="w.armorWhy" />
             <span v-if="w.props || w.rushed || w.boost" :id="`${uid}-w${i}`" class="apm__sub">
               {{
                 [w.rushed ? `${w.rushed}× disadvantage` : '', w.boost, w.props]
@@ -577,7 +577,12 @@ const effectRows = computed(() =>
             @click="canEdit && !inv.why && inv.run()"
           >
             <span class="apm__name">{{ inv.name }}</span>
-            <span class="apm__tag">{{ inv.dmg }}</span>
+            <NimbleDmg
+              class="apm__tag"
+              :dmg="inv.dmg"
+              :armor-dmg="inv.armorDmg"
+              :why="inv.armorWhy"
+            />
             <span class="apm__sub" :class="{ 'apm__sub--warn': inv.why }">
               {{
                 [inv.why, inv.rushed ? `${inv.rushed}× disadvantage` : '', inv.cost]
@@ -597,7 +602,7 @@ const effectRows = computed(() =>
             @click="canEdit && !a.why && a.run()"
           >
             <span class="apm__name">{{ a.name }}</span>
-            <span class="apm__tag">{{ a.dmg }}</span>
+            <NimbleDmg class="apm__tag" :dmg="a.dmg" :armor-dmg="a.armorDmg" :why="a.armorWhy" />
             <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
               {{ [a.why, a.who, a.cost].filter(Boolean).join(' · ') }}
             </span>
@@ -619,7 +624,12 @@ const effectRows = computed(() =>
                   <details class="apm__spell">
                     <summary class="apm__row">
                       <span class="apm__name">{{ a.name }}</span>
-                      <span class="apm__tag">{{ a.dmg }}</span>
+                      <NimbleDmg
+                        class="apm__tag"
+                        :dmg="a.dmg"
+                        :armor-dmg="a.armorDmg"
+                        :why="a.armorWhy"
+                      />
                       <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
                         {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
                       </span>

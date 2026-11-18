@@ -101,7 +101,12 @@ const hasAttacks = computed(
                 <span v-if="w.boost" class="boost">{{ w.boost }}</span>
                 <NimbleOdds :rushed="w.rushed" :advantage="w.advantage" :why="w.oddsWhy" />
               </div>
-              <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
+              <NimbleDmg
+                :dmg="w.dmg"
+                :armor-dmg="w.armorDmg"
+                :why="w.armorWhy"
+                style="font-size: 15px; white-space: nowrap"
+              />
             </div>
             <NimbleMishap v-if="w.mishap" :name="w.mishap.name" :text="w.mishap.text" />
             <NimbleModifiers :target="w.name" :weapon="w.props" />
@@ -190,7 +195,12 @@ const hasAttacks = computed(
                   :why="inv.oddsWhy"
                 />
               </div>
-              <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ inv.dmg }}</span>
+              <NimbleDmg
+                :dmg="inv.dmg"
+                :armor-dmg="inv.armorDmg"
+                :why="inv.armorWhy"
+                style="font-size: 15px; white-space: nowrap"
+              />
             </div>
             <NimbleMishap v-if="inv.mishap" :name="inv.mishap.name" :text="inv.mishap.text" />
             <NimbleModifiers :target="inv.name" />
@@ -259,7 +269,12 @@ const hasAttacks = computed(
                     :why="a.oddsWhy"
                   />
                 </div>
-                <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
+                <NimbleDmg
+                  :dmg="a.dmg"
+                  :armor-dmg="a.armorDmg"
+                  :why="a.armorWhy"
+                  style="font-size: 15px; white-space: nowrap"
+                />
               </div>
               <NimbleModifiers :target="a.name" />
               <NimbleUpcast
@@ -304,7 +319,12 @@ const hasAttacks = computed(
                 <span class="muted" style="font-size: 12px">{{ a.props }}</span>
                 <span class="boost">{{ a.cost }}</span>
               </div>
-              <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
+              <NimbleDmg
+                :dmg="a.dmg"
+                :armor-dmg="a.armorDmg"
+                :why="a.armorWhy"
+                style="font-size: 15px; white-space: nowrap"
+              />
             </div>
             <NimbleModifiers v-if="a.summon" :summon="a.summon" />
             <button
@@ -326,6 +346,9 @@ const hasAttacks = computed(
                 <strong style="font-size: 16px">{{ a.name }}</strong>
                 <span class="muted attack__desc">{{ a.desc }}</span>
                 <span class="boost">{{ a.costText }}</span>
+                <span v-if="a.ignoresArmor" class="armor-note" :title="a.armorWhy"
+                  >Ignores the target’s armor</span
+                >
               </div>
             </div>
             <NimbleModifiers :target="a.name" />
@@ -492,6 +515,12 @@ const hasAttacks = computed(
   font-size: 12px;
   font-weight: 600;
   color: var(--page-soft);
+}
+
+.armor-note {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
 }
 
 .boost {

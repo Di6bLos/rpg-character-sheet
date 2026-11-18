@@ -278,8 +278,12 @@ describe('Artificer inventions', () => {
   it('swings the Manablade through Heavy armor as if it were Medium', () => {
     const sheet = artificer(['Manablade'])
     expect(
-      operateInvention(sheet, 5, 'Manablade', 2, faces(6, 4, 5), 'tether', 0, 'heavy'),
-    ).toMatch(/^Manablade: 18 damage through Medium armor \(22 if unarmored\)/)
+      operateInvention(sheet, 5, 'Manablade', 2, faces(6, 4, 5), 'tether', 0, {
+        armor: 'heavy',
+      }),
+    ).toMatch(
+      /^Manablade: 18 damage through Medium armor \(Heavy counts as Medium\); 22 if unarmored/,
+    )
   })
 
   it('locks up Manaforged Plate (Restrained) and tumbles the Jerkin (Prone) on a mishap', () => {

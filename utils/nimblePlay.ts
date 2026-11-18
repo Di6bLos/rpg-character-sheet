@@ -14,7 +14,7 @@ import {
 } from '~/utils/nimbleBuild'
 import { INVENTIONS } from '~/data/nimble/effects'
 import { clearConditionsAt, dazedAtTurnStart } from '~/utils/nimbleConditions'
-import { armorHit, armorRule, lighterArmor, type TargetArmor } from '~/utils/nimbleTargetArmor'
+import { armorHit, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
 import {
   applyCastEffect,
   applyMishapEffect,
@@ -1570,7 +1570,7 @@ export function operateInvention(
   rng: Rng = Math.random,
   mode: 'tether' | 'coil' = 'tether',
   disadvantage = 0,
-  armor: TargetArmor = 'none',
+  armor: ArmorContext = { armor: 'none' },
 ): string {
   const r = sheetResource(sheet, level)
   const invention = INVENTIONS.find((i) => i.name === name)
@@ -1583,8 +1583,8 @@ export function operateInvention(
     res.count -= n
     const extra = invention.use === 'cannon' ? ' and the d12' : ''
     const against =
-      invention.use === 'blade' && armor !== 'none'
-        ? armorRule(lighterArmor(armor))
+      invention.use === 'blade'
+        ? armorRule({ ...armor, lighter: true })
         : invention.use === 'cannon'
           ? armorRule(armor)
           : ''
@@ -1610,7 +1610,7 @@ export function operateInvention(
     const crit = primary === 12 ? explodeDie(12, rng) : []
     const perDie = sheet.stats.INT + (has('Amplified Conduit') ? 2 : 0)
     const extra = sum + n * perDie
-    const hit = armorHit(primary + total(crit) + extra, n * perDie, armor, { crit: !!crit.length })
+    const hit = armorHit(primary + total(crit) + extra, n * perDie, armor, !!crit.length)
     line =
       primary === 1
         ? `miss (the d12 rolled a 1); ${dice}`
@@ -1620,8 +1620,8 @@ export function operateInvention(
     const hit = armorHit(
       2 * (sum + total(crit) + sheet.stats.STR),
       2 * sheet.stats.STR,
-      armor === 'none' ? armor : lighterArmor(armor),
-      { crit: !!crit.length },
+      { ...armor, lighter: true },
+      !!crit.length,
     )
     line =
       rolls[0] === 1
