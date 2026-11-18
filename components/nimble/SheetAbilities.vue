@@ -27,6 +27,7 @@ const risks = computed(() => new Map(malfunctions.value.map((m) => [m.name, m]))
           <small>{{ a.src }}{{ a.level ? ` · L${a.level}` : '' }}</small>
         </div>
         <p><NimbleRulesText :text="a.desc" :key-value="keyValue" /></p>
+        <NimbleModifiers :target="a.name" />
         <button
           v-if="effectBy.get(a.name)"
           type="button"

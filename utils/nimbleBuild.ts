@@ -1101,6 +1101,41 @@ export function syncCompanions(sheet: NimbleSheet): void {
   }
 }
 
+const NOT_A_CHANGE = /knowledge of|no longer|stole a secret|Invocations affecting/i
+
+/**
+ * What upgrades an ability, spell or summoned weapon on this hero: upgrade options named
+ * after it ("Aethertuned Jerkin: Autothrusters") and other abilities' lines that name it
+ * ("Your Shadow Blast also Slows", "Face Me! (Glimmering Decree): …"). A spell that says
+ * "Any Invocations affecting Shadow Blast affect your Bonescythe" picks those up too.
+ */
+export function abilityModifiers(
+  sheet: NimbleSheet,
+  target: string,
+): { name: string; text: string }[] {
+  const base = abilityBaseName(target)
+  const also = /Invocations affecting ([A-Z][\w ]+?) (?:also )?affect/.exec(
+    spellByName(base)?.desc ?? '',
+  )?.[1]
+  const names = [base, ...(also ? [also] : [])].map(
+    (t) => new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`),
+  )
+  const found = new Map<string, string>()
+  for (const a of sheet.abilities) {
+    const own = abilityBaseName(a.name)
+    if (own === base) continue
+    if (own.startsWith(`${base}: `)) {
+      found.set(own.slice(base.length + 2), a.desc)
+      continue
+    }
+    const lines = a.desc
+      .split(/(?<=\.)\s+(?=[A-Z(])/)
+      .filter((t) => names.some((n) => n.test(t)) && !NOT_A_CHANGE.test(t))
+    if (lines.length) found.set(own, lines.join(' '))
+  }
+  return [...found].map(([name, text]) => ({ name, text }))
+}
+
 export interface SummonChoice {
   held: string
   options: { name: string; level: number }[]

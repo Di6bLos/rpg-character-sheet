@@ -908,6 +908,7 @@ const effectRows = computed(() =>
               <div class="apm__spell-body">
                 <small>{{ s.cast }}</small>
                 <p>{{ s.desc }}</p>
+                <NimbleModifiers :target="s.name" />
                 <div class="row" style="gap: 6px; flex-wrap: wrap">
                   <button
                     type="button"

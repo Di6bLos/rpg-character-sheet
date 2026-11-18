@@ -43,6 +43,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         id: defId || 'custom',
         name: def?.name ?? 'Other summons',
         desc: def?.desc ?? '',
+        source: def?.source ?? '',
         options: summonOptions(sheet.value, defId),
         duration: def?.duration ?? '',
         members,

@@ -156,6 +156,7 @@ function submitCustom() {
             <summary>Abilities</summary>
             <p v-if="c.g.desc && !c.g.options.length" class="group__desc">{{ c.g.desc }}</p>
             <p v-for="n in c.g.notes" :key="n" class="group__desc">{{ n }}</p>
+            <NimbleModifiers v-if="c.g.source" :target="c.g.source" />
             <p v-if="c.g.duration" class="group__desc">
               <em>{{ c.g.duration }}</em>
             </p>

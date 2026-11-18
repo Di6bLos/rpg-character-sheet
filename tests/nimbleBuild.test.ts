@@ -7,6 +7,7 @@ import { SPELLS } from '../data/nimble/spells'
 import type { ChoiceDef, ClassDef } from '../data/nimble/types'
 import type { NimbleSheet, NimbleStat } from '../types/sheets'
 import { parseDice } from '../utils/dice'
+import { defaultSheet } from '../utils/sheetDefaults'
 import {
   abilityBaseName,
   applyNimbleLevel,
@@ -21,6 +22,7 @@ import {
   recommendedStats,
   sheetResource,
   subclassChangeChoices,
+  abilityModifiers,
 } from '../utils/nimbleBuild'
 import { restoreLevel } from '../utils/levelHistory'
 import { abilityCounters } from '../utils/nimblePlay'
@@ -787,5 +789,54 @@ describe('keyStatValue', () => {
     sheet.stats.INT = 1
     sheet.stats.DEX = 3
     expect(keyStatValue(sheet)).toEqual({ value: 3, stats: ['INT', 'DEX'] })
+  })
+})
+
+describe('ability upgrades', () => {
+  const sheetWith = (abilities: [string, string][]) => ({
+    ...defaultSheet('nimble'),
+    abilities: abilities.map(([name, desc]) => ({ name, src: 'Class', desc })),
+  })
+
+  it('lists invocations on Shadow Blast and, through the spell, on Bonescythe', () => {
+    const sheet = sheetWith([
+      ['Shadow Spear', 'Your Shadow Blast can target creatures twice as far away.'],
+      ['Reap', 'When your Bonescythe crits, or kills a creature, summon a shadow minion for free.'],
+      [
+        'Shadowmancer',
+        'Your Patron grants you knowledge of the cantrips Shadow Blast and Summon Shadows.',
+      ],
+    ])
+    expect(abilityModifiers(sheet, 'Shadow Blast').map((m) => m.name)).toEqual(['Shadow Spear'])
+    expect(abilityModifiers(sheet, 'Bonescythe').map((m) => m.name)).toEqual([
+      'Shadow Spear',
+      'Reap',
+    ])
+  })
+
+  it('lists named upgrade options and orders another ability empowers', () => {
+    const sheet = sheetWith([
+      ['Aethertuned Jerkin', 'Armor: 3+DEX.'],
+      [
+        'Aethertuned Jerkin: Autothrusters',
+        'If you spend 2 or more Mana Dice when you Defend, do so for free.',
+      ],
+      [
+        'Empowered Orders',
+        'Face Me! (Glimmering Decree): the enemy also takes STR d8 radiant damage. Reposition! (Wings of Light): fly.',
+      ],
+    ])
+    expect(abilityModifiers(sheet, 'Aethertuned Jerkin')).toEqual([
+      {
+        name: 'Autothrusters',
+        text: 'If you spend 2 or more Mana Dice when you Defend, do so for free.',
+      },
+    ])
+    expect(abilityModifiers(sheet, 'Face Me!')).toEqual([
+      {
+        name: 'Empowered Orders',
+        text: 'Face Me! (Glimmering Decree): the enemy also takes STR d8 radiant damage.',
+      },
+    ])
   })
 })

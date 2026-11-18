@@ -59,6 +59,7 @@ function resetMax(id: string, rule: number) {
     </summary>
     <div class="ability__body">
       <p><NimbleRulesText :text="a.desc" :key-value="keyValue" /></p>
+      <NimbleModifiers :target="a.name" />
       <div v-for="c in a.counters" :key="c.id" class="counter">
         <div class="uses">
           <div v-if="c.pips" class="row" style="gap: 6px" aria-hidden="true">

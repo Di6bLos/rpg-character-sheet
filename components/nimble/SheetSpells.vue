@@ -36,6 +36,7 @@ const schools = computed(() =>
           </summary>
           <div class="spell__body">
             <p><NimbleRulesText :text="s.desc" :key-value="keyValue" /></p>
+            <NimbleModifiers :target="s.name" />
             <div class="row" style="gap: 8px">
               <div v-if="s.canUpcast" class="row" style="gap: 4px">
                 <button
@@ -105,6 +106,7 @@ const schools = computed(() =>
           <small>{{ s.cast }}</small>
         </summary>
         <p><NimbleRulesText :text="s.desc" :key-value="keyValue" /></p>
+        <NimbleModifiers :target="s.name" />
       </details>
     </div>
   </section>
