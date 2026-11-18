@@ -39,4 +39,26 @@ create policy hero_effects_delete on public.hero_effects for delete to authentic
     )
   );
 
+-- The "X Helped you" name comes from the sender's own seated hero (or their
+-- display name), never from the client, so nobody can send it in another's name.
+create or replace function private.hero_effects_from_name()
+returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  new.from_name := coalesce(
+    (
+      select c.name
+      from public.campaign_members m
+      join public.characters c on c.id = m.character_id
+      where m.campaign_id = new.campaign_id and m.user_id = (select auth.uid())
+    ),
+    (select p.display_name from public.profiles p where p.id = (select auth.uid())),
+    ''
+  );
+  return new;
+end $$;
+create trigger hero_effects_from_name
+  before insert on public.hero_effects
+  for each row execute function private.hero_effects_from_name();
+
 alter publication supabase_realtime add table public.hero_effects;
