@@ -151,6 +151,10 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
 .attack {
   gap: 12px;
   padding: 16px;
+
+  > .btn {
+    margin-top: auto;
+  }
 }
 
 .attack__head {
