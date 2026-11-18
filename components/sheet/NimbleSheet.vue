@@ -122,8 +122,8 @@ const skills = computed(() =>
   <div class="play">
     <div class="play__col">
       <NimbleSheetVitals style="order: 1" />
-      <NimbleSheetSpells v-if="hasSpells" style="order: 7" />
-      <NimbleSheetSummons v-if="hasSummons" style="order: 8" />
+      <NimbleSheetSummons v-if="hasSummons" style="order: 7" />
+      <NimbleSheetSpells v-if="hasSpells" style="order: 8" />
       <NimbleSheetInventory style="order: 12" />
     </div>
     <div class="play__col">

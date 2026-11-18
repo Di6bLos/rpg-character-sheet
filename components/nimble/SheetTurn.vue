@@ -15,7 +15,7 @@ import {
   turnActions,
 } from '~/utils/nimblePlay'
 
-const { draft, canEdit, say } = useSheet<NimbleSheet>()
+const { draft, canEdit, say, campaignId } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 
 const perTurn = computed(() => turnActions(sheet.value))
@@ -64,12 +64,25 @@ function startEncounter(values?: number[]) {
 <template>
   <section class="panel stack" style="gap: 12px" aria-labelledby="turn-h">
     <UiFold name="Turn" />
-    <div class="title-help">
-      <h2 id="turn-h">Turn</h2>
-      <UiHelp
-        label="About the turn tracker"
-        text="Attacks, spells and reactions spend actions for you; tap a circle to spend or restore one. Your actions come back at the END of your turn, so reactions you take on others’ turns come out of your next one. Start turn refills once-per-turn abilities and pays spells still being cast; New encounter rolls Initiative (9 or less: 1 action, 10–19: 2, 20+: all) and refills once-per-encounter abilities. On the board, Start and End turn happen by themselves as initiative reaches and leaves you."
+    <div class="turn-title">
+      <div class="title-help">
+        <h2 id="turn-h">Turn</h2>
+        <UiHelp
+          label="About the turn tracker"
+          text="Attacks, spells and reactions spend actions for you; tap a circle to spend or restore one. Your actions come back at the END of your turn, so reactions you take on others’ turns come out of your next one. Start turn refills once-per-turn abilities and pays spells still being cast; New encounter rolls Initiative (9 or less: 1 action, 10–19: 2, 20+: all) and refills once-per-encounter abilities. On the board, Start and End turn happen by themselves as initiative reaches and leaves you."
+        />
+      </div>
+      <span v-if="sheet.turnActive" class="turn-now">Your turn</span>
+      <NimbleTurnWho
+        v-else-if="campaignId"
+        :campaign-id="campaignId"
+        :character-id="draft.id"
+        :fallback="sheet.inEncounter ? 'Waiting for your turn' : 'Not in combat'"
+        class="turn-who"
       />
+      <span v-else class="turn-who">{{
+        sheet.inEncounter ? 'Waiting for your turn' : 'Not in combat'
+      }}</span>
     </div>
     <div class="tile turn">
       <div
@@ -186,6 +199,28 @@ function startEncounter(values?: number[]) {
 </template>
 
 <style scoped lang="scss">
+.turn-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding-right: 40px;
+}
+
+.turn-now {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent-text);
+}
+
+.turn-who {
+  font-size: 13px;
+  color: var(--page-muted);
+}
+
 .turn {
   flex-direction: row;
   flex-wrap: wrap;
