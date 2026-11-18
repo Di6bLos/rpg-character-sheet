@@ -663,6 +663,14 @@ describe('Artificer', () => {
     expect(sheetResource(gadgeteer, 14)).toMatchObject({ die: 10, bonus: 1 })
   })
 
+  it('counts Survey the Battlefield’s +1 max Combat Dice once', () => {
+    const at10 = build(classBySlug('commander')!)
+    levelTo(at10, 10, 'vanguard')
+    const at11 = build(classBySlug('commander')!)
+    levelTo(at11, 11, 'vanguard')
+    expect(sheetResource(at11, 11)!.bonus).toBe(sheetResource(at10, 10)!.bonus + 1)
+  })
+
   it('reads use limits from the ability text', () => {
     const sheet = build(artificer)
     levelWith(sheet, 2, 'Stim Pack')
