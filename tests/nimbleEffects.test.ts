@@ -240,6 +240,25 @@ describe('Artificer inventions', () => {
     )
   })
 
+  it('rolls an extra Primary Die per disadvantage on the Manablade and Cannon, keeping the lowest', () => {
+    const blade = artificer(['Manablade'])
+    expect(operateInvention(blade, 5, 'Manablade', 2, faces(6, 5, 4, 3), 'tether', 1)).toMatch(
+      /^Manablade \(1× disadvantage\): 18 damage \[2 × \(2d6 \(3, 4\) \+ STR\)\]/,
+    )
+    const cannon = artificer(['Manabolt Cannon'])
+    expect(
+      operateInvention(
+        cannon,
+        5,
+        'Manabolt Cannon',
+        2,
+        dice([6, 4], [6, 3], [12, 9], [12, 5]),
+        'tether',
+        1,
+      ),
+    ).toMatch(/^Manabolt Cannon \(1× disadvantage\): 18 damage to the target/)
+  })
+
   it('locks up Manaforged Plate (Restrained) and tumbles the Jerkin (Prone) on a mishap', () => {
     const plate = artificer(['Manaforged Plate'])
     expect(operateInvention(plate, 5, 'Manaforged Plate', 2, faces(6, 1, 6))).toMatch(

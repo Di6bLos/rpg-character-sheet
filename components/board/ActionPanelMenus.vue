@@ -551,14 +551,18 @@ const effectRows = computed(() =>
             type="button"
             class="apm__row"
             :aria-disabled="!canEdit || !!inv.why || undefined"
-            :aria-label="`${inv.name}, ${inv.dmg}, ${inv.cost}${inv.why ? `. ${inv.why}` : ''}`"
-            :title="inv.props"
+            :aria-label="`${inv.name}, ${inv.dmg}, ${inv.cost}${inv.rushed ? `, ${inv.rushed}× disadvantage` : ''}${inv.why ? `. ${inv.why}` : ''}`"
+            :title="[inv.props, inv.oddsWhy].filter(Boolean).join(' · ')"
             @click="canEdit && !inv.why && inv.run()"
           >
             <span class="apm__name">{{ inv.name }}</span>
             <span class="apm__tag">{{ inv.dmg }}</span>
             <span class="apm__sub" :class="{ 'apm__sub--warn': inv.why }">
-              {{ [inv.why, inv.cost].filter(Boolean).join(' · ') }}
+              {{
+                [inv.why, inv.rushed ? `${inv.rushed}× disadvantage` : '', inv.cost]
+                  .filter(Boolean)
+                  .join(' · ')
+              }}
             </span>
           </button>
         </li>

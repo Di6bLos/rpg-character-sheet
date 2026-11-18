@@ -967,6 +967,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         const perDie = INT + (has('Amplified Conduit') ? 2 : 0)
         const count = Math.max(n, i.min)
         const dice = `${count}d${r.die}`
+        const stabilized = i.use === 'blade' && has('Stabilized Mana Core')
+        const odds = sheet.value.rushed + cond.value.disadvantage - (stabilized ? 1 : 0)
         const dmg = i.use === 'cannon' ? `1d12+${dice}+${count * perDie}` : `2×(${dice}+${STR})`
         return {
           name: i.name,
@@ -976,15 +978,24 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               ? `Range 8 · the Mana Dice damage also hits ALL creatures between · +${perDie} per die`
               : 'Reach 1 · Heavy armor counts as Medium, Medium as none',
           cost: `${i.actions} action${i.actions === 1 ? '' : 's'}`,
-          why: offTurn.value
-            ? NOT_TURN
-            : i.inoperable
-              ? 'Inoperable'
-              : n < i.min
-                ? `Ready at least ${i.min} ${r.diceName} Die`
-                : i.noActions
-                  ? 'Not enough actions left'
-                  : '',
+          rushed: Math.max(0, odds),
+          advantage: Math.max(0, -odds),
+          oddsWhy: oddsReasons(
+            sheet.value.rushed,
+            cond.value,
+            stabilized ? 'Stabilized Mana Core (advantage)' : '',
+          ),
+          why: cond.value.incapacitated
+            ? cond.value.incapacitated
+            : offTurn.value
+              ? NOT_TURN
+              : i.inoperable
+                ? 'Inoperable'
+                : n < i.min
+                  ? `Ready at least ${i.min} ${r.diceName} Die`
+                  : i.noActions
+                    ? 'Not enough actions left'
+                    : '',
           inoperable: i.inoperable,
           mishap: i.mishap,
           run: () => operate(i.name),
@@ -1009,11 +1020,14 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       ready.value,
       Math.random,
       mode,
+      invention?.use === 'blade' || invention?.use === 'cannon'
+        ? sheet.value.rushed + cond.value.disadvantage
+        : 0,
     )
     if (!message) return
     if (actions && !/inoperable|needs at least/.test(message)) {
       spendActions(sheet.value, actions)
-      if (invention?.use === 'blade') sheet.value.rushed += 1
+      if (invention?.use === 'blade' || invention?.use === 'cannon') sheet.value.rushed += 1
       ready.value = 0
     } else if (!/inoperable|needs at least/.test(message)) ready.value = 0
     report(message)

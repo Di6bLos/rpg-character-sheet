@@ -182,6 +182,12 @@ const hasAttacks = computed(
                 </strong>
                 <span class="muted" style="font-size: 12px">{{ inv.props }}</span>
                 <span class="boost">{{ inv.cost }}</span>
+                <NimbleOdds
+                  v-if="!inv.why"
+                  :rushed="inv.rushed"
+                  :advantage="inv.advantage"
+                  :why="inv.oddsWhy"
+                />
               </div>
               <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ inv.dmg }}</span>
             </div>
@@ -214,10 +220,14 @@ const hasAttacks = computed(
               type="button"
               class="btn btn--wrap"
               :disabled="!canEdit || !!inv.why"
-              :title="inv.why || undefined"
+              :title="inv.why || inv.oddsWhy || undefined"
               @click="claim(`inv:${inv.name}`, inv.run)"
             >
-              {{ inv.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
+              {{ inv.why || (sheet.ownDice ? 'Attack' : 'Roll')
+              }}<template v-if="!inv.why && inv.rushed"> · {{ inv.rushed }}× disadvantage</template
+              ><template v-if="!inv.why && inv.advantage">
+                · {{ inv.advantage }}× advantage</template
+              >
             </button>
             <p v-if="resultFor(`inv:${inv.name}`)" class="roll-status attack__result" role="status">
               {{ resultFor(`inv:${inv.name}`) }}

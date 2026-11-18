@@ -1529,6 +1529,15 @@ function explodeDie(sides: number, rng: Rng): number[] {
   return extra
 }
 
+/**
+ * The Primary Die of an invention attack under `odds` disadvantage (negative:
+ * advantage): one more die per step, keeping the lowest or highest.
+ */
+function primaryDie(first: number, sides: number, odds: number, rng: Rng): number {
+  const all = [first, ...Array.from({ length: Math.abs(odds) }, () => rollDie(sides, rng))]
+  return odds > 0 ? Math.min(...all) : Math.max(...all)
+}
+
 export function operateInvention(
   sheet: NimbleSheet,
   level: number,
@@ -1536,6 +1545,7 @@ export function operateInvention(
   count: number,
   rng: Rng = Math.random,
   mode: 'tether' | 'coil' = 'tether',
+  disadvantage = 0,
 ): string {
   const r = sheetResource(sheet, level)
   const invention = INVENTIONS.find((i) => i.name === name)
@@ -1550,16 +1560,21 @@ export function operateInvention(
     return `${name}: spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die}${extra} yourself. Mishap if any die rolls ${n} or less: flip its Malfunction switch or set the condition. ${res.count} left.`
   }
   const has = (upgrade: string) => sheet.abilities.some((a) => a.name === `${name}: ${upgrade}`)
-  const advantage = invention.use === 'blade' && has('Stabilized Mana Core')
+  const attack = invention.use === 'blade' || invention.use === 'cannon'
+  const odds = attack
+    ? disadvantage - (invention.use === 'blade' && has('Stabilized Mana Core') ? 1 : 0)
+    : 0
+  const oddsNote = odds > 0 ? ` (${odds}× disadvantage)` : odds < 0 ? ` (${-odds}× advantage)` : ''
   const rolls = rollResourceDice(n, r.die, valveReady(sheet), rng)
-  if (advantage && rolls.length) rolls[0] = Math.max(rolls[0]!, rollDie(r.die, rng))
+  if (invention.use === 'blade' && odds && rolls.length)
+    rolls[0] = primaryDie(rolls[0]!, r.die, odds, rng)
   res.count -= n
   const sum = total(rolls)
   const dice = `${n}d${r.die} (${rolls.join(', ')})`
   let line = ''
   let mishapDice = rolls
   if (invention.use === 'cannon') {
-    const primary = rollDie(12, rng)
+    const primary = primaryDie(rollDie(12, rng), 12, odds, rng)
     mishapDice = [primary, ...rolls]
     const crit = primary === 12 ? explodeDie(12, rng) : []
     const perDie = sheet.stats.INT + (has('Amplified Conduit') ? 2 : 0)
@@ -1583,7 +1598,8 @@ export function operateInvention(
   } else {
     line = `Tether: pull a creature your size or smaller next to you (you may Restrain it), or move to a larger one and gain Riding; Range +${4 * Math.max(1, n)} [${dice}]`
   }
-  if (!isMishap(mishapDice, n)) return `${name}: ${line}. ${res.count} ${r.diceName} Dice left.`
+  if (!isMishap(mishapDice, n))
+    return `${name}${oddsNote}: ${line}. ${res.count} ${r.diceName} Dice left.`
   const notes: string[] = []
   if (invention.use === 'cannon' || invention.use === 'blade') {
     const hurt = invention.use === 'cannon' ? 2 * n : sum
@@ -1603,7 +1619,7 @@ export function operateInvention(
   if (sheet.abilities.some((a) => abilityBaseName(a.name) === 'Percussive Maintenance'))
     notes.push('Percussive Maintenance: you may first raise 1 Mana Die by 1.')
   notes.push(armValve(sheet).trim())
-  return `${name}: ${line}. Mishap! (a die rolled ${n} or less) ${notes.filter(Boolean).join(' ')} ${res.count} ${r.diceName} Dice left.`
+  return `${name}${oddsNote}: ${line}. Mishap! (a die rolled ${n} or less) ${notes.filter(Boolean).join(' ')} ${res.count} ${r.diceName} Dice left.`
 }
 
 export function spendPower(
