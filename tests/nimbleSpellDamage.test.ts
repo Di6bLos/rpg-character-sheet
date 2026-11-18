@@ -49,4 +49,15 @@ describe('spell damage', () => {
     const zap = spellDamage(hero(), 1, spellByName('Zap')!)!
     expect(rollSpellDamage(zap, () => 0.5)).toMatchObject({ total: 10, miss: false })
   })
+
+  it('rolls Rushed disadvantage: single targets drop the highest, area spells keep the lowest dice', () => {
+    const zap = spellDamage(hero(), 1, spellByName('Zap')!)!
+    const faces = [6, 2, 8]
+    let i = 0
+    const rng = () => ((faces[i++ % faces.length] ?? 1) - 1) / 8 + 0.001
+    expect(rollSpellDamage(zap, rng, 1)?.total).toBeLessThan(14)
+    const overload = spellDamage(hero(), 1, spellByName('Overload')!)!
+    i = 0
+    expect(rollSpellDamage(overload, rng, 1)).toMatchObject({ total: 8, miss: false })
+  })
 })

@@ -187,11 +187,14 @@ const hasAttacks = computed(
                 type="button"
                 class="btn"
                 :disabled="!canEdit || w.blocked"
-                :title="w.blocked ? 'No actions left' : undefined"
+                :title="w.why || undefined"
                 @click="used(`w:${i}`, w.roll)"
               >
-                {{ sheet.ownDice ? 'Attack' : 'Roll'
-                }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template>
+                <template v-if="w.blocked">{{ w.why }}</template>
+                <template v-else
+                  >{{ sheet.ownDice ? 'Attack' : 'Roll'
+                  }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template></template
+                >
               </button>
               <p v-if="resultFor(`w:${i}`)" class="roll-status attack__result" role="status">
                 {{ resultFor(`w:${i}`) }}
@@ -295,7 +298,8 @@ const hasAttacks = computed(
                   :title="a.why || undefined"
                   @click="used(a.key, a.run)"
                 >
-                  {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll') }}
+                  {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll')
+                  }}<template v-if="!a.why && a.rushed"> · {{ a.rushed }}× disadvantage</template>
                 </button>
                 <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
                   {{ resultFor(a.key) }}

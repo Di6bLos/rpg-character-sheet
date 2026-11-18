@@ -308,6 +308,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     if (progress) notes.push(progress)
     if (/\b1\/turn\b/.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
     if (roll) notes.push(damageNote(s))
+    if (spellDamage(sheet.value, draft.value.level, s, s.at)) sheet.value.rushed += 1
     if (sheet.value.dying) notes.push('Dying: DC 10 STR save or take 1 Wound.')
     if (/\bdamage\b/i.test(s.desc)) notes.push(endEffects(sheet.value, 'attack').trim())
     notes.push(endEffects(sheet.value, 'spell').trim())
@@ -355,13 +356,15 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
     if (!damage) return ''
     const type = damage.type ? ` ${damage.type}` : ''
+    const rushed = sheet.value.rushed
+    const rush = rushed ? ` with ${rushed}× disadvantage (Rushed)` : ''
     if (sheet.value.ownDice || !damage.rollable)
-      return `Roll ${damage.text}${type} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.`
-    const result = rollSpellDamage(damage)
+      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.`
+    const result = rollSpellDamage(damage, Math.random, rushed)
     if (!result) return ''
-    if (result.miss) return `Miss (first die rolled a 1) [${result.detail}].`
+    if (result.miss) return `Miss (first die rolled a 1)${rush} [${result.detail}].`
     const crit = result.crit ? ` ${critTriggers(sheet.value, draft.value.level, s.name)}` : ''
-    return `${result.total}${type} damage${result.crit ? ' · critical' : ''} [${damage.dice}: ${result.detail}].${crit.trimEnd()}`
+    return `${result.total}${type} damage${result.crit ? ' · critical' : ''}${rush} [${damage.dice}: ${result.detail}].${crit.trimEnd()}`
   }
 
   const spellAttacks = computed(() =>
@@ -371,17 +374,19 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
         if (!damage || /\bReaction:/.test(s.desc)) return []
         const range = /^(Range|Reach|Line|Cone)[^.]*/.exec(s.desc)?.[0] ?? ''
-        const why = s.used
-          ? 'Used this turn'
-          : s.busy
-            ? 'Finish casting first'
-            : s.noActions
-              ? 'No actions left'
-              : s.short
-                ? s.usesMinions
-                  ? `Needs ${s.cost}`
-                  : 'Not enough mana'
-                : ''
+        const why = !sheet.value.turnActive
+          ? 'Not your turn'
+          : s.used
+            ? 'Used this turn'
+            : s.busy
+              ? 'Finish casting first'
+              : s.noActions
+                ? 'No actions left'
+                : s.short
+                  ? s.usesMinions
+                    ? `Needs ${s.cost}`
+                    : 'Not enough mana'
+                  : ''
         return [
           {
             key: `spell:${s.name}`,
@@ -397,6 +402,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
               .join(' · '),
             tier: s.tier,
             price: s.cost,
+            rushed: sheet.value.rushed,
             cost: [
               `${s.actions} action${s.actions === 1 ? '' : 's'}`,
               s.at > s.tier || s.discount

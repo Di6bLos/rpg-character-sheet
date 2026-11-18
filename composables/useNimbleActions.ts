@@ -148,6 +148,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const held = computed(() => sheet.value.resource.rolls.reduce((a, b) => a + b, 0))
   const left = computed(() => actionsLeft(sheet.value))
   const NO_ACTIONS = 'No actions left: they come back when your turn ends.'
+  const NOT_TURN = 'Not your turn'
+  const offTurn = computed(() => !sheet.value.turnActive)
 
   function report(message: string) {
     say(message)
@@ -247,9 +249,21 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         rushed,
         poweredBy: poweredBy(r, w.props),
         mishap: poweredBy(r, w.props) ? WEAPON_MISHAPS[w.name] : undefined,
-        blocked: left.value === 0 && prepaid.value === 0,
+        blocked: (left.value === 0 || offTurn.value) && prepaid.value === 0,
+        why:
+          prepaid.value > 0
+            ? ''
+            : offTurn.value
+              ? NOT_TURN
+              : left.value === 0
+                ? 'No actions left'
+                : '',
         roll: () => {
           if (!canEdit.value) return
+          if (offTurn.value && prepaid.value === 0)
+            return report(
+              `${w.name}: not your turn. Start your turn to attack (reactions still work).`,
+            )
           if (left.value === 0 && prepaid.value === 0) return report(NO_ACTIONS)
           if (sheet.value.ownDice) {
             const notes: string[] = []
@@ -807,7 +821,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     const res = sheet.value.resource
     const word = r?.kind === 'dice' ? `${r.diceName} Die` : r?.diceName.toLowerCase() || 'charge'
     const maneuverUsed = !!sheet.value.uses[`${resourceKey.value}@turn`]?.used
-    return [
+    const list = [
       ...abilityActions.value
         .filter((a) => a.attack)
         .map((a) => ({
@@ -852,6 +866,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           use: o.use,
         })),
     ]
+    return list.map((a) => ({ ...a, why: offTurn.value ? NOT_TURN : a.why }))
   })
 
   const attackAbilityKeys = computed(
@@ -887,13 +902,15 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               ? `Range 8 · the Mana Dice damage also hits ALL creatures between · +${perDie} per die`
               : 'Reach 1 · Heavy armor counts as Medium, Medium as none',
           cost: `${i.actions} action${i.actions === 1 ? '' : 's'}`,
-          why: i.inoperable
-            ? 'Inoperable'
-            : n < i.min
-              ? `Ready at least ${i.min} ${r.diceName} Die`
-              : i.noActions
-                ? 'Not enough actions left'
-                : '',
+          why: offTurn.value
+            ? NOT_TURN
+            : i.inoperable
+              ? 'Inoperable'
+              : n < i.min
+                ? `Ready at least ${i.min} ${r.diceName} Die`
+                : i.noActions
+                  ? 'Not enough actions left'
+                  : '',
           inoperable: i.inoperable,
           mishap: i.mishap,
           run: () => operate(i.name),

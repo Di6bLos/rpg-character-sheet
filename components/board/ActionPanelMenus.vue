@@ -614,7 +614,10 @@ const effectRows = computed(() =>
                         :title="a.why || undefined"
                         @click="a.run()"
                       >
-                        {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll') }}
+                        {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll')
+                        }}<template v-if="!a.why && a.rushed">
+                          · {{ a.rushed }}× disadvantage</template
+                        >
                       </button>
                     </div>
                   </details>

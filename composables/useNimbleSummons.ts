@@ -148,7 +148,13 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         dmg: `${minions.value}× 1d${stats.die}`,
         props: `${stats.damageType} · each moves 6 then attacks · Reach ${stats.reach} · a 1 misses, no crits`,
         cost: '1 action · 1/turn',
-        why: commandUsed.value ? 'Once per turn' : left.value < 1 ? 'No actions left' : '',
+        why: !sheet.value.turnActive
+          ? 'Not your turn'
+          : commandUsed.value
+            ? 'Once per turn'
+            : left.value < 1
+              ? 'No actions left'
+              : '',
         run: command,
       })
     }
@@ -162,7 +168,11 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         dmg: `${stats.diceMult}d${stats.die}+WIL`,
         props: `${stats.damageType}, Reach ${stats.reach}, ignoring armor`,
         cost: spiritCost() ? '1 action' : 'free',
-        why: left.value < spiritCost() ? 'No actions left' : '',
+        why: !sheet.value.turnActive
+          ? 'Not your turn'
+          : left.value < spiritCost()
+            ? 'No actions left'
+            : '',
         run: spiritAttack,
       })
     }
@@ -185,7 +195,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         ]
           .filter(Boolean)
           .join(' · '),
-        why: companionBlocked(sheet.value, level.value),
+        why: sheet.value.turnActive ? companionBlocked(sheet.value, level.value) : 'Not your turn',
         run: companionStrike,
       })
     }
