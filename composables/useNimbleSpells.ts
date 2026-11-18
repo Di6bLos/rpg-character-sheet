@@ -27,6 +27,7 @@ import {
   takeDamage,
 } from '~/utils/nimblePlay'
 import { endEffects } from '~/utils/nimbleEffects'
+import { rollSpellDamage, spellDamage } from '~/utils/nimbleSpellDamage'
 import { sacrificeMinions } from '~/utils/nimbleSummons'
 import type { NimbleResultOptions } from './useNimbleActions'
 
@@ -209,6 +210,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
           at,
           mana,
           discount,
+          used: /\b1\/turn\b/.test(s.desc) && !!sheet.value.uses[`${s.name}@turn`]?.used,
           alts: spellAlts(s, mana, !usesPact && !usesMinions),
           actions,
           usesPact,
@@ -257,8 +259,9 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     upcast[s.name] = Math.max(s.tier, Math.min(maxTier.value, tier))
   }
 
-  function cast(s: CastableSpell, withWound = false, alt?: AltKey) {
+  function cast(s: CastableSpell, withWound = false, alt?: AltKey, roll = false) {
     if (!canEdit.value || s.busy) return
+    if (s.used) return say(`${s.name}: already cast this turn (1/turn).`)
     if (s.noActions) {
       const message = 'No actions left: they come back when your turn ends.'
       say(message)
@@ -302,6 +305,8 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     // Actions the turn can't cover carry over; Concentration starts once it is cast.
     const progress = castSpell(sheet.value, s.name, s.actions, draft.value.level, s.at).trim()
     if (progress) notes.push(progress)
+    if (/\b1\/turn\b/.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
+    if (roll) notes.push(damageNote(s))
     if (sheet.value.dying) notes.push('Dying: DC 10 STR save or take 1 Wound.')
     if (/\bdamage\b/i.test(s.desc)) notes.push(endEffects(sheet.value, 'attack').trim())
     notes.push(endEffects(sheet.value, 'spell').trim())
@@ -345,6 +350,58 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     return `${n} Wound${n === 1 ? '' : 's'} (1d4).${gainWounds(v, n, draft.value.level)}`
   }
 
+  function damageNote(s: CastableSpell): string {
+    const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
+    if (!damage) return ''
+    const type = damage.type ? ` ${damage.type}` : ''
+    if (sheet.value.ownDice || !damage.rollable)
+      return `Roll ${damage.text}${type} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.`
+    const result = rollSpellDamage(damage)
+    if (!result) return ''
+    if (result.miss) return `Miss (first die rolled a 1) [${result.detail}].`
+    return `${result.total}${type} damage${result.crit ? ' · critical' : ''} [${damage.dice}: ${result.detail}].`
+  }
+
+  const spellAttacks = computed(() =>
+    tiers.value
+      .flatMap((g) => g.spells)
+      .flatMap((s) => {
+        const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
+        if (!damage || /\bReaction:/.test(s.desc)) return []
+        const range = /^(Range|Reach|Line|Cone)[^.]*/.exec(s.desc)?.[0] ?? ''
+        const why = s.used
+          ? 'Used this turn'
+          : s.busy
+            ? 'Finish casting first'
+            : s.noActions
+              ? 'No actions left'
+              : s.short
+                ? s.usesMinions
+                  ? `Needs ${s.cost}`
+                  : 'Not enough mana'
+                : ''
+        return [
+          {
+            key: `spell:${s.name}`,
+            name: s.name,
+            dmg: damage.text,
+            props: [
+              range,
+              damage.type,
+              /\b1\/turn\b/.test(s.desc) ? '1/turn' : '',
+              damage.single ? '' : 'does not miss',
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            cost: `${s.tier === 0 ? 'Cantrip' : `Tier ${s.at}`} · ${s.cost} · ${s.actions} action${s.actions === 1 ? '' : 's'}`,
+            why,
+            spell: s,
+            run: () => cast(s, false, undefined, true),
+          },
+        ]
+      }),
+  )
+
   /** Spells cast as a reaction ("Reaction: When attacked…"), offered beside the reactions. */
   const reactionSpells = computed(() =>
     tiers.value
@@ -353,15 +410,17 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       .map((s) => ({
         ...s,
         trigger: /\bReaction:\s*([^.]+)/.exec(s.desc)?.[1]?.trim() ?? '',
-        blocked: s.busy
-          ? 'Finish casting first'
-          : s.noActions
-            ? 'No actions left'
-            : s.short
-              ? s.usesMinions
-                ? `Needs ${s.cost}`
-                : `Needs ${s.mana} mana`
-              : '',
+        blocked: s.used
+          ? 'Used this turn'
+          : s.busy
+            ? 'Finish casting first'
+            : s.noActions
+              ? 'No actions left'
+              : s.short
+                ? s.usesMinions
+                  ? `Needs ${s.cost}`
+                  : `Needs ${s.mana} mana`
+                : '',
       })),
   )
 
@@ -383,5 +442,16 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     }
   })
 
-  return { known, utility, maxTier, tiers, reactionSpells, pool, help, setUpcast, cast }
+  return {
+    known,
+    utility,
+    maxTier,
+    tiers,
+    reactionSpells,
+    spellAttacks,
+    pool,
+    help,
+    setUpcast,
+    cast,
+  }
 }

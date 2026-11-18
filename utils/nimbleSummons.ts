@@ -81,9 +81,9 @@ export function summonStats(sheet: NimbleSheet, level: number, def: SummonDef): 
     critTempHp: active.find((m) => m.critTempHp)?.critTempHp,
     onHighHeal: active.flatMap((m) => (m.onHighHeal ? [m.onHighHeal] : [])),
     onHighAttack: active.flatMap((m) => (m.onHighAttack ? [m.onHighAttack] : [])),
-    damageType: active.find((m) => m.damageType)?.damageType
-      ? `radiant or ${active.find((m) => m.damageType)?.damageType}`
-      : 'radiant',
+    damageType: [def.damageType, ...active.map((m) => m.damageType)]
+      .filter((t, i, all): t is string => !!t && all.indexOf(t) === i)
+      .join(' or '),
     freeWhileDying: active.some((m) => m.freeWhileDying),
   }
 }

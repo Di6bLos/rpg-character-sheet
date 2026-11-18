@@ -278,6 +278,7 @@ export interface SummonDef {
   id: string
   name: string
   source: string
+  damageType?: string
   hp: number
   duration: string
   desc: string

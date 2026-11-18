@@ -14,6 +14,8 @@ const {
   inventionAttacks,
   inventions,
   abilityActions,
+  attackAbilities,
+  attackAbilityKeys,
   readied,
   setReady,
   zealot,
@@ -21,12 +23,47 @@ const {
   setZealot,
   quarry,
   hasMark,
+  held,
   resource,
 } = useNimbleActions()
 const { summonAttacks } = useNimbleSummons()
-const { reactionSpells, cast } = useNimbleSpells()
+const { reactionSpells, spellAttacks, cast, pool } = useNimbleSpells()
 
-const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.companion))
+const mine = computed(() =>
+  abilities.value.filter((a) => !a.linked && !a.companion && !attackAbilityKeys.value.has(a.key)),
+)
+const weaponBadge = computed(() => {
+  const r = resource.value
+  const res = sheet.value.resource
+  const parts: string[] = []
+  if (r?.kind === 'power') parts.push(`${r.diceName} Dice ${res.count}/${r.max}`)
+  if (r?.kind === 'rage')
+    parts.push(res.active ? `Fury +${res.rolls.reduce((a, b) => a + b, 0)}` : 'Not raging')
+  if (r?.kind === 'judgment')
+    parts.push(held.value ? `Judgment +${held.value}` : 'No Judgment Dice')
+  if (r?.kind === 'crit') parts.push(`${r.name} ${res.count ? 'used' : 'ready'}`)
+  if (zealMax.value > 0 || zealot.value > 0) {
+    const m = sheet.value.mana
+    parts.push(`Mana ${m.current + m.temp}/${m.max}`)
+  }
+  return parts.join(' · ')
+})
+const abilityBadge = computed(() => {
+  const r = resource.value
+  if (r?.kind !== 'counter' && r?.kind !== 'dice') return ''
+  const count = sheet.value.resource.count
+  return `${r.name} ${r.max ? `${count}/${r.max}` : count}`
+})
+const otherActions = computed(() => abilityActions.value.filter((a) => !a.attack))
+const hasAttacks = computed(
+  () =>
+    attacks.value.length +
+      summonAttacks.value.length +
+      inventionAttacks.value.length +
+      spellAttacks.value.length +
+      attackAbilities.value.length >
+    0,
+)
 </script>
 
 <template>
@@ -60,149 +97,214 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           {{ q.label }}
         </button>
       </div>
-      <div v-if="attacks.length || summonAttacks.length || inventionAttacks.length" class="attacks">
-        <div v-for="(w, i) in attacks" :key="i" class="tile attack">
-          <div class="attack__head">
-            <div class="stack" style="gap: 2px">
-              <strong style="font-size: 16px">{{ w.name }}</strong>
-              <span class="muted" style="font-size: 12px">{{ w.props }}</span>
-              <span v-if="w.boost" class="boost">{{ w.boost }}</span>
+      <template v-if="hasAttacks">
+        <details v-if="attacks.length || inventionAttacks.length" class="atk-group" open>
+          <summary>
+            <span class="caps">Weapons</span>
+            <span v-if="weaponBadge" class="badge badge--outline">{{ weaponBadge }}</span>
+          </summary>
+          <div class="attacks">
+            <div v-for="(w, i) in attacks" :key="i" class="tile attack">
+              <div class="attack__head">
+                <div class="stack" style="gap: 2px">
+                  <strong style="font-size: 16px">{{ w.name }}</strong>
+                  <span class="muted" style="font-size: 12px">{{ w.props }}</span>
+                  <span v-if="w.boost" class="boost">{{ w.boost }}</span>
+                </div>
+                <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
+              </div>
+              <NimbleMishap v-if="w.mishap" :name="w.mishap.name" :text="w.mishap.text" />
+              <NimbleModifiers :target="w.name" :weapon="w.props" />
+              <div v-if="w.poweredBy" class="ready">
+                <span>{{ resource?.diceName }} Dice readied</span>
+                <button
+                  type="button"
+                  class="step step--xs"
+                  :aria-label="`Ready one fewer ${resource?.diceName} Die`"
+                  :disabled="!canEdit || readied === 0"
+                  @click="setReady(readied - 1)"
+                >
+                  −
+                </button>
+                <strong aria-live="polite">{{ readied }}</strong>
+                <button
+                  type="button"
+                  class="step step--xs"
+                  :aria-label="`Ready one more ${resource?.diceName} Die`"
+                  :disabled="!canEdit || readied >= sheet.resource.count"
+                  @click="setReady(readied + 1)"
+                >
+                  +
+                </button>
+                <small class="ready__of">of {{ sheet.resource.count }}</small>
+              </div>
+              <div v-if="w.zealot" class="ready">
+                <span>Zealot mana</span>
+                <button
+                  type="button"
+                  class="step step--xs"
+                  aria-label="Spend 1 less mana on Zealot"
+                  :disabled="!canEdit || zealot === 0"
+                  @click="setZealot(zealot - 1)"
+                >
+                  −
+                </button>
+                <strong aria-live="polite">{{ zealot }}</strong>
+                <button
+                  type="button"
+                  class="step step--xs"
+                  aria-label="Spend 1 more mana on Zealot"
+                  :disabled="!canEdit || zealot >= zealMax"
+                  @click="setZealot(zealot + 1)"
+                >
+                  +
+                </button>
+                <small class="ready__of">+5 radiant each · up to {{ zealMax }}</small>
+              </div>
+              <button
+                type="button"
+                class="btn"
+                :disabled="!canEdit || w.blocked"
+                :title="w.blocked ? 'No actions left' : undefined"
+                @click="w.roll"
+              >
+                {{ sheet.ownDice ? 'Attack' : 'Roll'
+                }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template>
+              </button>
             </div>
-            <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
-          </div>
-          <NimbleMishap v-if="w.mishap" :name="w.mishap.name" :text="w.mishap.text" />
-          <NimbleModifiers :target="w.name" :weapon="w.props" />
-          <div v-if="w.poweredBy" class="ready">
-            <span>{{ resource?.diceName }} Dice readied</span>
-            <button
-              type="button"
-              class="step step--xs"
-              :aria-label="`Ready one fewer ${resource?.diceName} Die`"
-              :disabled="!canEdit || readied === 0"
-              @click="setReady(readied - 1)"
+            <div
+              v-for="inv in inventionAttacks"
+              :key="inv.name"
+              class="tile attack"
+              :class="{ 'attack--broken': inv.inoperable }"
             >
-              −
-            </button>
-            <strong aria-live="polite">{{ readied }}</strong>
-            <button
-              type="button"
-              class="step step--xs"
-              :aria-label="`Ready one more ${resource?.diceName} Die`"
-              :disabled="!canEdit || readied >= sheet.resource.count"
-              @click="setReady(readied + 1)"
-            >
-              +
-            </button>
-            <small class="ready__of">of {{ sheet.resource.count }}</small>
-          </div>
-          <div v-if="w.zealot" class="ready">
-            <span>Zealot mana</span>
-            <button
-              type="button"
-              class="step step--xs"
-              aria-label="Spend 1 less mana on Zealot"
-              :disabled="!canEdit || zealot === 0"
-              @click="setZealot(zealot - 1)"
-            >
-              −
-            </button>
-            <strong aria-live="polite">{{ zealot }}</strong>
-            <button
-              type="button"
-              class="step step--xs"
-              aria-label="Spend 1 more mana on Zealot"
-              :disabled="!canEdit || zealot >= zealMax"
-              @click="setZealot(zealot + 1)"
-            >
-              +
-            </button>
-            <small class="ready__of">+5 radiant each · up to {{ zealMax }}</small>
-          </div>
-          <button
-            type="button"
-            class="btn"
-            :disabled="!canEdit || w.blocked"
-            :title="w.blocked ? 'No actions left' : undefined"
-            @click="w.roll"
-          >
-            {{ sheet.ownDice ? 'Attack' : 'Roll'
-            }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template>
-          </button>
-        </div>
-        <div
-          v-for="inv in inventionAttacks"
-          :key="inv.name"
-          class="tile attack"
-          :class="{ 'attack--broken': inv.inoperable }"
-        >
-          <div class="attack__head">
-            <div class="stack" style="gap: 2px">
-              <strong style="font-size: 16px">
-                <NimbleBrokenIcon v-if="inv.inoperable" />
-                {{ inv.name }}
-              </strong>
-              <span class="muted" style="font-size: 12px">{{ inv.props }}</span>
-              <span class="boost">{{ inv.cost }}</span>
+              <div class="attack__head">
+                <div class="stack" style="gap: 2px">
+                  <strong style="font-size: 16px">
+                    <NimbleBrokenIcon v-if="inv.inoperable" />
+                    {{ inv.name }}
+                  </strong>
+                  <span class="muted" style="font-size: 12px">{{ inv.props }}</span>
+                  <span class="boost">{{ inv.cost }}</span>
+                </div>
+                <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ inv.dmg }}</span>
+              </div>
+              <NimbleMishap v-if="inv.mishap" :name="inv.mishap.name" :text="inv.mishap.text" />
+              <NimbleModifiers :target="inv.name" />
+              <div class="ready">
+                <span>{{ resource?.diceName }} Dice readied</span>
+                <button
+                  type="button"
+                  class="step step--xs"
+                  :aria-label="`Ready one fewer ${resource?.diceName} Die`"
+                  :disabled="!canEdit || readied === 0"
+                  @click="setReady(readied - 1)"
+                >
+                  −
+                </button>
+                <strong aria-live="polite">{{ readied }}</strong>
+                <button
+                  type="button"
+                  class="step step--xs"
+                  :aria-label="`Ready one more ${resource?.diceName} Die`"
+                  :disabled="!canEdit || readied >= sheet.resource.count"
+                  @click="setReady(readied + 1)"
+                >
+                  +
+                </button>
+                <small class="ready__of">of {{ sheet.resource.count }}</small>
+              </div>
+              <button
+                type="button"
+                class="btn btn--wrap"
+                :disabled="!canEdit || !!inv.why"
+                :title="inv.why || undefined"
+                @click="inv.run"
+              >
+                {{ inv.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
+              </button>
             </div>
-            <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ inv.dmg }}</span>
           </div>
-          <NimbleMishap v-if="inv.mishap" :name="inv.mishap.name" :text="inv.mishap.text" />
-          <NimbleModifiers :target="inv.name" />
-          <div class="ready">
-            <span>{{ resource?.diceName }} Dice readied</span>
-            <button
-              type="button"
-              class="step step--xs"
-              :aria-label="`Ready one fewer ${resource?.diceName} Die`"
-              :disabled="!canEdit || readied === 0"
-              @click="setReady(readied - 1)"
+        </details>
+        <details v-if="spellAttacks.length" class="atk-group" open>
+          <summary>
+            <span class="caps">Spells</span>
+            <span v-if="pool" class="badge badge--outline" :class="{ 'badge--low': pool.low }"
+              >{{ pool.label }} {{ pool.value }}</span
             >
-              −
-            </button>
-            <strong aria-live="polite">{{ readied }}</strong>
-            <button
-              type="button"
-              class="step step--xs"
-              :aria-label="`Ready one more ${resource?.diceName} Die`"
-              :disabled="!canEdit || readied >= sheet.resource.count"
-              @click="setReady(readied + 1)"
-            >
-              +
-            </button>
-            <small class="ready__of">of {{ sheet.resource.count }}</small>
-          </div>
-          <button
-            type="button"
-            class="btn btn--wrap"
-            :disabled="!canEdit || !!inv.why"
-            :title="inv.why || undefined"
-            @click="inv.run"
-          >
-            {{ inv.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
-          </button>
-        </div>
-        <div v-for="a in summonAttacks" :key="a.key" class="tile attack attack--summon">
-          <div class="attack__head">
-            <div class="stack" style="gap: 2px">
-              <strong style="font-size: 16px">{{ a.name }}</strong>
-              <span v-if="a.who" class="attack__who">{{ a.who }}</span>
-              <span class="muted" style="font-size: 12px">{{ a.props }}</span>
-              <span class="boost">{{ a.cost }}</span>
+          </summary>
+          <div class="attacks">
+            <div v-for="a in spellAttacks" :key="a.key" class="tile attack attack--spell">
+              <div class="attack__head">
+                <div class="stack" style="gap: 2px">
+                  <strong style="font-size: 16px">{{ a.name }}</strong>
+                  <span class="muted" style="font-size: 12px">{{ a.props }}</span>
+                  <span class="boost">{{ a.cost }}</span>
+                </div>
+                <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
+              </div>
+              <NimbleModifiers :target="a.name" />
+              <button
+                type="button"
+                class="btn btn--wrap"
+                :disabled="!canEdit || !!a.why"
+                :title="a.why || undefined"
+                @click="a.run"
+              >
+                {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll') }}
+              </button>
             </div>
-            <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
           </div>
-          <NimbleModifiers :summon="a.summon" />
-          <button
-            type="button"
-            class="btn btn--wrap"
-            :disabled="!canEdit || !!a.why"
-            :title="a.why || undefined"
-            @click="a.run"
-          >
-            {{ a.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
-          </button>
-        </div>
-      </div>
+        </details>
+        <details v-if="attackAbilities.length || summonAttacks.length" class="atk-group" open>
+          <summary>
+            <span class="caps">Abilities</span>
+            <span v-if="abilityBadge" class="badge badge--outline">{{ abilityBadge }}</span>
+          </summary>
+          <div class="attacks">
+            <div v-for="a in summonAttacks" :key="a.key" class="tile attack attack--summon">
+              <div class="attack__head">
+                <div class="stack" style="gap: 2px">
+                  <strong style="font-size: 16px">{{ a.name }}</strong>
+                  <span v-if="a.who" class="attack__who">{{ a.who }}</span>
+                  <span class="muted" style="font-size: 12px">{{ a.props }}</span>
+                  <span class="boost">{{ a.cost }}</span>
+                </div>
+                <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
+              </div>
+              <NimbleModifiers :summon="a.summon" />
+              <button
+                type="button"
+                class="btn btn--wrap"
+                :disabled="!canEdit || !!a.why"
+                :title="a.why || undefined"
+                @click="a.run"
+              >
+                {{ a.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
+              </button>
+            </div>
+            <div v-for="a in attackAbilities" :key="a.key" class="tile attack attack--ability">
+              <div class="attack__head">
+                <div class="stack" style="gap: 2px">
+                  <strong style="font-size: 16px">{{ a.name }}</strong>
+                  <span class="muted attack__desc">{{ a.desc }}</span>
+                  <span class="boost">{{ a.costText }}</span>
+                </div>
+              </div>
+              <NimbleModifiers :target="a.name" />
+              <button
+                type="button"
+                class="btn btn--wrap"
+                :disabled="!canEdit || !!a.why"
+                :title="a.why || 'Pays the cost; roll a weapon attack next, it costs no more'"
+                @click="a.use"
+              >
+                {{ a.why || 'Use · then roll a weapon' }}
+              </button>
+            </div>
+          </div>
+        </details>
+      </template>
       <p v-else class="empty">No attacks yet. Use “Edit sheet” to add one.</p>
       <div v-if="lastRoll" class="roll-status" role="status">{{ lastRoll }}</div>
     </section>
@@ -255,7 +357,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
       </div>
 
       <div
-        v-if="abilityActions.length || inventions.some((i) => !i.attack)"
+        v-if="otherActions.length || inventions.some((i) => !i.attack)"
         class="stack"
         style="gap: 8px"
       >
@@ -265,7 +367,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           :key="inv.name"
           :name="inv.name"
         />
-        <details v-for="a in abilityActions" :key="a.key" class="tile act">
+        <details v-for="a in otherActions" :key="a.key" class="tile act">
           <summary>
             <strong>{{ a.name }}</strong>
             <small>{{ a.costText }}</small>
@@ -295,6 +397,48 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
 </template>
 
 <style scoped lang="scss">
+.atk-group {
+  display: flex;
+  flex-direction: column;
+
+  > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: '▾';
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--accent-text);
+    }
+  }
+
+  &[open] > summary {
+    margin-bottom: 10px;
+
+    &::after {
+      content: '▴';
+    }
+  }
+
+  .badge--low {
+    color: var(--danger);
+  }
+}
+
+.attack__desc {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .quarry {
   display: flex;
   flex-wrap: wrap;

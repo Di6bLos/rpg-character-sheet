@@ -33,6 +33,7 @@ import {
   dyingAttackSave,
   endTurn,
   expendJudgment,
+  freeMove,
   afterAttack,
   attackBonus,
   isBloodied,
@@ -100,6 +101,8 @@ const STARTS_AS_ACTION =
 const WOUND_USE = /\byou may (?:gain|suffer) (?:1|a) Wound to (?!gain\b|double\b)/
 const EXTRA_ACTIONS = /\byou may spend (\d+) additional actions? to\b/
 const STEAL = /\bSteal up to (?:STR|DEX|INT|WIL) actions from your next turn\b/
+const ATTACK_TEXT =
+  /\b(?:[Aa]ttack (?:a target|ALL|your|with a|them|on your turn)|make (?:an?|\d+) (?:melee |ranged |weapon )?attacks?|[Ss]hoot\b|shooting\b|This attack\b)/
 const FREE_ATTACK = /\bmake (?:an?|\d+) (?:melee |ranged |weapon )?attacks?\b[^.]*\bfor free\b/i
 
 export function useNimbleActions(options: NimbleResultOptions = {}) {
@@ -739,6 +742,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             name: a.name,
             key,
             desc: a.desc,
+            attack: false,
             costText: `Gain ${steal?.max ?? 0} actions`,
             short: !!why,
             why,
@@ -758,6 +762,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           ? { actions: extra }
           : counterCost(a.desc)
       if (!woundUse && (!cost || cost.reaction)) return []
+      const attack = ATTACK_TEXT.test(a.desc)
+      if (attack && cost && !cost.attack && !FREE_ATTACK.test(a.desc)) cost.attack = true
       const mana = manaCost(a.desc)
       const short = costShort(sheet.value, cost)
       const why = short
@@ -770,6 +776,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           name: a.name,
           key,
           desc: a.desc,
+          attack,
           costText: [woundUse ? 'Free · 1 Wound' : costLabel(cost), mana ? `${mana} mana` : '']
             .filter(Boolean)
             .join(' · '),
@@ -794,6 +801,69 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       ]
     })
   })
+
+  const attackAbilities = computed(() => {
+    const r = resource.value
+    const res = sheet.value.resource
+    const word = r?.kind === 'dice' ? `${r.diceName} Die` : r?.diceName.toLowerCase() || 'charge'
+    const maneuverUsed = !!sheet.value.uses[`${resourceKey.value}@turn`]?.used
+    return [
+      ...abilityActions.value
+        .filter((a) => a.attack)
+        .map((a) => ({
+          key: `act:${a.key}`,
+          name: a.name,
+          desc: a.desc,
+          costText: a.costText,
+          why: a.why,
+          use: a.use,
+        })),
+      ...(r?.moves ?? [])
+        .filter((m) => ATTACK_TEXT.test(m.desc))
+        .map((m) => {
+          const cost = counterCost(m.desc)
+          const why =
+            m.src === 'Maneuver' && maneuverUsed
+              ? 'Maneuver used this turn'
+              : res.count < 1 && !freeMove(m.desc)
+                ? `No ${word}s left`
+                : costShort(sheet.value, cost)
+                  ? 'Not enough actions'
+                  : ''
+          return {
+            key: `move:${m.name}`,
+            name: m.name,
+            desc: m.desc,
+            costText: [costLabel(cost) || 'free', `1 ${word}`].join(' · '),
+            why,
+            use: () => resourceActions.useMove(m.name),
+          }
+        }),
+      ...abilities.value
+        .filter((a) => !a.linked && !a.companion)
+        .flatMap((a) => optionCards(a, a.counters))
+        .filter((o) => ATTACK_TEXT.test(o.text))
+        .map((o) => ({
+          key: `use:${o.key}`,
+          name: o.name,
+          desc: o.text,
+          costText: [o.uses, o.costText].filter(Boolean).join(' · '),
+          why: o.why,
+          use: o.use,
+        })),
+    ]
+  })
+
+  const attackAbilityKeys = computed(
+    () =>
+      new Set(
+        abilities.value
+          .filter(
+            (a) => a.counters.length && a.counters.every((c) => ATTACK_TEXT.test(c.text || a.desc)),
+          )
+          .map((a) => a.key),
+      ),
+  )
 
   const inventionAttacks = computed(() => {
     const r = resource.value
@@ -935,6 +1005,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     inventions,
     inventionAttacks,
     abilityActions,
+    attackAbilities,
+    attackAbilityKeys,
     operate,
     left,
     effects,

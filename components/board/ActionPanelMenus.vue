@@ -70,12 +70,15 @@ const {
   stopEffect,
   prepaid,
   inventionAttacks,
+  attackAbilities,
+  attackAbilityKeys,
 } = useNimbleActions({ onResult: announce })
 const {
   tiers,
   help: spellHelp,
   cast,
   reactionSpells,
+  spellAttacks,
   pool: spellPool,
 } = useNimbleSpells({ onResult: announce })
 const {
@@ -248,12 +251,13 @@ const counterRows = computed(() =>
       max: c.max,
       off: c.left === 0 || c.short,
       warn: c.left === 0 ? 'None left' : c.short ? 'Not enough actions' : '',
-      linked: a.companion || (c.linked && !!diceMenu.value),
+      linked: a.companion || (c.linked && !!diceMenu.value) || attackAbilityKeys.value.has(a.key),
       counter: c,
     })),
   ),
 )
 const abilityRows = computed(() => counterRows.value.filter((r) => !r.linked))
+const otherActions = computed(() => abilityActions.value.filter((a) => !a.attack))
 const linkedOptions = computed(() => (diceMenu.value ? allLinked.value : []))
 const effectRows = computed(() =>
   effects.value.filter((e) => !counterRows.value.some((a) => a.name === e.source)),
@@ -505,7 +509,13 @@ const effectRows = computed(() =>
         }}</small>
       </summary>
       <ul
-        v-if="attacks.length || summonAttacks.length || inventionAttacks.length"
+        v-if="
+          attacks.length ||
+          summonAttacks.length ||
+          inventionAttacks.length ||
+          spellAttacks.length ||
+          attackAbilities.length
+        "
         class="apm__list"
       >
         <li v-for="(w, i) in attacks" :key="i">
@@ -557,6 +567,38 @@ const effectRows = computed(() =>
             <span class="apm__tag">{{ a.dmg }}</span>
             <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
               {{ [a.why, a.who, a.cost].filter(Boolean).join(' · ') }}
+            </span>
+          </button>
+        </li>
+        <li v-for="a in spellAttacks" :key="a.key">
+          <button
+            type="button"
+            class="apm__row"
+            :aria-disabled="!canEdit || !!a.why || undefined"
+            :aria-label="`Cast ${a.name}, ${a.dmg}, ${a.cost}${a.why ? `. ${a.why}` : ''}`"
+            :title="a.props"
+            @click="canEdit && !a.why && a.run()"
+          >
+            <span class="apm__name">{{ a.name }}</span>
+            <span class="apm__tag">{{ a.dmg }}</span>
+            <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
+              {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
+            </span>
+          </button>
+        </li>
+        <li v-for="a in attackAbilities" :key="a.key">
+          <button
+            type="button"
+            class="apm__row"
+            :aria-disabled="!canEdit || !!a.why || undefined"
+            :aria-label="`Use ${a.name}, ${a.costText}${a.why ? `. ${a.why}` : ''}`"
+            :title="a.desc"
+            @click="canEdit && !a.why && a.use()"
+          >
+            <span class="apm__name">{{ a.name }}</span>
+            <span class="apm__tag">Use</span>
+            <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
+              {{ [a.why, a.costText].filter(Boolean).join(' · ') }}
             </span>
           </button>
         </li>
@@ -1057,7 +1099,7 @@ const effectRows = computed(() =>
     </details>
 
     <details
-      v-if="sheet.turnActive && (abilityRows.length || effectRows.length || abilityActions.length)"
+      v-if="sheet.turnActive && (abilityRows.length || effectRows.length || otherActions.length)"
       name="action-panel"
       class="apm__menu"
     >
@@ -1067,10 +1109,10 @@ const effectRows = computed(() =>
           label="About abilities"
           text="Ability actions and limited-use abilities. Use pays the actions (and mana); limited uses refill when your turn starts, on New encounter or on a Safe Rest."
         />
-        <small>{{ abilityRows.length + abilityActions.length }}</small>
+        <small>{{ abilityRows.length + otherActions.length }}</small>
       </summary>
       <ul class="apm__list">
-        <li v-for="(a, n) in abilityActions" :key="a.key">
+        <li v-for="(a, n) in otherActions" :key="a.key">
           <button
             type="button"
             class="apm__row"
