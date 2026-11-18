@@ -18,6 +18,7 @@ import {
   dismissSummon,
   minionCount,
   setSummonLook,
+  summonModifiers,
   summonOptions,
   switchSummonOption,
   sacrificeMinions,
@@ -299,6 +300,19 @@ describe('class options on summons', () => {
       /Favored pet sacrificed\. Martyr Spawn: when you Defend, take no damage\./,
     )
     expect(sheet.summons).toEqual([])
+  })
+
+  it('lists the class options and lines that upgrade a summon', () => {
+    const sheet = shadowmancer(['Swarming Shadows', 'Armor of Shadows', 'My Favored Pet'])
+    sheet.abilities = sheet.abilities.map((a) =>
+      a.name === 'Armor of Shadows'
+        ? { ...a, desc: 'Take 1 less damage from every hit for each minion you have.' }
+        : a,
+    )
+    const names = summonModifiers(sheet, 'shadow-minion').map((m) => m.name)
+    expect(names).toContain('Swarming Shadows')
+    expect(names).toContain('Armor of Shadows')
+    expect(names).not.toContain('My Favored Pet')
   })
 
   it('gives a new minion the first free letter', () => {

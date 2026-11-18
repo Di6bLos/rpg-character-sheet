@@ -7,6 +7,7 @@ import { rollDie, type Rng } from '~/utils/dice'
 import { letter } from '~/utils/initiative'
 import {
   abilityBaseName,
+  abilityModifiers,
   knownSpells,
   knownUtilitySpells,
   swapPoolOption,
@@ -122,6 +123,41 @@ export function summonOptions(
       passive: !/\d+\s*\/\s*(?:encounter|round|turn|day)/i.test(text),
     }
   })
+}
+
+/** Words other abilities use for a kind of summon ("your minions", "your companion"). */
+function summonAliases(def: SummonDef): string[] {
+  const minion = COMMANDED.includes(def.id) || def.id === 'greater-shadow' || !!def.minionOf
+  return [
+    def.name,
+    ...(minion ? ['minion', 'minions', 'shadow minion', 'shadow minions'] : []),
+    ...(def.permanent && def.attack ? ['companion', 'Companion'] : []),
+    ...(def.id === 'lifebinding-spirit' ? ['spirit', 'Spirit'] : []),
+  ]
+}
+
+/**
+ * Everything on this hero that upgrades a summon: the class options the rules data ties
+ * to it (Swarming, Empowered Companion…) and other abilities' lines about it.
+ */
+export function summonModifiers(
+  sheet: NimbleSheet,
+  defId: string,
+): { name: string; text: string }[] {
+  const def = summonById(defId)
+  if (!def) return []
+  const kinds = [def.id, ...(def.minionOf ? [def.minionOf] : [])]
+  const linked = SUMMON_MODS.filter((m) => kinds.includes(m.summon) && hasAbility(sheet, m.ability))
+    .map((m) => ({
+      name: m.ability,
+      text: sheet.abilities.find((a) => abilityBaseName(a.name) === m.ability)?.desc ?? '',
+    }))
+    .filter((m) => m.name !== def.source)
+  const named = abilityModifiers(sheet, def.source, summonAliases(def)).filter(
+    (m) => !SUMMONS.some((d) => d.source === m.name),
+  )
+  const seen = new Set(linked.map((m) => m.name))
+  return [...linked, ...named.filter((m) => !seen.has(m.name))]
 }
 
 /** Switches to another summon option of the same pool, keeping its name and image. */

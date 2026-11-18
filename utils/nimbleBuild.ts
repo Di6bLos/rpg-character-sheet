@@ -1101,7 +1101,7 @@ export function syncCompanions(sheet: NimbleSheet): void {
   }
 }
 
-const NOT_A_CHANGE = /knowledge of|no longer|stole a secret|Invocations affecting/i
+const NOT_A_CHANGE = /knowledge of|no longer|stole a secret|Invocations affecting|\bChoose a\b/i
 
 /**
  * What upgrades an ability, spell or summoned weapon on this hero: upgrade options named
@@ -1112,12 +1112,13 @@ const NOT_A_CHANGE = /knowledge of|no longer|stole a secret|Invocations affectin
 export function abilityModifiers(
   sheet: NimbleSheet,
   target: string,
+  aliases: string[] = [],
 ): { name: string; text: string }[] {
   const base = abilityBaseName(target)
   const also = /Invocations affecting ([A-Z][\w ]+?) (?:also )?affect/.exec(
     spellByName(base)?.desc ?? '',
   )?.[1]
-  const names = [base, ...(also ? [also] : [])].map(
+  const names = [base, ...(also ? [also] : []), ...aliases].map(
     (t) => new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`),
   )
   const found = new Map<string, string>()
