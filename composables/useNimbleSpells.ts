@@ -3,6 +3,7 @@
 // Reaver's minions or Wound), and starts Concentration when the spell needs it.
 // Shared by the sheet's Spells panel and the board's action panel.
 import { SPELL_RULES } from '~/data/nimble/spells'
+import { summonBySource } from '~/data/nimble/summons'
 import type { SpellDef } from '~/data/nimble/types'
 import type { NimbleSheet } from '~/types/sheets'
 import {
@@ -40,6 +41,9 @@ import {
 } from '~/utils/nimbleTargetArmor'
 import { sacrificeMinions } from '~/utils/nimbleSummons'
 import type { NimbleResultOptions } from './useNimbleActions'
+
+/** A spell that is itself 1/turn ("… 1/turn. …"), not one with a 1/turn part (Summon Shadows' command). */
+const ONCE_PER_TURN = /(?:^|\.\s+)1\/turn\./
 
 export function useNimbleSpells(options: NimbleResultOptions = {}) {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
@@ -227,7 +231,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
           at,
           mana,
           discount,
-          used: /\b1\/turn\b/.test(s.desc) && !!sheet.value.uses[`${s.name}@turn`]?.used,
+          used: ONCE_PER_TURN.test(s.desc) && !!sheet.value.uses[`${s.name}@turn`]?.used,
           alts: spellAlts(s, mana, !usesPact && !usesMinions),
           actions,
           usesPact,
@@ -324,7 +328,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     // Actions the turn can't cover carry over; Concentration starts once it is cast.
     const progress = castSpell(sheet.value, s.name, s.actions, draft.value.level, s.at).trim()
     if (progress) notes.push(progress)
-    if (/\b1\/turn\b/.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
+    if (ONCE_PER_TURN.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
     if (roll) notes.push(damageNote(s))
     if (spellDamage(sheet.value, draft.value.level, s, s.at)) {
       if (sheet.value.turnActive) sheet.value.rushed += 1
@@ -424,7 +428,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
             props: [
               range,
               damage.type,
-              /\b1\/turn\b/.test(s.desc) ? '1/turn' : '',
+              ONCE_PER_TURN.test(s.desc) ? '1/turn' : '',
               damage.single ? '' : 'does not miss',
             ]
               .filter(Boolean)
@@ -482,6 +486,31 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       })),
   )
 
+  /** Spells that summon (Summon Shadows, Lifebinding Spirit…), cast from the Summons panel. */
+  const summonSpells = computed(() =>
+    tiers.value
+      .flatMap((g) => g.spells)
+      .filter((s) => !!summonBySource(s.name))
+      .map((s) => ({
+        ...s,
+        summon: summonBySource(s.name)!.id,
+        blocked:
+          sheet.value.inEncounter && !sheet.value.turnActive
+            ? 'Not your turn'
+            : s.used
+              ? 'Used this turn'
+              : s.busy
+                ? 'Finish casting first'
+                : s.noActions
+                  ? 'No actions left'
+                  : s.short
+                    ? s.usesMinions
+                      ? `Needs ${s.cost}`
+                      : `Needs ${s.mana} mana`
+                    : '',
+      })),
+  )
+
   const pool = computed(() => {
     if (reaver.value) {
       const minions = sheet.value.summons.filter((m) => m.def === 'shadow-minion').length
@@ -506,6 +535,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     maxTier,
     tiers,
     reactionSpells,
+    summonSpells,
     spellAttacks,
     spellAttackTiers,
     pool,
