@@ -128,20 +128,33 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const zealMax = computed(() => zealotMax(sheet.value))
   const zealot = computed(() => Math.min(zeal.value, zealMax.value))
   const prepaid = useState(`nimble-prepaid-${draft.value.id}`, () => 0)
+  const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
+  const attackFocus = useState(`nimble-attack-focus-${draft.value.id}`, () => false)
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
       if (on !== was) {
         prepaid.value = 0
+        opportunity.value = false
+        attackFocus.value = false
         nextAttack.value = { flat: 0, clean: false, note: '' }
       }
     },
   )
 
   function spendAttackAction() {
+    opportunity.value = false
     if (prepaid.value > 0) prepaid.value -= 1
     else spendActions(sheet.value)
   }
+
+  const frenzyOpportunity = computed(
+    () =>
+      sheet.value.resource.active &&
+      sheet.value.abilities.some((a) =>
+        /\bWhile Raging, you can make opportunity attacks without disadvantage\b/.test(a.desc),
+      ),
+  )
 
   function paidFor(cost: CounterCost | undefined, before: number) {
     if (cost?.attack && sheet.value.actionsSpent > before) prepaid.value += 1
@@ -178,7 +191,10 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       // Swift Fists and the like say so in the weapon's properties.
       const next = nextAttack.value
       const rushed = /no rushed/i.test(w.props) || next.clean ? 0 : sheet.value.rushed
-      const odds = rushed + cond.value.disadvantage
+      const oa = opportunity.value && prepaid.value > 0
+      const oaDisadvantage = oa && !frenzyOpportunity.value ? 1 : 0
+      const odds = rushed + cond.value.disadvantage + oaDisadvantage
+      const meleeOnly = oa && !w.melee
       const r = resource.value
       const powered = poweredBy(r, w.props) && readied.value > 0
       const judged = r?.kind === 'judgment' && w.melee && held.value > 0
@@ -247,7 +263,18 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           (judged ? ` +${held.value}` : '') +
           (flat ? ` +${flat}` : '') +
           (zealDamage ? ` +${zealDamage}` : ''),
-        boost: [note, ...bonus.notes, ...situational, ...cond.value.notes, ...cond.value.hints]
+        boost: [
+          oa
+            ? oaDisadvantage
+              ? 'Opportunity Attack: +1 disadvantage'
+              : 'Opportunity Attack (no disadvantage: Opportunistic Frenzy)'
+            : '',
+          note,
+          ...bonus.notes,
+          ...situational,
+          ...cond.value.notes,
+          ...cond.value.hints,
+        ]
           .filter(Boolean)
           .join(' · '),
         zealot: zealous,
@@ -257,20 +284,24 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         mishap: poweredBy(r, w.props) ? WEAPON_MISHAPS[w.name] : undefined,
         blocked:
           !!cond.value.incapacitated ||
+          meleeOnly ||
           ((left.value === 0 || offTurn.value) && prepaid.value === 0),
         why: cond.value.incapacitated
           ? cond.value.incapacitated
-          : prepaid.value > 0
-            ? ''
-            : offTurn.value
-              ? NOT_TURN
-              : left.value === 0
-                ? 'No actions left'
-                : '',
+          : meleeOnly
+            ? 'Opportunity attacks are melee'
+            : prepaid.value > 0
+              ? ''
+              : offTurn.value
+                ? NOT_TURN
+                : left.value === 0
+                  ? 'No actions left'
+                  : '',
         roll: () => {
           if (!canEdit.value) return
           if (cond.value.incapacitated)
             return report(`${w.name}: you are ${cond.value.incapacitated} and can’t act.`)
+          if (meleeOnly) return report(`${w.name}: an opportunity attack has to be a melee attack.`)
           if (offTurn.value && prepaid.value === 0)
             return report(
               `${w.name}: not your turn. Start your turn to attack (reactions still work).`,
@@ -456,6 +487,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     const attack = name === 'Opportunity Attack'
     const free = freeReaction(name)
     if (reactionCount(name) >= reactionMax(name)) {
+      if (attack) opportunity.value = false
       const at = used.lastIndexOf(name)
       sheet.value.reactionsUsed = used.filter((_, i) => i !== at)
       if (!free) refundActions(sheet.value, 1)
@@ -473,7 +505,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     const extras = reactionExtras(name)
     if (!attack) return report(`${name}: ${paid}.${judgment}${extras}`)
     prepaid.value += 1
-    report(`${name}: ${paid}; roll the attack next, it costs no more.`)
+    opportunity.value = true
+    attackFocus.value = true
+    report(`${name}: ${paid}; roll a melee attack next, it costs no more.`)
   }
 
   const linkedTo = computed(() => (resource.value ? resourcePattern(resource.value) : null))
@@ -1019,6 +1053,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     linkedOptions,
     companionOptions,
     prepaid: readonly(prepaid),
+    opportunity: readonly(opportunity),
+    attackFocus: readonly(attackFocus),
     spend,
     resource,
     readied,
