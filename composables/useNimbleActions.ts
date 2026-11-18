@@ -88,10 +88,13 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const ready = useState(`nimble-power-${draft.value.id}`, () => 0)
   const readied = computed(() => Math.min(ready.value, sheet.value.resource.count))
   const prepaid = useState(`nimble-prepaid-${draft.value.id}`, () => 0)
+  const paidUses = useState<string[]>(`nimble-paid-uses-${draft.value.id}`, () => [])
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
-      if (on !== was) prepaid.value = 0
+      if (on === was) return
+      prepaid.value = 0
+      paidUses.value = []
     },
   )
 
@@ -348,10 +351,14 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const result = payCost(sheet.value, counter.cost)
       if (result === null) return report(shortMessage(sheet.value, label, counter.cost))
       paidFor(counter.cost, before)
+      if (sheet.value.actionsSpent > before && !counter.cost.reaction)
+        paidUses.value = [...paidUses.value, counter.id]
       paid = result
     }
     const used = Math.max(0, Math.min(counter.max, counter.used + Math.floor(amount || 0)))
-    if (amount < 0 && used < counter.used && counter.cost && !counter.cost.reaction) {
+    const paidNow = paidUses.value.indexOf(counter.id)
+    if (amount < 0 && used < counter.used && counter.cost && paidNow >= 0) {
+      paidUses.value = paidUses.value.filter((_, i) => i !== paidNow)
       refundActions(sheet.value, counter.cost.actions)
       if (counter.cost.attack) prepaid.value = Math.max(0, prepaid.value - 1)
     }

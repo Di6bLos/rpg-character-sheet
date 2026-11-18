@@ -114,7 +114,12 @@ function isDown(c: TurnRow) {
 }
 
 function status(c: TurnRow) {
-  if (c.id === props.init.activeId.value) return 'Acting now'
+  if (c.id === props.init.activeId.value)
+    return props.init.turnId.value
+      ? 'Acting now'
+      : props.gm
+        ? 'Up first · Next turn starts'
+        : 'Up first'
   if (isDown(c)) return c.kind === 'summon' ? 'Slain' : 'Down'
   if (c.kind === 'summon') return 'Summon'
   if (props.gm && c.kind !== 'pc' && c.hp !== null && (c.hp_max ?? 0) > 0)
