@@ -530,7 +530,14 @@ async function confirm() {
 
     <template #actions>
       <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
-      <button v-if="level < MAX_LEVEL" type="button" class="btn" @click="confirm">
+      <button
+        v-if="level < MAX_LEVEL"
+        type="button"
+        class="btn"
+        :disabled="!!plan && nimbleProblems.length > 0"
+        :title="plan && nimbleProblems.length ? nimbleProblems.join('\n') : undefined"
+        @click="confirm"
+      >
         Confirm level {{ level + 1 }}
       </button>
     </template>
