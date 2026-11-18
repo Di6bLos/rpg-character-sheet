@@ -2,7 +2,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
 import type { Combatant, Encounter, InitiativeRow, RosterEntry } from '~/types'
 import { rollDie } from '~/utils/dice'
-import { hpBand, sortOrder } from '~/utils/initiative'
+import { hpBand, isSlainSummon, sortOrder, summonOwner, syncSummonRows } from '~/utils/initiative'
 
 export type TurnRow = InitiativeRow & { init_mod: number; created_at: string }
 
@@ -22,6 +22,7 @@ function fromCombatant(c: Combatant): TurnRow {
     hp_band: c.kind === 'pc' ? null : hpBand(c.hp, c.hp_max),
     init_mod: c.init_mod,
     created_at: c.created_at,
+    summon_key: c.summon_key,
   }
 }
 
@@ -37,11 +38,38 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
   const loading = ref(true)
   let channel: RealtimeChannel | null = null
 
-  const order = computed(() => sortOrder(rows.value))
-  const activeId = computed(() => {
+  /** Turn order: summons act on their summoner's turn, so they sit under the hero instead. */
+  const order = computed(() => sortOrder(rows.value.filter((r) => r.kind !== 'summon')))
+
+  /** A hero's living summons in initiative, for the dropdown under their portrait. */
+  function summonsOf(characterId: string | null): TurnRow[] {
+    if (!characterId) return []
+    return sortOrder(
+      rows.value.filter(
+        (r) =>
+          r.kind === 'summon' &&
+          !!r.summon_key &&
+          summonOwner(r.summon_key) === characterId &&
+          !isSlainSummon(r),
+      ),
+    )
+  }
+  /** The first living combatant after `id` in the full order (slain summons included). */
+  function livingAfter(id: string): string | null {
+    const all = sortOrder(rows.value)
+    const at = all.findIndex((c) => c.id === id)
+    if (at < 0) return null
+    const live = new Set(order.value.map((c) => c.id))
+    return [...all.slice(at + 1), ...all.slice(0, at)].find((c) => live.has(c.id))?.id ?? null
+  }
+
+  /** Whose turn it is by the encounter; null while loading or before the GM starts one. */
+  const turnId = computed(() => {
     const current = encounter.value?.active_combatant
-    return order.value.some((c) => c.id === current) ? current : (order.value[0]?.id ?? null)
+    if (loading.value || !current) return null
+    return order.value.some((c) => c.id === current) ? current : livingAfter(current)
   })
+  const activeId = computed(() => turnId.value ?? order.value[0]?.id ?? null)
   const round = computed(() => encounter.value?.round ?? 1)
 
   // HP writes for one combatant go out one at a time, so quick clicks land in order.
@@ -68,6 +96,7 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
         ...r,
         init_mod: 0,
         created_at: String(i).padStart(6, '0'),
+        summon_key: r.summon_key ?? null,
       }))
     }
   }
@@ -214,7 +243,7 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
   }
 
   async function rollForNpcs() {
-    const npcs = rows.value.filter((c) => c.kind !== 'pc')
+    const npcs = rows.value.filter((c) => c.kind !== 'pc' && !c.summon_key)
     if (!npcs.length) return
     for (const c of npcs) c.initiative = rollDie(20) + c.init_mod
     const results = await Promise.all(
@@ -228,8 +257,15 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
   }
 
   async function setInitiative(c: TurnRow, value: number) {
-    c.initiative = value
-    const { error } = await supabase.from('combatants').update({ initiative: value }).eq('id', c.id)
+    const moved = [
+      c,
+      ...rows.value.filter(
+        (r) => c.kind === 'pc' && !!r.summon_key && summonOwner(r.summon_key) === c.character_id,
+      ),
+    ]
+    for (const r of moved) r.initiative = value
+    const ids = moved.map((r) => r.id)
+    const { error } = await supabase.from('combatants').update({ initiative: value }).in('id', ids)
     if (error) snackbar.error(error, 'Could not change initiative')
   }
 
@@ -256,6 +292,40 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
     return write
   }
 
+  async function pruneSummons(roster: RosterEntry[]) {
+    const { remove: gone } = syncSummonRows(roster, rows.value)
+    if (!gone.length) return
+    const active = encounter.value?.active_combatant
+    if (active && gone.includes(active)) {
+      const next = livingAfter(active)
+      if (next) await saveEncounter({ active_combatant: next })
+    }
+    const { error } = await supabase.from('combatants').delete().in('id', gone)
+    if (error) return snackbar.error(error, 'Could not remove slain summons')
+    rows.value = rows.value.filter((x) => !gone.includes(x.id))
+  }
+
+  async function syncSummons(roster: RosterEntry[]) {
+    const { add, remove: gone } = syncSummonRows(roster, rows.value)
+    if (gone.length) {
+      const { error } = await supabase.from('combatants').delete().in('id', gone)
+      if (error) {
+        snackbar.error(error, 'Could not remove the dismissed summons')
+        return null
+      }
+      rows.value = rows.value.filter((x) => !gone.includes(x.id))
+    }
+    if (add.length) {
+      try {
+        await insert(add)
+      } catch (err) {
+        snackbar.error(err, 'Could not add the summons')
+        return null
+      }
+    }
+    return { added: add.length, removed: gone.length }
+  }
+
   async function remove(c: TurnRow) {
     const { error } = await supabase.from('combatants').delete().eq('id', c.id)
     if (error) return snackbar.error(error, 'Could not remove the combatant')
@@ -272,7 +342,9 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
   return {
     rows,
     order,
+    summonsOf,
     activeId,
+    turnId,
     round,
     loading,
     reload: loadRows,
@@ -280,6 +352,8 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
     nextTurn,
     prevTurn,
     addParty,
+    pruneSummons,
+    syncSummons,
     rollForNpcs,
     setInitiative,
     adjustHp,

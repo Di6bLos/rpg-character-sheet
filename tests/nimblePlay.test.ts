@@ -8,23 +8,40 @@ import { abilityBaseName, sheetResource } from '../utils/nimbleBuild'
 import {
   abilityCounters,
   actionsLeft,
+  actionPips,
+  endEncounter,
+  gainAction,
+  newRound,
+  toggleActionPip,
   castingBlocks,
   castSpell,
+  counterCost,
   dyingAttackSave,
+  payCost,
   encounterMana,
   fieldRest,
   fieldRestDice,
   heal,
   hitDiceLeft,
+  initiativeRecharges,
   inventorySlots,
   isBloodied,
   isDead,
   isHollowOne,
+  endTurn,
+  expendJudgment,
+  isMishap,
   newEncounter,
-  newTurn,
+  startTurn,
+  resourceOnAttack,
+  rollJudgment,
+  spendPower,
+  spendResourceMove,
   payBloodCast,
   payShadowExploit,
+  rage,
   safeRest,
+  spendFury,
   shadowExploitCost,
   spellActions,
   spendActions,
@@ -177,7 +194,7 @@ describe('nimble rests', () => {
       reactionsUsed: ['Defend'],
     })
     sheet.resource.count = 2
-    safeRest(sheet)
+    safeRest(sheet, 1)
     expect(sheet).toMatchObject({
       hp: 20,
       dying: false,
@@ -194,6 +211,47 @@ describe('nimble rests', () => {
 })
 
 describe('nimble turn tracker', () => {
+  it('steps New encounter → Start turn → End turn → New round → Start turn', () => {
+    const sheet = hero()
+    const step = () => [sheet.inEncounter, sheet.turnActive, sheet.turnDone]
+    expect(step()).toEqual([false, false, false])
+    newEncounter(sheet, 1, () => 0.5, 12)
+    expect(step()).toEqual([true, false, false])
+    startTurn(sheet, 1)
+    expect(step()).toEqual([true, true, false])
+    endTurn(sheet, 1)
+    expect(step()).toEqual([true, false, true])
+    newRound(sheet, 1)
+    expect(step()).toEqual([true, false, false])
+    startTurn(sheet, 1)
+    expect(step()).toEqual([true, true, false])
+    endTurn(sheet, 1)
+    expect(endEncounter(sheet, 1)).toBe('Encounter over.')
+    expect(step()).toEqual([false, false, false])
+    newEncounter(sheet, 1, () => 0.5, 12)
+    safeRest(sheet, 1)
+    expect(step()).toEqual([false, false, false])
+  })
+
+  it('holds extra actions an ally grants until the turn ends', () => {
+    const sheet = hero({ actionsSpent: 2 })
+    expect(gainAction(sheet, 2)).toBe('Gained 2 actions: 3 left.')
+    expect(gainAction(sheet, 2)).toBe('Gained 2 actions: 5 left.')
+    expect(actionPips(sheet)).toBe(5)
+    toggleActionPip(sheet, 5)
+    expect(actionsLeft(sheet)).toBe(4)
+    expect(actionPips(sheet)).toBe(4)
+    spendActions(sheet, 5)
+    expect(actionsLeft(sheet)).toBe(0)
+    toggleActionPip(sheet, 1)
+    expect(actionsLeft(sheet)).toBe(1)
+    gainAction(sheet, 20)
+    expect(actionsLeft(sheet)).toBe(9)
+    endTurn(sheet, 1)
+    expect(actionsLeft(sheet)).toBe(3)
+    expect(sheet.turnActive).toBe(false)
+  })
+
   it('gives 3 actions, or 1 while Dying', () => {
     expect(actionsLeft(hero())).toBe(3)
     expect(actionsLeft(hero({ hp: 0, dying: true }))).toBe(1)
@@ -211,25 +269,85 @@ describe('nimble turn tracker', () => {
     expect(dyingAttackSave(hero({ hp: 0, dying: true, abilities: wind }))).toBe(true)
   })
 
-  it('resets actions, Rushed Attacks and reactions on a new turn', () => {
+  it('gives actions, Rushed Attacks and reactions back at the end of the turn, not the start', () => {
     const sheet = hero({ rushed: 2, reactionsUsed: ['Defend', 'Help'] })
     spendActions(sheet, 5)
     expect(actionsLeft(sheet)).toBe(0)
-    newTurn(sheet)
+    expect(endTurn(sheet, 1)).toBe('End of turn: all 3 actions back, reactions ready.')
     expect(sheet).toMatchObject({ actionsSpent: 0, rushed: 0, reactionsUsed: [] })
+    spendActions(sheet, 1)
+    expect(startTurn(sheet, 1)).toBe('Your turn: 2 actions.')
+    expect(actionsLeft(sheet)).toBe(2)
   })
 
-  it('grows an active Rage by one Fury die each turn', () => {
-    const sheet = hero()
-    sheet.resource = { ...sheet.resource, name: 'Rage', active: true, dice: 1 }
-    newTurn(sheet)
-    expect(sheet.resource.dice).toBe(2)
+  it('starts combat with 1, 2 or all actions by the Initiative roll', () => {
+    const roll = (value: number) => () => (value - 0.5) / 20
+    const sheet = hero({ initMod: 2 })
+    expect(newEncounter(sheet, 1, roll(5))).toMatch(
+      /Initiative 7 \(d20 5 \+2\), you start with 1 action\./,
+    )
+    expect(actionsLeft(sheet)).toBe(1)
+    newEncounter(sheet, 1, roll(12))
+    expect(actionsLeft(sheet)).toBe(2)
+    newEncounter(sheet, 1, roll(18))
+    expect(actionsLeft(sheet)).toBe(3)
+    const elf = hero({
+      abilities: [{ name: 'Lithe', src: 'Elf', desc: 'Advantage on Initiative, +1 Speed.' }],
+    })
+    let i = 0
+    const rolls = [3, 20]
+    expect(newEncounter(elf, 1, () => (rolls[i++]! - 0.5) / 20)).toMatch(/d20 20 with advantage/)
+    expect(actionsLeft(elf)).toBe(3)
+  })
+
+  it('plays Rage by the book: a Fury Die set aside per Rage, capped at KEY, added to STR attacks', () => {
+    const rager = (...extra: string[]) =>
+      hero({
+        classSlug: 'berserker',
+        stats: { STR: 2, DEX: 1, INT: 0, WIL: 0 },
+        abilities: [
+          { name: 'Rage', src: 'Berserker', desc: '(1/turn) Action: Roll a Fury Die.' },
+          ...extra.map((name) => ({ name, src: 'Berserker', desc: '' })),
+        ],
+      })
+    const sheet = rager()
+    expect(rage(sheet, 1, false, faces(4, 3))).toMatch(/^Rage: rolled 3 \(d4\); Fury 3/)
+    expect(rage(sheet, 1)).toBe('Rage: already used this turn.')
+    startTurn(sheet, 1)
+    expect(sheet.resource.rolls).toEqual([3])
+    rage(sheet, 1, false, faces(4, 4))
+    startTurn(sheet, 1)
+    expect(rage(sheet, 1, false, faces(4, 1))).toMatch(/kept the best 2; Fury 7/)
+    expect(sheet.resource.rolls).toEqual([4, 3])
+    expect(spendFury(sheet, 0)).toBe(
+      'Spent a Fury Die (4): That all you got?! reduces the damage by 3.',
+    )
+    expect(newEncounter(sheet, 1)).toBeTruthy()
+    expect(sheet.resource).toMatchObject({ active: false, rolls: [] })
+
+    const fury = rager('Intensifying Fury', 'Boundless Rage')
+    rage(fury, 1, false, faces(4, 2))
+    expect(fury.resource.rolls).toEqual([6])
+    expect(startTurn(fury, 1)).toMatch(/Intensifying Fury: rolled 6/)
+    takeDamage(fury, 99)
+    expect(fury.resource.active).toBe(false)
+
+    const deep = rager('Deep Rage')
+    rage(deep, 1)
+    takeDamage(deep, 99)
+    expect(deep.resource.active).toBe(true)
+
+    const enduring = rager('Enduring Rage')
+    enduring.hp = 0
+    enduring.dying = true
+    expect(startTurn(enduring, 1)).toMatch(/Enduring Rage: Rage: rolled/)
+    expect(enduring.uses['Rage@turn']).toBeUndefined()
   })
 
   it('drops the highest die for each Rushed Attack', () => {
     // 2 dice rolled for a 1d8 with one disadvantage: 7 is dropped, 3 is kept.
     const result = rollNimble({ count: 1, sides: 8, mod: 2 }, null, faces(8, 7, 3), 1)
-    expect(result).toEqual({ miss: false, crit: false, total: 5, bonus: 0 })
+    expect(result).toEqual({ miss: false, crit: false, total: 5, bonus: 0, dice: [3] })
     // The kept die is a 1: a miss.
     expect(rollNimble({ count: 1, sides: 8, mod: 2 }, null, faces(8, 1, 6), 1).miss).toBe(true)
   })
@@ -259,11 +377,12 @@ describe('casting over several turns', () => {
   it('carries unpaid actions to the next turn and concentrates once cast', () => {
     const sheet = hero()
     spendActions(sheet, 2)
-    expect(castSpell(sheet, 'Fiery Embrace', 2)).toMatch(/1 more action/)
+    expect(castSpell(sheet, 'Fiery Embrace', 2, 1)).toMatch(/1 more action/)
     expect(actionsLeft(sheet)).toBe(0)
     expect(sheet.concentration).toBe('')
     expect(sheet.casting).toEqual({ spell: 'Fiery Embrace', actions: 1 })
-    expect(newTurn(sheet)).toMatch(/Fiery Embrace takes effect/)
+    endTurn(sheet, 1)
+    expect(startTurn(sheet, 1)).toMatch(/Fiery Embrace takes effect/)
     expect(actionsLeft(sheet)).toBe(2)
     expect(sheet.concentration).toBe('Fiery Embrace')
     expect(sheet.casting).toEqual({ spell: '', actions: 0 })
@@ -271,19 +390,20 @@ describe('casting over several turns', () => {
 
   it('spreads a long cast over as many turns as it needs', () => {
     const sheet = hero()
-    castSpell(sheet, 'Ritual', 5)
+    castSpell(sheet, 'Ritual', 5, 1)
     expect(sheet.casting.actions).toBe(2)
-    newTurn(sheet)
+    endTurn(sheet, 1)
+    startTurn(sheet, 1)
     expect(actionsLeft(sheet)).toBe(1)
     expect(sheet.casting.actions).toBe(0)
   })
 
   it('will not start another spell over one still being cast', () => {
     const sheet = hero()
-    castSpell(sheet, 'Fiery Embrace', 5)
+    castSpell(sheet, 'Fiery Embrace', 5, 1)
     expect(castingBlocks(sheet, 2)).toBe(true)
     expect(castingBlocks(sheet, 0)).toBe(false)
-    expect(castSpell(sheet, 'Ignite', 2)).toMatch(/Still casting Fiery Embrace/)
+    expect(castSpell(sheet, 'Ignite', 2, 1)).toMatch(/Still casting Fiery Embrace/)
     expect(sheet.casting).toEqual({ spell: 'Fiery Embrace', actions: 2 })
     expect(stopCasting(sheet)).toBe('Stopped casting Fiery Embrace.')
     expect(castingBlocks(sheet, 2)).toBe(false)
@@ -291,7 +411,7 @@ describe('casting over several turns', () => {
 
   it('casts at once when the turn has the actions', () => {
     const sheet = hero()
-    expect(castSpell(sheet, 'Fiery Embrace', 2)).toBe(' Concentrating.')
+    expect(castSpell(sheet, 'Fiery Embrace', 2, 1)).toBe(' Concentrating.')
     expect(actionsLeft(sheet)).toBe(1)
   })
 })
@@ -307,7 +427,7 @@ describe('Reaver casting', () => {
     expect(payShadowExploit(sheet)).toBe(1)
     expect(payShadowExploit(sheet)).toBe(2)
     expect(shadowExploitCost(sheet)).toBe(3)
-    newEncounter(sheet)
+    newEncounter(sheet, 1)
     expect(shadowExploitCost(sheet)).toBe(1)
   })
 
@@ -353,6 +473,18 @@ describe('nimble sheet upgrades', () => {
     expect(again.levelHistory?.map((e) => e.before.woundsMax)).toEqual([10, 6])
     // New sheets are already current.
     expect(defaultSheet('nimble').rulesVersion).toBe(NIMBLE_RULES_VERSION)
+  })
+
+  it('fixes older saves’ Unarmed Strike to 1d4 to hit for 1+STR, unless they have Swift Fists', () => {
+    const fist = { name: 'Unarmed Strike', props: '', dmg: '1d4+2', melee: true }
+    const plain = normalizeSheet('nimble', { rulesVersion: 2, attacks: [fist] })
+    expect(plain.attacks[0]).toMatchObject({ dmg: '1d4', flat: 3 })
+    const swift = normalizeSheet('nimble', {
+      rulesVersion: 2,
+      attacks: [fist],
+      abilities: [{ name: 'Swift Fists', src: 'Zephyr', desc: '' }],
+    })
+    expect(swift.attacks[0]).toEqual(fist)
   })
 
   it('gives older saves the speed and Hit Dice of picked pool options', () => {
@@ -485,6 +617,93 @@ function counters(sheet: NimbleSheet, level = 1) {
 }
 
 describe('limited-use abilities', () => {
+  it('reads what a use costs from its text', () => {
+    expect(counterCost('(1/encounter) Action: Grant all friendly Dying creatures 1 HP.')).toEqual({
+      actions: 1,
+    })
+    expect(counterCost('(1/encounter) 2 actions: Expend your Judgment Dice.')).toEqual({
+      actions: 2,
+    })
+    expect(counterCost('(1/encounter) Whenever you Defend, the attack misses.')).toEqual({
+      actions: 1,
+      reaction: 'Defend',
+    })
+    expect(
+      counterCost('(1/encounter) Reaction (when an ally drops to 0 HP): set it to 3.'),
+    ).toEqual({ actions: 1 })
+    expect(counterCost('Action: Attack a target. It is Taunted by you.')).toEqual({
+      actions: 1,
+      attack: true,
+    })
+    expect(counterCost('(1/encounter) Free Reaction: Give all party members 1 action.')).toBe(
+      undefined,
+    )
+    expect(counterCost('(1/encounter) Mark a target for free.')).toBe(undefined)
+    expect(counterCost('(1/encounter) The first spell costs 1 action less.')).toBe(undefined)
+    expect(counterCost('(1/turn) While Dying, suffer 1 Wound to gain 1 action.')).toBe(undefined)
+  })
+
+  it('names each option of an ability, with its own cost and text', () => {
+    const sheet = withAbilities([
+      [
+        'Small Companion',
+        'Keen Eyes: (1/encounter) Mark a target for free (L7: 2/encounter). Protect Me!: (1/encounter) Whenever you Defend, your companion distracts the attacker. Go for the Throat!: (1/encounter; L11: 1/round) Costs 1 TotH charge, action: your companion attacks.',
+      ],
+    ])
+    const list = abilityCounters(sheet, 11)[0]!.counters
+    expect(list.map((c) => [c.name, c.label, c.cost])).toEqual([
+      ['Keen Eyes', 'per encounter', undefined],
+      ['Protect Me!', 'per encounter', { actions: 1, reaction: 'Defend' }],
+      ['Go for the Throat!', 'per encounter', { actions: 1 }],
+      ['Go for the Throat!', 'per round', { actions: 1 }],
+    ])
+    expect(list[0]!.text).toBe('Mark a target for free.')
+    expect(list[1]!.text).toBe('Whenever you Defend, your companion distracts the attacker.')
+  })
+
+  it('refills 1/round uses on a new round, not when your turn starts', () => {
+    const sheet = withAbilities([['Weapon Mastery', 'Swap weapons 1/round for free.']])
+    sheet.uses = { 'Weapon Mastery@turn': { used: 1 } }
+    startTurn(sheet, 1)
+    expect(sheet.uses['Weapon Mastery@turn']!.used).toBe(1)
+    newRound(sheet, 1)
+    expect(sheet.uses['Weapon Mastery@turn']!.used).toBe(0)
+  })
+
+  it('refills 1/turn uses when your turn ends, but not 1/round ones', () => {
+    const sheet = withAbilities([
+      ['Rampage', '(1/turn) After you land a hit, reuse the roll.'],
+      ['Weapon Mastery', 'Swap weapons 1/round for free.'],
+    ])
+    sheet.uses = { 'Rampage@turn': { used: 1 }, 'Weapon Mastery@turn': { used: 1 } }
+    endTurn(sheet, 1)
+    expect(sheet.uses['Rampage@turn']!.used).toBe(0)
+    expect(sheet.uses['Weapon Mastery@turn']!.used).toBe(1)
+  })
+
+  it('gives back a spent use of Coordinated Strike! on Initiative', () => {
+    const sheet = withAbilities([
+      [
+        'Coordinated Strike!',
+        '(1/round) Free action: you and an ally attack. You can do this INT times/Safe Rest.',
+      ],
+      ['Survey the Battlefield', 'Regain 1 use of Coordinated Strike when you roll Initiative.'],
+    ])
+    sheet.uses = { 'Coordinated Strike!@rest': { used: 2 } }
+    newEncounter(sheet, 5, () => 0.5, 10)
+    expect(sheet.uses['Coordinated Strike!@rest']!.used).toBe(1)
+  })
+
+  it('spends the actions a use costs, sharing one Defend', () => {
+    const sheet = hero({ actionsSpent: 0 })
+    expect(payCost(sheet, { actions: 1, reaction: 'Defend' })).toBe(' Defend: spent 1 action.')
+    expect(sheet.reactionsUsed).toEqual(['Defend'])
+    expect(payCost(sheet, { actions: 1, reaction: 'Defend' })).toBe('')
+    expect(payCost(sheet, { actions: 2 })).toBe(' Spent 2 actions.')
+    expect(actionsLeft(sheet)).toBe(0)
+    expect(payCost(sheet, { actions: 1 })).toBe(null)
+  })
+
   it('reads a limit per turn, round, encounter, day and Safe Rest', () => {
     const sheet = withAbilities([
       ['Reflective Aura', 'When you Defend, gain KEY armor. 1/encounter.'],
@@ -631,14 +850,14 @@ describe('limited-use abilities', () => {
     })
     const used = (sheet: NimbleSheet) => Object.values(sheet.uses).map((u) => u.used)
     const turn = hero({ uses: spent() })
-    newTurn(turn)
+    startTurn(turn, 1)
     expect(used(turn)).toEqual([0, 1, 1, 3])
     const encounter = hero({ uses: spent(), actionsSpent: 2, reactionsUsed: ['Defend'] })
-    newEncounter(encounter)
+    newEncounter(encounter, 1, () => 0.99)
     expect(used(encounter)).toEqual([0, 0, 0, 3])
     expect(encounter).toMatchObject({ actionsSpent: 0, reactionsUsed: [] })
     const rest = hero({ uses: spent() })
-    safeRest(rest)
+    safeRest(rest, 1)
     expect(used(rest)).toEqual([0, 0, 0, 0])
   })
 
@@ -657,7 +876,7 @@ describe('limited-use abilities', () => {
         },
       },
     )
-    const line = newEncounter(sheet)
+    const line = newEncounter(sheet, 1)
     expect(sheet.uses['Veilwalker’s Blessing@rest']?.used).toBe(0)
     expect(sheet.uses['Searing Light@rest']?.used).toBe(0) // nothing spent, nothing to give back
     expect(line).toContain('Veilwalker’s Blessing recharged')
@@ -667,7 +886,7 @@ describe('limited-use abilities', () => {
     const sheet = hero({ classSlug: 'commander', subclassSlug: 'spellblade' })
     sheet.stats.INT = 3
     expect(encounterMana(sheet)).toBe(3)
-    newEncounter(sheet)
+    newEncounter(sheet, 1)
     expect(sheet.mana.temp).toBe(3)
     expect(encounterMana(hero({ classSlug: 'commander', subclassSlug: 'bulwark' }))).toBe(0)
   })
@@ -696,5 +915,259 @@ describe('limited-use abilities', () => {
     const mana = all.filter((a) => /mana pool/i.test(a.desc))
     expect(mana.length).toBeGreaterThan(0)
     for (const a of mana) expect(counters(withAbilities([[a.name, a.desc]]), 5)).toEqual([])
+  })
+})
+
+describe('class resource dice', () => {
+  const ability = (name: string, desc = '') => ({ name, src: 'Class', desc })
+  const hit = (dice: number[], crit = false) => ({ miss: false, crit, total: 10, bonus: 0, dice })
+  const miss = { miss: true, crit: false, total: 0, bonus: 0, dice: [1] }
+  const gauntlets = {
+    name: 'Thunder Gauntlets',
+    melee: true,
+    props: 'Reach 4, + Mana Dice (push 1 space per die)',
+  }
+
+  function artificer(STR = 3) {
+    return hero({
+      classSlug: 'artificer',
+      stats: { STR, DEX: 0, INT: 2, WIL: 0 },
+      abilities: [ability('Mana Accumulator')],
+    })
+  }
+
+  it('recharges Mana Dice at the end of the turn, on Initiative and after a Safe Rest', () => {
+    const sheet = artificer()
+    expect(sheetResource(sheet, 2)).toMatchObject({ kind: 'power', max: 3, die: 4 })
+    sheet.resource.count = 1
+    startTurn(sheet, 2)
+    expect(sheet.resource.count).toBe(1)
+    expect(endTurn(sheet, 2)).toBe(
+      'End of turn: all 3 actions back, reactions ready. Mana Dice: 3d4 ready.',
+    )
+    expect(sheet.resource.count).toBe(3)
+    expect(endTurn(sheet, 2)).toBe('End of turn: all 3 actions back, reactions ready.')
+    sheet.resource.count = 0
+    newEncounter(sheet, 2)
+    expect(sheet.resource.count).toBe(3)
+    sheet.resource.count = 1
+    safeRest(sheet, 2)
+    expect(sheet.resource.count).toBe(3)
+    expect(sheetResource(sheet, 13)).toMatchObject({ max: 4, die: 8 })
+  })
+
+  it('overloads when any die rolls at or below the number of Mana Dice spent', () => {
+    expect(isMishap([4, 3], 2)).toBe(false)
+    expect(isMishap([4, 2], 2)).toBe(true)
+    expect(isMishap([1], 0)).toBe(false)
+    const sheet = artificer()
+    sheet.resource.count = 3
+    expect(spendPower(sheet, 2, 2, faces(4, 4, 2))).toMatch(
+      /2 Mana Dice: 4, 2 = 6\. Mishap!.* 1 left/,
+    )
+    expect(sheet.resource.count).toBe(1)
+    expect(spendPower(sheet, 2, 5, faces(4, 4))).toMatch(/1 Mana Die: 4 = 4\. 0 left/)
+    expect(spendPower(sheet, 2, 1)).toBe('')
+  })
+
+  it('adds readied Mana Dice to a powered weapon and checks the weapon die for a mishap', () => {
+    const sheet = artificer()
+    sheet.resource.count = 3
+    const plain = resourceOnAttack(
+      sheet,
+      2,
+      { name: 'Dagger', melee: true, props: 'Reach 1' },
+      hit([5]),
+      2,
+    )
+    expect(plain).toEqual({ extra: 0, note: '' })
+    const safe = resourceOnAttack(sheet, 2, gauntlets, hit([5]), 2, faces(4, 3, 4))
+    expect(safe).toEqual({ extra: 7, note: ' 2 Mana Dice (3, 4) +7.' })
+    expect(sheet.resource.count).toBe(1)
+    const risky = resourceOnAttack(sheet, 2, gauntlets, hit([1, 6]), 2, faces(4, 4))
+    expect(risky.extra).toBe(4)
+    expect(risky.note).toMatch(/1 Mana Die \(4\) \+4\. Mishap!/)
+    expect(sheet.resource.count).toBe(0)
+  })
+
+  it('gains Combat Dice on Initiative, with picks and loses them after combat', () => {
+    const sheet = hero({
+      classSlug: 'commander',
+      stats: { STR: 2, DEX: 0, INT: 1, WIL: 0 },
+      abilities: [
+        ability('Fit for Any Battlefield'),
+        ability('+1 max Combat Dice'),
+        ability('+1 max Combat Dice'),
+        ability(
+          'Heavy Strike',
+          'When you hit, push them and deal extra damage equal to a roll of your Combat Die.',
+        ),
+        ability(
+          'Lunging Strike',
+          'Gain +1 Reach on an attack and deal extra damage equal to 2× a roll of your Combat Die.',
+        ),
+        ability('Commanding Presence', 'Action: Shout a command up to 2 words long at an enemy.'),
+      ],
+    })
+    const r = sheetResource(sheet, 4)
+    expect(r).toMatchObject({ max: 4, refill: 'initiative' })
+    expect(r?.moves.map((m) => m.name)).toEqual([
+      'Heavy Strike',
+      'Lunging Strike',
+      'Commanding Presence',
+    ])
+    startTurn(sheet, 4)
+    expect(sheet.resource.count).toBe(0)
+    newEncounter(sheet, 4)
+    expect(sheet.resource.count).toBe(4)
+    expect(spendResourceMove(sheet, 4, 'Heavy Strike', faces(6, 5))).toBe(
+      'Heavy Strike: Combat Die rolled 5 (d6). 3 left.',
+    )
+    expect(spendResourceMove(sheet, 4, 'Lunging Strike', faces(6, 4))).toBe(
+      'Lunging Strike: Combat Die rolled 4 × 2 = 8 (d6). 2 left.',
+    )
+    const before = sheet.actionsSpent
+    expect(spendResourceMove(sheet, 4, 'Commanding Presence')).toBe(
+      'Commanding Presence: spent 1 Combat Die. 1 left. Spent 1 action.',
+    )
+    expect(sheet.actionsSpent).toBe(before + 1)
+    safeRest(sheet, 4)
+    expect(sheet.resource.count).toBe(0)
+  })
+
+  it('holds rolled Judgment Dice for the next melee attack, spent hit or miss', () => {
+    const sheet = hero({
+      classSlug: 'oathsworn',
+      abilities: [ability('Radiant Judgment', 'Whenever an enemy attacks you…')],
+    })
+    expect(rollJudgment(sheet, 1, faces(6, 4, 5))).toMatch(/2d6 → 4, 5 = 9/)
+    expect(rollJudgment(sheet, 1)).toBe('')
+    const ranged = { name: 'Dagger', melee: false, props: 'Range 12' }
+    expect(resourceOnAttack(sheet, 1, ranged, hit([3]), 0).extra).toBe(0)
+    expect(
+      resourceOnAttack(sheet, 1, { name: 'Dagger', melee: true, props: '' }, hit([3]), 0),
+    ).toEqual({
+      extra: 9,
+      note: ' Judgment Dice +9 radiant.',
+    })
+    expect(sheet.resource.rolls).toEqual([])
+    rollJudgment(sheet, 1, faces(6, 2, 2))
+    expect(
+      resourceOnAttack(sheet, 1, { name: 'Dagger', melee: true, props: '' }, miss, 0).extra,
+    ).toBe(0)
+    expect(sheet.resource.rolls).toEqual([])
+    rollJudgment(sheet, 1, faces(6, 2, 2))
+    expect(expendJudgment(sheet)).toBe('Judgment Dice expended: 4.')
+    rollJudgment(sheet, 1, faces(6, 2, 2))
+    newEncounter(sheet, 1)
+    expect(sheet.resource.rolls).toEqual([])
+  })
+
+  it('rolls more Judgment Dice and keeps the best with the abilities that say so', () => {
+    const sheet = hero({
+      classSlug: 'oathsworn',
+      abilities: [
+        ability(
+          'Radiant Judgment',
+          'Dice.\nLevel 14: Whenever you roll Judgment Dice, roll 1 more.',
+        ),
+        ability('Aura of Zeal', 'Whenever you roll Judgment Dice, roll 1 more. Gain an aura.'),
+        ability('Reliable Justice', 'Whenever you roll Judgment Dice, roll with advantage.'),
+      ],
+    })
+    expect(sheetResource(sheet, 14)).toMatchObject({ roll: 4, advantage: true, die: 20 })
+    rollJudgment(sheet, 14, faces(20, 1, 9, 9, 9, 9))
+    expect(sheet.resource.rolls).toEqual([9, 9, 9, 9])
+  })
+
+  it('adds Sneak Attack to the first crit each turn', () => {
+    const sheet = hero({ classSlug: 'cheat', abilities: [ability('Sneak Attack')] })
+    const weapon = { name: 'Dagger', melee: true, props: '' }
+    expect(resourceOnAttack(sheet, 1, weapon, hit([4]), 0).extra).toBe(0)
+    expect(resourceOnAttack(sheet, 1, weapon, hit([6], true), 0, faces(6, 5))).toEqual({
+      extra: 5,
+      note: ' Sneak Attack +5 (5).',
+    })
+    expect(resourceOnAttack(sheet, 1, weapon, hit([6], true), 0).extra).toBe(0)
+    startTurn(sheet, 1)
+    expect(sheet.resource.count).toBe(0)
+    expect(sheetResource(sheet, 7)).toMatchObject({ roll: 2, die: 8 })
+    expect(sheetResource(sheet, 17)).toMatchObject({ roll: 3, die: 20 })
+  })
+})
+
+describe('resources on Initiative and each turn', () => {
+  const ability = (name: string, desc = '') => ({ name, src: 'Class', desc })
+  const d20 = () => 0.99
+
+  it('fills Zephyr Bursts of Speed to DEX on Initiative', () => {
+    const sheet = hero({
+      classSlug: 'zephyr',
+      stats: { STR: 0, DEX: 3, INT: 0, WIL: 0 },
+      abilities: [ability('Burst of Speed')],
+    })
+    newEncounter(sheet, 3, d20)
+    expect(sheet.resource.count).toBe(3)
+  })
+
+  it('loses Thrill of the Hunt charges when combat ends; Apex Predator and Wild Endurance add them', () => {
+    const sheet = hero({ classSlug: 'hunter', abilities: [ability('Thrill of the Hunt')] })
+    sheet.resource.count = 3
+    newEncounter(sheet, 3, d20)
+    expect(sheet.resource.count).toBe(0)
+    sheet.abilities.push(ability('Apex Predator'), ability('Wild Endurance'))
+    newEncounter(sheet, 18, d20)
+    expect(sheet.resource.count).toBe(1)
+    expect(startTurn(sheet, 18)).toMatch(/\+1 Thrill of the Hunt charge/)
+    expect(sheet.resource.count).toBe(2)
+  })
+
+  it('gives back spent uses that the text regains on Initiative, however it words it', () => {
+    const sheet = hero({
+      classSlug: 'songweaver',
+      abilities: [
+        ability('Songweaver’s Inspiration', '(2×WIL times/Safe Rest) Inspire an ally.'),
+        ability(
+          'Quick Wit',
+          'When you roll Initiative, you may regain 2 spent uses of your Songweaver’s Inspiration (these expire at the end of combat if left unused).',
+        ),
+      ],
+      uses: { 'Songweaver’s Inspiration@rest': { used: 3 } },
+    })
+    newEncounter(sheet, 5, d20)
+    expect(sheet.uses['Songweaver’s Inspiration@rest']?.used).toBe(1)
+    const commander = hero({
+      abilities: [
+        ability('Coordinated Strike!', 'You can do this INT times/Safe Rest.'),
+        ability(
+          'Master Commander',
+          'When you roll Initiative, regain 1 spent use of Coordinated Strike (it is lost if not spent during that encounter).',
+        ),
+      ],
+    })
+    expect(initiativeRecharges(commander)).toEqual([{ name: 'Coordinated Strike', count: 1 }])
+  })
+
+  it('rolls Elemental Surge as temporary mana on Initiative', () => {
+    const sheet = hero({
+      stats: { STR: 0, DEX: 0, INT: 0, WIL: 3 },
+      abilities: [
+        ability(
+          'Elemental Surge',
+          'When you roll Initiative, regain WIL mana.\nLevel 10: Your Elemental Surge now regains WIL+1d4 mana.',
+        ),
+      ],
+      mana: { current: 0, max: 10, temp: 9 },
+    })
+    const rolls: [number, number][] = [
+      [4, 2],
+      [20, 20],
+    ]
+    let i = 0
+    newEncounter(sheet, 10, () => {
+      const [sides, value] = rolls[i++]!
+      return (value - 0.5) / sides
+    })
+    expect(sheet.mana.temp).toBe(5)
   })
 })

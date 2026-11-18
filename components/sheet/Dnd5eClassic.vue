@@ -1,17 +1,6 @@
 <script setup lang="ts">
-const {
-  draft,
-  sheet,
-  stats,
-  weapons,
-  canEdit,
-  campaignName,
-  hpPct,
-  xpPct,
-  xpLabel,
-  adjustHp,
-  lastRoll,
-} = useDnd5e(ref('classic'))
+const { draft, sheet, stats, weapons, canEdit, hpPct, xpPct, xpLabel, adjustHp, lastRoll } =
+  useDnd5e(ref('classic'))
 
 const tab = ref<'weapons' | 'inventory' | 'features' | 'notes'>('weapons')
 const tabs = [
@@ -49,7 +38,7 @@ function sign(n: number) {
         <div class="stack" style="gap: 6px">
           <div class="row" style="gap: 10px">
             <span class="badge badge--dnd5e">D&amp;D 5e</span>
-            <span class="small muted">{{ campaignName }}</span>
+            <span class="small muted"><SheetCampaignLink /></span>
           </div>
           <h1>{{ draft.name }}</h1>
         </div>

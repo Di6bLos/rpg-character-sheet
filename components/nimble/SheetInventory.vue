@@ -1,10 +1,20 @@
 <script setup lang="ts">
 // Inventory with Nimble's slot limit (10 + STR), coins and notes.
-import { weaponByName } from '~/data/nimble/core'
-import type { InventoryItem, NimbleSheet } from '~/types/sheets'
+import type { CustomItem, InventoryItem, NimbleSheet, NimbleStat } from '~/types/sheets'
+import {
+  bookItem,
+  catalog,
+  customItem,
+  isWeapon,
+  itemAttack,
+  itemStat,
+  itemSummary,
+} from '~/utils/nimbleItems'
 import { inventorySlots, itemSlots } from '~/utils/nimblePlay'
 
 const MAX_COINS = 999_999
+const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
+const RARITIES = ['Uncommon', 'Rare', 'Very Rare', 'Legendary']
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -16,14 +26,19 @@ const pct = computed(() =>
 )
 
 const SLOT_LABELS: Record<number, string> = { 0: 'small', 1: '1 slot', 2: '2 slots' }
+const groups = catalog()
 
 const items = computed(() =>
   sheet.value.inventory.map((item) => {
     const size = itemSlots(item)
     return {
+      info: itemSummary(sheet.value, item, draft.value.level),
       item,
       qty: Number.parseInt(item.qty, 10) || 0,
-      tag: item.tag ?? (weaponByName(item.name) ? 'Weapon' : ''),
+      tag: item.custom?.rarity ?? item.tag ?? bookItem(item.name)?.tag ?? '',
+      weapon: isWeapon(item),
+      stat: itemStat(sheet.value, item, draft.value.level),
+      equipped: sheet.value.attacks.some((a) => a.name === item.name),
       size,
       sizeLabel: SLOT_LABELS[size] ?? `${size} slots`,
     }
@@ -42,13 +57,48 @@ function cycleSize(item: InventoryItem) {
   if (canEdit.value) item.slots = (itemSlots(item) + 1) % 3
 }
 
-const newItem = ref('')
+const uid = useId()
+const building = ref(false)
+const blank = (): CustomItem & { name: string } => ({
+  name: '',
+  kind: 'weapon',
+  dice: '1d6',
+  stat: 'STR',
+  melee: true,
+  damageType: '',
+  props: '',
+  armor: '',
+  rarity: '',
+  desc: '',
+})
+const draftItem = ref(blank())
+const customReady = computed(() => !!customItem(draftItem.value.name, draftItem.value))
 
-function addItem() {
-  const name = newItem.value.trim()
-  if (!canEdit.value || !name) return
-  sheet.value.inventory.push({ name, qty: '1' })
-  newItem.value = ''
+function addPicked(event: Event) {
+  const select = event.target as HTMLSelectElement
+  const item = canEdit.value ? bookItem(select.value) : null
+  select.value = ''
+  if (item) sheet.value.inventory.push(item)
+}
+
+function addCustom() {
+  if (!canEdit.value) return
+  const { name, ...custom } = draftItem.value
+  const item = customItem(name, custom)
+  if (!item) return
+  sheet.value.inventory.push(item)
+  draftItem.value = blank()
+  building.value = false
+}
+
+function toggleEquip(item: InventoryItem) {
+  if (!canEdit.value) return
+  if (sheet.value.attacks.some((a) => a.name === item.name)) {
+    sheet.value.attacks = sheet.value.attacks.filter((a) => a.name !== item.name)
+    return
+  }
+  const attack = itemAttack(sheet.value, item, draft.value.level)
+  if (attack) sheet.value.attacks = [...sheet.value.attacks, attack]
 }
 
 function setCoins(kind: 'gp' | 'sp', event: Event) {
@@ -60,6 +110,7 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
 
 <template>
   <section class="panel stack" style="gap: 10px" aria-labelledby="inv-h">
+    <UiFold name="Inventory" />
     <div class="panel-title" style="margin: 0">
       <h2 id="inv-h">Inventory</h2>
       <span class="slots" :class="{ over }">{{ slots.used }} / {{ slots.max }} slots</span>
@@ -73,8 +124,24 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
 
     <ul class="items">
       <li v-for="(row, i) in items" :key="i">
-        <span class="items__name">{{ row.item.name }}</span>
+        <span class="items__name">
+          <UiHelp v-if="row.info" :label="`About ${row.item.name}`" :text="row.info">
+            {{ row.item.name }}
+          </UiHelp>
+          <template v-else>{{ row.item.name }}</template>
+        </span>
+        <span v-if="row.stat" class="stat">{{ row.stat }}</span>
         <span v-if="row.tag" class="tag">{{ row.tag }}</span>
+        <button
+          v-if="row.weapon && canEdit"
+          type="button"
+          class="equip"
+          :aria-pressed="row.equipped"
+          :aria-label="`${row.equipped ? 'Unequip' : 'Equip'} ${row.item.name} as an attack`"
+          @click="toggleEquip(row.item)"
+        >
+          {{ row.equipped ? 'Equipped' : 'Equip' }}
+        </button>
         <button
           type="button"
           class="size"
@@ -107,17 +174,124 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
     </ul>
     <p v-if="!items.length" class="empty">Nothing carried yet.</p>
 
-    <form v-if="canEdit" class="row add" @submit.prevent="addItem">
-      <label for="nb-inv-new" class="sr-only">New item</label>
-      <input
-        id="nb-inv-new"
-        v-model="newItem"
-        class="input"
-        placeholder="Add an item"
-        maxlength="80"
-      />
-      <button type="submit" class="btn btn--ghost" :disabled="!newItem.trim()">Add</button>
-    </form>
+    <details v-if="canEdit" class="add-menu">
+      <summary class="btn btn--ghost btn--sm">Add item</summary>
+      <div class="add-menu__body">
+        <div class="pickers">
+          <label v-for="(g, gi) in groups" :key="g.label" class="field" :for="`${uid}-pick-${gi}`">
+            <span class="caps">{{ g.label }}</span>
+            <select :id="`${uid}-pick-${gi}`" class="input" value="" @change="addPicked">
+              <option value="" disabled selected>Choose…</option>
+              <option v-for="it in g.items" :key="it.name" :value="it.name">
+                {{ it.name }}{{ it.hint ? ` · ${it.hint}` : '' }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <button
+          type="button"
+          class="btn btn--quiet btn--sm add-custom"
+          :aria-expanded="building"
+          @click="building = !building"
+        >
+          {{ building ? 'Cancel custom item' : 'Build a custom item' }}
+        </button>
+        <form v-if="building" class="tile custom" @submit.prevent="addCustom">
+          <div class="custom__row">
+            <label class="field grow"
+              ><span class="caps">Name</span
+              ><input
+                v-model="draftItem.name"
+                class="input"
+                maxlength="80"
+                placeholder="Frostbite Axe"
+            /></label>
+            <label class="field"
+              ><span class="caps">Type</span
+              ><select v-model="draftItem.kind" class="input">
+                <option value="weapon">Weapon</option>
+                <option value="armor">Armor</option>
+                <option value="shield">Shield</option>
+                <option value="gear">Gear / item</option>
+              </select></label
+            >
+          </div>
+          <div v-if="draftItem.kind === 'weapon'" class="custom__row">
+            <label class="field"
+              ><span class="caps">Damage dice</span
+              ><input v-model="draftItem.dice" class="input" placeholder="1d8" maxlength="8"
+            /></label>
+            <label class="field"
+              ><span class="caps">Stat</span
+              ><select v-model="draftItem.stat" class="input">
+                <option v-for="st in STATS" :key="st" :value="st">{{ st }}</option>
+              </select></label
+            >
+            <label class="field"
+              ><span class="caps">Attack</span
+              ><select v-model="draftItem.melee" class="input">
+                <option :value="true">Melee</option>
+                <option :value="false">Ranged</option>
+              </select></label
+            >
+            <label class="field grow"
+              ><span class="caps">Damage type</span
+              ><input
+                v-model="draftItem.damageType"
+                class="input"
+                placeholder="Slashing"
+                maxlength="30"
+            /></label>
+            <label class="field custom__wide"
+              ><span class="caps">Properties</span
+              ><input
+                v-model="draftItem.props"
+                class="input"
+                placeholder="2-handed, Reach 2, Thrown 4, Range 12, Light, Vicious, Load: 1 action"
+                maxlength="120"
+            /></label>
+          </div>
+          <div v-else-if="draftItem.kind !== 'gear'" class="custom__row">
+            <label class="field"
+              ><span class="caps">Armor</span
+              ><input
+                v-model="draftItem.armor"
+                class="input"
+                :placeholder="draftItem.kind === 'shield' ? '+2' : '4+DEX (max 2)'"
+                maxlength="30"
+            /></label>
+          </div>
+          <div class="custom__row">
+            <label class="field"
+              ><span class="caps">Magic</span
+              ><select v-model="draftItem.rarity" class="input">
+                <option value="">Not magic</option>
+                <option v-for="r in RARITIES" :key="r" :value="r">{{ r }}</option>
+              </select></label
+            >
+            <label class="field custom__wide"
+              ><span class="caps">Effect / notes</span
+              ><textarea
+                v-model="draftItem.desc"
+                class="input"
+                rows="2"
+                maxlength="500"
+                placeholder="+1d4 cold damage on a hit; on a crit the target is Slowed."
+              />
+            </label>
+          </div>
+          <p
+            v-if="draftItem.kind === 'weapon' && !customReady && draftItem.name.trim()"
+            class="small"
+          >
+            Damage dice look like 1d8 or 2d6.
+          </p>
+          <button type="submit" class="btn btn--sm" :disabled="!customReady">
+            Add to inventory
+          </button>
+        </form>
+      </div>
+    </details>
 
     <div class="coins">
       <div v-for="k in ['gp', 'sp'] as const" :key="k" class="tile coin">
@@ -221,14 +395,97 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
   }
 }
 
-.add {
-  gap: 8px;
-  flex-wrap: nowrap;
+.stat {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
-  .input {
-    flex: 1 1 auto;
+.equip {
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--page-soft);
+  font-size: 11px;
+  font-weight: 700;
+
+  &[aria-pressed='true'] {
+    border-color: var(--accent);
+    color: var(--accent-text);
+  }
+}
+
+.add-menu {
+  > summary {
+    list-style: none;
+    align-self: flex-start;
+    width: fit-content;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: ' ▾';
+    }
+  }
+
+  &[open] > summary::after {
+    content: ' ▴';
+  }
+}
+
+.add-menu__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
+  gap: 8px;
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     min-width: 0;
   }
+}
+
+.add-custom {
+  align-self: flex-start;
+}
+
+.custom {
+  gap: 10px;
+  padding: 12px;
+}
+
+.custom__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 90px;
+  }
+
+  .grow {
+    flex: 1 1 140px;
+  }
+}
+
+.custom__wide {
+  flex: 1 1 100%;
 }
 
 .coins {

@@ -86,7 +86,7 @@ function actions(r: RosterEntry) {
         <div class="card__who">
           <UiAvatar
             :name="r.character_name ?? r.display_name"
-            :portrait-path="r.portrait_path"
+            :portrait-path="r.summary?.portraitOverride || r.portrait_path"
             :class-slug="r.summary?.classSlug ?? null"
             :faded="down(r)"
             :size="52"
@@ -165,7 +165,7 @@ function actions(r: RosterEntry) {
         <div class="long__who">
           <UiAvatar
             :name="r.character_name ?? r.display_name"
-            :portrait-path="r.portrait_path"
+            :portrait-path="r.summary?.portraitOverride || r.portrait_path"
             :class-slug="r.summary?.classSlug ?? null"
             :faded="down(r)"
             :size="56"

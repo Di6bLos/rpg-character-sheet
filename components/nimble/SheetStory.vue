@@ -8,6 +8,7 @@ const sheet = computed(() => draft.value.sheet)
 
 <template>
   <section class="panel stack story" aria-labelledby="nb-story-h">
+    <UiFold name="Background" />
     <div class="title-help story__head">
       <h2 id="nb-story-h">Background</h2>
       <UiHelp

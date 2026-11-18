@@ -2,17 +2,25 @@
 // Nimble sheet: identity, then the play panels (components/nimble/Sheet*.vue).
 import { ancestryBySlug } from '~/data/nimble/ancestries'
 import { classBySlug } from '~/data/nimble/classes'
-import { MAX_SKILL_BONUS } from '~/data/nimble/core'
+import { MAX_SKILL_BONUS, SKILL_USES } from '~/data/nimble/core'
 import type { NimbleSheet, NimbleStat } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
+import { hasTransforms } from '~/utils/nimbleEffects'
+import { availableSummons } from '~/utils/nimbleSummons'
 
-const { draft, campaignName } = useSheet<NimbleSheet>()
+const { draft } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
 
 const cls = computed(() => classBySlug(sheet.value.classSlug))
+
+const hasForms = computed(() => hasTransforms(sheet.value))
+
+const hasSummons = computed(
+  () => sheet.value.summons.length > 0 || availableSummons(sheet.value).length > 0,
+)
 
 const hasSpells = computed(
   () => knownSpells(sheet.value).length > 0 || knownUtilitySpells(sheet.value).length > 0,
@@ -48,6 +56,7 @@ const details = computed(() =>
 const skills = computed(() =>
   sheet.value.skills.map((s) => ({
     ...s,
+    uses: SKILL_USES[s.name],
     v: sign(Math.min(MAX_SKILL_BONUS, sheet.value.stats[s.stat] + s.points)),
   })),
 )
@@ -64,7 +73,7 @@ const skills = computed(() =>
       <div class="stack" style="gap: 8px">
         <div class="row" style="gap: 10px">
           <span class="badge badge--nimble">Nimble</span>
-          <span class="small muted">{{ campaignName }}</span>
+          <span class="small muted"><SheetCampaignLink /></span>
         </div>
         <h1>{{ draft.name }}</h1>
         <div class="identity__line">
@@ -98,43 +107,41 @@ const skills = computed(() =>
     </div>
   </section>
 
-  <div class="cols cols--vitals">
-    <NimbleSheetVitals />
-    <div class="stack" style="gap: 24px; min-width: 0">
-      <NimbleSheetTurn />
-      <NimbleSheetResources />
+  <div class="play">
+    <div class="play__col">
+      <NimbleSheetVitals style="order: 1" />
+      <NimbleSheetActions style="order: 4" />
+      <section class="panel stack" style="gap: 6px; order: 9" aria-labelledby="sk-h">
+        <UiFold name="Skills" />
+        <div class="title-help" style="margin: 0 0 6px">
+          <h2 id="sk-h">Skills</h2>
+          <UiHelp
+            label="About skills"
+            :text="`A skill’s bonus is its stat plus the skill points you put in it, up to +${MAX_SKILL_BONUS}.`"
+          />
+        </div>
+        <div v-for="s in skills" :key="s.name" class="skill">
+          <span class="grow">
+            <UiHelp v-if="s.uses" :label="`About ${s.name}`" :text="s.uses">{{ s.name }}</UiHelp>
+            <template v-else>{{ s.name }}</template>
+            {{ ' ' }}<small>{{ s.stat }}</small>
+          </span>
+          <span class="skill__pts" :aria-label="`${s.points} skill points`">
+            <i v-for="p in Math.max(0, s.points)" :key="p" />
+          </span>
+          <strong>{{ s.v }}</strong>
+        </div>
+      </section>
     </div>
-  </div>
-
-  <div class="cols cols--play">
-    <NimbleSheetActions />
-    <div class="stack" style="gap: 24px; min-width: 0">
-      <NimbleSheetSpells v-if="hasSpells" />
-      <NimbleSheetConditions />
+    <div class="play__col">
+      <NimbleSheetTurn style="order: 2" />
+      <NimbleSheetResources style="order: 3" />
+      <NimbleSheetSpells v-if="hasSpells" style="order: 5" />
+      <NimbleSheetSummons v-if="hasSummons" style="order: 6" />
+      <NimbleSheetForms v-if="hasForms" style="order: 7" />
+      <NimbleSheetConditions style="order: 8" />
+      <NimbleSheetInventory style="order: 10" />
     </div>
-  </div>
-
-  <div class="cols cols--lists">
-    <section class="panel stack" style="gap: 6px" aria-labelledby="sk-h">
-      <div class="title-help" style="margin: 0 0 6px">
-        <h2 id="sk-h">Skills</h2>
-        <UiHelp
-          label="About skills"
-          :text="`A skill’s bonus is its stat plus the skill points you put in it, up to +${MAX_SKILL_BONUS}.`"
-        />
-      </div>
-      <div v-for="s in skills" :key="s.name" class="skill">
-        <span class="grow"
-          >{{ s.name }} <small>{{ s.stat }}</small></span
-        >
-        <span class="skill__pts" :aria-label="`${s.points} skill points`">
-          <i v-for="p in Math.max(0, s.points)" :key="p" />
-        </span>
-        <strong>{{ s.v }}</strong>
-      </div>
-    </section>
-
-    <NimbleSheetInventory />
   </div>
 
   <NimbleSheetAbilities />
@@ -265,21 +272,28 @@ const skills = computed(() =>
   color: var(--panel-muted);
 }
 
-.cols {
-  display: grid;
+.play {
+  display: flex;
+  flex-direction: column;
   gap: 24px;
-  align-items: start;
+}
 
-  &--vitals {
-    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+.play__col {
+  display: contents;
+}
+
+@media (min-width: 960px) {
+  .play {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
   }
 
-  &--play {
-    grid-template-columns: repeat(auto-fit, minmax(min(480px, 100%), 1fr));
-  }
-
-  &--lists {
-    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  .play__col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
   }
 }
 

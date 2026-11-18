@@ -41,7 +41,6 @@ const diceLeft = computed(() => hitDiceLeft(sheet.value))
 const key = computed(() => keyStatValue(sheet.value))
 
 const tiles = computed(() => [
-  { label: 'Armor', value: String(sheet.value.ac), sub: 'Defend reduces a hit by this' },
   { label: 'Speed', value: sheet.value.speed, sub: 'spaces' },
   { label: 'Initiative', value: sign(sheet.value.initMod), sub: 'added to the roll' },
   {
@@ -108,13 +107,14 @@ function rest() {
 
 function confirmRest() {
   if (!canEdit.value) return
-  say(safeRest(sheet.value))
+  say(safeRest(sheet.value, draft.value.level))
   restOpen.value = false
 }
 </script>
 
 <template>
   <section class="panel stack" aria-labelledby="vit-h">
+    <UiFold name="Vitals" />
     <h2 id="vit-h">Vitals</h2>
 
     <div v-if="dead" class="notice notice--error" role="alert">
@@ -124,60 +124,71 @@ function confirmRest() {
       <strong>Dying.</strong> {{ dyingRules }} Damage: 2 Wounds (crit 3).
     </div>
 
-    <div class="tile vit-block">
-      <div class="vit-row">
-        <div class="caps">Hit points</div>
-        <div class="row" style="gap: 8px">
-          <button
-            type="button"
-            class="step"
-            aria-label="Take 1 damage"
-            :disabled="!canEdit"
-            @click="damage"
-          >
-            −
-          </button>
-          <div class="hp-value" aria-live="polite">
-            {{ sheet.hp }}<span> / {{ sheet.hpMax }}</span>
+    <div class="vit-top">
+      <div class="tile vit-block">
+        <div class="vit-row">
+          <div class="caps">Hit points</div>
+          <div class="row" style="gap: 8px">
+            <button
+              type="button"
+              class="step"
+              aria-label="Take 1 damage"
+              :disabled="!canEdit"
+              @click="damage"
+            >
+              −
+            </button>
+            <div class="hp-value" aria-live="polite">
+              {{ sheet.hp }}<span> / {{ sheet.hpMax }}</span>
+            </div>
+            <button
+              type="button"
+              class="step"
+              aria-label="Heal 1"
+              :disabled="!canEdit"
+              @click="healOne"
+            >
+              +
+            </button>
           </div>
-          <button
-            type="button"
-            class="step"
-            aria-label="Heal 1"
-            :disabled="!canEdit"
-            @click="healOne"
-          >
-            +
-          </button>
+        </div>
+        <div class="meter" :class="{ 'meter--accent': bloodied, 'meter--danger': sheet.hp === 0 }">
+          <span :style="{ width: hpPct + '%' }" />
+        </div>
+        <div class="vit-row">
+          <span class="hint">{{ hpState }}</span>
+          <div class="row" style="gap: 6px">
+            <span class="temp-label">Temp HP</span>
+            <button
+              type="button"
+              class="step step--xs"
+              aria-label="Lower temp HP"
+              :disabled="!canEdit"
+              @click="adjustTemp(-1)"
+            >
+              −
+            </button>
+            <span class="temp-value" aria-live="polite">{{ sheet.tempHp }}</span>
+            <button
+              type="button"
+              class="step step--xs"
+              aria-label="Raise temp HP"
+              :disabled="!canEdit"
+              @click="adjustTemp(1)"
+            >
+              +
+            </button>
+          </div>
         </div>
       </div>
-      <div class="meter" :class="{ 'meter--accent': bloodied, 'meter--danger': sheet.hp === 0 }">
-        <span :style="{ width: hpPct + '%' }" />
-      </div>
-      <div class="vit-row">
-        <span class="hint">{{ hpState }}</span>
-        <div class="row" style="gap: 6px">
-          <span class="temp-label">Temp HP</span>
-          <button
-            type="button"
-            class="step step--xs"
-            aria-label="Lower temp HP"
-            :disabled="!canEdit"
-            @click="adjustTemp(-1)"
-          >
-            −
-          </button>
-          <span class="temp-value" aria-live="polite">{{ sheet.tempHp }}</span>
-          <button
-            type="button"
-            class="step step--xs"
-            aria-label="Raise temp HP"
-            :disabled="!canEdit"
-            @click="adjustTemp(1)"
-          >
-            +
-          </button>
-        </div>
+      <div class="tile armor" :title="`Defend reduces a hit by your Armor (${sheet.ac})`">
+        <span class="armor__badge">
+          <svg class="armor__shield" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2.5 4 5.5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10v-6Z" />
+          </svg>
+          <span class="armor__value">{{ sheet.ac }}</span>
+        </span>
+        <span class="armor__label">Armor</span>
       </div>
     </div>
 
@@ -283,6 +294,59 @@ function confirmRest() {
 </template>
 
 <style scoped lang="scss">
+.vit-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.armor {
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 96px;
+  padding: 10px 14px;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.armor__badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+}
+
+.armor__shield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: color-mix(in srgb, var(--accent) 12%, transparent);
+  stroke: color-mix(in srgb, var(--accent) 55%, transparent);
+  stroke-width: 1.2;
+}
+
+.armor__value {
+  position: relative;
+  margin-top: -4px;
+  font-family: var(--font-heading);
+  font-size: 32px;
+  font-weight: 700;
+  font-variant-numeric: lining-nums tabular-nums;
+  line-height: 1;
+  color: var(--accent-text);
+}
+
+.armor__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--page-soft);
+}
+
 .vit-block {
   gap: 10px;
   padding: 14px;

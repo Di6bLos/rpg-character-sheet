@@ -13,13 +13,23 @@ const props = withDefaults(
     src?: string | null
     /** Nimble class slug for the sigil fallback. */
     classSlug?: string | null
+    /** Nimble companion animal, drawn when there is no image. */
+    beast?: string | null
     size?: number
     /** Square with rounded corners (monsters) instead of round. */
     square?: boolean
     /** Greyed out (down, dead). */
     faded?: boolean
   }>(),
-  { portraitPath: null, src: null, classSlug: null, size: 40, square: false, faded: false },
+  {
+    portraitPath: null,
+    src: null,
+    classSlug: null,
+    beast: null,
+    size: 40,
+    square: false,
+    faded: false,
+  },
 )
 
 const failed = ref(false)
@@ -40,6 +50,7 @@ watch(
     aria-hidden="true"
   >
     <img v-if="url" :src="url" alt="" loading="lazy" @error="failed = true" />
+    <NimbleBeast v-else-if="beast" :slug="beast" :size="Math.round(size * 0.8)" />
     <NimbleSigil v-else-if="classSlug" :slug="classSlug" :size="Math.round(size * 0.78)" />
     <span v-else>{{ letters }}</span>
   </span>
