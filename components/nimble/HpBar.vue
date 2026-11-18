@@ -24,8 +24,9 @@ function valueAt(x: number): number {
 
 function start(event: PointerEvent) {
   if (props.disabled) return
+  const target = event.currentTarget as HTMLElement
+  target.setPointerCapture(event.pointerId)
   dragging.value = true
-  track.value?.setPointerCapture(event.pointerId)
   preview.value = valueAt(event.clientX)
 }
 
@@ -61,29 +62,27 @@ function key(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="hpbar">
+  <div
+    class="hpbar"
+    :class="{ 'is-dragging': preview !== null, 'is-locked': disabled }"
+    role="slider"
+    :tabindex="disabled ? -1 : 0"
+    aria-label="Hit points: drag or use the arrow keys, then let go or press Enter to apply"
+    :aria-valuemin="0"
+    :aria-valuemax="max"
+    :aria-valuenow="shown"
+    :aria-valuetext="delta ? `${shown} HP (${delta > 0 ? '+' : ''}${delta})` : `${shown} HP`"
+    @pointerdown="start"
+    @pointermove="move"
+    @pointerup="commit"
+    @pointercancel="cancel"
+    @keydown="key"
+    @blur="preview !== null && !dragging && cancel()"
+  >
     <div
       ref="track"
-      class="meter hpbar__track"
-      :class="{
-        'meter--accent': tone === 'accent',
-        'meter--danger': tone === 'danger',
-        'is-dragging': preview !== null,
-        'is-locked': disabled,
-      }"
-      role="slider"
-      :tabindex="disabled ? -1 : 0"
-      aria-label="Hit points: drag or use the arrow keys, then let go or press Enter to apply"
-      :aria-valuemin="0"
-      :aria-valuemax="max"
-      :aria-valuenow="shown"
-      :aria-valuetext="delta ? `${shown} HP (${delta > 0 ? '+' : ''}${delta})` : `${shown} HP`"
-      @pointerdown="start"
-      @pointermove="move"
-      @pointerup="commit"
-      @pointercancel="cancel"
-      @keydown="key"
-      @blur="preview !== null && !dragging && cancel()"
+      class="meter"
+      :class="{ 'meter--accent': tone === 'accent', 'meter--danger': tone === 'danger' }"
     >
       <span :style="{ width: pct(Math.min(shown, hp)) + '%' }" />
       <i
@@ -96,8 +95,8 @@ function key(event: KeyboardEvent) {
         class="hpbar__gain"
         :style="{ left: pct(hp) + '%', width: pct(delta) + '%' }"
       />
-      <b v-if="preview !== null" class="hpbar__thumb" :style="{ left: pct(shown) + '%' }" />
     </div>
+    <b v-if="preview !== null" class="hpbar__thumb" :style="{ left: pct(shown) + '%' }" />
     <span
       v-if="delta"
       class="hpbar__delta"
@@ -113,29 +112,29 @@ function key(event: KeyboardEvent) {
 <style scoped lang="scss">
 .hpbar {
   position: relative;
-}
-
-.hpbar__track {
-  position: relative;
-  height: 14px;
+  margin: -8px 0;
+  padding: 8px 0;
   cursor: ew-resize;
   touch-action: none;
-  overflow: visible;
 
   &.is-locked {
     cursor: default;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
+    outline: none;
+
+    .meter {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
   }
 
-  > span {
-    transition: width 0.15s ease;
+  .meter {
+    position: relative;
   }
 
-  &.is-dragging > span {
+  &.is-dragging .meter > span {
     transition: none;
   }
 }
@@ -145,7 +144,6 @@ function key(event: KeyboardEvent) {
   position: absolute;
   top: 0;
   bottom: 0;
-  border-radius: inherit;
 }
 
 .hpbar__loss {
@@ -163,18 +161,19 @@ function key(event: KeyboardEvent) {
 .hpbar__thumb {
   position: absolute;
   top: 50%;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--page-text);
   box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
   transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .hpbar__delta {
   position: absolute;
   z-index: 2;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 2px);
   transform: translateX(-50%);
   box-shadow: 0 2px 8px rgb(0 0 0 / 35%);
   padding: 2px 8px;

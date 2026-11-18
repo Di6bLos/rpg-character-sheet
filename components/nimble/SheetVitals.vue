@@ -144,7 +144,13 @@ function confirmRest() {
     <div class="vit-top">
       <div class="tile vit-block">
         <div class="vit-row">
-          <div class="caps">Hit points</div>
+          <div class="row" style="gap: 10px">
+            <div class="caps">Hit points</div>
+            <label class="crit" title="Your next damage is from a critical hit">
+              <input v-model="crit" type="checkbox" :disabled="!canEdit" />
+              Crit
+            </label>
+          </div>
           <div class="row" style="gap: 8px">
             <button
               type="button"
@@ -177,13 +183,7 @@ function confirmRest() {
           @change="changeHp"
         />
         <div class="vit-row">
-          <span class="hint">
-            {{ hpState }}
-            <label class="crit" title="Your next damage is from a critical hit">
-              <input v-model="crit" type="checkbox" :disabled="!canEdit" />
-              Crit
-            </label>
-          </span>
+          <span class="hint">{{ hpState }}</span>
           <div class="row" style="gap: 6px">
             <span class="temp-label">Temp HP</span>
             <button
@@ -325,8 +325,9 @@ function confirmRest() {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: 8px;
+  font-size: 12px;
   font-weight: 700;
+  color: var(--page-muted);
   cursor: pointer;
 
   input {
