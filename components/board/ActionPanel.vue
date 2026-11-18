@@ -9,6 +9,12 @@
 import type { Character } from '~/types'
 import type { AnySheet } from '~/types/sheets'
 
+const props = defineProps<{
+  downSummons: string[]
+  turnCharacterId: string | null
+  round: number | null
+}>()
+
 const auth = useAuthStore()
 const characters = useCharacterStore()
 const snackbar = useSnackbarStore()
@@ -88,6 +94,9 @@ const { el, wide, drawerOpen, folded, setCollapsed, onClose, onBackdrop, dismiss
           :can-edit="canEdit"
           :campaign-name="campaign?.name ?? ''"
           :drawer="!wide"
+          :down-summons="props.downSummons"
+          :turn-character-id="props.turnCharacterId"
+          :round="props.round"
           @dismiss="dismiss"
         />
       </div>

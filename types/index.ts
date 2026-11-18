@@ -1,4 +1,5 @@
 import type { ThemeId } from '~/utils/themes'
+import type { NimbleSummon } from '~/types/sheets'
 
 export type UserRole = 'admin' | 'moderator' | 'member'
 export type GameSystem = 'dnd5e' | 'pf2e' | 'nimble'
@@ -122,6 +123,8 @@ export interface RosterEntry {
     actionsSpent?: number
     /** Nimble mana pool. */
     mana?: { current: number; max: number; temp: number }
+    summons?: NimbleSummon[]
+    portraitOverride?: string
     backstory?: string
   } | null
 }
@@ -205,7 +208,7 @@ export interface Combatant {
   id: string
   campaign_id: string
   name: string
-  kind: 'pc' | 'npc' | 'monster'
+  kind: 'pc' | 'npc' | 'monster' | 'summon'
   initiative: number
   init_mod: number
   hp: number
@@ -215,6 +218,7 @@ export interface Combatant {
   campaign_npc_id: string | null
   portrait_path: string | null
   group_label: string | null
+  summon_key: string | null
   created_at: string
 }
 
@@ -232,6 +236,7 @@ export interface InitiativeRow {
   hp_max: number | null
   ac: number | null
   hp_band: HpBand | null
+  summon_key: string | null
 }
 
 export type HpBand = 'Unhurt' | 'Hurt' | 'Bloodied' | 'Down'

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { CampaignNpc } from '../types'
+import type { CampaignNpc, Combatant, RosterEntry } from '../types'
 import {
+  downSummonKeys,
+  isSlainSummon,
   buildCopies,
   combatantName,
   COMBATANT_NAME_MAX,
@@ -8,6 +10,7 @@ import {
   hpBand,
   letter,
   sortOrder,
+  syncSummonRows,
 } from '../utils/initiative'
 
 const npc = (patch: Partial<CampaignNpc> = {}): CampaignNpc => ({
@@ -129,5 +132,171 @@ describe('combatantName', () => {
     expect(named.endsWith(' AB')).toBe(true)
     expect(combatantName(long, null)).toHaveLength(COMBATANT_NAME_MAX)
     expect(combatantName('Goblin', 'C')).toBe('Goblin C')
+  })
+})
+
+describe('syncSummonRows', () => {
+  type Row = Pick<Combatant, 'id' | 'kind' | 'character_id' | 'initiative' | 'summon_key'>
+  const hero = (
+    id: string,
+    summons: { id: string; name: string; hpMax: number; def?: string }[],
+  ): Pick<RosterEntry, 'character_id' | 'character_name' | 'display_name' | 'summary'> => ({
+    character_id: id,
+    character_name: `Hero ${id}`,
+    display_name: 'Player',
+    summary: {
+      summons: summons.map((s) => ({ def: 'shadow-minion', ...s, hp: s.hpMax })),
+    },
+  })
+  const pc = (id: string, initiative: number): Row => ({
+    id: `row-${id}`,
+    kind: 'pc',
+    character_id: id,
+    initiative,
+    summon_key: null,
+  })
+  const summonRow = (id: string, key: string): Row => ({
+    id,
+    kind: 'summon',
+    character_id: null,
+    initiative: 0,
+    summon_key: key,
+  })
+
+  it('seats a summon after its seated summoner, sharing initiative', () => {
+    const { add, remove } = syncSummonRows(
+      [hero('a', [{ id: 's1', name: 'Wolf', hpMax: 12 }])],
+      [pc('a', 17)],
+    )
+    expect(remove).toEqual([])
+    expect(add).toEqual([
+      {
+        name: 'Wolf (Hero a)',
+        kind: 'summon',
+        initiative: 17,
+        init_mod: 0,
+        hp: 12,
+        hp_max: 12,
+        ac: 10,
+        character_id: null,
+        campaign_npc_id: null,
+        portrait_path: null,
+        group_label: null,
+        summon_key: 'a:s1',
+      },
+    ])
+  })
+
+  it('keeps unharmable summons at 0 HP and never links them to the character', () => {
+    const { add } = syncSummonRows(
+      [hero('a', [{ id: 's1', name: 'Spirit', hpMax: 0 }])],
+      [pc('a', 9)],
+    )
+    expect([add[0]!.hp, add[0]!.hp_max]).toEqual([0, 0])
+    expect(add.every((r) => r.character_id === null)).toBe(true)
+  })
+
+  it('skips summons of characters not in the order and ones already seated', () => {
+    const { add } = syncSummonRows(
+      [
+        hero('a', [
+          { id: 's1', name: 'Wolf', hpMax: 12 },
+          { id: 's2', name: 'Hawk', hpMax: 4 },
+        ]),
+        hero('b', [{ id: 's3', name: 'Bear', hpMax: 20 }]),
+      ],
+      [pc('a', 10), summonRow('x', 'a:s1')],
+    )
+    expect(add.map((r) => r.summon_key)).toEqual(['a:s2'])
+  })
+
+  it('removes summons that are gone from the sheet', () => {
+    const { add, remove } = syncSummonRows(
+      [hero('a', [{ id: 's2', name: 'Hawk', hpMax: 4 }])],
+      [pc('a', 10), summonRow('x', 'a:s1'), summonRow('y', 'a:s2')],
+    )
+    expect(remove).toEqual(['x'])
+    expect(add).toEqual([])
+  })
+
+  it('leaves summons of characters missing from the roster alone', () => {
+    const { remove } = syncSummonRows([hero('a', [])], [summonRow('x', 'b:s1')])
+    expect(remove).toEqual([])
+  })
+
+  it('shortens long names to fit the column', () => {
+    const { add } = syncSummonRows(
+      [hero('a', [{ id: 's1', name: 'x'.repeat(COMBATANT_NAME_MAX), hpMax: 1 }])],
+      [pc('a', 10)],
+    )
+    expect(add[0]!.name).toHaveLength(COMBATANT_NAME_MAX)
+  })
+})
+
+describe('syncSummonRows: who fights', () => {
+  it('seats minions and constructs but never weapons, spirits, companions or friends', () => {
+    const roster = [
+      {
+        character_id: 'a',
+        character_name: 'Hero a',
+        display_name: 'Player',
+        summary: {
+          summons: [
+            'shadow-minion',
+            'cheer-bot',
+            'bonescythe',
+            'lifebinding-spirit',
+            'medium-companion',
+            'mal',
+          ].map((def, i) => ({ id: `s${i}`, def, name: def, hp: 1, hpMax: 1 })),
+        },
+      },
+    ]
+    const pcRow = {
+      id: 'row-a',
+      kind: 'pc' as const,
+      character_id: 'a',
+      initiative: 12,
+      summon_key: null,
+    }
+    expect(syncSummonRows(roster, [pcRow]).add.map((r) => r.name)).toEqual([
+      'shadow-minion (Hero a)',
+      'cheer-bot (Hero a)',
+    ])
+  })
+})
+
+describe('downSummonKeys', () => {
+  it('lists summons at 0 HP or shown as Down, never other rows', () => {
+    const row = (
+      summon_key: string | null,
+      hp: number | null,
+      hp_max: number | null,
+      hp_band: 'Down' | 'Hurt' | null = null,
+    ) => ({ summon_key, hp, hp_max, hp_band })
+    expect(
+      downSummonKeys([
+        row('a:1', 0, 1),
+        row('a:2', 1, 1),
+        row('a:3', null, null, 'Down'),
+        row('a:4', 0, 0),
+        row(null, 0, 10),
+      ]),
+    ).toEqual(['a:1', 'a:3'])
+  })
+})
+
+describe('isSlainSummon', () => {
+  it('drops only summons that are slain, never other combatants', () => {
+    const row = (
+      kind: 'summon' | 'monster',
+      hp: number | null,
+      hp_max: number | null,
+      hp_band: 'Down' | null = null,
+    ) => ({ kind, hp, hp_max, hp_band })
+    expect(isSlainSummon(row('summon', 0, 1))).toBe(true)
+    expect(isSlainSummon(row('summon', null, null, 'Down'))).toBe(true)
+    expect(isSlainSummon(row('summon', 1, 1))).toBe(false)
+    expect(isSlainSummon(row('monster', 0, 10))).toBe(false)
   })
 })

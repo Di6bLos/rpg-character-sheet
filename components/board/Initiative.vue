@@ -4,6 +4,8 @@
 // Previous / Next and a list to adjust HP, initiative and remove combatants.
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
+import { plural } from '~/utils/format'
+import { isSlainSummon, summonKey, summonOwner } from '~/utils/initiative'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -13,12 +15,64 @@ const props = defineProps<{
 const emit = defineEmits<{ add: [] }>()
 
 const auth = useAuthStore()
+const snackbar = useSnackbarStore()
+const board = useCampaignBoard()
 const manage = ref(false)
+const syncing = ref(false)
+const openSummons = ref<string | null>(null)
 
-const KIND_LABEL = { pc: 'PC', npc: 'NPC', monster: 'Monster' } as const
+const KIND_LABEL = { pc: 'PC', npc: 'NPC', monster: 'Monster', summon: 'Summon' } as const
 
 function rosterFor(c: TurnRow) {
   return c.character_id ? props.roster.find((r) => r.character_id === c.character_id) : undefined
+}
+
+function summonFor(c: TurnRow) {
+  if (c.kind !== 'summon' || !c.summon_key) return undefined
+  const owner = summonOwner(c.summon_key)
+  const r = props.roster.find((x) => x.character_id === owner)
+  const id = c.summon_key.slice(owner.length + 1)
+  const member = r?.summary?.summons?.find((s) => s.id === id)
+  return member && r ? { member, owner: r.character_name ?? r.display_name } : undefined
+}
+
+/** A hero's summons from their sheet, with the initiative row of each one that is seated. */
+function heroSummons(c: TurnRow) {
+  const characterId = c.kind === 'pc' ? c.character_id : null
+  if (!characterId) return []
+  return (rosterFor(c)?.summary?.summons ?? [])
+    .map((member) => ({
+      member,
+      row: props.init.rows.value.find((r) => r.summon_key === summonKey(characterId, member.id)),
+    }))
+    .filter(({ row }) => !row || !isSlainSummon(row))
+}
+
+const opened = computed(() => {
+  const c = props.init.order.value.find((x) => x.id === openSummons.value)
+  return c ? { hero: c, list: heroSummons(c) } : null
+})
+
+/** The GM's list: each hero followed by their summons in initiative. */
+const manageRows = computed(() =>
+  props.init.order.value.flatMap((c) =>
+    c.kind === 'pc' ? [c, ...props.init.summonsOf(c.character_id)] : [c],
+  ),
+)
+
+function toggleSummons(c: TurnRow) {
+  openSummons.value = openSummons.value === c.id ? null : c.id
+}
+
+function summonState(row: TurnRow | undefined) {
+  if (!row) return 'Not in initiative'
+  if (props.gm && (row.hp_max ?? 0) > 0) return `${row.hp} / ${row.hp_max} HP`
+  return row.hp_band && row.hp_band !== 'Unhurt' ? row.hp_band : 'Ready'
+}
+
+function rowName(c: TurnRow) {
+  const s = summonFor(c)
+  return s ? `${s.member.name} (${s.owner})` : c.name
 }
 
 function isMine(c: TurnRow) {
@@ -36,8 +90,10 @@ function isDown(c: TurnRow) {
 
 function status(c: TurnRow) {
   if (c.id === props.init.activeId.value) return 'Acting now'
-  if (isDown(c)) return 'Down'
-  if (props.gm && c.kind !== 'pc' && c.hp !== null) return `${c.hp} / ${c.hp_max} HP`
+  if (isDown(c)) return c.kind === 'summon' ? 'Slain' : 'Down'
+  if (c.kind === 'summon') return 'Summon'
+  if (props.gm && c.kind !== 'pc' && c.hp !== null && (c.hp_max ?? 0) > 0)
+    return `${c.hp} / ${c.hp_max} HP`
   if (c.hp_band && c.hp_band !== 'Unhurt') return c.hp_band
   return c.kind === 'pc' ? 'Ready' : KIND_LABEL[c.kind]
 }
@@ -48,6 +104,34 @@ const statusLine = computed(() => {
   const now = order.find((c) => c.id === props.init.activeId.value)
   return `Round ${props.init.round.value}${now ? ` · ${now.name}’s turn` : ''}`
 })
+
+watch(
+  () => props.roster,
+  (roster) => {
+    if (props.gm) void props.init.pruneSummons(roster)
+  },
+)
+
+async function syncSummons() {
+  syncing.value = true
+  try {
+    await board.reloadRoster()
+    const result = await props.init.syncSummons(board.roster.value)
+    if (!result) return
+    const parts: string[] = []
+    if (result.added) parts.push(`${plural(result.added, 'summon')} added`)
+    if (result.removed) {
+      parts.push(
+        result.added ? `${result.removed} removed` : `${plural(result.removed, 'summon')} removed`,
+      )
+    }
+    snackbar.show(parts.length ? parts.join(', ') : 'Summons are up to date')
+  } catch (err) {
+    snackbar.error(err, 'Could not sync the summons')
+  } finally {
+    syncing.value = false
+  }
+}
 
 function onInit(c: TurnRow, event: Event) {
   const v = Number((event.target as HTMLInputElement).value)
@@ -63,6 +147,14 @@ function onInit(c: TurnRow, event: Event) {
       <div v-if="gm" class="ini__tools">
         <button type="button" class="btn btn--ghost btn--sm" @click="emit('add')">
           Add combatants
+        </button>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm"
+          :disabled="syncing || !init.order.value.length"
+          @click="syncSummons"
+        >
+          Sync summons
         </button>
         <button
           type="button"
@@ -92,26 +184,51 @@ function onInit(c: TurnRow, event: Event) {
         :class="{
           'is-now': c.id === init.activeId.value,
           'is-mine': isMine(c),
-          'is-foe': c.kind !== 'pc',
+          'is-foe': c.kind !== 'pc' && c.kind !== 'summon',
         }"
       >
-        <span class="ini__portrait">
-          <UiAvatar
-            :name="c.name"
-            :portrait-path="
-              c.kind === 'pc' ? (rosterFor(c)?.portrait_path ?? c.portrait_path) : null
-            "
-            :src="c.kind === 'pc' ? null : npcImageUrl(c.portrait_path)"
-            :class-slug="rosterFor(c)?.summary?.classSlug ?? null"
-            :square="c.kind === 'monster'"
-            :faded="isDown(c)"
-            :size="60"
-          />
-          <span class="ini__score" :aria-label="`Initiative ${c.initiative}`">{{
-            c.initiative
-          }}</span>
-        </span>
-        <span class="ini__name">{{ c.name }}</span>
+        <component
+          :is="heroSummons(c).length ? 'button' : 'div'"
+          class="ini__who-btn"
+          v-bind="
+            heroSummons(c).length
+              ? {
+                  type: 'button',
+                  'aria-expanded': openSummons === c.id,
+                  'aria-label': `${rowName(c)}: ${plural(heroSummons(c).length, 'summon')}`,
+                }
+              : {}
+          "
+          @click="heroSummons(c).length && toggleSummons(c)"
+        >
+          <span class="ini__portrait">
+            <UiAvatar
+              :name="rowName(c)"
+              :portrait-path="
+                c.kind === 'pc'
+                  ? rosterFor(c)?.summary?.portraitOverride ||
+                    (rosterFor(c)?.portrait_path ?? c.portrait_path)
+                  : (summonFor(c)?.member.portrait ?? null)
+              "
+              :beast="summonFor(c)?.member.beast ?? null"
+              :src="c.kind === 'pc' ? null : npcImageUrl(c.portrait_path)"
+              :class-slug="rosterFor(c)?.summary?.classSlug ?? null"
+              :square="c.kind === 'monster'"
+              :faded="isDown(c)"
+              :size="60"
+            />
+            <span
+              class="ini__score"
+              :aria-label="`Initiative ${c.initiative}`"
+              :title="`Initiative ${c.initiative}`"
+              >{{ c.initiative }}</span
+            >
+            <span v-if="heroSummons(c).length" class="ini__count" aria-hidden="true">{{
+              heroSummons(c).length
+            }}</span>
+          </span>
+          <span class="ini__name">{{ rowName(c) }}</span>
+        </component>
         <span class="ini__state" :class="{ 'is-low': isDown(c) || c.hp_band === 'Bloodied' }">{{
           status(c)
         }}</span>
@@ -119,6 +236,40 @@ function onInit(c: TurnRow, event: Event) {
     </ol>
     <div v-else class="ini__empty">
       No encounter running. Portraits appear here when the GM rolls initiative.
+    </div>
+    <div
+      v-if="opened"
+      class="ini__summons"
+      role="region"
+      :aria-label="`${opened.hero.name}’s summons`"
+    >
+      <div class="ini__summons-head">
+        <strong>{{ opened.hero.name }}’s summons</strong>
+        <button type="button" class="btn btn--quiet btn--sm" @click="openSummons = null">
+          Close
+        </button>
+      </div>
+      <ul>
+        <li v-for="s in opened.list" :key="s.member.id">
+          <UiAvatar
+            :name="s.member.name"
+            :portrait-path="s.member.portrait ?? null"
+            :beast="s.member.beast ?? null"
+            :size="36"
+          />
+          <span class="ini__summon-name">{{ s.member.name }}</span>
+          <span class="ini__summon-state">{{ summonState(s.row) }}</span>
+          <button
+            v-if="gm && s.row && (s.row.hp_max ?? 0) > 0"
+            type="button"
+            class="btn btn--quiet btn--sm"
+            :aria-label="`${s.member.name} is slain`"
+            @click="init.adjustHp(s.row, -(s.row.hp ?? 0))"
+          >
+            Slain
+          </button>
+        </li>
+      </ul>
     </div>
 
     <template v-if="gm && init.order.value.length">
@@ -139,7 +290,7 @@ function onInit(c: TurnRow, event: Event) {
         </button>
       </div>
       <ul v-if="manage" class="ini__list">
-        <li v-for="c in init.order.value" :key="c.id">
+        <li v-for="c in manageRows" :key="c.id" :class="{ 'is-summon': c.kind === 'summon' }">
           <label class="ini__init">
             <span class="sr-only">Initiative for {{ c.name }}</span>
             <input
@@ -154,7 +305,21 @@ function onInit(c: TurnRow, event: Event) {
             <strong>{{ c.name }}</strong>
             <span class="kind">{{ KIND_LABEL[c.kind] }}</span>
           </span>
-          <template v-if="c.kind !== 'pc'">
+          <template v-if="c.kind === 'summon'">
+            <span class="ini__hp">{{
+              (c.hp_max ?? 0) > 0 && (c.hp ?? 0) <= 0 ? 'Slain' : 'Dies to any damage'
+            }}</span>
+            <span v-if="(c.hp_max ?? 0) > 0 && (c.hp ?? 0) > 0" class="ini__btns">
+              <button
+                type="button"
+                :aria-label="`${c.name} is slain`"
+                @click="init.adjustHp(c, -(c.hp ?? 0))"
+              >
+                Slain
+              </button>
+            </span>
+          </template>
+          <template v-else-if="c.kind !== 'pc'">
             <span class="ini__hp">{{ c.hp }} / {{ c.hp_max }} HP · AC {{ c.ac }}</span>
             <span class="ini__btns">
               <button
@@ -281,6 +446,87 @@ function onInit(c: TurnRow, event: Event) {
   }
 }
 
+.ini__who-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+
+  &:is(button) {
+    cursor: pointer;
+  }
+
+  &[aria-expanded='true'] .ini__portrait {
+    box-shadow: 0 0 0 3px var(--secondary);
+  }
+}
+
+.ini__count {
+  position: absolute;
+  left: -8px;
+  bottom: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--on-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.ini__summons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: min(var(--radius-panel), 12px);
+  background: var(--field);
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+.ini__summons-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ini__summon-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.ini__summon-state {
+  font-size: 13px;
+  color: var(--page-muted);
+}
+
 .ini__score {
   position: absolute;
   right: -8px;
@@ -342,6 +588,10 @@ function onInit(c: TurnRow, event: Event) {
   gap: 6px;
   border-top: 1px solid var(--line);
   padding-top: 10px;
+}
+
+.ini__list li.is-summon {
+  padding-left: 28px;
 }
 
 .ini__list {
