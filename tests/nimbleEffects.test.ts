@@ -121,7 +121,7 @@ describe('gadget rolls', () => {
 
   it('explodes a Homing Missile that rolls 20, like any Primary Die', () => {
     expect(abilityRoll(hero(['Homing Missile']), 'Homing Missile', faces(20, 20, 6))).toMatch(
-      /26 damage · critical! \(1d20: 20 \+ 6\)/,
+      /26 damage · critical \(1d20: 20 \+ 6\)/,
     )
   })
 

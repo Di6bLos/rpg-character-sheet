@@ -1479,13 +1479,13 @@ export function operateInvention(
     line =
       primary === 1
         ? `miss (the d12 rolled a 1); ${dice}`
-        : `${primary + total(crit) + extra} damage to the target and ${extra} to ALL creatures between${crit.length ? ' · critical!' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
+        : `${primary + total(crit) + extra} damage to the target and ${extra} to ALL creatures between${crit.length ? ' · critical' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
   } else if (invention.use === 'blade') {
     const crit = rolls[0] === r.die ? explodeDie(r.die, rng) : []
     line =
       rolls[0] === 1
         ? `miss (the first Mana Die rolled a 1); ${dice}`
-        : `${2 * (sum + total(crit) + sheet.stats.STR)} damage${crit.length ? ' · critical!' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
+        : `${2 * (sum + total(crit) + sheet.stats.STR)} damage${crit.length ? ' · critical' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
   } else if (invention.use === 'plate') {
     line = `Defend with +${2 * Math.max(0, sheet.stats.STR) * n} Armor [${dice}]`
   } else if (invention.use === 'jerkin') {

@@ -195,7 +195,7 @@ describe('Lifebinding Spirit', () => {
     )
     expect(spiritAct(sheet, 10, 'attack', faces(20, 1, 9))).toMatch(/miss/)
     expect(spiritAct(sheet, 10, 'attack', faces(20, 20, 3, 20, 5))).toBe(
-      'Lifebinding Spirit attacks: 53 radiant damage · critical!, ignoring armor [2d20 (20, 3, 20, 5) + 5].',
+      'Lifebinding Spirit attacks: 53 radiant damage · critical, ignoring armor [2d20 (20, 3, 20, 5) + 5].',
     )
   })
 
