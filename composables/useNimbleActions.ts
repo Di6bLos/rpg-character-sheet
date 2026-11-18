@@ -19,6 +19,7 @@ import {
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
 import { conditionMods, oddsReasons } from '~/utils/nimbleConditions'
+import { armorHit, armorRule } from '~/utils/nimbleTargetArmor'
 import {
   afterSummonedAttack,
   companionAttack,
@@ -132,6 +133,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const paidUses = useState<string[]>(`nimble-paid-uses-${draft.value.id}`, () => [])
   const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
   const situation = useAttackSituation()
+  const targetArmor = useTargetArmor()
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
@@ -340,7 +342,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             const rush =
               odds > 0 ? ` with ${odds}× disadvantage` : odds < 0 ? ` with ${-odds}× advantage` : ''
             return report(
-              `${w.name}: attack made; roll ${w.flat !== undefined ? `${w.dmg} to hit, ${w.flat} damage` : w.dmg}${rush} yourself.${notes.length ? ` ${notes.join('. ')}.` : ''}${ended}`,
+              `${w.name}: attack made; roll ${w.flat !== undefined ? `${w.dmg} to hit, ${w.flat} damage` : w.dmg}${rush} yourself.${notes.length ? ` ${notes.join('. ')}.` : ''}${armorRule(targetArmor.value, w.props)}${ended}`,
             )
           }
           const expr = parseDice(w.dmg)
@@ -381,6 +383,11 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             ? ' Dying: DC 10 STR save or take 1 Wound.'
             : ''
           const triggers = finish(result.miss, result.crit)
+          const mods = (w.flat ?? expr.mod) + flat + zealDamage
+          const hit = armorHit(result.total + extra.extra, mods, targetArmor.value, {
+            crit: result.crit,
+            text: w.props,
+          })
           const hints = situational.length ? ` (${situational.join(', ')})` : ''
           if (result.miss)
             report(
@@ -388,7 +395,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             )
           else
             report(
-              `${w.name}: ${result.total + extra.extra} damage${riders.note}${result.crit ? ' · critical' : ''}${
+              `${w.name}: ${hit.damage} damage${hit.note}${riders.note}${result.crit ? ' · critical' : ''}${
                 result.bonus
                   ? ` (incl. ${result.bonus} ${resource.value?.diceName.toLowerCase() || 'bonus'})`
                   : ''
@@ -678,7 +685,13 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   function gadgetRoll(source: string): string {
     const attack = isAttackRoll(sheet.value, source) && sheet.value.turnActive
     const odds = attack ? sheet.value.rushed + cond.value.disadvantage : 0
-    const line = abilityRoll(sheet.value, source, Math.random, odds)
+    const line = abilityRoll(
+      sheet.value,
+      source,
+      Math.random,
+      odds,
+      attack ? targetArmor.value : 'none',
+    )
     if (attack && line) sheet.value.rushed += 1
     return line
   }
@@ -1034,6 +1047,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       invention?.use === 'blade' || invention?.use === 'cannon'
         ? sheet.value.rushed + cond.value.disadvantage
         : 0,
+      targetArmor.value,
     )
     if (!message) return
     if (actions && !/inoperable|needs at least/.test(message)) {

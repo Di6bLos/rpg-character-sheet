@@ -514,6 +514,7 @@ const effectRows = computed(() =>
           prepaid > 0 ? 'Paid' : actionsNow === 0 ? 'No actions left' : attacks.length
         }}</small>
       </summary>
+      <NimbleTargetArmor class="apm__situation" />
       <NimbleAttackSituation class="apm__situation" />
       <ul
         v-if="

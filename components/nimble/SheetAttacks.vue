@@ -84,6 +84,7 @@ const hasAttacks = computed(
         {{ q.label }}
       </button>
     </div>
+    <NimbleTargetArmor />
     <NimbleAttackSituation />
     <template v-if="hasAttacks">
       <details v-if="attacks.length || inventionAttacks.length" class="atk-group" open>

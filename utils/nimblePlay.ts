@@ -14,6 +14,7 @@ import {
 } from '~/utils/nimbleBuild'
 import { INVENTIONS } from '~/data/nimble/effects'
 import { clearConditionsAt, dazedAtTurnStart } from '~/utils/nimbleConditions'
+import { armorHit, armorRule, lighterArmor, type TargetArmor } from '~/utils/nimbleTargetArmor'
 import {
   applyCastEffect,
   applyMishapEffect,
@@ -1546,6 +1547,7 @@ export function operateInvention(
   rng: Rng = Math.random,
   mode: 'tether' | 'coil' = 'tether',
   disadvantage = 0,
+  armor: TargetArmor = 'none',
 ): string {
   const r = sheetResource(sheet, level)
   const invention = INVENTIONS.find((i) => i.name === name)
@@ -1557,7 +1559,13 @@ export function operateInvention(
   if (sheet.ownDice) {
     res.count -= n
     const extra = invention.use === 'cannon' ? ' and the d12' : ''
-    return `${name}: spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die}${extra} yourself. Mishap if any die rolls ${n} or less: flip its Malfunction switch or set the condition. ${res.count} left.`
+    const against =
+      invention.use === 'blade' && armor !== 'none'
+        ? armorRule(lighterArmor(armor))
+        : invention.use === 'cannon'
+          ? armorRule(armor)
+          : ''
+    return `${name}: spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die}${extra} yourself. Mishap if any die rolls ${n} or less: flip its Malfunction switch or set the condition.${against} ${res.count} left.`
   }
   const has = (upgrade: string) => sheet.abilities.some((a) => a.name === `${name}: ${upgrade}`)
   const attack = invention.use === 'blade' || invention.use === 'cannon'
@@ -1579,16 +1587,23 @@ export function operateInvention(
     const crit = primary === 12 ? explodeDie(12, rng) : []
     const perDie = sheet.stats.INT + (has('Amplified Conduit') ? 2 : 0)
     const extra = sum + n * perDie
+    const hit = armorHit(primary + total(crit) + extra, n * perDie, armor, { crit: !!crit.length })
     line =
       primary === 1
         ? `miss (the d12 rolled a 1); ${dice}`
-        : `${primary + total(crit) + extra} damage to the target and ${extra} to ALL creatures between${crit.length ? ' · critical' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
+        : `${hit.damage} damage to the target${hit.note} and ${extra} to ALL creatures between${crit.length ? ' · critical' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
   } else if (invention.use === 'blade') {
     const crit = rolls[0] === r.die ? explodeDie(r.die, rng) : []
+    const hit = armorHit(
+      2 * (sum + total(crit) + sheet.stats.STR),
+      2 * sheet.stats.STR,
+      armor === 'none' ? armor : lighterArmor(armor),
+      { crit: !!crit.length },
+    )
     line =
       rolls[0] === 1
         ? `miss (the first Mana Die rolled a 1); ${dice}`
-        : `${2 * (sum + total(crit) + sheet.stats.STR)} damage${crit.length ? ' · critical' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
+        : `${hit.damage} damage${hit.note}${crit.length ? ' · critical' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
   } else if (invention.use === 'plate') {
     line = `Defend with +${2 * Math.max(0, sheet.stats.STR) * n} Armor [${dice}]`
   } else if (invention.use === 'jerkin') {

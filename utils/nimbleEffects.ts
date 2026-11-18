@@ -2,6 +2,7 @@ import { ABILITY_ROLLS, SELF_EFFECTS } from '~/data/nimble/effects'
 import type { EffectEnd, Mishap, SelfEffectDef } from '~/data/nimble/types'
 import type { NimbleAttack, NimbleSheet } from '~/types/sheets'
 import { rollDie, type Rng } from '~/utils/dice'
+import { armorHit, type TargetArmor } from '~/utils/nimbleTargetArmor'
 import {
   abilityBaseName,
   keyStatValue,
@@ -228,6 +229,7 @@ export function abilityRoll(
   ability: string,
   rng: Rng = Math.random,
   disadvantage = 0,
+  armor: TargetArmor = 'none',
 ): string {
   const def = ABILITY_ROLLS.find((r) => r.ability === ability)
   if (!def || (def.requires && !has(sheet, def.requires))) return ''
@@ -244,7 +246,11 @@ export function abilityRoll(
   const odds = disadvantage - (ups.some((u) => u.advantage) ? 1 : 0)
   const stepsOf = (n: number) => (n > 1 ? `${n}× ` : '')
   const oddsText =
-    odds > 0 ? ` with ${stepsOf(odds)}disadvantage` : odds < 0 ? ` with ${stepsOf(-odds)}advantage` : ''
+    odds > 0
+      ? ` with ${stepsOf(odds)}disadvantage`
+      : odds < 0
+        ? ` with ${stepsOf(-odds)}advantage`
+        : ''
   if (count < 1) return ` ${ability}: no dice to roll (${def.count.join('+')} is 0).`
   if (sheet.ownDice) {
     const dc = (def.dc ?? 0) + ups.reduce((n, u) => n + (u.dc ?? 0), 0)
@@ -263,7 +269,12 @@ export function abilityRoll(
     last = rollDie(die, rng)
     rolls.push(last)
   }
-  const total = rolls.reduce((a, b) => a + b, 0) * mult
+  const rolledTotal = rolls.reduce((a, b) => a + b, 0) * mult
+  const hit =
+    def.kind === 'damage'
+      ? armorHit(rolledTotal, 0, armor, { crit, text: def.note })
+      : { damage: rolledTotal, note: '' }
+  const total = hit.damage
   const dc = (def.dc ?? 0) + ups.reduce((n, u) => n + (u.dc ?? 0), 0)
   const notes = [def.note, ...ups.map((u) => u.note)]
     .filter((n): n is string => !!n)
@@ -271,5 +282,5 @@ export function abilityRoll(
   const word = `${def.kind === 'healing' ? 'HP healed' : 'damage'}${crit ? ' · critical' : ''}`
   const shown = def.each ? `${rolls.join(', ')}` : rolls.join(' + ')
   const times = mult > 1 ? ` ×${mult}` : ''
-  return ` ${ability}: ${total} ${word} (${count}d${die}${oddsText}: ${shown}${times}).${notes.length ? ` ${notes.join(' ')}` : ''}`
+  return ` ${ability}: ${total} ${word}${hit.note} (${count}d${die}${oddsText}: ${shown}${times}).${notes.length ? ` ${notes.join(' ')}` : ''}`
 }
