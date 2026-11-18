@@ -21,7 +21,6 @@ export const ABILITY_ROLLS: AbilityRollDef[] = [
     count: ['INT', 'STR'],
     die: 6,
     kind: 'damage',
-    attack: true,
     each: true,
     note: 'Each construct hits any target within Reach 4.',
     upgrades: [
@@ -34,7 +33,6 @@ export const ABILITY_ROLLS: AbilityRollDef[] = [
     count: [1],
     die: 20,
     kind: 'damage',
-    attack: true,
     noMiss: true,
     note: 'Ignores cover; it does not miss.',
     upgrades: [{ name: 'Homing Missile: Reliable Explosives', advantage: true }],

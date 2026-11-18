@@ -52,7 +52,7 @@ describe('own dice: the app checks things off and never rolls', () => {
       'Regain WIL mana.\nLevel 10: Your Elemental Surge now regains WIL+1d4 mana.',
     ])
     expect(newEncounter(sheet, 10, never, 14)).toMatch(
-      /Initiative 14 \(as you rolled it\): you start with 2 actions.*Add your Elemental Surge d4s/,
+      /Initiative 14 \(as you rolled it\), you start with 2 actions.*Add your Elemental Surge d4s/,
     )
     expect(actionsLeft(sheet)).toBe(2)
     expect(sheet.mana.temp).toBe(2)

@@ -30,14 +30,6 @@ import {
 import { endEffects } from '~/utils/nimbleEffects'
 import { rollSpellDamage, spellDamage } from '~/utils/nimbleSpellDamage'
 import { conditionMods, oddsReasons } from '~/utils/nimbleConditions'
-import { parseDice } from '~/utils/dice'
-import {
-  armorDice,
-  armorDiceWhy,
-  armorHit,
-  armorRule,
-  ignoresArmor,
-} from '~/utils/nimbleTargetArmor'
 import { sacrificeMinions } from '~/utils/nimbleSummons'
 import type { NimbleResultOptions } from './useNimbleActions'
 
@@ -45,12 +37,6 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
   const situation = useAttackSituation()
-  const target = useAttackTarget()
-  const armorOf = (s: { desc: string }) => ({
-    armor: target.value.armor,
-    vulnerable: target.value.vulnerable,
-    ignore: ignoresArmor(s.desc) ? 'ignores armor' : '',
-  })
 
   const known = computed(() => knownSpells(sheet.value))
   const utility = computed(() => knownUtilitySpells(sheet.value))
@@ -326,8 +312,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     if (progress) notes.push(progress)
     if (/\b1\/turn\b/.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
     if (roll) notes.push(damageNote(s))
-    if (sheet.value.turnActive && spellDamage(sheet.value, draft.value.level, s, s.at))
-      sheet.value.rushed += 1
+    if (spellDamage(sheet.value, draft.value.level, s, s.at)) sheet.value.rushed += 1
     if (sheet.value.dying) notes.push('Dying: DC 10 STR save or take 1 Wound.')
     if (/\bdamage\b/i.test(s.desc)) notes.push(endEffects(sheet.value, 'attack').trim())
     notes.push(endEffects(sheet.value, 'spell').trim())
@@ -379,13 +364,12 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const rush =
       rushed > 0 ? ` with ${rushed}× disadvantage` : rushed < 0 ? ` with ${-rushed}× advantage` : ''
     if (sheet.value.ownDice || !damage.rollable)
-      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.${armorRule(armorOf(s))}`
+      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.`
     const result = rollSpellDamage(damage, Math.random, rushed)
     if (!result) return ''
     if (result.miss) return `Miss (first die rolled a 1)${rush} [${result.detail}].`
     const crit = result.crit ? ` ${critTriggers(sheet.value, draft.value.level, s.name)}` : ''
-    const hit = armorHit(result.total, parseDice(damage.dice)?.mod ?? 0, armorOf(s), result.crit)
-    return `${hit.damage}${type} damage${hit.note}${result.crit ? ' · critical' : ''}${rush} [${damage.dice}: ${result.detail}].${crit.trimEnd()}`
+    return `${result.total}${type} damage${result.crit ? ' · critical' : ''}${rush} [${damage.dice}: ${result.detail}].${crit.trimEnd()}`
   }
 
   const spellAttacks = computed(() =>
@@ -417,8 +401,6 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
             key: `spell:${s.name}`,
             name: s.name,
             dmg: damage.text,
-            armorDmg: armorDice(damage.text, armorOf(s)),
-            armorWhy: armorDiceWhy(damage.text, armorOf(s)),
             props: [
               range,
               damage.type,

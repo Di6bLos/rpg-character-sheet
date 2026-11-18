@@ -22,7 +22,6 @@ import {
   summonStats,
 } from '~/utils/nimbleSummons'
 import type { NimbleResultOptions } from './useNimbleActions'
-import { armorDice, armorDiceWhy, ignoresArmor } from '~/utils/nimbleTargetArmor'
 
 /** "minion" → "minions", "fox" → "foxes", "harpy" → "harpies". */
 function plural(name: string): string {
@@ -37,12 +36,6 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
   const level = computed(() => draft.value.level)
-  const target = useAttackTarget()
-  const armorOf = (props: string) => ({
-    armor: target.value.armor,
-    vulnerable: target.value.vulnerable,
-    ignore: ignoresArmor(props) ? 'ignores armor' : '',
-  })
 
   function report(message: string) {
     if (!message) return
@@ -124,7 +117,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
   const command = run(() => {
     if (commandUsed.value) return report('You already commanded your minions this turn.')
     if (left.value < 1) return report(NO_ACTIONS)
-    act(commandMinions(sheet.value, level.value, Math.random, armorOf('')), 1)
+    act(commandMinions(sheet.value, level.value), 1)
   })
 
   const spiritAttack = run(() => {
@@ -243,19 +236,10 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
           : left.value < attack.actions
             ? 'No actions left'
             : '',
-        run: run(() =>
-          act(
-            customSummonAttack(sheet.value, members, Math.random, armorOf(attack.type ?? '')),
-            attack.actions,
-          ),
-        ),
+        run: run(() => act(customSummonAttack(sheet.value, members), attack.actions)),
       })
     }
-    return out.map((a) => ({
-      ...a,
-      armorDmg: armorDice(a.dmg, armorOf(a.props)),
-      armorWhy: armorDiceWhy(a.dmg, armorOf(a.props)),
-    }))
+    return out
   })
 
   const sacrificeable = computed(

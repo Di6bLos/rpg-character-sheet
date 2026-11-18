@@ -298,8 +298,6 @@ export interface AbilityRollDef {
   count: (NimbleStat | number)[]
   die: number
   kind: 'damage' | 'healing'
-  /** The hero harms an enemy with it on their turn: an attack, so Rushed applies (Core p. 13). */
-  attack?: boolean
   each?: boolean
   noMiss?: boolean
   dc?: number

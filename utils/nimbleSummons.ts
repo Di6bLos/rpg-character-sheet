@@ -11,7 +11,6 @@ import type {
 } from '~/types/sheets'
 import { parseDice, rollDie, rollNimble, type Rng } from '~/utils/dice'
 import { letter } from '~/utils/initiative'
-import { armorHit, armorLabel, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
 import {
   abilityBaseName,
   abilityModifiers,
@@ -420,7 +419,6 @@ export function customSummonAttack(
   sheet: NimbleSheet,
   members: NimbleSummon[],
   rng: Rng = Math.random,
-  armor: ArmorContext = { armor: 'none' },
 ): string {
   const attack = members[0]?.custom?.attack
   const expr = attack && parseDice(attack.dice)
@@ -431,22 +429,20 @@ export function customSummonAttack(
       : members[0]!.name
   const type = attack.type ? ` ${attack.type.toLowerCase()}` : ''
   if (sheet.ownDice)
-    return `${label} — ${attack.name}: roll ${attack.dice}${members.length > 1 ? ` for each of ${members.length}` : ''}${type} yourself; a 1 misses.${armorRule(armor)}`
+    return `${label} — ${attack.name}: roll ${attack.dice}${members.length > 1 ? ` for each of ${members.length}` : ''}${type} yourself; a 1 misses.`
   const minion = members[0]!.custom?.kind === 'minion'
   const parts = members.map(() => {
     if (minion) {
       const dice = Array.from({ length: expr.count }, () => rollDie(expr.sides, rng))
-      return dice[0] === 1
-        ? 0
-        : armorHit(dice.reduce((a, b) => a + b, 0) + expr.mod, expr.mod, armor).damage
+      return dice[0] === 1 ? 0 : dice.reduce((a, b) => a + b, 0) + expr.mod
     }
     const roll = rollNimble(expr, null, rng, 0)
-    return roll.miss ? 0 : armorHit(roll.total, expr.mod, armor, roll.crit).damage
+    return roll.miss ? 0 : roll.total
   })
   const total = parts.reduce((a, b) => a + b, 0)
   if (!total) return `${label} — ${attack.name}: miss (a 1 on the first die).`
   const shown = parts.length > 1 ? ` (${parts.map((p) => (p ? `${p}` : 'miss')).join(', ')})` : ''
-  return `${label} — ${attack.name}: ${total}${type} damage${armorLabel(armor)}${shown}.`
+  return `${label} — ${attack.name}: ${total}${type} damage${shown}.`
 }
 
 export function summonFromSpell(
@@ -561,12 +557,7 @@ function rollMinion(sides: number, rng: Rng): { value: number; miss: boolean; ma
   return { value, miss: value === 1, max: value === sides }
 }
 
-export function commandMinions(
-  sheet: NimbleSheet,
-  level: number,
-  rng: Rng = Math.random,
-  armor: ArmorContext = { armor: 'none' },
-): string {
+export function commandMinions(sheet: NimbleSheet, level: number, rng: Rng = Math.random): string {
   const def = summonById('shadow-minion')!
   const stats = summonStats(sheet, level, def)
   const minions = sheet.summons.filter((s) => COMMANDED.includes(s.def))
@@ -579,7 +570,7 @@ export function commandMinions(
     const big = greater
       ? ` and ${5 + Math.max(0, (greater.tier ?? 4) - 4)}d${stats.die} for the ${greater.name}`
       : ''
-    return `Minions attack (Reach ${stats.reach}): roll 1d${stats.die} for each of ${minions.length} minion${minions.length === 1 ? '' : 's'}${big} yourself; a 1 misses, a max roll would crit (add any minions it summons by hand).${armorRule(armor)}`
+    return `Minions attack (Reach ${stats.reach}): roll 1d${stats.die} for each of ${minions.length} minion${minions.length === 1 ? '' : 's'}${big} yourself; a 1 misses, a max roll would crit (add any minions it summons by hand).`
   }
   const parts: string[] = []
   let total = 0
@@ -587,18 +578,13 @@ export function commandMinions(
   for (let i = 0; i < minions.length; i++) {
     const r = rollMinion(stats.die, rng)
     if (r.max) crits += 1
-    const dealt = armorHit(r.value, 0, armor).damage
-    if (!r.miss) total += dealt
-    parts.push(r.miss ? 'miss' : `${dealt}`)
+    if (!r.miss) total += r.value
+    parts.push(r.miss ? 'miss' : `${r.value}`)
   }
   if (greater) {
     const dice = 5 + Math.max(0, (greater.tier ?? 4) - 4)
     const rolls = Array.from({ length: dice }, () => rollDie(stats.die, rng))
-    const sum = armorHit(
-      rolls.reduce((a, b) => a + b, 0),
-      0,
-      armor,
-    ).damage
+    const sum = rolls.reduce((a, b) => a + b, 0)
     if (rolls[0] === stats.die) crits += 1
     if (rolls[0] !== 1) total += sum
     parts.push(rolls[0] === 1 ? `${greater.name} miss` : `${greater.name} ${sum}`)
@@ -622,7 +608,7 @@ export function commandMinions(
     after.push(`Master of Nightfrost: ${gain} temp HP.`)
   }
   const reach = `Reach ${stats.reach}, d${stats.die}`
-  return `Minions attack (${reach}): ${parts.join(', ')} = ${total} damage${armorLabel(armor)}.${after.length ? ` ${after.join(' ')}` : ''}`
+  return `Minions attack (${reach}): ${parts.join(', ')} = ${total} damage.${after.length ? ` ${after.join(' ')}` : ''}`
 }
 
 export function spiritDie(sheet: NimbleSheet, level: number, tier: number | undefined): number {
