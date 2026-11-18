@@ -8,7 +8,7 @@ import { keyStatValue } from '~/utils/nimbleBuild'
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const keyValue = computed(() => keyStatValue(sheet.value))
-const { known, utility, maxTier, tiers, help, setUpcast, cast } = useNimbleSpells()
+const { known, utility, maxTier, tiers, pool, help, setUpcast, cast } = useNimbleSpells()
 
 const schools = computed(() =>
   sheet.value.spells.schools.map((s) => SCHOOL_LABELS[s as SpellSchool] ?? s).join(' · '),
@@ -24,6 +24,9 @@ const schools = computed(() =>
         <UiHelp label="About spells" :text="help" />
       </div>
       <span v-if="schools" class="small muted" style="font-size: 12px">{{ schools }}</span>
+      <span v-if="pool" class="pool" :class="{ 'pool--low': pool.low }">
+        {{ pool.label }} <strong>{{ pool.value }}</strong>
+      </span>
     </div>
 
     <div class="stack" style="gap: 16px">
@@ -126,6 +129,26 @@ const schools = computed(() =>
 </template>
 
 <style scoped lang="scss">
+.pool {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--page-soft);
+
+  strong {
+    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-text);
+  }
+
+  &--low strong {
+    color: var(--danger, #e2735f);
+  }
+}
+
 .tier {
   display: flex;
   flex-direction: column;

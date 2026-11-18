@@ -69,7 +69,13 @@ const {
   stopEffect,
   prepaid,
 } = useNimbleActions({ onResult: announce })
-const { tiers, help: spellHelp, cast, reactionSpells } = useNimbleSpells({ onResult: announce })
+const {
+  tiers,
+  help: spellHelp,
+  cast,
+  reactionSpells,
+  pool: spellPool,
+} = useNimbleSpells({ onResult: announce })
 const {
   available: summonable,
   minions,
@@ -920,7 +926,13 @@ const effectRows = computed(() =>
       <summary :aria-disabled="actionsNow === 0 || undefined" @click="blockWhenSpent">
         <span>Cast</span>
         <UiHelp label="About spells" :text="spellHelp" />
-        <small>{{ actionsNow === 0 ? 'No actions left' : spellCount }}</small>
+        <small>{{
+          actionsNow === 0
+            ? 'No actions left'
+            : spellPool
+              ? `${spellPool.label} ${spellPool.value}`
+              : spellCount
+        }}</small>
       </summary>
       <div v-for="g in spellGroups" :key="g.tier" class="apm__group">
         <div class="apm__caps">{{ g.label }}</div>

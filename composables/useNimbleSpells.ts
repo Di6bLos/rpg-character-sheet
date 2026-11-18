@@ -195,5 +195,23 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       })),
   )
 
-  return { known, utility, maxTier, tiers, reactionSpells, help, setUpcast, cast }
+  const pool = computed(() => {
+    if (reaver.value) {
+      const minions = sheet.value.summons.filter((m) => m.def === 'shadow-minion').length
+      return { label: 'Shadow minions', value: `${minions}`, low: minions < minionCost.value }
+    }
+    if (pact.value) {
+      const left = pactLimit.value - sheet.value.resource.count
+      return { label: pact.value.name, value: `${left}/${pactLimit.value}`, low: left <= 0 }
+    }
+    const { current, max, temp } = sheet.value.mana
+    if (max <= 0 && temp <= 0) return null
+    return {
+      label: 'Mana',
+      value: `${current}/${max}${temp ? ` +${temp}` : ''}`,
+      low: current + temp <= 0,
+    }
+  })
+
+  return { known, utility, maxTier, tiers, reactionSpells, pool, help, setUpcast, cast }
 }
