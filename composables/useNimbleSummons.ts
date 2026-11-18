@@ -13,6 +13,8 @@ import {
   companionBlocked,
   dismissSummon,
   minionCount,
+  minionCritTriggers,
+  minionCrits,
   sacrificeSummon,
   slaySummon,
   spiritAct,
@@ -146,6 +148,9 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
       cost: string
       why: string
       run: () => void
+      /** What a crit sets off, and the button that does it when the player rolls their own dice. */
+      critBy?: string[]
+      crit?: () => void
     }[] = []
     if (minions.value) {
       const stats = summonStats(sheet.value, level.value, summonById('shadow-minion')!)
@@ -166,6 +171,10 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
               ? 'No actions left'
               : '',
         run: command,
+        critBy: minionCritTriggers(sheet.value, level.value),
+        crit: run(() =>
+          report(`A minion crit! ${minionCrits(sheet.value, level.value).join(' ')}`),
+        ),
       })
     }
     if (spirit.value) {

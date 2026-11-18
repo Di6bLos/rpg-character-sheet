@@ -397,6 +397,31 @@ function bump(sheet: NimbleSheet, id: string): number {
   return used
 }
 
+const FURY_ON_CRIT = /\bwhenever you crit or kill an enemy, change 1 Fury Die to the maximum\b/
+const SECOND_CRIT = /\bWhen you land a critical hit for the second time on a turn\b/
+const CRIT_FIRE = /^\(1\/turn\) When you crit, deal fire damage equal to your STR\+Wounds\b/
+const THRILL =
+  /\bwhenever: your quarry dies, or you hit your quarry in melee or crit your quarry at range\b/
+
+/**
+ * Abilities a crit with this attack sets off, by name: what the Crit button
+ * applies for a player who rolls their own dice (the app's own rolls do it in
+ * `afterAttack`).
+ */
+export function critTriggerNames(
+  sheet: NimbleSheet,
+  out: { melee: boolean; quarry: boolean },
+): string[] {
+  const named = (pattern: RegExp) =>
+    sheet.abilities.filter((a) => pattern.test(a.desc)).map((a) => abilityBaseName(a.name))
+  return [
+    ...(sheet.resource.active ? named(FURY_ON_CRIT) : []),
+    ...named(SECOND_CRIT),
+    ...named(CRIT_FIRE),
+    ...(out.quarry && !out.melee && sheet.inEncounter ? named(THRILL) : []),
+  ]
+}
+
 export function afterAttack(sheet: NimbleSheet, level: number, out: AttackOutcome): string {
   const notes: string[] = []
   const named = (pattern: RegExp) => sheet.abilities.find((a) => pattern.test(a.desc))
@@ -417,13 +442,7 @@ export function afterAttack(sheet: NimbleSheet, level: number, out: AttackOutcom
       )
   }
   if (out.crit) {
-    const frenzy = sheet.resource.active
-      ? counterLeft(
-          sheet,
-          level,
-          /\bwhenever you crit or kill an enemy, change 1 Fury Die to the maximum\b/,
-        )
-      : null
+    const frenzy = sheet.resource.active ? counterLeft(sheet, level, FURY_ON_CRIT) : null
     const die = sheetResource(sheet, level)?.die
     const rolls = sheet.resource.rolls
     if (frenzy && die && rolls.length && Math.min(...rolls) < die) {
@@ -437,14 +456,10 @@ export function afterAttack(sheet: NimbleSheet, level: number, out: AttackOutcom
         `${abilityBaseName(frenzy.entry!.ability.name)}: a Fury Die set to ${die} (Fury ${total(sheet.resource.rolls)}).`,
       )
     }
-    const tempo = named(/\bWhen you land a critical hit for the second time on a turn\b/)
+    const tempo = named(SECOND_CRIT)
     if (tempo && bump(sheet, 'Steal Tempo@turn') === 2)
       notes.push(`${abilityBaseName(tempo.name)}: the target loses 1 action. ${gainAction(sheet)}`)
-    const chain = counterLeft(
-      sheet,
-      level,
-      /^\(1\/turn\) When you crit, deal fire damage equal to your STR\+Wounds\b/,
-    )
+    const chain = counterLeft(sheet, level, CRIT_FIRE)
     if (chain) {
       const burning = hasText(sheet, /\bDouble any fire damage you deal\b/) ? 2 : 1
       notes.push(
@@ -452,9 +467,7 @@ export function afterAttack(sheet: NimbleSheet, level: number, out: AttackOutcom
       )
     }
   }
-  const thrill = named(
-    /\bwhenever: your quarry dies, or you hit your quarry in melee or crit your quarry at range\b/,
-  )
+  const thrill = named(THRILL)
   if (thrill && out.quarry && !out.miss && (out.melee || out.crit) && sheet.inEncounter) {
     sheet.resource.count += 1
     const ground = named(
@@ -572,6 +585,12 @@ export function abilityTrigger(
     if (m) return { label: t.label(m, sheet, level), fire: () => t.fire(m, sheet, level) }
   }
   return null
+}
+
+/** Abilities "Your <spell> … whenever they would crit" names, for the Crit button. */
+export function critTriggerSources(sheet: NimbleSheet, source: string): string[] {
+  const about = new RegExp(`\\bYour ${source}\\b[^.]*\\bwhenever they would crit\\b`)
+  return sheet.abilities.filter((a) => about.test(a.desc)).map((a) => abilityBaseName(a.name))
 }
 
 export function critTriggers(sheet: NimbleSheet, level: number, source: string): string {

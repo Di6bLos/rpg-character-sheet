@@ -30,6 +30,8 @@ import {
   endCustomSummons,
   spiritDie,
   summonFromAbility,
+  minionCritTriggers,
+  minionCrits,
 } from '../utils/nimbleSummons'
 import { defaultSheet } from '../utils/sheetDefaults'
 import { build } from './helpers/nimble'
@@ -243,6 +245,17 @@ describe('other summons', () => {
 })
 
 describe('class options on summons', () => {
+  it('sets off minion crit effects by hand for players who roll their own dice', () => {
+    const sheet = shadowmancer(['Master of Nightfrost', 'Swarming Shadows'])
+    addSummon(sheet, 5, 'shadow-minion')
+    expect(minionCritTriggers(sheet, 5)).toEqual(['Swarming Shadows', 'Master of Nightfrost'])
+    expect(minionCrits(sheet, 5).join(' ')).toMatch(
+      /Swarming Shadows: \+1 shadow minion\..*Master of Nightfrost: 8 temp HP\./,
+    )
+    expect(minionCount(sheet)).toBe(2)
+    expect(sheet.tempHp).toBe(8)
+  })
+
   it('gives Master of Nightfrost INT+LVL temp HP when a minion would crit', () => {
     const sheet = shadowmancer(['Master of Nightfrost'])
     addSummon(sheet, 5, 'shadow-minion')

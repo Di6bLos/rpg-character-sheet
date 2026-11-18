@@ -17,6 +17,7 @@ import {
   actionsLeft,
   castingBlocks,
   castSpell,
+  critTriggerSources,
   critTriggers,
   gainWounds,
   isHollowOne,
@@ -424,6 +425,14 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
             name: s.name,
             dmg: damage.text,
             armorDmg: armorDice(damage.text, armorOf(s)),
+            critBy: critTriggerSources(sheet.value, s.name),
+            /** The player rolled a crit themselves: set off "whenever they would crit". */
+            crit: () => {
+              if (!canEdit.value) return
+              const message = `${s.name} crit! ${critTriggers(sheet.value, draft.value.level, s.name)}`
+              say(message)
+              options.onResult?.(message)
+            },
             armorWhy: armorDiceWhy(damage.text, armorOf(s)),
             props: [
               range,

@@ -587,6 +587,19 @@ const effectRows = computed(() =>
             </span>
           </button>
         </li>
+        <template v-for="(w, i) in attacks" :key="`crit-${i}`">
+          <li v-if="sheet.ownDice && w.critBy.length">
+            <button
+              type="button"
+              class="apm__row"
+              :aria-disabled="!canEdit || undefined"
+              @click="canEdit && w.crit()"
+            >
+              <span class="apm__name">↳ {{ w.name }} crit</span>
+              <span class="apm__sub">{{ w.critBy.join(', ') }}</span>
+            </button>
+          </li>
+        </template>
         <li v-for="inv in inventionAttacks" :key="inv.name">
           <button
             type="button"
@@ -628,6 +641,19 @@ const effectRows = computed(() =>
             </span>
           </button>
         </li>
+        <template v-for="a in summonAttacks" :key="`crit-${a.key}`">
+          <li v-if="sheet.ownDice && a.critBy?.length && a.crit">
+            <button
+              type="button"
+              class="apm__row"
+              :aria-disabled="!canEdit || undefined"
+              @click="canEdit && a.crit()"
+            >
+              <span class="apm__name">↳ {{ a.name }} crit</span>
+              <span class="apm__sub">{{ a.critBy.join(', ') }}</span>
+            </button>
+          </li>
+        </template>
         <li v-if="spellAttacks.length">
           <details class="apm__spell apm__spells">
             <summary class="apm__row">
@@ -679,6 +705,12 @@ const effectRows = computed(() =>
                           · {{ a.rushed }}× disadvantage</template
                         >
                       </button>
+                      <NimbleCritButton
+                        v-if="sheet.ownDice && a.critBy.length"
+                        :triggers="a.critBy"
+                        :disabled="!canEdit"
+                        @crit="a.crit()"
+                      />
                     </div>
                   </details>
                 </li>

@@ -44,6 +44,7 @@ import {
   expendJudgment,
   freeMove,
   afterAttack,
+  critTriggerNames,
   attackBonus,
   isBloodied,
   manaCost,
@@ -296,6 +297,39 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           (flat ? ` +${flat}` : '') +
           (zealDamage ? ` +${zealDamage}` : ''),
         armorDmg: armorDice(diceDmg, armor, rolledDice),
+        critBy: [
+          ...critTriggerNames(sheet.value, {
+            melee: w.melee,
+            quarry: hasMark.value && !!quarry.value,
+          }),
+          r?.kind === 'crit' && res.count === 0 ? r.name : '',
+          w.onCrit?.length ? `${w.name} on-crit damage` : '',
+          w.name === 'Sting' ? 'Sting' : '',
+        ].filter(Boolean),
+        /** The player rolled a crit themselves: set off what the app would have. */
+        crit: () => {
+          if (!canEdit.value) return
+          const notes = [
+            afterAttack(sheet.value, draft.value.level, {
+              melee: w.melee,
+              miss: false,
+              crit: true,
+              quarry: hasMark.value && !!quarry.value,
+            }).trim(),
+          ]
+          if (r?.kind === 'crit' && res.count === 0) {
+            res.count = 1
+            notes.push(`${r.name}: add ${r.roll}d${r.die} (used this turn).`)
+          }
+          if (w.onCrit?.length) notes.push(`Add ${w.onCrit.join(' + ')}.`)
+          notes.push(
+            afterEffectAttack(sheet.value, draft.value.level, w.name, {
+              miss: false,
+              crit: true,
+            }).note.trim(),
+          )
+          report(`${w.name} crit! ${notes.filter(Boolean).join(' ') || 'Nothing else triggers.'}`)
+        },
         armorWhy: armorDiceWhy(diceDmg || w.dmg, armor),
         boost: [
           oa && !oaDisadvantage ? 'Opportunity Attack (no disadvantage: Opportunistic Frenzy)' : '',
