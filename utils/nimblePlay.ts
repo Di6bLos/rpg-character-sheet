@@ -1048,6 +1048,16 @@ export function shortMessage(sheet: NimbleSheet, name: string, cost: CounterCost
   return `${name} takes ${costLabel({ actions: cost.actions })}; you have ${actionsLeft(sheet)}.`
 }
 
+/**
+ * A spent limit, by when it comes back: "Used this turn", "Used this round",
+ * "Used this Safe Rest"… ("None left" for a pool with no period).
+ */
+export function usedUpLabel(counter: { label: string } | undefined): string {
+  const when = /^per\s+(.+)$/i.exec(counter?.label ?? '')?.[1]
+  if (!when) return 'None left'
+  return /^day$/i.test(when) ? 'Used today' : `Used this ${when}`
+}
+
 const PERIODS: Record<string, UsePeriod> = {
   turn: 'turn',
   round: 'turn',

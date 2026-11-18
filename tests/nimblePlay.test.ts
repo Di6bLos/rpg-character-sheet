@@ -48,6 +48,7 @@ import {
   expendJudgment,
   isMishap,
   newEncounter,
+  usedUpLabel,
   startTurn,
   resourceOnAttack,
   rollJudgment,
@@ -82,6 +83,16 @@ function faces(sides: number, ...values: number[]) {
 function hero(patch: Partial<NimbleSheet> = {}): NimbleSheet {
   return { ...defaultSheet('nimble'), hp: 20, hpMax: 20, hitDice: 3, hitDie: 8, ...patch }
 }
+
+describe('spent limits', () => {
+  it('say when they come back', () => {
+    expect(usedUpLabel({ label: 'per turn' })).toBe('Used this turn')
+    expect(usedUpLabel({ label: 'per round' })).toBe('Used this round')
+    expect(usedUpLabel({ label: 'per Safe Rest' })).toBe('Used this Safe Rest')
+    expect(usedUpLabel({ label: 'per day' })).toBe('Used today')
+    expect(usedUpLabel({ label: 'pool' })).toBe('None left')
+  })
+})
 
 describe('nimble damage and healing', () => {
   it('lets temp HP absorb damage first', () => {
