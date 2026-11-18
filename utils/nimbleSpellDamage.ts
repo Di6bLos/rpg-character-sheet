@@ -51,8 +51,17 @@ export function spellDamage(
     if (alt?.[1] === spell.name) type = `${alt[2]} or ${alt[3]}`
   }
   const single = /\bSingle Target\b/i.test(spell.cast) && !/\bdoes not miss\b/i.test(line)
+  // "Upcast: +1 DC, +10 damage", "+1d20 damage", "+KEY damage"; not "+1d12 damage when…".
+  const upcast = /Upcast:[^.]*?\+(\d+|KEY|STR|DEX|INT|WIL)(d\d+)? damage\b(?! when)/.exec(
+    spell.desc,
+  )
+  const upcastSteps = upcast && at > spell.tier ? at - spell.tier : 0
   const m = /^(\d+)d(\d+)(?:\+(\d+|KEY|STR|DEX|INT|WIL))?/.exec(line.trim())
-  if (!m) return { dice: '', text: line.trim(), type, single, rollable: false }
+  if (!m) {
+    const extra = upcast && !upcast[2] ? statValue(sheet, upcast[1]) * upcastSteps : 0
+    const text = `${line.trim()}${extra ? ` +${extra} (upcast)` : ''}`
+    return { dice: '', text, type, single, rollable: false }
+  }
   let count = Number(m[1])
   let sides = Number(m[2])
   let flat = statValue(sheet, m[3])
@@ -63,9 +72,11 @@ export function spellDamage(
     const at0 = DIE_STEPS.indexOf(sides)
     if (at0 >= 0) sides = DIE_STEPS[Math.min(DIE_STEPS.length - 1, at0 + steps)]!
   }
-  const upcast = /Upcast: \+(\d+) damage\b/.exec(spell.desc)
-  if (upcast && at > spell.tier) flat += Number(upcast[1]) * (at - spell.tier)
-  const dice = `${count}d${sides}${flat ? `+${flat}` : ''}`
+  if (upcast && upcastSteps) {
+    if (upcast[2] === `d${sides}`) count += statValue(sheet, upcast[1]) * upcastSteps
+    else if (!upcast[2]) flat += statValue(sheet, upcast[1]) * upcastSteps
+  }
+  const dice = `${count}d${sides}${flat > 0 ? `+${flat}` : flat < 0 ? `${flat}` : ''}`
   return { dice, text: dice, type, single, rollable: true }
 }
 
