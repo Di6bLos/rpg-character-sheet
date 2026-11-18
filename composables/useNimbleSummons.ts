@@ -102,6 +102,80 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
     if (canEdit.value) fn()
   }
 
+  const commandUsed = computed(() => !!sheet.value.uses['Command minions@turn']?.used)
+
+  const command = run(() => {
+    if (commandUsed.value) return report('You already commanded your minions this turn.')
+    if (left.value < 1) return report(NO_ACTIONS)
+    act(commandMinions(sheet.value, level.value), 1)
+  })
+
+  const spiritAttack = run(() => {
+    if (left.value < spiritCost()) return report(NO_ACTIONS)
+    act(spiritAct(sheet.value, level.value, 'attack'), spiritCost())
+  })
+
+  const companionStrike = run(() => report(companionAttack(sheet.value, level.value)))
+
+  /** Attacks your summons make, for the Attacks list beside your weapons. */
+  const summonAttacks = computed(() => {
+    const out: {
+      key: string
+      name: string
+      dmg: string
+      props: string
+      cost: string
+      why: string
+      run: () => void
+    }[] = []
+    if (minions.value) {
+      const stats = summonStats(sheet.value, level.value, summonById('shadow-minion')!)
+      out.push({
+        key: 'minions',
+        name: 'Command minions',
+        dmg: `${minions.value}× 1d${stats.die}`,
+        props: `Each minion moves 6 then attacks · Reach ${stats.reach} · a 1 misses, no crits`,
+        cost: '1 action · 1/turn',
+        why: commandUsed.value ? 'Once per turn' : left.value < 1 ? 'No actions left' : '',
+        run: command,
+      })
+    }
+    if (spirit.value) {
+      const stats = summonStats(sheet.value, level.value, summonById('lifebinding-spirit')!)
+      out.push({
+        key: 'spirit',
+        name: `${spirit.value.name} attacks`,
+        dmg: `${stats.diceMult}d${stats.die}+WIL`,
+        props: `${stats.damageType}, Reach ${stats.reach}, ignoring armor`,
+        cost: spiritCost() ? '1 action' : 'free',
+        why: left.value < spiritCost() ? 'No actions left' : '',
+        run: spiritAttack,
+      })
+    }
+    const pet = companion.value
+    const attack = pet ? summonById(pet.def)?.attack : undefined
+    if (pet && attack) {
+      out.push({
+        key: 'companion',
+        name: `${pet.name}: ${attack.label ?? 'Attack'}`,
+        dmg: attack.dice.replace(
+          /\+(?:(\d+)×)?LVL$/,
+          (_, mult?: string) => `+${Number(mult ?? 1) * level.value}`,
+        ),
+        props: 'Your quarry, ignoring armor; it can’t miss',
+        cost: [
+          attack.charges ? `${attack.charges} TotH charge${attack.charges === 1 ? '' : 's'}` : '',
+          attack.actions ? `${attack.actions} action${attack.actions === 1 ? '' : 's'}` : 'free',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        why: companionBlocked(sheet.value, level.value),
+        run: companionStrike,
+      })
+    }
+    return out
+  })
+
   const sacrificeable = computed(
     () => new Set(groups.value.filter((g) => g.canSacrifice).map((g) => g.id)),
   )
@@ -126,18 +200,13 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
     spiritCost,
     companionCost: computed(() => summonById(companion.value?.def ?? '')?.attack?.actions ?? 0),
     companionShort: computed(() => companionBlocked(sheet.value, level.value)),
-    command: run(() => {
-      if (left.value < 1) return report(NO_ACTIONS)
-      act(commandMinions(sheet.value, level.value), 1)
-    }),
-    spiritAttack: run(() => {
-      if (left.value < spiritCost()) return report(NO_ACTIONS)
-      act(spiritAct(sheet.value, level.value, 'attack'), spiritCost())
-    }),
+    command,
+    spiritAttack,
+    summonAttacks,
     spiritHeal: run(() => {
       if (left.value < spiritCost()) return report(NO_ACTIONS)
       act(spiritAct(sheet.value, level.value, 'heal'), spiritCost())
     }),
-    companionAttack: run(() => report(companionAttack(sheet.value, level.value))),
+    companionAttack: companionStrike,
   }
 }

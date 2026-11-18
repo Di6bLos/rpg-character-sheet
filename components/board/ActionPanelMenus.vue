@@ -83,6 +83,7 @@ const {
   left: summonLeft,
   spiritCost,
   groups: summonGroups,
+  summonAttacks,
 } = useNimbleSummons({ onResult: announce })
 
 /** One row per summon kind, a stack for identical minions; hand-added ones each get a row. */
@@ -483,7 +484,7 @@ const effectRows = computed(() =>
           prepaid > 0 ? 'Paid' : actionsNow === 0 ? 'No actions left' : attacks.length
         }}</small>
       </summary>
-      <ul v-if="attacks.length" class="apm__list">
+      <ul v-if="attacks.length || summonAttacks.length" class="apm__list">
         <li v-for="(w, i) in attacks" :key="i">
           <button
             type="button"
@@ -501,6 +502,22 @@ const effectRows = computed(() =>
                   .filter(Boolean)
                   .join(' · ')
               }}
+            </span>
+          </button>
+        </li>
+        <li v-for="a in summonAttacks" :key="a.key">
+          <button
+            type="button"
+            class="apm__row"
+            :aria-disabled="!canEdit || !!a.why || undefined"
+            :aria-label="`${a.name}, ${a.dmg}, ${a.cost}${a.why ? `. ${a.why}` : ''}`"
+            :title="a.props"
+            @click="canEdit && !a.why && a.run()"
+          >
+            <span class="apm__name">{{ a.name }}</span>
+            <span class="apm__tag">{{ a.dmg }}</span>
+            <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
+              {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
             </span>
           </button>
         </li>

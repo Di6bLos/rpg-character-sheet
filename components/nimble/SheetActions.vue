@@ -7,6 +7,7 @@ import type { NimbleSheet } from '~/types/sheets'
 const { draft, canEdit, lastRoll } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const { attacks, reactions, toggleReaction, abilities } = useNimbleActions()
+const { summonAttacks } = useNimbleSummons()
 const { reactionSpells, cast } = useNimbleSpells()
 
 const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.companion))
@@ -22,7 +23,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           text="No attack roll: a 1 on the first die misses, and its max explodes as a crit. Each attack after the first in a turn is Rushed and rolls with one more disadvantage."
         />
       </div>
-      <div v-if="attacks.length" class="attacks">
+      <div v-if="attacks.length || summonAttacks.length" class="attacks">
         <div v-for="(w, i) in attacks" :key="i" class="tile attack">
           <div class="attack__head">
             <div class="stack" style="gap: 2px">
@@ -42,6 +43,25 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           >
             {{ sheet.ownDice ? 'Attack' : 'Roll'
             }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template>
+          </button>
+        </div>
+        <div v-for="a in summonAttacks" :key="a.key" class="tile attack attack--summon">
+          <div class="attack__head">
+            <div class="stack" style="gap: 2px">
+              <strong style="font-size: 16px">{{ a.name }}</strong>
+              <span class="muted" style="font-size: 12px">{{ a.props }}</span>
+              <span class="boost">{{ a.cost }}</span>
+            </div>
+            <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
+          </div>
+          <button
+            type="button"
+            class="btn"
+            :disabled="!canEdit || !!a.why"
+            :title="a.why || undefined"
+            @click="a.run"
+          >
+            {{ a.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
           </button>
         </div>
       </div>
