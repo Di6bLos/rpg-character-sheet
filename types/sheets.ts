@@ -53,6 +53,22 @@ export interface InventoryItem {
   custom?: CustomItem
 }
 
+export type CustomItemEffectKind =
+  | 'hit'
+  | 'crit'
+  | 'condition'
+  | 'heal'
+  | 'resist'
+  | 'returning'
+  | 'light'
+
+export interface CustomItemEffect {
+  kind: CustomItemEffectKind
+  dice?: string
+  type?: string
+  condition?: string
+}
+
 export interface CustomItem {
   kind: 'weapon' | 'armor' | 'shield' | 'gear'
   dice?: string
@@ -62,6 +78,7 @@ export interface CustomItem {
   melee?: boolean
   armor?: string
   rarity?: string
+  effects?: CustomItemEffect[]
   desc?: string
 }
 
@@ -161,6 +178,8 @@ export interface NimbleAttack {
   dmg: string
   melee: boolean
   flat?: number
+  onHit?: string[]
+  onCrit?: string[]
 }
 
 export interface NimbleSummon {

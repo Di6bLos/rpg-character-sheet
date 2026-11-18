@@ -31,8 +31,6 @@ const PROPS: PropDef[] = [
   },
 ]
 
-const uid = useId()
-
 const state = computed(() =>
   PROPS.map((p) => {
     const m = p.read.exec(model.value ?? '')
@@ -61,75 +59,34 @@ function setValue(key: string, event: Event) {
 </script>
 
 <template>
-  <div class="wprops" role="group" :aria-labelledby="`${uid}-h`">
-    <span :id="`${uid}-h`" class="caps">Properties</span>
-    <div class="wprops__list">
-      <label v-for="p in state" :key="p.key" class="wprops__item" :class="{ on: p.on }">
-        <input
-          type="checkbox"
-          :checked="p.on"
-          @change="toggle(p.key, ($event.target as HTMLInputElement).checked)"
-        />
-        <span>{{ p.label }}</span>
-        <input
-          v-if="p.value !== undefined"
-          type="number"
-          class="input wprops__n"
-          min="1"
-          max="99"
-          :value="p.n"
-          :aria-label="`${p.label} ${p.key === 'load' ? 'actions' : 'spaces'}`"
-          @change="setValue(p.key, $event)"
-        />
-        <small v-if="p.key === 'load'">act.</small>
-      </label>
-    </div>
-  </div>
+  <UiCheckMenu label="Properties" :value="model ?? ''">
+    <label v-for="p in state" :key="p.key" class="check-menu__item" :class="{ on: p.on }">
+      <input
+        type="checkbox"
+        :checked="p.on"
+        @change="toggle(p.key, ($event.target as HTMLInputElement).checked)"
+      />
+      <span>{{ p.label }}</span>
+      <input
+        v-if="p.value !== undefined"
+        type="number"
+        class="input wprops__n"
+        min="1"
+        max="99"
+        :value="p.n"
+        :aria-label="`${p.label} ${p.key === 'load' ? 'actions' : 'spaces'}`"
+        @change="setValue(p.key, $event)"
+      />
+      <small v-if="p.value !== undefined">{{ p.key === 'load' ? 'actions' : 'spaces' }}</small>
+    </label>
+  </UiCheckMenu>
 </template>
 
 <style scoped lang="scss">
-.wprops {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.wprops__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.wprops__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-  font-size: 14px;
-  color: var(--page-soft);
-  cursor: pointer;
-
-  &.on {
-    border-color: var(--accent);
-    color: var(--page-text);
-  }
-
-  input[type='checkbox'] {
-    accent-color: var(--accent);
-  }
-
-  small {
-    font-size: 12px;
-    color: var(--page-muted);
-  }
-}
-
 .wprops__n {
-  width: 56px;
+  width: 64px;
   min-height: 30px;
-  padding: 2px 6px;
+  margin-left: auto;
+  padding: 2px 8px;
 }
 </style>

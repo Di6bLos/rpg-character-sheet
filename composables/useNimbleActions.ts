@@ -16,7 +16,7 @@ import {
   endEffects,
   setMalfunction,
 } from '~/utils/nimbleEffects'
-import { itemAttack } from '~/utils/nimbleItems'
+import { itemAttack, rollRiders } from '~/utils/nimbleItems'
 import {
   afterSummonedAttack,
   companionAttack,
@@ -190,6 +190,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             }
             if (judged) notes.push(`${expendJudgment(sheet.value)} Add it on a hit`)
             if (fury) notes.push(`add ${fury} Fury`)
+            if (w.onHit?.length) notes.push(`on a hit, add ${w.onHit.join(' + ')}`)
+            if (w.onCrit?.length) notes.push(`on a crit, add ${w.onCrit.join(' + ')}`)
             if (sneak)
               notes.push(`on a crit, add ${r?.roll}d${r?.die} Sneak Attack and mark it used`)
             const ended = endEffects(sheet.value, 'attack')
@@ -208,6 +210,10 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             result.total += fury
             result.bonus = fury
           }
+          const riders = result.miss
+            ? { total: 0, note: '' }
+            : rollRiders([...(w.onHit ?? []), ...(result.crit ? (w.onCrit ?? []) : [])])
+          result.total += riders.total
           const extra = resourceOnAttack(sheet.value, draft.value.level, w, result, ready.value)
           if (poweredBy(resource.value, w.props)) ready.value = 0
           const form = afterEffectAttack(sheet.value, draft.value.level, w.name, result)
@@ -223,7 +229,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             report(`${w.name}: miss (first die rolled a 1).${extra.note}${after}${dying}`)
           else
             report(
-              `${w.name}: ${result.total + extra.extra} damage${result.crit ? ' · critical!' : ''}${
+              `${w.name}: ${result.total + extra.extra} damage${riders.note}${result.crit ? ' · critical!' : ''}${
                 result.bonus
                   ? ` (incl. ${result.bonus} ${resource.value?.diceName.toLowerCase() || 'bonus'})`
                   : ''

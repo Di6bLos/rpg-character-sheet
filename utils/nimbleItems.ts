@@ -1,8 +1,15 @@
 import { classBySlug } from '~/data/nimble/classes'
 import { ARMOR, GEAR, WEAPONS, armorByName, gearByName, weaponByName } from '~/data/nimble/core'
 import { MAGIC_ITEMS, SCROLL_RULES, WAND_RULES, magicItemByName } from '~/data/nimble/items'
-import type { CustomItem, InventoryItem, NimbleAttack, NimbleSheet } from '~/types/sheets'
-import { parseDice, sign } from '~/utils/dice'
+import type {
+  CustomItem,
+  CustomItemEffect,
+  CustomItemEffectKind,
+  InventoryItem,
+  NimbleAttack,
+  NimbleSheet,
+} from '~/types/sheets'
+import { parseDice, rollDie, sign, type Rng } from '~/utils/dice'
 import { classMeleeDamage, weaponAttack } from '~/utils/nimbleBuild'
 
 export const SPELL_SCROLL = 'Spell Scroll'
@@ -73,6 +80,92 @@ export function bookItem(name: string): InventoryItem | null {
   return { name, qty: '1', ...(tag ? { tag } : {}) }
 }
 
+export const DAMAGE_TYPES = [
+  'Slashing',
+  'Piercing',
+  'Bludgeoning',
+  'Fire',
+  'Cold',
+  'Lightning',
+  'Radiant',
+  'Necrotic',
+  'Psychic',
+  'Poison',
+  'Acid',
+]
+
+export const ITEM_EFFECTS: {
+  kind: CustomItemEffectKind
+  label: string
+  weapon: boolean
+  dice?: string
+  type?: string
+  condition?: string
+}[] = [
+  { kind: 'hit', label: 'Extra damage on a hit', weapon: true, dice: '1d4', type: 'Fire' },
+  { kind: 'crit', label: 'Extra damage on a crit', weapon: true, dice: '1d6', type: 'Fire' },
+  { kind: 'condition', label: 'Condition on a crit', weapon: true, condition: 'Prone' },
+  { kind: 'heal', label: 'Heal on a hit', weapon: true, dice: '1d4' },
+  { kind: 'resist', label: 'Resistance', weapon: false, type: 'Fire' },
+  { kind: 'returning', label: 'Returns when thrown', weapon: true },
+  { kind: 'light', label: 'Sheds light', weapon: false },
+]
+
+export function itemEffectText(e: CustomItemEffect): string {
+  const type = e.type?.toLowerCase() ?? ''
+  switch (e.kind) {
+    case 'hit':
+      return `+${e.dice} ${type} damage on a hit`
+    case 'crit':
+      return `+${e.dice} ${type} damage on a crit`
+    case 'condition':
+      return `On a crit, the target is ${e.condition}`
+    case 'heal':
+      return `On a hit, heal ${e.dice} HP`
+    case 'resist':
+      return `Resistance to ${type} damage`
+    case 'returning':
+      return 'Returns to your hand after it is thrown'
+    case 'light':
+      return 'Sheds light 6 spaces around it'
+  }
+}
+
+export function rollRiders(
+  riders: string[],
+  rng: Rng = Math.random,
+): { total: number; note: string } {
+  let total = 0
+  const parts: string[] = []
+  for (const rider of riders) {
+    const [dice = '', ...type] = rider.split(' ')
+    const expr = parseDice(dice)
+    if (!expr) continue
+    let sum = expr.mod
+    for (let i = 0; i < expr.count; i++) sum += rollDie(expr.sides, rng)
+    total += sum
+    parts.push(`+${sum} ${type.join(' ')}`.trim())
+  }
+  return { total, note: parts.length ? ` (${parts.join(', ')})` : '' }
+}
+
+function cleanEffects(effects: CustomItemEffect[] | undefined): CustomItemEffect[] {
+  return (effects ?? []).flatMap((e) => {
+    const def = ITEM_EFFECTS.find((d) => d.kind === e.kind)
+    if (!def) return []
+    const dice = def.dice ? e.dice?.replace(/\s+/g, '') : undefined
+    if (def.dice && !parseDice(dice ?? '')) return []
+    return [
+      {
+        kind: e.kind,
+        ...(dice ? { dice } : {}),
+        ...(def.type ? { type: e.type || def.type } : {}),
+        ...(def.condition ? { condition: e.condition || def.condition } : {}),
+      },
+    ]
+  })
+}
+
 export function customItem(name: string, custom: CustomItem): InventoryItem | null {
   const label = name.trim().slice(0, 80)
   if (!label) return null
@@ -98,6 +191,10 @@ export function customItem(name: string, custom: CustomItem): InventoryItem | nu
   if ((custom.kind === 'armor' || custom.kind === 'shield') && custom.armor?.trim())
     clean.armor = custom.armor.trim()
   if (custom.rarity?.trim()) clean.rarity = custom.rarity.trim()
+  const effects = cleanEffects(custom.effects).filter(
+    (e) => custom.kind === 'weapon' || !ITEM_EFFECTS.find((d) => d.kind === e.kind)?.weapon,
+  )
+  if (effects.length) clean.effects = effects
   if (custom.desc?.trim()) clean.desc = custom.desc.trim().slice(0, 500)
   return { name: label, qty: '1', ...(tag ? { tag } : {}), custom: clean }
 }
@@ -115,11 +212,26 @@ export function itemAttack(
   if (!expr) return null
   const melee = c.melee ?? true
   const mod = sheet.stats[c.stat ?? 'STR'] + (melee ? meleeBonus : 0) + expr.mod
+  const riders = (kind: CustomItemEffectKind) =>
+    (c.effects ?? [])
+      .filter((e) => e.kind === kind && e.dice)
+      .map((e) => `${e.dice} ${e.type?.toLowerCase() ?? ''}`.trim())
+  const onHit = riders('hit')
+  const onCrit = riders('crit')
   return {
     name: item.name,
-    props: [c.damageType, c.props, c.rarity ? `${c.rarity} magic` : ''].filter(Boolean).join(', '),
+    props: [
+      c.damageType,
+      c.props,
+      c.rarity ? `${c.rarity} magic` : '',
+      ...(c.effects ?? []).map(itemEffectText),
+    ]
+      .filter(Boolean)
+      .join(', '),
     dmg: mod ? `${expr.count}d${expr.sides}${sign(mod)}` : `${expr.count}d${expr.sides}`,
     melee,
+    ...(onHit.length ? { onHit } : {}),
+    ...(onCrit.length ? { onCrit } : {}),
   }
 }
 
@@ -199,6 +311,7 @@ export function itemSummary(sheet: NimbleSheet, item: InventoryItem, level: numb
   }
   if (item.name === SPELL_SCROLL) lines.push(SCROLL_RULES)
   if (c?.rarity && !attack) lines.push(`${c.rarity} magic item`)
+  if (c?.effects?.length && !attack) lines.push(c.effects.map(itemEffectText).join('. '))
   if (c?.desc) lines.push(c.desc)
   const gear = gearByName(item.name)
   if (gear) lines.push(gear.desc)
