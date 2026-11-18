@@ -119,13 +119,9 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
         </div>
       </div>
 
-      <div v-if="mine.length || !abilities.length" class="stack" style="gap: 8px">
+      <div v-if="mine.length" class="stack" style="gap: 8px">
         <div class="caps">Limited-use abilities</div>
         <NimbleAbilityCounters :items="mine" />
-        <p v-if="!mine.length" class="empty">
-          Nothing to count yet. Abilities with limited uses per turn, encounter or Safe Rest appear
-          here; the rest are under All abilities.
-        </p>
       </div>
     </section>
   </div>
