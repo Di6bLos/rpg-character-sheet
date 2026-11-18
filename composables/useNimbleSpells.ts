@@ -29,7 +29,7 @@ import {
 } from '~/utils/nimblePlay'
 import { endEffects } from '~/utils/nimbleEffects'
 import { rollSpellDamage, spellDamage } from '~/utils/nimbleSpellDamage'
-import { conditionMods, oddsReasons } from '~/utils/nimbleConditions'
+import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
 import { parseDice } from '~/utils/dice'
 import {
   armorDice,
@@ -326,8 +326,10 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     if (progress) notes.push(progress)
     if (/\b1\/turn\b/.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
     if (roll) notes.push(damageNote(s))
-    if (sheet.value.turnActive && spellDamage(sheet.value, draft.value.level, s, s.at))
-      sheet.value.rushed += 1
+    if (spellDamage(sheet.value, draft.value.level, s, s.at)) {
+      if (sheet.value.turnActive) sheet.value.rushed += 1
+      notes.push(spendHelp(sheet.value).trim())
+    }
     if (sheet.value.dying) notes.push('Dying: DC 10 STR save or take 1 Wound.')
     if (/\bdamage\b/i.test(s.desc)) notes.push(endEffects(sheet.value, 'attack').trim())
     notes.push(endEffects(sheet.value, 'spell').trim())

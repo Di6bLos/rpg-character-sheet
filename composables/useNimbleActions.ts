@@ -18,7 +18,7 @@ import {
   setMalfunction,
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
-import { conditionMods, oddsReasons } from '~/utils/nimbleConditions'
+import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
 import {
   armorDice,
   armorDiceWhy,
@@ -273,14 +273,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         nextAttack.value = { ...NO_NEXT }
         if (has(/\bGain advantage on the first attack you make each encounter\b/))
           sheet.value.uses['Ambusher@encounter'] = { used: 1 }
+        const help = spendHelp(sheet.value)
         return sheet.value.ownDice
-          ? ''
-          : afterAttack(sheet.value, draft.value.level, {
-              melee: w.melee,
-              miss,
-              crit,
-              quarry: hasMark.value && !!quarry.value,
-            })
+          ? help
+          : help +
+              afterAttack(sheet.value, draft.value.level, {
+                melee: w.melee,
+                miss,
+                crit,
+                quarry: hasMark.value && !!quarry.value,
+              })
       }
       return {
         name: w.name,
@@ -715,8 +717,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       odds,
       attack ? armorFor({}) : { armor: 'none' },
     )
-    if (attack && line) sheet.value.rushed += 1
-    return line
+    if (!attack || !line) return line
+    sheet.value.rushed += 1
+    return line + spendHelp(sheet.value)
   }
 
   function freeAttack(source: string): string {
@@ -1082,12 +1085,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       armorFor({ lighter: invention?.use === 'blade' }),
     )
     if (!message) return
+    let help = ''
     if (actions && !/inoperable|needs at least/.test(message)) {
       spendActions(sheet.value, actions)
-      if (invention?.use === 'blade' || invention?.use === 'cannon') sheet.value.rushed += 1
+      if (invention?.use === 'blade' || invention?.use === 'cannon') {
+        sheet.value.rushed += 1
+        help = spendHelp(sheet.value)
+      }
       ready.value = 0
     } else if (!/inoperable|needs at least/.test(message)) ready.value = 0
-    report(message)
+    report(message + help)
   }
 
   function setZealot(n: number) {
