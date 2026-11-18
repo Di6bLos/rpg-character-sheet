@@ -79,6 +79,9 @@ const {
   cast,
   reactionSpells,
   spellAttacks,
+  spellAttackTiers,
+  maxTier,
+  setUpcast,
   pool: spellPool,
 } = useNimbleSpells({ onResult: announce })
 const {
@@ -269,6 +272,13 @@ const effectRows = computed(() =>
     <header class="apm__head">
       <div class="apm__who">
         <strong>{{ draft.name }}</strong>
+        <UiSwitch
+          :model-value="sheet.ownDice"
+          label="I roll my own dice"
+          :disabled="!canEdit"
+          class="apm__own"
+          @update:model-value="setOwnDice"
+        />
       </div>
       <NuxtLink
         :to="sheetLink"
@@ -469,13 +479,6 @@ const effectRows = computed(() =>
       :disabled="!canEdit"
       @submit="startEncounter"
     />
-    <UiSwitch
-      :model-value="sheet.ownDice"
-      label="I roll my own dice"
-      :disabled="!canEdit"
-      class="apm__own"
-      @update:model-value="setOwnDice"
-    />
 
     <p class="apm__result" :class="{ 'apm__result--empty': !lastRoll }" role="status">
       <span :key="seq">{{ lastRoll }}</span>
@@ -570,21 +573,55 @@ const effectRows = computed(() =>
             </span>
           </button>
         </li>
-        <li v-for="a in spellAttacks" :key="a.key">
-          <button
-            type="button"
-            class="apm__row"
-            :aria-disabled="!canEdit || !!a.why || undefined"
-            :aria-label="`Cast ${a.name}, ${a.dmg}, ${a.cost}${a.why ? `. ${a.why}` : ''}`"
-            :title="a.props"
-            @click="canEdit && !a.why && a.run()"
-          >
-            <span class="apm__name">{{ a.name }}</span>
-            <span class="apm__tag">{{ a.dmg }}</span>
-            <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
-              {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
-            </span>
-          </button>
+        <li v-if="spellAttacks.length">
+          <details class="apm__spell apm__spells">
+            <summary class="apm__row">
+              <span class="apm__name">Spells</span>
+              <span class="apm__tag">{{ spellAttacks.length }}</span>
+              <span v-if="spellPool" class="apm__sub" :class="{ 'apm__sub--warn': spellPool.low }">
+                {{ spellPool.label }} {{ spellPool.value }}
+              </span>
+            </summary>
+            <details v-for="g in spellAttackTiers" :key="g.tier" class="apm__spell apm__tier" open>
+              <summary class="apm__caps">{{ g.label }}</summary>
+              <ul class="apm__list">
+                <li v-for="a in g.spells" :key="a.key">
+                  <details class="apm__spell">
+                    <summary class="apm__row">
+                      <span class="apm__name">{{ a.name }}</span>
+                      <span class="apm__tag">{{ a.dmg }}</span>
+                      <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
+                        {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
+                      </span>
+                    </summary>
+                    <div class="apm__spell-body">
+                      <small>{{ a.props }}</small>
+                      <NimbleModifiers :target="a.name" />
+                      <NimbleUpcast
+                        v-if="a.spell.canUpcast"
+                        :name="a.name"
+                        :tier="a.spell.tier"
+                        :at="a.spell.at"
+                        :max="maxTier"
+                        :price="a.price"
+                        :disabled="!canEdit"
+                        @set="setUpcast(a.spell, $event)"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn--sm btn--wrap"
+                        :disabled="!canEdit || !!a.why"
+                        :title="a.why || undefined"
+                        @click="a.run()"
+                      >
+                        {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll') }}
+                      </button>
+                    </div>
+                  </details>
+                </li>
+              </ul>
+            </details>
+          </details>
         </li>
         <li v-for="a in attackAbilities" :key="a.key">
           <button
@@ -1013,6 +1050,16 @@ const effectRows = computed(() =>
                 <small>{{ s.cast }}</small>
                 <p>{{ s.desc }}</p>
                 <NimbleModifiers :target="s.name" />
+                <NimbleUpcast
+                  v-if="s.canUpcast"
+                  :name="s.name"
+                  :tier="s.tier"
+                  :at="s.at"
+                  :max="maxTier"
+                  :price="s.cost"
+                  :disabled="!canEdit"
+                  @set="setUpcast(s, $event)"
+                />
                 <div class="row" style="gap: 6px; flex-wrap: wrap">
                   <button
                     type="button"
@@ -1299,6 +1346,15 @@ const effectRows = computed(() =>
   }
 }
 
+.apm__tier {
+  margin: 4px 0 0 8px;
+
+  > summary {
+    padding: 2px 0;
+    cursor: pointer;
+  }
+}
+
 .apm__spell-body {
   display: flex;
   flex-direction: column;
@@ -1453,8 +1509,15 @@ const effectRows = computed(() =>
 }
 
 .apm__own {
-  min-height: 36px;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 28px;
   font-size: 12px;
+  color: var(--page-muted);
+
+  :deep(.switch__label) {
+    white-space: nowrap;
+  }
 }
 
 .apm__menu--off {

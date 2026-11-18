@@ -9,8 +9,14 @@ import { knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
 import { hasTransforms } from '~/utils/nimbleEffects'
 import { availableSummons } from '~/utils/nimbleSummons'
 
-const { draft } = useSheet<NimbleSheet>()
+const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
+const ownDice = computed({
+  get: () => sheet.value.ownDice,
+  set: (on: boolean) => {
+    if (canEdit.value) sheet.value.ownDice = on
+  },
+})
 
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
 
@@ -76,6 +82,12 @@ const skills = computed(() =>
           <span class="small muted"><SheetCampaignLink /></span>
         </div>
         <h1>{{ draft.name }}</h1>
+        <UiSwitch
+          v-model="ownDice"
+          label="I roll my own dice (the app only checks things off)"
+          :disabled="!canEdit"
+          class="own-dice"
+        />
         <div class="identity__line">
           <span
             >Level <strong>{{ draft.level }}</strong></span
@@ -150,6 +162,14 @@ const skills = computed(() =>
 </template>
 
 <style scoped lang="scss">
+.own-dice {
+  justify-content: flex-start;
+  gap: 10px;
+  align-self: flex-start;
+  font-size: 13px;
+  color: var(--page-soft);
+}
+
 .identity {
   display: flex;
   flex-wrap: wrap;

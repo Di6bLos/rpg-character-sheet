@@ -27,7 +27,15 @@ const {
   resource,
 } = useNimbleActions()
 const { summonAttacks } = useNimbleSummons()
-const { reactionSpells, spellAttacks, cast, pool } = useNimbleSpells()
+const {
+  reactionSpells,
+  spellAttacks,
+  spellAttackTiers: spellTiers,
+  cast,
+  pool,
+  maxTier,
+  setUpcast,
+} = useNimbleSpells()
 
 const mine = computed(() =>
   abilities.value.filter((a) => !a.linked && !a.companion && !attackAbilityKeys.value.has(a.key)),
@@ -233,28 +241,41 @@ const hasAttacks = computed(
               >{{ pool.label }} {{ pool.value }}</span
             >
           </summary>
-          <div class="attacks">
-            <div v-for="a in spellAttacks" :key="a.key" class="tile attack attack--spell">
-              <div class="attack__head">
-                <div class="stack" style="gap: 2px">
-                  <strong style="font-size: 16px">{{ a.name }}</strong>
-                  <span class="muted" style="font-size: 12px">{{ a.props }}</span>
-                  <span class="boost">{{ a.cost }}</span>
+          <details v-for="g in spellTiers" :key="g.tier" class="atk-tier" open>
+            <summary class="caps">{{ g.label }}</summary>
+            <div class="attacks">
+              <div v-for="a in g.spells" :key="a.key" class="tile attack attack--spell">
+                <div class="attack__head">
+                  <div class="stack" style="gap: 2px">
+                    <strong style="font-size: 16px">{{ a.name }}</strong>
+                    <span class="muted" style="font-size: 12px">{{ a.props }}</span>
+                    <span class="boost">{{ a.cost }}</span>
+                  </div>
+                  <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
                 </div>
-                <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
+                <NimbleModifiers :target="a.name" />
+                <NimbleUpcast
+                  v-if="a.spell.canUpcast"
+                  :name="a.name"
+                  :tier="a.spell.tier"
+                  :at="a.spell.at"
+                  :max="maxTier"
+                  :price="a.price"
+                  :disabled="!canEdit"
+                  @set="setUpcast(a.spell, $event)"
+                />
+                <button
+                  type="button"
+                  class="btn btn--wrap"
+                  :disabled="!canEdit || !!a.why"
+                  :title="a.why || undefined"
+                  @click="a.run"
+                >
+                  {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll') }}
+                </button>
               </div>
-              <NimbleModifiers :target="a.name" />
-              <button
-                type="button"
-                class="btn btn--wrap"
-                :disabled="!canEdit || !!a.why"
-                :title="a.why || undefined"
-                @click="a.run"
-              >
-                {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll') }}
-              </button>
             </div>
-          </div>
+          </details>
         </details>
         <details v-if="attackAbilities.length || summonAttacks.length" class="atk-group" open>
           <summary>
@@ -431,6 +452,45 @@ const hasAttacks = computed(
 
   .badge--low {
     color: var(--danger);
+  }
+}
+
+.atk-tier {
+  margin-left: 2px;
+
+  & + & {
+    margin-top: 10px;
+  }
+
+  > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--page-muted);
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: '▾';
+      margin-left: auto;
+      font-size: 11px;
+      letter-spacing: normal;
+      color: var(--accent-text);
+    }
+  }
+
+  &[open] > summary {
+    margin-bottom: 8px;
+
+    &::after {
+      content: '▴';
+    }
   }
 }
 

@@ -393,13 +393,32 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
             ]
               .filter(Boolean)
               .join(' · '),
-            cost: `${s.tier === 0 ? 'Cantrip' : `Tier ${s.at}`} · ${s.cost} · ${s.actions} action${s.actions === 1 ? '' : 's'}`,
+            tier: s.tier,
+            price: s.cost,
+            cost: [
+              `${s.actions} action${s.actions === 1 ? '' : 's'}`,
+              s.at > s.tier || s.discount
+                ? `${s.cost}${s.at > s.tier ? ` (tier ${s.at})` : ''}`
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' · '),
             why,
             spell: s,
             run: () => cast(s, false, undefined, true),
           },
         ]
       }),
+  )
+
+  const spellAttackTiers = computed(() =>
+    [...new Set(spellAttacks.value.map((a) => a.tier))]
+      .sort((a, b) => a - b)
+      .map((tier) => ({
+        tier,
+        label: tiers.value.find((g) => g.tier === tier)?.label ?? `Tier ${tier}`,
+        spells: spellAttacks.value.filter((a) => a.tier === tier),
+      })),
   )
 
   /** Spells cast as a reaction ("Reaction: When attacked…"), offered beside the reactions. */
@@ -449,6 +468,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     tiers,
     reactionSpells,
     spellAttacks,
+    spellAttackTiers,
     pool,
     help,
     setUpcast,

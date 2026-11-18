@@ -59,13 +59,6 @@ function finishTurn() {
 function startEncounter(values?: number[]) {
   if (canEdit.value) say(newEncounter(sheet.value, draft.value.level, Math.random, values?.[0]))
 }
-
-const ownDice = computed({
-  get: () => sheet.value.ownDice,
-  set: (on: boolean) => {
-    if (canEdit.value) sheet.value.ownDice = on
-  },
-})
 </script>
 
 <template>
@@ -188,11 +181,6 @@ const ownDice = computed({
       action="New encounter"
       :disabled="!canEdit"
       @submit="startEncounter"
-    />
-    <UiSwitch
-      v-model="ownDice"
-      label="I roll my own dice (the app only checks things off)"
-      :disabled="!canEdit"
     />
   </section>
 </template>
