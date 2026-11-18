@@ -151,6 +151,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               ? `Judgment +${held.value} radiant`
               : sneak,
         rushed,
+        poweredBy: poweredBy(r, w.props),
         blocked: left.value === 0 && prepaid.value === 0,
         roll: () => {
           if (!canEdit.value) return
