@@ -21,6 +21,7 @@ const { theme } = useTheme()
 const { draft, dirty, saving, save, canEdit } = provideSheetEditor(props.character, {
   canEdit: props.canEdit,
   campaignName: props.campaignName,
+  campaignId: props.campaignId,
 })
 
 const editing = ref(false)

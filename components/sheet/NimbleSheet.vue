@@ -9,7 +9,7 @@ import { knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
 import { hasTransforms } from '~/utils/nimbleEffects'
 import { availableSummons } from '~/utils/nimbleSummons'
 
-const { draft, campaignName } = useSheet<NimbleSheet>()
+const { draft } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
@@ -73,7 +73,7 @@ const skills = computed(() =>
       <div class="stack" style="gap: 8px">
         <div class="row" style="gap: 10px">
           <span class="badge badge--nimble">Nimble</span>
-          <span class="small muted">{{ campaignName }}</span>
+          <span class="small muted"><SheetCampaignLink /></span>
         </div>
         <h1>{{ draft.name }}</h1>
         <div class="identity__line">

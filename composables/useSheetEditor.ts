@@ -11,6 +11,7 @@ export interface SheetEditor<T extends AnySheet = AnySheet> {
   saving: Ref<boolean>
   lastRoll: Ref<string>
   campaignName: Ref<string>
+  campaignId: Ref<string | null>
   portrait: Ref<string | null>
   uploadingPortrait: Ref<boolean>
   hpPct: Ref<number>
@@ -37,7 +38,7 @@ const AUTOSAVE_MS = 1500
 /** Creates and provides the editing state for one character sheet page. */
 export function provideSheetEditor(
   source: Character<AnySheet>,
-  options: { canEdit: boolean; campaignName: string },
+  options: { canEdit: boolean; campaignName: string; campaignId?: string | null },
 ): SheetEditor {
   const store = useCharacterStore()
   const snackbar = useSnackbarStore()
@@ -48,6 +49,7 @@ export function provideSheetEditor(
   const saving = ref(false)
   const lastRoll = ref('')
   const campaignName = ref(options.campaignName)
+  const campaignId = ref(options.campaignId ?? null)
   const uploadingPortrait = ref(false)
   let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -163,6 +165,7 @@ export function provideSheetEditor(
     saving,
     lastRoll,
     campaignName,
+    campaignId,
     uploadingPortrait,
     portrait: computed(() => {
       const override = (draft.value.sheet as { portraitOverride?: string }).portraitOverride
