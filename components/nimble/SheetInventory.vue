@@ -242,14 +242,7 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
                 placeholder="Slashing"
                 maxlength="30"
             /></label>
-            <label class="field custom__wide"
-              ><span class="caps">Properties</span
-              ><input
-                v-model="draftItem.props"
-                class="input"
-                placeholder="2-handed, Reach 2, Thrown 4, Range 12, Light, Vicious, Load: 1 action"
-                maxlength="120"
-            /></label>
+            <NimbleWeaponProps v-model="draftItem.props" class="field custom__wide" />
           </div>
           <div v-else-if="draftItem.kind !== 'gear'" class="custom__row">
             <label class="field"
