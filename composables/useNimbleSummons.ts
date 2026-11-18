@@ -132,21 +132,11 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
     }[] = []
     if (minions.value) {
       const stats = summonStats(sheet.value, level.value, summonById('shadow-minion')!)
-      const who = groups.value
-        .filter(
-          (g) => g.id === 'shadow-minion' || g.id === 'favored-pet' || g.id === 'greater-shadow',
-        )
-        .map((g) => {
-          const first = g.members[0]?.name ?? g.name
-          return g.members.length > 1
-            ? `${first.replace(/ [A-Z]$/, '')} ×${g.members.length}`
-            : first
-        })
-        .join(' · ')
+      const custom = sheet.value.summonLooks['shadow-minion']?.name
       out.push({
         key: 'minions',
-        name: 'Command minions',
-        who,
+        name: `Command ${custom || 'shadow minions'}`,
+        who: '',
         summon: 'shadow-minion',
         dmg: `${minions.value}× 1d${stats.die}`,
         props: `${stats.damageType} · each moves 6 then attacks · Reach ${stats.reach} · a 1 misses, no crits`,
