@@ -55,9 +55,11 @@ export function summonStats(sheet: NimbleSheet, level: number, def: SummonDef): 
   const active = mods(sheet, def)
   const first = Number(/^\d*d(\d+)/.exec(def.attack?.dice ?? '')?.[1] ?? 0)
   const highLevelReach = def.id === 'shadow-minion' ? Math.floor(level / 5) : 0
+  // A favored pet is one of your shadow minions, so it takes one of their places.
+  const pets = sheet.summons.filter((s) => summonById(s.def)?.minionOf === def.id).length
   const cap =
     def.cap === 'int-or-lvl'
-      ? Math.max(0, Math.min(sheet.stats.INT, level))
+      ? Math.max(0, Math.min(sheet.stats.INT, level) - pets)
       : (def.cap ?? Number.POSITIVE_INFINITY)
   return {
     def,

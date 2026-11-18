@@ -292,6 +292,14 @@ describe('class options on summons', () => {
     expect(summonOptions(sheet, 'shadow-minion')).toEqual([])
   })
 
+  it('counts the favored pet against the shadow minion cap', () => {
+    const sheet = shadowmancer(['My Favored Pet'], 3)
+    syncCompanions(sheet)
+    expect(addSummon(sheet, 5, 'shadow-minion', { count: 5 })).toBe(
+      '2 shadow minions summoned (2/2).',
+    )
+  })
+
   it('sacrifices the favored pet like any shadow minion', () => {
     const sheet = shadowmancer(['My Favored Pet', 'Martyr Spawn'])
     syncCompanions(sheet)
