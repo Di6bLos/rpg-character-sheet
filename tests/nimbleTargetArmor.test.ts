@@ -56,6 +56,7 @@ describe('target armor (Core p. 14)', () => {
     expect(armorDice('2×(2d4+3)', { armor: 'heavy', lighter: true })).toBe('2×(2d4)')
     expect(armorDice('1d8+3', { armor: 'medium' }, 5)).toBe('1d8+5')
     expect(armorDice('1d8', { armor: 'heavy', ignore: 'ignores armor' })).toBe('')
+    expect(armorDice('3× 1d6', { armor: 'heavy' })).toBe('3×½(1d6)')
   })
 
   it('tells players who roll their own dice what counts', () => {

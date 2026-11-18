@@ -42,8 +42,11 @@ watch(
     if ((before === mine && now !== mine) || again)
       if (sheet.turnActive) editor.say(endTurn(sheet, level))
     if (wrapped && sheet.inEncounter) editor.say(newRound(sheet, level))
-    if (now === mine && (now !== before || again) && !sheet.turnActive)
-      editor.say(startTurn(sheet, level))
+    // Roll Initiative first: it sets the starting actions, which Start turn then uses.
+    if (now === mine && (now !== before || again) && !sheet.turnActive) {
+      if (sheet.awaitingInitiative) editor.say('Your turn: roll Initiative, then Start turn.')
+      else editor.say(startTurn(sheet, level))
+    }
   },
 )
 
