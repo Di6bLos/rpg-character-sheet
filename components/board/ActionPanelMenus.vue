@@ -279,6 +279,7 @@ const effectRows = computed(() =>
         <UiSwitch
           :model-value="sheet.ownDice"
           label="I roll my own dice"
+          small
           :disabled="!canEdit"
           class="apm__own"
           @update:model-value="setOwnDice"
