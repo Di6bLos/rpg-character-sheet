@@ -440,6 +440,12 @@ const effectRows = computed(() =>
           ? `${actionsNow} left (${actionsNow - perTurn} extra)`
           : `${actionsNow} of ${perTurn} left`
       }}</strong>
+      <small
+        v-if="sheet.inEncounter && sheet.initiative != null"
+        class="apm__init"
+        title="Your Initiative this encounter"
+        >Init {{ sheet.initiative }}</small
+      >
     </div>
     <div class="apm__steps">
       <button
@@ -1507,6 +1513,13 @@ const effectRows = computed(() =>
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--page-muted);
+}
+
+.apm__init {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--page-soft);
+  white-space: nowrap;
 }
 
 .apm__situation {

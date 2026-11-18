@@ -41,6 +41,7 @@ const PLAY_STATE = new Set([
   'inEncounter',
   'turnDone',
   'awaitingInitiative',
+  'initiative',
   'effects',
   'languages',
   'heightWeight',
