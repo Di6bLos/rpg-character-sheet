@@ -28,7 +28,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             <div class="stack" style="gap: 2px">
               <strong style="font-size: 16px">{{ w.name }}</strong>
               <span class="muted" style="font-size: 12px">{{ w.props }}</span>
-              <NimbleModifiers :target="w.name" />
+              <NimbleModifiers :target="w.name" :weapon="w.props" />
               <span v-if="w.boost" class="boost">{{ w.boost }}</span>
             </div>
             <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>

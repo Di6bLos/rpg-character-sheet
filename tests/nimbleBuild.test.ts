@@ -23,6 +23,7 @@ import {
   sheetResource,
   subclassChangeChoices,
   abilityModifiers,
+  weaponAliases,
 } from '../utils/nimbleBuild'
 import { restoreLevel } from '../utils/levelHistory'
 import { abilityCounters } from '../utils/nimblePlay'
@@ -812,6 +813,17 @@ describe('ability upgrades', () => {
       'Shadow Spear',
       'Reap',
     ])
+  })
+
+  it('lists Weapon Mastery on the attacks of its damage type', () => {
+    const sheet = sheetWith([
+      ['Slashing Mastery', 'Your attacks with slashing weapons cannot miss unarmored enemies.'],
+      ['Piercing Mastery', 'Your attacks with piercing weapons ignore Medium Armor.'],
+    ])
+    const names = (props: string) =>
+      abilityModifiers(sheet, 'Longsword', weaponAliases(props)).map((m) => m.name)
+    expect(names('Slashing, 2-handed')).toEqual(['Slashing Mastery'])
+    expect(names('Bludgeoning')).toEqual([])
   })
 
   it('lists named upgrade options and orders another ability empowers', () => {

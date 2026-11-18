@@ -1137,6 +1137,16 @@ export function abilityModifiers(
   return [...found].map(([name, text]) => ({ name, text }))
 }
 
+/** How abilities refer to a weapon by its damage type ("slashing weapons", "all weapon types"). */
+export function weaponAliases(props: string): string[] {
+  return [
+    ...['slashing', 'bludgeoning', 'piercing']
+      .filter((t) => new RegExp(`\\b${t}\\b`, 'i').test(props))
+      .flatMap((t) => [`${t} weapon`, `${t} weapons`]),
+    'all weapon types',
+  ]
+}
+
 export interface SummonChoice {
   held: string
   options: { name: string; level: number }[]

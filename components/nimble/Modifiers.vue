@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import type { NimbleSheet } from '~/types/sheets'
-import { abilityModifiers } from '~/utils/nimbleBuild'
+import { abilityModifiers, weaponAliases } from '~/utils/nimbleBuild'
 import { summonModifiers } from '~/utils/nimbleSummons'
 
-const props = defineProps<{ target?: string; summon?: string }>()
+const props = defineProps<{ target?: string; summon?: string; weapon?: string }>()
 
 const { draft } = useSheet<NimbleSheet>()
 const mods = computed(() =>
   props.summon
     ? summonModifiers(draft.value.sheet, props.summon)
-    : abilityModifiers(draft.value.sheet, props.target ?? ''),
+    : abilityModifiers(
+        draft.value.sheet,
+        props.target ?? '',
+        props.weapon !== undefined ? weaponAliases(props.weapon) : [],
+      ),
 )
 </script>
 
