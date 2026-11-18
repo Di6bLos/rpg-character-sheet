@@ -29,11 +29,11 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             <div class="stack" style="gap: 2px">
               <strong style="font-size: 16px">{{ w.name }}</strong>
               <span class="muted" style="font-size: 12px">{{ w.props }}</span>
-              <NimbleModifiers :target="w.name" :weapon="w.props" />
               <span v-if="w.boost" class="boost">{{ w.boost }}</span>
             </div>
             <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
           </div>
+          <NimbleModifiers :target="w.name" :weapon="w.props" />
           <button
             type="button"
             class="btn"
@@ -52,10 +52,10 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
               <span v-if="a.who" class="attack__who">{{ a.who }}</span>
               <span class="muted" style="font-size: 12px">{{ a.props }}</span>
               <span class="boost">{{ a.cost }}</span>
-              <NimbleModifiers :summon="a.summon" />
             </div>
             <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
           </div>
+          <NimbleModifiers :summon="a.summon" />
           <button
             type="button"
             class="btn"
