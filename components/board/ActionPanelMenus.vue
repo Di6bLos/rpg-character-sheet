@@ -514,6 +514,7 @@ const effectRows = computed(() =>
           prepaid > 0 ? 'Paid' : actionsNow === 0 ? 'No actions left' : attacks.length
         }}</small>
       </summary>
+      <NimbleAttackSituation class="apm__situation" />
       <ul
         v-if="
           attacks.length ||
@@ -531,6 +532,7 @@ const effectRows = computed(() =>
             :aria-disabled="!canEdit || w.blocked || undefined"
             :aria-label="`${sheet.ownDice ? 'Attack: ' : ''}${w.name}, ${w.dmg} damage${w.rushed ? `, ${w.rushed}× disadvantage` : ''}${w.blocked ? '. No actions left' : ''}`"
             :aria-describedby="w.props ? `${uid}-w${i}` : undefined"
+            :title="w.oddsWhy || undefined"
             @click="canEdit && !w.blocked && w.roll()"
           >
             <span class="apm__name">{{ w.name }}</span>
@@ -614,7 +616,7 @@ const effectRows = computed(() =>
                         type="button"
                         class="btn btn--sm btn--wrap"
                         :disabled="!canEdit || !!a.why"
-                        :title="a.why || undefined"
+                        :title="a.why || a.oddsWhy || undefined"
                         @click="a.run()"
                       >
                         {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll')
@@ -1428,6 +1430,10 @@ const effectRows = computed(() =>
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--page-muted);
+}
+
+.apm__situation {
+  padding: 4px 8px 6px;
 }
 
 .apm__list {

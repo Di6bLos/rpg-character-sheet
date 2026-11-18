@@ -84,6 +84,7 @@ const hasAttacks = computed(
         {{ q.label }}
       </button>
     </div>
+    <NimbleAttackSituation />
     <template v-if="hasAttacks">
       <details v-if="attacks.length || inventionAttacks.length" class="atk-group" open>
         <summary>
@@ -97,6 +98,7 @@ const hasAttacks = computed(
                 <strong style="font-size: 16px">{{ w.name }}</strong>
                 <span class="muted" style="font-size: 12px">{{ w.props }}</span>
                 <span v-if="w.boost" class="boost">{{ w.boost }}</span>
+                <NimbleOdds :rushed="w.rushed" :advantage="w.advantage" :why="w.oddsWhy" />
               </div>
               <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
             </div>
@@ -152,7 +154,7 @@ const hasAttacks = computed(
               type="button"
               class="btn"
               :disabled="!canEdit || w.blocked"
-              :title="w.why || undefined"
+              :title="w.why || w.oddsWhy || undefined"
               @click="claim(`w:${i}`, w.roll)"
             >
               <template v-if="w.blocked">{{ w.why }}</template>
@@ -239,6 +241,12 @@ const hasAttacks = computed(
                   <strong style="font-size: 16px">{{ a.name }}</strong>
                   <span class="muted" style="font-size: 12px">{{ a.props }}</span>
                   <span class="boost">{{ a.cost }}</span>
+                  <NimbleOdds
+                    v-if="!a.why"
+                    :rushed="a.rushed"
+                    :advantage="a.advantage"
+                    :why="a.oddsWhy"
+                  />
                 </div>
                 <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
               </div>
@@ -257,7 +265,7 @@ const hasAttacks = computed(
                 type="button"
                 class="btn btn--wrap"
                 :disabled="!canEdit || !!a.why"
-                :title="a.why || undefined"
+                :title="a.why || a.oddsWhy || undefined"
                 @click="claim(a.key, a.run)"
               >
                 {{ a.why || (sheet.ownDice ? 'Cast' : 'Cast · Roll')

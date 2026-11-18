@@ -17,7 +17,7 @@ import {
   setMalfunction,
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
-import { conditionMods } from '~/utils/nimbleConditions'
+import { conditionMods, oddsReasons } from '~/utils/nimbleConditions'
 import {
   afterSummonedAttack,
   companionAttack,
@@ -130,6 +130,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const prepaid = useState(`nimble-prepaid-${draft.value.id}`, () => 0)
   const paidUses = useState<string[]>(`nimble-paid-uses-${draft.value.id}`, () => [])
   const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
+  const situation = useAttackSituation()
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
@@ -137,6 +138,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         prepaid.value = 0
         paidUses.value = []
         opportunity.value = false
+        situation.value = []
         nextAttack.value = { flat: 0, clean: false, note: '' }
       }
     },
@@ -164,7 +166,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const NO_ACTIONS = 'No actions left: they come back when your turn ends.'
   const NOT_TURN = 'Not your turn'
   const offTurn = computed(() => !sheet.value.turnActive)
-  const cond = computed(() => conditionMods(sheet.value))
+  const cond = computed(() => conditionMods(sheet.value, situation.value))
 
   function report(message: string) {
     say(message)
@@ -264,19 +266,14 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           (flat ? ` +${flat}` : '') +
           (zealDamage ? ` +${zealDamage}` : ''),
         boost: [
-          oa
-            ? oaDisadvantage
-              ? 'Opportunity Attack: +1 disadvantage'
-              : 'Opportunity Attack (no disadvantage: Opportunistic Frenzy)'
-            : '',
+          oa && !oaDisadvantage ? 'Opportunity Attack (no disadvantage: Opportunistic Frenzy)' : '',
           note,
           ...bonus.notes,
           ...situational,
-          ...cond.value.notes,
-          ...cond.value.hints,
         ]
           .filter(Boolean)
           .join(' · '),
+        oddsWhy: oddsReasons(rushed, cond.value, oaDisadvantage ? 'Opportunity Attack' : ''),
         zealot: zealous,
         melee: w.melee,
         rushed: Math.max(0, odds),

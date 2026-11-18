@@ -38,8 +38,16 @@ export const END_LABELS: Record<ConditionEnd | 'manual', string> = {
 const INCAPACITATED = ['Incapacitated', 'Petrified', 'Stunned', 'Paralyzed', 'Unconscious']
 const ATTACK_DISADVANTAGE = ['Blinded', 'Prone', 'Poisoned']
 
+/** Conditions whose attack disadvantage depends on the target; the player says when they apply. */
+export const SITUATIONAL = [
+  { name: 'Taunted', when: 'not your taunter', hint: 'disadvantage except vs. your taunter' },
+  { name: 'Frightened', when: 'source nearby', hint: 'disadvantage near its source' },
+]
+
 export interface ConditionMods {
   disadvantage: number
+  /** Conditions behind `disadvantage`, by name ("Invisible (advantage)" counts against it). */
+  reasons: string[]
   notes: string[]
   hints: string[]
   incapacitated: string
@@ -47,18 +55,20 @@ export interface ConditionMods {
   speedNote: string
 }
 
-export function conditionMods(sheet: NimbleSheet): ConditionMods {
+export function conditionMods(sheet: NimbleSheet, applies: string[] = []): ConditionMods {
   const has = (name: string) => sheet.conditions.includes(name)
-  const against = ATTACK_DISADVANTAGE.filter(has)
+  const present = SITUATIONAL.filter((s) => has(s.name))
+  const against = [
+    ...ATTACK_DISADVANTAGE.filter(has),
+    ...present.filter((s) => applies.includes(s.name)).map((s) => s.name),
+  ]
   const notes = [
     against.length ? `+${against.length} disadvantage: ${against.join(', ')}` : '',
     has('Invisible') ? 'Advantage: Invisible' : '',
   ].filter(Boolean)
   const disadvantage = against.length - (has('Invisible') ? 1 : 0)
-  const hints = [
-    has('Frightened') ? 'Frightened: disadvantage near its source' : '',
-    has('Taunted') ? 'Taunted: disadvantage except vs. your taunter' : '',
-  ].filter(Boolean)
+  const reasons = [...against, ...(has('Invisible') ? ['Invisible (advantage)'] : [])]
+  const hints = present.filter((s) => !applies.includes(s.name)).map((s) => `${s.name}: ${s.hint}`)
   const base = Number.parseInt(sheet.speed, 10)
   let speed: number | null = null
   let speedNote = ''
@@ -74,7 +84,14 @@ export function conditionMods(sheet: NimbleSheet): ConditionMods {
       .filter(Boolean)
       .join(' · ')
   const incapacitated = INCAPACITATED.find(has) ?? ''
-  return { disadvantage, notes, hints, incapacitated, speed, speedNote }
+  return { disadvantage, reasons, notes, hints, incapacitated, speed, speedNote }
+}
+
+/** Why an attack rolls with disadvantage or advantage, shown on hover: "Rushed (2), Blinded". */
+export function oddsReasons(rushed: number, cond: ConditionMods, extra = ''): string {
+  return [rushed ? (rushed > 1 ? `Rushed (${rushed})` : 'Rushed') : '', ...cond.reasons, extra]
+    .filter(Boolean)
+    .join(', ')
 }
 
 export function setConditionEnd(sheet: NimbleSheet, name: string, end: ConditionEnd | 'manual') {

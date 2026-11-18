@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { NimbleSheet } from '../types/sheets'
 import { parseDice, rollNimble } from '../utils/dice'
-import { addCondition, conditionMods, removeCondition } from '../utils/nimbleConditions'
+import {
+  addCondition,
+  conditionMods,
+  oddsReasons,
+  removeCondition,
+} from '../utils/nimbleConditions'
 import {
   actionsLeft,
   endEncounter,
@@ -38,6 +43,23 @@ describe('conditions', () => {
       speed: 0,
       incapacitated: 'Stunned',
     })
+  })
+
+  it('adds Taunted and Frightened disadvantage only when the player says they apply', () => {
+    const sheet = hero()
+    addCondition(sheet, 'Taunted')
+    addCondition(sheet, 'Blinded')
+    expect(conditionMods(sheet)).toMatchObject({
+      disadvantage: 1,
+      hints: ['Taunted: disadvantage except vs. your taunter'],
+    })
+    expect(conditionMods(sheet, ['Taunted', 'Frightened'])).toMatchObject({
+      disadvantage: 2,
+      notes: ['+2 disadvantage: Blinded, Taunted'],
+      hints: [],
+    })
+    expect(oddsReasons(2, conditionMods(sheet))).toBe('Rushed (2), Blinded')
+    expect(oddsReasons(1, conditionMods(sheet, ['Taunted']))).toBe('Rushed, Blinded, Taunted')
   })
 
   it('takes an action for Dazed and clears conditions when they end', () => {

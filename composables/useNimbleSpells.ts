@@ -29,13 +29,14 @@ import {
 } from '~/utils/nimblePlay'
 import { endEffects } from '~/utils/nimbleEffects'
 import { rollSpellDamage, spellDamage } from '~/utils/nimbleSpellDamage'
-import { conditionMods } from '~/utils/nimbleConditions'
+import { conditionMods, oddsReasons } from '~/utils/nimbleConditions'
 import { sacrificeMinions } from '~/utils/nimbleSummons'
 import type { NimbleResultOptions } from './useNimbleActions'
 
 export function useNimbleSpells(options: NimbleResultOptions = {}) {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
+  const situation = useAttackSituation()
 
   const known = computed(() => knownSpells(sheet.value))
   const utility = computed(() => knownUtilitySpells(sheet.value))
@@ -263,7 +264,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
 
   function cast(s: CastableSpell, withWound = false, alt?: AltKey, roll = false) {
     if (!canEdit.value || s.busy) return
-    const incapacitated = conditionMods(sheet.value).incapacitated
+    const incapacitated = conditionMods(sheet.value, situation.value).incapacitated
     if (incapacitated) return say(`${s.name}: you are ${incapacitated} and can’t cast.`)
     if (s.used) return say(`${s.name}: already cast this turn (1/turn).`)
     if (s.noActions) {
@@ -359,7 +360,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
     if (!damage) return ''
     const type = damage.type ? ` ${damage.type}` : ''
-    const rushed = sheet.value.rushed + conditionMods(sheet.value).disadvantage
+    const rushed = sheet.value.rushed + conditionMods(sheet.value, situation.value).disadvantage
     const rush =
       rushed > 0 ? ` with ${rushed}× disadvantage` : rushed < 0 ? ` with ${-rushed}× advantage` : ''
     if (sheet.value.ownDice || !damage.rollable)
@@ -378,7 +379,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
         if (!damage || /\bReaction:/.test(s.desc)) return []
         const range = /^(Range|Reach|Line|Cone)[^.]*/.exec(s.desc)?.[0] ?? ''
-        const cond = conditionMods(sheet.value)
+        const cond = conditionMods(sheet.value, situation.value)
         const odds = sheet.value.rushed + cond.disadvantage
         const why = cond.incapacitated
           ? cond.incapacitated
@@ -412,6 +413,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
             price: s.cost,
             rushed: Math.max(0, odds),
             advantage: Math.max(0, -odds),
+            oddsWhy: oddsReasons(sheet.value.rushed, cond),
             cost: [
               `${s.actions} action${s.actions === 1 ? '' : 's'}`,
               s.at > s.tier || s.discount
