@@ -210,7 +210,7 @@ async function confirmNimble() {
   draft.value.level = next
   open.value = false
   await save()
-  snackbar.show(`${draft.value.name} is now level ${next}`)
+  if (!props.progress) snackbar.show(`${draft.value.name} is now level ${next}`)
 }
 
 async function confirm() {

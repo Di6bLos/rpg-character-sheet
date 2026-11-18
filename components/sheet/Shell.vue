@@ -2,8 +2,9 @@
 // Wraps a loaded character with the editing state, the action bar, the
 // system-specific layout, the editor form and the level-up dialog.
 import type { Character } from '~/types'
-import type { AnySheet } from '~/types/sheets'
+import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { canRestore } from '~/utils/levelHistory'
+import { creationInput } from '~/utils/nimbleBuild'
 
 const props = defineProps<{
   character: Character<AnySheet>
@@ -31,7 +32,12 @@ const deleteOpen = ref(false)
 const deleting = ref(false)
 const subclassOpen = ref(false)
 const reconfigureOpen = ref(false)
-const canReconfigure = computed(() => canRestore(draft.value.sheet, draft.value.level - 1))
+const canReconfigure = computed(
+  () =>
+    canRestore(draft.value.sheet, draft.value.level - 1) ||
+    (draft.value.system === 'nimble' &&
+      !!creationInput(draft.value.sheet as NimbleSheet, draft.value.level)),
+)
 
 // Nimble heroes built from class data can swap subclass once they have one (level 3+).
 const canChangeSubclass = computed(
@@ -117,9 +123,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
           type="button"
           class="btn btn--ghost"
           :disabled="!canReconfigure"
-          :title="
-            canReconfigure ? undefined : 'Level up first: there is no earlier level to go back to'
-          "
+          :title="canReconfigure ? undefined : 'Nothing recorded to go back to on this sheet'"
           @click="reconfigureOpen = true"
         >
           Reconfigure

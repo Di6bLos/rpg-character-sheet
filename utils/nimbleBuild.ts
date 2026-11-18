@@ -1,6 +1,8 @@
 // Pure rules logic that turns Nimble class data (data/nimble) into a sheet:
 // the level 1 build, what each level-up grants, and applying a level-up.
 import { abilityArmor } from '~/utils/nimbleArmor'
+import { ancestryBySlug } from '~/data/nimble/ancestries'
+import { backgroundBySlug } from '~/data/nimble/backgrounds'
 import { classBySlug, poolOptionByName, subclassBySlug } from '~/data/nimble/classes'
 import { BASE_SPEED, BASE_WOUNDS, MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
@@ -1111,6 +1113,36 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
   sheet.ac += abilityArmor(sheet)
   syncCompanions(sheet)
   return sheet
+}
+
+/**
+ * The level 1 choices a hero was built with (stats, skill points, class and
+ * background picks), read back from their sheet at level 1, so Reconfigure can
+ * offer them again. Null for hand-made sheets or when level 1 was not recorded.
+ */
+export function creationInput(sheet: NimbleSheet, level: number): NimbleBuildInput | null {
+  const base =
+    level <= 1
+      ? sheet
+      : (sheet.levelHistory?.find((e) => e.level === 2)?.before as NimbleSheet | undefined)
+  const cls = classBySlug(sheet.classSlug)
+  const ancestry = ancestryBySlug(sheet.ancestrySlug)
+  const background = backgroundBySlug(sheet.backgroundSlug)
+  if (!base?.stats || !base.skills || !cls || !ancestry || !background) return null
+  const skillPoints: Record<string, number> = {}
+  for (const s of base.skills) {
+    const placed =
+      s.points -
+      (ancestry.skills?.all ?? 0) -
+      (ancestry.skills?.named?.[s.name] ?? 0) -
+      (background.skills?.[s.name] ?? 0)
+    if (placed > 0) skillPoints[s.name] = placed
+  }
+  const chosen = base.choices ?? {}
+  const picks: Picks = {}
+  for (const c of creationChoices(cls, background, chosen))
+    if (chosen[c.key]) picks[c.key] = [...chosen[c.key]!]
+  return { cls, ancestry, background, stats: { ...base.stats }, skillPoints, picks }
 }
 
 export function syncCompanions(sheet: NimbleSheet): void {
