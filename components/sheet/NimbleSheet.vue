@@ -122,8 +122,19 @@ const skills = computed(() =>
   <div class="play">
     <div class="play__col">
       <NimbleSheetVitals style="order: 1" />
-      <NimbleSheetActions style="order: 4" />
-      <section class="panel stack" style="gap: 6px; order: 9" aria-labelledby="sk-h">
+      <NimbleSheetSpells v-if="hasSpells" style="order: 7" />
+      <NimbleSheetSummons v-if="hasSummons" style="order: 8" />
+      <NimbleSheetInventory style="order: 12" />
+    </div>
+    <div class="play__col">
+      <NimbleSheetTurn style="order: 2" />
+      <NimbleSheetAttacks :style="{ order: sheet.turnActive ? 3 : 4 }" />
+      <NimbleSheetReactions :style="{ order: sheet.turnActive ? 4 : 3 }" />
+      <NimbleSheetResources style="order: 5" />
+      <NimbleSheetActions style="order: 6" />
+      <NimbleSheetForms v-if="hasForms" style="order: 9" />
+      <NimbleSheetConditions style="order: 10" />
+      <section class="panel stack" style="gap: 6px; order: 11" aria-labelledby="sk-h">
         <UiFold name="Skills" />
         <div class="title-help" style="margin: 0 0 6px">
           <h2 id="sk-h">Skills</h2>
@@ -144,15 +155,6 @@ const skills = computed(() =>
           <strong>{{ s.v }}</strong>
         </div>
       </section>
-    </div>
-    <div class="play__col">
-      <NimbleSheetTurn style="order: 2" />
-      <NimbleSheetResources style="order: 3" />
-      <NimbleSheetSpells v-if="hasSpells" style="order: 5" />
-      <NimbleSheetSummons v-if="hasSummons" style="order: 6" />
-      <NimbleSheetForms v-if="hasForms" style="order: 7" />
-      <NimbleSheetConditions style="order: 8" />
-      <NimbleSheetInventory style="order: 10" />
     </div>
   </div>
 
