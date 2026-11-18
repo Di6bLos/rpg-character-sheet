@@ -48,7 +48,6 @@ const {
   useMove,
   toggleCrit,
   inventions,
-  operate,
   rage,
   left,
   addFury,
@@ -229,33 +228,8 @@ function adjustCount(delta: number) {
             Roll {{ readied }}d{{ resource.die }}
           </button>
         </div>
-        <div
-          v-if="resource.kind === 'power' && inventions.length"
-          class="row"
-          style="gap: 6px; flex-wrap: wrap"
-        >
-          <button
-            v-for="inv in inventions"
-            :key="inv.name"
-            type="button"
-            class="btn btn--sm"
-            :disabled="!canEdit || inv.inoperable || readied < inv.min || inv.noActions"
-            :class="{ 'inv--broken': inv.inoperable }"
-            :aria-label="inv.inoperable ? `${inv.name}, inoperable` : undefined"
-            :title="
-              inv.inoperable
-                ? 'Inoperable: repair it first (flip its switch under All abilities)'
-                : readied < inv.min
-                  ? `Ready at least ${inv.min} ${resource.diceName} Die first`
-                  : inv.noActions
-                    ? 'Not enough actions left'
-                    : `Use with ${readied}d${resource.die}`
-            "
-            @click="operate(inv.name)"
-          >
-            <NimbleBrokenIcon v-if="inv.inoperable" />
-            {{ inv.name }}
-          </button>
+        <div v-if="resource.kind === 'power' && inventions.length" class="stack" style="gap: 6px">
+          <NimbleInventionCard v-for="inv in inventions" :key="inv.name" :name="inv.name" />
         </div>
         <p v-if="resource.kind === 'power'" class="small muted" style="font-size: 13px">
           Readied dice go on your next powered-weapon attack or Roll, then reset. Mishap if any die

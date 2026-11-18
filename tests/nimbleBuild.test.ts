@@ -842,12 +842,14 @@ describe('ability upgrades', () => {
       {
         name: 'Autothrusters',
         text: 'If you spend 2 or more Mana Dice when you Defend, do so for free.',
+        ability: 'Aethertuned Jerkin: Autothrusters',
       },
     ])
     expect(abilityModifiers(sheet, 'Face Me!')).toEqual([
       {
         name: 'Empowered Orders',
         text: 'Face Me! (Glimmering Decree): the enemy also takes STR d8 radiant damage.',
+        ability: 'Empowered Orders',
       },
     ])
   })

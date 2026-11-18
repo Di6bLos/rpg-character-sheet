@@ -312,11 +312,26 @@ export interface AbilityRollDef {
   }[]
 }
 
+export interface Mishap {
+  name: string
+  text: string
+}
+
+export interface InventionMode {
+  name?: string
+  cost?: string
+  text: string
+  mishap?: Mishap
+}
+
 export interface InventionDef {
   name: string
   use: 'cannon' | 'blade' | 'plate' | 'jerkin' | 'tether'
   actions: number
   min: number
+  stats: string
+  modes: InventionMode[]
+  mishap?: Mishap
 }
 
 export type EffectEnd =

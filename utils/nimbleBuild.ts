@@ -1113,7 +1113,7 @@ export function abilityModifiers(
   sheet: NimbleSheet,
   target: string,
   aliases: string[] = [],
-): { name: string; text: string }[] {
+): { name: string; text: string; ability: string }[] {
   const base = abilityBaseName(target)
   const also = /Invocations affecting ([A-Z][\w ]+?) (?:also )?affect/.exec(
     spellByName(base)?.desc ?? '',
@@ -1121,20 +1121,20 @@ export function abilityModifiers(
   const names = [base, ...(also ? [also] : []), ...aliases].map(
     (t) => new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`),
   )
-  const found = new Map<string, string>()
+  const found = new Map<string, { text: string; ability: string }>()
   for (const a of sheet.abilities) {
     const own = abilityBaseName(a.name)
     if (own === base) continue
     if (own.startsWith(`${base}: `)) {
-      found.set(own.slice(base.length + 2), a.desc)
+      found.set(own.slice(base.length + 2), { text: a.desc, ability: own })
       continue
     }
     const lines = a.desc
       .split(/(?<=\.)\s+(?=[A-Z(])/)
       .filter((t) => names.some((n) => n.test(t)) && !NOT_A_CHANGE.test(t))
-    if (lines.length) found.set(own, lines.join(' '))
+    if (lines.length) found.set(own, { text: lines.join(' '), ability: own })
   }
-  return [...found].map(([name, text]) => ({ name, text }))
+  return [...found].map(([name, m]) => ({ name, ...m }))
 }
 
 /** How abilities refer to a weapon by its damage type ("slashing weapons", "all weapon types"). */

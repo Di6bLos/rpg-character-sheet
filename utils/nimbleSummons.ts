@@ -145,13 +145,14 @@ function summonAliases(def: SummonDef): string[] {
 export function summonModifiers(
   sheet: NimbleSheet,
   defId: string,
-): { name: string; text: string }[] {
+): { name: string; text: string; ability: string }[] {
   const def = summonById(defId)
   if (!def) return []
   const kinds = [def.id, ...(def.minionOf ? [def.minionOf] : [])]
   const linked = SUMMON_MODS.filter((m) => kinds.includes(m.summon) && hasAbility(sheet, m.ability))
     .map((m) => ({
       name: m.ability,
+      ability: m.ability,
       text: sheet.abilities.find((a) => abilityBaseName(a.name) === m.ability)?.desc ?? '',
     }))
     .filter((m) => m.name !== def.source)

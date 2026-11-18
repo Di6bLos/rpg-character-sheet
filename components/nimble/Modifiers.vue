@@ -5,7 +5,9 @@ import { summonModifiers } from '~/utils/nimbleSummons'
 
 const props = defineProps<{ target?: string; summon?: string; weapon?: string }>()
 
-const { draft } = useSheet<NimbleSheet>()
+const { draft, canEdit } = useSheet<NimbleSheet>()
+const { abilities, spend, inventions } = useNimbleActions()
+
 const mods = computed(() =>
   props.summon
     ? summonModifiers(draft.value.sheet, props.summon)
@@ -15,14 +17,54 @@ const mods = computed(() =>
         props.weapon !== undefined ? weaponAliases(props.weapon) : [],
       ),
 )
+
+const items = computed(() =>
+  mods.value.map((m) => {
+    const view = abilities.value.find((a) => a.key === m.ability)
+    const counters = view?.counters ?? []
+    const left = counters.length ? Math.min(...counters.map((c) => c.left)) : 0
+    const short = counters.some((c) => c.short)
+    return {
+      ...m,
+      invention: inventions.value.some((i) => i.name === m.ability),
+      view,
+      counters,
+      uses: counters.map((c) => `${c.left}/${c.max} ${c.label}`).join(' · '),
+      cost: counters[0]?.costText ?? '',
+      why: left === 0 ? 'None left' : short ? 'Not enough actions' : '',
+    }
+  }),
+)
+
+function use(item: (typeof items.value)[number]) {
+  const [first, ...rest] = item.counters
+  if (canEdit.value && first && item.view) spend(first, item.view.name, 1, rest)
+}
 </script>
 
 <template>
-  <div v-if="mods.length" class="mods">
+  <div v-if="items.length" class="mods">
     <span class="mods__caps">Upgraded by</span>
-    <details v-for="m in mods" :key="m.name" class="mod">
-      <summary>{{ m.name }}</summary>
+    <details v-for="m in items" :key="m.name" class="mod">
+      <summary>
+        {{ m.name }}
+        <small v-if="m.counters.length" class="mod__uses">{{ m.uses }}</small>
+      </summary>
       <p>{{ m.text }}</p>
+      <NimbleInventionUse v-if="m.invention" :name="m.ability" class="mod__invention" />
+      <div v-if="m.counters.length" class="mod__use">
+        <small v-if="m.cost">{{ m.cost }}</small>
+        <button
+          type="button"
+          class="btn btn--sm"
+          :disabled="!canEdit || !!m.why"
+          :title="m.why || undefined"
+          :aria-label="`Use ${m.name}, ${m.uses}`"
+          @click="use(m)"
+        >
+          {{ m.why || 'Use' }}
+        </button>
+      </div>
     </details>
   </div>
 </template>
@@ -80,6 +122,33 @@ const mods = computed(() =>
     font-size: 12px;
     line-height: 1.45;
     color: var(--page-soft);
+  }
+}
+
+.mod__invention {
+  margin-bottom: 6px;
+}
+
+.mod__uses {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.mod__use {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 6px;
+
+  small {
+    margin-right: auto;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--page-muted);
   }
 }
 </style>

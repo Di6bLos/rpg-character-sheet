@@ -1,5 +1,5 @@
 import { ABILITY_ROLLS, SELF_EFFECTS } from '~/data/nimble/effects'
-import type { EffectEnd, SelfEffectDef } from '~/data/nimble/types'
+import type { EffectEnd, Mishap, SelfEffectDef } from '~/data/nimble/types'
 import type { NimbleAttack, NimbleSheet } from '~/types/sheets'
 import { rollDie, type Rng } from '~/utils/dice'
 import {
@@ -131,6 +131,14 @@ function finish(sheet: NimbleSheet, ending: NimbleSheet['effects']): string[] {
   )
   sheet.conditions = sheet.conditions.filter((c) => !lost.includes(c))
   return [...(lost.length ? [`No longer ${lost.join(' or ')}.`] : []), ...notes]
+}
+
+export function splitMishap(desc: string): { text: string; mishap: Mishap | null } {
+  if ((desc.match(/Mishap:/g) ?? []).length !== 1) return { text: desc, mishap: null }
+  const m = /\s*Mishap:\s*([^.!]+)[.!]\s*(.*?)(?=\s+Only\b|$)/.exec(desc)
+  if (!m) return { text: desc, mishap: null }
+  const rest = desc.slice(0, m.index) + desc.slice(m.index + m[0].length)
+  return { text: rest.trim(), mishap: { name: m[1]!.trim(), text: m[2]!.trim() } }
 }
 
 export function endEffects(sheet: NimbleSheet, trigger: EffectEnd): string {

@@ -1,6 +1,7 @@
 // Attacks, reactions and limited-use abilities of the Nimble sheet in the
 // current sheet editor. Shared by the sheet's Actions panel and the board's action panel.
 import { REACTIONS, weaponByName } from '~/data/nimble/core'
+import { WEAPON_MISHAPS } from '~/data/nimble/effects'
 import { summonBySource } from '~/data/nimble/summons'
 import type { NimbleSheet } from '~/types/sheets'
 import { parseDice, rollNimble } from '~/utils/dice'
@@ -159,6 +160,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         boost: note,
         rushed,
         poweredBy: poweredBy(r, w.props),
+        mishap: poweredBy(r, w.props) ? WEAPON_MISHAPS[w.name] : undefined,
         blocked: left.value === 0 && prepaid.value === 0,
         roll: () => {
           if (!canEdit.value) return
@@ -456,12 +458,71 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   }
 
   const inventions = computed(() =>
-    heldInventions(sheet.value).map((i) => ({
-      ...i,
-      inoperable: sheet.value.malfunctions.includes(i.name),
-      noActions: left.value < Math.max(i.actions, i.use === 'plate' || i.use === 'jerkin' ? 1 : 0),
-    })),
+    heldInventions(sheet.value).map((i) => {
+      const inoperable = sheet.value.malfunctions.includes(i.name)
+      const noActions =
+        left.value < Math.max(i.actions, i.use === 'plate' || i.use === 'jerkin' ? 1 : 0)
+      const r = resource.value
+      return {
+        ...i,
+        inoperable,
+        noActions,
+        attack: i.use === 'cannon' || i.use === 'blade',
+        desc: sheet.value.abilities.find((a) => abilityBaseName(a.name) === i.name)?.desc ?? '',
+        cost:
+          i.use === 'plate' || i.use === 'jerkin'
+            ? 'with Defend'
+            : i.use === 'tether'
+              ? 'Tether 1 action · Coil 2 actions'
+              : `${i.actions} action${i.actions === 1 ? '' : 's'}`,
+        why: inoperable
+          ? 'Inoperable'
+          : readied.value < i.min
+            ? `Ready at least ${i.min} ${r?.diceName ?? 'Mana'} Die`
+            : noActions
+              ? 'Not enough actions left'
+              : '',
+        label: readied.value ? `Use with ${readied.value}d${r?.die ?? 0}` : 'Use',
+      }
+    }),
   )
+
+  const STARTS_AS_ACTION =
+    /^(?:\([^)]*\)\s*)?(?:Action:|Reaction\b|\d+ actions?:|Spend \d+ actions?\b|You may spend \d+ actions?\b)/
+
+  const abilityActions = computed(() => {
+    const limited = new Set(
+      abilityCounters(sheet.value, draft.value.level).map((e) => abilityBaseName(e.ability.name)),
+    )
+    const moves = new Set((resource.value?.moves ?? []).map((m) => m.name))
+    const inventionNames = new Set(heldInventions(sheet.value).map((i) => i.name))
+    return sheet.value.abilities.flatMap((a) => {
+      const key = abilityBaseName(a.name)
+      if (limited.has(key) || moves.has(a.name) || inventionNames.has(key)) return []
+      if (key === resource.value?.ability || summonBySource(key)) return []
+      if (!STARTS_AS_ACTION.test(a.desc)) return []
+      const cost = counterCost(a.desc)
+      if (!cost || cost.attack || cost.reaction) return []
+      return [
+        {
+          name: a.name,
+          key,
+          desc: a.desc,
+          costText: costLabel(cost),
+          short: costShort(sheet.value, cost),
+          use: () => {
+            if (!canEdit.value) return
+            const before = sheet.value.actionsSpent
+            const paid = payCost(sheet.value, cost)
+            if (paid === null) return report(shortMessage(sheet.value, a.name, cost))
+            paidFor(cost, before)
+            const effect = applyEffect(sheet.value, draft.value.level, key)
+            report(`${a.name}:${paid}${abilityRoll(sheet.value, key)}${effect ? ` ${effect}` : ''}`)
+          },
+        },
+      ]
+    })
+  })
 
   const inventionAttacks = computed(() => {
     const r = resource.value
@@ -493,25 +554,34 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
                 ? 'No actions left'
                 : '',
           inoperable: i.inoperable,
+          mishap: i.mishap,
           run: () => operate(i.name),
         }
       })
   })
 
-  function operate(name: string) {
+  function operate(name: string, mode?: 'tether' | 'coil') {
     if (!canEdit.value) return
     const invention = inventions.value.find((i) => i.name === name)
-    if (invention?.noActions)
+    const actions = mode === 'coil' ? 2 : mode === 'tether' ? 1 : (invention?.actions ?? 0)
+    if (mode ? left.value < actions : invention?.noActions)
       return report(
-        invention.actions
-          ? `${name} takes ${invention.actions} actions; you have ${left.value}.`
+        actions
+          ? `${name} takes ${actions} action${actions === 1 ? '' : 's'}; you have ${left.value}.`
           : `${name} works when you Defend, which needs an action.`,
       )
-    const message = operateInvention(sheet.value, draft.value.level, name, ready.value)
+    const message = operateInvention(
+      sheet.value,
+      draft.value.level,
+      name,
+      ready.value,
+      Math.random,
+      mode,
+    )
     if (!message) return
-    if (invention?.actions && !/inoperable|needs at least/.test(message)) {
-      spendActions(sheet.value, invention.actions)
-      if (invention.use === 'blade') sheet.value.rushed += 1
+    if (actions && !/inoperable|needs at least/.test(message)) {
+      spendActions(sheet.value, actions)
+      if (invention?.use === 'blade') sheet.value.rushed += 1
       ready.value = 0
     } else if (!/inoperable|needs at least/.test(message)) ready.value = 0
     report(message)
@@ -580,6 +650,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     toggleMalfunction,
     inventions,
     inventionAttacks,
+    abilityActions,
     operate,
     left,
     effects,

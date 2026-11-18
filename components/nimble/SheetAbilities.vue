@@ -1,8 +1,10 @@
 <script setup lang="ts">
 // Every ability with its full text. Those with limited uses are also counted in
 // the Actions panel.
+import { INVENTIONS } from '~/data/nimble/effects'
 import type { NimbleSheet } from '~/types/sheets'
-import { keyStatValue } from '~/utils/nimbleBuild'
+import { abilityBaseName, keyStatValue } from '~/utils/nimbleBuild'
+import { splitMishap } from '~/utils/nimbleEffects'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -10,6 +12,7 @@ const keyValue = computed(() => keyStatValue(sheet.value))
 const { malfunctions, toggleMalfunction, effects, useEffect } = useNimbleActions()
 const effectBy = computed(() => new Map(effects.value.map((e) => [e.source, e])))
 const risks = computed(() => new Map(malfunctions.value.map((m) => [m.name, m])))
+const inventionOf = (name: string) => INVENTIONS.find((i) => i.name === abilityBaseName(name))
 </script>
 
 <template>
@@ -27,7 +30,33 @@ const risks = computed(() => new Map(malfunctions.value.map((m) => [m.name, m]))
           <strong>{{ a.name }}</strong>
           <small>{{ a.src }}{{ a.level ? ` · L${a.level}` : '' }}</small>
         </div>
-        <p><NimbleRulesText :text="a.desc" :key-value="keyValue" /></p>
+        <template v-if="inventionOf(a.name)">
+          <p class="ability__stats">{{ inventionOf(a.name)!.stats }}</p>
+          <template v-for="(m, k) in inventionOf(a.name)!.modes" :key="k">
+            <p>
+              <strong v-if="m.name">{{ m.name }}</strong
+              ><small v-if="m.cost"> · {{ m.cost }}</small> {{ m.text }}
+            </p>
+            <NimbleMishap v-if="m.mishap" :name="m.mishap.name" :text="m.mishap.text" />
+          </template>
+          <NimbleMishap
+            v-if="inventionOf(a.name)!.mishap"
+            :name="inventionOf(a.name)!.mishap!.name"
+            :text="inventionOf(a.name)!.mishap!.text"
+          />
+          <details class="ability__full">
+            <summary>Full rules</summary>
+            <p><NimbleRulesText :text="a.desc" :key-value="keyValue" /></p>
+          </details>
+        </template>
+        <template v-else>
+          <p><NimbleRulesText :text="splitMishap(a.desc).text" :key-value="keyValue" /></p>
+          <NimbleMishap
+            v-if="splitMishap(a.desc).mishap"
+            :name="splitMishap(a.desc).mishap!.name"
+            :text="splitMishap(a.desc).mishap!.text"
+          />
+        </template>
         <NimbleModifiers :target="a.name" />
         <button
           v-if="effectBy.get(a.name)"
@@ -59,6 +88,23 @@ const risks = computed(() => new Map(malfunctions.value.map((m) => [m.name, m]))
 </template>
 
 <style scoped lang="scss">
+.ability__stats {
+  font-weight: 700;
+  color: var(--accent-text) !important;
+}
+
+.ability__full {
+  > summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--page-muted);
+  }
+
+  p {
+    margin-top: 6px;
+  }
+}
+
 .abilities {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));

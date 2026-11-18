@@ -945,6 +945,7 @@ export function operateInvention(
   name: string,
   count: number,
   rng: Rng = Math.random,
+  mode: 'tether' | 'coil' = 'tether',
 ): string {
   const r = sheetResource(sheet, level)
   const invention = INVENTIONS.find((i) => i.name === name)
@@ -987,8 +988,10 @@ export function operateInvention(
     line = `Defend with +${2 * Math.max(0, sheet.stats.STR) * n} Armor [${dice}]`
   } else if (invention.use === 'jerkin') {
     line = `Defend: first move ${n} space${n === 1 ? '' : 's'} [${dice}]`
+  } else if (mode === 'coil') {
+    line = `Coil: Restrain all creatures fully in a ${n}×${n} area, Range +${4 * Math.max(1, n)} [${dice}]`
   } else {
-    line = `+${4 * Math.max(1, n)} Range; Coil restrains a ${n}×${n} area [${dice}]`
+    line = `Tether: pull a creature your size or smaller next to you (you may Restrain it), or move to a larger one and gain Riding; Range +${4 * Math.max(1, n)} [${dice}]`
   }
   if (!isMishap(mishapDice, n)) return `${name}: ${line}. ${res.count} ${r.diceName} Dice left.`
   const notes: string[] = []
@@ -1003,7 +1006,9 @@ export function operateInvention(
   else if (invention.use === 'jerkin') notes.push(applyMishapEffect(sheet, name).trim())
   else
     notes.push(
-      'Tether: Mistether! (the GM may pick another creature). Coil: Tangled! You are Restrained as well.',
+      mode === 'coil'
+        ? 'Tangled! You are Restrained as well.'
+        : 'Mistether! The GM may choose a different creature in Range.',
     )
   if (sheet.abilities.some((a) => abilityBaseName(a.name) === 'Percussive Maintenance'))
     notes.push('Percussive Maintenance: you may first raise 1 Mana Die by 1.')

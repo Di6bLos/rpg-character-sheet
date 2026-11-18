@@ -7,6 +7,7 @@ import {
   effectAttacks,
   endEffect,
   endEffects,
+  splitMishap,
 } from '../utils/nimbleEffects'
 import { classBySlug } from '../data/nimble/classes'
 import {
@@ -178,6 +179,21 @@ describe('Bonescythe', () => {
   })
 })
 
+describe('mishap text', () => {
+  it('pulls a single mishap out of an ability and leaves the rest', () => {
+    expect(
+      splitMishap(
+        'Armor: 8+STR. Mishap: Armor Lockup! Restrained (escape DC 10). Only 1 kind of armor can be worn at a time.',
+      ),
+    ).toEqual({
+      text: 'Armor: 8+STR. Only 1 kind of armor can be worn at a time.',
+      mishap: { name: 'Armor Lockup', text: 'Restrained (escape DC 10).' },
+    })
+    expect(splitMishap('Tether. Mishap: A. x. Coil. Mishap: B. y.').mishap).toBe(null)
+    expect(splitMishap('No mishaps here.')).toEqual({ text: 'No mishaps here.', mishap: null })
+  })
+})
+
 describe('Artificer inventions', () => {
   function artificer(inventions: string[], dice = 3): NimbleSheet {
     const sheet = hero(['Mana Accumulator', ...inventions], {
@@ -202,6 +218,17 @@ describe('Artificer inventions', () => {
     expect(risky.hp).toBe(16)
     expect(operateInvention(risky, 5, 'Manabolt Cannon', 1)).toBe(
       'Manabolt Cannon is inoperable: repair it first.',
+    )
+  })
+
+  it('uses the Tethercoil as a Tether or a Coil, each with its own mishap', () => {
+    const sheet = artificer(['Tethercoil'])
+    expect(operateInvention(sheet, 5, 'Tethercoil', 2, dice([6, 5], [6, 6]), 'coil')).toMatch(
+      /^Tethercoil: Coil: Restrain all creatures fully in a 2×2 area, Range \+8/,
+    )
+    const risky = artificer(['Tethercoil'])
+    expect(operateInvention(risky, 5, 'Tethercoil', 1, dice([6, 1]), 'tether')).toMatch(
+      /Tether: pull a creature.*Mishap!.*Mistether!/,
     )
   })
 
