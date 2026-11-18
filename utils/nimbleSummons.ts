@@ -500,7 +500,7 @@ export function spiritAct(
   if (mode === 'attack')
     return rolls[0] === 1
       ? `${spirit.name} attacks: miss (first die rolled a 1).`
-      : `${spirit.name} attacks: ${amount} ${stats.damageType} damage${crit ? ' · critical!' : ''}, ignoring armor [${detail}].${extra}`
+      : `${spirit.name} attacks: ${amount} ${stats.damageType} damage${crit ? ' · critical' : ''}, ignoring armor [${detail}].${extra}`
   const left = Math.max(0, (spirit.charges ?? 0) - 1)
   spirit.charges = left
   if (left === 0) remove(sheet, [spirit.id])
@@ -564,7 +564,7 @@ export function companionAttack(sheet: NimbleSheet, level: number, rng: Rng = Ma
   const spent = charges
     ? ` ${sheet.resource.count} charge${sheet.resource.count === 1 ? '' : 's'} left.`
     : ''
-  return `${companion.name} — ${attack.label}: ${total} damage${crit ? ' · critical!' : ''}, ignoring armor; it can't miss (${rolls.join(', ')} + ${flat}).${spent}`
+  return `${companion.name} — ${attack.label}: ${total} damage${crit ? ' · critical' : ''}, ignoring armor; it can't miss (${rolls.join(', ')} + ${flat}).${spent}`
 }
 
 export function summonedWeapons(sheet: NimbleSheet, level: number): NimbleAttack[] {

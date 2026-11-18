@@ -250,7 +250,7 @@ export function abilityRoll(sheet: NimbleSheet, ability: string, rng: Rng = Math
   const notes = [def.note, ...ups.map((u) => u.note)]
     .filter((n): n is string => !!n)
     .map((n) => n.replace('{dc}', String(dc)))
-  const word = `${def.kind === 'healing' ? 'HP healed' : 'damage'}${crit ? ' · critical!' : ''}`
+  const word = `${def.kind === 'healing' ? 'HP healed' : 'damage'}${crit ? ' · critical' : ''}`
   const shown = def.each ? `${rolls.join(', ')}` : rolls.join(' + ')
   const times = mult > 1 ? ` ×${mult}` : ''
   return ` ${ability}: ${total} ${word} (${count}d${die}${advantage ? ' with advantage' : ''}: ${shown}${times}).${notes.length ? ` ${notes.join(' ')}` : ''}`

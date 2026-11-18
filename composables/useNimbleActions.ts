@@ -210,7 +210,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             report(`${w.name}: miss (first die rolled a 1).${extra.note}${after}${dying}`)
           else
             report(
-              `${w.name}: ${result.total + extra.extra} damage${result.crit ? ' · critical!' : ''}${
+              `${w.name}: ${result.total + extra.extra} damage${result.crit ? ' · critical' : ''}${
                 result.bonus
                   ? ` (incl. ${result.bonus} ${resource.value?.diceName.toLowerCase() || 'bonus'})`
                   : ''
@@ -551,7 +551,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             : n < i.min
               ? `Ready at least ${i.min} ${r.diceName} Die`
               : i.noActions
-                ? 'No actions left'
+                ? 'Not enough actions left'
                 : '',
           inoperable: i.inoperable,
           mishap: i.mishap,
