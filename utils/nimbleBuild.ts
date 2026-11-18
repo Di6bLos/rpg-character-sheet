@@ -894,8 +894,6 @@ export function subclassChangeChoices(
   return { abilities, choices, spells }
 }
 
-export { abilityArmor }
-
 /** Base name of an ability: "Sneak Attack (3)" is "Sneak Attack". */
 export function abilityBaseName(name: string): string {
   return UPGRADE.exec(name)?.[1] ?? name

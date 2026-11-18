@@ -45,13 +45,13 @@ export function useHelpAlly(options: { onResult?: (message: string) => void } = 
     const campaign = campaignId.value
     if (!canEdit.value || !ally || !campaign) return
     if (reactions.value.find((r) => r.name === 'Help')?.used) return
-    toggleReaction('Help')
-    report(`Help: ${ally.name} has advantage on their next roll.`)
+    const paid = toggleReaction('Help', true)
+    if (!paid) return
+    report(`Help (${paid}): ${ally.name} has advantage on their next roll.`)
     const { error } = await supabase.from('hero_effects').insert({
       campaign_id: campaign,
       character_id: ally.id,
       effect: 'Helped',
-      from_name: draft.value.name,
     })
     if (error) {
       toggleReaction('Help')
@@ -70,9 +70,13 @@ export function useHeroEffects() {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
   let channel: RealtimeChannel | null = null
 
+  const taken = new Set<string>()
+
   async function take(rows: HeroEffect[]) {
-    if (!canEdit.value || !rows.length) return
-    for (const row of rows) {
+    const fresh = rows.filter((r) => !taken.has(r.id))
+    if (!canEdit.value || !fresh.length) return
+    for (const r of fresh) taken.add(r.id)
+    for (const row of fresh) {
       addCondition(draft.value.sheet, row.effect)
       say(`${row.from_name || 'An ally'} Helped you: advantage on your next roll.`)
     }
@@ -81,18 +85,15 @@ export function useHeroEffects() {
       .delete()
       .in(
         'id',
-        rows.map((r) => r.id),
+        fresh.map((r) => r.id),
       )
   }
 
-  onMounted(async () => {
-    if (!canEdit.value || draft.value.system !== 'nimble') return
+  // Listen first, then read what is waiting, so nothing slips between the two;
+  // start whenever editing turns on (the board panel's canEdit can arrive later).
+  async function start() {
+    if (channel || draft.value.system !== 'nimble') return
     const id = draft.value.id
-    const { data } = await supabase
-      .from('hero_effects')
-      .select('id, effect, from_name')
-      .eq('character_id', id)
-    await take((data ?? []) as HeroEffect[])
     channel = supabase
       .channel(`hero-effects-${id}`)
       .on(
@@ -106,6 +107,21 @@ export function useHeroEffects() {
         (payload) => void take([payload.new as HeroEffect]),
       )
       .subscribe()
+    const { data } = await supabase
+      .from('hero_effects')
+      .select('id, effect, from_name')
+      .eq('character_id', id)
+    await take((data ?? []) as HeroEffect[])
+  }
+
+  onMounted(() => {
+    watch(
+      canEdit,
+      (on) => {
+        if (on) void start()
+      },
+      { immediate: true },
+    )
   })
 
   onBeforeUnmount(() => {

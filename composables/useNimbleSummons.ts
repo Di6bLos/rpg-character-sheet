@@ -104,6 +104,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
   )
 
   const left = computed(() => actionsLeft(sheet.value))
+  const offTurn = computed(() => sheet.value.inEncounter && !sheet.value.turnActive)
 
   function act(message: string, actions = 0) {
     if (!message) return
@@ -163,7 +164,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         dmg: `${minions.value}× 1d${stats.die}`,
         props: `${stats.damageType} · each moves 6 then attacks · Reach ${stats.reach} · a 1 misses, no crits`,
         cost: '1 action · 1/turn',
-        why: !sheet.value.turnActive
+        why: offTurn.value
           ? 'Not your turn'
           : commandUsed.value
             ? 'Used this turn'
@@ -187,11 +188,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         dmg: `${stats.diceMult}d${spiritDie(sheet.value, level.value, spirit.value.tier)}+WIL`,
         props: `${stats.damageType}, Reach ${stats.reach}, ignoring armor`,
         cost: spiritCost() ? '1 action' : 'free',
-        why: !sheet.value.turnActive
-          ? 'Not your turn'
-          : left.value < spiritCost()
-            ? 'No actions left'
-            : '',
+        why: offTurn.value ? 'Not your turn' : left.value < spiritCost() ? 'No actions left' : '',
         run: spiritAttack,
       })
     }
@@ -214,7 +211,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         ]
           .filter(Boolean)
           .join(' · '),
-        why: sheet.value.turnActive ? companionBlocked(sheet.value, level.value) : 'Not your turn',
+        why: offTurn.value ? 'Not your turn' : companionBlocked(sheet.value, level.value),
         run: companionStrike,
       })
     }
@@ -247,11 +244,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         cost: attack.actions
           ? `${attack.actions} action${attack.actions === 1 ? '' : 's'}`
           : 'free',
-        why: !sheet.value.turnActive
-          ? 'Not your turn'
-          : left.value < attack.actions
-            ? 'No actions left'
-            : '',
+        why: offTurn.value ? 'Not your turn' : left.value < attack.actions ? 'No actions left' : '',
         run: run(() =>
           act(
             customSummonAttack(sheet.value, members, Math.random, armorOf(attack.type ?? '')),

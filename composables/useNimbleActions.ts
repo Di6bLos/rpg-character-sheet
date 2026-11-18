@@ -191,7 +191,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const left = computed(() => actionsLeft(sheet.value))
   const NO_ACTIONS = 'No actions left: they come back when your turn ends.'
   const NOT_TURN = 'Not your turn'
-  const offTurn = computed(() => !sheet.value.turnActive)
+  /** Waiting for your turn in combat; outside combat anything can be rolled. */
+  const offTurn = computed(() => sheet.value.inEncounter && !sheet.value.turnActive)
   const cond = computed(() => conditionMods(sheet.value, situation.value))
 
   function report(message: string) {
@@ -575,8 +576,13 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     }),
   )
 
-  function toggleReaction(name: string) {
-    if (!canEdit.value) return
+  /**
+   * Uses a reaction, or undoes it when it's already used. Returns what using it
+   * cost ("free", "spent 1 action"), or null when nothing was spent. `quiet`
+   * leaves the result message to the caller (Help names its ally instead).
+   */
+  function toggleReaction(name: string, quiet = false): string | null {
+    if (!canEdit.value) return null
     const used = sheet.value.reactionsUsed
     const attack = name === 'Opportunity Attack'
     const free = freeReaction(name)
@@ -586,9 +592,12 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       sheet.value.reactionsUsed = used.filter((_, i) => i !== at)
       if (!free) refundActions(sheet.value, 1)
       if (attack) prepaid.value = Math.max(0, prepaid.value - 1)
-      return
+      return null
     }
-    if (!free && left.value === 0) return report(NO_ACTIONS)
+    if (!free && left.value === 0) {
+      report(NO_ACTIONS)
+      return null
+    }
     used.push(name)
     if (!free) spendActions(sheet.value)
     const paid = free ? 'free' : 'spent 1 action'
@@ -597,10 +606,14 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       ? ` ${expendJudgment(sheet.value)}`
       : ''
     const extras = reactionExtras(name)
-    if (!attack) return report(`${name}: ${paid}.${judgment}${extras}`)
+    if (!attack) {
+      if (!quiet) report(`${name}: ${paid}.${judgment}${extras}`)
+      return paid
+    }
     prepaid.value += 1
     opportunity.value = true
     report(`${name}: ${paid}; roll a melee attack next, it costs no more.`)
+    return paid
   }
 
   const linkedTo = computed(() => (resource.value ? resourcePattern(resource.value) : null))

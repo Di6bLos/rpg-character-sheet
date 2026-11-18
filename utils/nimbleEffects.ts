@@ -2,7 +2,7 @@ import { ABILITY_ROLLS, SELF_EFFECTS } from '~/data/nimble/effects'
 import type { EffectEnd, Mishap, SelfEffectDef } from '~/data/nimble/types'
 import type { NimbleAttack, NimbleSheet } from '~/types/sheets'
 import { rollDie, type Rng } from '~/utils/dice'
-import { armorHit, ignoresArmor, type ArmorContext } from '~/utils/nimbleTargetArmor'
+import { armorHit, armorLabel, ignoresArmor, type ArmorContext } from '~/utils/nimbleTargetArmor'
 import {
   abilityBaseName,
   keyStatValue,
@@ -270,18 +270,20 @@ export function abilityRoll(
     rolls.push(last)
   }
   const rolledTotal = rolls.reduce((a, b) => a + b, 0) * mult
+  const against = {
+    ...armor,
+    ignore: armor.ignore || (ignoresArmor(def.note ?? '') ? 'ignores armor' : ''),
+  }
+  // Each construct of a swarm (`each`) can hit a different target, so armor meets each hit.
   const hit =
-    def.kind === 'damage'
-      ? armorHit(
-          rolledTotal,
-          0,
-          {
-            ...armor,
-            ignore: armor.ignore || (ignoresArmor(def.note ?? '') ? 'ignores armor' : ''),
-          },
-          crit,
-        )
-      : { damage: rolledTotal, note: '' }
+    def.kind !== 'damage'
+      ? { damage: rolledTotal, note: '' }
+      : def.each
+        ? {
+            damage: rolls.reduce((sum, r) => sum + armorHit(r * mult, 0, against).damage, 0),
+            note: armorLabel(against),
+          }
+        : armorHit(rolledTotal, 0, against, crit)
   const total = hit.damage
   const dc = (def.dc ?? 0) + ups.reduce((n, u) => n + (u.dc ?? 0), 0)
   const notes = [def.note, ...ups.map((u) => u.note)]

@@ -171,7 +171,7 @@ async function initiative(values?: number[]) {
           New encounter
         </button>
         <button
-          v-if="sheet.awaitingInitiative && !sheet.ownDice"
+          v-if="sheet.awaitingInitiative && !sheet.ownDice && !sheet.turnActive"
           type="button"
           class="btn btn--sm"
           :disabled="!canEdit"
@@ -222,7 +222,7 @@ async function initiative(values?: number[]) {
       </div>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && sheet.awaitingInitiative"
+      v-if="sheet.ownDice && sheet.awaitingInitiative && !sheet.turnActive"
       label="Your Initiative total"
       action="Set Initiative"
       signed
