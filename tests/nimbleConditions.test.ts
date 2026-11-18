@@ -28,7 +28,7 @@ describe('conditions', () => {
       speed: 3,
       incapacitated: '',
     })
-    expect(conditionMods(sheet).notes[0]).toMatch(/^Blinded: \+1 disadvantage/)
+    expect(conditionMods(sheet).notes).toEqual(['+2 disadvantage: Blinded, Prone'])
     expect(conditionMods(sheet).speedNote).toMatch(/Slowed: halved · Prone/)
     addCondition(sheet, 'Invisible')
     addCondition(sheet, 'Grappled')

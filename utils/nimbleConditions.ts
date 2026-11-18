@@ -36,11 +36,7 @@ export const END_LABELS: Record<ConditionEnd | 'manual', string> = {
 }
 
 const INCAPACITATED = ['Incapacitated', 'Petrified', 'Stunned', 'Paralyzed', 'Unconscious']
-const ATTACK_DISADVANTAGE: Record<string, string> = {
-  Blinded: 'your attacks have disadvantage',
-  Prone: 'disadvantage on attacks',
-  Poisoned: 'disadvantage on rolls',
-}
+const ATTACK_DISADVANTAGE = ['Blinded', 'Prone', 'Poisoned']
 
 export interface ConditionMods {
   disadvantage: number
@@ -53,20 +49,15 @@ export interface ConditionMods {
 
 export function conditionMods(sheet: NimbleSheet): ConditionMods {
   const has = (name: string) => sheet.conditions.includes(name)
-  const notes: string[] = []
-  let disadvantage = 0
-  for (const [name, why] of Object.entries(ATTACK_DISADVANTAGE))
-    if (has(name)) {
-      disadvantage += 1
-      notes.push(`${name}: +1 disadvantage (${why})`)
-    }
-  if (has('Invisible')) {
-    disadvantage -= 1
-    notes.push('Invisible: advantage')
-  }
+  const against = ATTACK_DISADVANTAGE.filter(has)
+  const notes = [
+    against.length ? `+${against.length} disadvantage: ${against.join(', ')}` : '',
+    has('Invisible') ? 'Advantage: Invisible' : '',
+  ].filter(Boolean)
+  const disadvantage = against.length - (has('Invisible') ? 1 : 0)
   const hints = [
-    has('Frightened') ? 'Frightened: disadvantage while the source is nearby' : '',
-    has('Taunted') ? 'Taunted: disadvantage unless you attack your taunter' : '',
+    has('Frightened') ? 'Frightened: disadvantage near its source' : '',
+    has('Taunted') ? 'Taunted: disadvantage except vs. your taunter' : '',
   ].filter(Boolean)
   const base = Number.parseInt(sheet.speed, 10)
   let speed: number | null = null
