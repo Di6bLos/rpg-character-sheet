@@ -306,7 +306,10 @@ describe('nimble turn tracker', () => {
       /^Initiative 21 \(as you rolled it\): you start with 3 actions/,
     )
     expect(sheet.awaitingInitiative).toBe(false)
+    expect(sheet.initiative).toBe(21)
     expect(actionsLeft(sheet)).toBe(3)
+    beginEncounter(sheet)
+    expect(sheet.initiative).toBeNull()
   })
 
   it('starts combat with 1, 2 or all actions by the Initiative roll', () => {

@@ -99,6 +99,12 @@ async function initiative(values?: number[]) {
       <span v-else class="turn-who">{{
         sheet.inEncounter ? 'Waiting for your turn' : 'Not in combat'
       }}</span>
+      <span
+        v-if="sheet.inEncounter && sheet.initiative != null"
+        class="turn-init"
+        title="Your Initiative this encounter"
+        >Initiative {{ sheet.initiative }}</span
+      >
     </div>
     <div class="tile turn">
       <div
@@ -242,6 +248,15 @@ async function initiative(values?: number[]) {
   font-weight: 700;
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent-text);
+}
+
+.turn-init {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--page-soft);
 }
 
 .turn-who {

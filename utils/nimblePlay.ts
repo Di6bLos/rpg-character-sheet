@@ -69,6 +69,7 @@ export function endEncounter(sheet: NimbleSheet, level: number): string {
   sheet.turnActive = false
   sheet.turnDone = false
   sheet.awaitingInitiative = false
+  sheet.initiative = null
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
@@ -1367,6 +1368,7 @@ export function beginEncounter(sheet: NimbleSheet): string {
   sheet.inEncounter = true
   sheet.turnDone = false
   sheet.awaitingInitiative = true
+  sheet.initiative = null
   refill(sheet, ['turn', 'encounter'])
   expireGrants(sheet)
   sheet.casting = { ...NOT_CASTING }
@@ -1445,6 +1447,7 @@ export function initiativeRoll(
     rolled < 10 &&
     hasText(sheet, /\bIf you roll less than 10 on Initiative, you may change it to 10\b/)
   const roll = cheat ? 10 : rolled
+  sheet.initiative = roll
   const max = turnActions(sheet)
   const start = initiativeActions(roll, natural, max)
   sheet.actionsSpent = max - start
