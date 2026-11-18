@@ -3,6 +3,7 @@
 // system-specific layout, the editor form and the level-up dialog.
 import type { Character } from '~/types'
 import type { AnySheet } from '~/types/sheets'
+import { canRestore } from '~/utils/levelHistory'
 
 const props = defineProps<{
   character: Character<AnySheet>
@@ -29,6 +30,8 @@ const levelUpOpen = ref(false)
 const deleteOpen = ref(false)
 const deleting = ref(false)
 const subclassOpen = ref(false)
+const reconfigureOpen = ref(false)
+const canReconfigure = computed(() => canRestore(draft.value.sheet, draft.value.level - 1))
 
 // Nimble heroes built from class data can swap subclass once they have one (level 3+).
 const canChangeSubclass = computed(
@@ -110,6 +113,17 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
         >
           {{ editing ? 'Done editing' : 'Edit sheet' }}
         </button>
+        <button
+          type="button"
+          class="btn btn--ghost"
+          :disabled="!canReconfigure"
+          :title="
+            canReconfigure ? undefined : 'Level up first: there is no earlier level to go back to'
+          "
+          @click="reconfigureOpen = true"
+        >
+          Reconfigure
+        </button>
         <button type="button" class="btn btn--ghost" :disabled="saving || !dirty" @click="save">
           {{ saveLabel }}
         </button>
@@ -171,6 +185,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
     </template>
 
     <SheetLevelUpDialog v-model="levelUpOpen" />
+    <SheetReconfigureDialog v-model="reconfigureOpen" />
     <NimbleSubclassDialog v-if="canChangeSubclass" v-model="subclassOpen" />
 
     <UiDialog v-model="deleteOpen" :title="`Delete ${draft.name}?`" alert width="460px">

@@ -25,6 +25,10 @@ watch(
   { immediate: true },
 )
 
+function onClose() {
+  if (!el.value?.open) open.value = false
+}
+
 function onBackdrop(event: MouseEvent) {
   if (event.target === el.value) open.value = false
 }
@@ -38,7 +42,7 @@ function onBackdrop(event: MouseEvent) {
     :role="props.alert ? 'alertdialog' : undefined"
     :aria-labelledby="titleId"
     :style="{ '--dialog-width': props.width }"
-    @close="open = false"
+    @close="onClose"
     @click="onBackdrop"
   >
     <div v-if="open" class="dialog__body panel">

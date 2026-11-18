@@ -18,6 +18,7 @@ const PLAY_STATE = new Set([
   'xpNext',
   'wounds',
   'conditions',
+  'conditionEnds',
   'deathSaves',
   'tempHp',
   'dying',

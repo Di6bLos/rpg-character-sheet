@@ -740,6 +740,26 @@ describe('lowering the level', () => {
     expect(sheet.subclassSlug).toBe('')
   })
 
+  it('keeps conditions with when they end', () => {
+    const sheet = build(classBySlug('berserker')!)
+    levelTo(sheet, 4, 'mountainheart')
+    sheet.conditions = ['Dazed']
+    sheet.conditionEnds = { Dazed: 'round' }
+    restoreLevel(sheet, 2)
+    expect(sheet.conditionEnds).toEqual({ Dazed: 'round' })
+  })
+
+  for (const cls of NIMBLE_CLASSES)
+    it(`rebuilds a ${cls.slug} from its recorded picks after going back (reconfigure)`, () => {
+      const sheet = build(cls)
+      levelTo(sheet, 9, cls.subclasses[0]!.slug)
+      const before = strip(sheet)
+      const inputs = sheet.levelHistory!.filter((e) => e.level > 2).map((e) => e.nimble!)
+      restoreLevel(sheet, 2)
+      inputs.forEach((input, i) => applyNimbleLevel(sheet, i + 3, input))
+      expect(strip(sheet)).toEqual(before)
+    })
+
   it('keeps held Judgment Dice and malfunctions when a level is undone, even from old snapshots', () => {
     const cls = classBySlug('oathsworn')!
     const sheet = build(cls)
