@@ -6,7 +6,16 @@ import type { NimbleSheet } from '~/types/sheets'
 
 const { draft, canEdit, lastRoll } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
-const { attacks, reactions, toggleReaction, abilities } = useNimbleActions()
+const {
+  attacks,
+  reactions,
+  toggleReaction,
+  abilities,
+  inventionAttacks,
+  readied,
+  setReady,
+  resource,
+} = useNimbleActions()
 const { summonAttacks } = useNimbleSummons()
 const { reactionSpells, cast } = useNimbleSpells()
 
@@ -24,7 +33,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           text="No attack roll: a 1 on the first die misses, and its max explodes as a crit. Each attack after the first in a turn is Rushed and rolls with one more disadvantage."
         />
       </div>
-      <div v-if="attacks.length || summonAttacks.length" class="attacks">
+      <div v-if="attacks.length || summonAttacks.length || inventionAttacks.length" class="attacks">
         <div v-for="(w, i) in attacks" :key="i" class="tile attack">
           <div class="attack__head">
             <div class="stack" style="gap: 2px">
@@ -44,6 +53,56 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           >
             {{ sheet.ownDice ? 'Attack' : 'Roll'
             }}<template v-if="w.rushed"> · {{ w.rushed }}× disadvantage</template>
+          </button>
+        </div>
+        <div
+          v-for="inv in inventionAttacks"
+          :key="inv.name"
+          class="tile attack"
+          :class="{ 'attack--broken': inv.inoperable }"
+        >
+          <div class="attack__head">
+            <div class="stack" style="gap: 2px">
+              <strong style="font-size: 16px">
+                <NimbleBrokenIcon v-if="inv.inoperable" />
+                {{ inv.name }}
+              </strong>
+              <span class="muted" style="font-size: 12px">{{ inv.props }}</span>
+              <span class="boost">{{ inv.cost }}</span>
+            </div>
+            <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ inv.dmg }}</span>
+          </div>
+          <div class="ready">
+            <span>{{ resource?.diceName }} Dice readied</span>
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`Ready one fewer ${resource?.diceName} Die`"
+              :disabled="!canEdit || readied === 0"
+              @click="setReady(readied - 1)"
+            >
+              −
+            </button>
+            <strong aria-live="polite">{{ readied }}</strong>
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`Ready one more ${resource?.diceName} Die`"
+              :disabled="!canEdit || readied >= sheet.resource.count"
+              @click="setReady(readied + 1)"
+            >
+              +
+            </button>
+          </div>
+          <NimbleModifiers :target="inv.name" />
+          <button
+            type="button"
+            class="btn"
+            :disabled="!canEdit || !!inv.why"
+            :title="inv.why || undefined"
+            @click="inv.run"
+          >
+            {{ inv.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
           </button>
         </div>
         <div v-for="a in summonAttacks" :key="a.key" class="tile attack attack--summon">
@@ -128,6 +187,28 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
 </template>
 
 <style scoped lang="scss">
+.ready {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--page-soft);
+
+  span {
+    margin-right: auto;
+  }
+
+  strong {
+    min-width: 18px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.attack--broken {
+  border: 1px dashed var(--danger);
+}
+
 .attack__who {
   font-size: 12px;
   font-weight: 600;

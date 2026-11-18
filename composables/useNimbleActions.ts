@@ -455,6 +455,47 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     })),
   )
 
+  const inventionAttacks = computed(() => {
+    const r = resource.value
+    if (r?.kind !== 'power') return []
+    const n = readied.value
+    const { INT, STR } = sheet.value.stats
+    return inventions.value
+      .filter((i) => i.use === 'cannon' || i.use === 'blade')
+      .map((i) => {
+        const has = (upgrade: string) =>
+          sheet.value.abilities.some((a) => a.name === `${i.name}: ${upgrade}`)
+        const perDie = INT + (has('Amplified Conduit') ? 2 : 0)
+        const dice = `${n}d${r.die}`
+        const dmg =
+          i.use === 'cannon'
+            ? n
+              ? `1d12+${dice}+${n * perDie}`
+              : '1d12 + Mana Dice'
+            : n
+              ? `2×(${dice}+${STR})`
+              : '2×(Mana Dice+STR)'
+        return {
+          name: i.name,
+          dmg,
+          props:
+            i.use === 'cannon'
+              ? `Range 8 · the Mana Dice damage also hits ALL creatures between · +${perDie} per die`
+              : 'Reach 1 · Heavy armor counts as Medium, Medium as none',
+          cost: `${i.actions} action${i.actions === 1 ? '' : 's'} · ${n} of ${sheet.value.resource.count} ${r.diceName} Dice readied`,
+          why: i.inoperable
+            ? 'Inoperable'
+            : n < i.min
+              ? `Ready at least ${i.min} ${r.diceName} Die`
+              : i.noActions
+                ? 'No actions left'
+                : '',
+          inoperable: i.inoperable,
+          run: () => operate(i.name),
+        }
+      })
+  })
+
   function operate(name: string) {
     if (!canEdit.value) return
     const invention = inventions.value.find((i) => i.name === name)
@@ -536,6 +577,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     malfunctions,
     toggleMalfunction,
     inventions,
+    inventionAttacks,
     operate,
     left,
     effects,
