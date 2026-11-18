@@ -120,14 +120,6 @@ function submitCustom() {
     </p>
 
     <div v-for="c in cards" :key="c.key" class="tile group">
-      <template v-if="customizing === c.key">
-        <NimbleSummonLook
-          v-for="k in c.looks"
-          :key="k"
-          :look-key="k"
-          @switch="customizing = $event"
-        />
-      </template>
       <div class="companion">
         <span class="stack-pic">
           <UiAvatar
@@ -201,12 +193,12 @@ function submitCustom() {
                 height="16"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2.4"
+                stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 aria-hidden="true"
               >
-                <path d="m5 12 5 5L20 7" />
+                <path d="M3 12.5 9 18.5 21 5.5" />
               </svg>
             </button>
           </div>
@@ -259,6 +251,14 @@ function submitCustom() {
           </details>
         </div>
       </div>
+      <template v-if="customizing === c.key">
+        <NimbleSummonLook
+          v-for="k in c.looks"
+          :key="k"
+          :look-key="k"
+          @switch="customizing = $event"
+        />
+      </template>
     </div>
     <p v-if="!sheet.summons.length" class="empty">Nothing summoned right now.</p>
 
