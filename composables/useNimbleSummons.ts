@@ -20,6 +20,13 @@ import {
 } from '~/utils/nimbleSummons'
 import type { NimbleResultOptions } from './useNimbleActions'
 
+/** "minion" → "minions", "fox" → "foxes", "harpy" → "harpies". */
+function plural(name: string): string {
+  if (/(s|x|z|ch|sh)$/i.test(name)) return `${name}es`
+  if (/[^aeiou]y$/i.test(name)) return `${name.slice(0, -1)}ies`
+  return `${name}s`
+}
+
 const NO_ACTIONS = 'Not enough actions left: they come back when your turn ends.'
 
 export function useNimbleSummons(options: NimbleResultOptions = {}) {
@@ -135,7 +142,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
       const custom = sheet.value.summonLooks['shadow-minion']?.name
       out.push({
         key: 'minions',
-        name: `Command ${custom || 'shadow minions'}`,
+        name: `Command ${minions.value > 1 ? plural(custom || 'shadow minion') : custom || 'shadow minion'}`,
         who: '',
         summon: 'shadow-minion',
         dmg: `${minions.value}× 1d${stats.die}`,
