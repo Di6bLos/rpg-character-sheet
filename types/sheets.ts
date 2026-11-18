@@ -190,6 +190,8 @@ export interface NimbleCustomSummon {
   speed?: number
   attack?: { name: string; dice: string; type?: string; reach?: number; actions: number }
   notes?: string
+  abilities?: string[]
+  resist?: string
   lasts: 'slain' | 'combat' | 'rest'
 }
 

@@ -295,6 +295,44 @@ export const CUSTOM_KINDS: { value: NimbleCustomSummon['kind']; label: string }[
   { value: 'other', label: 'Other' },
 ]
 
+export const CUSTOM_ABILITIES: { name: string; desc: string; onHit?: boolean }[] = [
+  {
+    name: 'Pack Tactics',
+    desc: 'Advantage on attacks when an ally is adjacent to the target.',
+    onHit: true,
+  },
+  { name: 'Pounce', desc: 'Moves up to its speed before it attacks, for free.', onHit: true },
+  { name: 'Grab', desc: 'On a hit, the target is Grappled.', onHit: true },
+  { name: 'Trip', desc: 'On a hit, a Medium or smaller target is knocked Prone.', onHit: true },
+  {
+    name: 'Venomous',
+    desc: 'On a hit, the target is Poisoned until the end of its next turn.',
+    onHit: true,
+  },
+  { name: 'Flying', desc: 'Has a flying speed equal to its speed.' },
+  { name: 'Swimmer', desc: 'Moves and fights underwater without penalty.' },
+  { name: 'Climber', desc: 'Climbs walls and ceilings at full speed.' },
+  { name: 'Burrower', desc: 'Burrows through earth at half speed.' },
+  { name: 'Keen Senses', desc: 'Advantage on Perception checks.' },
+  { name: 'Darkvision', desc: 'Sees in darkness as if it were dim light.' },
+  { name: 'Mount', desc: 'You can ride it (Riding): attacks that miss you hit it.' },
+  { name: 'Guardian', desc: 'Can Interpose for you or an adjacent ally.' },
+  { name: 'Resistant', desc: 'Takes half damage from one damage type.' },
+  { name: 'Regenerates', desc: 'Regains 1d4 HP at the start of your turn while above 0 HP.' },
+]
+
+export function customAbilityLines(custom: NimbleCustomSummon | undefined): string[] {
+  return (custom?.abilities ?? []).flatMap((name) => {
+    const a = CUSTOM_ABILITIES.find((x) => x.name === name)
+    if (!a) return []
+    return [
+      name === 'Resistant' && custom?.resist
+        ? `Resistant: takes half damage from ${custom.resist.toLowerCase()}.`
+        : `${a.name}: ${a.desc}`,
+    ]
+  })
+}
+
 export const CUSTOM_LASTS: { value: NimbleCustomSummon['lasts']; label: string }[] = [
   { value: 'slain', label: 'Until slain or dismissed' },
   { value: 'combat', label: 'Until combat ends' },
@@ -323,6 +361,14 @@ function cleanCustom(custom: NimbleCustomSummon | undefined): NimbleCustomSummon
     ...(num(custom.speed, 99) ? { speed: num(custom.speed, 99) } : {}),
     ...(attack ? { attack } : {}),
     ...(custom.notes?.trim() ? { notes: custom.notes.trim().slice(0, 600) } : {}),
+    ...(custom.abilities?.length
+      ? {
+          abilities: custom.abilities.filter((a) => CUSTOM_ABILITIES.some((x) => x.name === a)),
+        }
+      : {}),
+    ...(custom.abilities?.includes('Resistant') && custom.resist?.trim()
+      ? { resist: custom.resist.trim().slice(0, 40) }
+      : {}),
   }
 }
 

@@ -3,6 +3,7 @@ import { summonById } from '~/data/nimble/summons'
 import type { NimbleCustomSummon, NimbleSheet, NimbleSummon } from '~/types/sheets'
 import { actionsLeft, spendActions } from '~/utils/nimblePlay'
 import {
+  CUSTOM_ABILITIES,
   addCustomSummon,
   customSummonAttack,
   addSummon,
@@ -220,6 +221,9 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
           attack.type,
           attack.reach ? `Reach ${attack.reach}` : '',
           first.custom!.kind === 'minion' ? 'a 1 misses, no crits' : '',
+          ...(first.custom!.abilities ?? []).filter((a) =>
+            CUSTOM_ABILITIES.some((x) => x.name === a && x.onHit),
+          ),
         ]
           .filter(Boolean)
           .join(' · '),

@@ -2,7 +2,14 @@
 import type { NimbleSheet } from '~/types/sheets'
 import { syncCompanions } from '~/utils/nimbleBuild'
 import type { NimbleCustomSummon } from '~/types/sheets'
-import { CUSTOM_KINDS, CUSTOM_LASTS, summonLookKey } from '~/utils/nimbleSummons'
+import {
+  CUSTOM_ABILITIES,
+  CUSTOM_KINDS,
+  CUSTOM_LASTS,
+  customAbilityLines,
+  summonLookKey,
+} from '~/utils/nimbleSummons'
+import { DAMAGE_TYPES } from '~/utils/nimbleItems'
 import { parseDice } from '~/utils/dice'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
@@ -23,7 +30,6 @@ onMounted(() => {
 const {
   groups,
   available,
-  minions,
   spirit,
   armorOfShadows,
   summon,
@@ -31,12 +37,23 @@ const {
   dismiss,
   slay,
   sacrifice,
-  command,
-  spiritAttack,
   spiritHeal,
   left,
   spiritCost,
+  summonAttacks,
 } = useNimbleSummons()
+
+function stackAttack(g: { id: string }, first: { name: string; custom?: NimbleCustomSummon }) {
+  const key =
+    g.id === 'shadow-minion'
+      ? 'minions'
+      : g.id === 'lifebinding-spirit'
+        ? 'spirit'
+        : first.custom?.attack
+          ? `custom:${first.name.replace(/ [A-Z]$/, '')}|${first.custom.attack.name}|${first.custom.attack.dice}`
+          : ''
+  return key ? summonAttacks.value.find((a) => a.key === key) : undefined
+}
 
 const customizing = ref('')
 
@@ -73,10 +90,28 @@ const cards = computed(() =>
         .join(' · ')
       const key = g.id === 'custom' ? first.id : g.id
       const desc = custom ? (custom.notes ?? '') : g.desc
+      const traits = customAbilityLines(custom)
       const duration = custom
         ? (CUSTOM_LASTS.find((l) => l.value === custom.lasts)?.label ?? '')
         : g.duration
-      return [{ key, g, list, first, last, title, kindLine, stats, looks, desc, duration }]
+      const attack = stackAttack(g, first)
+      return [
+        {
+          key,
+          g,
+          list,
+          first,
+          last,
+          title,
+          kindLine,
+          stats,
+          looks,
+          desc,
+          duration,
+          traits,
+          attack,
+        },
+      ]
     }),
   ),
 )
@@ -96,10 +131,21 @@ const blankCustom = () => ({
   reach: 1,
   actions: 1,
   notes: '',
+  abilities: [] as string[],
+  resist: 'Fire',
 })
 const draftSummon = ref(blankCustom())
 const diceOk = computed(() => !draftSummon.value.hasAttack || !!parseDice(draftSummon.value.dice))
 const ready = computed(() => !!draftSummon.value.name.trim() && diceOk.value)
+
+const abilitySummary = computed(() => draftSummon.value.abilities.join(', '))
+
+function toggleAbility(name: string, on: boolean) {
+  const list = draftSummon.value.abilities.filter((a) => a !== name)
+  draftSummon.value.abilities = on
+    ? CUSTOM_ABILITIES.map((a) => a.name).filter((a) => a === name || list.includes(a))
+    : list
+}
 
 function submitCustom() {
   const d = draftSummon.value
@@ -113,6 +159,8 @@ function submitCustom() {
       armor: d.armor,
       speed: d.speed,
       notes: d.notes,
+      abilities: d.abilities,
+      resist: d.resist,
       ...(d.hasAttack
         ? {
             attack: {
@@ -142,40 +190,6 @@ function submitCustom() {
         text="Minions, spirits, companions and friends your spells and abilities call up. Casting the spell or using the ability adds them; New encounter clears minions that abandon you outside combat, and a Safe Rest ends the rest. The GM can seat them in initiative with Sync summons."
       />
     </div>
-
-    <div v-if="minions || spirit" class="row" style="gap: 8px; flex-wrap: wrap">
-      <button
-        v-if="minions"
-        type="button"
-        class="btn btn--sm"
-        :disabled="!canEdit || left < 1 || !!sheet.uses['Command minions@turn']?.used"
-        :title="sheet.uses['Command minions@turn']?.used ? 'Once per turn' : undefined"
-        @click="command"
-      >
-        Command minions · 1 action
-      </button>
-      <template v-if="spirit">
-        <button
-          type="button"
-          class="btn btn--sm"
-          :disabled="!canEdit || left < spiritCost()"
-          @click="spiritAttack"
-        >
-          Spirit attacks
-        </button>
-        <button
-          type="button"
-          class="btn btn--sm btn--ghost"
-          :disabled="!canEdit || !spirit.charges || left < spiritCost()"
-          @click="spiritHeal"
-        >
-          Spirit heals · {{ spirit.charges ?? 0 }} left
-        </button>
-      </template>
-    </div>
-    <p v-if="armorOfShadows" class="small" style="font-size: 13px">
-      Armor of Shadows: take {{ armorOfShadows }} less damage from every hit.
-    </p>
 
     <div v-for="c in cards" :key="c.key" class="tile group">
       <div class="companion">
@@ -262,11 +276,36 @@ function submitCustom() {
           </div>
           <small v-if="c.kindLine" class="companion__kind">{{ c.kindLine }}</small>
           <small class="companion__stats">{{ c.stats }}</small>
+          <div v-if="c.attack || c.g.id === 'lifebinding-spirit'" class="stack-actions">
+            <button
+              v-if="c.attack"
+              type="button"
+              class="btn btn--sm btn--wrap"
+              :disabled="!canEdit || !!c.attack.why"
+              :title="c.attack.why || c.attack.props"
+              @click="c.attack.run"
+            >
+              {{ c.attack.why || `${c.attack.name.replace(/^.*?: /, '')} · ${c.attack.cost}` }}
+            </button>
+            <button
+              v-if="c.g.id === 'lifebinding-spirit' && spirit"
+              type="button"
+              class="btn btn--sm btn--ghost"
+              :disabled="!canEdit || !spirit.charges || left < spiritCost() || !sheet.turnActive"
+              @click="spiritHeal"
+            >
+              Spirit heals · {{ spirit.charges ?? 0 }} left
+            </button>
+          </div>
+          <p v-if="c.g.id === 'shadow-minion' && armorOfShadows" class="group__desc">
+            Armor of Shadows: you take {{ armorOfShadows }} less damage from every hit.
+          </p>
           <p v-for="o in c.g.options.filter((x) => x.passive)" :key="o.name" class="group__desc">
             <strong>{{ o.name }}</strong> {{ o.text }}
           </p>
           <details class="companion__abilities">
             <summary>Abilities</summary>
+            <p v-for="t in c.traits" :key="t" class="group__desc">{{ t }}</p>
             <p v-if="c.desc && !c.g.options.length" class="group__desc">{{ c.desc }}</p>
             <p v-for="n in c.g.notes" :key="n" class="group__desc">{{ n }}</p>
             <NimbleModifiers v-if="c.g.id !== 'custom'" :summon="c.g.id" />
@@ -423,14 +462,41 @@ function submitCustom() {
         <p v-if="!diceOk" class="small" style="color: var(--danger)">
           Damage looks like 1d8 or 2d6+3.
         </p>
+        <UiCheckMenu label="Abilities" :value="abilitySummary" class="field">
+          <label
+            v-for="a in CUSTOM_ABILITIES"
+            :key="a.name"
+            class="check-menu__item ability-opt"
+            :class="{ on: draftSummon.abilities.includes(a.name) }"
+            :title="a.desc"
+          >
+            <input
+              type="checkbox"
+              :checked="draftSummon.abilities.includes(a.name)"
+              @change="toggleAbility(a.name, ($event.target as HTMLInputElement).checked)"
+            />
+            <span class="ability-opt__text"
+              ><strong>{{ a.name }}</strong> <small>{{ a.desc }}</small></span
+            >
+            <select
+              v-if="a.name === 'Resistant'"
+              v-model="draftSummon.resist"
+              class="input ability-opt__type"
+              aria-label="Resistant to"
+              @click.stop
+            >
+              <option v-for="t in DAMAGE_TYPES" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </label>
+        </UiCheckMenu>
         <label class="field"
-          ><span class="caps">Abilities and notes</span
+          ><span class="caps">Notes</span
           ><textarea
             v-model="draftSummon.notes"
             class="input"
             rows="2"
             maxlength="600"
-            placeholder="Pack Tactics: advantage when an ally is adjacent to the target."
+            placeholder="Anything else: how it looks, what it won't do, special orders…"
           />
         </label>
         <button type="submit" class="btn btn--sm" :disabled="!ready">
@@ -442,6 +508,13 @@ function submitCustom() {
 </template>
 
 <style scoped lang="scss">
+.stack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+
 .group {
   gap: 6px;
   padding: 10px 12px;
@@ -653,6 +726,32 @@ function submitCustom() {
   .num {
     flex: 0 0 84px;
   }
+}
+
+.ability-opt {
+  align-items: flex-start;
+
+  input[type='checkbox'] {
+    margin-top: 3px;
+  }
+}
+
+.ability-opt__text {
+  flex: 1;
+  line-height: 1.35;
+
+  small {
+    display: block;
+    font-size: 11px;
+    color: var(--page-muted);
+  }
+}
+
+.ability-opt__type {
+  width: auto;
+  min-height: 30px;
+  padding: 2px 28px 2px 8px;
+  font-size: 12px;
 }
 
 .builder__switch {
