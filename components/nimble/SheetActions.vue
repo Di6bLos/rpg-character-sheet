@@ -61,22 +61,22 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
       <div class="stack" style="gap: 8px">
         <div class="caps">Reactions</div>
         <div class="cards">
-          <button
-            v-for="r in reactions"
-            :key="r.name"
-            type="button"
-            class="tile card reaction"
-            :aria-pressed="r.used"
-            :disabled="!canEdit || r.blocked"
-            @click="toggleReaction(r.name)"
-          >
-            <span class="reaction__head">
-              <strong>{{ r.name }}</strong>
-              <em>{{ r.used ? 'Used · tap to undo' : 'Costs 1 action' }}</em>
-            </span>
-            <span>{{ r.desc }}</span>
+          <div v-for="r in reactions" :key="r.name" class="reaction-wrap">
+            <button
+              type="button"
+              class="tile card reaction"
+              :aria-pressed="r.used"
+              :disabled="!canEdit || r.blocked"
+              @click="toggleReaction(r.name)"
+            >
+              <span class="reaction__head">
+                <strong>{{ r.name }}</strong>
+                <em>{{ r.used ? 'Used · tap to undo' : 'Costs 1 action' }}</em>
+              </span>
+              <span>{{ r.desc }}</span>
+            </button>
             <NimbleModifiers :target="r.name" />
-          </button>
+          </div>
           <button
             v-for="s in reactionSpells"
             :key="s.name"
@@ -151,6 +151,16 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
     font-size: 12px;
     line-height: 1.45;
     color: var(--page-soft);
+  }
+}
+
+.reaction-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  > .reaction {
+    flex: 1;
   }
 }
 
