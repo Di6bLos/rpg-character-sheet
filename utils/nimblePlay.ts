@@ -4,9 +4,22 @@
 import { weaponByName } from '~/data/nimble/core'
 import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet } from '~/types/sheets'
-import { rollDie, sign, type Rng } from '~/utils/dice'
+import { rollDie, sign, type NimbleRoll, type Rng } from '~/utils/dice'
 import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
-import { abilityBaseName } from '~/utils/nimbleBuild'
+import {
+  abilityBaseName,
+  keyStatValue,
+  sheetResource,
+  type SheetResource,
+} from '~/utils/nimbleBuild'
+import { INVENTIONS } from '~/data/nimble/effects'
+import {
+  applyCastEffect,
+  applyMishapEffect,
+  endEffects,
+  setMalfunction,
+} from '~/utils/nimbleEffects'
+import { endSummons, initiativeSummons, summonFromSpell } from '~/utils/nimbleSummons'
 
 /** Fury dice a Rage can hold before the player has to pick which to keep. */
 export const MAX_RAGE_DICE = 6
@@ -40,6 +53,58 @@ export function actionsLeft(sheet: NimbleSheet): number {
 /** Spends actions; reactions may be paid for with next turn's, so it never refuses. */
 export function spendActions(sheet: NimbleSheet, n = 1): void {
   sheet.actionsSpent = Math.min(turnActions(sheet), sheet.actionsSpent + n)
+}
+
+/** The battle is over: Rage, combat-only charges and minions that abandon you end. */
+export function endEncounter(sheet: NimbleSheet, level: number): string {
+  sheet.inEncounter = false
+  sheet.turnActive = false
+  sheet.turnDone = false
+  sheet.actionsSpent = 0
+  sheet.rushed = 0
+  sheet.reactionsUsed = []
+  refill(sheet, ['turn', 'encounter'])
+  const r = sheetResource(sheet, level)
+  const lost = !!r && (r.kind === 'counter' || r.kind === 'dice') && sheet.resource.count > 0
+  if (lost) sheet.resource.count = 0
+  const rage = endRage(sheet)
+  const gone = summonsGone(endSummons(sheet, 'encounter'))
+  return `Encounter over.${lost ? ` Unused ${r.name} lost.` : ''}${rage ? ` ${rage}` : ''}${gone}`
+}
+
+/** A new round: per-round uses come back, and your next turn can start. */
+export function newRound(sheet: NimbleSheet, level: number): string {
+  sheet.turnDone = false
+  for (const id of roundCounters(sheet, level)) if (sheet.uses[id]) sheet.uses[id]!.used = 0
+  return 'New round: per-round uses are back; start your turn when it comes.'
+}
+
+/** Extra actions an ally or ability can grant beyond the turn's (Stim Pack, Chorus of Champions…). */
+export const MAX_EXTRA_ACTIONS = 6
+
+export function gainAction(sheet: NimbleSheet, n = 1): string {
+  sheet.actionsSpent = Math.max(-MAX_EXTRA_ACTIONS, sheet.actionsSpent - n)
+  const left = actionsLeft(sheet)
+  return `Gained ${n} action${n === 1 ? '' : 's'}: ${left} left.`
+}
+
+/** Gives back actions an undone use took; never turns them into extra actions. */
+export function refundActions(sheet: NimbleSheet, n: number): void {
+  sheet.actionsSpent = Math.max(Math.min(0, sheet.actionsSpent), sheet.actionsSpent - n)
+}
+
+/** Circles to draw: the turn's actions, or more while extra ones are held. */
+export function actionPips(sheet: NimbleSheet): number {
+  return Math.max(turnActions(sheet), actionsLeft(sheet))
+}
+
+/** Circles fill from the left: tapping a filled one spends it, an empty one restores it. */
+export function toggleActionPip(sheet: NimbleSheet, n: number): void {
+  const left = actionsLeft(sheet)
+  sheet.actionsSpent =
+    n <= left
+      ? Math.min(turnActions(sheet), sheet.actionsSpent + 1)
+      : Math.max(Math.min(0, sheet.actionsSpent), sheet.actionsSpent - 1)
 }
 
 export function isBloodied(sheet: NimbleSheet): boolean {
@@ -88,21 +153,35 @@ export function payBloodCast(sheet: NimbleSheet): void {
 export function takeDamage(sheet: NimbleSheet, amount: number): string {
   let left = Math.max(0, Math.floor(amount))
   const absorbed = Math.min(sheet.tempHp, left)
+  const hpBefore = sheet.hp
   sheet.tempHp -= absorbed
   left -= absorbed
-  if (left <= 0) return ''
+  const ended =
+    (left + absorbed > 0 ? endEffects(sheet, 'damage') : '') +
+    (absorbed > 0 && sheet.tempHp === 0 ? endEffects(sheet, 'tempHpGone') : '')
+  // A form that drops you to 0 HP when it ends (Dragonform) takes the rest of this hit.
+  if (hpBefore > 0 && sheet.hp <= 0) return `${ended.trim()}${downed(sheet)}`
+  if (left <= 0) return ended.trim()
   if (sheet.hp <= 0) {
     sheet.dying = true
     addWounds(sheet, 2)
-    return 'Damage while Dying: +2 Wounds (3 on a crit).'
+    return `Damage while Dying: +2 Wounds (3 on a crit).${ended}`
   }
   sheet.hp = Math.max(0, sheet.hp - left)
-  if (sheet.hp > 0) return ''
+  if (sheet.hp > 0) return ended.trim()
   sheet.dying = true
   addWounds(sheet, 1)
+  return `Down to 0 HP: +1 Wound, Dying.${ended}${downed(sheet)}`
+}
+
+/** What dropping to 0 HP ends: concentration, Rage and 0-HP effects. */
+function downed(sheet: NimbleSheet): string {
   const hadFocus = sheet.concentration.trim() !== ''
   sheet.concentration = ''
-  return `Down to 0 HP: +1 Wound, Dying.${hadFocus ? ' Concentration broken.' : ''}`
+  const rageEnds = sheet.resource.active && !hasAbility(sheet, 'Deep Rage')
+  if (rageEnds) endRage(sheet)
+  const lost = endEffects(sheet, 'zeroHp') + (hadFocus ? endEffects(sheet, 'concentration') : '')
+  return `${hadFocus ? ' Concentration broken.' : ''}${rageEnds ? ' Your Rage ends.' : ''}${lost}`
 }
 
 export function heal(sheet: NimbleSheet, amount: number): void {
@@ -175,7 +254,10 @@ export function fieldRest(
 }
 
 /** A Safe Rest restores HP, Hit Dice, mana and limited uses, and heals 1 Wound. */
-export function safeRest(sheet: NimbleSheet): string {
+export function safeRest(sheet: NimbleSheet, level: number): string {
+  sheet.turnActive = false
+  sheet.inEncounter = false
+  sheet.turnDone = false
   sheet.hp = sheet.hpMax
   sheet.tempHp = 0
   sheet.dying = false
@@ -185,23 +267,35 @@ export function safeRest(sheet: NimbleSheet): string {
   sheet.mana.temp = 0
   for (const tracker of Object.values(sheet.uses)) tracker.used = 0
   sheet.resource.count = 0
-  sheet.resource.dice = 0
-  sheet.resource.active = false
+  endRage(sheet)
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
   sheet.casting = { ...NOT_CASTING }
-  return 'Safe Rest: HP, Hit Dice, mana and limited uses restored; 1 Wound healed; temp HP expired.'
+  const refilled = refillResource(sheet, level, 'rest')
+  const gone = summonsGone(endSummons(sheet, 'rest'))
+  const ended = endEffects(sheet, 'rest')
+  return `Safe Rest: HP, Hit Dice, mana and limited uses restored; 1 Wound healed; temp HP expired.${refilled}${gone}${ended}`
+}
+
+function summonsGone(names: string[]): string {
+  return names.length ? ` ${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} gone.` : ''
 }
 
 const NOT_CASTING = { spell: '', actions: 0 }
 
 /** Concentration starts once the spell is fully cast. */
-function finishCasting(sheet: NimbleSheet, spell: string): string {
+function finishCasting(sheet: NimbleSheet, spell: string, level: number, at?: number): string {
   if (sheet.casting.spell === spell) sheet.casting = { ...NOT_CASTING }
-  if (!/\bConcentration\b/.test(spellByName(spell)?.desc ?? '')) return ''
+  const def = spellByName(spell)
+  const concentrates = /\bConcentration\b/.test(def?.desc ?? '')
+  const dropped = concentrates && sheet.concentration ? endEffects(sheet, 'concentration') : ''
+  const summoned = summonFromSpell(sheet, level, spell, at)
+  const status = applyCastEffect(sheet, level, spell, Math.max(0, (at ?? 0) - (def?.tier ?? 0)))
+  const summon = `${summoned ? ` ${summoned}` : ''}${status}`
+  if (!concentrates) return summon
   sheet.concentration = spell
-  return ' Concentrating.'
+  return `${dropped} Concentrating.${summon}`
 }
 
 /**
@@ -225,44 +319,143 @@ export function stopCasting(sheet: NimbleSheet): string {
  * still owed is paid at the start of the next turns, and the spell takes effect
  * when the last one is. Returns the line for the roll log.
  */
-export function castSpell(sheet: NimbleSheet, spell: string, actions: number): string {
+export function castSpell(
+  sheet: NimbleSheet,
+  spell: string,
+  actions: number,
+  level: number,
+  at?: number,
+): string {
   // Never overwrite a cast in progress, which was already paid for.
   if (castingBlocks(sheet, actions)) return ` Still casting ${sheet.casting.spell}.`
   const paid = Math.min(actions, actionsLeft(sheet))
   sheet.actionsSpent += paid
   const owed = actions - paid
-  if (owed <= 0) return finishCasting(sheet, spell)
-  sheet.casting = { spell, actions: owed }
+  if (owed <= 0) return finishCasting(sheet, spell, level, at)
+  sheet.casting = at === undefined ? { spell, actions: owed } : { spell, actions: owed, at }
   return ` ${owed} more action${owed === 1 ? '' : 's'} needed: it takes effect on a later turn.`
 }
 
 /** Pays actions owed on a spell from a new turn's actions. */
-function continueCasting(sheet: NimbleSheet): string {
-  const { spell, actions } = sheet.casting
+function continueCasting(sheet: NimbleSheet, level: number): string {
+  const { spell, actions, at } = sheet.casting
   if (!spell || actions <= 0) return ''
-  const paid = Math.min(actions, turnActions(sheet))
-  sheet.actionsSpent = paid
+  const paid = Math.min(actions, actionsLeft(sheet))
+  sheet.actionsSpent += paid
   const owed = actions - paid
   if (owed > 0) {
-    sheet.casting = { spell, actions: owed }
+    sheet.casting = { ...sheet.casting, actions: owed }
     return ` Still casting ${spell}: ${paid} action${paid === 1 ? '' : 's'} spent, ${owed} to go.`
   }
-  const done = finishCasting(sheet, spell)
+  const done = finishCasting(sheet, spell, level, at)
   return ` ${spell} takes effect (${paid} action${paid === 1 ? '' : 's'} spent).${done}`
 }
 
-/** Start of a new round for this hero: actions and once-per-round reactions come back. */
-export function newTurn(sheet: NimbleSheet): string {
+export function startTurn(sheet: NimbleSheet, level: number): string {
+  sheet.turnActive = true
+  sheet.inEncounter = true
+  sheet.turnDone = false
+  refillTurn(sheet, level, false)
+  const intensify = sheet.resource.active && hasAbility(sheet, 'Intensifying Fury')
+  const enduring = sheet.dying && !sheet.resource.active && hasAbility(sheet, 'Enduring Rage')
+  let fury = ''
+  if (intensify)
+    fury = sheet.ownDice
+      ? ' Intensifying Fury: roll a free Fury Die and add it.'
+      : ` Intensifying Fury: ${addFury(sheet, level, 1)}`
+  else if (enduring && sheet.ownDice) {
+    sheet.resource.active = true
+    fury = ' Enduring Rage: you Rage for free; roll your Fury Dice and add them.'
+  } else if (enduring) fury = ` Enduring Rage: ${rage(sheet, level, true)}`
+  const casting = continueCasting(sheet, level)
+  const charge = refillResource(sheet, level, 'turn')
+  const ended = endEffects(sheet, 'turn') + summonsGone(endSummons(sheet, 'turn'))
+  const n = actionsLeft(sheet)
+  return `Your turn: ${n} action${n === 1 ? '' : 's'}.${fury}${casting}${charge}${ended}`
+}
+
+export function endTurn(sheet: NimbleSheet, level: number): string {
+  sheet.turnActive = false
+  sheet.turnDone = true
+  // 1/turn abilities (not 1/round) can be used again on another creature's turn (Core p. 15).
+  refillTurn(sheet, level, false)
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
-  refill(sheet, ['turn'])
-  const res = sheet.resource
-  // A sustained Rage grows by one Fury die each round.
-  if (res.active) res.dice = Math.min(MAX_RAGE_DICE, res.dice + 1)
   const n = turnActions(sheet)
-  const casting = continueCasting(sheet)
-  return `New turn: ${n} action${n === 1 ? '' : 's'}, reactions ready.${casting}`
+  const recharged = refillResource(sheet, level, 'turnEnd')
+  const ended = endEffects(sheet, 'turnEnd')
+  return `End of turn: all ${n} actions back, reactions ready.${recharged}${ended}`
+}
+
+export function furyMax(sheet: NimbleSheet): number {
+  return Math.max(1, keyStatValue(sheet)?.value ?? MAX_RAGE_DICE)
+}
+
+function addFury(
+  sheet: NimbleSheet,
+  level: number,
+  count: number,
+  rng: Rng = Math.random,
+  values?: number[],
+): string {
+  const r = sheetResource(sheet, level)
+  const die = r?.die ?? sheet.resource.die
+  const boundless = hasAbility(sheet, 'Boundless Rage')
+  const raw = values?.length
+    ? values.map((v) => Math.max(1, Math.min(die, Math.floor(v))))
+    : Array.from({ length: count }, () => rollDie(die, rng))
+  const rolled = raw.map((v) => (boundless && v < 6 ? 6 : v))
+  const max = furyMax(sheet)
+  const all = [...sheet.resource.rolls, ...rolled]
+  const kept = all.length > max ? [...all].sort((a, b) => b - a).slice(0, max) : all
+  sheet.resource.rolls = kept
+  sheet.resource.dice = kept.length
+  const dropped = all.length - kept.length
+  return `rolled ${rolled.join(', ')} (d${die})${dropped ? `, kept the best ${max}` : ''}; Fury ${total(kept)} on every STR attack.`
+}
+
+export function rage(
+  sheet: NimbleSheet,
+  level: number,
+  free = false,
+  rng: Rng = Math.random,
+  values?: number[],
+): string {
+  const r = sheetResource(sheet, level)
+  if (r?.kind !== 'rage') return ''
+  if (!free && sheet.uses['Rage@turn']?.used) return `${r.name}: already used this turn.`
+  const count = sheet.abilities.some((a) => /Whenever you Rage, gain 2 Fury Dice/.test(a.desc))
+    ? 2
+    : 1
+  if (sheet.ownDice && !values?.length)
+    return `${r.name}: roll ${count}d${r.die} and enter what you rolled.`
+  const was = sheet.resource.active
+  sheet.resource.active = true
+  if (!free) sheet.uses['Rage@turn'] = { ...sheet.uses['Rage@turn'], used: 1 }
+  return `${was ? 'Rage again' : r.name}: ${addFury(sheet, level, count, rng, values)}`
+}
+
+export function endRage(sheet: NimbleSheet): string {
+  if (!sheet.resource.active) return ''
+  sheet.resource.active = false
+  sheet.resource.rolls = []
+  sheet.resource.dice = 0
+  return 'Your Rage ends; its Fury Dice are lost.'
+}
+
+export function spendFury(sheet: NimbleSheet, index: number): string {
+  const value = sheet.resource.rolls[index]
+  if (value === undefined) return ''
+  sheet.resource.rolls = sheet.resource.rolls.filter((_, i) => i !== index)
+  sheet.resource.dice = sheet.resource.rolls.length
+  const block = Math.max(0, sheet.stats.STR + sheet.stats.DEX)
+  return `Spent a Fury Die (${value}): That all you got?! reduces the damage by ${block}.`
+}
+
+export function initiativeActions(total: number, natural: number, max: number): number {
+  if (natural === 20 || total >= 20) return max
+  return total >= 10 ? Math.min(2, max) : 1
 }
 
 export type UsePeriod = 'turn' | 'encounter' | 'rest'
@@ -276,11 +469,88 @@ export interface AbilityCounter {
   label: string
   /** What the limit covers, when the text says so right after it. */
   hint: string
+  /** The named option the limit belongs to ("Keen Eyes: (1/encounter)"). */
+  name: string
+  /** Actions a use takes, or the reaction it rides on ("Whenever you Defend"). */
+  cost?: CounterCost
+  /** The named option's own text, without its limits. */
+  text: string
   /** Uses the rules give. */
   rule: number
   /** Uses the hero has: the rule, or the player's own number. */
   max: number
   used: number
+}
+
+export interface CounterCost {
+  actions: number
+  reaction?: 'Defend' | 'Interpose'
+  /** The action is an attack: the next attack roll is part of it. */
+  attack?: boolean
+}
+
+const OPTION_NAME = /([A-Z][\w'’ ]*[\w!]):\s*\(?\s*$/
+const OPTION_HEADING = /(?<=^|[.…)]\s)[A-Z][A-Za-z'’ ]*[A-Za-z!]:\s/g
+const REACTION_TRIGGER = /\b(?:when|whenever) you (?:use )?(defend|interpose)\b/i
+const LEAD = String.raw`(?:^|[,(;:).]\s*)`
+const FREE = /\bfree (?:reaction|action)\b/i
+const REACTION_COST = new RegExp(String.raw`${LEAD}reaction\b`, 'i')
+const ATTACK_ACTION = /\baction:(?:(?!\buntil\b)[^.])*?\battack\b/i
+const WEAPON_MOVE = /\b(?:this attack|shoot|weapon)\b/i
+const GRANTED_ATTACK = /\bGain the [\w ]+ attack\b/i
+const LEADING_ACTION = /(?:^|[).]\s*)Action:/
+const ACTION_COST = new RegExp(
+  String.raw`(?:${LEAD}|\b(?:as|costs?|spend|takes?) (?:an?|1) )action\b(?!s? less)`,
+  'i',
+)
+
+/**
+ * What a use takes, read from its text: the reaction it rides on ("Whenever you
+ * Defend"), a reaction (1 action), "2 actions", or "Action:". An "Action: Attack"
+ * pays for the attack roll that follows it.
+ */
+export function counterCost(text: string): CounterCost | undefined {
+  const reaction = REACTION_TRIGGER.exec(text)?.[1]?.toLowerCase()
+  if (reaction) return { actions: 1, reaction: reaction === 'defend' ? 'Defend' : 'Interpose' }
+  if (FREE.test(text)) return undefined
+  if (REACTION_COST.test(text)) return { actions: 1 }
+  if (GRANTED_ATTACK.test(text)) return undefined
+  if (ATTACK_ACTION.test(text)) return { actions: 1, attack: true }
+  const many = /\b(\d+) actions\b(?! less)/.exec(text)
+  if (many) return { actions: Number(many[1]), ...(WEAPON_MOVE.test(text) ? { attack: true } : {}) }
+  if (LEADING_ACTION.test(text)) return { actions: 1 }
+  if (/\bfor free\b/i.test(text)) return undefined
+  return ACTION_COST.test(text) ? { actions: 1 } : undefined
+}
+
+export function costLabel(cost: CounterCost | undefined): string {
+  if (!cost) return ''
+  if (cost.reaction) return `with ${cost.reaction}`
+  return `${cost.actions} action${cost.actions === 1 ? '' : 's'}`
+}
+
+export function costShort(sheet: NimbleSheet, cost: CounterCost | undefined): boolean {
+  if (!cost) return false
+  if (cost.reaction && sheet.reactionsUsed.includes(cost.reaction)) return false
+  return actionsLeft(sheet) < cost.actions
+}
+
+/** Spends what a use costs; null when there aren't enough actions left. */
+export function payCost(sheet: NimbleSheet, cost: CounterCost | undefined): string | null {
+  if (!cost || (cost.reaction && sheet.reactionsUsed.includes(cost.reaction))) return ''
+  if (costShort(sheet, cost)) return null
+  spendActions(sheet, cost.actions)
+  if (cost.reaction) {
+    sheet.reactionsUsed = [...sheet.reactionsUsed, cost.reaction]
+    return ` ${cost.reaction}: spent 1 action.`
+  }
+  return cost.attack
+    ? ` Spent ${costLabel(cost)}: roll the attack next, it costs no more.`
+    : ` Spent ${costLabel(cost)}.`
+}
+
+export function shortMessage(sheet: NimbleSheet, name: string, cost: CounterCost): string {
+  return `${name} takes ${costLabel({ actions: cost.actions })}; you have ${actionsLeft(sheet)}.`
 }
 
 const PERIODS: Record<string, UsePeriod> = {
@@ -347,12 +617,55 @@ function hintAfter(desc: string, from: number): string {
 function readLimits(ability: NimbleAbility, sheet: NimbleSheet, level: number): AbilityCounter[] {
   const base = abilityBaseName(ability.name)
   const found: AbilityCounter[] = []
-  const add = (period: UsePeriod, word: string, rule: number, hint: string) => {
+  const matches = [...ability.desc.matchAll(LIMIT)]
+  const optionStart = (at: number) => {
+    const named = OPTION_NAME.exec(ability.desc.slice(0, at))
+    return named ? named.index : at
+  }
+  const starts = matches.filter((m) => !m[1]).map((m) => optionStart(m.index))
+  const heads = [...ability.desc.matchAll(OPTION_HEADING)].map((m) => m.index)
+  const add = (
+    period: UsePeriod,
+    word: string,
+    rule: number,
+    hint: string,
+    from?: number | 'step',
+  ) => {
     const same = found.filter((c) => c.period === period).length
     const id = `${base}@${period}${same ? `#${same + 1}` : ''}`
-    found.push({ id, period, label: `per ${word}`, hint, rule, max: rule, used: 0 })
+    const owner = from === 'step' ? found.at(-1) : undefined
+    const at = typeof from === 'number' ? from : -1
+    const end = Math.min(
+      starts.find((i) => i > at) ?? ability.desc.length,
+      heads.find((i) => i > at) ?? ability.desc.length,
+    )
+    const name =
+      at < 0 ? (owner?.name ?? '') : (OPTION_NAME.exec(ability.desc.slice(0, at))?.[1] ?? '')
+    const text = name || starts.length > 1 ? ability.desc.slice(Math.max(0, at), end) : ability.desc
+    const cost = owner ? owner.cost : counterCost(text)
+    const own = owner
+      ? owner.text
+      : name
+        ? ability.desc
+            .slice(at, end)
+            .replace(/^[^)]*\)\s*/, '')
+            .replace(/\s*\(L\d+:[^)]*\)/g, '')
+            .trim()
+        : ''
+    found.push({
+      id,
+      period,
+      label: `per ${word}`,
+      hint,
+      name,
+      text: own,
+      ...(cost ? { cost } : {}),
+      rule,
+      max: rule,
+      used: 0,
+    })
   }
-  for (const m of ability.desc.matchAll(LIMIT)) {
+  for (const m of matches) {
     const [, stepLevel, stepUses, stepPeriod, amount, word, pool, charges, recharge] = m
     const after = hintAfter(ability.desc, m.index + m[0].length)
     if (stepLevel && stepUses && stepPeriod) {
@@ -361,17 +674,17 @@ function readLimits(ability: NimbleAbility, sheet: NimbleSheet, level: number): 
       // A step with no earlier limit of its period starts one ("L11: 1/round").
       if (level >= Number(stepLevel) && period) {
         if (target) target.rule = Number(stepUses)
-        else add(period, stepPeriod, Number(stepUses), after)
+        else add(period, stepPeriod, Number(stepUses), after, 'step')
       }
     } else if (amount && word) {
       const period = PERIODS[word.toLowerCase()]
-      if (period) add(period, word, limitValue(amount, sheet, level), after)
+      if (period) add(period, word, limitValue(amount, sheet, level), after, m.index)
     } else if (pool) {
       // Mana has its own panel.
       if (!/\bmana pool\b/i.test(ability.desc))
-        add('rest', 'Safe Rest', limitValue(pool, sheet, level), '')
-    } else if (charges) add('rest', 'Safe Rest', limitValue(charges, sheet, level), '')
-    else if (recharge) add('rest', 'Safe Rest', 1, '')
+        add('rest', 'Safe Rest', limitValue(pool, sheet, level), '', m.index)
+    } else if (charges) add('rest', 'Safe Rest', limitValue(charges, sheet, level), '', m.index)
+    else if (recharge) add('rest', 'Safe Rest', 1, '', m.index)
   }
   return found
 }
@@ -403,6 +716,18 @@ export function abilityCounters(
       }
     }
   }
+  const gadgetBonus = sheet.abilities
+    .map((a) => Number(/\+(\d+) use\/Safe Rest to all gadgets/.exec(a.desc)?.[1] ?? 0))
+    .reduce((a, b) => a + b, 0)
+  if (gadgetBonus) {
+    const gadgets = classBySlug(sheet.classSlug)?.pools.find((p) => p.id === 'gadgets')
+    for (const { ability, counters } of list) {
+      const gadget =
+        gadgets?.options.some((o) => o.name === ability.name) || /\bGadget\./.test(ability.desc)
+      const counter = gadget ? counters.find((c) => c.period === 'rest') : undefined
+      if (counter) counter.rule += gadgetBonus
+    }
+  }
   for (const { counters } of list) {
     for (const c of counters) {
       const saved = sheet.uses[c.id]
@@ -421,23 +746,51 @@ function refill(sheet: NimbleSheet, periods: UsePeriod[]): void {
   }
 }
 
+/** Ids of the counters written "per round" (they share the turn period). */
+function roundCounters(sheet: NimbleSheet, level: number): Set<string> {
+  return new Set(
+    abilityCounters(sheet, level).flatMap(({ counters }) =>
+      counters.filter((c) => c.label === 'per round').map((c) => c.id),
+    ),
+  )
+}
+
+/** Refills per-turn uses; per-round ones too unless `rounds` is false. */
+function refillTurn(sheet: NimbleSheet, level: number, rounds: boolean): void {
+  const skip = rounds ? new Set<string>() : roundCounters(sheet, level)
+  for (const [id, tracker] of Object.entries(sheet.uses))
+    if (/@turn(#\d+)?$/.test(id) && !skip.has(id)) tracker.used = 0
+}
+
 /**
  * Abilities whose spent use comes back when Initiative is rolled, read from text
  * like "Your Veilwalker's Blessing recharges when you roll Initiative" or "Regain
  * 1 use/charge of Searing Light when you roll Initiative".
  */
 const INITIATIVE_RECHARGE = [
-  /Your ([A-Z][\w'’ ]+?) recharges when you roll Initiative/g,
-  /Regain 1 (?:use|charge)(?:\/charge)? of ([A-Z][\w'’ ]+?) when you roll Initiative/g,
+  /Your (?<name>[A-Z][\w'’ ]+?) recharges when you roll Initiative/g,
+  /Regain (?<count>\d+) (?:use|charge)(?:\/charge)? of (?<name>[A-Z][\w'’ ]+?) when you roll Initiative/g,
+  /When you roll Initiative, (?:you may )?regain (?<count>\d+) (?:spent )?uses? of (?:your )?(?<name>[A-Z][\w'’ ]+?)(?= \(|[.,]|$)/g,
+  /Regain (?<count>\d+) uses? of (?<name>[A-Z][\w'’ ]+?) each time you roll Initiative/g,
 ]
 
-/** Names of the abilities that get a spent per-Safe-Rest use back on Initiative. */
-export function initiativeRecharges(sheet: NimbleSheet): string[] {
-  const names: string[] = []
+/** The abilities that get spent per-Safe-Rest uses back on Initiative, and how many. */
+export function initiativeRecharges(sheet: NimbleSheet): { name: string; count: number }[] {
+  const found: { name: string; count: number }[] = []
   for (const a of sheet.abilities)
     for (const pattern of INITIATIVE_RECHARGE)
-      for (const m of a.desc.matchAll(pattern)) if (m[1]) names.push(m[1].trim())
-  return names
+      for (const m of a.desc.matchAll(pattern))
+        if (m.groups?.name)
+          found.push({ name: m.groups.name.trim(), count: Number(m.groups.count ?? 1) })
+  return found
+}
+
+function elementalSurge(sheet: NimbleSheet, rng: Rng): number {
+  const surge = sheet.abilities.find((a) => abilityBaseName(a.name) === 'Elemental Surge')
+  if (!surge) return 0
+  const dice = [...surge.desc.matchAll(/WIL\+(\d+)d4/g)].map((m) => Number(m[1])).pop() ?? 0
+  const rolls = sheet.ownDice ? [] : Array.from({ length: dice }, () => rollDie(4, rng))
+  return Math.max(0, sheet.stats.WIL + total(rolls))
 }
 
 /** Mana gained on Initiative and lost when combat ends (Spellblade: INT); 0 for everyone else. */
@@ -452,27 +805,326 @@ export function encounterMana(sheet: NimbleSheet): number {
  * recharge on Initiative get one use back, encounter mana is gained, and the turn
  * starts fresh.
  */
-export function newEncounter(sheet: NimbleSheet): string {
+export function newEncounter(
+  sheet: NimbleSheet,
+  level: number,
+  rng: Rng = Math.random,
+  initiative?: number,
+): string {
+  endRage(sheet)
+  sheet.turnActive = false
+  sheet.inEncounter = true
+  sheet.turnDone = false
   refill(sheet, ['turn', 'encounter'])
   const recharged: string[] = []
-  for (const name of initiativeRecharges(sheet)) {
-    const tracker = sheet.uses[`${abilityBaseName(name)}@rest`]
+  const pilfered = sheetResource(sheet, level)
+  for (const { name, count } of initiativeRecharges(sheet)) {
+    if (pilfered?.kind === 'uses' && name === pilfered.name) {
+      if (sheet.resource.count > 0) {
+        sheet.resource.count = Math.max(0, sheet.resource.count - count)
+        recharged.push(name)
+      }
+      continue
+    }
+    const key = Object.keys(sheet.uses).find(
+      (k) => k.endsWith('@rest') && plainName(k.slice(0, k.lastIndexOf('@'))) === plainName(name),
+    )
+    const tracker = key ? sheet.uses[key] : undefined
     if (tracker && tracker.used > 0) {
-      tracker.used -= 1
+      tracker.used = Math.max(0, tracker.used - count)
       recharged.push(name)
     }
   }
-  const mana = encounterMana(sheet)
-  if (mana > 0) sheet.mana.temp = mana
+  const surge = elementalSurge(sheet, rng)
+  const mana = encounterMana(sheet) + surge
+  sheet.mana.temp = mana
   sheet.casting = { ...NOT_CASTING }
-  sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
+  const advantage = sheet.abilities.some((a) => /advantage on Initiative/i.test(a.desc))
+  const entered = initiative !== undefined && Number.isFinite(initiative)
+  const first = entered ? 0 : rollDie(20, rng)
+  const natural = entered
+    ? Math.floor(initiative) - sheet.initMod
+    : advantage
+      ? Math.max(first, rollDie(20, rng))
+      : first
+  const roll = natural + sheet.initMod
+  const max = turnActions(sheet)
+  const start = initiativeActions(roll, natural, max)
+  sheet.actionsSpent = max - start
   const extra = [
     recharged.length ? ` ${recharged.join(', ')} recharged.` : '',
     mana > 0 ? ` ${mana} encounter mana gained.` : '',
+    refillResource(sheet, level, 'initiative'),
+    summonsGone(endSummons(sheet, 'encounter')),
+    initiativeSummons(sheet, level),
+    endEffects(sheet, 'encounter'),
   ].join('')
-  return `New encounter: per-encounter abilities, actions and reactions ready.${extra}`
+  const how = entered
+    ? 'as you rolled it'
+    : `d20 ${natural}${advantage ? ' with advantage' : ''} ${sign(sheet.initMod)}`
+  const surgeDice =
+    sheet.ownDice &&
+    /WIL\+\d+d4/.test(
+      sheet.abilities.find((a) => abilityBaseName(a.name) === 'Elemental Surge')?.desc ?? '',
+    )
+      ? ' Add your Elemental Surge d4s to temporary mana.'
+      : ''
+  return `New encounter: Initiative ${roll} (${how}), you start with ${start} action${start === 1 ? '' : 's'}. Per-encounter abilities and reactions ready.${extra}${surgeDice}`
+}
+
+const diceWord = (n: number) => (n === 1 ? 'Die' : 'Dice')
+const total = (rolls: number[]) => rolls.reduce((a, b) => a + b, 0)
+
+function refillResource(
+  sheet: NimbleSheet,
+  level: number,
+  when: 'turn' | 'turnEnd' | 'initiative' | 'rest',
+): string {
+  const r = sheetResource(sheet, level)
+  if (!r) return ''
+  const res = sheet.resource
+  if (r.kind === 'crit') res.count = 0
+  if (r.kind === 'judgment' && (when === 'initiative' || when === 'rest')) res.rolls = []
+  if (r.kind === 'counter' && !r.stat) {
+    if (when === 'initiative' || when === 'rest') res.count = 0
+    const gain = (ability: string) => (hasAbility(sheet, ability) ? 1 : 0)
+    const extra =
+      when === 'initiative' ? gain('Apex Predator') : when === 'turn' ? gain('Wild Endurance') : 0
+    if (extra) {
+      res.count += extra
+      return ` +${extra} ${r.name} charge.`
+    }
+    return ''
+  }
+  const fills =
+    (r.refill === 'turn' && when !== 'turn') || (r.refill === 'initiative' && when === 'initiative')
+  if (!fills || res.count === r.max) return ''
+  res.count = r.max
+  return ` ${r.diceName} Dice: ${r.max}d${r.die} ready.`
+}
+
+export function rollResourceDice(
+  count: number,
+  sides: number,
+  advantage = false,
+  rng: Rng = Math.random,
+): number[] {
+  const rolls = Array.from({ length: count + (advantage && count > 0 ? 1 : 0) }, () =>
+    rollDie(sides, rng),
+  )
+  if (advantage && count > 0) rolls.splice(rolls.indexOf(Math.min(...rolls)), 1)
+  return rolls
+}
+
+export function isMishap(dice: number[], spent: number): boolean {
+  return spent > 0 && dice.some((d) => d <= spent)
+}
+
+export function poweredBy(r: SheetResource | null, props: string): boolean {
+  return r?.kind === 'power' && props.includes(`${r.diceName} Dice`)
+}
+
+export function heldInventions(sheet: NimbleSheet): typeof INVENTIONS {
+  return INVENTIONS.filter((i) => sheet.abilities.some((a) => abilityBaseName(a.name) === i.name))
+}
+
+function explodeDie(sides: number, rng: Rng): number[] {
+  const extra: number[] = []
+  for (let last = sides; last === sides; ) {
+    last = rollDie(sides, rng)
+    extra.push(last)
+  }
+  return extra
+}
+
+export function operateInvention(
+  sheet: NimbleSheet,
+  level: number,
+  name: string,
+  count: number,
+  rng: Rng = Math.random,
+): string {
+  const r = sheetResource(sheet, level)
+  const invention = INVENTIONS.find((i) => i.name === name)
+  if (r?.kind !== 'power' || !invention) return ''
+  if (sheet.malfunctions.includes(name)) return `${name} is inoperable: repair it first.`
+  const res = sheet.resource
+  const n = Math.min(Math.max(0, Math.floor(count)), res.count)
+  if (n < invention.min) return `${name} needs at least ${invention.min} ${r.diceName} Die.`
+  if (sheet.ownDice) {
+    res.count -= n
+    const extra = invention.use === 'cannon' ? ' and the d12' : ''
+    return `${name}: spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die}${extra} yourself. Mishap if any die rolls ${n} or less: flip its Malfunction switch or set the condition. ${res.count} left.`
+  }
+  const has = (upgrade: string) => sheet.abilities.some((a) => a.name === `${name}: ${upgrade}`)
+  const advantage = invention.use === 'blade' && has('Stabilized Mana Core')
+  const rolls = rollResourceDice(n, r.die, false, rng)
+  if (advantage && rolls.length) rolls[0] = Math.max(rolls[0]!, rollDie(r.die, rng))
+  res.count -= n
+  const sum = total(rolls)
+  const dice = `${n}d${r.die} (${rolls.join(', ')})`
+  let line = ''
+  let mishapDice = rolls
+  if (invention.use === 'cannon') {
+    const primary = rollDie(12, rng)
+    mishapDice = [primary, ...rolls]
+    const crit = primary === 12 ? explodeDie(12, rng) : []
+    const perDie = sheet.stats.INT + (has('Amplified Conduit') ? 2 : 0)
+    const extra = sum + n * perDie
+    line =
+      primary === 1
+        ? `miss (the d12 rolled a 1); ${dice}`
+        : `${primary + total(crit) + extra} damage to the target and ${extra} to ALL creatures between${crit.length ? ' · critical!' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
+  } else if (invention.use === 'blade') {
+    const crit = rolls[0] === r.die ? explodeDie(r.die, rng) : []
+    line =
+      rolls[0] === 1
+        ? `miss (the first Mana Die rolled a 1); ${dice}`
+        : `${2 * (sum + total(crit) + sheet.stats.STR)} damage${crit.length ? ' · critical!' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
+  } else if (invention.use === 'plate') {
+    line = `Defend with +${2 * Math.max(0, sheet.stats.STR) * n} Armor [${dice}]`
+  } else if (invention.use === 'jerkin') {
+    line = `Defend: first move ${n} space${n === 1 ? '' : 's'} [${dice}]`
+  } else {
+    line = `+${4 * Math.max(1, n)} Range; Coil restrains a ${n}×${n} area [${dice}]`
+  }
+  if (!isMishap(mishapDice, n)) return `${name}: ${line}. ${res.count} ${r.diceName} Dice left.`
+  const notes: string[] = []
+  if (invention.use === 'cannon' || invention.use === 'blade') {
+    const hurt = invention.use === 'cannon' ? 2 * n : sum
+    notes.push(
+      `You take ${hurt} damage.`,
+      takeDamage(sheet, hurt),
+      setMalfunction(sheet, name, true),
+    )
+  } else if (invention.use === 'plate') notes.push(setMalfunction(sheet, name, true))
+  else if (invention.use === 'jerkin') notes.push(applyMishapEffect(sheet, name).trim())
+  else
+    notes.push(
+      'Tether: Mistether! (the GM may pick another creature). Coil: Tangled! You are Restrained as well.',
+    )
+  if (sheet.abilities.some((a) => abilityBaseName(a.name) === 'Percussive Maintenance'))
+    notes.push('Percussive Maintenance: you may first raise 1 Mana Die by 1.')
+  return `${name}: ${line}. Mishap! (a die rolled ${n} or less) ${notes.filter(Boolean).join(' ')} ${res.count} ${r.diceName} Dice left.`
+}
+
+export function spendPower(
+  sheet: NimbleSheet,
+  level: number,
+  count: number,
+  rng: Rng = Math.random,
+): string {
+  const r = sheetResource(sheet, level)
+  const res = sheet.resource
+  const n = Math.min(Math.max(0, Math.floor(count)), res.count)
+  if (r?.kind !== 'power' || n < 1) return ''
+  if (sheet.ownDice) {
+    res.count -= n
+    return `Spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die} yourself (mishap if any die rolls ${n} or less). ${res.count} left.`
+  }
+  const rolls = rollResourceDice(n, r.die, false, rng)
+  res.count -= n
+  const mishap = isMishap(rolls, n) ? ` Mishap! (a die rolled ${n} or less)` : ''
+  return `${n} ${r.diceName} ${diceWord(n)}: ${rolls.join(', ')} = ${total(rolls)}.${mishap} ${res.count} left.`
+}
+
+export function rollJudgment(
+  sheet: NimbleSheet,
+  level: number,
+  rng: Rng = Math.random,
+  values?: number[],
+): string {
+  const r = sheetResource(sheet, level)
+  const res = sheet.resource
+  if (r?.kind !== 'judgment' || res.rolls.length) return ''
+  if (sheet.ownDice && !values?.length)
+    return `${r.name}: roll ${r.roll}d${r.die}${r.advantage ? ' with advantage' : ''} and enter what you rolled.`
+  res.rolls = values?.length
+    ? values.map((v) => Math.max(0, Math.floor(v)))
+    : rollResourceDice(r.roll, r.die, r.advantage, rng)
+  const adv = r.advantage ? ', advantage' : ''
+  return `${r.name}: ${r.roll}d${r.die}${adv} → ${res.rolls.join(', ')} = ${total(res.rolls)}, added to your next melee hit.`
+}
+
+export function expendJudgment(sheet: NimbleSheet): string {
+  const rolls = sheet.resource.rolls
+  if (!rolls.length) return ''
+  sheet.resource.rolls = []
+  return `Judgment Dice expended: ${total(rolls)}.`
+}
+
+export function spendResourceMove(
+  sheet: NimbleSheet,
+  level: number,
+  name: string,
+  rng: Rng = Math.random,
+): string {
+  const r = sheetResource(sheet, level)
+  const res = sheet.resource
+  if (!r) return ''
+  const desc = r.moves.find((m) => m.name === name)?.desc ?? ''
+  if (res.count < 1) {
+    return freeMove(desc) ? `${name}: no charges, so it costs none.` : ''
+  }
+  const cost = counterCost(desc)
+  if (cost && costShort(sheet, cost)) return shortMessage(sheet, name, cost)
+  res.count -= 1
+  const paid = payCost(sheet, cost) ?? ''
+  const word = r.kind === 'dice' ? `${r.diceName} Die` : r.diceName.toLowerCase() || 'charge'
+  if (r.kind !== 'dice' || (desc && !/a roll of your Combat Die/.test(desc)))
+    return `${name}: spent 1 ${word}. ${res.count} left.${paid}`
+  const times = /2× a roll of your Combat Die/.test(desc) ? 2 : 1
+  if (sheet.ownDice)
+    return `${name}: spent 1 ${word}; roll your d${r.die}${times > 1 ? ' and double it' : ''}. ${res.count} left.${paid}`
+  const value = rollDie(r.die, rng)
+  const shown = times > 1 ? `${value} × 2 = ${value * 2}` : `${value}`
+  return `${name}: ${r.diceName} Die rolled ${shown} (d${r.die}). ${res.count} left.${paid}`
+}
+
+export function freeMove(desc: string): boolean {
+  return /costs 0 [^.]*if you have none/i.test(desc)
+}
+
+export function resourceOnAttack(
+  sheet: NimbleSheet,
+  level: number,
+  attack: { name: string; melee: boolean; props: string },
+  roll: NimbleRoll,
+  ready: number,
+  rng: Rng = Math.random,
+): { extra: number; note: string } {
+  const r = sheetResource(sheet, level)
+  const res = sheet.resource
+  if (!r) return { extra: 0, note: '' }
+  if (poweredBy(r, attack.props)) {
+    const n = Math.min(Math.max(0, Math.floor(ready)), res.count)
+    if (n < 1) return { extra: 0, note: '' }
+    const rolls = rollResourceDice(n, r.die, false, rng)
+    res.count -= n
+    const mishap = isMishap([...roll.dice, ...rolls], n)
+      ? ` Mishap! (a die rolled ${n} or less)${applyMishapEffect(sheet, attack.name)}`
+      : ''
+    const added = roll.miss ? '' : ` +${total(rolls)}`
+    return {
+      extra: roll.miss ? 0 : total(rolls),
+      note: ` ${n} ${r.diceName} ${diceWord(n)} (${rolls.join(', ')})${added}.${mishap}`,
+    }
+  }
+  if (r.kind === 'judgment' && attack.melee && res.rolls.length) {
+    const sum = total(res.rolls)
+    res.rolls = []
+    return roll.miss
+      ? { extra: 0, note: ' Judgment Dice expended.' }
+      : { extra: sum, note: ` Judgment Dice +${sum} radiant.` }
+  }
+  if (r.kind === 'crit' && roll.crit && res.count === 0) {
+    const rolls = rollResourceDice(r.roll, r.die, false, rng)
+    res.count = 1
+    return { extra: total(rolls), note: ` ${r.name} +${total(rolls)} (${rolls.join(', ')}).` }
+  }
+  return { extra: 0, note: '' }
 }
 
 /** Actions a spell takes, from its "2 Actions, AoE" line; rituals and reactions take none. */
@@ -483,7 +1135,8 @@ export function spellActions(cast: string): number {
 /** Slots one of an item takes when the player hasn't set it: 2 for two-handed weapons. */
 export function itemSlots(item: InventoryItem): number {
   if (item.slots !== undefined) return item.slots
-  return weaponByName(item.name)?.props.includes('2-handed') ? 2 : 1
+  const props = item.custom ? (item.custom.props ?? '') : (weaponByName(item.name)?.props ?? '')
+  return props.includes('2-handed') ? 2 : 1
 }
 
 function quantity(item: InventoryItem): number {

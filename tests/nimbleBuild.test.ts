@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ANCESTRIES, ancestryBySlug } from '../data/nimble/ancestries'
 import { BACKGROUNDS, backgroundBySlug } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES, classBySlug, poolOptionByName } from '../data/nimble/classes'
-import { weaponByName } from '../data/nimble/core'
+import { armorByName, weaponByName } from '../data/nimble/core'
 import { SPELLS } from '../data/nimble/spells'
 import type { ChoiceDef, ClassDef } from '../data/nimble/types'
 import type { NimbleSheet, NimbleStat } from '../types/sheets'
@@ -10,6 +10,8 @@ import { parseDice } from '../utils/dice'
 import {
   abilityBaseName,
   applyNimbleLevel,
+  malfunctionRisks,
+  weaponAttack,
   classArmor,
   changeSubclass,
   creationChoices,
@@ -86,6 +88,37 @@ describe('nimble data', () => {
         expect(cls.levels[l]?.statIncrease?.count, `${cls.slug} L${l}`).toBe(1)
       expect(cls.levels[20]?.statIncrease?.count).toBe(2)
     }
+  })
+
+  it('lets only the inventions that break or lock up malfunction', () => {
+    const cls = classBySlug('artificer')!
+    const risky = cls.pools.flatMap((p) =>
+      p.options.filter((o) => o.malfunction).map((o) => o.name),
+    )
+    expect(risky).toEqual(['Manabolt Cannon', 'Manablade', 'Manaforged Plate'])
+    const sheet = build(cls)
+    sheet.abilities.push(
+      { name: 'Manablade', src: 'Artificer', desc: '' },
+      { name: 'Aethertuned Jerkin', src: 'Artificer', desc: '' },
+    )
+    expect(malfunctionRisks(sheet)).toEqual([
+      { name: 'Manablade', label: 'Inoperable', fix: 'DC 12 Arcana check to fix' },
+    ])
+  })
+
+  it('rolls 1d4 to hit with an Unarmed Strike and deals 1+STR, or 1d4+STR with Swift Fists', () => {
+    const stats = { STR: 2, DEX: 0, INT: 0, WIL: 0 }
+    expect(weaponAttack('Unarmed Strike', stats, [])).toMatchObject({ dmg: '1d4', flat: 3 })
+    const swift = [{ name: 'Swift Fists', src: 'Zephyr', desc: '' }]
+    expect(weaponAttack('Unarmed Strike', stats, swift)).toMatchObject({ dmg: '1d4+2' })
+    expect(weaponAttack('Unarmed Strike', stats, swift)?.flat).toBeUndefined()
+  })
+
+  it('lists the armor and shields each class starts with', () => {
+    const worn = ['Adventurer’s Garb', 'Cheap Hides', 'Rusty Mail', 'Wooden Buckler']
+    for (const cls of NIMBLE_CLASSES)
+      for (const g of cls.startingGear)
+        if (worn.includes(g.name)) expect(armorByName(g.name), g.name).toBeDefined()
   })
 
   it('only references weapons and spells that exist', () => {
@@ -702,6 +735,19 @@ describe('lowering the level', () => {
     expect(sheet.abilities.every((a) => !a.level || a.level <= 2)).toBe(true)
     expect(sheet.hp).toBeLessThanOrEqual(sheet.hpMax)
     expect(sheet.subclassSlug).toBe('')
+  })
+
+  it('keeps held Judgment Dice and malfunctions when a level is undone, even from old snapshots', () => {
+    const cls = classBySlug('oathsworn')!
+    const sheet = build(cls)
+    levelTo(sheet, 2, cls.subclasses[0]!.slug)
+    const old = sheet.levelHistory!.at(-1)!.before as { resource: Record<string, unknown> }
+    delete old.resource.rolls
+    sheet.resource.rolls = [5, 6]
+    sheet.malfunctions = ['Manablade']
+    expect(restoreLevel(sheet, 1)).toBe(true)
+    expect(sheet.resource.rolls).toEqual([5, 6])
+    expect(sheet.malfunctions).toEqual(['Manablade'])
   })
 
   it('keeps live mana and class resource state while restoring their maximums', () => {

@@ -39,6 +39,7 @@ export const zephyr: ClassDef = {
     ability: 'Burst of Speed',
     stat: 'DEX',
     bonus: { level: 20, amount: 1 },
+    refill: 'initiative',
   },
   swapRule: {
     name: 'Focus',

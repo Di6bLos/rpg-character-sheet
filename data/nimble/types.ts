@@ -28,6 +28,7 @@ export interface PoolOption extends AbilityDef {
    * raises the higher one (the first on a tie); the player can move it by hand.
    */
   statBump?: NimbleStat[]
+  malfunction?: { label: string; fix: string; condition?: string }
 }
 
 export interface AbilityPool {
@@ -96,6 +97,7 @@ export interface LevelDef {
   resourceDie?: number
   /** Extra max class resource from this level on (Artificer: +1 max Mana Die). */
   resourceBonus?: number
+  resourceRoll?: number
   /** Renames an attack so it's rebuilt from another weapon (Thunder Gauntlets Prototype → Thunder Gauntlets). */
   swapAttack?: { from: string; to: string }
   /** Hit Dice upgrade (Wild Heart d10). */
@@ -171,6 +173,9 @@ export interface ResourceDef {
   movesPool?: string
   /** Extra uses from a level on (Windborne: +1 Burst of Speed at level 20). */
   bonus?: { level: number; amount: number }
+  refill?: 'turn' | 'initiative'
+  maxPick?: string
+  roll?: number
 }
 
 export interface ClassDef {
@@ -247,6 +252,121 @@ export interface BackgroundDef {
   choice?: ChoiceDef
 }
 
+export interface ArmorDef {
+  name: string
+  kind: 'Cloth' | 'Leather' | 'Mail' | 'Plate' | 'Shield'
+  armor: string
+  str?: number
+  cost?: string
+}
+
+export interface GearDef {
+  name: string
+  desc: string
+  cost?: string
+}
+
+export interface MagicItemDef {
+  name: string
+  rarity: 'Uncommon' | 'Rare' | 'Very Rare' | 'Legendary' | 'Varies'
+  kind: 'weapon' | 'armor' | 'shield' | 'wondrous' | 'wand' | 'template'
+  desc: string
+  armor?: string
+}
+
+export interface SummonDef {
+  id: string
+  name: string
+  source: string
+  hp: number
+  duration: string
+  desc: string
+  attack?: { dice: string; reach?: number; actions?: number; label?: string; charges?: number }
+  cap?: 'int-or-lvl' | number
+  endsOn?: ('rest' | 'encounter' | 'turn')[]
+  permanent?: boolean
+  combatant?: boolean
+  weapon?: { count: number; die: number; perDie: NimbleStat; reach: number; levelStep: number }
+}
+
+export interface AbilityRollDef {
+  ability: string
+  requires?: string
+  count: (NimbleStat | number)[]
+  die: number
+  kind: 'damage' | 'healing'
+  each?: boolean
+  noMiss?: boolean
+  dc?: number
+  note?: string
+  upgrades?: {
+    name: string
+    count?: number
+    dieSteps?: number
+    mult?: number
+    advantage?: boolean
+    dc?: number
+    note?: string
+  }[]
+}
+
+export interface InventionDef {
+  name: string
+  use: 'cannon' | 'blade' | 'plate' | 'jerkin' | 'tether'
+  actions: number
+  min: number
+}
+
+export type EffectEnd =
+  | 'attack'
+  | 'turn'
+  | 'turnEnd'
+  | 'nextTurnEnd'
+  | 'encounter'
+  | 'rest'
+  | 'concentration'
+  | 'spell'
+  | 'zeroHp'
+  | 'damage'
+  | 'tempHpGone'
+
+export interface SelfEffectDef {
+  source: string
+  condition: string
+  ends: EffectEnd[]
+  until: string
+  trigger?: 'use' | 'mishap' | 'cast'
+  tempHp?: string
+  tempHpPerUpcast?: string
+  attack?: { name: string; dice: string; note?: string }
+  dropToZero?: boolean
+  transform?: boolean
+  clearNegative?: boolean
+  form?: { requires: string; rank: number; cost: string; freeWith?: string; keepOnSpell?: string }
+}
+
+export interface SummonMod {
+  ability: string
+  summon: string
+  reach?: number
+  die?: number
+  perSummon?: number
+  diceMult?: number
+  bonusTier?: number
+  maxDie?: number
+  damageStat?: NimbleStat
+  onCrit?: 'summon' | string
+  critTempHp?: string
+  onHighHeal?: string
+  onHighAttack?: string
+  damageType?: string
+  freeWhileDying?: boolean
+  onInitiative?: number
+  onDeath?: string
+  sacrifice?: string
+  note?: string
+}
+
 export interface WeaponDef {
   name: string
   /** Damage dice before the stat, e.g. "1d10". */
@@ -255,6 +375,7 @@ export interface WeaponDef {
   type: string
   props: string
   melee: boolean
+  cost?: string
 }
 
 export interface SpellDef {

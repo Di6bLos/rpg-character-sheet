@@ -67,6 +67,7 @@ export interface NimbleRoll {
   crit: boolean
   total: number
   bonus: number
+  dice: number[]
 }
 
 /**
@@ -95,7 +96,7 @@ export function rollNimble(
   )
   const kept = rolled.filter((_, i) => !dropped.has(i))
   const first = kept[0] ?? 1
-  if (first === 1) return { miss: true, crit: false, total: 0, bonus: 0 }
+  if (first === 1) return { miss: true, crit: false, total: 0, bonus: 0, dice: kept }
   let total = kept.reduce((sum, v) => sum + v, 0)
   let crit = false
   let last = first
@@ -106,5 +107,5 @@ export function rollNimble(
   }
   let bonus = 0
   if (bonusDice) for (let i = 0; i < bonusDice.count; i++) bonus += rollDie(bonusDice.sides, rng)
-  return { miss: false, crit, total: total + expr.mod + bonus, bonus }
+  return { miss: false, crit, total: total + expr.mod + bonus, bonus, dice: kept }
 }

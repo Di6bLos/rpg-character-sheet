@@ -46,8 +46,9 @@ export const oathsworn: ClassDef = {
     name: 'Judgment Dice',
     diceName: 'Judgment',
     die: 6,
-    kind: 'dice',
+    kind: 'judgment',
     ability: 'Radiant Judgment',
+    roll: 2,
   },
   swapRule: {
     name: 'Serve Selflessly',

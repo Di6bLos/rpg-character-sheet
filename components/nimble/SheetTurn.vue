@@ -1,7 +1,19 @@
 <script setup lang="ts">
-// The turn tracker: actions left this turn, and the New turn / New encounter resets.
+// The turn tracker: actions left this turn, and the Start turn / End turn / New encounter steps.
 import type { NimbleSheet } from '~/types/sheets'
-import { actionsLeft, newEncounter, newTurn, stopCasting, turnActions } from '~/utils/nimblePlay'
+import {
+  actionPips,
+  actionsLeft,
+  endEncounter,
+  gainAction,
+  newRound,
+  toggleActionPip,
+  endTurn,
+  newEncounter,
+  startTurn,
+  stopCasting,
+  turnActions,
+} from '~/utils/nimblePlay'
 
 const { draft, canEdit, say } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -14,26 +26,46 @@ const rushedNote = computed(() =>
     : 'No attacks yet this turn',
 )
 
+const pips = computed(() => actionPips(sheet.value))
+
 function toggleAction(n: number) {
-  if (!canEdit.value) return
-  // Pips fill from the left: tapping a filled one spends it, an empty one restores it.
-  sheet.value.actionsSpent = Math.max(
-    0,
-    Math.min(perTurn.value, sheet.value.actionsSpent + (n <= left.value ? 1 : -1)),
-  )
+  if (canEdit.value) toggleActionPip(sheet.value, n)
+}
+
+function extraAction() {
+  if (canEdit.value) say(gainAction(sheet.value))
 }
 
 function cancelCasting() {
   if (canEdit.value) say(stopCasting(sheet.value))
 }
 
-function startTurn() {
-  if (canEdit.value) say(newTurn(sheet.value))
+function beginTurn() {
+  if (canEdit.value) say(startTurn(sheet.value, draft.value.level))
 }
 
-function startEncounter() {
-  if (canEdit.value) say(newEncounter(sheet.value))
+function finishEncounter() {
+  if (canEdit.value) say(endEncounter(sheet.value, draft.value.level))
 }
+
+function nextRound() {
+  if (canEdit.value) say(newRound(sheet.value, draft.value.level))
+}
+
+function finishTurn() {
+  if (canEdit.value) say(endTurn(sheet.value, draft.value.level))
+}
+
+function startEncounter(values?: number[]) {
+  if (canEdit.value) say(newEncounter(sheet.value, draft.value.level, Math.random, values?.[0]))
+}
+
+const ownDice = computed({
+  get: () => sheet.value.ownDice,
+  set: (on: boolean) => {
+    if (canEdit.value) sheet.value.ownDice = on
+  },
+})
 </script>
 
 <template>
@@ -42,33 +74,52 @@ function startEncounter() {
       <h2 id="turn-h">Turn</h2>
       <UiHelp
         label="About the turn tracker"
-        text="Attacks, spells and reactions spend actions for you. Tap a circle to spend or restore one. New turn restores them all, readies your reactions and refills once-per-turn abilities; New encounter also refills once-per-encounter ones."
+        text="Attacks, spells and reactions spend actions for you; tap a circle to spend or restore one. Your actions come back at the END of your turn, so reactions you take on others’ turns come out of your next one. Start turn refills once-per-turn abilities and pays spells still being cast; New encounter rolls Initiative (9 or less: 1 action, 10–19: 2, 20+: all) and refills once-per-encounter abilities. On the board, Start and End turn happen by themselves as initiative reaches and leaves you."
       />
     </div>
     <div class="tile turn">
-      <div class="row" style="gap: 8px" role="group" aria-label="Actions this turn">
+      <div
+        class="row"
+        style="gap: 8px; flex-wrap: wrap"
+        role="group"
+        aria-label="Actions this turn"
+      >
         <button
-          v-for="n in perTurn"
+          v-for="n in pips"
           :key="n"
           type="button"
           class="action"
-          :class="{ on: n <= left }"
+          :class="{ on: n <= left, extra: n > perTurn }"
           :aria-label="`${n <= left ? 'Spend' : 'Restore'} action ${n}`"
           :disabled="!canEdit"
           @click="toggleAction(n)"
         >
           {{ n }}
         </button>
+        <button
+          type="button"
+          class="action action--add"
+          aria-label="Gain an extra action"
+          title="An ally or ability gave you an extra action (Stim Pack, Chorus of Champions…); it lasts until your turn ends"
+          :disabled="!canEdit"
+          @click="extraAction"
+        >
+          +1
+        </button>
       </div>
       <div class="stack" style="gap: 2px; min-width: 140px">
         <strong role="status" style="font-size: 15px">
-          {{ left }} of {{ perTurn }} left{{ sheet.dying ? ' (Dying)' : '' }}
+          {{
+            left > perTurn
+              ? `${left} left (${left - perTurn} extra)`
+              : `${left} of ${perTurn} left`
+          }}{{ sheet.dying ? ' (Dying)' : '' }}
         </strong>
         <span class="muted" style="font-size: 12px">{{ rushedNote }}</span>
         <div v-if="sheet.casting.actions" class="row" style="gap: 6px">
           <span class="muted" style="font-size: 12px">
             Casting {{ sheet.casting.spell }}: {{ sheet.casting.actions }} more
-            {{ sheet.casting.actions === 1 ? 'action' : 'actions' }} on New turn
+            {{ sheet.casting.actions === 1 ? 'action' : 'actions' }} on Start turn
           </span>
           <button
             type="button"
@@ -82,23 +133,66 @@ function startEncounter() {
       </div>
       <div class="row" style="gap: 6px; margin-left: auto; flex-wrap: wrap">
         <button
+          v-if="!sheet.ownDice && !sheet.inEncounter"
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit"
-          @click="startEncounter"
+          @click="startEncounter()"
         >
           New encounter
         </button>
         <button
+          v-if="sheet.inEncounter && !sheet.turnActive"
+          type="button"
+          class="btn btn--quiet btn--sm"
+          :disabled="!canEdit"
+          title="The battle is over: Rage, unused combat charges and minions end"
+          @click="finishEncounter"
+        >
+          End encounter
+        </button>
+        <button
+          v-if="!sheet.turnActive && sheet.inEncounter && !sheet.turnDone"
+          type="button"
+          class="btn btn--sm"
+          :disabled="!canEdit"
+          @click="beginTurn"
+        >
+          Start turn
+        </button>
+        <button
+          v-else-if="sheet.inEncounter && sheet.turnDone && !sheet.turnActive"
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit"
-          @click="startTurn"
+          title="Your turn is over for this round; tap when the next round begins"
+          @click="nextRound"
         >
-          New turn
+          New round
+        </button>
+        <button
+          v-if="sheet.turnActive"
+          type="button"
+          class="btn btn--sm"
+          :disabled="!canEdit"
+          @click="finishTurn"
+        >
+          End turn
         </button>
       </div>
     </div>
+    <NimbleDiceEntry
+      v-if="sheet.ownDice && !sheet.inEncounter"
+      label="Your Initiative total"
+      action="New encounter"
+      :disabled="!canEdit"
+      @submit="startEncounter"
+    />
+    <UiSwitch
+      v-model="ownDice"
+      label="I roll my own dice (the app only checks things off)"
+      :disabled="!canEdit"
+    />
   </section>
 </template>
 
@@ -111,8 +205,10 @@ function startEncounter() {
 }
 
 .action {
+  flex: none;
   width: 44px;
   height: 44px;
+  padding: 0;
   border-radius: 50%;
   font-weight: 700;
   font-size: 15px;
@@ -124,6 +220,18 @@ function startEncounter() {
     background: var(--secondary);
     color: var(--on-secondary);
     border: 2px solid var(--secondary);
+  }
+
+  &.extra.on {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+  }
+
+  &--add {
+    border-style: solid;
+    font-size: 13px;
+    color: var(--page-soft);
   }
 }
 </style>
