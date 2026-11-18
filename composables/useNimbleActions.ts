@@ -8,6 +8,7 @@ import { parseDice, rollNimble } from '~/utils/dice'
 import { abilityBaseName, malfunctionRisks, sheetResource } from '~/utils/nimbleBuild'
 import {
   abilityRoll,
+  isAttackRoll,
   afterEffectAttack,
   applyEffect,
   effectAttacks,
@@ -192,8 +193,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const die = resource.value?.die ?? res.die
       // Swift Fists and the like say so in the weapon's properties.
       const next = nextAttack.value
-      const rushed = /no rushed/i.test(w.props) || next.clean ? 0 : sheet.value.rushed
       const oa = opportunity.value && prepaid.value > 0
+      const rushed = oa || /no rushed/i.test(w.props) || next.clean ? 0 : sheet.value.rushed
       const oaDisadvantage = oa && !frenzyOpportunity.value ? 1 : 0
       const odds = rushed + cond.value.disadvantage + oaDisadvantage
       const meleeOnly = oa && !w.melee
@@ -297,6 +298,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
                   : '',
         roll: () => {
           if (!canEdit.value) return
+          const onTurn = sheet.value.turnActive && !oa
           if (cond.value.incapacitated)
             return report(`${w.name}: you are ${cond.value.incapacitated} and can’t act.`)
           if (meleeOnly) return report(`${w.name}: an opportunity attack has to be a melee attack.`)
@@ -334,7 +336,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             const ended = endEffects(sheet.value, 'attack')
             finish(false, false)
             spendAttackAction()
-            sheet.value.rushed += 1
+            if (onTurn) sheet.value.rushed += 1
             const rush =
               odds > 0 ? ` with ${odds}× disadvantage` : odds < 0 ? ` with ${-odds}× advantage` : ''
             return report(
@@ -393,7 +395,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               }${hints}.${zealNote}${extra.note}${after}${triggers}${dying}`,
             )
           spendAttackAction()
-          sheet.value.rushed += 1
+          if (onTurn) sheet.value.rushed += 1
         },
       }
     }),
@@ -668,8 +670,17 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       .join(' ')
     const effect = applyEffect(sheet.value, draft.value.level, base)
     report(
-      `${label}: ${counter.max - used} of ${counter.max} left.${paid}${summoned ? ` ${summoned}` : ''}${abilityRoll(sheet.value, base)}${effect ? ` ${effect}` : ''}`,
+      `${label}: ${counter.max - used} of ${counter.max} left.${paid}${summoned ? ` ${summoned}` : ''}${gadgetRoll(base)}${effect ? ` ${effect}` : ''}`,
     )
+  }
+
+  /** An ability's dice; a damaging gadget used on your turn is an attack, so Rushed applies. */
+  function gadgetRoll(source: string): string {
+    const attack = isAttackRoll(sheet.value, source) && sheet.value.turnActive
+    const odds = attack ? sheet.value.rushed + cond.value.disadvantage : 0
+    const line = abilityRoll(sheet.value, source, Math.random, odds)
+    if (attack && line) sheet.value.rushed += 1
+    return line
   }
 
   function freeAttack(source: string): string {
@@ -882,7 +893,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             const wound = woundUse ? ` ${sufferWound(sheet.value, draft.value.level)}` : ''
             const effect = applyEffect(sheet.value, draft.value.level, key)
             report(
-              `${a.name}:${paid ?? ''}${spent}${free}${wound}${woundUse ? '' : selfGains(sheet.value, draft.value.level, a.desc)}${abilityRoll(sheet.value, key)}${effect ? ` ${effect}` : ''}`,
+              `${a.name}:${paid ?? ''}${spent}${free}${wound}${woundUse ? '' : selfGains(sheet.value, draft.value.level, a.desc)}${gadgetRoll(key)}${effect ? ` ${effect}` : ''}`,
             )
           },
         },

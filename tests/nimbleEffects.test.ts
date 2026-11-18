@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NimbleSheet } from '../types/sheets'
 import {
   abilityRoll,
+  isAttackRoll,
   applyCastEffect,
   applyEffect,
   effectAttacks,
@@ -108,6 +109,21 @@ describe('gadget rolls', () => {
     ])
     expect(abilityRoll(sheet, 'Stim Pack', faces(8, 4))).toBe(
       ' Stim Pack: 24 HP healed (3d8: 4 + 4 + 4 ×2). The target gains 1 action; at the end of their turn, DC 12 STR save or Dazed. The target gains 1 Wound.',
+    )
+  })
+
+  it('rolls the Homing Missile and Scrapbot Swarm with Rushed disadvantage, keeping the lowest', () => {
+    const sheet = hero(['Homing Missile', 'Scrapbot Swarm'])
+    expect(isAttackRoll(sheet, 'Homing Missile')).toBe(true)
+    expect(
+      isAttackRoll(hero(['Safety Buddy', 'Safety Buddy: Explosive Framework']), 'Safety Buddy'),
+    ).toBe(false)
+    expect(abilityRoll(sheet, 'Homing Missile', faces(20, 15, 4, 9), 2)).toMatch(
+      /4 damage \(1d20 with 2× disadvantage: 4\)/,
+    )
+    const upgraded = hero(['Homing Missile', 'Homing Missile: Reliable Explosives'])
+    expect(abilityRoll(upgraded, 'Homing Missile', faces(20, 15, 4), 1)).toMatch(
+      /15 damage \(1d20: 15\)/,
     )
   })
 

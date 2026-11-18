@@ -213,7 +213,22 @@ export function clearEffect(sheet: NimbleSheet, condition: string): void {
   sheet.effects = sheet.effects.filter((e) => e.condition !== condition)
 }
 
-export function abilityRoll(sheet: NimbleSheet, ability: string, rng: Rng = Math.random): string {
+/** True when using the ability is an attack the hero makes (Homing Missile, Scrapbot Swarm). */
+export function isAttackRoll(sheet: NimbleSheet, ability: string): boolean {
+  const def = ABILITY_ROLLS.find((r) => r.ability === ability)
+  return !!def?.attack && (!def.requires || has(sheet, def.requires))
+}
+
+/**
+ * Rolls an ability's dice. `disadvantage` (negative: advantage) adds that many
+ * dice and keeps the lowest (highest), as for Rushed attacks.
+ */
+export function abilityRoll(
+  sheet: NimbleSheet,
+  ability: string,
+  rng: Rng = Math.random,
+  disadvantage = 0,
+): string {
   const def = ABILITY_ROLLS.find((r) => r.ability === ability)
   if (!def || (def.requires && !has(sheet, def.requires))) return ''
   const ups = (def.upgrades ?? []).filter((u) => has(sheet, u.name))
@@ -226,20 +241,23 @@ export function abilityRoll(sheet: NimbleSheet, ability: string, rng: Rng = Math
   const at = DIE_STEPS.indexOf(def.die)
   const die = at < 0 ? def.die : (DIE_STEPS[Math.min(at + steps, DIE_STEPS.length - 1)] ?? def.die)
   const mult = ups.reduce((n, u) => n * (u.mult ?? 1), 1)
-  const advantage = ups.some((u) => u.advantage)
+  const odds = disadvantage - (ups.some((u) => u.advantage) ? 1 : 0)
+  const stepsOf = (n: number) => (n > 1 ? `${n}× ` : '')
+  const oddsText =
+    odds > 0 ? ` with ${stepsOf(odds)}disadvantage` : odds < 0 ? ` with ${stepsOf(-odds)}advantage` : ''
   if (count < 1) return ` ${ability}: no dice to roll (${def.count.join('+')} is 0).`
   if (sheet.ownDice) {
     const dc = (def.dc ?? 0) + ups.reduce((n, u) => n + (u.dc ?? 0), 0)
     const notes = [def.note, ...ups.map((u) => u.note)]
       .filter((n): n is string => !!n)
       .map((n) => n.replace('{dc}', String(dc)))
-    const extra = `${advantage ? ' with advantage' : ''}${mult > 1 ? `, ×${mult}` : ''}`
+    const extra = `${oddsText}${mult > 1 ? `, ×${mult}` : ''}`
     return ` ${ability}: roll ${count}d${die}${extra} yourself.${notes.length ? ` ${notes.join(' ')}` : ''}`
   }
-  const rolls = Array.from({ length: count }, () => {
-    const a = rollDie(die, rng)
-    return advantage ? Math.max(a, rollDie(die, rng)) : a
-  })
+  const rolled = Array.from({ length: count + Math.abs(odds) }, () => rollDie(die, rng))
+  const rolls = odds
+    ? [...rolled].sort((a, b) => (odds > 0 ? a - b : b - a)).slice(0, count)
+    : rolled
   const crit = !!def.noMiss && rolls[0] === die
   for (let last = crit ? die : 0; last === die; ) {
     last = rollDie(die, rng)
@@ -253,5 +271,5 @@ export function abilityRoll(sheet: NimbleSheet, ability: string, rng: Rng = Math
   const word = `${def.kind === 'healing' ? 'HP healed' : 'damage'}${crit ? ' · critical' : ''}`
   const shown = def.each ? `${rolls.join(', ')}` : rolls.join(' + ')
   const times = mult > 1 ? ` ×${mult}` : ''
-  return ` ${ability}: ${total} ${word} (${count}d${die}${advantage ? ' with advantage' : ''}: ${shown}${times}).${notes.length ? ` ${notes.join(' ')}` : ''}`
+  return ` ${ability}: ${total} ${word} (${count}d${die}${oddsText}: ${shown}${times}).${notes.length ? ` ${notes.join(' ')}` : ''}`
 }
