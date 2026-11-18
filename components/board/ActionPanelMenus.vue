@@ -85,12 +85,12 @@ const {
   maxTier,
   setUpcast,
   pool: spellPool,
+  summonSpells,
 } = useNimbleSpells({ onResult: announce })
 const {
   available: summonable,
   minions,
   spirit,
-  summon,
   dismiss,
   slay,
   sacrifice,
@@ -102,6 +102,7 @@ const {
   groups: summonGroups,
   summonAttacks,
 } = useNimbleSummons({ onResult: announce })
+const isFull = (id: string) => !!summonable.value.find((a) => a.id === id)?.full
 
 /** One row per summon kind, a stack for identical minions; hand-added ones each get a row. */
 const summonStacks = computed(() =>
@@ -1012,17 +1013,19 @@ const effectRows = computed(() =>
             Dismiss
           </button>
         </li>
-        <li v-if="summonable.length" class="apm__caps" aria-hidden="true">Add by hand (no cost)</li>
-        <li v-for="a in summonable" :key="a.id">
+        <li v-if="summonSpells.length" class="apm__caps" aria-hidden="true">Summoning spells</li>
+        <li v-for="sp in summonSpells" :key="sp.name">
           <button
             type="button"
             class="apm__row"
-            :aria-label="`Add ${a.name} by hand, without casting or spending a use`"
-            :aria-disabled="!canEdit || a.full || undefined"
-            @click="canEdit && !a.full && summon(a.id)"
+            :aria-label="`Cast ${sp.name}, ${sp.cost}${sp.blocked ? `. ${sp.blocked}` : ''}`"
+            :aria-disabled="!canEdit || !!sp.blocked || isFull(sp.summon) || undefined"
+            :title="sp.desc"
+            @click="canEdit && !sp.blocked && !isFull(sp.summon) && cast(sp)"
           >
-            <span class="apm__name">+ {{ a.name }}</span>
-            <span class="apm__tag">{{ a.full ? 'Max' : 'Add' }}</span>
+            <span class="apm__name">{{ sp.name }}</span>
+            <span class="apm__tag">{{ isFull(sp.summon) ? 'Max' : sp.cost }}</span>
+            <span v-if="sp.blocked" class="apm__sub apm__sub--warn">{{ sp.blocked }}</span>
           </button>
         </li>
       </ul>

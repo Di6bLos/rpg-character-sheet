@@ -5,10 +5,10 @@ import type { SpellSchool } from '~/data/nimble/types'
 import type { NimbleSheet } from '~/types/sheets'
 import { keyStatValue } from '~/utils/nimbleBuild'
 
-const { draft, canEdit } = useSheet<NimbleSheet>()
+const { draft } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const keyValue = computed(() => keyStatValue(sheet.value))
-const { known, utility, maxTier, tiers, help, setUpcast, cast } = useNimbleSpells()
+const { known, utility, tiers, help } = useNimbleSpells()
 
 const schools = computed(() =>
   sheet.value.spells.schools.map((s) => SCHOOL_LABELS[s as SpellSchool] ?? s).join(' · '),
@@ -37,84 +37,7 @@ const schools = computed(() =>
             {{ g.label }}
           </summary>
           <div class="spell-grid">
-            <details v-for="s in g.spells" :key="s.name" name="nimble-spell" class="tile spell">
-              <summary class="spell__head">
-                <strong>{{ s.name }}</strong>
-                <span class="school" :class="`school--${s.school}`">{{
-                  SCHOOL_LABELS[s.school]
-                }}</span>
-                <small>{{ s.cast }}</small>
-              </summary>
-              <div class="spell__body">
-                <p><NimbleRulesText :text="s.desc" :key-value="keyValue" /></p>
-                <NimbleModifiers :target="s.name" />
-                <div class="row" style="gap: 8px">
-                  <div v-if="s.canUpcast" class="row" style="gap: 4px">
-                    <button
-                      type="button"
-                      class="step step--xs"
-                      :aria-label="`Lower the cast tier of ${s.name}`"
-                      :disabled="!canEdit || s.at <= s.tier"
-                      @click="setUpcast(s, s.at - 1)"
-                    >
-                      −
-                    </button>
-                    <span class="spell__tier" aria-live="polite">Tier {{ s.at }}</span>
-                    <button
-                      type="button"
-                      class="step step--xs"
-                      :aria-label="`Upcast ${s.name}`"
-                      :disabled="!canEdit || s.at >= maxTier"
-                      @click="setUpcast(s, s.at + 1)"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn--sm cast"
-                    :class="{ 'btn--ghost': s.tier === 0 }"
-                    :disabled="!canEdit || s.short || s.busy || s.noActions"
-                    :title="
-                      s.busy
-                        ? `Still casting ${sheet.casting.spell}`
-                        : s.noActions
-                          ? 'No actions left'
-                          : s.short
-                            ? s.usesMinions
-                              ? `Not enough shadow minions (needs ${s.cost})`
-                              : 'Not enough mana'
-                            : s.spread
-                              ? 'Spends the actions you have now and the rest on your next turns; it takes effect then. Keep Concentration and take no other actions or reactions meanwhile (Core p. 15).'
-                              : undefined
-                    "
-                    @click="cast(s)"
-                  >
-                    {{ s.label }}
-                  </button>
-                  <button
-                    v-if="s.bloodLabel"
-                    type="button"
-                    class="btn btn--sm btn--ghost cast"
-                    :disabled="!canEdit || s.busy || s.noActions"
-                    @click="cast(s, true)"
-                  >
-                    {{ s.bloodLabel }}
-                  </button>
-                  <button
-                    v-for="a in s.alts"
-                    :key="a.key"
-                    type="button"
-                    class="btn btn--ghost btn--sm btn--wrap"
-                    :disabled="!canEdit || s.busy || s.noActions || !!a.why"
-                    :title="a.why || undefined"
-                    @click="cast(s, false, a.key)"
-                  >
-                    {{ a.why || a.label }}
-                  </button>
-                </div>
-              </div>
-            </details>
+            <NimbleSpellCard v-for="s in g.spells" :key="s.name" :spell="s" />
           </div>
         </details>
         <p v-if="!known.length" class="empty">No combat spells yet.</p>
@@ -189,35 +112,6 @@ const schools = computed(() =>
   align-items: start;
 }
 
-.spell {
-  padding: 0;
-  gap: 0;
-
-  summary {
-    min-height: 44px;
-    padding: 10px 14px;
-    cursor: pointer;
-  }
-
-  p {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--page-soft);
-  }
-
-  &[open] {
-    border-color: var(--accent);
-  }
-}
-
-.spell__body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 14px 12px;
-}
-
-.spell__head,
 .utility summary {
   display: flex;
   align-items: center;
@@ -233,17 +127,6 @@ const schools = computed(() =>
     font-size: 12px;
     color: var(--page-muted);
   }
-}
-
-.spell__tier {
-  min-width: 52px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.cast {
-  margin-left: auto;
 }
 
 // Each school tints its chip; mixing with the theme's own field and text keeps

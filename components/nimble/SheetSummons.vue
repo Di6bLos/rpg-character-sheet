@@ -32,7 +32,6 @@ const {
   available,
   spirit,
   armorOfShadows,
-  summon,
   addCustom,
   dismiss,
   slay,
@@ -42,6 +41,8 @@ const {
   spiritCost,
   summonAttacks,
 } = useNimbleSummons()
+const { summonSpells } = useNimbleSpells()
+const isFull = (id: string) => !!available.value.find((a) => a.id === id)?.full
 
 function stackAttack(g: { id: string }, first: { name: string; custom?: NimbleCustomSummon }) {
   const key =
@@ -360,21 +361,14 @@ function submitCustom() {
     <p v-if="!sheet.summons.length" class="empty">Nothing summoned right now.</p>
 
     <div v-if="canEdit" class="stack" style="gap: 8px">
-      <span v-if="available.length" class="caps">Add by hand (no cost)</span>
-      <div v-if="available.length" class="chips" style="gap: 6px">
-        <button
-          v-for="a in available"
-          :key="a.id"
-          type="button"
-          class="chip"
-          :disabled="a.full"
-          :title="
-            a.full ? 'At the max' : `Add ${a.name} by hand, without casting or spending a use`
-          "
-          @click="summon(a.id)"
-        >
-          + {{ a.name }}
-        </button>
+      <span v-if="summonSpells.length" class="caps">Summoning spells</span>
+      <div v-if="summonSpells.length" class="spell-grid">
+        <NimbleSpellCard
+          v-for="s in summonSpells"
+          :key="s.name"
+          :spell="s"
+          :blocked="s.blocked || (isFull(s.summon) ? 'At the max' : '')"
+        />
       </div>
       <button
         type="button"
@@ -699,6 +693,13 @@ function submitCustom() {
   font-size: 13px;
   line-height: 1.5;
   color: var(--page-soft);
+}
+
+.spell-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  gap: 8px;
+  align-items: start;
 }
 
 .builder__toggle {
