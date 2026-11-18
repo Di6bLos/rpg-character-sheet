@@ -33,8 +33,12 @@ import {
   dyingAttackSave,
   endTurn,
   expendJudgment,
+  manaCost,
+  manaPool,
   payCost,
   refundActions,
+  selfGains,
+  spendMana,
   shortMessage,
   heldInventions,
   operateInvention,
@@ -64,6 +68,7 @@ export interface AbilityCounterView {
   max: number
   used: number
   cost?: CounterCost
+  text?: string
 }
 
 function resourcePattern(r: { name: string; ability: string; kind: string; diceName: string }) {
@@ -81,10 +86,18 @@ function resourcePattern(r: { name: string; ability: string; kind: string; diceN
   return new RegExp(`\\b(?:${words.join('|')})\\b`)
 }
 
+const CLASS_REACTION = /^(?:\([^)]*\)\s*)?Reaction\b/
+const STARTS_AS_ACTION =
+  /^(?:\([^)]*\)\s*)?(?:Action(?::|\/Reaction\b)|\d+ actions?:|Spend \d+ actions?\b|You may spend \d+ actions?\b)/
+const FREE_ATTACK = /\bmake (?:an?|\d+) (?:melee |ranged )?attacks?\b[^.]*\bfor free\b/i
+
 export function useNimbleActions(options: NimbleResultOptions = {}) {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
   const resource = computed(() => sheetResource(sheet.value, draft.value.level))
+  const resourceKey = computed(() =>
+    resource.value?.ability ? abilityBaseName(resource.value.ability) : '',
+  )
   const ready = useState(`nimble-power-${draft.value.id}`, () => 0)
   const readied = computed(() => Math.min(ready.value, sheet.value.resource.count))
   const prepaid = useState(`nimble-prepaid-${draft.value.id}`, () => 0)
@@ -223,31 +236,71 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     }),
   )
 
+  const limitedNames = computed(
+    () =>
+      new Set(
+        abilityCounters(sheet.value, draft.value.level).map((e) => abilityBaseName(e.ability.name)),
+      ),
+  )
+
+  const classReactions = computed(() =>
+    sheet.value.abilities
+      .filter(
+        (a) =>
+          CLASS_REACTION.test(a.desc) &&
+          !limitedNames.value.has(abilityBaseName(a.name)) &&
+          !summonBySource(abilityBaseName(a.name)),
+      )
+      .map((a) => ({ name: abilityBaseName(a.name), desc: a.desc.replace(/^Reaction\s*/, '') })),
+  )
+
+  function freeReaction(name: string): boolean {
+    const texts = sheet.value.abilities.map((a) => a.desc)
+    if (name === 'Interpose') return texts.some((t) => /\bYou can Interpose for free\b/.test(t))
+    return (
+      name === 'Defend' &&
+      sheet.value.reactionsUsed.includes('Interpose') &&
+      texts.some((t) => /\bDefend for free whenever you Interpose\b/.test(t))
+    )
+  }
+
   const reactions = computed(() =>
-    REACTIONS.map((r) => ({
-      ...r,
-      desc: r.name === 'Defend' ? `${r.desc} Your Armor is ${sheet.value.ac}.` : r.desc,
-      used: sheet.value.reactionsUsed.includes(r.name),
-      blocked: !sheet.value.reactionsUsed.includes(r.name) && left.value === 0,
-    })),
+    [...REACTIONS, ...classReactions.value].map((r) => {
+      const used = sheet.value.reactionsUsed.includes(r.name)
+      const free = freeReaction(r.name)
+      return {
+        ...r,
+        desc: r.name === 'Defend' ? `${r.desc} Your Armor is ${sheet.value.ac}.` : r.desc,
+        used,
+        free,
+        costText: free ? 'Free' : 'Costs 1 action',
+        blocked: !used && !free && left.value === 0,
+      }
+    }),
   )
 
   function toggleReaction(name: string) {
     if (!canEdit.value) return
     const used = sheet.value.reactionsUsed
     const attack = name === 'Opportunity Attack'
+    const free = freeReaction(name)
     if (used.includes(name)) {
       sheet.value.reactionsUsed = used.filter((n) => n !== name)
-      refundActions(sheet.value, 1)
+      if (!free) refundActions(sheet.value, 1)
       if (attack) prepaid.value = Math.max(0, prepaid.value - 1)
       return
     }
-    if (left.value === 0) return report(NO_ACTIONS)
+    if (!free && left.value === 0) return report(NO_ACTIONS)
     used.push(name)
-    spendActions(sheet.value)
-    if (!attack) return report(`${name}: spent 1 action.`)
+    if (!free) spendActions(sheet.value)
+    const paid = free ? 'free' : 'spent 1 action'
+    const text = sheet.value.abilities.find((a) => abilityBaseName(a.name) === name)?.desc ?? ''
+    const judgment = /\bexpend your Judgment Dice\b/i.test(text)
+      ? ` ${expendJudgment(sheet.value)}`
+      : ''
+    if (!attack) return report(`${name}: ${paid}.${judgment}`)
     prepaid.value += 1
-    report(`${name}: spent 1 action; roll the attack next, it costs no more.`)
+    report(`${name}: ${paid}; roll the attack next, it costs no more.`)
   }
 
   const linkedTo = computed(() => (resource.value ? resourcePattern(resource.value) : null))
@@ -255,7 +308,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const abilities = computed(() =>
     abilityCounters(sheet.value, draft.value.level)
       // The class resource panel already counts this one.
-      .filter(({ ability }) => abilityBaseName(ability.name) !== resource.value?.ability)
+      .filter(({ ability }) => abilityBaseName(ability.name) !== resourceKey.value)
       .map(({ ability, counters }) => {
         const key = abilityBaseName(ability.name)
         const views = counters.map((c) => {
@@ -296,14 +349,17 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const [first, ...rest] = list as [AbilityView['counters'][number], ...AbilityView['counters']]
       const left = Math.min(...list.map((c) => c.left))
       const charges = chargesNeeded(first.text || a.desc)
+      const mana = manaCost(first.text || a.desc)
       const why =
         left === 0
           ? 'None left'
           : charges > sheet.value.resource.count
             ? `Needs ${charges} ${resource.value?.diceName.toLowerCase() || 'charge'}${charges === 1 ? '' : 's'}`
-            : list.some((c) => c.short)
-              ? 'Not enough actions'
-              : ''
+            : mana > manaPool(sheet.value)
+              ? `Needs ${mana} mana`
+              : list.some((c) => c.short)
+                ? 'Not enough actions'
+                : ''
       return {
         key: `${a.key}:${name}`,
         ability: a.key,
@@ -342,6 +398,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     )
       return report(companionAttack(sheet.value, draft.value.level))
     const label = counter.name ? `${name} — ${counter.name}` : name
+    const text = sheet.value.abilities.find((a) => a.name === name)?.desc ?? ''
+    const mana = amount > 0 ? manaCost(counter.text || text) : 0
+    if (mana > manaPool(sheet.value)) return report(`${label} needs ${mana} mana.`)
     let paid = ''
     if (amount > 0 && counter.cost) {
       const before = sheet.value.actionsSpent
@@ -362,8 +421,12 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         used: Math.max(0, Math.min(c.max, c.used + Math.floor(amount || 0))),
       }
     if (amount <= 0) return
-    const text = sheet.value.abilities.find((a) => a.name === name)?.desc ?? ''
-    const judgment = /Expend your Judgment Dice/.test(text) ? expendJudgment(sheet.value) : ''
+    if (mana) {
+      spendMana(sheet.value, mana)
+      paid += ` Spent ${mana} mana.`
+    }
+    paid += selfGains(sheet.value, draft.value.level, counter.text || text)
+    const judgment = /\bExpend your Judgment Dice\b/i.test(text) ? expendJudgment(sheet.value) : ''
     const summoned = [summonFromAbility(sheet.value, draft.value.level, base), judgment]
       .filter(Boolean)
       .join(' ')
@@ -487,37 +550,45 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     }),
   )
 
-  const STARTS_AS_ACTION =
-    /^(?:\([^)]*\)\s*)?(?:Action:|Reaction\b|\d+ actions?:|Spend \d+ actions?\b|You may spend \d+ actions?\b)/
-
   const abilityActions = computed(() => {
-    const limited = new Set(
-      abilityCounters(sheet.value, draft.value.level).map((e) => abilityBaseName(e.ability.name)),
-    )
     const moves = new Set((resource.value?.moves ?? []).map((m) => m.name))
     const inventionNames = new Set(heldInventions(sheet.value).map((i) => i.name))
     return sheet.value.abilities.flatMap((a) => {
       const key = abilityBaseName(a.name)
-      if (limited.has(key) || moves.has(a.name) || inventionNames.has(key)) return []
-      if (key === resource.value?.ability || summonBySource(key)) return []
-      if (!STARTS_AS_ACTION.test(a.desc)) return []
+      if (limitedNames.value.has(key) || moves.has(a.name) || inventionNames.has(key)) return []
+      if (key === resourceKey.value || summonBySource(key)) return []
+      if (!STARTS_AS_ACTION.test(a.desc) || CLASS_REACTION.test(a.desc)) return []
       const cost = counterCost(a.desc)
-      if (!cost || cost.attack || cost.reaction) return []
+      if (!cost || cost.reaction) return []
+      const mana = manaCost(a.desc)
+      const short = costShort(sheet.value, cost)
+      const why = short
+        ? 'Not enough actions'
+        : mana > manaPool(sheet.value)
+          ? `Needs ${mana} mana`
+          : ''
       return [
         {
           name: a.name,
           key,
           desc: a.desc,
-          costText: costLabel(cost),
-          short: costShort(sheet.value, cost),
+          costText: [costLabel(cost), mana ? `${mana} mana` : ''].filter(Boolean).join(' · '),
+          short: !!why,
+          why,
           use: () => {
             if (!canEdit.value) return
+            if (mana > manaPool(sheet.value)) return report(`${a.name} needs ${mana} mana.`)
             const before = sheet.value.actionsSpent
             const paid = payCost(sheet.value, cost)
             if (paid === null) return report(shortMessage(sheet.value, a.name, cost))
             paidFor(cost, before)
+            const spent = mana && spendMana(sheet.value, mana) ? ` Spent ${mana} mana.` : ''
+            const free = !cost.attack && FREE_ATTACK.test(a.desc)
+            if (free) prepaid.value += 1
             const effect = applyEffect(sheet.value, draft.value.level, key)
-            report(`${a.name}:${paid}${abilityRoll(sheet.value, key)}${effect ? ` ${effect}` : ''}`)
+            report(
+              `${a.name}:${paid}${spent}${free ? ' The attack that follows is free.' : ''}${selfGains(sheet.value, draft.value.level, a.desc)}${abilityRoll(sheet.value, key)}${effect ? ` ${effect}` : ''}`,
+            )
           },
         },
       ]
@@ -628,8 +699,12 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     useMove: (name: string) => {
       if (!canEdit.value) return
       const before = sheet.value.actionsSpent
-      act(spendResourceMove(sheet.value, draft.value.level, name))
-      paidFor(counterCost(resource.value?.moves.find((m) => m.name === name)?.desc ?? ''), before)
+      const move = resource.value?.moves.find((m) => m.name === name)
+      const message = spendResourceMove(sheet.value, draft.value.level, name)
+      act(message)
+      paidFor(counterCost(move?.desc ?? ''), before)
+      if (move?.src === 'Maneuver' && /^Attack\b/.test(move.desc) && /spent 1/.test(message))
+        prepaid.value += 1
     },
   }
 

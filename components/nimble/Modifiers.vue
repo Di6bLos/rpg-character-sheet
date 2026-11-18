@@ -3,7 +3,13 @@ import type { NimbleSheet } from '~/types/sheets'
 import { abilityModifiers, weaponAliases } from '~/utils/nimbleBuild'
 import { summonModifiers } from '~/utils/nimbleSummons'
 
-const props = defineProps<{ target?: string; summon?: string; weapon?: string }>()
+const props = defineProps<{
+  target?: string
+  summon?: string
+  weapon?: string
+  aliases?: string[]
+  skip?: string[]
+}>()
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const { abilities, spend, inventions } = useNimbleActions()
@@ -11,11 +17,10 @@ const { abilities, spend, inventions } = useNimbleActions()
 const mods = computed(() =>
   props.summon
     ? summonModifiers(draft.value.sheet, props.summon)
-    : abilityModifiers(
-        draft.value.sheet,
-        props.target ?? '',
-        props.weapon !== undefined ? weaponAliases(props.weapon) : [],
-      ),
+    : abilityModifiers(draft.value.sheet, props.target ?? '', [
+        ...(props.weapon !== undefined ? weaponAliases(props.weapon) : []),
+        ...(props.aliases ?? []),
+      ]).filter((m) => !props.skip?.includes(m.ability)),
 )
 
 const items = computed(() =>
@@ -56,7 +61,7 @@ function use(item: (typeof items.value)[number]) {
         <small v-if="m.cost">{{ m.cost }}</small>
         <button
           type="button"
-          class="btn btn--sm"
+          class="btn btn--sm btn--wrap"
           :disabled="!canEdit || !!m.why"
           :title="m.why || undefined"
           :aria-label="`Use ${m.name}, ${m.uses}`"

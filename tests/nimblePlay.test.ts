@@ -4,7 +4,7 @@ import { BACKGROUNDS } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import type { NimbleSheet } from '../types/sheets'
 import { rollNimble } from '../utils/dice'
-import { abilityBaseName, sheetResource } from '../utils/nimbleBuild'
+import { abilityBaseName, abilityModifiers, sheetResource } from '../utils/nimbleBuild'
 import {
   abilityCounters,
   actionsLeft,
@@ -23,6 +23,10 @@ import {
   fieldRestDice,
   heal,
   hitDiceLeft,
+  manaCost,
+  selfGains,
+  spellshape,
+  spellshapeCost,
   initiativeRecharges,
   inventorySlots,
   isBloodied,
@@ -1169,5 +1173,107 @@ describe('resources on Initiative and each turn', () => {
       return (value - 0.5) / sides
     })
     expect(sheet.mana.temp).toBe(5)
+  })
+})
+
+describe('class wiring', () => {
+  const ability = (name: string, desc: string, src = 'Class') => ({ name, src, desc })
+
+  it('reads Action/Reaction as a 1-action cost', () => {
+    expect(
+      counterCost('Action/Reaction (on an ally’s turn): Command 1 ally to move for free.'),
+    ).toEqual({ actions: 1 })
+  })
+
+  it('turns Zephyr maneuvers into moves limited to 1 per turn', () => {
+    const zephyr = NIMBLE_CLASSES.find((c) => c.slug === 'zephyr')!
+    const burst = Object.values(zephyr.levels)
+      .flatMap((l) => l?.abilities ?? [])
+      .find((a) => a.name === 'Burst of Speed')!
+    const sheet = hero({ classSlug: 'zephyr', abilities: [ability(burst.name, burst.desc)] })
+    sheet.resource.count = 3
+    const moves = sheetResource(sheet, 2)!.moves
+    expect(moves.map((m) => m.name)).toEqual([
+      'Slipstream',
+      'Whirling Defense',
+      'Swiftstrike',
+      'Windstep',
+    ])
+    expect(spendResourceMove(sheet, 2, 'Slipstream')).toMatch(/spent 1/)
+    expect(sheet.reactionsUsed).toContain('Defend')
+    expect(sheet.resource.count).toBe(2)
+    expect(spendResourceMove(sheet, 2, 'Windstep')).toMatch(/already used a maneuver/)
+    expect(sheet.resource.count).toBe(2)
+  })
+
+  it('counts abilities that spend a class charge as its moves', () => {
+    const sheet = hero({
+      classSlug: 'hunter',
+      abilities: [
+        ability('Thrill of the Hunt', 'Gain a charge.'),
+        ability(
+          'Final Takedown',
+          'Action: Spend 1 Thrill of the Hunt charge to make a melee attack.',
+        ),
+      ],
+    })
+    expect(sheetResource(sheet, 7)!.moves.map((m) => m.name)).toContain('Final Takedown')
+  })
+
+  it('links upgrades to abilities whose name ends in punctuation, and plurals', () => {
+    const sheet = hero({
+      abilities: [
+        ability('Coordinated Strike!', '(1/round) Free action: attack.'),
+        ability('Juggernaut', 'When you use Coordinated Strike, you deal extra damage.'),
+        ability(
+          'Master Commander',
+          'Attacks made from your Coordinated Strikes ignore disadvantage.',
+        ),
+      ],
+    })
+    expect(abilityModifiers(sheet, 'Coordinated Strike!').map((m) => m.name)).toEqual([
+      'Juggernaut',
+      'Master Commander',
+    ])
+  })
+
+  it('reads mana costs and what an ability does to the hero', () => {
+    expect(manaCost('(1/encounter) Action: Spend 3 mana to shift.')).toBe(3)
+    expect(manaCost('Spend 1 or more mana')).toBe(0)
+    const sheet = hero({ woundsMax: 6 })
+    expect(
+      selfGains(sheet, 5, '(1/turn) While Dying, you may suffer 1 Wound to gain 1 action.'),
+    ).toMatch(/Took 1 Wound\. Gained 1 action/)
+    expect(sheet.wounds).toBe(1)
+    expect(actionsLeft(sheet)).toBe(turnActions(sheet) + 1)
+    selfGains(sheet, 5, 'Attacks you make this round don’t miss, and you gain LVL temp HP.')
+    expect(sheet.tempHp).toBe(5)
+  })
+
+  it('spends Spellshaper mana once per turn', () => {
+    expect(spellshapeCost('(1 or more mana) +4 range.')).toMatchObject({ min: 1, more: true })
+    expect(spellshapeCost('(2×mana, min. 1 mana) Copy it.')).toMatchObject({ min: 1, more: true })
+    expect(
+      spellshapeCost('(–2 mana) Spend 1 additional action to reduce the mana cost by 2.'),
+    ).toMatchObject({
+      min: 0,
+      refund: 2,
+      actions: 1,
+    })
+    const sheet = hero({
+      mana: { current: 6, max: 10, temp: 0 },
+      abilities: [
+        ability('Spellshaper', 'Enhance your spells by spending additional mana (1/turn).'),
+        ability(
+          'Dimensional Compression',
+          '(1 or more mana) +4 range to a spell for each additional mana spent.',
+        ),
+        ability('Stretch Time', '(2 mana) Reduce the action cost of a spell by 1 (min 1).'),
+      ],
+    })
+    expect(spellshape(sheet, 5, 'Dimensional Compression', 3)).toMatch(/spent 3 mana/)
+    expect(sheet.mana.current).toBe(3)
+    expect(spellshape(sheet, 5, 'Stretch Time')).toMatch(/already used Spellshaper/)
+    expect(sheet.mana.current).toBe(3)
   })
 })

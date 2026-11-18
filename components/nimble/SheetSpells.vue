@@ -27,6 +27,7 @@ const schools = computed(() =>
     </div>
 
     <NimbleSpellPool />
+    <NimbleSpellshaper />
 
     <details class="tier spell-list" open>
       <summary class="caps">Spell list</summary>

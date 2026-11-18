@@ -239,7 +239,7 @@ function submitCustom() {
                 </button>
                 <button
                   type="button"
-                  class="btn btn--sm"
+                  class="btn btn--sm btn--wrap"
                   :disabled="!canEdit || o.card.off"
                   :title="o.card.why || undefined"
                   :aria-label="`Use ${o.name}, ${o.card.uses}`"

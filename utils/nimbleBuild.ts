@@ -950,9 +950,13 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
       .map((a) => a.desc.split(`${rollText} 1 more`).length - 1)
       .reduce((a, b) => a + b, 0)
     const pool = cls.pools.find((p) => p.id === def.movesPool)
-    const moves = pool
-      ? sheet.abilities.filter((a) => pool.options.some((o) => o.name === a.name))
-      : []
+    const spends = new RegExp(`\\bSpend 1 ${def.name} charge\\b`)
+    const moves = [
+      ...(pool
+        ? sheet.abilities.filter((a) => pool.options.some((o) => o.name === a.name))
+        : maneuvers(ability.desc)),
+      ...sheet.abilities.filter((a) => a !== ability && spends.test(a.desc)),
+    ]
     return {
       name: def.name,
       diceName: def.diceName,
@@ -984,6 +988,15 @@ export function sheetResource(sheet: NimbleSheet, level: number): SheetResource 
     roll: 0,
     advantage: false,
   }
+}
+
+export function maneuvers(desc: string): NimbleAbility[] {
+  const list = /\bmaneuver for free: (.+)$/.exec(desc)?.[1] ?? ''
+  return [...list.matchAll(/([A-Z][a-z]+(?: [A-Z][a-z]+)?) \(([^)]+)\)/g)].map((m) => ({
+    name: m[1]!,
+    src: 'Maneuver',
+    desc: `${m[2]!.charAt(0).toUpperCase()}${m[2]!.slice(1)}.`,
+  }))
 }
 
 export function keyStatValue(sheet: NimbleSheet): { value: number; stats: NimbleStat[] } | null {
@@ -1118,8 +1131,8 @@ export function abilityModifiers(
   const also = /Invocations affecting ([A-Z][\w ]+?) (?:also )?affect/.exec(
     spellByName(base)?.desc ?? '',
   )?.[1]
-  const names = [base, ...(also ? [also] : []), ...aliases].map(
-    (t) => new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`),
+  const names = [base.replace(/[!?.]+$/, ''), ...(also ? [also] : []), ...aliases].map(
+    (t) => new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}s?(?![\\w])`),
   )
   const found = new Map<string, { text: string; ability: string }>()
   for (const a of sheet.abilities) {

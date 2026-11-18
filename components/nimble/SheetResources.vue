@@ -2,7 +2,13 @@
 // Mana, the class resource (Rage, Combat Dice, Bursts of Speed…) and Concentration.
 import { classBySlug } from '~/data/nimble/classes'
 import type { NimbleSheet } from '~/types/sheets'
-import { keyStatValue, knownSpells, knownUtilitySpells, sheetResource } from '~/utils/nimbleBuild'
+import {
+  abilityBaseName,
+  keyStatValue,
+  knownSpells,
+  knownUtilitySpells,
+  sheetResource,
+} from '~/utils/nimbleBuild'
 import {
   costLabel,
   costShort,
@@ -61,6 +67,20 @@ const moves = computed(() =>
     return { ...m, cost: costLabel(cost), short: costShort(sheet.value, cost) }
   }),
 )
+const upgradeAliases = computed(() => {
+  const r = resource.value
+  if (!r) return []
+  return [
+    r.name,
+    `${r.diceName} Die`,
+    `${r.diceName} Dice`,
+    ...r.moves.filter((m) => m.src === 'Maneuver').map((m) => m.name),
+  ]
+})
+const shownElsewhere = computed(() => [
+  ...(resource.value?.moves ?? []).map((m) => abilityBaseName(m.name)),
+  ...linkedOptions.value.map((o) => o.ability),
+])
 const statValue = computed(() => resource.value?.max ?? 0)
 const badge = computed(() => {
   const r = resource.value
@@ -336,6 +356,12 @@ function adjustCount(delta: number) {
           </button>
         </div>
       </div>
+      <NimbleModifiers
+        v-if="resource.ability"
+        :target="resource.ability"
+        :aliases="upgradeAliases"
+        :skip="shownElsewhere"
+      />
     </section>
 
     <section v-if="!hasSpells" class="panel stack" aria-labelledby="conc-h">

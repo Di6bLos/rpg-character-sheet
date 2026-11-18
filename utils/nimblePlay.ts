@@ -203,6 +203,81 @@ export function spendMana(sheet: NimbleSheet, cost: number): boolean {
   return true
 }
 
+export function manaCost(text: string): number {
+  return Number(/\b[Ss]pend (\d+) mana\b/.exec(text)?.[1] ?? 0)
+}
+
+export function selfGains(sheet: NimbleSheet, level: number, text: string): string {
+  const notes: string[] = []
+  if (/\byou may suffer (?:1|a) Wound\b/.test(text)) {
+    addWounds(sheet, 1)
+    notes.push('Took 1 Wound.')
+  }
+  const actions = /\bsuffer (?:1|a) Wound to gain (\d+) actions?\b/.exec(text)?.[1]
+  if (actions) notes.push(gainAction(sheet, Number(actions)))
+  const temp = /\byou gain (LVL|\d+) temp HP\b/.exec(text)?.[1]
+  if (temp) {
+    const amount = temp === 'LVL' ? level : Number(temp)
+    sheet.tempHp = Math.max(sheet.tempHp, amount)
+    notes.push(`Gained ${amount} temp HP.`)
+  }
+  return notes.length ? ` ${notes.join(' ')}` : ''
+}
+
+export interface SpellshapeCost {
+  min: number
+  more: boolean
+  refund: number
+  actions: number
+  faster: boolean
+}
+
+export function spellshapeCost(desc: string): SpellshapeCost | null {
+  const m = /^\((–|-)?(\d+)(\+| or more)?(?:×mana, min\. (\d+))? mana\)/.exec(desc)
+  if (!m) return null
+  const refund = m[1] ? Number(m[2]) : 0
+  return {
+    min: refund ? 0 : Number(m[4] ?? m[2]),
+    more: !!m[3] || !!m[4],
+    refund,
+    actions: /\bSpend 1 additional action\b/.test(desc) ? 1 : 0,
+    faster: /\bReduce the action cost of a spell by 1\b/.test(desc),
+  }
+}
+
+export function spellshape(sheet: NimbleSheet, level: number, name: string, amount = 0): string {
+  const cost = spellshapeCost(sheet.abilities.find((a) => a.name === name)?.desc ?? '')
+  if (!cost) return ''
+  const counter = abilityCounters(sheet, level).find(
+    (e) => abilityBaseName(e.ability.name) === 'Spellshaper',
+  )?.counters[0]
+  if (counter && counter.used >= counter.max)
+    return `${name}: you already used Spellshaper this turn.`
+  const mana = cost.refund ? 0 : Math.max(cost.min, amount)
+  if (mana > manaPool(sheet)) return `${name} needs ${mana} mana; you have ${manaPool(sheet)}.`
+  if (actionsLeft(sheet) < cost.actions)
+    return `${name} takes ${cost.actions} more action; you have ${actionsLeft(sheet)}.`
+  const notes: string[] = []
+  if (mana) {
+    spendMana(sheet, mana)
+    notes.push(`spent ${mana} mana`)
+  }
+  if (cost.actions) {
+    spendActions(sheet, cost.actions)
+    notes.push(`spent ${cost.actions} action`)
+  }
+  if (cost.refund) {
+    sheet.mana.current = Math.min(sheet.mana.max, sheet.mana.current + cost.refund)
+    notes.push(`the spell costs ${cost.refund} less mana (min 1)`)
+  }
+  if (cost.faster) {
+    refundActions(sheet, 1)
+    notes.push('the spell takes 1 action less')
+  }
+  if (counter) sheet.uses[counter.id] = { ...sheet.uses[counter.id], used: counter.used + 1 }
+  return `${name}: ${notes.join(', ')}.`
+}
+
 export function hitDiceLeft(sheet: NimbleSheet): number {
   return Math.max(0, sheet.hitDice - sheet.hitDiceUsed)
 }
@@ -498,7 +573,7 @@ const REACTION_COST = new RegExp(String.raw`${LEAD}reaction\b`, 'i')
 const ATTACK_ACTION = /\baction:(?:(?!\buntil\b)[^.])*?\battack\b/i
 const WEAPON_MOVE = /\b(?:this attack|shoot|weapon)\b/i
 const GRANTED_ATTACK = /\bGain the [\w ]+ attack\b/i
-const LEADING_ACTION = /(?:^|[).]\s*)Action:/
+const LEADING_ACTION = /(?:^|[).]\s*)Action(?::|\/Reaction\b)/
 const ACTION_COST = new RegExp(
   String.raw`(?:${LEAD}|\b(?:as|costs?|spend|takes?) (?:an?|1) )action\b(?!s? less)`,
   'i',
@@ -1069,13 +1144,23 @@ export function spendResourceMove(
   const r = sheetResource(sheet, level)
   const res = sheet.resource
   if (!r) return ''
-  const desc = r.moves.find((m) => m.name === name)?.desc ?? ''
+  const move = r.moves.find((m) => m.name === name)
+  const desc = move?.desc ?? ''
+  const maneuver = move?.src === 'Maneuver'
+  const turnKey = `${abilityBaseName(r.ability)}@turn`
+  if (maneuver && sheet.uses[turnKey]?.used)
+    return `${name}: you already used a maneuver this turn.`
   if (res.count < 1) {
     return freeMove(desc) ? `${name}: no charges, so it costs none.` : ''
   }
   const cost = counterCost(desc)
   if (cost && costShort(sheet, cost)) return shortMessage(sheet, name, cost)
   res.count -= 1
+  if (maneuver) {
+    sheet.uses[turnKey] = { ...sheet.uses[turnKey], used: 1 }
+    if (/^Defend\b/.test(desc) && !sheet.reactionsUsed.includes('Defend'))
+      sheet.reactionsUsed = [...sheet.reactionsUsed, 'Defend']
+  }
   const paid = payCost(sheet, cost) ?? ''
   const word = r.kind === 'dice' ? `${r.diceName} Die` : r.diceName.toLowerCase() || 'charge'
   if (r.kind !== 'dice' || (desc && !/a roll of your Combat Die/.test(desc)))

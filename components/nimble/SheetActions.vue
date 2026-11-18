@@ -125,7 +125,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           </div>
           <button
             type="button"
-            class="btn"
+            class="btn btn--wrap"
             :disabled="!canEdit || !!inv.why"
             :title="inv.why || undefined"
             @click="inv.run"
@@ -146,7 +146,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
           <NimbleModifiers :summon="a.summon" />
           <button
             type="button"
-            class="btn"
+            class="btn btn--wrap"
             :disabled="!canEdit || !!a.why"
             :title="a.why || undefined"
             @click="a.run"
@@ -182,7 +182,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             >
               <span class="reaction__head">
                 <strong>{{ r.name }}</strong>
-                <em>{{ r.used ? 'Used · tap to undo' : 'Costs 1 action' }}</em>
+                <em>{{ r.used ? 'Used · tap to undo' : r.costText }}</em>
               </span>
               <span>{{ r.desc }}</span>
             </button>
@@ -227,12 +227,12 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             <NimbleModifiers :target="a.name" />
             <button
               type="button"
-              class="btn btn--sm"
+              class="btn btn--sm btn--wrap"
               :disabled="!canEdit || a.short"
-              :title="a.short ? 'Not enough actions left' : undefined"
+              :title="a.why || undefined"
               @click="a.use"
             >
-              {{ a.short ? 'Not enough actions' : 'Use' }}
+              {{ a.why || 'Use' }}
             </button>
           </div>
         </details>

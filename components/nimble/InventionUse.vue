@@ -62,7 +62,7 @@ function modeWhy(actions: number) {
     <button
       v-else
       type="button"
-      class="btn btn--sm"
+      class="btn btn--sm btn--wrap"
       :disabled="!canEdit || !!inv.why"
       :title="inv.why || undefined"
       @click="operate(inv.name)"

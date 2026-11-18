@@ -64,6 +64,7 @@ const {
   toggleMalfunction,
   inventions,
   operate,
+  abilityActions,
   effects,
   useEffect,
   stopEffect,
@@ -1015,13 +1016,13 @@ const effectRows = computed(() =>
             :class="{ 'apm__row--used': r.used }"
             :aria-pressed="r.used"
             :aria-disabled="!canEdit || r.blocked || undefined"
-            :aria-label="`Mark ${r.name} used, 1 action${r.blocked ? '. No actions left' : ''}`"
+            :aria-label="`Mark ${r.name} used, ${r.free ? 'free' : '1 action'}${r.blocked ? '. No actions left' : ''}`"
             :aria-describedby="`${uid}-r${k}`"
             :title="r.desc"
             @click="canEdit && !r.blocked && toggleReaction(r.name)"
           >
             <span class="apm__name">{{ r.name }}</span>
-            <span class="apm__tag">{{ r.used ? 'Used' : '1 act' }}</span>
+            <span class="apm__tag">{{ r.used ? 'Used' : r.free ? 'Free' : '1 act' }}</span>
             <span :id="`${uid}-r${k}`" class="sr-only">{{ r.desc }}</span>
           </button>
         </li>
@@ -1045,7 +1046,7 @@ const effectRows = computed(() =>
     </details>
 
     <details
-      v-if="sheet.turnActive && (abilityRows.length || effectRows.length)"
+      v-if="sheet.turnActive && (abilityRows.length || effectRows.length || abilityActions.length)"
       name="action-panel"
       class="apm__menu"
     >
@@ -1053,11 +1054,27 @@ const effectRows = computed(() =>
         <span>Abilities</span>
         <UiHelp
           label="About abilities"
-          text="Limited-use abilities. Use spends one; refills when your turn starts, on New encounter or on a Safe Rest."
+          text="Ability actions and limited-use abilities. Use pays the actions (and mana); limited uses refill when your turn starts, on New encounter or on a Safe Rest."
         />
-        <small>{{ abilityRows.length }}</small>
+        <small>{{ abilityRows.length + abilityActions.length }}</small>
       </summary>
       <ul class="apm__list">
+        <li v-for="(a, n) in abilityActions" :key="a.key">
+          <button
+            type="button"
+            class="apm__row"
+            :aria-disabled="!canEdit || a.short || undefined"
+            :aria-label="`Use ${a.name}, ${a.costText}${a.why ? `. ${a.why}` : ''}`"
+            :aria-describedby="`${uid}-x${n}`"
+            :title="a.desc"
+            @click="canEdit && !a.short && a.use()"
+          >
+            <span class="apm__name">{{ a.name }}</span>
+            <span class="apm__tag">{{ a.costText }}</span>
+            <span v-if="a.why" class="apm__sub apm__sub--warn">{{ a.why }}</span>
+            <span :id="`${uid}-x${n}`" class="sr-only">{{ a.desc }}</span>
+          </button>
+        </li>
         <li v-for="e in effectRows" :key="e.source">
           <button
             type="button"
