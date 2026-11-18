@@ -133,8 +133,21 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const r = resource.value
       const powered = poweredBy(r, w.props) && readied.value > 0
       const judged = r?.kind === 'judgment' && w.melee && held.value > 0
-      const sneak =
-        r?.kind === 'crit' && res.count === 0 ? `${r.name} +${r.roll}d${r.die} on a crit` : ''
+      const note =
+        r?.kind === 'rage' && strAttack
+          ? res.active
+            ? `${r.name}: +${fury} Fury`
+            : 'Not raging'
+          : r?.kind === 'judgment' && w.melee
+            ? held.value
+              ? `${r.diceName} Dice held: +${held.value} radiant`
+              : `No ${r.diceName} Dice held`
+            : r?.kind === 'crit'
+              ? res.count === 0
+                ? `${r.name}: +${r.roll}d${r.die} on a crit`
+                : `${r.name} used this turn`
+              : ''
+      const sneak = r?.kind === 'crit' && res.count === 0 ? note : ''
       return {
         name: w.name,
         props: w.props,
@@ -143,13 +156,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           (fury ? ` +${fury}` : '') +
           (powered ? ` +${readied.value}d${die}` : '') +
           (judged ? ` +${held.value}` : ''),
-        boost: powered
-          ? `${readied.value} ${r?.diceName} ${readied.value === 1 ? 'Die' : 'Dice'}`
-          : fury
-            ? `Fury +${fury}`
-            : judged
-              ? `Judgment +${held.value} radiant`
-              : sneak,
+        boost: note,
         rushed,
         poweredBy: poweredBy(r, w.props),
         blocked: left.value === 0 && prepaid.value === 0,

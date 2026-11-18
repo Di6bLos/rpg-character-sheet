@@ -43,6 +43,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             </div>
             <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
           </div>
+          <NimbleModifiers :target="w.name" :weapon="w.props" />
           <div v-if="w.poweredBy" class="ready">
             <span>{{ resource?.diceName }} Dice readied</span>
             <button
@@ -64,8 +65,8 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             >
               +
             </button>
+            <small class="ready__of">of {{ sheet.resource.count }}</small>
           </div>
-          <NimbleModifiers :target="w.name" :weapon="w.props" />
           <button
             type="button"
             class="btn"
@@ -94,6 +95,7 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             </div>
             <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ inv.dmg }}</span>
           </div>
+          <NimbleModifiers :target="inv.name" />
           <div class="ready">
             <span>{{ resource?.diceName }} Dice readied</span>
             <button
@@ -115,8 +117,8 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
             >
               +
             </button>
+            <small class="ready__of">of {{ sheet.resource.count }}</small>
           </div>
-          <NimbleModifiers :target="inv.name" />
           <button
             type="button"
             class="btn"
@@ -225,6 +227,12 @@ const mine = computed(() => abilities.value.filter((a) => !a.linked && !a.compan
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
+}
+
+.ready__of {
+  min-width: 34px;
+  font-size: 12px;
+  color: var(--page-muted);
 }
 
 .attack--broken {
