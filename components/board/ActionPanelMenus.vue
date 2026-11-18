@@ -10,6 +10,7 @@ import {
   endEncounter,
   gainAction,
   heal,
+  isHollowOne,
   takeDamage,
   newEncounter,
   newRound,
@@ -112,6 +113,11 @@ const summonMenu = computed(() => sheet.value.summons.length > 0 || summonable.v
 
 const spellCount = computed(() => tiers.value.reduce((n, t) => n + t.spells.length, 0))
 const reactionsLeft = computed(() => reactions.value.filter((r) => !r.used).length)
+const uses = computed(() => {
+  const r = resource.value
+  if (r?.kind !== 'uses' || isHollowOne(sheet.value)) return null
+  return { name: r.name, max: r.max, left: r.max - sheet.value.resource.count }
+})
 const perTurn = computed(() => turnActions(sheet.value))
 const pips = computed(() => actionPips(sheet.value))
 const actionsNow = computed(() => actionsLeft(sheet.value))
@@ -349,6 +355,12 @@ const effectRows = computed(() =>
         <dd>
           {{ sheet.mana.current }}<small>/{{ sheet.mana.max }}</small
           ><small v-if="sheet.mana.temp" class="apm__temp"> +{{ sheet.mana.temp }}</small>
+        </dd>
+      </div>
+      <div v-if="uses" :class="{ 'is-low': uses.left <= 0 }">
+        <dt>{{ uses.name }}</dt>
+        <dd>
+          {{ uses.left }}<small>/{{ uses.max }}</small>
         </dd>
       </div>
     </dl>
