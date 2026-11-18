@@ -40,6 +40,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
   const sheet = computed(() => draft.value.sheet)
   const level = computed(() => draft.value.level)
   const target = useAttackTarget()
+  const critReady = useCritReady()
   const armorOf = (props: string) => ({
     armor: target.value.armor,
     vulnerable: target.value.vulnerable,
@@ -127,7 +128,9 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
   const command = run(() => {
     if (commandUsed.value) return report('You already commanded your minions this turn.')
     if (left.value < 1) return report(NO_ACTIONS)
+    const commanded = minions.value
     act(commandMinions(sheet.value, level.value, Math.random, armorOf('')), 1)
+    if (sheet.value.ownDice) critReady.value = { ...critReady.value, minions: commanded }
   })
 
   const spiritAttack = run(() => {
@@ -151,6 +154,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
       run: () => void
       /** What a crit sets off, and the button that does it when the player rolls their own dice. */
       critBy?: string[]
+      critReady?: boolean
       crit?: () => void
     }[] = []
     if (minions.value) {
@@ -173,9 +177,12 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
               : '',
         run: command,
         critBy: minionCritTriggers(sheet.value, level.value),
-        crit: run(() =>
-          report(`A minion crit! ${minionCrits(sheet.value, level.value).join(' ')}`),
-        ),
+        critReady: (critReady.value.minions ?? 0) > 0,
+        /** Once per minion commanded this turn that rolled its max. */
+        crit: run(() => {
+          if (!spendCrit(critReady, 'minions')) return
+          report(`A minion crit! ${minionCrits(sheet.value, level.value).join(' ')}`)
+        }),
       })
     }
     if (spirit.value) {

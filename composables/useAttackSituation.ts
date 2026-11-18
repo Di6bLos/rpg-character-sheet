@@ -27,3 +27,21 @@ export function useAttackTarget() {
     sundered: false,
   }))
 }
+
+/**
+ * Own-dice attacks whose crit the player can still report with It crit:
+ * `w:<weapon>` and `spell:<name>` once after that attack, `minions` once per
+ * minion commanded. Cleared when the turn changes.
+ */
+export function useCritReady() {
+  const { draft } = useSheet<NimbleSheet>()
+  return useState<Record<string, number>>(`nimble-crit-ready-${draft.value.id}`, () => ({}))
+}
+
+/** Uses up one reported crit for `key`; false when none is waiting. */
+export function spendCrit(ready: Ref<Record<string, number>>, key: string): boolean {
+  const left = ready.value[key] ?? 0
+  if (left < 1) return false
+  ready.value = { ...ready.value, [key]: left - 1 }
+  return true
+}

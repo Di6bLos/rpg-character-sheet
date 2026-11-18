@@ -171,7 +171,7 @@ const hasAttacks = computed(
               >
             </button>
             <NimbleCritButton
-              v-if="sheet.ownDice && w.critBy.length"
+              v-if="sheet.ownDice && w.critReady && w.critBy.length"
               :triggers="w.critBy"
               :disabled="!canEdit"
               @crit="claim(`w:${i}`, w.crit)"
@@ -305,7 +305,7 @@ const hasAttacks = computed(
                 ><template v-if="!a.why && a.advantage"> · {{ a.advantage }}× advantage</template>
               </button>
               <NimbleCritButton
-                v-if="sheet.ownDice && a.critBy.length"
+                v-if="sheet.ownDice && a.critReady && a.critBy.length"
                 :triggers="a.critBy"
                 :disabled="!canEdit"
                 @crit="claim(a.key, a.crit)"
@@ -349,7 +349,7 @@ const hasAttacks = computed(
               {{ a.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
             </button>
             <NimbleCritButton
-              v-if="sheet.ownDice && a.critBy?.length && a.crit"
+              v-if="sheet.ownDice && a.critReady && a.critBy?.length && a.crit"
               :triggers="a.critBy"
               :disabled="!canEdit"
               @crit="claim(a.key, a.crit)"

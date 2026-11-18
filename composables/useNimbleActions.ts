@@ -139,6 +139,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
   const situation = useAttackSituation()
   const target = useAttackTarget()
+  const critReady = useCritReady()
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
@@ -148,6 +149,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         opportunity.value = false
         situation.value = []
         nextAttack.value = { ...NO_NEXT }
+        critReady.value = {}
       }
       if (on && !was) target.value = { ...target.value, sundered: false }
     },
@@ -307,9 +309,10 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           w.onCrit?.length ? `${w.name} on-crit damage` : '',
           w.name === 'Sting' ? 'Sting' : '',
         ].filter(Boolean),
-        /** The player rolled a crit themselves: set off what the app would have. */
+        critReady: !!critReady.value[`w:${w.name}`],
+        /** The player rolled a crit themselves: set off what the app would have, once. */
         crit: () => {
-          if (!canEdit.value) return
+          if (!canEdit.value || !spendCrit(critReady, `w:${w.name}`)) return
           const notes = [
             afterAttack(sheet.value, draft.value.level, {
               melee: w.melee,
@@ -403,6 +406,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             finish(false, false)
             spendAttackAction()
             if (onTurn) sheet.value.rushed += 1
+            critReady.value = { ...critReady.value, [`w:${w.name}`]: 1 }
             const rush =
               odds > 0 ? ` with ${odds}× disadvantage` : odds < 0 ? ` with ${-odds}× advantage` : ''
             return report(
