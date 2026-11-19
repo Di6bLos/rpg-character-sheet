@@ -8,7 +8,7 @@ import { keyStatValue } from '~/utils/nimbleBuild'
 const { draft } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const keyValue = computed(() => keyStatValue(sheet.value))
-const { known, utility, tiers, help } = useNimbleSpells()
+const { known, utility, tiers, help, setUpcast } = useNimbleSpells()
 
 const schools = computed(() =>
   sheet.value.spells.schools.map((s) => SCHOOL_LABELS[s as SpellSchool] ?? s).join(' · '),
@@ -37,7 +37,12 @@ const schools = computed(() =>
             {{ g.label }}
           </summary>
           <div class="spell-grid">
-            <NimbleSpellCard v-for="s in g.spells" :key="s.name" :spell="s" />
+            <NimbleSpellCard
+              v-for="s in g.spells"
+              :key="s.name"
+              :spell="s"
+              @upcast="setUpcast(s, $event)"
+            />
           </div>
         </details>
         <p v-if="!known.length" class="empty">No combat spells yet.</p>

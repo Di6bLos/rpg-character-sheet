@@ -77,15 +77,6 @@ describe('conditions', () => {
     expect(spendHelp(sheet)).toBe('')
   })
 
-  it('keeps a turn-end condition set during your own turn until the end of your next turn', () => {
-    const sheet = hero()
-    sheet.turnActive = true
-    addCondition(sheet, 'Slowed')
-    expect(clearConditionsAt(sheet, 'turnEnd')).toBe('')
-    expect(sheet.conditions).toContain('Slowed')
-    expect(clearConditionsAt(sheet, 'turnEnd')).toBe(' No longer Slowed.')
-  })
-
   it('takes an action for Dazed and clears conditions when they end', () => {
     const sheet = hero()
     addCondition(sheet, 'Dazed')
@@ -102,6 +93,16 @@ describe('conditions', () => {
     expect(sheet.conditions).toEqual([])
     removeCondition(sheet, 'Smoldering')
     expect(sheet.conditionEnds).toEqual({})
+  })
+
+  it('keeps a turn-end condition set during your turn until the end of your next turn', () => {
+    const sheet = hero()
+    startTurn(sheet, 1)
+    addCondition(sheet, 'Slowed')
+    expect(endTurn(sheet, 1)).not.toMatch(/No longer Slowed/)
+    expect(sheet.conditions).toContain('Slowed')
+    startTurn(sheet, 1)
+    expect(endTurn(sheet, 1)).toMatch(/No longer Slowed/)
   })
 
   it('rolls advantage by dropping the lowest die', () => {
