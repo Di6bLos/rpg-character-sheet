@@ -5,9 +5,11 @@
 // (max 1280px, 48px side padding) is narrowed and moved so each docked panel
 // fits its margin: 16px edge + panel + 24px gap, minus the shell's padding.
 // `.page.shell` is the board frame (layouts/default.vue's root is a bare `.shell`).
+// The desktop battle board (`.battle`) mounts no side panels and takes the full
+// width, so none of this applies while it is present.
 @media (min-width: 1200px) {
-  .page.shell:has(.ap-slot),
-  .page.shell:has(.lp-slot) {
+  .page.shell:not(:has(.battle)):has(.ap-slot),
+  .page.shell:not(:has(.battle)):has(.lp-slot) {
     --dock-left: 0px;
     --dock-right: 0px;
     --dock-width: min(1280px, calc(100% - var(--dock-left) - var(--dock-right)));

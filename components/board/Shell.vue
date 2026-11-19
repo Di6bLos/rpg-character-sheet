@@ -1,77 +1,25 @@
 <script setup lang="ts">
 // The campaign board and GM console share this frame (design/screens/BoardShell.dc.html):
 // campaign title, campaign switcher, preview / console links and the routed tabs.
-import { plural, sessionDate } from '~/utils/format'
+// On the desktop battle board (Party tab, Nimble, 1200px+) the header and tabs hide and
+// the battle bar shows them instead, reading the same state through `useBoardNav()`.
+import { plural } from '~/utils/format'
 import { systemLabel } from '~/utils/systems'
 
 const props = defineProps<{ unread?: number }>()
 
-const route = useRoute()
-const store = useCampaignStore()
-const characters = useCharacterStore()
-const snackbar = useSnackbarStore()
-const { mode, campaign, campaignId, isGm, base, reloadRoster } = useCampaignBoard()
-
-const meta = computed(() => {
-  const c = campaign.value
-  if (!c) return ''
-  return [
-    systemLabel(c.system),
-    `GM ${c.gmName}`,
-    plural(c.playerCount, 'player'),
-    c.next_session_at ? `next session ${sessionDate(c.next_session_at)}` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ')
-})
-
-/** Campaigns this user can switch to from here (the console only lists ones they run). */
-const switchable = computed(() =>
-  mode === 'console' ? store.campaigns.filter((c) => c.myRole === 'gm') : store.campaigns,
+const { mode, campaign, isGm, base } = useCampaignBoard()
+const { meta, tabs, isCurrent, switchable, switchTo, myOptions, seat } = provideBoardNav(
+  () => props.unread ?? 0,
 )
 
-const tabs = computed(() => {
-  const list = [
-    { id: 'party', label: 'Party', badge: props.unread ?? 0 },
-    { id: 'journal', label: 'Journal', badge: 0 },
-    { id: 'maps', label: 'Maps & images', badge: 0 },
-  ]
-  if (mode === 'console') list.push({ id: 'npcs', label: 'NPCs', badge: 0 })
-  return list
-})
-
-function isCurrent(id: string) {
-  return route.path === `${base.value}/${id}` || route.path.startsWith(`${base.value}/${id}/`)
-}
-/** Same tab in another campaign: its console if you run it, its board if you play in it. */
-function switchTo(id: string) {
-  const current = tabs.value.find((t) => isCurrent(t.id))?.id ?? 'party'
-  const gm = store.byId(id)?.myRole === 'gm'
-  const tab = !gm && current === 'npcs' ? 'party' : current
-  return `/campaigns/${id}/${gm ? 'gm' : 'board'}/${tab}`
-}
-
-// --- Playing as (players on the board) ------------------------------------------
-const myOptions = computed(() =>
-  characters.characters.filter((c) => c.system === campaign.value?.system),
-)
-onMounted(() => void characters.fetchMine())
-
-async function seat(event: Event) {
-  const value = (event.target as HTMLSelectElement).value || null
-  try {
-    await store.seatCharacter(campaignId.value, value)
-    await reloadRoster()
-    snackbar.show(value ? 'Character seated at this table' : 'Character removed from this table')
-  } catch (err) {
-    snackbar.error(err, 'Could not change your character')
-  }
-}
+const wide = useWideBoard()
+const battle = computed(() => wide.value && isCurrent('party'))
 </script>
 
 <template>
-  <div v-if="campaign" class="page shell">
-    <header class="shell__head">
+  <div v-if="campaign" class="page shell" :class="{ 'shell--battle': battle }">
+    <header v-if="!battle" class="shell__head">
       <div class="shell__title">
         <div class="shell__eyebrow">{{ mode === 'console' ? 'GM console' : 'Campaign board' }}</div>
         <h1>{{ campaign.name }}</h1>
@@ -106,12 +54,12 @@ async function seat(event: Event) {
         </template>
       </div>
     </header>
-    <p v-if="mode === 'board' && !isGm && !myOptions.length" class="small muted">
+    <p v-if="!battle && mode === 'board' && !isGm && !myOptions.length" class="small muted">
       You have no {{ systemLabel(campaign.system) }} character yet.
       <NuxtLink to="/characters">Create one</NuxtLink> to seat it here.
     </p>
 
-    <nav aria-label="Board sections" class="shell__tabs">
+    <nav v-if="!battle" aria-label="Board sections" class="shell__tabs">
       <NuxtLink
         v-for="t in tabs"
         :key="t.id"
@@ -135,6 +83,13 @@ async function seat(event: Event) {
   gap: 22px;
   padding-top: 28px;
   padding-bottom: 64px;
+}
+
+// The battle board takes the whole width and height under the app nav.
+.shell--battle {
+  max-width: none;
+  padding: 0;
+  gap: 0;
 }
 
 .shell__head {

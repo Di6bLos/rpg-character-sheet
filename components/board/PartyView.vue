@@ -2,6 +2,7 @@
 // Party tab: shared initiative strip, roster and chat. In the console the GM
 // also gets the add-combatants dialog and table management (invites, session, players).
 // Side panels: the player's quick actions (left) and the Lore Master (right).
+// Nimble campaigns at 1200px+ get the desktop battle board instead (no side panels).
 import type { Combatant } from '~/types'
 import { plural } from '~/utils/format'
 import { combatantName, downSummonKeys, groupLabels } from '~/utils/initiative'
@@ -10,6 +11,7 @@ const snackbar = useSnackbarStore()
 const { mode, campaign, campaignId, isGm, gmControls, roster, reloadRoster } = useCampaignBoard()
 
 const init = useInitiative(campaignId, isGm)
+const wide = useWideBoard()
 
 const downSummons = computed(() => downSummonKeys(init.rows.value))
 
@@ -115,7 +117,30 @@ async function addCustom() {
 </script>
 
 <template>
-  <div class="party-layout">
+  <!-- For now the battle board holds today's panels; later tasks replace each slot. -->
+  <BattleBoard v-if="wide" :init="init">
+    <template #left>
+      <BoardRoster
+        v-if="campaign"
+        :roster="roster"
+        :system="campaign.system"
+        :turn-character-id="turnCharacterId"
+      />
+    </template>
+    <template #centre>
+      <BoardInitiative
+        class="battle-ini"
+        :init="init"
+        :roster="roster"
+        :gm="gmControls"
+        @add="addOpen = true"
+      />
+    </template>
+    <template #right>
+      <BoardChat class="battle-chat" :roster="roster" />
+    </template>
+  </BattleBoard>
+  <div v-else class="party-layout">
     <!-- Below 1200px the side panels open from tabs stacked here (they teleport in). -->
     <div class="edge-tabs" />
     <BoardActionPanel
@@ -140,93 +165,107 @@ async function addCustom() {
       </div>
 
       <BoardTableAdmin v-if="mode === 'console'" />
-
-      <UiDialog v-model="addOpen" title="Add to initiative" width="540px">
-        <div class="stack">
-          <div v-if="partyMissing.length" class="row" style="justify-content: space-between">
-            <span class="small"
-              >{{ plural(partyMissing.length, 'party character') }} not in the order yet.</span
-            >
-            <button type="button" class="btn btn--ghost" :disabled="adding" @click="addParty">
-              Add the party
-            </button>
-          </div>
-          <p v-if="mode === 'console'" class="small muted">
-            To add creatures from your index (with their portraits and a journal entry for the
-            party), use
-            <NuxtLink :to="`/campaigns/${campaignId}/gm/npcs`" @click="addOpen = false"
-              >NPCs</NuxtLink
-            >.
-          </p>
-          <form class="stack" @submit.prevent="addCustom">
-            <div class="add-grid add-grid--top">
-              <div class="field">
-                <label for="cb-name">Name</label>
-                <input
-                  id="cb-name"
-                  v-model="draft.name"
-                  class="input"
-                  maxlength="76"
-                  placeholder="Bandit"
-                  required
-                />
-              </div>
-              <div class="field">
-                <label for="cb-count">How many</label>
-                <input
-                  id="cb-count"
-                  v-model.number="draft.count"
-                  class="input"
-                  type="number"
-                  min="1"
-                  max="20"
-                />
-              </div>
-            </div>
-            <div class="add-grid">
-              <div class="field">
-                <label for="cb-kind">Kind</label>
-                <select id="cb-kind" v-model="draft.kind" class="input">
-                  <option value="monster">Monster</option>
-                  <option value="npc">NPC</option>
-                  <option value="pc">PC</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="cb-init">Initiative</label>
-                <input id="cb-init" v-model.number="draft.initiative" class="input" type="number" />
-              </div>
-              <div class="field">
-                <label for="cb-mod">Init. modifier</label>
-                <input id="cb-mod" v-model.number="draft.init_mod" class="input" type="number" />
-              </div>
-              <div class="field">
-                <label for="cb-hp">Hit points</label>
-                <input id="cb-hp" v-model.number="draft.hp" class="input" type="number" min="0" />
-              </div>
-              <div class="field">
-                <label for="cb-ac">Armor</label>
-                <input id="cb-ac" v-model.number="draft.ac" class="input" type="number" />
-              </div>
-            </div>
-            <p v-if="customLabels.length > 1 && customLabels[0]" class="small muted">
-              Adds {{ draft.name.trim() }} {{ customLabels[0] }} to {{ draft.name.trim() }}
-              {{ customLabels[customLabels.length - 1] }}.
-            </p>
-            <div class="row" style="justify-content: flex-end">
-              <button type="button" class="btn btn--ghost" @click="addOpen = false">Cancel</button>
-              <button type="submit" class="btn" :disabled="adding || !draft.name.trim()">
-                {{ draft.count > 1 ? `Add ${Math.min(20, draft.count)}` : 'Add combatant' }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </UiDialog>
     </div>
   </div>
+  <UiDialog v-model="addOpen" title="Add to initiative" width="540px">
+    <div class="stack">
+      <div v-if="partyMissing.length" class="row" style="justify-content: space-between">
+        <span class="small"
+          >{{ plural(partyMissing.length, 'party character') }} not in the order yet.</span
+        >
+        <button type="button" class="btn btn--ghost" :disabled="adding" @click="addParty">
+          Add the party
+        </button>
+      </div>
+      <p v-if="mode === 'console'" class="small muted">
+        To add creatures from your index (with their portraits and a journal entry for the party),
+        use
+        <NuxtLink :to="`/campaigns/${campaignId}/gm/npcs`" @click="addOpen = false">NPCs</NuxtLink>.
+      </p>
+      <form class="stack" @submit.prevent="addCustom">
+        <div class="add-grid add-grid--top">
+          <div class="field">
+            <label for="cb-name">Name</label>
+            <input
+              id="cb-name"
+              v-model="draft.name"
+              class="input"
+              maxlength="76"
+              placeholder="Bandit"
+              required
+            />
+          </div>
+          <div class="field">
+            <label for="cb-count">How many</label>
+            <input
+              id="cb-count"
+              v-model.number="draft.count"
+              class="input"
+              type="number"
+              min="1"
+              max="20"
+            />
+          </div>
+        </div>
+        <div class="add-grid">
+          <div class="field">
+            <label for="cb-kind">Kind</label>
+            <select id="cb-kind" v-model="draft.kind" class="input">
+              <option value="monster">Monster</option>
+              <option value="npc">NPC</option>
+              <option value="pc">PC</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="cb-init">Initiative</label>
+            <input id="cb-init" v-model.number="draft.initiative" class="input" type="number" />
+          </div>
+          <div class="field">
+            <label for="cb-mod">Init. modifier</label>
+            <input id="cb-mod" v-model.number="draft.init_mod" class="input" type="number" />
+          </div>
+          <div class="field">
+            <label for="cb-hp">Hit points</label>
+            <input id="cb-hp" v-model.number="draft.hp" class="input" type="number" min="0" />
+          </div>
+          <div class="field">
+            <label for="cb-ac">Armor</label>
+            <input id="cb-ac" v-model.number="draft.ac" class="input" type="number" />
+          </div>
+        </div>
+        <p v-if="customLabels.length > 1 && customLabels[0]" class="small muted">
+          Adds {{ draft.name.trim() }} {{ customLabels[0] }} to {{ draft.name.trim() }}
+          {{ customLabels[customLabels.length - 1] }}.
+        </p>
+        <div class="row" style="justify-content: flex-end">
+          <button type="button" class="btn btn--ghost" @click="addOpen = false">Cancel</button>
+          <button type="submit" class="btn" :disabled="adding || !draft.name.trim()">
+            {{ draft.count > 1 ? `Add ${Math.min(20, draft.count)}` : 'Add combatant' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </UiDialog>
 </template>
 
 <style scoped lang="scss">
+// Battle board, until Tasks 7–11 replace these panels: the bar carries the turn
+// controls, so hide Initiative's own Previous / Next turn and End encounter
+// (Add combatants and Sync summons stay). Chat fills the right column.
+.battle-ini {
+  :deep(.ini__tools > button:nth-child(n + 3)),
+  :deep(.ini__manage-bar > button:last-child) {
+    display: none;
+  }
+}
+
+.battle-chat.battle-chat {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 420px;
+  max-height: none;
+}
+
 // Anchor for the player's quick-action panel (board only), which docks in the
 // page margin to the left of this content on wide screens.
 .party-layout {
