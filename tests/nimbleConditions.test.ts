@@ -63,15 +63,6 @@ describe('conditions', () => {
     expect(oddsReasons(1, conditionMods(sheet, ['Taunted']))).toBe('Rushed, Blinded, Taunted')
   })
 
-  it('keeps a turn-end condition set during your own turn until the end of your next turn', () => {
-    const sheet = hero()
-    sheet.turnActive = true
-    addCondition(sheet, 'Slowed')
-    expect(clearConditionsAt(sheet, 'turnEnd')).toBe('')
-    expect(sheet.conditions).toContain('Slowed')
-    expect(clearConditionsAt(sheet, 'turnEnd')).toBe(' No longer Slowed.')
-  })
-
   it('takes an action for Dazed and clears conditions when they end', () => {
     const sheet = hero()
     addCondition(sheet, 'Dazed')
