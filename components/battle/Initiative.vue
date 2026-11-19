@@ -5,6 +5,7 @@
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
+import { turnActionsFor } from '~/utils/nimblePlay'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -17,9 +18,6 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
-
-/** A hero's actions each turn: 3, or 1 while Dying (the roster has no ability list). */
-const HERO_ACTIONS = 3
 
 function rosterFor(c: TurnRow) {
   return c.character_id ? props.roster.find((r) => r.character_id === c.character_id) : undefined
@@ -80,7 +78,7 @@ function pips(c: TurnRow): { total: number; used: number } | null {
   if (c.kind === 'pc') {
     const s = rosterFor(c)?.summary
     if (!s) return null
-    const max = s.dying ? 1 : HERO_ACTIONS
+    const max = turnActionsFor(s.abilityNames ?? [], !!s.dying)
     const spent = s.actionsSpent ?? 0
     return { total: Math.max(max, max - spent), used: Math.min(Math.max(0, spent), max) }
   }

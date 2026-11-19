@@ -9,6 +9,7 @@ import { abilityArmor } from '../utils/nimbleArmor'
 import {
   abilityCounters,
   actionsLeft,
+  turnActionsFor,
   actionPips,
   endEncounter,
   gainAction,
@@ -1616,5 +1617,21 @@ describe('class wiring', () => {
     expect(
       abilityTrigger(sheet, 7, 'Your allies within 12 spaces who can hear you gain WIL temp HP.'),
     ).toBeNull()
+  })
+})
+
+describe('turnActionsFor', () => {
+  it('gives 3, 4 with Windborne, 1 or 2 while dying', () => {
+    expect(turnActionsFor([], false)).toBe(3)
+    expect(turnActionsFor(['Windborne'], false)).toBe(4)
+    expect(turnActionsFor([], true)).toBe(1)
+    expect(turnActionsFor(['Enduring Rage'], true)).toBe(2)
+    expect(turnActionsFor(['Windborne'], true)).toBe(2)
+    expect(turnActionsFor(['Enduring Rage'], false)).toBe(3)
+  })
+  it('reads the base name of an upgraded ability', () => {
+    const upgraded = 'Windborne: (Upgrade)'
+    const base = abilityBaseName(upgraded)
+    expect(turnActionsFor([upgraded], false)).toBe(base === 'Windborne' ? 4 : 3)
   })
 })

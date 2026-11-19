@@ -126,6 +126,7 @@ export interface RosterEntry {
     /** Nimble mana pool. */
     mana?: { current: number; max: number; temp: number }
     summons?: NimbleSummon[]
+    abilityNames?: string[]
     portraitOverride?: string
     backstory?: string
   } | null

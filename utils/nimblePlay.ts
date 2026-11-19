@@ -43,10 +43,18 @@ function hasAbility(sheet: NimbleSheet, name: string): boolean {
  * Actions a hero gets each turn: 3, or 1 while Dying. Windborne (Zephyr) adds one,
  * and it and Enduring Rage (Berserker) allow 2 while Dying.
  */
-export function turnActions(sheet: NimbleSheet): number {
-  const windborne = hasAbility(sheet, 'Windborne')
-  if (sheet.dying) return windborne || hasAbility(sheet, 'Enduring Rage') ? 2 : 1
+export function turnActionsFor(abilityNames: string[], dying: boolean): number {
+  const has = (name: string) => abilityNames.some((n) => abilityBaseName(n) === name)
+  const windborne = has('Windborne')
+  if (dying) return windborne || has('Enduring Rage') ? 2 : 1
   return windborne ? 4 : 3
+}
+
+export function turnActions(sheet: NimbleSheet): number {
+  return turnActionsFor(
+    sheet.abilities.map((a) => a.name),
+    !!sheet.dying,
+  )
 }
 
 /** Attacking while Dying calls for a DC 10 STR save, unless Enduring Rage waives it. */
