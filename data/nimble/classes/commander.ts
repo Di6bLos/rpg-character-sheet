@@ -320,7 +320,6 @@ export const commander: ClassDef = {
           ],
         },
         11: {
-          resourceBonus: 1,
           abilities: [
             {
               name: 'Survey the Battlefield',

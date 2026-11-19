@@ -46,6 +46,24 @@ watch(
   },
 )
 
+// The tracker may already be on a turn when this panel's sheet loads: line the sheet
+// up with it once, skipping "no encounter" (null) and turns already taken this round.
+let synced = false
+watch(
+  () => props.turnCharacterId,
+  (now) => {
+    if (synced || now === null || !editor.canEdit.value) return
+    synced = true
+    const sheet = editor.draft.value.sheet as NimbleSheet
+    const level = editor.draft.value.level
+    const mine = props.character.id
+    if (now === mine && sheet.inEncounter && !sheet.turnActive && !sheet.turnDone)
+      editor.say(startTurn(sheet, level))
+    else if (now !== mine && sheet.turnActive) editor.say(endTurn(sheet, level))
+  },
+  { immediate: true },
+)
+
 watch(
   () => props.downSummons,
   (keys) => {
