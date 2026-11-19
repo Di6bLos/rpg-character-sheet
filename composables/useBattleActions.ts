@@ -89,7 +89,6 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
   ])
 
   const spellTiles = computed<BattleTile[]>(() => {
-    const ctx = { turnActive: onTurn.value, incapacitated: incapacitated.value }
     const attackNames = new Set(spells.spellAttacks.value.map((a) => a.name))
     const reactionNames = new Set(spells.reactionSpells.value.map((s) => s.name))
     const summonOf = new Map(spells.summonSpells.value.map((s) => [s.name, s.summon]))
@@ -123,7 +122,18 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       .flatMap((g) => g.spells)
       .filter((s) => !attackNames.has(s.name) && !reactionNames.has(s.name))
       .map((s) => {
-        const unavailable = castReason(s, ctx) || (full(s.name) ? 'At the max' : '')
+        // Exactly SpellCard's cast button: busy, no actions, short (no turn or condition check).
+        const unavailable = s.busy
+          ? 'Finish casting first'
+          : s.noActions
+            ? 'No actions left'
+            : s.short
+              ? s.usesMinions
+                ? `Needs ${s.cost}`
+                : 'Not enough mana'
+              : full(s.name)
+                ? 'At the max'
+                : ''
         return {
           ...base,
           ...fields(s),
