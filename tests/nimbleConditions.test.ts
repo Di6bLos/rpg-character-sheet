@@ -3,7 +3,6 @@ import type { NimbleSheet } from '../types/sheets'
 import { parseDice, rollNimble } from '../utils/dice'
 import {
   addCondition,
-  clearConditionsAt,
   conditionMods,
   oddsReasons,
   removeCondition,
