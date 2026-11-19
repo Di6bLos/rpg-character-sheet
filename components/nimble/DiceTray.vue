@@ -3,8 +3,9 @@
 // die per step of advantage or disadvantage (the dropped ones fade), the Primary
 // Die tagged, a crit's explosions thrown after, CRIT or MISS called out. Nothing
 // shows for players who roll their own dice (the app rolls nothing), with reduced
-// motion, or once turned off here. It stays until clicked or Esc. A popover, so it
-// sits above the board's dialog.
+// motion, or once turned off here. It stays until clicked or Esc. A modal dialog
+// opened last, so it sits above the board's drawer and any other open dialog and
+// still takes clicks (a popover outside a modal dialog would be inert).
 import type DiceBox from '@3d-dice/dice-box-threejs'
 import { isHex, onAccent } from '~/utils/contrast'
 import { onDiceShown, type ShownRoll } from '~/utils/dice'
@@ -21,7 +22,7 @@ const SIDES = new Set([4, 6, 8, 10, 12, 20])
 const TAGS: Partial<Record<Role, string>> = { primary: 'Primary', dropped: 'Dropped', crit: 'Crit' }
 
 const auth = useAuthStore()
-const tray = ref<HTMLElement | null>(null)
+const tray = ref<HTMLDialogElement | null>(null)
 const stage = ref<HTMLElement | null>(null)
 const rolls = ref<ShownRoll[]>([])
 const settled = ref(false)
@@ -50,17 +51,11 @@ onMounted(() => {
       queueMicrotask(() => void throwPending())
     }
   })
-  window.addEventListener('keydown', onKey)
 })
 
 onBeforeUnmount(() => {
   stop?.()
-  window.removeEventListener('keydown', onKey)
 })
-
-function onKey(event: KeyboardEvent) {
-  if (event.key === 'Escape' && rolls.value.length) close()
-}
 
 function setSkip(on: boolean) {
   skip.value = on
@@ -208,10 +203,10 @@ async function throwPending() {
   rolls.value = list
   settled.value = false
   tags.value = []
-  try {
-    tray.value?.showPopover()
-  } catch {
-    // Already open.
+  if (tray.value && !tray.value.open) {
+    tray.value.showModal()
+    // Focus the tray itself, not the "Don't animate dice" box, so Space can't tick it.
+    tray.value.focus()
   }
   await nextTick()
   const dice = diceOf(list)
@@ -241,22 +236,19 @@ function close() {
   rolls.value = []
   tags.value = []
   box?.clearDice()
-  try {
-    tray.value?.hidePopover()
-  } catch {
-    // Already closed.
-  }
+  if (tray.value?.open) tray.value.close()
 }
 </script>
 
 <template>
-  <div
+  <dialog
     ref="tray"
-    popover="manual"
     class="tray"
     aria-label="Dice roll"
+    tabindex="-1"
     :style="{ '--die': dieColor, '--on-die': onAccent(dieColor) }"
     @click="close"
+    @cancel.prevent="close"
   >
     <div id="dice-tray-stage" ref="stage" class="tray__stage" />
     <span
@@ -298,7 +290,7 @@ function close() {
         Don’t animate dice
       </label>
     </div>
-  </div>
+  </dialog>
 </template>
 
 <style scoped lang="scss">
@@ -317,6 +309,11 @@ function close() {
   color: #f3ead6;
   cursor: pointer;
   overflow: hidden;
+  outline: none;
+
+  &::backdrop {
+    background: transparent;
+  }
 }
 
 .tray__stage {
