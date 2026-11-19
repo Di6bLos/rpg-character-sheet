@@ -588,6 +588,19 @@ const effectRows = computed(() =>
               </span>
             </button>
           </li>
+          <li v-if="w.optionalDice">
+            <button
+              type="button"
+              class="apm__row"
+              :aria-pressed="w.extraOn"
+              :aria-disabled="!canEdit || undefined"
+              @click="canEdit && w.toggleExtra()"
+            >
+              <span class="apm__name">↳ Roll {{ w.optionalDice }} more</span>
+              <span class="apm__tag">{{ w.extraOn ? 'On' : 'Off' }}</span>
+              <span class="apm__sub">Each 1 pushes you back 1 space, Prone</span>
+            </button>
+          </li>
           <li v-if="sheet.ownDice && w.critReady && w.critBy.length">
             <button
               type="button"
