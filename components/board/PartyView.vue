@@ -118,13 +118,20 @@ async function addCustom() {
 
 <template>
   <!-- For now the battle board holds today's panels; later tasks replace each slot. -->
-  <BattleBoard v-if="wide" :init="init">
+  <BattleBoard
+    v-if="wide"
+    :init="init"
+    :turn-character-id="actingCharacterId"
+    :round="encounterRound"
+    :down-summons="downSummons"
+  >
     <template #strip>
       <BattleInitiative :init="init" :roster="roster" :gm="gmControls" />
     </template>
-    <template #left>
+    <template #left="{ hero }">
+      <BattleHero v-if="hero" />
       <BoardRoster
-        v-if="campaign"
+        v-else-if="campaign"
         :roster="roster"
         :system="campaign.system"
         :turn-character-id="turnCharacterId"

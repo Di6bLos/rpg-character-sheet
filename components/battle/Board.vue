@@ -1,14 +1,22 @@
 <script setup lang="ts">
 // Desktop battle board frame (Nimble, 1200px+): the one-line bar, the initiative
 // strip and three columns that fill the viewport under the app nav. Only the
-// columns scroll; the page itself never does.
+// columns scroll; the page itself never does. For players the left and centre
+// columns share the seated hero's sheet editor (HeroScope).
 import type { useInitiative } from '~/composables/useInitiative'
 
-defineProps<{ init: ReturnType<typeof useInitiative> }>()
+defineProps<{
+  init: ReturnType<typeof useInitiative>
+  /** Whose turn it is (a hero's character id), for the player's automatic turn steps. */
+  turnCharacterId: string | null
+  round: number | null
+  downSummons: string[]
+}>()
+/** `hero`: the left and centre slots are inside the player's sheet editor (HeroScope). */
 defineSlots<{
   strip?: () => unknown
-  left?: () => unknown
-  centre?: () => unknown
+  left?: (props: { hero: boolean }) => unknown
+  centre?: (props: { hero: boolean }) => unknown
   right?: () => unknown
 }>()
 
@@ -40,8 +48,15 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
       <slot name="strip" />
     </div>
     <div class="battle__cols">
-      <div class="battle__col battle__col--left"><slot name="left" /></div>
-      <div class="battle__col battle__col--centre"><slot name="centre" /></div>
+      <BattleHeroScope
+        v-slot="{ hero }"
+        :turn-character-id="turnCharacterId"
+        :round="round"
+        :down-summons="downSummons"
+      >
+        <div class="battle__col battle__col--left"><slot name="left" :hero="hero" /></div>
+        <div class="battle__col battle__col--centre"><slot name="centre" :hero="hero" /></div>
+      </BattleHeroScope>
       <div class="battle__col battle__col--right"><slot name="right" /></div>
     </div>
   </div>
