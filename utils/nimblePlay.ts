@@ -4,7 +4,7 @@
 import { weaponByName } from '~/data/nimble/core'
 import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet, NimbleStat } from '~/types/sheets'
-import { rollDie, sign, type NimbleRoll, type Rng } from '~/utils/dice'
+import { quietly, rollDie, showDice, sign, type NimbleRoll, type Rng } from '~/utils/dice'
 import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
 import {
   abilityBaseName,
@@ -1467,18 +1467,30 @@ export function initiativeRoll(
       ),
   )
   const entered = initiative !== undefined && Number.isFinite(initiative)
-  const first = entered ? 0 : rollDie(20, rng)
-  const natural = entered
-    ? Math.floor(initiative) - sheet.initMod
-    : advantage
-      ? Math.max(first, rollDie(20, rng))
-      : first
+  const d20s = entered
+    ? []
+    : quietly(() => (advantage ? [rollDie(20, rng), rollDie(20, rng)] : [rollDie(20, rng)]))
+  const natural = entered ? Math.floor(initiative) - sheet.initMod : Math.max(...d20s)
   const rolled = natural + sheet.initMod
   const cheat =
     rolled < 10 &&
     hasText(sheet, /\bIf you roll less than 10 on Initiative, you may change it to 10\b/)
   const roll = cheat ? 10 : rolled
   sheet.initiative = roll
+  if (d20s.length)
+    showDice({
+      sides: 20,
+      dice: d20s,
+      dropped: d20s.length > 1 ? [d20s[0]! >= d20s[1]! ? 1 : 0] : [],
+      primary: -1,
+      explosions: [],
+      extra: null,
+      mod: sheet.initMod,
+      total: roll,
+      miss: false,
+      crit: false,
+      odds: advantage ? -1 : 0,
+    })
   const max = turnActions(sheet)
   const start = initiativeActions(roll, natural, max)
   sheet.actionsSpent = max - start

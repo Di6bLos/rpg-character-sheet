@@ -7,8 +7,12 @@ import {
   parseDice,
   rollAttack,
   rollDice,
+  onDiceShown,
+  quietly,
+  rollDie,
   rollNimble,
   sign,
+  type ShownRoll,
 } from '../utils/dice'
 import { LEVEL_UP_RULES, averageHp, canBump, hpGain } from '../utils/levelUp'
 import { accentVars, contrast, readableAccent, resolveAccent } from '../utils/themes'
@@ -184,5 +188,54 @@ describe('sheet defaults', () => {
     expect(normalizeSheet('nimble', { backstory: 'Raised by wolves' }).backstory).toBe(
       'Raised by wolves',
     )
+  })
+})
+
+describe('dice shown in the tray', () => {
+  function shown(run: () => void): ShownRoll[] {
+    const seen: ShownRoll[] = []
+    const stop = onDiceShown((r) => seen.push(r))
+    run()
+    stop()
+    return seen
+  }
+
+  it('reports every die thrown, the dropped ones and the Primary Die', () => {
+    const [roll] = shown(() =>
+      rollNimble({ count: 1, sides: 20, mod: 0 }, null, faces(20, 17, 1, 12), 2),
+    )
+    expect(roll).toMatchObject({ dice: [17, 1, 12], primary: 1, miss: true, odds: 2 })
+    expect([...roll!.dropped].sort()).toEqual([0, 2])
+  })
+
+  it('reports a crit’s explosions and the bonus dice', () => {
+    const [roll] = shown(() =>
+      rollNimble({ count: 1, sides: 6, mod: 2 }, { count: 1, sides: 4 }, faces(6, 6, 6, 3, 4)),
+    )
+    expect(roll).toMatchObject({
+      dice: [6],
+      primary: 0,
+      explosions: [6, 3],
+      crit: true,
+      total: 6 + 6 + 3 + 2 + roll!.extra!.dice[0]!,
+    })
+  })
+
+  it('reports a lone die, but not the dice of a roll that reports itself', () => {
+    expect(shown(() => rollDie(8, faces(8, 5)))).toMatchObject([
+      { sides: 8, dice: [5], bare: true },
+    ])
+    expect(shown(() => quietly(() => rollDie(8, faces(8, 5))))).toEqual([])
+    expect(
+      shown(() => rollNimble({ count: 2, sides: 6, mod: 0 }, null, faces(6, 3, 4))),
+    ).toHaveLength(1)
+  })
+
+  it('stops reporting once the watcher stops', () => {
+    const seen: ShownRoll[] = []
+    const stop = onDiceShown((r) => seen.push(r))
+    stop()
+    rollNimble({ count: 1, sides: 6, mod: 0 }, null, faces(6, 3))
+    expect(seen).toEqual([])
   })
 })

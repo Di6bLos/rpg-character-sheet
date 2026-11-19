@@ -32,7 +32,7 @@ import {
 import { endEffects } from '~/utils/nimbleEffects'
 import { rollSpellDamage, spellDamage } from '~/utils/nimbleSpellDamage'
 import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
-import { parseDice } from '~/utils/dice'
+import { parseDice, rollDie } from '~/utils/dice'
 import {
   armorDice,
   armorDiceWhy,
@@ -187,7 +187,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       return takeDamage(sheet.value, hurt, draft.value.level)
     if (sheet.value.ownDice)
       return `Greedy Pact: make a STR save (1–9: take ${hurt}; 10–19: take 10; 20+: no damage and the spell is 1 tier higher), then apply it.`
-    const save = 1 + Math.floor(Math.random() * 20) + sheet.value.stats.STR
+    const save = rollDie(20) + sheet.value.stats.STR
     if (save >= 20)
       return `Greedy Pact: STR save ${save}, no damage and the spell is cast 1 tier higher.`
     const taken = save >= 10 ? Math.min(10, hurt) : hurt
@@ -380,7 +380,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       return `0 mana (${owner}).`
     }
     if (v.ownDice) return 'roll 1d4 and mark that many Wounds.'
-    const n = 1 + Math.floor(Math.random() * 4)
+    const n = rollDie(4)
     return `${n} Wound${n === 1 ? '' : 's'} (1d4).${gainWounds(v, n, draft.value.level)}`
   }
 

@@ -18,7 +18,7 @@ import {
   setMalfunction,
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
-import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
+import { addCondition, conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
 import {
   armorDice,
   armorDiceWhy,
@@ -116,6 +116,16 @@ const ATTACK_TEXT =
   /\b(?:[Aa]ttack (?:a target|ALL|your|with a|them|on your turn)|make (?:an?|\d+) (?:melee |ranged |weapon )?attacks?|[Ss]hoot\b|shooting\b|This attack\b)/
 const FREE_ATTACK = /\bmake (?:an?|\d+) (?:melee |ranged |weapon )?attacks?\b[^.]*\bfor free\b/i
 
+const OPTIONAL_DICE = /\bmay roll \+(\d+)d(\d+)\b/
+
+/** "1d4+2" with an optional "+1d4" of the same die becomes "2d4+2"; another die size is appended. */
+function withMoreDice(dmg: string, extra: RegExpExecArray): string {
+  const [, count = '1', sides = '0'] = extra
+  const m = /^(\d+)d(\d+)(.*)$/.exec(dmg.trim())
+  if (m && m[2] === sides) return `${Number(m[1]) + Number(count)}d${sides}${m[3]}`
+  return `${dmg} +${count}d${sides}`
+}
+
 export function useNimbleActions(options: NimbleResultOptions = {}) {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
@@ -140,6 +150,11 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const situation = useAttackSituation()
   const target = useAttackTarget()
   const critReady = useCritReady()
+  /** Weapons whose optional extra dice the player turned on for their next attack. */
+  const extraDice = useState<Record<string, boolean>>(
+    `nimble-extra-dice-${draft.value.id}`,
+    () => ({}),
+  )
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
@@ -210,7 +225,19 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       }),
       ...summonedWeapons(sheet.value, draft.value.level),
       ...effectAttacks(sheet.value, draft.value.level),
-    ].map((w) => {
+    ].map((base) => {
+      // "may roll +1d4" (Thunder Gauntlets Prototype): the player opts in per attack.
+      const optional = OPTIONAL_DICE.exec(base.props)
+      const extraOn = !!optional && !!extraDice.value[base.name]
+      const w = extraOn ? { ...base, dmg: withMoreDice(base.dmg, optional) } : base
+      const recoil = (dice: number[]) => {
+        if (!extraOn) return ''
+        extraDice.value = { ...extraDice.value, [base.name]: false }
+        const ones = dice.filter((d) => d === 1).length
+        if (!ones) return ''
+        addCondition(sheet.value, 'Prone')
+        return ` ${ones === 1 ? 'A 1' : `${ones} 1s`} on the dice: you're pushed back ${ones} space${ones === 1 ? '' : 's'} and knocked Prone.`
+      }
       const res = sheet.value.resource
       const weapon = weaponByName(w.name)
       const strAttack = weapon ? weapon.stat === 'STR' : w.melee
@@ -310,6 +337,11 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           w.name === 'Sting' ? 'Sting' : '',
         ].filter(Boolean),
         critReady: !!critReady.value[`w:${w.name}`],
+        optionalDice: optional ? `+${optional[1]}d${optional[2]}` : '',
+        extraOn,
+        toggleExtra: () => {
+          if (canEdit.value) extraDice.value = { ...extraDice.value, [base.name]: !extraOn }
+        },
         /** The player rolled a crit themselves: set off what the app would have, once. */
         crit: () => {
           if (!canEdit.value || !spendCrit(critReady, `w:${w.name}`)) return
@@ -410,7 +442,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             const rush =
               odds > 0 ? ` with ${odds}× disadvantage` : odds < 0 ? ` with ${-odds}× advantage` : ''
             return report(
-              `${w.name}: attack made; roll ${w.flat !== undefined ? `${w.dmg} to hit, ${w.flat} damage` : w.dmg}${rush} yourself.${notes.length ? ` ${notes.join('. ')}.` : ''}${armorRule(armor)}${ended}`,
+              `${w.name}: attack made; roll ${w.flat !== undefined ? `${w.dmg} to hit, ${w.flat} damage` : w.dmg}${rush} yourself.${notes.length ? ` ${notes.join('. ')}.` : ''}${armorRule(armor)}${ended}${extraOn ? ` Each 1 you roll pushes you back 1 space and knocks you Prone.${recoil([])}` : ''}`,
             )
           }
           const expr = parseDice(w.dmg)
@@ -456,7 +488,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           const hints = situational.length ? ` (${situational.join(', ')})` : ''
           if (result.miss)
             report(
-              `${w.name}: miss (first die rolled a 1)${hints}.${zealNote}${extra.note}${after}${triggers}${dying}`,
+              `${w.name}: miss (first die rolled a 1)${hints}.${zealNote}${extra.note}${after}${triggers}${dying}${recoil(result.dice)}`,
             )
           else
             report(
@@ -464,7 +496,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
                 result.bonus
                   ? ` (incl. ${result.bonus} ${resource.value?.diceName.toLowerCase() || 'bonus'})`
                   : ''
-              }${hints}.${zealNote}${extra.note}${after}${triggers}${dying}`,
+              }${hints}.${zealNote}${extra.note}${after}${triggers}${dying}${recoil(result.dice)}`,
             )
           spendAttackAction()
           if (onTurn) sheet.value.rushed += 1

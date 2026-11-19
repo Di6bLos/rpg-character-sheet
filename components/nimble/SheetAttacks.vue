@@ -110,6 +110,18 @@ const hasAttacks = computed(
             </div>
             <NimbleMishap v-if="w.mishap" :name="w.mishap.name" :text="w.mishap.text" />
             <NimbleModifiers :target="w.name" :weapon="w.props" />
+            <label v-if="w.optionalDice" class="extra-dice">
+              <input
+                type="checkbox"
+                :checked="w.extraOn"
+                :disabled="!canEdit"
+                @change="w.toggleExtra()"
+              />
+              <span
+                >Roll {{ w.optionalDice }} more
+                <small>each 1 pushes you back 1 space and knocks you Prone</small></span
+              >
+            </label>
             <div v-if="w.poweredBy" class="ready">
               <span>{{ resource?.diceName }} Dice readied</span>
               <button
@@ -539,6 +551,24 @@ const hasAttacks = computed(
   font-size: 12px;
   font-weight: 600;
   color: var(--accent-text);
+}
+
+.extra-dice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+
+  input {
+    margin-top: 3px;
+  }
+
+  small {
+    display: block;
+    font-size: 12px;
+    color: var(--page-muted);
+  }
 }
 
 .boost {

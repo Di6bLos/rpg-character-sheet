@@ -111,7 +111,8 @@ export function buildCopies(npc: CampaignNpc, opts: AddCopiesOptions): NewCombat
   const rawHp = Math.max(0, npc.stat_block.hp ?? 0)
   const hp = npc.system === 'nimble' && rawHp === 0 ? 1 : rawHp
   const ac = npc.stat_block.ac ?? 10
-  const shared = rollDie(20, rng) + mod
+  // Roll only the dice used: each one shows in the dice tray.
+  const shared = opts.sharedRoll ? rollDie(20, rng) + mod : 0
   return labels.map((label) => ({
     campaign_id: npc.campaign_id,
     name: combatantName(npc.name, label),

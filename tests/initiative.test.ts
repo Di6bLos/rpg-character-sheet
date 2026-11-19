@@ -77,8 +77,18 @@ describe('buildCopies', () => {
     expect(new Set(rows.map((r) => r.initiative)).size).toBe(1)
   })
   it('rolls per creature by default', () => {
-    const rows = buildCopies(npc(), { count: 2, rng: faces(1, 20, 7) })
+    const rows = buildCopies(npc(), { count: 2, rng: faces(20, 7) })
     expect(rows.map((r) => r.initiative)).toEqual([22, 9])
+  })
+  it('rolls only the dice it uses (each one shows in the dice tray)', () => {
+    const count = (sharedRoll: boolean) => {
+      let calls = 0
+      const rng = () => (calls++, 0.5)
+      buildCopies(npc(), { count: 3, sharedRoll, rng })
+      return calls
+    }
+    expect(count(false)).toBe(3)
+    expect(count(true)).toBe(1)
   })
   it('marks humanoids as NPCs and caps the count at 20', () => {
     expect(buildCopies(npc({ kind: 'humanoid' }), { count: 1 })[0]!.kind).toBe('npc')
