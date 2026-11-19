@@ -2,7 +2,17 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
 import type { Combatant, Encounter, InitiativeRow, RosterEntry } from '~/types'
 import { rollDie } from '~/utils/dice'
-import { hpBand, isSlainSummon, sortOrder, summonOwner, syncSummonRows } from '~/utils/initiative'
+import {
+  clampHp,
+  hpBand,
+  isSlainSummon,
+  newRoundStart,
+  renamedCombatant,
+  sortOrder,
+  summonOwner,
+  syncSummonRows,
+  turnAfter,
+} from '~/utils/initiative'
 
 export type TurnRow = InitiativeRow & { init_mod: number; created_at: string }
 
@@ -193,18 +203,51 @@ export function useInitiative(
     if (error) snackbar.error(error, 'Could not update the turn order')
   }
 
+  /** Actions refill when a creature's own turn ends; a hero's summons ride on the hero's turn. */
+  async function refillActions(endedId: string) {
+    const ended = rows.value.find((r) => r.id === endedId)
+    if (!ended) return
+    const spent = (r: TurnRow) => (r.actions_used ?? 0) > 0
+    const targets =
+      ended.kind === 'pc'
+        ? rows.value.filter(
+            (r) =>
+              r.kind === 'summon' &&
+              !!r.summon_key &&
+              summonOwner(r.summon_key) === ended.character_id &&
+              spent(r),
+          )
+        : ended.kind === 'monster' || ended.kind === 'npc'
+          ? [ended].filter(spent)
+          : []
+    if (!targets.length) return
+    const before = targets.map((r) => ({ row: r, used: r.actions_used }))
+    for (const r of targets) r.actions_used = 0
+    const { error } = await supabase
+      .from('combatants')
+      .update({ actions_used: 0 })
+      .in(
+        'id',
+        targets.map((r) => r.id),
+      )
+    if (error) {
+      for (const b of before) b.row.actions_used = b.used
+      snackbar.error(error, 'Could not refill actions')
+    }
+  }
+
   function nextTurn() {
-    if (!order.value.length) return
-    if (!turnId.value) {
-      void saveEncounter({ active_combatant: order.value[0]!.id })
-      return
-    }
-    const idx = order.value.findIndex((c) => c.id === activeId.value)
-    if (idx + 1 >= order.value.length) {
-      void saveEncounter({ active_combatant: order.value[0]!.id, round: round.value + 1 })
-    } else {
-      void saveEncounter({ active_combatant: order.value[idx + 1]!.id })
-    }
+    const next = turnAfter(order.value, turnId.value, round.value)
+    if (!next) return
+    void saveEncounter({ active_combatant: next.active, round: next.round })
+    if (next.ended && isGm.value) void refillActions(next.ended)
+  }
+
+  /** Start the next round at the top of the order. Actions are not refilled here. */
+  function newRound() {
+    const next = newRoundStart(order.value, round.value)
+    if (!next) return
+    void saveEncounter({ active_combatant: next.active, round: next.round })
   }
 
   function prevTurn() {
@@ -288,7 +331,7 @@ export function useInitiative(
   function adjustHp(c: TurnRow, delta: number): Promise<void> {
     const id = c.id
     const max = c.hp_max ?? 0
-    const hp = Math.max(0, Math.min(max, (c.hp ?? 0) + delta))
+    const hp = clampHp(c.hp, delta, c.hp_max)
     c.hp = hp
     c.hp_band = c.kind === 'pc' ? null : hpBand(hp, max)
     pendingHp.set(id, hp)
@@ -306,6 +349,54 @@ export function useInitiative(
     })
     hpWrites.set(id, write)
     return write
+  }
+
+  /** Renames a combatant (the name column only). False when the name is blank or it failed. */
+  async function rename(c: TurnRow, raw: string): Promise<boolean> {
+    if (!isGm.value) return false
+    const name = renamedCombatant(raw)
+    if (name === null) return false
+    const previous = c.name
+    c.name = name
+    const { error } = await supabase.from('combatants').update({ name }).eq('id', c.id)
+    if (error) {
+      c.name = previous
+      snackbar.error(error, 'Could not rename the combatant')
+      return false
+    }
+    return true
+  }
+
+  async function setConditions(c: TurnRow, conditions: string[]) {
+    if (!isGm.value) return
+    const previous = c.conditions
+    c.conditions = conditions
+    const { error } = await supabase.from('combatants').update({ conditions }).eq('id', c.id)
+    if (error) {
+      c.conditions = previous
+      snackbar.error(error, 'Could not update conditions')
+    }
+  }
+
+  async function setActions(c: TurnRow, patch: { actions_used?: number; actions_max?: number }) {
+    if (!isGm.value) return
+    const prevMax = c.actions_max
+    const prevUsed = c.actions_used
+    const max = Math.max(0, Math.min(9, Math.round(patch.actions_max ?? prevMax ?? 1)))
+    const update: { actions_max?: number; actions_used?: number } = {}
+    if (patch.actions_max !== undefined) update.actions_max = max
+    if (patch.actions_used !== undefined || patch.actions_max !== undefined) {
+      const used = patch.actions_used ?? prevUsed ?? 0
+      update.actions_used = Math.max(0, Math.min(max, Math.round(used)))
+    }
+    if (update.actions_max !== undefined) c.actions_max = update.actions_max
+    if (update.actions_used !== undefined) c.actions_used = update.actions_used
+    const { error } = await supabase.from('combatants').update(update).eq('id', c.id)
+    if (error) {
+      c.actions_max = prevMax
+      c.actions_used = prevUsed
+      snackbar.error(error, 'Could not update actions')
+    }
   }
 
   async function pruneSummons(roster: RosterEntry[]) {
@@ -367,6 +458,10 @@ export function useInitiative(
     insert,
     nextTurn,
     prevTurn,
+    newRound,
+    rename,
+    setConditions,
+    setActions,
     addParty,
     pruneSummons,
     syncSummons,
