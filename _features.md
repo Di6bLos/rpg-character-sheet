@@ -195,3 +195,13 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [ ] Answers checked with a real provider key (player refusals, GM context use)
 - [ ] Deploy `lore-master` and redeploy `generate-npc` to the hosted project
 - [ ] ui-ux-reviewer pass
+
+##
+- quick reference for monsters in combat
+- easier way for GM to view player stats
+- quicker way to add the same monsters
+- Moderators can see other players sheets
+- Make the turn selection easier
+- add toggle for initiative turn order, or just affects how many actions you start with
+- conditions review https://nimble.nexus/rules/conditions
+- GM only backstory section
