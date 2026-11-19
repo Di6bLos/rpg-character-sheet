@@ -663,6 +663,14 @@ describe('Artificer', () => {
     expect(sheetResource(gadgeteer, 14)).toMatchObject({ die: 10, bonus: 1 })
   })
 
+  it('counts Survey the Battlefield’s +1 max Combat Dice once', () => {
+    const at10 = build(classBySlug('commander')!)
+    levelTo(at10, 10, 'vanguard')
+    const at11 = build(classBySlug('commander')!)
+    levelTo(at11, 11, 'vanguard')
+    expect(sheetResource(at11, 11)!.bonus).toBe(sheetResource(at10, 10)!.bonus + 1)
+  })
+
   it('reads use limits from the ability text', () => {
     const sheet = build(artificer)
     levelWith(sheet, 2, 'Stim Pack')
@@ -702,20 +710,6 @@ describe('Reaver', () => {
     const sheet = build(classBySlug('shadowmancer')!)
     levelTo(sheet, 5, 'red-dragon')
     expect(knownSpells(sheet).map((s) => s.name)).not.toContain('Bonescythe')
-  })
-})
-
-describe('class resource maximum', () => {
-  it('counts Survey the Battlefield’s +1 max Combat Dice once', () => {
-    const cls = classBySlug('commander')!
-    const atTen = build(cls)
-    levelTo(atTen, 10, 'vanguard')
-    const sheet = build(cls)
-    levelTo(sheet, 11, 'vanguard')
-    const picks = sheet.abilities.filter((a) => a.name === '+1 max Combat Dice' && a.level === 11)
-    expect(sheetResource(sheet, 11)!.max).toBe(
-      sheetResource(atTen, 10)!.max + 1 + picks.length + (sheet.stats.STR - atTen.stats.STR),
-    )
   })
 })
 

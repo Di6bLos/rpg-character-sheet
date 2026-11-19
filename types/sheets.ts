@@ -296,7 +296,7 @@ export interface NimbleSheet extends SheetCommon {
   casting: { spell: string; actions: number; at?: number }
   conditions: string[]
   conditionEnds: Record<string, ConditionEnd>
-  /** Turn-end conditions set during your own turn: they skip this turn's end. */
+  /** Conditions ending at turn end that were set during this turn, so they last through the next one. */
   conditionHold?: string[]
   /**
    * Class resource. `active` and `dice` are a Berserker's Rage and Fury dice (added to
