@@ -1,6 +1,6 @@
 import type { SpellDef } from '~/data/nimble/types'
 import type { NimbleSheet, NimbleStat } from '~/types/sheets'
-import { parseDice, rollDie, rollNimble, sign, type Rng } from '~/utils/dice'
+import { parseDice, rollDie, rollNimble, showDice, sign, type Rng } from '~/utils/dice'
 import { keyStatValue } from '~/utils/nimbleBuild'
 
 export interface SpellDamage {
@@ -93,10 +93,26 @@ export function rollSpellDamage(
   }
   const extra = Math.abs(disadvantage)
   const rolls = Array.from({ length: expr.count + extra }, () => rollDie(expr.sides, rng))
-  const sorted = [...rolls].sort((a, b) => (disadvantage >= 0 ? a - b : b - a))
-  const kept = sorted.slice(0, expr.count)
+  const order = rolls
+    .map((value, index) => ({ value, index }))
+    .sort((a, b) => (disadvantage >= 0 ? a.value - b.value : b.value - a.value))
+  const kept = order.slice(0, expr.count).map((d) => d.value)
+  const total = kept.reduce((a, b) => a + b, 0) + expr.mod
+  showDice({
+    sides: expr.sides,
+    dice: rolls,
+    dropped: order.slice(expr.count).map((d) => d.index),
+    primary: -1,
+    explosions: [],
+    extra: null,
+    mod: expr.mod,
+    total,
+    miss: false,
+    crit: false,
+    odds: disadvantage,
+  })
   return {
-    total: kept.reduce((a, b) => a + b, 0) + expr.mod,
+    total,
     miss: false,
     crit: false,
     detail: disadvantage ? `${rolls.join(', ')}, kept ${kept.join(', ')}` : rolls.join(', '),

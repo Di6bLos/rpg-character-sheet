@@ -62,6 +62,39 @@ export function mapPenalties(agile: boolean): [number, number, number] {
   return agile ? [0, 4, 8] : [0, 5, 10]
 }
 
+/** One roll as the dice tray throws it: every die in order, the Primary, what was dropped. */
+export interface ShownRoll {
+  sides: number
+  /** Every die thrown, in order, extra dice for advantage or disadvantage included. */
+  dice: number[]
+  /** Indexes into `dice` dropped by advantage or disadvantage. */
+  dropped: number[]
+  /** Index of the Primary Die (the first die kept); -1 when the roll has none (area spells). */
+  primary: number
+  /** Dice a crit rolled again, exploding. */
+  explosions: number[]
+  /** Dice added on a hit (Fury), with their own size. */
+  extra: { sides: number; dice: number[] } | null
+  mod: number
+  total: number
+  miss: boolean
+  crit: boolean
+  /** Disadvantage steps; negative is advantage. */
+  odds: number
+}
+
+const diceWatchers = new Set<(roll: ShownRoll) => void>()
+
+/** The dice tray watches rolls the app makes; returns the function that stops watching. */
+export function onDiceShown(watch: (roll: ShownRoll) => void): () => void {
+  diceWatchers.add(watch)
+  return () => diceWatchers.delete(watch)
+}
+
+export function showDice(roll: ShownRoll): void {
+  for (const watch of diceWatchers) watch(roll)
+}
+
 export interface NimbleRoll {
   miss: boolean
   crit: boolean
@@ -96,16 +129,39 @@ export function rollNimble(
   )
   const kept = rolled.filter((_, i) => !dropped.has(i))
   const first = kept[0] ?? 1
-  if (first === 1) return { miss: true, crit: false, total: 0, bonus: 0, dice: kept }
+  const shown = {
+    sides: expr.sides,
+    dice: rolled,
+    dropped: [...dropped],
+    primary: rolled.findIndex((_, i) => !dropped.has(i)),
+    mod: expr.mod,
+    odds: disadvantage,
+  }
+  if (first === 1) {
+    showDice({ ...shown, explosions: [], extra: null, total: 0, miss: true, crit: false })
+    return { miss: true, crit: false, total: 0, bonus: 0, dice: kept }
+  }
   let total = kept.reduce((sum, v) => sum + v, 0)
-  let crit = false
+  const explosions: number[] = []
   let last = first
   while (last === expr.sides) {
-    crit = true
     last = rollDie(expr.sides, rng)
+    explosions.push(last)
     total += last
   }
-  let bonus = 0
-  if (bonusDice) for (let i = 0; i < bonusDice.count; i++) bonus += rollDie(bonusDice.sides, rng)
-  return { miss: false, crit, total: total + expr.mod + bonus, bonus, dice: kept }
+  const crit = explosions.length > 0
+  const bonusRolls = bonusDice
+    ? Array.from({ length: bonusDice.count }, () => rollDie(bonusDice.sides, rng))
+    : []
+  const bonus = bonusRolls.reduce((sum, v) => sum + v, 0)
+  const sum = total + expr.mod + bonus
+  showDice({
+    ...shown,
+    explosions,
+    extra: bonusDice ? { sides: bonusDice.sides, dice: bonusRolls } : null,
+    total: sum,
+    miss: false,
+    crit,
+  })
+  return { miss: false, crit, total: sum, bonus, dice: kept }
 }

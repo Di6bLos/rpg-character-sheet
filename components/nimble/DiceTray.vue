@@ -1,0 +1,410 @@
+<script setup lang="ts">
+// Throws the app's own rolls as 3D dice that land on the rolled values: one more
+// die per step of advantage or disadvantage (the dropped ones fade), the Primary
+// Die tagged, a crit's explosions thrown after, CRIT or MISS called out. Nothing
+// shows for players who roll their own dice (the app rolls nothing), with reduced
+// motion, or once turned off here. A popover, so it sits above the board's dialog.
+import type DiceBox from '@3d-dice/dice-box-threejs'
+import { onDiceShown, type ShownRoll } from '~/utils/dice'
+
+type Role = 'primary' | 'kept' | 'dropped' | 'crit' | 'extra'
+interface Die {
+  sides: number
+  value: number
+  role: Role
+}
+
+const SKIP_KEY = 'lantern-dice-skip'
+const HOLD_MS = 2600
+const SIDES = new Set([4, 6, 8, 10, 12, 20])
+const TAGS: Partial<Record<Role, string>> = { primary: 'Primary', dropped: 'Dropped', crit: 'Crit' }
+
+const tray = ref<HTMLElement | null>(null)
+const stage = ref<HTMLElement | null>(null)
+const rolls = ref<ShownRoll[]>([])
+const settled = ref(false)
+const tags = ref<{ x: number; y: number; text: string; role: Role }[]>([])
+const skip = ref(false)
+
+let box: DiceBox | null = null
+let pending: ShownRoll[] = []
+let queued = false
+let throwId = 0
+let hide: ReturnType<typeof setTimeout> | undefined
+let stop: (() => void) | undefined
+
+onMounted(() => {
+  try {
+    skip.value = localStorage.getItem(SKIP_KEY) === '1'
+  } catch {
+    skip.value = false
+  }
+  stop = onDiceShown((roll) => {
+    if (skip.value || !SIDES.has(roll.sides)) return
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    pending.push(roll)
+    // One action can roll several times (a stack of summons): throw them together.
+    if (!queued) {
+      queued = true
+      queueMicrotask(() => void throwPending())
+    }
+  })
+  window.addEventListener('keydown', onKey)
+})
+
+onBeforeUnmount(() => {
+  stop?.()
+  window.removeEventListener('keydown', onKey)
+  clearTimeout(hide)
+})
+
+function onKey(event: KeyboardEvent) {
+  if (event.key === 'Escape' && rolls.value.length) close()
+}
+
+function setSkip(on: boolean) {
+  skip.value = on
+  try {
+    localStorage.setItem(SKIP_KEY, on ? '1' : '0')
+  } catch {
+    // Private windows can refuse storage; the choice still holds for this visit.
+  }
+  if (on) close()
+}
+
+/** Every die in throw order: each roll's dice, then the dice it added on a hit. */
+function diceOf(list: ShownRoll[]): Die[] {
+  return list.flatMap((r) => [
+    ...r.dice.map((value, i) => ({
+      sides: r.sides,
+      value,
+      role: (i === r.primary ? 'primary' : r.dropped.includes(i) ? 'dropped' : 'kept') as Role,
+    })),
+    ...(r.extra && SIDES.has(r.extra.sides)
+      ? r.extra.dice.map((value) => ({ sides: r.extra!.sides, value, role: 'extra' as Role }))
+      : []),
+  ])
+}
+
+/** "1d20+2d6@17,3,5": runs of one die size, then the values they land on, in order. */
+function notation(dice: Die[]): string {
+  const groups: string[] = []
+  let run = 0
+  dice.forEach((d, i) => {
+    run += 1
+    if (dice[i + 1]?.sides !== d.sides) {
+      groups.push(`${run}d${d.sides}`)
+      run = 0
+    }
+  })
+  return `${groups.join('+')}@${dice.map((d) => d.value).join(',')}`
+}
+
+/** The strip under the table: kept dice left to right (the Primary first), then dropped. */
+function strip(r: ShownRoll): Die[] {
+  const own = diceOf([r])
+  return [
+    ...own.filter((d) => d.role === 'primary' || d.role === 'kept'),
+    ...r.explosions.map((value) => ({ sides: r.sides, value, role: 'crit' as Role })),
+    ...own.filter((d) => d.role === 'extra'),
+    ...own.filter((d) => d.role === 'dropped'),
+  ]
+}
+
+function oddsText(odds: number): string {
+  if (!odds) return ''
+  const n = Math.abs(odds)
+  return `${n > 1 ? `${n}× ` : ''}${odds > 0 ? 'disadvantage' : 'advantage'}`
+}
+
+async function ensureBox(): Promise<DiceBox> {
+  if (box) {
+    box.setDimensions()
+    return box
+  }
+  const { default: Box } = await import('@3d-dice/dice-box-threejs')
+  const css = getComputedStyle(document.documentElement)
+  const accent = css.getPropertyValue('--accent').trim() || '#d6a64a'
+  const ink = css.getPropertyValue('--on-accent').trim() || '#1b1408'
+  box = new Box('#dice-tray-stage', {
+    theme_customColorset: {
+      name: 'lantern',
+      background: accent,
+      foreground: ink,
+      outline: ink,
+      texture: 'none',
+      material: 'plastic',
+    },
+    sounds: false,
+    shadows: true,
+    light_intensity: 0.9,
+    strength: 1.3,
+  })
+  await box.initialize()
+  return box
+}
+
+/** Tags the Primary, dropped and crit dice where they landed, and fades the dropped ones. */
+function mark(b: DiceBox, dice: Die[]) {
+  const rect = stage.value?.getBoundingClientRect()
+  if (!rect) return
+  tags.value = dice.flatMap((d, i) => {
+    const mesh = b.diceList[i]
+    const text = TAGS[d.role]
+    if (!mesh || !text) return []
+    if (d.role === 'dropped')
+      for (const m of [mesh.material].flat()) {
+        m.transparent = true
+        m.opacity = 0.3
+      }
+    const at = mesh.position.clone().project(b.camera)
+    return [
+      { x: ((at.x + 1) / 2) * rect.width, y: ((1 - at.y) / 2) * rect.height, text, role: d.role },
+    ]
+  })
+  b.renderer.render(b.scene, b.camera)
+}
+
+async function throwPending() {
+  queued = false
+  const list = pending
+  pending = []
+  if (!list.length) return
+  const id = ++throwId
+  clearTimeout(hide)
+  rolls.value = list
+  settled.value = false
+  tags.value = []
+  try {
+    tray.value?.showPopover()
+  } catch {
+    // Already open.
+  }
+  await nextTick()
+  const dice = diceOf(list)
+  try {
+    const b = await ensureBox()
+    if (id !== throwId) return
+    await b.roll(notation(dice))
+    const blasts = list.flatMap((r) =>
+      r.explosions.map((value) => ({ sides: r.sides, value, role: 'crit' as Role })),
+    )
+    if (blasts.length && id === throwId) {
+      await b.add(notation(blasts))
+      dice.push(...blasts)
+    }
+    if (id !== throwId) return
+    mark(b, dice)
+  } catch {
+    // No WebGL: the strip below still shows the roll.
+  }
+  settled.value = true
+  hide = setTimeout(close, HOLD_MS)
+}
+
+function close() {
+  throwId += 1
+  clearTimeout(hide)
+  rolls.value = []
+  tags.value = []
+  box?.clearDice()
+  try {
+    tray.value?.hidePopover()
+  } catch {
+    // Already closed.
+  }
+}
+</script>
+
+<template>
+  <div ref="tray" popover="manual" class="tray" aria-label="Dice roll" @click="close">
+    <div id="dice-tray-stage" ref="stage" class="tray__stage" />
+    <span
+      v-for="(t, i) in tags"
+      :key="i"
+      class="tray__tag"
+      :class="`tray__tag--${t.role}`"
+      :style="{ left: `${t.x}px`, top: `${t.y}px` }"
+      aria-hidden="true"
+      >{{ t.text }}</span
+    >
+    <div class="tray__results" role="status" aria-live="polite" @click.stop>
+      <template v-if="settled">
+        <div v-for="(r, k) in rolls" :key="k" class="tray__roll">
+          <strong v-if="r.miss" class="tray__call tray__call--miss">Miss</strong>
+          <strong v-else-if="r.crit" class="tray__call tray__call--crit">Crit!</strong>
+          <div class="tray__dice">
+            <span
+              v-for="(d, i) in strip(r)"
+              :key="i"
+              class="tray__die"
+              :class="`tray__die--${d.role}`"
+              :title="`d${d.sides}${d.role === 'primary' ? ', Primary Die' : d.role === 'dropped' ? ', dropped' : d.role === 'crit' ? ', crit' : ''}`"
+              >{{ d.value }}</span
+            >
+            <span v-if="r.mod" class="tray__mod">{{ r.mod > 0 ? `+${r.mod}` : r.mod }}</span>
+          </div>
+          <span class="tray__total">{{ r.total }}</span>
+          <small v-if="r.odds" class="tray__odds">{{ oddsText(r.odds) }}</small>
+        </div>
+      </template>
+      <label class="tray__skip">
+        <input
+          type="checkbox"
+          :checked="skip"
+          @change="setSkip(($event.target as HTMLInputElement).checked)"
+        />
+        Don’t animate dice
+      </label>
+    </div>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.tray {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, #06120e 72%, transparent);
+  backdrop-filter: blur(2px);
+  color: #f3ead6;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.tray__stage {
+  position: absolute;
+  inset: 0;
+}
+
+.tray__tag {
+  position: absolute;
+  transform: translate(-50%, -260%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  background: #f3ead6;
+  color: #1b1408;
+
+  &--primary {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  &--dropped {
+    background: color-mix(in srgb, #f3ead6 40%, transparent);
+    text-decoration: line-through;
+  }
+
+  &--crit {
+    background: #e8703a;
+    color: #fff;
+  }
+}
+
+.tray__results {
+  position: absolute;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, #06120e 85%, transparent);
+  cursor: default;
+}
+
+.tray__roll {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.tray__call {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  &--crit {
+    color: #f5b13d;
+  }
+
+  &--miss {
+    color: #ef8a7a;
+  }
+}
+
+.tray__dice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tray__die {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  font-weight: 700;
+  background: #f3ead6;
+  color: #1b1408;
+
+  &--primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: 0 0 0 2px #f3ead6;
+  }
+
+  &--dropped {
+    opacity: 0.4;
+    text-decoration: line-through;
+  }
+
+  &--crit {
+    background: #e8703a;
+    color: #fff;
+  }
+}
+
+.tray__mod {
+  font-weight: 700;
+}
+
+.tray__total {
+  margin-left: auto;
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.tray__odds {
+  flex-basis: 100%;
+  color: color-mix(in srgb, #f3ead6 70%, transparent);
+}
+
+.tray__skip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: color-mix(in srgb, #f3ead6 75%, transparent);
+  cursor: pointer;
+}
+</style>
