@@ -119,6 +119,9 @@ async function addCustom() {
 <template>
   <!-- For now the battle board holds today's panels; later tasks replace each slot. -->
   <BattleBoard v-if="wide" :init="init">
+    <template #strip>
+      <BattleInitiative :init="init" :roster="roster" :gm="gmControls" />
+    </template>
     <template #left>
       <BoardRoster
         v-if="campaign"
@@ -253,6 +256,13 @@ async function addCustom() {
 // controls, so hide Initiative's own Previous / Next turn and End encounter
 // (Add combatants and Sync summons stay). Chat fills the right column.
 .battle-ini {
+  // The strip above carries the turn order; keep only the GM's controls here.
+  :deep(.ini__strip),
+  :deep(.ini__empty),
+  :deep(.ini__summons) {
+    display: none;
+  }
+
   :deep(.ini__tools > button:nth-child(n + 3)),
   :deep(.ini__manage-bar > button:last-child) {
     display: none;
