@@ -1,80 +1,26 @@
 <script setup lang="ts">
 // The turn tracker: actions left this turn, and the Start turn / End turn / New encounter steps.
 import type { NimbleSheet } from '~/types/sheets'
-import {
-  actionPips,
-  actionsLeft,
-  endEncounter,
-  gainAction,
-  newRound,
-  toggleActionPip,
-  endTurn,
-  beginEncounter,
-  initiativeRoll,
-  startTurn,
-  stopCasting,
-  turnActions,
-} from '~/utils/nimblePlay'
 
-const { draft, canEdit, say, campaignId } = useSheet<NimbleSheet>()
-const sheet = computed(() => draft.value.sheet)
-
-const perTurn = computed(() => turnActions(sheet.value))
-const left = computed(() => actionsLeft(sheet.value))
-const rushedNote = computed(() =>
-  sheet.value.rushed
-    ? `Next attack: ${sheet.value.rushed}× disadvantage (Rushed)`
-    : 'No attacks yet this turn',
-)
-
-const pips = computed(() => actionPips(sheet.value))
-
-function toggleAction(n: number) {
-  if (canEdit.value) toggleActionPip(sheet.value, n)
-}
-
-function extraAction() {
-  if (canEdit.value) say(gainAction(sheet.value))
-}
-
-function cancelCasting() {
-  if (canEdit.value) say(stopCasting(sheet.value))
-}
-
-function beginTurn() {
-  if (canEdit.value) say(startTurn(sheet.value, draft.value.level))
-}
-
-function finishEncounter() {
-  if (canEdit.value) say(endEncounter(sheet.value, draft.value.level))
-}
-
-function nextRound() {
-  if (canEdit.value) say(newRound(sheet.value, draft.value.level))
-}
-
-function finishTurn() {
-  if (canEdit.value) say(endTurn(sheet.value, draft.value.level))
-}
-
-function startEncounter() {
-  if (canEdit.value) say(beginEncounter(sheet.value))
-}
-
-const sendInitiative = useSendInitiative()
-
-async function initiative(values?: number[]) {
-  if (!canEdit.value) return
-  const { message, total } = initiativeRoll(
-    sheet.value,
-    draft.value.level,
-    Math.random,
-    values?.[0],
-  )
-  say(message)
-  const sent = await sendInitiative(total)
-  if (sent) say(`${message}${sent}`)
-}
+const { draft, canEdit, campaignId } = useSheet<NimbleSheet>()
+const {
+  sheet,
+  perTurn,
+  left,
+  pips,
+  steps,
+  typed,
+  rushedNote,
+  toggleAction,
+  extraAction,
+  cancelCasting,
+  beginTurn,
+  finishTurn,
+  nextRound,
+  startEncounter,
+  finishEncounter,
+  initiative,
+} = useTurnSteps()
 </script>
 
 <template>
@@ -162,7 +108,7 @@ async function initiative(values?: number[]) {
       </div>
       <div class="row" style="gap: 6px; margin-left: auto; flex-wrap: wrap">
         <button
-          v-if="!sheet.inEncounter"
+          v-if="steps.includes('encounter')"
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit"
@@ -171,7 +117,7 @@ async function initiative(values?: number[]) {
           New encounter
         </button>
         <button
-          v-if="sheet.awaitingInitiative && !sheet.ownDice && !sheet.turnActive"
+          v-if="steps.includes('initiative')"
           type="button"
           class="btn btn--sm"
           :disabled="!canEdit"
@@ -180,7 +126,7 @@ async function initiative(values?: number[]) {
           Roll Initiative
         </button>
         <button
-          v-if="sheet.inEncounter && !sheet.turnActive"
+          v-if="steps.includes('endEncounter')"
           type="button"
           class="btn btn--quiet btn--sm"
           :disabled="!canEdit"
@@ -190,9 +136,7 @@ async function initiative(values?: number[]) {
           End encounter
         </button>
         <button
-          v-if="
-            !sheet.turnActive && sheet.inEncounter && !sheet.turnDone && !sheet.awaitingInitiative
-          "
+          v-if="steps.includes('start')"
           type="button"
           class="btn btn--sm"
           :disabled="!canEdit"
@@ -201,7 +145,7 @@ async function initiative(values?: number[]) {
           Start turn
         </button>
         <button
-          v-else-if="sheet.inEncounter && sheet.turnDone && !sheet.turnActive"
+          v-else-if="steps.includes('round')"
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit"
@@ -211,7 +155,7 @@ async function initiative(values?: number[]) {
           New round
         </button>
         <button
-          v-if="sheet.turnActive"
+          v-if="steps.includes('end')"
           type="button"
           class="btn btn--sm"
           :disabled="!canEdit"
@@ -222,7 +166,7 @@ async function initiative(values?: number[]) {
       </div>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && sheet.awaitingInitiative && !sheet.turnActive"
+      v-if="typed"
       label="Your Initiative total"
       action="Set Initiative"
       signed

@@ -137,8 +137,13 @@ async function addCustom() {
         :turn-character-id="turnCharacterId"
       />
     </template>
-    <template #centre>
+    <template #centre="{ hero }">
+      <template v-if="hero">
+        <BattleTurnBar :init="init" />
+        <BattleActions />
+      </template>
       <BoardInitiative
+        v-else
         class="battle-ini"
         :init="init"
         :roster="roster"

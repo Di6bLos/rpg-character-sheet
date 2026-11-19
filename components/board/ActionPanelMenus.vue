@@ -27,7 +27,7 @@ const emit = defineEmits<{ dismiss: [] }>()
 
 const { draft, canEdit, lastRoll, say } = useSheet<NimbleSheet>()
 const { campaignId } = useCampaignBoard()
-const chat = useBoardChat()
+const post = useAnnounce()
 const sheet = computed(() => draft.value.sheet)
 const uid = useId()
 
@@ -36,7 +36,7 @@ const seq = ref(0)
 
 function announce(message: string) {
   seq.value += 1
-  void chat.send(`${draft.value.name} · ${message}`, 'party', 'action')
+  post(message)
 }
 
 const {
