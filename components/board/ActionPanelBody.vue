@@ -61,7 +61,13 @@ watch(
     const sheet = editor.draft.value.sheet as NimbleSheet
     const level = editor.draft.value.level
     const mine = props.character.id
-    if (now === mine && sheet.inEncounter && !sheet.turnActive && !sheet.turnDone)
+    if (
+      now === mine &&
+      sheet.inEncounter &&
+      !sheet.turnActive &&
+      !sheet.turnDone &&
+      !sheet.awaitingInitiative
+    )
       editor.say(startTurn(sheet, level))
     else if (now !== mine && sheet.turnActive) editor.say(endTurn(sheet, level))
   },
