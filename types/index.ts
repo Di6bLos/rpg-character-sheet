@@ -221,6 +221,9 @@ export interface Combatant {
   portrait_path: string | null
   group_label: string | null
   summon_key: string | null
+  conditions: string[]
+  actions_max: number
+  actions_used: number
   created_at: string
 }
 
@@ -239,6 +242,37 @@ export interface InitiativeRow {
   ac: number | null
   hp_band: HpBand | null
   summon_key: string | null
+  conditions: string[]
+  /** GM only; null for players. */
+  actions_max: number | null
+  actions_used: number | null
+}
+
+/** What `campaign_hero_card()` returns: the public part of a seated hero. */
+export interface HeroCard {
+  name: string
+  level: number
+  portrait_path: string | null
+  class: string
+  subclass: string
+  lineage: string
+  hp: number
+  hpMax: number
+  tempHp: number
+  wounds: number
+  woundsMax: number
+  ac: number
+  speed: string
+  initMod: number
+  stats: Record<'STR' | 'DEX' | 'INT' | 'WIL', number>
+  saveAdv: string
+  saveDis: string
+  skills: { name: string; stat: string; points: number }[]
+  mana: { current: number; max: number } | null
+  resource: { name: string; count: number; dice: number; die: number } | null
+  conditions: string[]
+  summons: { name: string; hp: number; hpMax: number }[]
+  abilities: { name: string; desc: string; src: string }[]
 }
 
 export type HpBand = 'Unhurt' | 'Hurt' | 'Bloodied' | 'Down'

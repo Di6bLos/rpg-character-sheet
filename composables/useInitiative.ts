@@ -23,6 +23,9 @@ function fromCombatant(c: Combatant): TurnRow {
     init_mod: c.init_mod,
     created_at: c.created_at,
     summon_key: c.summon_key,
+    conditions: c.conditions ?? [],
+    actions_max: c.actions_max,
+    actions_used: c.actions_used,
   }
 }
 
@@ -105,6 +108,7 @@ export function useInitiative(
         init_mod: 0,
         created_at: String(i).padStart(6, '0'),
         summon_key: r.summon_key ?? null,
+        conditions: r.conditions ?? [],
       }))
     }
   }

@@ -5,6 +5,7 @@ import type {
   Campaign,
   CampaignMember,
   GameSystem,
+  HeroCard,
   MyCampaign,
   PendingInvite,
   RosterEntry,
@@ -169,6 +170,15 @@ export const useCampaignStore = defineStore('campaign', () => {
     return (data ?? []) as RosterEntry[]
   }
 
+  async function heroCard(campaignId: string, characterId: string): Promise<HeroCard> {
+    const { data, error } = await supabase.rpc('campaign_hero_card', {
+      p_campaign: campaignId,
+      p_character: characterId,
+    })
+    if (error) throw error
+    return data as HeroCard
+  }
+
   async function seatCharacter(campaignId: string, characterId: string | null) {
     const auth = useAuthStore()
     const { error } = await supabase
@@ -274,6 +284,7 @@ export const useCampaignStore = defineStore('campaign', () => {
     inviteLink,
     respond,
     roster,
+    heroCard,
     seatCharacter,
     markRead,
     update,
