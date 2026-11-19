@@ -6,6 +6,7 @@ const sheet = computed(() => draft.value.sheet)
 const { reactions, toggleReaction, abilities, abilityActions, inventions, opportunityOptions } =
   useNimbleActions()
 const { reactionSpells, cast } = useNimbleSpells()
+const { allies, help } = useHelpAlly()
 const { claim, resultIn, unclaimed } = useResultOwner()
 const noActionsPanel = computed(
   () =>
@@ -62,6 +63,44 @@ const message = computed(
                 type="button"
                 class="btn btn--quiet btn--sm"
                 :disabled="!canEdit"
+                @click="toggleReaction(r.name)"
+              >
+                Undo
+              </button>
+            </div>
+          </details>
+          <details
+            v-else-if="r.name === 'Help' && allies.length"
+            class="tile card reaction oa"
+            :class="{ 'is-used': r.used }"
+          >
+            <summary class="reaction__head">
+              <strong>{{ r.name }}</strong>
+              <em>{{ r.used ? 'Used' : r.costText }}</em>
+            </summary>
+            <span class="oa__desc"
+              >{{ r.desc }} Pick who you help: they get the Helped status.</span
+            >
+            <div class="oa__list">
+              <div v-for="a in allies" :key="a.id" class="oa__opt">
+                <span class="oa__name"
+                  ><strong>{{ a.name }}</strong></span
+                >
+                <button
+                  type="button"
+                  class="btn btn--sm btn--wrap"
+                  :disabled="!canEdit || r.used || r.blocked"
+                  @click="claim(`reaction:${r.name}`, () => help(a.id))"
+                >
+                  Help
+                </button>
+              </div>
+              <button
+                v-if="r.used"
+                type="button"
+                class="btn btn--quiet btn--sm"
+                :disabled="!canEdit"
+                title="Gives the action back; the ally keeps the Helped status"
                 @click="toggleReaction(r.name)"
               >
                 Undo

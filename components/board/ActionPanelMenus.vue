@@ -104,6 +104,8 @@ const {
   groups: summonGroups,
   summonAttacks,
 } = useNimbleSummons({ onResult: announce })
+const { allies, help } = useHelpAlly({ onResult: announce })
+useHeroEffects()
 const isFull = (id: string) => !!summonable.value.find((a) => a.id === id)?.full
 
 /** One row per summon kind, a stack for identical minions; hand-added ones each get a row. */
@@ -1206,6 +1208,37 @@ const effectRows = computed(() =>
                   @click="canEdit && toggleReaction(r.name)"
                 >
                   <span class="apm__name">Undo Opportunity Attack</span>
+                </button>
+              </li>
+            </ul>
+          </details>
+          <details v-else-if="r.name === 'Help' && allies.length" class="apm__spell">
+            <summary class="apm__row" :class="{ 'apm__row--used': r.used }">
+              <span class="apm__name">{{ r.name }}</span>
+              <span class="apm__tag">{{ r.used ? 'Used' : r.free ? 'Free' : '1 act' }}</span>
+              <span class="apm__sub">Pick an ally: they get advantage</span>
+            </summary>
+            <ul class="apm__list apm__oa">
+              <li v-for="a in allies" :key="a.id">
+                <button
+                  type="button"
+                  class="apm__row"
+                  :aria-disabled="!canEdit || r.used || r.blocked || undefined"
+                  :aria-label="`Help ${a.name}`"
+                  @click="canEdit && !r.used && !r.blocked && help(a.id)"
+                >
+                  <span class="apm__name">{{ a.name }}</span>
+                  <span class="apm__sub">Helped: advantage on their next roll</span>
+                </button>
+              </li>
+              <li v-if="r.used">
+                <button
+                  type="button"
+                  class="apm__row"
+                  :aria-disabled="!canEdit || undefined"
+                  @click="canEdit && toggleReaction(r.name)"
+                >
+                  <span class="apm__name">Undo Help</span>
                 </button>
               </li>
             </ul>

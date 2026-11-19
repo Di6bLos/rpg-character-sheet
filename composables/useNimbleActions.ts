@@ -18,7 +18,7 @@ import {
   setMalfunction,
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
-import { conditionMods, oddsReasons } from '~/utils/nimbleConditions'
+import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
 import {
   armorDice,
   armorDiceWhy,
@@ -275,14 +275,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         nextAttack.value = { ...NO_NEXT }
         if (has(/\bGain advantage on the first attack you make each encounter\b/))
           sheet.value.uses['Ambusher@encounter'] = { used: 1 }
+        const help = spendHelp(sheet.value)
         return sheet.value.ownDice
-          ? ''
-          : afterAttack(sheet.value, draft.value.level, {
-              melee: w.melee,
-              miss,
-              crit,
-              quarry: hasMark.value && !!quarry.value,
-            })
+          ? help
+          : help +
+              afterAttack(sheet.value, draft.value.level, {
+                melee: w.melee,
+                miss,
+                crit,
+                quarry: hasMark.value && !!quarry.value,
+              })
       }
       return {
         name: w.name,
@@ -540,8 +542,13 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     }),
   )
 
-  function toggleReaction(name: string) {
-    if (!canEdit.value) return
+  /**
+   * Uses a reaction, or undoes it when it's already used. Returns what using it
+   * cost ("free", "spent 1 action"), or null when nothing was spent. `quiet`
+   * leaves the result message to the caller (Help names its ally instead).
+   */
+  function toggleReaction(name: string, quiet = false): string | null {
+    if (!canEdit.value) return null
     const used = sheet.value.reactionsUsed
     const attack = name === 'Opportunity Attack'
     const free = freeReaction(name)
@@ -551,9 +558,12 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       sheet.value.reactionsUsed = used.filter((_, i) => i !== at)
       if (!free) refundActions(sheet.value, 1)
       if (attack) prepaid.value = Math.max(0, prepaid.value - 1)
-      return
+      return null
     }
-    if (!free && left.value === 0) return report(NO_ACTIONS)
+    if (!free && left.value === 0) {
+      report(NO_ACTIONS)
+      return null
+    }
     used.push(name)
     if (!free) spendActions(sheet.value)
     const paid = free ? 'free' : 'spent 1 action'
@@ -562,10 +572,14 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       ? ` ${expendJudgment(sheet.value)}`
       : ''
     const extras = reactionExtras(name)
-    if (!attack) return report(`${name}: ${paid}.${judgment}${extras}`)
+    if (!attack) {
+      if (!quiet) report(`${name}: ${paid}.${judgment}${extras}`)
+      return paid
+    }
     prepaid.value += 1
     opportunity.value = true
     report(`${name}: ${paid}; roll a melee attack next, it costs no more.`)
+    return paid
   }
 
   const linkedTo = computed(() => (resource.value ? resourcePattern(resource.value) : null))
@@ -717,8 +731,9 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       odds,
       attack ? armorFor({}) : { armor: 'none' },
     )
-    if (attack && line) sheet.value.rushed += 1
-    return line
+    if (!attack || !line) return line
+    sheet.value.rushed += 1
+    return line + spendHelp(sheet.value)
   }
 
   function freeAttack(source: string): string {
@@ -1088,12 +1103,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       armorFor({ lighter: invention?.use === 'blade' }),
     )
     if (!message) return
+    let help = ''
     if (actions && !/inoperable|needs at least/.test(message)) {
       spendActions(sheet.value, actions)
-      if (invention?.use === 'blade' || invention?.use === 'cannon') sheet.value.rushed += 1
+      if (invention?.use === 'blade' || invention?.use === 'cannon') {
+        sheet.value.rushed += 1
+        help = spendHelp(sheet.value)
+      }
       ready.value = 0
     } else if (!/inoperable|needs at least/.test(message)) ready.value = 0
-    report(message)
+    report(message + help)
   }
 
   function setZealot(n: number) {
