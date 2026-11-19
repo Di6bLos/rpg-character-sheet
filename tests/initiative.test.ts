@@ -4,13 +4,17 @@ import {
   downSummonKeys,
   isSlainSummon,
   buildCopies,
+  clampHp,
   combatantName,
   COMBATANT_NAME_MAX,
   groupLabels,
   hpBand,
   letter,
+  newRoundStart,
+  renamedCombatant,
   sortOrder,
   syncSummonRows,
+  turnAfter,
 } from '../utils/initiative'
 
 const npc = (patch: Partial<CampaignNpc> = {}): CampaignNpc => ({
@@ -309,4 +313,38 @@ describe('isSlainSummon', () => {
     expect(isSlainSummon(row('summon', 1, 1))).toBe(false)
     expect(isSlainSummon(row('monster', 0, 10))).toBe(false)
   })
+})
+
+describe('turnAfter', () => {
+  const order = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+  it('starts at the top', () =>
+    expect(turnAfter(order, null, 1)).toEqual({ active: 'a', round: 1, ended: null }))
+  it('moves on and reports who ended', () =>
+    expect(turnAfter(order, 'a', 2)).toEqual({ active: 'b', round: 2, ended: 'a' }))
+  it('wraps into the next round', () =>
+    expect(turnAfter(order, 'c', 2)).toEqual({ active: 'a', round: 3, ended: 'c' }))
+  it('treats an unknown active id like null', () =>
+    expect(turnAfter(order, 'gone', 1)).toEqual({ active: 'a', round: 1, ended: null }))
+  it('is null for an empty order', () => expect(turnAfter([], null, 1)).toBeNull())
+})
+
+describe('newRoundStart', () => {
+  it('jumps to the top of the next round, skipping the rest', () =>
+    expect(newRoundStart([{ id: 'a' }, { id: 'b' }], 3)).toEqual({ active: 'a', round: 4 }))
+  it('is null for an empty order', () => expect(newRoundStart([], 1)).toBeNull())
+})
+
+describe('clampHp', () => {
+  it('clamps to 0..max', () => {
+    expect(clampHp(4, -10, 15)).toBe(0)
+    expect(clampHp(14, 5, 15)).toBe(15)
+    expect(clampHp(null, 3, null)).toBe(0)
+  })
+})
+
+describe('renamedCombatant', () => {
+  it('rejects blank', () => expect(renamedCombatant('   ')).toBeNull())
+  it('trims and caps at 80', () =>
+    expect(renamedCombatant(`  ${'x'.repeat(200)} `)).toBe('x'.repeat(80)))
+  it('keeps a normal name', () => expect(renamedCombatant('Snaggletooth')).toBe('Snaggletooth'))
 })

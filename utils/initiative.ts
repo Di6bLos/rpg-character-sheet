@@ -214,3 +214,46 @@ export function downSummonKeys(
     )
     .map((c) => c.summon_key as string)
 }
+
+/**
+ * Whose turn comes after `activeId` in the initiative order. Starts at the top
+ * when nothing is active (or the active id is not in the order). Passing the
+ * last creature wraps into the next round. Null when the order is empty.
+ */
+export function turnAfter(
+  order: { id: string }[],
+  activeId: string | null,
+  round: number,
+): { active: string; round: number; ended: string | null } | null {
+  if (order.length === 0) return null
+  const index = activeId === null ? -1 : order.findIndex((c) => c.id === activeId)
+  if (index < 0) return { active: order[0]!.id, round, ended: null }
+  const ended = activeId
+  const next = index + 1
+  if (next >= order.length) return { active: order[0]!.id, round: round + 1, ended }
+  return { active: order[next]!.id, round, ended }
+}
+
+/** Start of the next round: the top of the order, whoever was left unacted. Null when empty. */
+export function newRoundStart(
+  order: { id: string }[],
+  round: number,
+): { active: string; round: number } | null {
+  if (order.length === 0) return null
+  return { active: order[0]!.id, round: round + 1 }
+}
+
+/**
+ * HP after a change, held between 0 and `max`. A null `max` means the creature
+ * has no HP to track (summons with no HP), so it stays at 0.
+ */
+export function clampHp(hp: number | null, delta: number, max: number | null): number {
+  if (max === null) return 0
+  return Math.min(max, Math.max(0, (hp ?? 0) + delta))
+}
+
+/** A new display name for a combatant, trimmed and capped; null when blank. */
+export function renamedCombatant(raw: string): string | null {
+  const name = raw.trim().slice(0, COMBATANT_NAME_MAX).trimEnd()
+  return name ? name : null
+}
