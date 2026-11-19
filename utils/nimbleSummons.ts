@@ -561,6 +561,45 @@ function rollMinion(sides: number, rng: Rng): { value: number; miss: boolean; ma
   return { value, miss: value === 1, max: value === sides }
 }
 
+/**
+ * What `crits` minion crits set off: Swarming Shadows summons more, the class
+ * options' on-crit lines, Master of Nightfrost's temp HP. Used by
+ * `commandMinions` and by the Crit button for players who roll their own dice.
+ */
+export function minionCrits(sheet: NimbleSheet, level: number, crits = 1): string[] {
+  const def = summonById('shadow-minion')!
+  const stats = summonStats(sheet, level, def)
+  const after: string[] = []
+  if (stats.swarm) {
+    const before = minionCount(sheet)
+    for (let i = 0; i < crits; i++) addSummon(sheet, level, def.id, { ignoreCap: true })
+    const gained = minionCount(sheet) - before
+    after.push(
+      gained
+        ? `Swarming Shadows: +${gained} shadow minion${gained === 1 ? '' : 's'}.`
+        : 'Swarming Shadows: already at max minions.',
+    )
+  }
+  after.push(...stats.onCrit)
+  if (stats.critTempHp) {
+    const [a = '', b = ''] = stats.critTempHp.split('+')
+    const gain = Math.max(0, sheet.stats.INT * Number(a === 'INT') + level * Number(b === 'LVL'))
+    sheet.tempHp = Math.max(sheet.tempHp, gain)
+    after.push(`Master of Nightfrost: ${gain} temp HP.`)
+  }
+  return after
+}
+
+/** Names of what a minion crit sets off, for the Crit button's tooltip. */
+export function minionCritTriggers(sheet: NimbleSheet, level: number): string[] {
+  const stats = summonStats(sheet, level, summonById('shadow-minion')!)
+  return [
+    stats.swarm ? 'Swarming Shadows' : '',
+    ...stats.onCrit,
+    stats.critTempHp ? 'Master of Nightfrost' : '',
+  ].filter(Boolean)
+}
+
 export function commandMinions(
   sheet: NimbleSheet,
   level: number,
@@ -579,7 +618,7 @@ export function commandMinions(
     const big = greater
       ? ` and ${5 + Math.max(0, (greater.tier ?? 4) - 4)}d${stats.die} for the ${greater.name}`
       : ''
-    return `Minions attack (Reach ${stats.reach}): roll 1d${stats.die} for each of ${minions.length} minion${minions.length === 1 ? '' : 's'}${big} yourself; a 1 misses, a max roll would crit (add any minions it summons by hand).${armorRule(armor)}`
+    return `Minions attack (Reach ${stats.reach}): roll 1d${stats.die} for each of ${minions.length} minion${minions.length === 1 ? '' : 's'}${big} yourself; a 1 misses.${minionCritTriggers(sheet, level).length ? ' Tap It crit for each max roll.' : ''}${armorRule(armor)}`
   }
   const parts: string[] = []
   let total = 0
@@ -603,24 +642,7 @@ export function commandMinions(
     if (rolls[0] !== 1) total += sum
     parts.push(rolls[0] === 1 ? `${greater.name} miss` : `${greater.name} ${sum}`)
   }
-  const after: string[] = []
-  if (crits && stats.swarm) {
-    const before = minionCount(sheet)
-    for (let i = 0; i < crits; i++) addSummon(sheet, level, def.id, { ignoreCap: true })
-    const gained = minionCount(sheet) - before
-    after.push(
-      gained
-        ? `Swarming Shadows: +${gained} shadow minion${gained === 1 ? '' : 's'}.`
-        : 'Swarming Shadows: already at max minions.',
-    )
-  }
-  if (crits) after.push(...stats.onCrit)
-  if (crits && stats.critTempHp) {
-    const [a = '', b = ''] = stats.critTempHp.split('+')
-    const gain = Math.max(0, sheet.stats.INT * Number(a === 'INT') + level * Number(b === 'LVL'))
-    sheet.tempHp = Math.max(sheet.tempHp, gain)
-    after.push(`Master of Nightfrost: ${gain} temp HP.`)
-  }
+  const after = crits ? minionCrits(sheet, level, crits) : []
   const reach = `Reach ${stats.reach}, d${stats.die}`
   return `Minions attack (${reach}): ${parts.join(', ')} = ${total} damage${armorLabel(armor)}.${after.length ? ` ${after.join(' ')}` : ''}`
 }

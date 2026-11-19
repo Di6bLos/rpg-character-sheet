@@ -170,6 +170,12 @@ const hasAttacks = computed(
                 ><template v-if="w.advantage"> · {{ w.advantage }}× advantage</template></template
               >
             </button>
+            <NimbleCritButton
+              v-if="sheet.ownDice && w.critReady && w.critBy.length"
+              :triggers="w.critBy"
+              :disabled="!canEdit"
+              @crit="claim(`w:${i}`, w.crit)"
+            />
             <p v-if="resultFor(`w:${i}`)" class="roll-status attack__result" role="status">
               {{ resultFor(`w:${i}`) }}
             </p>
@@ -298,6 +304,12 @@ const hasAttacks = computed(
                 }}<template v-if="!a.why && a.rushed"> · {{ a.rushed }}× disadvantage</template
                 ><template v-if="!a.why && a.advantage"> · {{ a.advantage }}× advantage</template>
               </button>
+              <NimbleCritButton
+                v-if="sheet.ownDice && a.critReady && a.critBy.length"
+                :triggers="a.critBy"
+                :disabled="!canEdit"
+                @crit="claim(a.key, a.crit)"
+              />
               <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
                 {{ resultFor(a.key) }}
               </p>
@@ -336,6 +348,12 @@ const hasAttacks = computed(
             >
               {{ a.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
             </button>
+            <NimbleCritButton
+              v-if="sheet.ownDice && a.critReady && a.critBy?.length && a.crit"
+              :triggers="a.critBy"
+              :disabled="!canEdit"
+              @crit="claim(a.key, a.crit)"
+            />
             <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
               {{ resultFor(a.key) }}
             </p>

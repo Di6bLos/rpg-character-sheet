@@ -44,6 +44,7 @@ import {
   expendJudgment,
   freeMove,
   afterAttack,
+  critTriggerNames,
   attackBonus,
   isBloodied,
   manaCost,
@@ -138,6 +139,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
   const situation = useAttackSituation()
   const target = useAttackTarget()
+  const critReady = useCritReady()
   watch(
     () => sheet.value.turnActive,
     (on, was) => {
@@ -147,6 +149,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         opportunity.value = false
         situation.value = []
         nextAttack.value = { ...NO_NEXT }
+        critReady.value = {}
       }
       if (on && !was) target.value = { ...target.value, sundered: false }
     },
@@ -297,6 +300,40 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           (flat ? ` +${flat}` : '') +
           (zealDamage ? ` +${zealDamage}` : ''),
         armorDmg: armorDice(diceDmg, armor, rolledDice),
+        critBy: [
+          ...critTriggerNames(sheet.value, {
+            melee: w.melee,
+            quarry: hasMark.value && !!quarry.value,
+          }),
+          r?.kind === 'crit' && res.count === 0 ? r.name : '',
+          w.onCrit?.length ? `${w.name} on-crit damage` : '',
+          w.name === 'Sting' ? 'Sting' : '',
+        ].filter(Boolean),
+        critReady: !!critReady.value[`w:${w.name}`],
+        /** The player rolled a crit themselves: set off what the app would have, once. */
+        crit: () => {
+          if (!canEdit.value || !spendCrit(critReady, `w:${w.name}`)) return
+          const notes = [
+            afterAttack(sheet.value, draft.value.level, {
+              melee: w.melee,
+              miss: false,
+              crit: true,
+              quarry: hasMark.value && !!quarry.value,
+            }).trim(),
+          ]
+          if (r?.kind === 'crit' && res.count === 0) {
+            res.count = 1
+            notes.push(`${r.name}: add ${r.roll}d${r.die} (used this turn).`)
+          }
+          if (w.onCrit?.length) notes.push(`Add ${w.onCrit.join(' + ')}.`)
+          notes.push(
+            afterEffectAttack(sheet.value, draft.value.level, w.name, {
+              miss: false,
+              crit: true,
+            }).note.trim(),
+          )
+          report(`${w.name} crit! ${notes.filter(Boolean).join(' ') || 'Nothing else triggers.'}`)
+        },
         armorWhy: armorDiceWhy(diceDmg || w.dmg, armor),
         boost: [
           oa && !oaDisadvantage ? 'Opportunity Attack (no disadvantage: Opportunistic Frenzy)' : '',
@@ -369,6 +406,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             finish(false, false)
             spendAttackAction()
             if (onTurn) sheet.value.rushed += 1
+            critReady.value = { ...critReady.value, [`w:${w.name}`]: 1 }
             const rush =
               odds > 0 ? ` with ${odds}× disadvantage` : odds < 0 ? ` with ${-odds}× advantage` : ''
             return report(

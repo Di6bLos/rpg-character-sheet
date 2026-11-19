@@ -47,6 +47,8 @@ import {
   beginEncounter,
   rollInitiative,
   usedUpLabel,
+  critTriggerNames,
+  critTriggerSources,
   startTurn,
   resourceOnAttack,
   rollJudgment,
@@ -81,6 +83,35 @@ function faces(sides: number, ...values: number[]) {
 function hero(patch: Partial<NimbleSheet> = {}): NimbleSheet {
   return { ...defaultSheet('nimble'), hp: 20, hpMax: 20, hitDice: 3, hitDie: 8, ...patch }
 }
+
+describe('crit triggers for players who roll their own dice', () => {
+  it('names what a weapon crit sets off', () => {
+    const sheet = hero({
+      abilities: [
+        {
+          name: 'Steal Tempo',
+          src: 'Cheat',
+          desc: 'When you land a critical hit for the second time on a turn, your target loses 1 action and you gain 1 action.',
+        },
+      ],
+    })
+    expect(critTriggerNames(sheet, { melee: true, quarry: false })).toEqual(['Steal Tempo'])
+  })
+
+  it('names abilities that fire when a spell would crit', () => {
+    const sheet = hero({
+      abilities: [
+        {
+          name: 'Master of Nightfrost',
+          src: 'Shadowmancer',
+          desc: 'Your Shadow Blast and minions can deal necrotic or cold damage, and whenever they would crit, you gain INT+LVL temp HP.',
+        },
+      ],
+    })
+    expect(critTriggerSources(sheet, 'Shadow Blast')).toEqual(['Master of Nightfrost'])
+    expect(critTriggerSources(sheet, 'Ice Lance')).toEqual([])
+  })
+})
 
 describe('spent limits', () => {
   it('say when they come back', () => {

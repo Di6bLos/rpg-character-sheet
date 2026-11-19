@@ -17,6 +17,7 @@ import {
   actionsLeft,
   castingBlocks,
   castSpell,
+  critTriggerSources,
   critTriggers,
   gainWounds,
   isHollowOne,
@@ -50,6 +51,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
   const sheet = computed(() => draft.value.sheet)
   const situation = useAttackSituation()
   const target = useAttackTarget()
+  const critReady = useCritReady()
   const armorOf = (s: { desc: string }) => ({
     armor: target.value.armor,
     vulnerable: target.value.vulnerable,
@@ -333,6 +335,8 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     if (progress) notes.push(progress)
     if (ONCE_PER_TURN.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
     if (roll) notes.push(damageNote(s))
+    if (sheet.value.ownDice && spellDamage(sheet.value, draft.value.level, s, s.at))
+      critReady.value = { ...critReady.value, [`spell:${s.name}`]: 1 }
     if (spellDamage(sheet.value, draft.value.level, s, s.at)) {
       if (sheet.value.turnActive) sheet.value.rushed += 1
       notes.push(spendHelp(sheet.value).trim())
@@ -427,6 +431,15 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
             name: s.name,
             dmg: damage.text,
             armorDmg: armorDice(damage.text, armorOf(s)),
+            critBy: critTriggerSources(sheet.value, s.name),
+            critReady: !!critReady.value[`spell:${s.name}`],
+            /** The player rolled a crit themselves: set off "whenever they would crit", once. */
+            crit: () => {
+              if (!canEdit.value || !spendCrit(critReady, `spell:${s.name}`)) return
+              const message = `${s.name} crit! ${critTriggers(sheet.value, draft.value.level, s.name)}`
+              say(message)
+              options.onResult?.(message)
+            },
             armorWhy: armorDiceWhy(damage.text, armorOf(s)),
             props: [
               range,
