@@ -705,6 +705,20 @@ describe('Reaver', () => {
   })
 })
 
+describe('class resource maximum', () => {
+  it('counts Survey the Battlefield’s +1 max Combat Dice once', () => {
+    const cls = classBySlug('commander')!
+    const atTen = build(cls)
+    levelTo(atTen, 10, 'vanguard')
+    const sheet = build(cls)
+    levelTo(sheet, 11, 'vanguard')
+    const picks = sheet.abilities.filter((a) => a.name === '+1 max Combat Dice' && a.level === 11)
+    expect(sheetResource(sheet, 11)!.max).toBe(
+      sheetResource(atTen, 10)!.max + 1 + picks.length + (sheet.stats.STR - atTen.stats.STR),
+    )
+  })
+})
+
 describe('lowering the level', () => {
   const strip = (s: NimbleSheet) => {
     const { levelHistory: _h, ...rest } = JSON.parse(JSON.stringify(s)) as NimbleSheet
