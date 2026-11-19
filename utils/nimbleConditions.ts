@@ -110,9 +110,10 @@ export function setConditionEnd(sheet: NimbleSheet, name: string, end: Condition
   if (end === 'manual') delete ends[name]
   else ends[name] = end
   sheet.conditionEnds = ends
-  // Set during your own turn, "the end of your next turn" is not this turn's end.
+  // Set during the hero's own turn, "the end of your next turn" skips this turn's end.
   const held = (sheet.conditionHold ?? []).filter((n) => n !== name)
-  sheet.conditionHold = end === 'turnEnd' && sheet.turnActive ? [...held, name] : held
+  if (end === 'turnEnd' && sheet.turnActive) held.push(name)
+  sheet.conditionHold = held
 }
 
 export function addCondition(sheet: NimbleSheet, name: string) {
@@ -128,11 +129,11 @@ export function removeCondition(sheet: NimbleSheet, name: string) {
 }
 
 export function clearConditionsAt(sheet: NimbleSheet, when: ConditionEnd): string {
-  const held = new Set(when === 'turnEnd' ? (sheet.conditionHold ?? []) : [])
+  const held = when === 'turnEnd' ? new Set(sheet.conditionHold ?? []) : new Set<string>()
+  if (held.size) sheet.conditionHold = []
   const ending = Object.entries(sheet.conditionEnds ?? {})
     .filter(([name, end]) => end === when && sheet.conditions.includes(name) && !held.has(name))
     .map(([name]) => name)
-  if (when === 'turnEnd') sheet.conditionHold = []
   for (const name of ending) removeCondition(sheet, name)
   return ending.length ? ` No longer ${ending.join(' or ')}.` : ''
 }

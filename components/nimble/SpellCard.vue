@@ -9,11 +9,13 @@ import { keyStatValue } from '~/utils/nimbleBuild'
 type CastableSpell = ReturnType<typeof useNimbleSpells>['tiers']['value'][number]['spells'][number]
 
 defineProps<{ spell: CastableSpell; blocked?: string }>()
+// The parent owns the upcast state that `spell.at` comes from, so tier changes go back to it.
+const emit = defineEmits<{ upcast: [tier: number] }>()
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const keyValue = computed(() => keyStatValue(sheet.value))
-const { maxTier, setUpcast, cast } = useNimbleSpells()
+const { maxTier, cast } = useNimbleSpells()
 </script>
 
 <template>
@@ -35,7 +37,7 @@ const { maxTier, setUpcast, cast } = useNimbleSpells()
             class="step step--xs"
             :aria-label="`Lower the cast tier of ${spell.name}`"
             :disabled="!canEdit || spell.at <= spell.tier"
-            @click="setUpcast(spell, spell.at - 1)"
+            @click="emit('upcast', spell.at - 1)"
           >
             −
           </button>
@@ -45,7 +47,7 @@ const { maxTier, setUpcast, cast } = useNimbleSpells()
             class="step step--xs"
             :aria-label="`Upcast ${spell.name}`"
             :disabled="!canEdit || spell.at >= maxTier"
-            @click="setUpcast(spell, spell.at + 1)"
+            @click="emit('upcast', spell.at + 1)"
           >
             +
           </button>

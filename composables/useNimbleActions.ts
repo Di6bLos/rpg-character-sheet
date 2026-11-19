@@ -1120,7 +1120,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   function operate(name: string, mode?: 'tether' | 'coil') {
     if (!canEdit.value) return
     const invention = inventions.value.find((i) => i.name === name)
-    if (invention?.attack && offTurn.value) return report(`${name}: ${NOT_TURN.toLowerCase()}.`)
+    if (invention?.attack && offTurn.value) return report(`${name}: ${NOT_TURN}.`)
     const actions = mode === 'coil' ? 2 : mode === 'tether' ? 1 : (invention?.actions ?? 0)
     if (mode ? left.value < actions : invention?.noActions)
       return report(
