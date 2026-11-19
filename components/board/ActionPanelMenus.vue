@@ -253,13 +253,15 @@ const spellGroups = computed(() =>
     ...g,
     spells: g.spells.map((s) => ({
       ...s,
-      blocked: s.busy
-        ? 'Finish casting first'
-        : s.noActions
-          ? 'No actions left'
-          : s.short
-            ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
-            : '',
+      blocked: s.needs
+        ? s.needs
+        : s.busy
+          ? 'Finish casting first'
+          : s.noActions
+            ? 'No actions left'
+            : s.short
+              ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
+              : '',
     })),
   })),
 )

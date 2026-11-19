@@ -84,12 +84,18 @@ export function rollSpellDamage(
   damage: SpellDamage,
   rng: Rng = Math.random,
   disadvantage = 0,
-): { total: number; miss: boolean; crit: boolean; detail: string } | null {
+): { total: number; miss: boolean; crit: boolean; detail: string; dice: number[] } | null {
   const expr = parseDice(damage.dice)
   if (!expr) return null
   if (damage.single) {
     const roll = rollNimble(expr, null, rng, disadvantage)
-    return { total: roll.total, miss: roll.miss, crit: roll.crit, detail: roll.dice.join(', ') }
+    return {
+      total: roll.total,
+      miss: roll.miss,
+      crit: roll.crit,
+      detail: roll.dice.join(', '),
+      dice: roll.dice,
+    }
   }
   const extra = Math.abs(disadvantage)
   const rolls = quietly(() =>
@@ -118,5 +124,6 @@ export function rollSpellDamage(
     miss: false,
     crit: false,
     detail: disadvantage ? `${rolls.join(', ')}, kept ${kept.join(', ')}` : rolls.join(', '),
+    dice: kept,
   }
 }

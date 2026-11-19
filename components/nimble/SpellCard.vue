@@ -56,9 +56,12 @@ const { maxTier, cast } = useNimbleSpells()
           type="button"
           class="btn btn--sm cast"
           :class="{ 'btn--ghost': spell.tier === 0 }"
-          :disabled="!canEdit || !!blocked || spell.short || spell.busy || spell.noActions"
+          :disabled="
+            !canEdit || !!blocked || !!spell.needs || spell.short || spell.busy || spell.noActions
+          "
           :title="
             blocked ||
+            spell.needs ||
             (spell.busy
               ? `Still casting ${sheet.casting.spell}`
               : spell.noActions
@@ -73,7 +76,7 @@ const { maxTier, cast } = useNimbleSpells()
           "
           @click="cast(spell)"
         >
-          {{ blocked || spell.label }}
+          {{ blocked || spell.needs || spell.label }}
         </button>
         <button
           v-if="spell.bloodLabel"
