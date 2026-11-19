@@ -2,6 +2,7 @@
 // spends the spell's actions and its mana (or a use of Pilfered Power, or a
 // Reaver's minions or Wound), and starts Concentration when the spell needs it.
 // Shared by the sheet's Spells panel and the board's action panel.
+import { castReason } from '~/utils/battleActions'
 import { SPELL_RULES } from '~/data/nimble/spells'
 import { summonBySource } from '~/data/nimble/summons'
 import type { SpellDef } from '~/data/nimble/types'
@@ -410,21 +411,10 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const range = /^(Range|Reach|Line|Cone)[^.]*/.exec(s.desc)?.[0] ?? ''
         const cond = conditionMods(sheet.value, situation.value)
         const odds = sheet.value.rushed + cond.disadvantage
-        const why = cond.incapacitated
-          ? cond.incapacitated
-          : sheet.value.inEncounter && !sheet.value.turnActive
-            ? 'Not your turn'
-            : s.used
-              ? 'Used this turn'
-              : s.busy
-                ? 'Finish casting first'
-                : s.noActions
-                  ? 'No actions left'
-                  : s.short
-                    ? s.usesMinions
-                      ? `Needs ${s.cost}`
-                      : 'Not enough mana'
-                    : ''
+        const why = castReason(s, {
+          turnActive: !sheet.value.inEncounter || sheet.value.turnActive,
+          incapacitated: cond.incapacitated,
+        })
         return [
           {
             key: `spell:${s.name}`,
