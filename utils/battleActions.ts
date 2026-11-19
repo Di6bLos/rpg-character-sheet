@@ -56,6 +56,11 @@ export function castReason(
   return ''
 }
 
+/** Runs an action's click only when it is available; a dimmed tile does nothing. */
+export function guarded(a: BattleAction & { use: () => void }): void {
+  if (a.unavailable === '') a.use()
+}
+
 /** Why a weapon can't be used now; '' when it can. */
 export function weaponReason(w: { why: string; blocked: boolean }): string {
   if (w.why) return w.why
@@ -88,7 +93,7 @@ function matches(filter: ActionFilter, a: BattleAction): boolean {
     case 'react':
       return a.group === 'react'
     case 'ability':
-      return a.kind === 'ability'
+      return a.kind === 'ability' || a.kind === 'summon'
     default:
       return true
   }

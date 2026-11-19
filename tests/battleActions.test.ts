@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   castReason,
+  guarded,
   reactionReason,
   readyNote,
   sectionsFor,
@@ -102,10 +103,32 @@ describe('sectionsFor', () => {
     expect(sectionsFor(list, 'react', '', true).map((x) => x.title)).toEqual(['Reactions'])
   })
 
+  it('the attack filter keeps the attack group', () => {
+    const s = sectionsFor(list, 'attack', '', true)
+    expect(s.flatMap((x) => x.actions).map((a) => a.name)).toEqual(['Sword', 'Spark', 'Bolt'])
+  })
+
+  it('the ability filter matches the Class abilities section, summons included', () => {
+    const s = sectionsFor(list, 'ability', '', true)
+    expect(s.map((x) => x.title)).toEqual(['Class abilities'])
+    expect(s[0]?.actions.map((a) => a.name)).toEqual(['Rest', 'Rally', 'Summon'])
+  })
+
   it('query matches name or desc, case-insensitively', () => {
     const s = sectionsFor(list, 'all', 'zap', true)
     expect(s.flatMap((x) => x.actions).map((a) => a.name)).toEqual(['Bolt'])
     expect(sectionsFor(list, 'all', 'SWOR', true).flatMap((x) => x.actions)).toHaveLength(1)
+  })
+})
+
+describe('guarded', () => {
+  it('calls use only when nothing makes the action unavailable', () => {
+    const blocked = { ...act({ unavailable: 'Not your turn' }), use: vi.fn() }
+    guarded(blocked)
+    expect(blocked.use).not.toHaveBeenCalled()
+    const open = { ...act(), use: vi.fn() }
+    guarded(open)
+    expect(open.use).toHaveBeenCalledTimes(1)
   })
 })
 
