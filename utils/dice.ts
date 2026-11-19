@@ -18,8 +18,40 @@ export function parseDice(expr: string): DiceExpr | null {
   return { count, sides, mod: m[3] ? Number(m[3].replace(/\s+/g, '')) : 0 }
 }
 
+let detailed = 0
+
+/** One die. The dice tray is told about it unless a whole roll reports itself (`quietly`). */
 export function rollDie(sides: number, rng: Rng = Math.random): number {
-  return 1 + Math.floor(rng() * sides)
+  const value = 1 + Math.floor(rng() * sides)
+  if (!detailed)
+    showDice({
+      sides,
+      dice: [value],
+      dropped: [],
+      primary: -1,
+      explosions: [],
+      extra: null,
+      mod: 0,
+      total: value,
+      miss: false,
+      crit: false,
+      odds: 0,
+      bare: true,
+    })
+  return value
+}
+
+/**
+ * Rolls without reporting each die, for a roll that reports itself whole to the
+ * dice tray (the Primary, dropped dice, explosions).
+ */
+export function quietly<T>(roll: () => T): T {
+  detailed += 1
+  try {
+    return roll()
+  } finally {
+    detailed -= 1
+  }
 }
 
 export function sign(n: number): string {
@@ -81,6 +113,8 @@ export interface ShownRoll {
   crit: boolean
   /** Disadvantage steps; negative is advantage. */
   odds: number
+  /** A lone die with no rule around it; the app's result line has what it came to. */
+  bare?: boolean
 }
 
 const diceWatchers = new Set<(roll: ShownRoll) => void>()
@@ -115,6 +149,15 @@ export function rollNimble(
   bonusDice: { count: number; sides: number } | null = null,
   rng: Rng = Math.random,
   disadvantage = 0,
+): NimbleRoll {
+  return quietly(() => nimbleRoll(expr, bonusDice, rng, disadvantage))
+}
+
+function nimbleRoll(
+  expr: DiceExpr,
+  bonusDice: { count: number; sides: number } | null,
+  rng: Rng,
+  disadvantage: number,
 ): NimbleRoll {
   const extra = Math.abs(Math.floor(disadvantage))
   const rolled = Array.from({ length: Math.max(1, expr.count) + extra }, () =>

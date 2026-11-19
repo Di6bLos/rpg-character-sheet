@@ -1,6 +1,6 @@
 import type { SpellDef } from '~/data/nimble/types'
 import type { NimbleSheet, NimbleStat } from '~/types/sheets'
-import { parseDice, rollDie, rollNimble, showDice, sign, type Rng } from '~/utils/dice'
+import { parseDice, quietly, rollDie, rollNimble, showDice, sign, type Rng } from '~/utils/dice'
 import { keyStatValue } from '~/utils/nimbleBuild'
 
 export interface SpellDamage {
@@ -92,7 +92,9 @@ export function rollSpellDamage(
     return { total: roll.total, miss: roll.miss, crit: roll.crit, detail: roll.dice.join(', ') }
   }
   const extra = Math.abs(disadvantage)
-  const rolls = Array.from({ length: expr.count + extra }, () => rollDie(expr.sides, rng))
+  const rolls = quietly(() =>
+    Array.from({ length: expr.count + extra }, () => rollDie(expr.sides, rng)),
+  )
   const order = rolls
     .map((value, index) => ({ value, index }))
     .sort((a, b) => (disadvantage >= 0 ? a.value - b.value : b.value - a.value))

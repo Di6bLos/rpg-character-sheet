@@ -20,6 +20,7 @@ declare module '@3d-dice/dice-box-threejs' {
     /** Throws more dice onto the table, keeping the ones already there. */
     add(notation: string): Promise<unknown>
     clearDice(): void
+    updateConfig(config: Record<string, unknown>): Promise<void>
     setDimensions(dimensions?: { x: number; y: number }): void
   }
 }

@@ -8,6 +8,8 @@ import {
   rollAttack,
   rollDice,
   onDiceShown,
+  quietly,
+  rollDie,
   rollNimble,
   sign,
   type ShownRoll,
@@ -217,6 +219,16 @@ describe('dice shown in the tray', () => {
       crit: true,
       total: 6 + 6 + 3 + 2 + roll!.extra!.dice[0]!,
     })
+  })
+
+  it('reports a lone die, but not the dice of a roll that reports itself', () => {
+    expect(shown(() => rollDie(8, faces(8, 5)))).toMatchObject([
+      { sides: 8, dice: [5], bare: true },
+    ])
+    expect(shown(() => quietly(() => rollDie(8, faces(8, 5))))).toEqual([])
+    expect(
+      shown(() => rollNimble({ count: 2, sides: 6, mod: 0 }, null, faces(6, 3, 4))),
+    ).toHaveLength(1)
   })
 
   it('stops reporting once the watcher stops', () => {

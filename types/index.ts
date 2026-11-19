@@ -19,6 +19,8 @@ export interface Profile {
   role: UserRole
   theme: ThemeId
   accent: string | null
+  /** 3D dice colour in the dice tray; null follows the accent. */
+  dice_color: string | null
   notify_secret: boolean
   notify_journal: boolean
   notify_board: boolean

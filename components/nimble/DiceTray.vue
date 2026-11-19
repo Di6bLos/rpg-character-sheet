@@ -3,8 +3,10 @@
 // die per step of advantage or disadvantage (the dropped ones fade), the Primary
 // Die tagged, a crit's explosions thrown after, CRIT or MISS called out. Nothing
 // shows for players who roll their own dice (the app rolls nothing), with reduced
-// motion, or once turned off here. A popover, so it sits above the board's dialog.
+// motion, or once turned off here. It stays until clicked or Esc. A popover, so it
+// sits above the board's dialog.
 import type DiceBox from '@3d-dice/dice-box-threejs'
+import { isHex, onAccent } from '~/utils/contrast'
 import { onDiceShown, type ShownRoll } from '~/utils/dice'
 
 type Role = 'primary' | 'kept' | 'dropped' | 'crit' | 'extra'
@@ -15,10 +17,10 @@ interface Die {
 }
 
 const SKIP_KEY = 'lantern-dice-skip'
-const HOLD_MS = 2600
 const SIDES = new Set([4, 6, 8, 10, 12, 20])
 const TAGS: Partial<Record<Role, string>> = { primary: 'Primary', dropped: 'Dropped', crit: 'Crit' }
 
+const auth = useAuthStore()
 const tray = ref<HTMLElement | null>(null)
 const stage = ref<HTMLElement | null>(null)
 const rolls = ref<ShownRoll[]>([])
@@ -30,7 +32,6 @@ let box: DiceBox | null = null
 let pending: ShownRoll[] = []
 let queued = false
 let throwId = 0
-let hide: ReturnType<typeof setTimeout> | undefined
 let stop: (() => void) | undefined
 
 onMounted(() => {
@@ -55,7 +56,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stop?.()
   window.removeEventListener('keydown', onKey)
-  clearTimeout(hide)
 })
 
 function onKey(event: KeyboardEvent) {
@@ -70,6 +70,22 @@ function setSkip(on: boolean) {
     // Private windows can refuse storage; the choice still holds for this visit.
   }
   if (on) close()
+}
+
+/** Lone dice of one size in a row (minions, mana dice, NPC Initiative) share a line. */
+function compact(list: ShownRoll[]): ShownRoll[] {
+  const out: ShownRoll[] = []
+  for (const r of list) {
+    const prev = out.at(-1)
+    if (r.bare && prev?.bare && prev.sides === r.sides)
+      out[out.length - 1] = {
+        ...prev,
+        dice: [...prev.dice, ...r.dice],
+        total: prev.total + r.total,
+      }
+    else out.push(r)
+  }
+  return out
 }
 
 /** Every die in throw order: each roll's dice, then the dice it added on a hit. */
@@ -117,24 +133,42 @@ function oddsText(odds: number): string {
   return `${n > 1 ? `${n}× ` : ''}${odds > 0 ? 'disadvantage' : 'advantage'}`
 }
 
+/** The player's dice colour (Settings), or their accent; numbers stay readable on it. */
+const dieColor = computed(() => {
+  const own = auth.profile?.dice_color
+  if (own) return own
+  const accent = import.meta.client
+    ? getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
+    : ''
+  return isHex(accent) ? accent : '#D6A64A'
+})
+
+function colorset(hex: string) {
+  const ink = onAccent(hex)
+  return {
+    name: `lantern-${hex}`,
+    background: hex,
+    foreground: ink,
+    outline: ink,
+    texture: 'none',
+    material: 'plastic',
+  }
+}
+
+let boxColor = ''
+
 async function ensureBox(): Promise<DiceBox> {
+  const hex = dieColor.value
   if (box) {
     box.setDimensions()
+    if (hex !== boxColor) await box.updateConfig({ theme_customColorset: colorset(hex) })
+    boxColor = hex
     return box
   }
   const { default: Box } = await import('@3d-dice/dice-box-threejs')
-  const css = getComputedStyle(document.documentElement)
-  const accent = css.getPropertyValue('--accent').trim() || '#d6a64a'
-  const ink = css.getPropertyValue('--on-accent').trim() || '#1b1408'
+  boxColor = hex
   box = new Box('#dice-tray-stage', {
-    theme_customColorset: {
-      name: 'lantern',
-      background: accent,
-      foreground: ink,
-      outline: ink,
-      texture: 'none',
-      material: 'plastic',
-    },
+    theme_customColorset: colorset(hex),
     sounds: false,
     shadows: true,
     light_intensity: 0.9,
@@ -167,11 +201,10 @@ function mark(b: DiceBox, dice: Die[]) {
 
 async function throwPending() {
   queued = false
-  const list = pending
+  const list = compact(pending)
   pending = []
   if (!list.length) return
   const id = ++throwId
-  clearTimeout(hide)
   rolls.value = list
   settled.value = false
   tags.value = []
@@ -186,12 +219,14 @@ async function throwPending() {
     const b = await ensureBox()
     if (id !== throwId) return
     await b.roll(notation(dice))
+    // A crit rolls its die again, and again on each max: throw them one at a time.
     const blasts = list.flatMap((r) =>
       r.explosions.map((value) => ({ sides: r.sides, value, role: 'crit' as Role })),
     )
-    if (blasts.length && id === throwId) {
-      await b.add(notation(blasts))
-      dice.push(...blasts)
+    for (const blast of blasts) {
+      if (id !== throwId) return
+      await b.add(notation([blast]))
+      dice.push(blast)
     }
     if (id !== throwId) return
     mark(b, dice)
@@ -199,12 +234,10 @@ async function throwPending() {
     // No WebGL: the strip below still shows the roll.
   }
   settled.value = true
-  hide = setTimeout(close, HOLD_MS)
 }
 
 function close() {
   throwId += 1
-  clearTimeout(hide)
   rolls.value = []
   tags.value = []
   box?.clearDice()
@@ -217,7 +250,14 @@ function close() {
 </script>
 
 <template>
-  <div ref="tray" popover="manual" class="tray" aria-label="Dice roll" @click="close">
+  <div
+    ref="tray"
+    popover="manual"
+    class="tray"
+    aria-label="Dice roll"
+    :style="{ '--die': dieColor, '--on-die': onAccent(dieColor) }"
+    @click="close"
+  >
     <div id="dice-tray-stage" ref="stage" class="tray__stage" />
     <span
       v-for="(t, i) in tags"
@@ -244,10 +284,11 @@ function close() {
             >
             <span v-if="r.mod" class="tray__mod">{{ r.mod > 0 ? `+${r.mod}` : r.mod }}</span>
           </div>
-          <span class="tray__total">{{ r.total }}</span>
+          <span v-if="!r.bare" class="tray__total">{{ r.total }}</span>
           <small v-if="r.odds" class="tray__odds">{{ oddsText(r.odds) }}</small>
         </div>
       </template>
+      <small v-if="settled" class="tray__hint">Click anywhere or press Esc to close</small>
       <label class="tray__skip">
         <input
           type="checkbox"
@@ -296,8 +337,8 @@ function close() {
   color: #1b1408;
 
   &--primary {
-    background: var(--accent);
-    color: var(--on-accent);
+    background: var(--die);
+    color: var(--on-die);
   }
 
   &--dropped {
@@ -367,8 +408,8 @@ function close() {
   color: #1b1408;
 
   &--primary {
-    background: var(--accent);
-    color: var(--on-accent);
+    background: var(--die);
+    color: var(--on-die);
     box-shadow: 0 0 0 2px #f3ead6;
   }
 
@@ -397,6 +438,10 @@ function close() {
 .tray__odds {
   flex-basis: 100%;
   color: color-mix(in srgb, #f3ead6 70%, transparent);
+}
+
+.tray__hint {
+  color: color-mix(in srgb, #f3ead6 60%, transparent);
 }
 
 .tray__skip {
