@@ -17,16 +17,17 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ dismiss: [] }>()
 
+const { reloadRoster, campaignId } = useCampaignBoard()
 const editor = provideSheetEditor(props.character, {
   canEdit: props.canEdit,
   campaignName: props.campaignName,
+  campaignId: campaignId.value,
 })
 watch(
   () => props.canEdit,
   (on) => (editor.canEdit.value = on),
 )
 
-const { reloadRoster } = useCampaignBoard()
 const chat = useBoardChat()
 
 watch(
@@ -41,9 +42,36 @@ watch(
     if ((before === mine && now !== mine) || again)
       if (sheet.turnActive) editor.say(endTurn(sheet, level))
     if (wrapped && sheet.inEncounter) editor.say(newRound(sheet, level))
-    if (now === mine && (now !== before || again) && !sheet.turnActive)
-      editor.say(startTurn(sheet, level))
+    // Roll Initiative first: it sets the starting actions, which Start turn then uses.
+    if (now === mine && (now !== before || again) && !sheet.turnActive) {
+      if (sheet.awaitingInitiative) editor.say('Your turn: roll Initiative, then Start turn.')
+      else editor.say(startTurn(sheet, level))
+    }
   },
+)
+
+// The tracker may already be on a turn when this panel's sheet loads: line the sheet
+// up with it once, skipping "no encounter" (null) and turns already taken this round.
+let synced = false
+watch(
+  () => props.turnCharacterId,
+  (now) => {
+    if (synced || now === null || !editor.canEdit.value) return
+    synced = true
+    const sheet = editor.draft.value.sheet as NimbleSheet
+    const level = editor.draft.value.level
+    const mine = props.character.id
+    if (
+      now === mine &&
+      sheet.inEncounter &&
+      !sheet.turnActive &&
+      !sheet.turnDone &&
+      !sheet.awaitingInitiative
+    )
+      editor.say(startTurn(sheet, level))
+    else if (now !== mine && sheet.turnActive) editor.say(endTurn(sheet, level))
+  },
+  { immediate: true },
 )
 
 watch(

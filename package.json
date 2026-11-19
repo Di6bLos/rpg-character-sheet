@@ -20,6 +20,7 @@
     "seed:bestiary": "tsx scripts/bestiary-seed.ts"
   },
   "dependencies": {
+    "@3d-dice/dice-box-threejs": "0.0.12",
     "@pinia/nuxt": "^0.10.1",
     "@supabase/supabase-js": "^2.98.0",
     "nuxt": "~3.17.7",

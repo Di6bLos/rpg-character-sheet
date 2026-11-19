@@ -13,7 +13,8 @@ import {
   isHollowOne,
   isDead,
   takeDamage,
-  newEncounter,
+  beginEncounter,
+  initiativeRoll,
   newRound,
   stopCasting,
   toggleActionPip,
@@ -103,6 +104,8 @@ const {
   groups: summonGroups,
   summonAttacks,
 } = useNimbleSummons({ onResult: announce })
+const { allies, help } = useHelpAlly({ onResult: announce })
+useHeroEffects()
 const isFull = (id: string) => !!summonable.value.find((a) => a.id === id)?.full
 
 /** One row per summon kind, a stack for identical minions; hand-added ones each get a row. */
@@ -148,11 +151,27 @@ function toggleAction(n: number) {
   if (canEdit.value) toggleActionPip(sheet.value, n)
 }
 
-function startEncounter(values?: number[]) {
+function startEncounter() {
   if (!canEdit.value) return
-  const message = newEncounter(sheet.value, draft.value.level, Math.random, values?.[0])
+  const message = beginEncounter(sheet.value)
   say(message)
   announce(message)
+}
+
+const sendInitiative = useSendInitiative()
+
+async function initiative(values?: number[]) {
+  if (!canEdit.value) return
+  const { message, total } = initiativeRoll(
+    sheet.value,
+    draft.value.level,
+    Math.random,
+    values?.[0],
+  )
+  say(message)
+  announce(message)
+  const sent = await sendInitiative(total)
+  if (sent) say(`${message}${sent}`)
 }
 
 function damageOne() {
@@ -424,17 +443,33 @@ const effectRows = computed(() =>
           ? `${actionsNow} left (${actionsNow - perTurn} extra)`
           : `${actionsNow} of ${perTurn} left`
       }}</strong>
+      <small
+        v-if="sheet.inEncounter && sheet.initiative != null"
+        class="apm__init"
+        title="Your Initiative this encounter"
+        >Init {{ sheet.initiative }}</small
+      >
     </div>
     <div class="apm__steps">
       <button
-        v-if="!sheet.inEncounter && !sheet.ownDice"
+        v-if="!sheet.inEncounter"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"
-        title="Rolls Initiative for your starting actions and refills once-per-encounter abilities"
-        @click="startEncounter()"
+        title="Refills once-per-encounter abilities; then roll Initiative"
+        @click="startEncounter"
       >
         New encounter
+      </button>
+      <button
+        v-if="sheet.awaitingInitiative && !sheet.ownDice && !sheet.turnActive"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit"
+        title="Your starting actions: 9 or less 1, 10–19 2, 20+ all"
+        @click="initiative()"
+      >
+        Roll Initiative
       </button>
       <button
         v-if="sheet.inEncounter && !sheet.turnActive"
@@ -447,7 +482,9 @@ const effectRows = computed(() =>
         End encounter
       </button>
       <button
-        v-if="!sheet.turnActive && sheet.inEncounter && !sheet.turnDone"
+        v-if="
+          !sheet.turnActive && sheet.inEncounter && !sheet.turnDone && !sheet.awaitingInitiative
+        "
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
@@ -478,12 +515,12 @@ const effectRows = computed(() =>
       </button>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && !sheet.inEncounter"
+      v-if="sheet.ownDice && sheet.awaitingInitiative && !sheet.turnActive"
       label="Your Initiative total"
-      action="New encounter"
+      action="Set Initiative"
       signed
       :disabled="!canEdit"
-      @submit="startEncounter"
+      @submit="initiative"
     />
 
     <p class="apm__result" :class="{ 'apm__result--empty': !lastRoll }" role="status">
@@ -517,6 +554,7 @@ const effectRows = computed(() =>
           prepaid > 0 ? 'Paid' : actionsNow === 0 ? 'No actions left' : attacks.length
         }}</small>
       </summary>
+      <NimbleTargetArmor class="apm__situation" />
       <NimbleAttackSituation class="apm__situation" />
       <ul
         v-if="
@@ -528,27 +566,53 @@ const effectRows = computed(() =>
         "
         class="apm__list"
       >
-        <li v-for="(w, i) in attacks" :key="i">
-          <button
-            type="button"
-            class="apm__row"
-            :aria-disabled="!canEdit || w.blocked || undefined"
-            :aria-label="`${sheet.ownDice ? 'Attack: ' : ''}${w.name}, ${w.dmg} damage${w.rushed ? `, ${w.rushed}× disadvantage` : ''}${w.blocked ? '. No actions left' : ''}`"
-            :aria-describedby="w.props ? `${uid}-w${i}` : undefined"
-            :title="w.oddsWhy || undefined"
-            @click="canEdit && !w.blocked && w.roll()"
-          >
-            <span class="apm__name">{{ w.name }}</span>
-            <span class="apm__tag">{{ w.dmg }}</span>
-            <span v-if="w.props || w.rushed || w.boost" :id="`${uid}-w${i}`" class="apm__sub">
-              {{
-                [w.rushed ? `${w.rushed}× disadvantage` : '', w.boost, w.props]
-                  .filter(Boolean)
-                  .join(' · ')
-              }}
-            </span>
-          </button>
-        </li>
+        <template v-for="(w, i) in attacks" :key="i">
+          <li>
+            <button
+              type="button"
+              class="apm__row"
+              :aria-disabled="!canEdit || w.blocked || undefined"
+              :aria-label="`${sheet.ownDice ? 'Attack: ' : ''}${w.name}, ${w.dmg} damage${w.rushed ? `, ${w.rushed}× disadvantage` : ''}${w.blocked ? '. No actions left' : ''}`"
+              :aria-describedby="w.props ? `${uid}-w${i}` : undefined"
+              :title="w.oddsWhy || undefined"
+              @click="canEdit && !w.blocked && w.roll()"
+            >
+              <span class="apm__name">{{ w.name }}</span>
+              <NimbleDmg class="apm__tag" :dmg="w.dmg" :armor-dmg="w.armorDmg" :why="w.armorWhy" />
+              <span v-if="w.props || w.rushed || w.boost" :id="`${uid}-w${i}`" class="apm__sub">
+                {{
+                  [w.rushed ? `${w.rushed}× disadvantage` : '', w.boost, w.props]
+                    .filter(Boolean)
+                    .join(' · ')
+                }}
+              </span>
+            </button>
+          </li>
+          <li v-if="w.optionalDice">
+            <button
+              type="button"
+              class="apm__row"
+              :aria-pressed="w.extraOn"
+              :aria-disabled="!canEdit || undefined"
+              @click="canEdit && w.toggleExtra()"
+            >
+              <span class="apm__name">↳ Roll {{ w.optionalDice }} more</span>
+              <span class="apm__tag">{{ w.extraOn ? 'On' : 'Off' }}</span>
+              <span class="apm__sub">Each 1 pushes you back 1 space, Prone</span>
+            </button>
+          </li>
+          <li v-if="sheet.ownDice && w.critReady && w.critBy.length">
+            <button
+              type="button"
+              class="apm__row"
+              :aria-disabled="!canEdit || undefined"
+              @click="canEdit && w.crit()"
+            >
+              <span class="apm__name">↳ {{ w.name }} crit</span>
+              <span class="apm__sub">{{ w.critBy.join(', ') }}</span>
+            </button>
+          </li>
+        </template>
         <li v-for="inv in inventionAttacks" :key="inv.name">
           <button
             type="button"
@@ -559,7 +623,12 @@ const effectRows = computed(() =>
             @click="canEdit && !inv.why && inv.run()"
           >
             <span class="apm__name">{{ inv.name }}</span>
-            <span class="apm__tag">{{ inv.dmg }}</span>
+            <NimbleDmg
+              class="apm__tag"
+              :dmg="inv.dmg"
+              :armor-dmg="inv.armorDmg"
+              :why="inv.armorWhy"
+            />
             <span class="apm__sub" :class="{ 'apm__sub--warn': inv.why }">
               {{
                 [inv.why, inv.rushed ? `${inv.rushed}× disadvantage` : '', inv.cost]
@@ -569,22 +638,35 @@ const effectRows = computed(() =>
             </span>
           </button>
         </li>
-        <li v-for="a in summonAttacks" :key="a.key">
-          <button
-            type="button"
-            class="apm__row"
-            :aria-disabled="!canEdit || !!a.why || undefined"
-            :aria-label="`${a.name}, ${a.dmg}, ${a.cost}${a.why ? `. ${a.why}` : ''}`"
-            :title="a.props"
-            @click="canEdit && !a.why && a.run()"
-          >
-            <span class="apm__name">{{ a.name }}</span>
-            <span class="apm__tag">{{ a.dmg }}</span>
-            <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
-              {{ [a.why, a.who, a.cost].filter(Boolean).join(' · ') }}
-            </span>
-          </button>
-        </li>
+        <template v-for="a in summonAttacks" :key="a.key">
+          <li>
+            <button
+              type="button"
+              class="apm__row"
+              :aria-disabled="!canEdit || !!a.why || undefined"
+              :aria-label="`${a.name}, ${a.dmg}, ${a.cost}${a.why ? `. ${a.why}` : ''}`"
+              :title="a.props"
+              @click="canEdit && !a.why && a.run()"
+            >
+              <span class="apm__name">{{ a.name }}</span>
+              <NimbleDmg class="apm__tag" :dmg="a.dmg" :armor-dmg="a.armorDmg" :why="a.armorWhy" />
+              <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
+                {{ [a.why, a.who, a.cost].filter(Boolean).join(' · ') }}
+              </span>
+            </button>
+          </li>
+          <li v-if="sheet.ownDice && a.critReady && a.critBy?.length && a.crit">
+            <button
+              type="button"
+              class="apm__row"
+              :aria-disabled="!canEdit || undefined"
+              @click="canEdit && a.crit()"
+            >
+              <span class="apm__name">↳ {{ a.name }} crit</span>
+              <span class="apm__sub">{{ a.critBy.join(', ') }}</span>
+            </button>
+          </li>
+        </template>
         <li v-if="spellAttacks.length">
           <details class="apm__spell apm__spells">
             <summary class="apm__row">
@@ -601,7 +683,12 @@ const effectRows = computed(() =>
                   <details class="apm__spell">
                     <summary class="apm__row">
                       <span class="apm__name">{{ a.name }}</span>
-                      <span class="apm__tag">{{ a.dmg }}</span>
+                      <NimbleDmg
+                        class="apm__tag"
+                        :dmg="a.dmg"
+                        :armor-dmg="a.armorDmg"
+                        :why="a.armorWhy"
+                      />
                       <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
                         {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
                       </span>
@@ -631,6 +718,12 @@ const effectRows = computed(() =>
                           · {{ a.rushed }}× disadvantage</template
                         >
                       </button>
+                      <NimbleCritButton
+                        v-if="sheet.ownDice && a.critReady && a.critBy.length"
+                        :triggers="a.critBy"
+                        :disabled="!canEdit"
+                        @crit="a.crit()"
+                      />
                     </div>
                   </details>
                 </li>
@@ -1164,6 +1257,37 @@ const effectRows = computed(() =>
               </li>
             </ul>
           </details>
+          <details v-else-if="r.name === 'Help' && allies.length" class="apm__spell">
+            <summary class="apm__row" :class="{ 'apm__row--used': r.used }">
+              <span class="apm__name">{{ r.name }}</span>
+              <span class="apm__tag">{{ r.used ? 'Used' : r.free ? 'Free' : '1 act' }}</span>
+              <span class="apm__sub">Pick an ally: they get advantage</span>
+            </summary>
+            <ul class="apm__list apm__oa">
+              <li v-for="a in allies" :key="a.id">
+                <button
+                  type="button"
+                  class="apm__row"
+                  :aria-disabled="!canEdit || r.used || r.blocked || undefined"
+                  :aria-label="`Help ${a.name}`"
+                  @click="canEdit && !r.used && !r.blocked && help(a.id)"
+                >
+                  <span class="apm__name">{{ a.name }}</span>
+                  <span class="apm__sub">Helped: advantage on their next roll</span>
+                </button>
+              </li>
+              <li v-if="r.used">
+                <button
+                  type="button"
+                  class="apm__row"
+                  :aria-disabled="!canEdit || undefined"
+                  @click="canEdit && toggleReaction(r.name)"
+                >
+                  <span class="apm__name">Undo Help</span>
+                </button>
+              </li>
+            </ul>
+          </details>
           <button
             v-else
             type="button"
@@ -1439,6 +1563,13 @@ const effectRows = computed(() =>
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--page-muted);
+}
+
+.apm__init {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--page-soft);
+  white-space: nowrap;
 }
 
 .apm__situation {

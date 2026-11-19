@@ -6,6 +6,7 @@ import {
   conditionMods,
   oddsReasons,
   removeCondition,
+  spendHelp,
 } from '../utils/nimbleConditions'
 import {
   actionsLeft,
@@ -60,6 +61,19 @@ describe('conditions', () => {
     })
     expect(oddsReasons(2, conditionMods(sheet))).toBe('Rushed (2), Blinded')
     expect(oddsReasons(1, conditionMods(sheet, ['Taunted']))).toBe('Rushed, Blinded, Taunted')
+  })
+
+  it('gives advantage while Helped, spent by the next attack, ending after your next turn', () => {
+    const sheet = hero()
+    addCondition(sheet, 'Helped')
+    expect(conditionMods(sheet)).toMatchObject({
+      disadvantage: -1,
+      reasons: ['Helped (advantage)'],
+    })
+    expect(sheet.conditionEnds.Helped).toBe('turnEnd')
+    expect(spendHelp(sheet)).toBe(' Help used.')
+    expect(sheet.conditions).not.toContain('Helped')
+    expect(spendHelp(sheet)).toBe('')
   })
 
   it('takes an action for Dazed and clears conditions when they end', () => {

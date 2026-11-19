@@ -84,6 +84,7 @@ const hasAttacks = computed(
         {{ q.label }}
       </button>
     </div>
+    <NimbleTargetArmor />
     <NimbleAttackSituation />
     <template v-if="hasAttacks">
       <details v-if="attacks.length || inventionAttacks.length" class="atk-group" open>
@@ -100,10 +101,27 @@ const hasAttacks = computed(
                 <span v-if="w.boost" class="boost">{{ w.boost }}</span>
                 <NimbleOdds :rushed="w.rushed" :advantage="w.advantage" :why="w.oddsWhy" />
               </div>
-              <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ w.dmg }}</span>
+              <NimbleDmg
+                :dmg="w.dmg"
+                :armor-dmg="w.armorDmg"
+                :why="w.armorWhy"
+                style="font-size: 15px; white-space: nowrap"
+              />
             </div>
             <NimbleMishap v-if="w.mishap" :name="w.mishap.name" :text="w.mishap.text" />
             <NimbleModifiers :target="w.name" :weapon="w.props" />
+            <label v-if="w.optionalDice" class="extra-dice">
+              <input
+                type="checkbox"
+                :checked="w.extraOn"
+                :disabled="!canEdit"
+                @change="w.toggleExtra()"
+              />
+              <span
+                >Roll {{ w.optionalDice }} more
+                <small>each 1 pushes you back 1 space and knocks you Prone</small></span
+              >
+            </label>
             <div v-if="w.poweredBy" class="ready">
               <span>{{ resource?.diceName }} Dice readied</span>
               <button
@@ -164,6 +182,12 @@ const hasAttacks = computed(
                 ><template v-if="w.advantage"> · {{ w.advantage }}× advantage</template></template
               >
             </button>
+            <NimbleCritButton
+              v-if="sheet.ownDice && w.critReady && w.critBy.length"
+              :triggers="w.critBy"
+              :disabled="!canEdit"
+              @crit="claim(`w:${i}`, w.crit)"
+            />
             <p v-if="resultFor(`w:${i}`)" class="roll-status attack__result" role="status">
               {{ resultFor(`w:${i}`) }}
             </p>
@@ -189,7 +213,12 @@ const hasAttacks = computed(
                   :why="inv.oddsWhy"
                 />
               </div>
-              <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ inv.dmg }}</span>
+              <NimbleDmg
+                :dmg="inv.dmg"
+                :armor-dmg="inv.armorDmg"
+                :why="inv.armorWhy"
+                style="font-size: 15px; white-space: nowrap"
+              />
             </div>
             <NimbleMishap v-if="inv.mishap" :name="inv.mishap.name" :text="inv.mishap.text" />
             <NimbleModifiers :target="inv.name" />
@@ -258,7 +287,12 @@ const hasAttacks = computed(
                     :why="a.oddsWhy"
                   />
                 </div>
-                <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
+                <NimbleDmg
+                  :dmg="a.dmg"
+                  :armor-dmg="a.armorDmg"
+                  :why="a.armorWhy"
+                  style="font-size: 15px; white-space: nowrap"
+                />
               </div>
               <NimbleModifiers :target="a.name" />
               <NimbleUpcast
@@ -282,6 +316,12 @@ const hasAttacks = computed(
                 }}<template v-if="!a.why && a.rushed"> · {{ a.rushed }}× disadvantage</template
                 ><template v-if="!a.why && a.advantage"> · {{ a.advantage }}× advantage</template>
               </button>
+              <NimbleCritButton
+                v-if="sheet.ownDice && a.critReady && a.critBy.length"
+                :triggers="a.critBy"
+                :disabled="!canEdit"
+                @crit="claim(a.key, a.crit)"
+              />
               <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
                 {{ resultFor(a.key) }}
               </p>
@@ -303,7 +343,12 @@ const hasAttacks = computed(
                 <span class="muted" style="font-size: 12px">{{ a.props }}</span>
                 <span class="boost">{{ a.cost }}</span>
               </div>
-              <span class="dmg" style="font-size: 15px; white-space: nowrap">{{ a.dmg }}</span>
+              <NimbleDmg
+                :dmg="a.dmg"
+                :armor-dmg="a.armorDmg"
+                :why="a.armorWhy"
+                style="font-size: 15px; white-space: nowrap"
+              />
             </div>
             <NimbleModifiers v-if="a.summon" :summon="a.summon" />
             <button
@@ -315,6 +360,12 @@ const hasAttacks = computed(
             >
               {{ a.why || (sheet.ownDice ? 'Attack' : 'Roll') }}
             </button>
+            <NimbleCritButton
+              v-if="sheet.ownDice && a.critReady && a.critBy?.length && a.crit"
+              :triggers="a.critBy"
+              :disabled="!canEdit"
+              @crit="claim(a.key, a.crit)"
+            />
             <p v-if="resultFor(a.key)" class="roll-status attack__result" role="status">
               {{ resultFor(a.key) }}
             </p>
@@ -325,6 +376,9 @@ const hasAttacks = computed(
                 <strong style="font-size: 16px">{{ a.name }}</strong>
                 <span class="muted attack__desc">{{ a.desc }}</span>
                 <span class="boost">{{ a.costText }}</span>
+                <span v-if="a.ignoresArmor" class="armor-note" :title="a.armorWhy"
+                  >Ignores the target’s armor</span
+                >
               </div>
             </div>
             <NimbleModifiers :target="a.name" />
@@ -491,6 +545,30 @@ const hasAttacks = computed(
   font-size: 12px;
   font-weight: 600;
   color: var(--page-soft);
+}
+
+.armor-note {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.extra-dice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+
+  input {
+    margin-top: 3px;
+  }
+
+  small {
+    display: block;
+    font-size: 12px;
+    color: var(--page-muted);
+  }
 }
 
 .boost {

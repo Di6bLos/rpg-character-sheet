@@ -328,6 +328,10 @@ export interface NimbleSheet extends SheetCommon {
   inEncounter: boolean
   /** Your turn is over for this round. */
   turnDone: boolean
+  /** New encounter was tapped and Initiative not rolled yet. */
+  awaitingInitiative?: boolean
+  /** This encounter's Initiative total, once rolled. */
+  initiative?: number | null
   effects: { condition: string; source: string; ends: string[]; skip?: number; tempHp?: number }[]
   attacks: NimbleAttack[]
   skills: NimbleSkill[]

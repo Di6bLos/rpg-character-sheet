@@ -97,7 +97,7 @@ function toggle(name: string) {
       </button>
     </div>
     <div class="chips" style="gap: 6px">
-      <span class="cond-group">Spell statuses</span>
+      <span class="cond-group">Spell and ally statuses</span>
       <button
         v-for="c in conditions.filter((x) => SPELL_NAMES.has(x.name))"
         :key="c.name"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isHex } from '~/utils/contrast'
+import { isHex, onAccent } from '~/utils/contrast'
 import { ACCENTS, THEMES, accentName, accentVars, themeMeta, type ThemeId } from '~/utils/themes'
 
 definePageMeta({ middleware: 'auth' })
@@ -14,6 +14,11 @@ const theme = ref<ThemeId>(themeMeta(auth.profile?.theme).id)
 const accent = ref<string | null>(auth.profile?.accent ?? null)
 const customText = ref(
   accent.value && !ACCENTS.some((a) => a.hex === accent.value) ? accent.value : '#C77DFF',
+)
+// null = the dice follow the accent
+const diceColor = ref<string | null>(auth.profile?.dice_color ?? null)
+const diceText = ref(
+  diceColor.value && !ACCENTS.some((a) => a.hex === diceColor.value) ? diceColor.value : '#2E8B57',
 )
 const notify = reactive({
   secret: auth.profile?.notify_secret ?? true,
@@ -30,17 +35,23 @@ const isCustom = computed(
   () => accent.value !== null && !ACCENTS.some((a) => a.hex === accent.value),
 )
 const previewVars = computed(() => accentVars(theme.value, activeAccent.value))
+const diceCustomHex = computed(() => (isHex(diceText.value) ? diceText.value : '#2E8B57'))
+const diceCustom = computed(
+  () => diceColor.value !== null && !ACCENTS.some((a) => a.hex === diceColor.value),
+)
+const diceHex = computed(() => diceColor.value ?? activeAccent.value)
 
 const dirty = computed(
   () =>
     theme.value !== auth.profile?.theme ||
     accent.value !== (auth.profile?.accent ?? null) ||
+    diceColor.value !== (auth.profile?.dice_color ?? null) ||
     notify.secret !== auth.profile?.notify_secret ||
     notify.journal !== auth.profile?.notify_journal ||
     notify.board !== auth.profile?.notify_board,
 )
 
-watch([theme, accent, notify], () => (saved.value = false), { deep: true })
+watch([theme, accent, diceColor, notify], () => (saved.value = false), { deep: true })
 
 function pickTheme(id: ThemeId) {
   theme.value = id
@@ -60,12 +71,25 @@ function onHexInput(event: Event) {
   if (isHex(value)) accent.value = value.toUpperCase()
 }
 
+function onDicePicker(event: Event) {
+  diceText.value = (event.target as HTMLInputElement).value.toUpperCase()
+  diceColor.value = diceText.value
+}
+
+function onDiceHex(event: Event) {
+  let value = (event.target as HTMLInputElement).value.trim()
+  if (value && value[0] !== '#') value = '#' + value
+  diceText.value = value
+  if (isHex(value)) diceColor.value = value.toUpperCase()
+}
+
 async function save() {
   saving.value = true
   try {
     await auth.updateProfile({
       theme: theme.value,
       accent: accent.value,
+      dice_color: diceColor.value,
       notify_secret: notify.secret,
       notify_journal: notify.journal,
       notify_board: notify.board,
@@ -200,6 +224,83 @@ const toggles = [
           </div>
         </section>
 
+        <section class="panel" aria-labelledby="dice-h">
+          <div class="panel-title">
+            <h2 id="dice-h">Dice colour</h2>
+            <span class="small muted">The 3D dice thrown when the app rolls for you.</span>
+          </div>
+          <div class="swatches" role="radiogroup" aria-labelledby="dice-h">
+            <button
+              type="button"
+              role="radio"
+              class="swatch"
+              :aria-checked="diceColor === null"
+              @click="diceColor = null"
+            >
+              <span class="swatch__dot" :style="{ background: activeAccent }" />
+              <span class="swatch__text">
+                <strong>Match my accent</strong>
+                <span class="small muted">{{ activeAccent }}</span>
+              </span>
+            </button>
+            <button
+              v-for="sw in ACCENTS"
+              :key="sw.id"
+              type="button"
+              role="radio"
+              class="swatch"
+              :aria-checked="diceColor === sw.hex"
+              @click="diceColor = sw.hex"
+            >
+              <span class="swatch__dot" :style="{ background: sw.hex }" />
+              <span class="swatch__text">
+                <strong>{{ sw.name }}</strong>
+                <span class="small muted">{{ sw.hex }}</span>
+              </span>
+            </button>
+          </div>
+
+          <div class="custom" :class="{ 'is-on': diceCustom }">
+            <span
+              class="die-preview"
+              :style="{ background: diceHex, color: onAccent(diceHex) }"
+              aria-hidden="true"
+              >20</span
+            >
+            <div class="grow">
+              <h3>Custom colour</h3>
+              <p class="small muted">The numbers switch to light or dark to stay readable.</p>
+            </div>
+            <input
+              type="color"
+              class="custom__picker"
+              aria-label="Custom dice colour"
+              :value="diceCustomHex"
+              @input="onDicePicker"
+            />
+            <div class="field custom__hex">
+              <label for="dice-hex">Hex</label>
+              <input
+                id="dice-hex"
+                class="input"
+                type="text"
+                maxlength="7"
+                spellcheck="false"
+                :value="diceText"
+                @input="onDiceHex"
+              />
+            </div>
+            <button
+              type="button"
+              class="btn btn--ghost"
+              :aria-pressed="diceCustom"
+              @click="diceColor = diceCustomHex.toUpperCase()"
+            >
+              {{ diceCustom ? 'Using custom' : 'Use custom' }}
+            </button>
+          </div>
+        </section>
+
         <section class="panel" aria-labelledby="notif-h">
           <div class="panel-title">
             <h2 id="notif-h">Notifications</h2>
@@ -251,6 +352,18 @@ const toggles = [
 </template>
 
 <style scoped lang="scss">
+.die-preview {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.2);
+}
+
 .settings {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
