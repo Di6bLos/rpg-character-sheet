@@ -36,6 +36,13 @@ describe('spell damage', () => {
     expect(spellDamage(sheet, 3, spellByName('Shadow Blast')!)?.type).toBe('cold or necrotic')
   })
 
+  it('adds dice and flat upcasts wherever they sit in the Upcast clause', () => {
+    const death = spellByName('Creeping Death')!
+    expect(spellDamage(hero(), 20, death, death.tier + 1)?.dice).toBe('5d20')
+    const word = spellByName('Unspeakable Word')!
+    expect(spellDamage(hero(), 20, word, word.tier + 2)?.text).toMatch(/\+20 \(upcast\)$/)
+  })
+
   it('applies flat High Levels, die steps and upcasts', () => {
     expect(spellDamage(hero(), 10, spellByName('Ice Lance')!)?.dice).toBe('1d6+6')
     expect(spellDamage(hero(), 10, spellByName('Entice')!)?.dice).toBe('1d8')

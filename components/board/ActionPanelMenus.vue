@@ -13,7 +13,8 @@ import {
   isHollowOne,
   isDead,
   takeDamage,
-  newEncounter,
+  beginEncounter,
+  initiativeRoll,
   newRound,
   stopCasting,
   toggleActionPip,
@@ -148,11 +149,27 @@ function toggleAction(n: number) {
   if (canEdit.value) toggleActionPip(sheet.value, n)
 }
 
-function startEncounter(values?: number[]) {
+function startEncounter() {
   if (!canEdit.value) return
-  const message = newEncounter(sheet.value, draft.value.level, Math.random, values?.[0])
+  const message = beginEncounter(sheet.value)
   say(message)
   announce(message)
+}
+
+const sendInitiative = useSendInitiative()
+
+async function initiative(values?: number[]) {
+  if (!canEdit.value) return
+  const { message, total } = initiativeRoll(
+    sheet.value,
+    draft.value.level,
+    Math.random,
+    values?.[0],
+  )
+  say(message)
+  announce(message)
+  const sent = await sendInitiative(total)
+  if (sent) say(`${message}${sent}`)
 }
 
 function damageOne() {
@@ -424,17 +441,33 @@ const effectRows = computed(() =>
           ? `${actionsNow} left (${actionsNow - perTurn} extra)`
           : `${actionsNow} of ${perTurn} left`
       }}</strong>
+      <small
+        v-if="sheet.inEncounter && sheet.initiative != null"
+        class="apm__init"
+        title="Your Initiative this encounter"
+        >Init {{ sheet.initiative }}</small
+      >
     </div>
     <div class="apm__steps">
       <button
-        v-if="!sheet.inEncounter && !sheet.ownDice"
+        v-if="!sheet.inEncounter"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"
-        title="Rolls Initiative for your starting actions and refills once-per-encounter abilities"
-        @click="startEncounter()"
+        title="Refills once-per-encounter abilities; then roll Initiative"
+        @click="startEncounter"
       >
         New encounter
+      </button>
+      <button
+        v-if="sheet.awaitingInitiative && !sheet.ownDice && !sheet.turnActive"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit"
+        title="Your starting actions: 9 or less 1, 10–19 2, 20+ all"
+        @click="initiative()"
+      >
+        Roll Initiative
       </button>
       <button
         v-if="sheet.inEncounter && !sheet.turnActive"
@@ -447,7 +480,9 @@ const effectRows = computed(() =>
         End encounter
       </button>
       <button
-        v-if="!sheet.turnActive && sheet.inEncounter && !sheet.turnDone"
+        v-if="
+          !sheet.turnActive && sheet.inEncounter && !sheet.turnDone && !sheet.awaitingInitiative
+        "
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
@@ -478,12 +513,12 @@ const effectRows = computed(() =>
       </button>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && !sheet.inEncounter"
+      v-if="sheet.ownDice && sheet.awaitingInitiative && !sheet.turnActive"
       label="Your Initiative total"
-      action="New encounter"
+      action="Set Initiative"
       signed
       :disabled="!canEdit"
-      @submit="startEncounter"
+      @submit="initiative"
     />
 
     <p class="apm__result" :class="{ 'apm__result--empty': !lastRoll }" role="status">
@@ -517,6 +552,7 @@ const effectRows = computed(() =>
           prepaid > 0 ? 'Paid' : actionsNow === 0 ? 'No actions left' : attacks.length
         }}</small>
       </summary>
+      <NimbleTargetArmor class="apm__situation" />
       <NimbleAttackSituation class="apm__situation" />
       <ul
         v-if="
@@ -539,7 +575,7 @@ const effectRows = computed(() =>
             @click="canEdit && !w.blocked && w.roll()"
           >
             <span class="apm__name">{{ w.name }}</span>
-            <span class="apm__tag">{{ w.dmg }}</span>
+            <NimbleDmg class="apm__tag" :dmg="w.dmg" :armor-dmg="w.armorDmg" :why="w.armorWhy" />
             <span v-if="w.props || w.rushed || w.boost" :id="`${uid}-w${i}`" class="apm__sub">
               {{
                 [w.rushed ? `${w.rushed}× disadvantage` : '', w.boost, w.props]
@@ -559,7 +595,12 @@ const effectRows = computed(() =>
             @click="canEdit && !inv.why && inv.run()"
           >
             <span class="apm__name">{{ inv.name }}</span>
-            <span class="apm__tag">{{ inv.dmg }}</span>
+            <NimbleDmg
+              class="apm__tag"
+              :dmg="inv.dmg"
+              :armor-dmg="inv.armorDmg"
+              :why="inv.armorWhy"
+            />
             <span class="apm__sub" :class="{ 'apm__sub--warn': inv.why }">
               {{
                 [inv.why, inv.rushed ? `${inv.rushed}× disadvantage` : '', inv.cost]
@@ -579,7 +620,7 @@ const effectRows = computed(() =>
             @click="canEdit && !a.why && a.run()"
           >
             <span class="apm__name">{{ a.name }}</span>
-            <span class="apm__tag">{{ a.dmg }}</span>
+            <NimbleDmg class="apm__tag" :dmg="a.dmg" :armor-dmg="a.armorDmg" :why="a.armorWhy" />
             <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
               {{ [a.why, a.who, a.cost].filter(Boolean).join(' · ') }}
             </span>
@@ -601,7 +642,12 @@ const effectRows = computed(() =>
                   <details class="apm__spell">
                     <summary class="apm__row">
                       <span class="apm__name">{{ a.name }}</span>
-                      <span class="apm__tag">{{ a.dmg }}</span>
+                      <NimbleDmg
+                        class="apm__tag"
+                        :dmg="a.dmg"
+                        :armor-dmg="a.armorDmg"
+                        :why="a.armorWhy"
+                      />
                       <span class="apm__sub" :class="{ 'apm__sub--warn': a.why }">
                         {{ [a.why, a.cost].filter(Boolean).join(' · ') }}
                       </span>
@@ -1439,6 +1485,13 @@ const effectRows = computed(() =>
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--page-muted);
+}
+
+.apm__init {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--page-soft);
+  white-space: nowrap;
 }
 
 .apm__situation {

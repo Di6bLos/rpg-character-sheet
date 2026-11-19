@@ -4,12 +4,8 @@ import { BACKGROUNDS } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import type { NimbleSheet } from '../types/sheets'
 import { rollNimble } from '../utils/dice'
-import {
-  abilityArmor,
-  abilityBaseName,
-  abilityModifiers,
-  sheetResource,
-} from '../utils/nimbleBuild'
+import { abilityBaseName, abilityModifiers, sheetResource } from '../utils/nimbleBuild'
+import { abilityArmor } from '../utils/nimbleArmor'
 import {
   abilityCounters,
   actionsLeft,
@@ -48,6 +44,8 @@ import {
   expendJudgment,
   isMishap,
   newEncounter,
+  beginEncounter,
+  rollInitiative,
   usedUpLabel,
   startTurn,
   resourceOnAttack,
@@ -307,11 +305,25 @@ describe('nimble turn tracker', () => {
     expect(actionsLeft(sheet)).toBe(2)
   })
 
+  it('waits for Initiative after New encounter, then rolls it or takes the entered total', () => {
+    const sheet = hero({ initMod: 2 })
+    expect(beginEncounter(sheet)).toMatch(/^New encounter: .*Roll Initiative\./)
+    expect(sheet.awaitingInitiative).toBe(true)
+    expect(rollInitiative(sheet, 1, () => 0.5, 21)).toMatch(
+      /^Initiative 21 \(as you rolled it\): you start with 3 actions/,
+    )
+    expect(sheet.awaitingInitiative).toBe(false)
+    expect(sheet.initiative).toBe(21)
+    expect(actionsLeft(sheet)).toBe(3)
+    beginEncounter(sheet)
+    expect(sheet.initiative).toBeNull()
+  })
+
   it('starts combat with 1, 2 or all actions by the Initiative roll', () => {
     const roll = (value: number) => () => (value - 0.5) / 20
     const sheet = hero({ initMod: 2 })
     expect(newEncounter(sheet, 1, roll(5))).toMatch(
-      /Initiative 7 \(d20 5 \+2\), you start with 1 action\./,
+      /Initiative 7 \(d20 5 \+2\): you start with 1 action\./,
     )
     expect(actionsLeft(sheet)).toBe(1)
     newEncounter(sheet, 1, roll(12))

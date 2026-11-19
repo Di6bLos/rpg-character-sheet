@@ -31,7 +31,15 @@ function fromCombatant(c: Combatant): TurnRow {
  * (full HP); players read `campaign_initiative()`, which turns enemy HP into
  * a band, and refetch when the `encounters` row is touched.
  */
-export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
+/**
+ * `channel` names this instance's realtime channel; two instances on one channel
+ * would cut each other's updates when either unmounts (supabase-js reuses it).
+ */
+export function useInitiative(
+  campaignId: Ref<string>,
+  isGm: Ref<boolean>,
+  options: { channel?: string } = {},
+) {
   const snackbar = useSnackbarStore()
   const rows = ref<TurnRow[]>([])
   const encounter = ref<Encounter | null>(null)
@@ -148,7 +156,7 @@ export function useInitiative(campaignId: Ref<string>, isGm: Ref<boolean>) {
     if (channel) void supabase.removeChannel(channel)
     const filter = `campaign_id=eq.${campaignId.value}`
     channel = supabase
-      .channel(`initiative-${campaignId.value}-${isGm.value ? 'gm' : 'party'}`)
+      .channel(`initiative-${campaignId.value}-${options.channel ?? (isGm.value ? 'gm' : 'party')}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'encounters', filter }, () =>
         scheduleRefresh(!isGm.value),
       )
