@@ -13,6 +13,7 @@ const text = ref('')
 const values = computed(() =>
   text.value
     .split(/[\s,+]+/)
+    .filter((v) => v !== '')
     .map((v) => Number(v))
     .filter((v) => Number.isFinite(v) && (props.signed || v > 0)),
 )
