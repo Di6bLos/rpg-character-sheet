@@ -107,6 +107,10 @@ function onToken(id: string) {
           @hero="(id: string) => (cardId = id)"
         />
       </template>
+      <p v-else-if="isGm" class="panel battle-empty">
+        <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
+        encounter.
+      </p>
       <p v-else class="panel battle-empty">
         Seat a hero (Playing as, in the campaign menu) to play from the battle board.
       </p>
