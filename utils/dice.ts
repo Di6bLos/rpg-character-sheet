@@ -76,9 +76,25 @@ export interface RollResult {
   rolls: number[]
 }
 
+/** Rolls a plain expression; the dice tray shows it as one roll with its total. */
 export function rollDice(expr: DiceExpr, rng: Rng = Math.random): RollResult {
-  const rolls = Array.from({ length: expr.count }, () => rollDie(expr.sides, rng))
-  return { total: rolls.reduce((a, b) => a + b, 0) + expr.mod, rolls }
+  const rolls = quietly(() => Array.from({ length: expr.count }, () => rollDie(expr.sides, rng)))
+  const total = rolls.reduce((a, b) => a + b, 0) + expr.mod
+  if (!detailed && rolls.length)
+    showDice({
+      sides: expr.sides,
+      dice: rolls,
+      dropped: [],
+      primary: -1,
+      explosions: [],
+      extra: null,
+      mod: expr.mod,
+      total,
+      miss: false,
+      crit: false,
+      odds: 0,
+    })
+  return { total, rolls }
 }
 
 /** D&D 5e critical hit: roll the damage dice twice; the flat modifier is added once. */
