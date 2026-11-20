@@ -90,7 +90,10 @@ function cancelRename() {
 }
 
 function onInit(event: Event) {
-  const v = Number((event.target as HTMLInputElement).value)
+  const raw = (event.target as HTMLInputElement).value.trim()
+  // A cleared field is not 0 (that would drop the creature to the bottom): ignore it.
+  if (raw === '') return
+  const v = Number(raw)
   if (Number.isFinite(v) && v !== props.c.initiative) void props.init.setInitiative(props.c, v)
 }
 

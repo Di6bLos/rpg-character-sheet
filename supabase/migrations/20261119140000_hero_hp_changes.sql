@@ -18,7 +18,8 @@ alter table public.hero_hp_changes enable row level security;
 -- Only the campaign's GM, and only for a hero seated in that campaign.
 create policy hero_hp_changes_insert on public.hero_hp_changes for insert to authenticated
   with check (
-    (select private.is_campaign_gm(campaign_id))
+    created_by = (select auth.uid())
+    and (select private.is_campaign_gm(campaign_id))
     and exists (
       select 1 from public.campaign_members m
       where m.campaign_id = hero_hp_changes.campaign_id
