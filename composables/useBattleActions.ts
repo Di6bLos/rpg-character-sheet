@@ -3,8 +3,7 @@
 // the sheet panels already read (via utils/battleActions.ts), and each tile's
 // `use` is the exact call the matching sheet button makes.
 import type { NimbleSheet } from '~/types/sheets'
-import { castReason, reactionReason, weaponReason, type BattleAction } from '~/utils/battleActions'
-import { conditionMods } from '~/utils/nimbleConditions'
+import { reactionReason, weaponReason, type BattleAction } from '~/utils/battleActions'
 import { usedUpLabel } from '~/utils/nimblePlay'
 import type { NimbleResultOptions } from './useNimbleActions'
 
@@ -49,11 +48,9 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
   const spells = useNimbleSpells({ onResult })
   const summons = useNimbleSummons({ onResult })
   const { allies, help } = useHelpAlly({ onResult })
-  const situation = useAttackSituation()
 
   const onTurn = computed(() => !sheet.value.inEncounter || sheet.value.turnActive)
   const waiting = computed(() => sheet.value.inEncounter && !sheet.value.turnActive)
-  const incapacitated = computed(() => conditionMods(sheet.value, situation.value).incapacitated)
 
   const base = { tier: null, actions: 0, mana: 0, dice: '', detail: '', desc: '', school: null }
 
@@ -159,7 +156,8 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       group: 'react' as const,
       detail: s.trigger,
       offTurn: true,
-      unavailable: castReason(s, { turnActive: true, incapacitated: incapacitated.value }),
+      // The sheet's Reactions panel reads `blocked` (no turn or condition check there).
+      unavailable: s.blocked,
       use: () => spells.cast(s),
     }))
     return [...attacks, ...support, ...reacts]
