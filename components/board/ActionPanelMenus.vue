@@ -1187,8 +1187,8 @@ const effectRows = computed(() =>
                     v-if="s.bloodLabel"
                     type="button"
                     class="btn btn--ghost btn--sm"
-                    :disabled="!canEdit || s.busy || s.noActions"
-                    title="Take 1 Wound instead (My Blood, My Power)"
+                    :disabled="!canEdit || s.busy || s.noActions || !!s.notNow"
+                    :title="s.notNow || 'Take 1 Wound instead (My Blood, My Power)'"
                     @click="cast(s, true)"
                   >
                     {{ s.bloodLabel }}
@@ -1198,8 +1198,8 @@ const effectRows = computed(() =>
                     :key="a.key"
                     type="button"
                     class="btn btn--ghost btn--sm btn--wrap"
-                    :disabled="!canEdit || s.busy || s.noActions || !!a.why"
-                    :title="a.why || undefined"
+                    :disabled="!canEdit || s.busy || s.noActions || !!s.notNow || !!a.why"
+                    :title="s.notNow || a.why || undefined"
                     @click="cast(s, false, a.key)"
                   >
                     {{ a.why || a.label }}

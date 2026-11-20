@@ -2,7 +2,7 @@
 // spends the spell's actions and its mana (or a use of Pilfered Power, or a
 // Reaver's minions or Wound), and starts Concentration when the spell needs it.
 // Shared by the sheet's Spells panel and the board's action panel.
-import { castReason } from '~/utils/battleActions'
+import { castReason, spellNotNow } from '~/utils/battleActions'
 import { SPELL_RULES } from '~/data/nimble/spells'
 import { summonBySource } from '~/data/nimble/summons'
 import type { SpellDef } from '~/data/nimble/types'
@@ -236,12 +236,14 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         // Waiting for your turn in combat: only reaction spells and free (0-action) casts;
         // a damaging spell is an attack and waits whatever it costs (castReason).
         const waiting = sheet.value.inEncounter && !sheet.value.turnActive
-        const notNow =
-          waiting &&
-          !REACTION.test(s.desc) &&
-          (actions > 0 || !!spellDamage(sheet.value, draft.value.level, s, at))
-            ? 'Not your turn'
-            : ''
+        const notNow = spellNotNow(
+          {
+            reaction: REACTION.test(s.desc),
+            actions,
+            damaging: waiting && !!spellDamage(sheet.value, draft.value.level, s, at),
+          },
+          sheet.value,
+        )
         return {
           ...s,
           at,

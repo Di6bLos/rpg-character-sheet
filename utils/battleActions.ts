@@ -56,6 +56,20 @@ export function castReason(
   return ''
 }
 
+/**
+ * 'Not your turn' for a spell while the hero waits for their turn in combat; '' otherwise.
+ * Reaction spells and free (0-action) casts stay allowed, but a damaging spell is an
+ * attack and waits whatever it costs (as castReason does).
+ */
+export function spellNotNow(
+  s: { reaction: boolean; actions: number; damaging: boolean },
+  ctx: { inEncounter: boolean; turnActive: boolean },
+): string {
+  const waiting = ctx.inEncounter && !ctx.turnActive
+  if (!waiting || s.reaction) return ''
+  return s.actions > 0 || s.damaging ? 'Not your turn' : ''
+}
+
 /** Runs an action's click only when it is available; a dimmed tile does nothing. */
 export function guarded(a: BattleAction & { use: () => void }): void {
   if (a.unavailable === '') a.use()

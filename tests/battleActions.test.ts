@@ -5,6 +5,7 @@ import {
   reactionReason,
   readyNote,
   sectionsFor,
+  spellNotNow,
   weaponReason,
   type BattleAction,
 } from '../utils/battleActions'
@@ -182,5 +183,29 @@ describe('usableOffTurn (sheet rule: off-turn in combat only free uses and react
     expect(allowed('You can Interpose for free.')).toBe(true)
     expect(usableOffTurn(undefined, 'Gain advantage on your next save.')).toBe(true)
     expect(usableOffTurn({ actions: 0 }, '')).toBe(true)
+  })
+})
+
+describe('spellNotNow', () => {
+  const waiting = { inEncounter: true, turnActive: false }
+  const spell = { reaction: false, actions: 1, damaging: false }
+
+  it('refuses a spell that costs actions while waiting for your turn', () => {
+    expect(spellNotNow(spell, waiting)).toBe('Not your turn')
+  })
+
+  it('refuses a damaging spell even when it is free: it is an attack', () => {
+    expect(spellNotNow({ ...spell, actions: 0, damaging: true }, waiting)).toBe('Not your turn')
+  })
+
+  it('allows reaction spells and free casts off-turn', () => {
+    expect(spellNotNow({ ...spell, reaction: true, damaging: true }, waiting)).toBe('')
+    expect(spellNotNow({ ...spell, actions: 0 }, waiting)).toBe('')
+  })
+
+  it('allows anything on your turn or outside combat', () => {
+    const big = { reaction: false, actions: 2, damaging: true }
+    expect(spellNotNow(big, { inEncounter: true, turnActive: true })).toBe('')
+    expect(spellNotNow(big, { inEncounter: false, turnActive: false })).toBe('')
   })
 })
