@@ -41,8 +41,12 @@ const headline = computed(() =>
   }),
 )
 
+/** The GM's encounter is running (someone has the turn) but this sheet hasn't joined it. */
+const joining = computed(() => !!props.init.turnId.value && !sheet.value.inEncounter)
+
 const sub = computed(() =>
   [
+    joining.value ? "The GM's encounter is running: join it and roll Initiative." : '',
     sheet.value.inEncounter && sheet.value.initiative != null
       ? `Initiative ${sheet.value.initiative}`
       : '',
@@ -107,11 +111,12 @@ const reactions = computed(() => {
       <button
         v-if="steps.includes('encounter')"
         type="button"
-        class="btn btn--ghost btn--sm"
+        class="btn btn--sm"
+        :class="{ 'btn--ghost': !joining }"
         :disabled="!canEdit"
         @click="startEncounter"
       >
-        New encounter
+        {{ joining ? 'Join encounter' : 'New encounter' }}
       </button>
       <button
         v-if="steps.includes('initiative')"
