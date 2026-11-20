@@ -114,12 +114,17 @@ const reroll = () => run(() => props.init.rollForNpcs())
 <template>
   <section class="panel gtb" aria-label="Turn">
     <div class="gtb__who">
-      <strong class="gtb__title" role="status">{{ title }}</strong>
-      <span class="gtb__sub">{{ upNext }}</span>
+      <strong class="gtb__title" role="status" :title="title">{{ title }}</strong>
+      <span class="gtb__sub" :title="upNext">{{ upNext }}</span>
     </div>
     <div class="gtb__tools">
-      <button type="button" class="btn btn--ghost btn--sm" @click="addOpen = true">
-        + Add creatures
+      <button
+        type="button"
+        class="btn btn--ghost btn--sm"
+        aria-label="Add creatures"
+        @click="addOpen = true"
+      >
+        + Add<span class="gtb__long"> creatures</span>
       </button>
       <div ref="menuEl" class="gtb__more" @keydown.esc="closeMenu(true)">
         <button
@@ -171,20 +176,30 @@ const reroll = () => run(() => props.init.rollForNpcs())
 
 <style scoped lang="scss">
 .gtb {
+  container: gtb / inline-size;
   flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
-  padding: 10px 14px;
+  gap: 6px 12px;
+  padding: 8px 12px;
 }
 
+// Takes what the tools leave, so the bar stays on one row at 1200px; long lines
+// truncate (the full text is in their title).
 .gtb__who {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1 1 220px;
+  gap: 1px;
+  min-width: 100px;
+  flex: 1 1 0;
+}
+
+.gtb__title,
+.gtb__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gtb__title {
@@ -197,7 +212,15 @@ const reroll = () => run(() => props.init.rollForNpcs())
   color: var(--page-muted);
 }
 
+// A narrow bar (1200–1280px windows) says just "+ Add", so the headline keeps its room.
+@container gtb (max-width: 480px) {
+  .gtb__long {
+    display: none;
+  }
+}
+
 .gtb__tools {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 6px;
