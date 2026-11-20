@@ -15,18 +15,33 @@ const CHIPS: { id: ActionFilter; label: string }[] = [
   { id: 'react', label: 'Reactions' },
   { id: 'ability', label: 'Abilities' },
 ]
+
+// The chips scroll sideways when the column is narrow: a vertical wheel scrolls them too,
+// and a picked chip scrolls fully into view (keyboard focus already does).
+function onWheel(event: WheelEvent) {
+  const el = event.currentTarget as HTMLElement
+  if (el.scrollWidth <= el.clientWidth || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return
+  el.scrollLeft += event.deltaY
+  event.preventDefault()
+}
+
+function pick(id: ActionFilter, event: MouseEvent) {
+  filter.value = id
+  const chip = event.currentTarget as HTMLElement
+  chip.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
 </script>
 
 <template>
   <div class="filters">
-    <div class="filters__chips" role="group" aria-label="Show actions">
+    <div class="filters__chips" role="group" aria-label="Show actions" @wheel="onWheel">
       <button
         v-for="c in CHIPS"
         :key="c.id"
         type="button"
         class="filters__chip"
         :aria-pressed="filter === c.id"
-        @click="filter = c.id"
+        @click="pick(c.id, $event)"
       >
         {{ c.label }}<span v-if="c.id === 'ready'" class="filters__count">{{ readyCount }}</span>
       </button>
@@ -35,7 +50,7 @@ const CHIPS: { id: ActionFilter; label: string }[] = [
       v-model="query"
       class="filters__search"
       type="search"
-      placeholder="Find an action…"
+      placeholder="Find…"
       aria-label="Find an action"
     />
   </div>
@@ -44,16 +59,25 @@ const CHIPS: { id: ActionFilter; label: string }[] = [
 <style scoped lang="scss">
 .filters {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
+  gap: 8px;
 }
 
+// One row: the chips scroll sideways when they don't fit beside the search.
 .filters__chips {
   display: flex;
-  flex-wrap: wrap;
   gap: 4px;
   flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  // Room for the chips' focus ring inside the scroller.
+  padding: 2px;
+  margin: -2px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .filters__chip {
@@ -68,6 +92,7 @@ const CHIPS: { id: ActionFilter; label: string }[] = [
   font: inherit;
   font-size: 12px;
   white-space: nowrap;
+  flex: none;
 
   &:hover {
     color: var(--page-text);
@@ -92,9 +117,11 @@ const CHIPS: { id: ActionFilter; label: string }[] = [
 }
 
 .filters__search {
-  flex: 1 0 140px;
+  // Compact until used: it grows while focused or holding a search.
+  flex: 0 1 110px;
+  min-width: 80px;
   max-width: 220px;
-  min-width: 0;
+  transition: flex-basis 0.15s ease;
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
@@ -102,5 +129,14 @@ const CHIPS: { id: ActionFilter; label: string }[] = [
   color: var(--page-text);
   font: inherit;
   font-size: 12px;
+
+  &:focus,
+  &:not(:placeholder-shown) {
+    flex-basis: 200px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 </style>
