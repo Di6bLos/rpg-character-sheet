@@ -100,8 +100,8 @@ function onKey(event: KeyboardEvent) {
   flex: none;
   display: flex;
   align-items: center;
-  min-height: 38px;
-  padding: 8px 14px 0;
+  min-height: 36px;
+  padding: 6px 14px 0;
 }
 
 .comms__tabs {
@@ -201,7 +201,7 @@ function onKey(event: KeyboardEvent) {
   }
 
   :deep(.chat__note) {
-    padding: 4px 14px;
+    padding: 2px 14px 3px;
     font-size: 12px;
   }
 
@@ -215,7 +215,7 @@ function onKey(event: KeyboardEvent) {
 
   :deep(.chat__title) {
     position: absolute;
-    top: 5px;
+    top: 4px;
     right: 14px;
   }
 
