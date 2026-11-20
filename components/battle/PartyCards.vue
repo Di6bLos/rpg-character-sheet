@@ -156,16 +156,19 @@ function label(r: RosterEntry): string {
 <style scoped lang="scss">
 // Not `.party`: PartyView's scoped `.party` (the narrow layout) would also style this root.
 .party-cards {
-  flex: none;
+  // Half the column, Chat the other half (both 50% with border-box, so the
+  // padding counts inside); more heroes scroll inside.
+  flex: 1 1 50%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 10px 14px;
-  // Capped low so Chat keeps most of the column; more heroes scroll inside.
-  max-height: 30%;
   min-height: 0;
 
+  // No other heroes: one line, and Chat takes the rest.
   &--empty {
+    flex: none;
     padding-block: 8px;
   }
 }

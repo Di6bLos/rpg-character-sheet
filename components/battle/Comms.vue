@@ -88,7 +88,9 @@ function onKey(event: KeyboardEvent) {
 <style scoped lang="scss">
 .comms {
   position: relative;
-  flex: 1 1 0;
+  // Half the column, the Party card the other half.
+  flex: 1 1 50%;
+  box-sizing: border-box;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -100,8 +102,8 @@ function onKey(event: KeyboardEvent) {
   flex: none;
   display: flex;
   align-items: center;
-  min-height: 36px;
-  padding: 6px 14px 0;
+  min-height: 32px;
+  padding: 5px 14px 0;
 }
 
 .comms__tabs {
@@ -115,13 +117,13 @@ function onKey(event: KeyboardEvent) {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 30px;
-    padding: 0 12px;
+    min-height: 26px;
+    padding: 0 10px;
     border: 0;
     border-radius: 999px;
     background: none;
     font-family: var(--font-heading);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.04em;
     color: var(--page-muted);
@@ -200,17 +202,111 @@ function onKey(event: KeyboardEvent) {
     }
   }
 
+  // Everything a size down from the Party tab's chat; targets stay at least 24px.
+  :deep(.chat__tabs button) {
+    gap: 4px;
+    min-height: 28px;
+    padding: 0 8px 0 4px;
+    font-size: 12px;
+  }
+
+  // UiAvatar sizes itself inline, so these override it.
+  :deep(.chat__tabs .ui-avatar),
+  :deep(.chat__party) {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 8px !important;
+  }
+
+  :deep(.chat__party svg) {
+    width: 11px;
+    height: 11px;
+  }
+
+  :deep(.chat__unread) {
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+  }
+
+  :deep(.chat__toggle) {
+    min-height: 24px;
+    font-size: 11px;
+  }
+
   :deep(.chat__note) {
     padding: 2px 14px 3px;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   :deep(.chat__log) {
     padding-inline: 14px;
+    gap: 6px;
+  }
+
+  :deep(.chat__log li) {
+    gap: 6px;
+  }
+
+  :deep(.chat__log li > .ui-avatar) {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 8px !important;
+  }
+
+  :deep(.chat__log .ui-avatar svg) {
+    max-width: 80%;
+    max-height: 80%;
+  }
+
+  :deep(.chat__msg) {
+    gap: 2px;
+  }
+
+  :deep(.chat__meta) {
+    font-size: 11px;
+  }
+
+  :deep(.chat__bubble) {
+    padding: 5px 9px;
+    border-radius: 11px 11px 11px 3px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  :deep(.is-me .chat__bubble) {
+    border-radius: 11px 11px 3px 11px;
+  }
+
+  :deep(.chat__log li.is-action) {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+
+  :deep(.chat__action-time) {
+    font-size: 10px;
+  }
+
+  :deep(.chat__empty) {
+    font-size: 12px;
+    padding: 12px 0;
   }
 
   :deep(.chat__form) {
-    padding: 8px 14px 10px;
+    gap: 6px;
+    padding: 6px 14px 8px;
+  }
+
+  :deep(.chat__form .input) {
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+
+  :deep(.chat__form .btn) {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
   }
 
   :deep(.chat__title) {
