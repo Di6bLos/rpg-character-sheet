@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The GM's turn bar on the battle board (top of the centre column): who is acting and
 // who is next, "+ Add creatures" (the add dialog), a menu with Add the party, Sync
-// summons and Reroll NPC initiative, and Next turn. It also drops summons that left
+// summons and Reroll NPC initiative, and Next turn (Add party instead while out of an
+// encounter with heroes not seated). It also drops summons that left
 // their hero's sheet as the roster refreshes (as the Party tab's Initiative panel does).
 import type { RosterEntry } from '~/types'
 import type { useInitiative } from '~/composables/useInitiative'
@@ -26,7 +27,7 @@ const title = computed(() => {
 
 const upNext = computed(() => {
   const list = order.value
-  if (!list.length) return 'Add creatures and the party, then press Next turn.'
+  if (!list.length) return 'Add the party and creatures, then press Next turn.'
   if (!acting.value) return `Round ${props.init.round.value} · Next turn starts the encounter`
   const at = list.findIndex((c) => c.id === acting.value?.id)
   const next = [1, 2]
@@ -56,6 +57,9 @@ const partyMissing = computed(
         r.character_id && !props.init.rows.value.some((c) => c.character_id === r.character_id),
     ).length,
 )
+
+/** Out of an encounter (no one acting yet) with heroes not seated: offer Add party. */
+const offerParty = computed(() => !props.init.turnId.value && partyMissing.value > 0)
 
 function closeMenu(refocus = false) {
   if (!menuOpen.value) return
@@ -166,7 +170,25 @@ const reroll = () => run(() => props.init.rollForNpcs())
           </button>
         </div>
       </div>
-      <button type="button" class="btn btn--sm" :disabled="!order.length" @click="init.nextTurn">
+      <!-- Out of combat with heroes still to seat, the main button seats the party;
+           once everyone is in, it is Next turn (which starts the encounter). -->
+      <button
+        v-if="offerParty"
+        type="button"
+        class="btn btn--sm"
+        :disabled="busy"
+        :title="`${plural(partyMissing, 'hero')} not seated`"
+        @click="addParty"
+      >
+        Add party
+      </button>
+      <button
+        v-else
+        type="button"
+        class="btn btn--sm"
+        :disabled="!order.length"
+        @click="init.nextTurn"
+      >
         Next turn ▸
       </button>
     </div>

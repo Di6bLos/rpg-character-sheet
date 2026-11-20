@@ -44,19 +44,40 @@ onBeforeUnmount(() => {
 // --- GM: add combatants (the Party tab's Initiative panel opens the dialog) -----------
 const addOpen = ref(false)
 
-// --- GM on the battle board: the creature in the stat block ----------------------------
+// --- GM on the battle board: the left column ------------------------------------------
+// A creature shows its stat block; a hero picked on the initiative strip or the
+// encounter grid shows its vitals (GmHero). Party cards open the stats modal instead.
 /** The GM's pick (a card or token click); null follows the default. */
 const gmPick = ref<string | null>(null)
-const isCreature = (id: string | null) =>
-  init.rows.value.some((c) => c.id === id && c.kind !== 'pc')
+const rowOf = (id: string | null) => init.rows.value.find((c) => c.id === id)
+const isCreature = (id: string | null) => {
+  const row = rowOf(id)
+  return !!row && row.kind !== 'pc'
+}
+/** A hero row with a seated character (only those have vitals to load). */
+function seatedHero(id: string | null): string | null {
+  const row = rowOf(id)
+  if (row?.kind !== 'pc' || !row.character_id) return null
+  return roster.value.some((r) => r.character_id === row.character_id) ? row.character_id : null
+}
 /** The pick, else the acting creature (not a hero), else the first enemy. */
 const gmSelected = computed(() => {
-  if (isCreature(gmPick.value)) return gmPick.value
+  if (isCreature(gmPick.value) || seatedHero(gmPick.value)) return gmPick.value
   if (isCreature(init.turnId.value)) return init.turnId.value
   return init.order.value.find((c) => c.kind === 'monster' || c.kind === 'npc')?.id ?? null
 })
+const gmHeroId = computed(() => seatedHero(gmSelected.value))
 function onToken(id: string) {
-  if (gmControls.value && isCreature(id)) gmPick.value = id
+  if (gmControls.value && (isCreature(id) || seatedHero(id))) gmPick.value = id
+}
+/** A hero token: the GM gets the vitals on the left (onToken), players the stats modal. */
+function onHeroToken(characterId: string) {
+  if (!gmControls.value) cardId.value = characterId
+}
+/** An encounter-grid hero card picks that hero's row. */
+function onGridHero(characterId: string) {
+  const row = init.rows.value.find((c) => c.kind === 'pc' && c.character_id === characterId)
+  if (row) gmPick.value = row.id
 }
 </script>
 
@@ -74,12 +95,13 @@ function onToken(id: string) {
         :init="init"
         :roster="roster"
         :gm="gmControls"
-        @hero="(id: string) => (cardId = id)"
+        @hero="onHeroToken"
         @select="onToken"
       />
     </template>
     <template #left="{ hero }">
       <BattleHero v-if="hero" />
+      <BattleGmHero v-else-if="gmControls && gmHeroId" :character-id="gmHeroId" :roster="roster" />
       <BattleStatBlock v-else-if="gmControls" :init="init" :combatant-id="gmSelected" />
       <BoardRoster
         v-else-if="campaign"
@@ -105,7 +127,7 @@ function onToken(id: string) {
           :selected="gmSelected"
           :picked="gmPick"
           @update:selected="(id: string | null) => (gmPick = id)"
-          @hero="(id: string) => (cardId = id)"
+          @hero="onGridHero"
         />
       </template>
       <p v-else-if="isGm" class="panel battle-empty">

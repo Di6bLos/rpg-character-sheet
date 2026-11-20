@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The GM's encounter grid (battle board centre): a card per enemy (monsters and NPCs),
 // or with the chip, per ally and summon (heroes included). Clicking a creature selects
-// it into the stat block; a hero opens their stats modal instead. Remove asks first.
+// it into the stat block; a hero shows their vitals there instead (GmHero). Remove asks first.
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { sortOrder } from '~/utils/initiative'
