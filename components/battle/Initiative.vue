@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // The battle board's initiative strip: an endless carousel of tokens in turn order, the
 // acting one centred and a little larger. The order repeats on both sides (a dashed line
-// marks where a round starts again); each turn change slides it one step. The wheel
-// browses it, and the next turn change centres the acting token again.
-// Heroes show their numbers from the roster; enemies show a band to players (numbers
-// for the GM). Summons sit under their summoner.
+// marks where a round starts again); each turn change slides it one step. Dragging or the
+// wheel browses it, and the next turn change centres the acting token again.
+// Heroes show their HP from the roster; creatures show theirs to the GM only (players
+// see only that one is down). Summons sit under their summoner.
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
@@ -50,12 +50,11 @@ function hpText(c: TurnRow): string {
     const temp = s.tempHp ? ` +${s.tempHp}` : ''
     return `${s.hp} / ${s.hpMax ?? s.hp}${temp}`
   }
-  if (props.gm) return c.hp !== null && (c.hp_max ?? 0) > 0 ? `${c.hp} / ${c.hp_max}` : ''
-  return c.hp_band ?? ''
+  // Players never see a creature's HP, only that it is down (hpLabel).
+  return props.gm && c.hp !== null && (c.hp_max ?? 0) > 0 ? `${c.hp} / ${c.hp_max}` : ''
 }
 
-/** 0 to 1 for the minibar. Players see enemies by band only, so the bar steps by band. */
-const BAND_FILL: Record<string, number> = { Unhurt: 1, Hurt: 0.75, Bloodied: 0.5, Down: 0 }
+/** 0 to 1 for the minibar. Only the GM sees how hurt a creature is: players get no bar. */
 function hpFill(c: TurnRow): number | null {
   if (c.kind === 'pc') {
     const s = rosterFor(c)?.summary
@@ -64,12 +63,12 @@ function hpFill(c: TurnRow): number | null {
   }
   if (props.gm && c.hp !== null && (c.hp_max ?? 0) > 0)
     return Math.min(1, Math.max(0, c.hp / (c.hp_max ?? 1)))
-  return c.hp_band ? (BAND_FILL[c.hp_band] ?? null) : null
+  return null
 }
 
 function isLow(c: TurnRow): boolean {
   const f = hpFill(c)
-  return isDown(c) || c.hp_band === 'Bloodied' || (f !== null && f <= 0.5)
+  return isDown(c) || (f !== null && f <= 0.5)
 }
 
 /** HP as words for the tooltip and screen readers; the token itself only shows the bar. */
@@ -181,7 +180,8 @@ const slots = computed<Slot[]>(() => {
   const order = props.init.order.value
   const n = order.length
   if (!n) return []
-  const half = Math.ceil(Math.max(1, Math.ceil(width.value / STEP)) / 2)
+  // One spare slot per side, so a drag never shows an empty edge.
+  const half = Math.ceil(Math.max(1, Math.ceil(width.value / STEP)) / 2) + 1
   const center = cursor.value + browse.value
   const first = center - Math.floor((n - 1) / 2)
   const acting = !!props.init.activeId.value
@@ -216,6 +216,67 @@ function onWheel(e: WheelEvent) {
   }
 }
 
+// --- Drag to browse -------------------------------------------------------------------
+/** The row's offset under the pointer, under one step: whole steps move `browse`. */
+const offset = ref(0)
+const dragging = ref(false)
+/** The pointer moved far enough to count as a drag, so the click that follows is not one. */
+let dragged = false
+let startX = 0
+let pointer: number | null = null
+const DRAG_START_PX = 6
+
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return
+  pointer = e.pointerId
+  startX = e.clientX
+  dragged = false
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (e.pointerId !== pointer) return
+  const dx = e.clientX - startX
+  if (!dragged) {
+    if (Math.abs(dx) < DRAG_START_PX) return
+    // Capture only once it is a drag: capturing on press would steal plain clicks.
+    dragged = true
+    dragging.value = true
+    viewport.value?.setPointerCapture(e.pointerId)
+  }
+  let d = offset.value + dx
+  startX = e.clientX
+  // Dragging right brings earlier tokens in: browse back one per step crossed.
+  while (Math.abs(d) >= STEP) {
+    browse.value -= Math.sign(d)
+    d -= Math.sign(d) * STEP
+  }
+  offset.value = d
+}
+
+async function onPointerUp(e: PointerEvent) {
+  if (e.pointerId !== pointer) return
+  pointer = null
+  if (!dragging.value) return
+  // Snap to the nearest token: past half a step counts as the next one.
+  if (Math.abs(offset.value) > STEP / 2) {
+    browse.value -= Math.sign(offset.value)
+    offset.value -= Math.sign(offset.value) * STEP
+  }
+  // Let the re-keyed slots render with moves still off, then ease the rest back to 0.
+  await nextTick()
+  requestAnimationFrame(() => {
+    dragging.value = false
+    offset.value = 0
+  })
+}
+
+function onClickCapture(e: MouseEvent) {
+  if (!dragged) return
+  dragged = false
+  e.preventDefault()
+  e.stopPropagation()
+}
+
 /** Tabbing to a token off the visible part centres it (a click never moves the row). */
 function onFocus(slot: Slot, e: FocusEvent) {
   if ((e.target as HTMLElement | null)?.matches(':focus-visible'))
@@ -230,9 +291,21 @@ function onFocus(slot: Slot, e: FocusEvent) {
     class="strip"
     role="group"
     aria-label="Turn order"
+    :class="{ 'is-dragging': dragging }"
     @wheel="onWheel"
+    @pointerdown="onPointerDown"
+    @pointermove="onPointerMove"
+    @pointerup="onPointerUp"
+    @pointercancel="onPointerUp"
+    @click.capture="onClickCapture"
+    @dragstart.prevent
   >
-    <TransitionGroup tag="ol" name="slot" class="strip__row">
+    <TransitionGroup
+      tag="ol"
+      name="slot"
+      class="strip__row"
+      :style="offset ? { transform: `translateX(${offset}px)` } : undefined"
+    >
       <li
         v-for="{ key, c, primary, now, next, roundStart } in slots"
         :key="key"
@@ -277,7 +350,12 @@ function onFocus(slot: Slot, e: FocusEvent) {
                 <span class="tok__name"
                   >{{ c.name }}<span v-if="isDead(c)" class="tok__dead"> (dead)</span></span
                 >
-                <span class="tok__bar" :class="{ 'is-low': isLow(c) }" aria-hidden="true">
+                <!-- No HP to show (a creature, to players): the bar keeps its room, unseen. -->
+                <span
+                  class="tok__bar"
+                  :class="{ 'is-low': isLow(c), 'is-none': hpFill(c) === null }"
+                  aria-hidden="true"
+                >
                   <span
                     v-if="hpFill(c) !== null"
                     :style="{ width: `${(hpFill(c) ?? 0) * 100}%` }"
@@ -319,6 +397,10 @@ function onFocus(slot: Slot, e: FocusEvent) {
 // off centre) and fade out, so the row reads as endless.
 .strip {
   overflow: clip;
+  // Horizontal drags browse the row; vertical ones still scroll the page.
+  touch-action: pan-y;
+  user-select: none;
+  cursor: grab;
   padding: 14px 0 8px;
   mask-image: linear-gradient(
     to right,
@@ -331,7 +413,24 @@ function onFocus(slot: Slot, e: FocusEvent) {
 
 // More slots than fit, centred: the acting token lands in the middle and the extras
 // overflow evenly on both sides.
+.strip.is-dragging {
+  cursor: grabbing;
+
+  // The row follows the pointer: no easing, and slots re-keyed mid-drag jump into place.
+  .strip__row,
+  .slot-move,
+  .slot-enter-active {
+    transition: none;
+  }
+
+  .tok__main {
+    cursor: grabbing;
+  }
+}
+
 .strip__row {
+  // Eases back to the snapped token after a drag.
+  transition: transform 0.25s ease;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -541,6 +640,10 @@ function onFocus(slot: Slot, e: FocusEvent) {
   &.is-low span {
     background: var(--danger);
   }
+
+  &.is-none {
+    visibility: hidden;
+  }
 }
 
 .tok__summons {
@@ -552,6 +655,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .strip__row,
   .slot-move,
   .slot-enter-active,
   .tok {

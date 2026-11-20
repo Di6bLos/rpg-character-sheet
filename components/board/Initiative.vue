@@ -130,7 +130,7 @@ function status(c: TurnRow) {
   if (c.kind === 'summon') return 'Summon'
   if (props.gm && c.kind !== 'pc' && c.hp !== null && (c.hp_max ?? 0) > 0)
     return `${c.hp} / ${c.hp_max} HP`
-  if (c.hp_band && c.hp_band !== 'Unhurt') return c.hp_band
+  // Players never see how hurt a creature is, only that it is down.
   return c.kind === 'pc' ? 'Ready' : KIND_LABEL[c.kind]
 }
 
@@ -268,9 +268,11 @@ function onInit(c: TurnRow, event: Event) {
             >{{ rowName(c) }}<span v-if="heroDead(c)" class="dead-tag"> (dead)</span></span
           >
         </component>
-        <span class="ini__state" :class="{ 'is-low': isDown(c) || c.hp_band === 'Bloodied' }">{{
-          status(c)
-        }}</span>
+        <span
+          class="ini__state"
+          :class="{ 'is-low': isDown(c) || (gm && c.hp_band === 'Bloodied') }"
+          >{{ status(c) }}</span
+        >
       </li>
     </ol>
     <div v-else class="ini__empty">
