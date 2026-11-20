@@ -97,7 +97,7 @@ function pct(n: number, max: number): number {
 // --- GM: send an HP change to the hero's sheet ---------------------------------------
 const amount = ref<number | null>(null)
 const crit = ref(false)
-const { sending, send } = useSendHeroHp()
+const { send } = useSendHeroHp()
 const sent = ref('')
 const uid = useId()
 watch(characterId, () => {
@@ -110,7 +110,7 @@ watch(characterId, () => {
 async function adjust(sign: 1 | -1) {
   const id = characterId.value
   const name = title.value
-  if (!id || sending.value) return
+  if (!id) return
   const n = Math.min(999, Math.max(1, Math.floor(Number(amount.value) || 1)))
   const isCrit = sign < 0 && crit.value
   if (!(await send(id, name, sign * n, isCrit))) return
@@ -188,7 +188,6 @@ async function whisper() {
               type="button"
               class="step step--xs"
               :aria-label="`${card.name}: take ${amount || 1} damage`"
-              :disabled="sending"
               @click="adjust(-1)"
             >
               −
@@ -208,7 +207,6 @@ async function whisper() {
               type="button"
               class="step step--xs"
               :aria-label="`${card.name}: heal ${amount || 1}`"
-              :disabled="sending"
               @click="adjust(1)"
             >
               +
