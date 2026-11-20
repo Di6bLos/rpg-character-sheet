@@ -78,6 +78,10 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
 .battle__strip {
   padding: 12px 20px 0;
   min-width: 0;
+
+  @media (max-height: 820px) {
+    padding-top: 6px;
+  }
 }
 
 .battle__cols {

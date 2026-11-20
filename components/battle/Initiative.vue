@@ -445,6 +445,34 @@ watch(
   padding-top: 4px;
 }
 
+// Short windows (1280x720, 1200x800): the Acting / Next badge sits on the token's top edge
+// instead of its own row, so the strip gives the columns below about 20px more.
+@media (max-height: 820px) {
+  .strip {
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+
+  .tok {
+    position: relative;
+  }
+
+  .tok__badges {
+    position: absolute;
+    top: -7px;
+    right: 8px;
+  }
+
+  // Half of it sits over the page: give it the panel behind its text.
+  .tok__badge {
+    background: var(--panel-bg);
+  }
+
+  .tok__badge--now {
+    background: var(--accent);
+  }
+}
+
 .tok__summon {
   all: unset;
   display: inline-flex;
