@@ -98,7 +98,7 @@ const stats = computed(() =>
         :src="portrait"
         :class-slug="sheet.classSlug || null"
         :dead="dead"
-        :size="44"
+        :size="38"
       />
       <div class="hero__who">
         <h2 class="hero__name">
@@ -173,8 +173,8 @@ const stats = computed(() =>
 .hero {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  padding: 12px 14px;
+  gap: 7px;
+  padding: 10px 14px;
 }
 
 .hero__id {
@@ -216,7 +216,7 @@ const stats = computed(() =>
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px;
+  padding: 2px 4px;
   border-radius: min(var(--radius-control), 8px);
   background: var(--inset);
   border: 1px solid var(--line);
@@ -279,7 +279,7 @@ const stats = computed(() =>
 .hero__block {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .hero__stats {
@@ -292,7 +292,7 @@ const stats = computed(() =>
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 0;
+  padding: 2px 0;
   border-radius: min(var(--radius-control), 6px);
   background: var(--inset);
   font-size: 11px;

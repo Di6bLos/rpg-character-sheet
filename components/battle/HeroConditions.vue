@@ -74,7 +74,7 @@ const chips = computed(() =>
 .cond {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .cond__head {

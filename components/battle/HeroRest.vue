@@ -105,13 +105,15 @@ function safeRest() {
 </template>
 
 <style scoped lang="scss">
+// One row: the label, then the two buttons.
 .rest {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
 }
 
 .rest__btns {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
