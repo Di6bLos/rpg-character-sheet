@@ -17,7 +17,6 @@ const emit = defineEmits<{ open: [characterId: string] }>()
 
 const auth = useAuthStore()
 const right = useBattleRight()
-const listId = useId()
 
 const heroes = computed(() =>
   props.roster.filter(
@@ -93,8 +92,10 @@ function label(r: RosterEntry): string {
     class="panel party-cards"
     :class="{
       'party-cards--empty': !heroes.length,
-      'party-cards--folded': !right.state.value.party,
+      'party-cards--folded': right.partyClosed.value,
+      'party-cards--fill': right.chatClosed.value,
     }"
+    :style="{ '--party-split': right.state.value.split }"
     aria-labelledby="party-h"
   >
     <header class="party__head">
@@ -106,25 +107,9 @@ function label(r: RosterEntry): string {
       <span v-else class="party__count">{{
         `${heroes.length} ${heroes.length === 1 ? 'hero' : 'heroes'}`
       }}</span>
-      <span class="party__tools">
-        <BattlePanelToggle
-          v-if="heroes.length"
-          :dir="right.state.value.party ? 'up' : 'down'"
-          :label="right.state.value.party ? 'Hide the party' : 'Show the party'"
-          :aria-expanded="right.state.value.party"
-          :aria-controls="listId"
-          @click="right.toggleParty()"
-        />
-        <BattlePanelToggle
-          id="battle-right-collapse"
-          dir="right"
-          label="Collapse party and chat"
-          aria-expanded="true"
-          @click="right.toggleColumn()"
-        />
-      </span>
     </header>
-    <ul v-if="heroes.length" v-show="right.state.value.party" :id="listId" class="party__list">
+    <!-- Closed (dragged to the top): just the header line. -->
+    <ul v-if="heroes.length" v-show="!right.partyClosed.value" class="party__list">
       <li v-for="r in heroes" :key="r.character_id">
         <button
           type="button"
@@ -178,17 +163,22 @@ function label(r: RosterEntry): string {
 <style scoped lang="scss">
 // Not `.party`: PartyView's scoped `.party` (the narrow layout) would also style this root.
 .party-cards {
-  // Half the column, Chat the other half (both 50% with border-box, so the
-  // padding counts inside); more heroes scroll inside.
-  flex: 1 1 50%;
+  // Its dragged share of the column (half by default; RightSplit moves it), and
+  // Chat takes the rest; more heroes scroll inside. The 14px is the gap between them.
+  flex: 0 1 calc((100% - 14px) * var(--party-split, 0.5));
   box-sizing: border-box;
+
+  // Chat folded: the Party takes the column.
+  &--fill {
+    flex: 1 1 0;
+  }
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 10px 14px;
   min-height: 0;
 
-  // No other heroes, or folded: one line, and Chat takes the rest.
+  // No other heroes, or closed: one line, and Chat takes the rest.
   &--empty,
   &--folded {
     flex: none;
@@ -210,13 +200,7 @@ function label(r: RosterEntry): string {
   }
 }
 
-.party__tools {
-  flex: none;
-  display: inline-flex;
-  gap: 4px;
-}
-
-// The count (or the empty note) and the buttons sit at the right.
+// The count (or the empty note) sits at the right.
 .party__count,
 .party__empty {
   margin-left: auto;

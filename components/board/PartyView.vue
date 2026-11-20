@@ -123,6 +123,7 @@ function onToken(id: string) {
         :acting-character-id="turnCharacterId"
         @open="(id: string) => (cardId = id)"
       />
+      <BattleRightSplit :roster="roster" :gm="gmControls" />
       <BattleComms :roster="roster" />
     </template>
   </BattleBoard>

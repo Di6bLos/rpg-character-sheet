@@ -1,19 +1,26 @@
 <script setup lang="ts">
-// The battle board's Chat / Lore Master panel: one panel, two tabs. Chat is the
-// party chat as it is today (threads, Battle log, unread badges); the Lore Master tab
+// The battle board's Chat / Scribe panel: one panel, two tabs. Chat is the
+// party chat as it is today (threads, Battle log, unread badges); the Scribe tab
 // shows only when it is available to this user (the same check as LorePanel). Fills
 // the rest of the right column; only the message lists scroll.
 import type { RosterEntry } from '~/types'
 import { plural } from '~/utils/format'
 
-defineProps<{ roster: RosterEntry[] }>()
+const props = defineProps<{ roster: RosterEntry[] }>()
 
 const chat = useBoardChat()
 const tab = useCommsTab()
 const loreAvailable = useLoreAvailable()
 const uid = useId()
 const right = useBattleRight()
-const open = computed(() => right.state.value.chat)
+const { gmControls } = useCampaignBoard()
+const auth = useAuthStore()
+// Chat closes when the Party / Chat handle is dragged to the bottom (only while the
+// Party has heroes to list, since that handle shows only then).
+const hasHeroes = computed(() =>
+  props.roster.some((r) => !!r.character_id && (gmControls.value || r.user_id !== auth.userId)),
+)
+const open = computed(() => !(hasHeroes.value && right.chatClosed.value))
 
 const current = computed(() => (tab.value === 'lore' && loreAvailable.value ? 'lore' : 'chat'))
 
@@ -26,12 +33,13 @@ watch(chatInView, (on) => chat.setVisible(on), { flush: 'post' })
 // BoardChat marks itself visible as it mounts; correct that if it is out of view.
 onMounted(() => chat.setVisible(chatInView.value))
 
-const unread = computed(() => (chatInView.value ? 0 : chat.totalUnread.value))
+// On the Chat tab's badge; a closed Chat shows its own missed count instead.
+const unread = computed(() => (chatInView.value || !open.value ? 0 : chat.totalUnread.value))
 
 /** A tab click also unfolds the panel. */
 function pick(t: 'chat' | 'lore') {
   tab.value = t
-  if (!open.value) right.toggleChat()
+  if (!open.value) right.showChat()
 }
 
 function onKey(event: KeyboardEvent) {
@@ -45,13 +53,9 @@ function onKey(event: KeyboardEvent) {
 </script>
 
 <template>
-  <section
-    class="panel comms"
-    :class="{ 'comms--folded': !open }"
-    aria-label="Chat and Lore Master"
-  >
+  <section class="panel comms" :class="{ 'comms--folded': !open }" aria-label="Chat and Scribe">
     <div class="comms__head">
-      <div role="tablist" aria-label="Chat or Lore Master" class="comms__tabs" @keydown="onKey">
+      <div role="tablist" aria-label="Chat or Scribe" class="comms__tabs" @keydown="onKey">
         <button
           :id="`${uid}-chat-tab`"
           type="button"
@@ -75,17 +79,18 @@ function onKey(event: KeyboardEvent) {
           :tabindex="current === 'lore' ? 0 : -1"
           @click="pick('lore')"
         >
-          <span aria-hidden="true">✦</span> Lore Master
+          <span aria-hidden="true">✦</span> Scribe
         </button>
       </div>
-      <BattlePanelToggle
-        class="comms__fold"
-        :dir="open ? 'up' : 'down'"
-        :label="open ? 'Hide the chat' : 'Show the chat'"
-        :aria-expanded="open"
-        :aria-controls="`${uid}-${current}`"
-        @click="right.toggleChat()"
-      />
+      <!-- Closed: the messages missed since, in place of the log. -->
+      <span
+        v-if="!open && chat.totalUnread.value"
+        class="comms__missed"
+        :title="plural(chat.totalUnread.value, 'missed message')"
+        role="status"
+        :aria-label="plural(chat.totalUnread.value, 'missed message')"
+        >{{ chat.totalUnread.value }}</span
+      >
     </div>
     <div
       v-show="open && current === 'chat'"
@@ -112,8 +117,8 @@ function onKey(event: KeyboardEvent) {
 <style scoped lang="scss">
 .comms {
   position: relative;
-  // Half the column, the Party card the other half.
-  flex: 1 1 50%;
+  // What the Party card leaves of the column.
+  flex: 1 1 0;
   box-sizing: border-box;
   min-height: 0;
   display: flex;
@@ -171,8 +176,20 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-.comms__fold {
+.comms__missed {
   margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .comms__count {
@@ -343,11 +360,11 @@ function onKey(event: KeyboardEvent) {
     font-size: 13px;
   }
 
-  // Beside the tabs, left of the fold button.
+  // Beside the tabs.
   :deep(.chat__title) {
     position: absolute;
     top: 4px;
-    right: 48px;
+    right: 14px;
   }
 
   :deep(.chat__title h2) {
@@ -360,12 +377,33 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-// Lore Master: the panel's own chat; there is nothing to collapse here.
+// Scribe: the panel's own chat; there is nothing to collapse here.
 .comms__pane--lore {
   padding: 10px 14px 14px;
 
   :deep([data-lp-dismiss]) {
     display: none;
+  }
+
+  // The tab already names the Scribe: no second heading.
+  :deep(.lore__who strong) {
+    display: none;
+  }
+
+  // "Co-GM" (or "Rules & your hero"), the provider and the free-agent help sit in the
+  // tab row's right end, where Chat has its Battle log switch.
+  :deep(.lore__sub) {
+    position: absolute;
+    top: 4px;
+    right: 14px;
+    min-height: 24px;
+    font-size: 11px;
+  }
+
+  // With nothing left in the header row (no Clear button yet), drop its line.
+  :deep(.lore__head:not(:has(> .btn--sm))) {
+    padding: 0;
+    border: 0;
   }
 }
 </style>
