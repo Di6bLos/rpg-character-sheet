@@ -18,6 +18,19 @@ export function parseDice(expr: string): DiceExpr | null {
   return { count, sides, mod: m[3] ? Number(m[3].replace(/\s+/g, '')) : 0 }
 }
 
+/**
+ * The first dice expression in free text ("Stab. 1d6+2 (or Shoot, Range 8)." → 1d6+2),
+ * for a stat block's Roll button. `text` is the expression as written, tidied.
+ */
+export function findDice(text: string): { text: string; dice: DiceExpr } | null {
+  const m = /(\d+)\s*d\s*(\d+)(?:\s*([+\-\u2212])\s*(\d+)(?!\d|\s*d\s*\d))?/i.exec(text)
+  if (!m) return null
+  const op = m[3] === '\u2212' ? '-' : m[3]
+  const expr = `${m[1]}d${m[2]}${op ? `${op}${m[4]}` : ''}`
+  const dice = parseDice(expr)
+  return dice ? { text: expr, dice } : null
+}
+
 let detailed = 0
 
 /** One die. The dice tray is told about it unless a whole roll reports itself (`quietly`). */

@@ -6,7 +6,6 @@
 // there by useHeroHpChanges); for the viewer's own hero the page passes the hero
 // column's HP (`own-hp`, inside its sheet editor). Footer: Whisper and Open full sheet.
 import type { HeroCard, RosterEntry } from '~/types'
-import { supabase } from '~/lib/supabase'
 import { sign } from '~/utils/dice'
 
 const props = defineProps<{
@@ -20,8 +19,7 @@ const auth = useAuthStore()
 const campaigns = useCampaignStore()
 const chat = useBoardChat()
 const commsTab = useCommsTab()
-const snackbar = useSnackbarStore()
-const { campaignId, reloadRoster } = useCampaignBoard()
+const { campaignId } = useCampaignBoard()
 
 const open = computed({
   get: () => characterId.value !== null,
@@ -96,12 +94,10 @@ function pct(n: number, max: number): number {
   return max > 0 ? Math.min(100, Math.max(0, (n / max) * 100)) : 0
 }
 
-const ROSTER_AFTER_MS = 4000
-
 // --- GM: send an HP change to the hero's sheet ---------------------------------------
 const amount = ref<number | null>(null)
 const crit = ref(false)
-const sending = ref(false)
+const { sending, send } = useSendHeroHp()
 const sent = ref('')
 const uid = useId()
 watch(characterId, () => {
@@ -117,22 +113,9 @@ async function adjust(sign: 1 | -1) {
   if (!id || sending.value) return
   const n = Math.min(999, Math.max(1, Math.floor(Number(amount.value) || 1)))
   const isCrit = sign < 0 && crit.value
-  sending.value = true
-  const { error: failed } = await supabase.from('hero_hp_changes').insert({
-    campaign_id: campaignId.value,
-    character_id: id,
-    amount: sign * n,
-    crit: isCrit,
-  })
-  sending.value = false
-  if (failed) {
-    snackbar.error(failed, `Could not send the HP change to ${name}`)
-    return
-  }
+  if (!(await send(id, name, sign * n, isCrit))) return
   amount.value = null
   crit.value = false
-  // The player's sheet applies it and autosaves; refresh the roster once that has landed.
-  setTimeout(() => void reloadRoster().catch(() => undefined), ROSTER_AFTER_MS)
   sent.value = `Sent to ${name}: ${sign < 0 ? `${n} damage${isCrit ? ' (crit)' : ''}` : `heal ${n}`}. Their sheet applies it.`
 }
 

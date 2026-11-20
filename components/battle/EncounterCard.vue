@@ -1,0 +1,370 @@
+<script setup lang="ts">
+// One creature on the GM's encounter grid: portrait or initials, name (a pencil on hover
+// renames it in place: Enter saves, Escape cancels), initiative, the HP bar with numbers,
+// −5 / −1 / amount / +1 / +5 (EncounterHp), Armor, conditions and action pips
+// (EncounterPips: a click spends the next one, a spent one refunds). Slain creatures
+// grey out with Remove and Revive. Heroes take HP through their own sheet (a pickup).
+import type { CampaignNpc, RosterEntry } from '~/types'
+import type { TurnRow, useInitiative } from '~/composables/useInitiative'
+import { statTop } from '~/composables/useCombatantNpcs'
+import { turnActionsFor } from '~/utils/nimblePlay'
+
+const props = defineProps<{
+  init: ReturnType<typeof useInitiative>
+  c: TurnRow
+  npc?: CampaignNpc
+  hero?: RosterEntry
+  selected: boolean
+  acting: boolean
+}>()
+const emit = defineEmits<{ select: []; remove: [] }>()
+
+const heroHp = useSendHeroHp()
+
+const isPc = computed(() => props.c.kind === 'pc')
+const noHp = computed(() => !isPc.value && (props.c.hp_max ?? 0) <= 0)
+const hp = computed(() => {
+  if (isPc.value) {
+    const s = props.hero?.summary
+    return { now: s?.hp ?? 0, max: s?.hpMax ?? 0, temp: s?.tempHp ?? 0 }
+  }
+  return { now: props.c.hp ?? 0, max: props.c.hp_max ?? 0, temp: 0 }
+})
+const slain = computed(() => !isPc.value && hp.value.max > 0 && hp.value.now <= 0)
+const armor = computed(() =>
+  isPc.value
+    ? String(props.hero?.summary?.ac ?? props.c.ac ?? '—')
+    : statTop(props.npc, 'Armor') || String(props.c.ac ?? '—'),
+)
+const conditions = computed(() =>
+  isPc.value ? (props.hero?.summary?.conditions ?? []) : (props.c.conditions ?? []),
+)
+const foot = computed(() => [`Armor ${armor.value}`, ...conditions.value].join(' · '))
+
+/** Monsters' pips are the GM's to click; a hero's come from their sheet (read-only). */
+const pips = computed(() => {
+  if (isPc.value) {
+    const s = props.hero?.summary
+    if (!s) return null
+    const max = turnActionsFor(s.abilityNames ?? [], !!s.dying)
+    return { total: max, used: Math.min(Math.max(0, s.actionsSpent ?? 0), max) }
+  }
+  const total = props.c.actions_max ?? 0
+  return total > 0 ? { total, used: Math.min(props.c.actions_used ?? 0, total) } : null
+})
+
+// --- HP: a creature's tracker copy, or a pickup for the hero's own sheet ----------------
+function change(delta: number) {
+  if (!delta) return
+  if (isPc.value) {
+    const id = props.c.character_id
+    if (id) void heroHp.send(id, props.c.name, delta)
+  } else {
+    void props.init.adjustHp(props.c, delta)
+  }
+}
+
+// --- Rename -----------------------------------------------------------------------
+const editing = ref(false)
+const draftName = ref('')
+const input = ref<HTMLInputElement | null>(null)
+const pen = ref<HTMLButtonElement | null>(null)
+
+async function startRename() {
+  draftName.value = props.c.name
+  editing.value = true
+  await nextTick()
+  input.value?.select()
+}
+
+async function saveRename() {
+  if (!editing.value) return
+  editing.value = false
+  if (draftName.value.trim() !== props.c.name) await props.init.rename(props.c, draftName.value)
+  pen.value?.focus()
+}
+
+function cancelRename() {
+  editing.value = false
+  pen.value?.focus()
+}
+
+function onInit(event: Event) {
+  const v = Number((event.target as HTMLInputElement).value)
+  if (Number.isFinite(v) && v !== props.c.initiative) void props.init.setInitiative(props.c, v)
+}
+
+// --- Tooltip ----------------------------------------------------------------------
+const tipSub = computed(() =>
+  [
+    props.npc?.level ? `Level ${props.npc.level}` : '',
+    `Armor ${armor.value}`,
+    statTop(props.npc, 'Speed') ? `Speed ${statTop(props.npc, 'Speed')}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · '),
+)
+const tipText = computed(() =>
+  (props.npc?.stat_block.sections ?? [])
+    .flatMap((s) => s.items)
+    .slice(0, 3)
+    .map((i) => `${i.n}${i.n ? ': ' : ''}${i.t}`)
+    .join('\n'),
+)
+const tipKeys = computed(() =>
+  isPc.value ? 'Click for their stats' : props.selected ? 'Selected' : 'Click to select',
+)
+</script>
+
+<template>
+  <UiTooltip :title="c.name" :sub="tipSub" :text="tipText" :keys="tipKeys">
+    <article
+      class="ec"
+      :class="{ 'is-sel': selected, 'is-acting': acting, 'is-slain': slain }"
+      :aria-label="c.name"
+      @click="emit('select')"
+    >
+      <div class="ec__top">
+        <UiAvatar
+          :name="c.name"
+          :portrait-path="isPc ? hero?.summary?.portraitOverride || hero?.portrait_path : null"
+          :src="isPc ? null : npcImageUrl(c.portrait_path)"
+          :class-slug="hero?.summary?.classSlug ?? null"
+          :square="c.kind === 'monster'"
+          :faded="slain"
+          :size="30"
+        />
+        <input
+          v-if="editing"
+          ref="input"
+          v-model="draftName"
+          class="ec__rename"
+          maxlength="80"
+          :aria-label="`New name for ${c.name}`"
+          @click.stop
+          @keydown.enter.prevent="saveRename"
+          @keydown.esc.prevent.stop="cancelRename"
+          @blur="saveRename"
+        />
+        <template v-else>
+          <button type="button" class="ec__name" :aria-pressed="selected">
+            {{ c.name }}
+          </button>
+          <button
+            v-if="!isPc"
+            ref="pen"
+            type="button"
+            class="ec__pen"
+            :aria-label="`Rename ${c.name}`"
+            title="Rename"
+            @click.stop="startRename"
+          >
+            ✎
+          </button>
+        </template>
+        <label class="ec__init" title="Initiative" @click.stop>
+          <span class="sr-only">Initiative for {{ c.name }}</span>
+          <input type="number" :value="c.initiative" inputmode="numeric" @change="onInit" />
+        </label>
+      </div>
+
+      <p v-if="noHp" class="ec__nohp">Dies to any damage</p>
+      <BattleEncounterHp
+        v-else
+        :name="c.name"
+        :now="hp.now"
+        :max="hp.max"
+        :temp="hp.temp"
+        :slain="slain"
+        @change="change"
+      />
+
+      <div class="ec__foot">
+        <template v-if="slain">
+          <span class="ec__slain" @click.stop>
+            <button type="button" class="btn btn--quiet btn--sm" @click="emit('remove')">
+              Remove
+            </button>
+            <button type="button" class="btn btn--ghost btn--sm" @click="init.adjustHp(c, 1)">
+              Revive
+            </button>
+          </span>
+        </template>
+        <span v-else class="ec__meta">{{ foot }}</span>
+        <BattleEncounterPips
+          v-if="pips && !slain"
+          :name="c.name"
+          :total="pips.total"
+          :used="pips.used"
+          :readonly="isPc"
+          @set="(used: number) => init.setActions(c, { actions_used: used })"
+        />
+        <span v-else-if="noHp && !isPc" @click.stop>
+          <button type="button" class="btn btn--quiet btn--sm" @click="emit('remove')">
+            Remove
+          </button>
+        </span>
+      </div>
+    </article>
+  </UiTooltip>
+</template>
+
+<style scoped lang="scss">
+.ec {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line);
+  background: var(--inset);
+  color: var(--page-text);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--line-strong);
+  }
+
+  &.is-sel {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  &.is-acting {
+    border-color: var(--accent);
+    box-shadow:
+      0 0 0 1px var(--accent),
+      0 0 14px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  &.is-slain {
+    opacity: 0.55;
+  }
+}
+
+.ec__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ec__name {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ec__pen {
+  flex: none;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--page-muted);
+  font-size: 12px;
+  opacity: 0;
+
+  .ec:hover &,
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+.ec__rename {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 0;
+  border-bottom: 1px dashed var(--line-strong);
+  background: var(--field);
+  color: var(--page-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ec__init {
+  margin-left: auto;
+  flex: none;
+
+  input {
+    width: 40px;
+    padding: 2px 4px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--page-muted);
+    font: inherit;
+    font-size: 12px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    appearance: textfield;
+
+    &:hover,
+    &:focus {
+      border-color: var(--line-strong);
+      background: var(--field);
+      color: var(--page-text);
+    }
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      appearance: none;
+      margin: 0;
+    }
+  }
+}
+
+.ec__nohp {
+  margin: 0;
+  font-size: 12px;
+  color: var(--page-muted);
+}
+
+.ec__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 18px;
+  font-size: 11px;
+  color: var(--page-muted);
+}
+
+.ec__meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec__slain {
+  display: flex;
+  gap: 6px;
+  cursor: default;
+
+  .btn {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+}
+
+.ec__foot > span > .btn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+</style>

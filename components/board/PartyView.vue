@@ -3,11 +3,8 @@
 // also gets the add-combatants dialog and table management (invites, session, players).
 // Side panels: the player's quick actions (left) and the Lore Master (right).
 // Nimble campaigns at 1200px+ get the desktop battle board instead (no side panels).
-import type { Combatant } from '~/types'
-import { plural } from '~/utils/format'
-import { combatantName, downSummonKeys, groupLabels } from '~/utils/initiative'
+import { downSummonKeys } from '~/utils/initiative'
 
-const snackbar = useSnackbarStore()
 const { mode, campaign, campaignId, isGm, gmControls, roster, reloadRoster } = useCampaignBoard()
 
 const init = useInitiative(campaignId, isGm)
@@ -44,83 +41,27 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', refreshRoster)
 })
 
-// --- Add combatants (GM) --------------------------------------------------------
+// --- GM: add combatants (the Party tab's Initiative panel opens the dialog) -----------
 const addOpen = ref(false)
-const adding = ref(false)
-const blank = () => ({
-  name: '',
-  count: 1,
-  kind: 'monster' as Combatant['kind'],
-  initiative: 10,
-  init_mod: 0,
-  hp: 10,
-  ac: 12,
+
+// --- GM on the battle board: the creature in the stat block ----------------------------
+/** The GM's pick (a card or token click); null follows the default. */
+const gmPick = ref<string | null>(null)
+const isCreature = (id: string | null) =>
+  init.rows.value.some((c) => c.id === id && c.kind !== 'pc')
+/** The pick, else the acting creature (not a hero), else the first enemy. */
+const gmSelected = computed(() => {
+  if (isCreature(gmPick.value)) return gmPick.value
+  if (isCreature(init.turnId.value)) return init.turnId.value
+  return init.order.value.find((c) => c.kind === 'monster' || c.kind === 'npc')?.id ?? null
 })
-const draft = ref(blank())
-
-const partyMissing = computed(() =>
-  roster.value.filter(
-    (r) => r.character_id && !init.rows.value.some((c) => c.character_id === r.character_id),
-  ),
-)
-
-async function addParty() {
-  adding.value = true
-  try {
-    const n = await init.addParty(roster.value)
-    if (n) snackbar.show(`${plural(n, 'character')} added to initiative`)
-    addOpen.value = false
-  } catch (err) {
-    snackbar.error(err, 'Could not add the party')
-  } finally {
-    adding.value = false
-  }
-}
-
-/** Letters for the custom group, continuing after any of the same name already on the board. */
-const customLabels = computed<(string | null)[]>(() => {
-  const name = draft.value.name.trim()
-  const count = Math.min(20, Math.max(1, draft.value.count || 1))
-  if (!name) return []
-  const existing = init.rows.value
-    .filter((c) => !c.campaign_npc_id && !c.character_id)
-    .filter((c) => c.name === combatantName(name, c.group_label))
-    // A lone copy without a letter counts as A.
-    .map((c) => c.group_label ?? 'A')
-  return count === 1 && !existing.length ? [null] : groupLabels(count, existing)
-})
-
-async function addCustom() {
-  const d = draft.value
-  const name = d.name.trim()
-  if (!name) return
-  adding.value = true
-  try {
-    const labels = customLabels.value
-    await init.insert(
-      labels.map((label) => ({
-        name: combatantName(name, label),
-        group_label: label,
-        kind: d.kind,
-        initiative: d.initiative,
-        init_mod: d.init_mod,
-        hp: d.hp,
-        hp_max: d.hp,
-        ac: d.ac,
-      })),
-    )
-    draft.value = blank()
-    addOpen.value = false
-  } catch (err) {
-    snackbar.error(err, 'Could not add the combatant')
-  } finally {
-    adding.value = false
-  }
+function onToken(id: string) {
+  if (gmControls.value && isCreature(id)) gmPick.value = id
 }
 </script>
 
 <template>
-  <!-- For now the GM's left and centre hold today's panels; Task 11 replaces them. -->
+  <!-- GM: stat block (left), turn bar and encounter grid (centre). -->
   <BattleBoard
     v-if="wide"
     :init="init"
@@ -134,10 +75,12 @@ async function addCustom() {
         :roster="roster"
         :gm="gmControls"
         @hero="(id: string) => (cardId = id)"
+        @select="onToken"
       />
     </template>
     <template #left="{ hero }">
       <BattleHero v-if="hero" />
+      <BattleStatBlock v-else-if="gmControls" :init="init" :combatant-id="gmSelected" />
       <BoardRoster
         v-else-if="campaign"
         :roster="roster"
@@ -154,14 +97,19 @@ async function addCustom() {
         <BattleTurnBar :init="init" />
         <BattleActions />
       </template>
-      <BoardInitiative
-        v-else
-        class="battle-ini"
-        :init="init"
-        :roster="roster"
-        :gm="gmControls"
-        @add="addOpen = true"
-      />
+      <template v-else-if="gmControls">
+        <BattleGmTurnBar :init="init" :roster="roster" />
+        <BattleEncounter
+          :init="init"
+          :roster="roster"
+          :selected="gmSelected"
+          @update:selected="(id: string | null) => (gmPick = id)"
+          @hero="(id: string) => (cardId = id)"
+        />
+      </template>
+      <p v-else class="panel battle-empty">
+        Seat a hero (Playing as, in the campaign menu) to play from the battle board.
+      </p>
     </template>
     <template #right>
       <BattlePartyCards
@@ -200,103 +148,15 @@ async function addCustom() {
       <BoardTableAdmin v-if="mode === 'console'" />
     </div>
   </div>
-  <UiDialog v-model="addOpen" title="Add to initiative" width="540px">
-    <div class="stack">
-      <div v-if="partyMissing.length" class="row" style="justify-content: space-between">
-        <span class="small"
-          >{{ plural(partyMissing.length, 'party character') }} not in the order yet.</span
-        >
-        <button type="button" class="btn btn--ghost" :disabled="adding" @click="addParty">
-          Add the party
-        </button>
-      </div>
-      <p v-if="mode === 'console'" class="small muted">
-        To add creatures from your index (with their portraits and a journal entry for the party),
-        use
-        <NuxtLink :to="`/campaigns/${campaignId}/gm/npcs`" @click="addOpen = false">NPCs</NuxtLink>.
-      </p>
-      <form class="stack" @submit.prevent="addCustom">
-        <div class="add-grid add-grid--top">
-          <div class="field">
-            <label for="cb-name">Name</label>
-            <input
-              id="cb-name"
-              v-model="draft.name"
-              class="input"
-              maxlength="76"
-              placeholder="Bandit"
-              required
-            />
-          </div>
-          <div class="field">
-            <label for="cb-count">How many</label>
-            <input
-              id="cb-count"
-              v-model.number="draft.count"
-              class="input"
-              type="number"
-              min="1"
-              max="20"
-            />
-          </div>
-        </div>
-        <div class="add-grid">
-          <div class="field">
-            <label for="cb-kind">Kind</label>
-            <select id="cb-kind" v-model="draft.kind" class="input">
-              <option value="monster">Monster</option>
-              <option value="npc">NPC</option>
-              <option value="pc">PC</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="cb-init">Initiative</label>
-            <input id="cb-init" v-model.number="draft.initiative" class="input" type="number" />
-          </div>
-          <div class="field">
-            <label for="cb-mod">Init. modifier</label>
-            <input id="cb-mod" v-model.number="draft.init_mod" class="input" type="number" />
-          </div>
-          <div class="field">
-            <label for="cb-hp">Hit points</label>
-            <input id="cb-hp" v-model.number="draft.hp" class="input" type="number" min="0" />
-          </div>
-          <div class="field">
-            <label for="cb-ac">Armor</label>
-            <input id="cb-ac" v-model.number="draft.ac" class="input" type="number" />
-          </div>
-        </div>
-        <p v-if="customLabels.length > 1 && customLabels[0]" class="small muted">
-          Adds {{ draft.name.trim() }} {{ customLabels[0] }} to {{ draft.name.trim() }}
-          {{ customLabels[customLabels.length - 1] }}.
-        </p>
-        <div class="row" style="justify-content: flex-end">
-          <button type="button" class="btn btn--ghost" @click="addOpen = false">Cancel</button>
-          <button type="submit" class="btn" :disabled="adding || !draft.name.trim()">
-            {{ draft.count > 1 ? `Add ${Math.min(20, draft.count)}` : 'Add combatant' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </UiDialog>
+  <BoardAddCombatants v-if="!wide && gmControls" v-model="addOpen" :init="init" :roster="roster" />
 </template>
 
 <style scoped lang="scss">
-// Battle board, until Tasks 7–11 replace these panels: the bar carries the turn
-// controls, so hide Initiative's own Previous / Next turn and End encounter
-// (Add combatants and Sync summons stay).
-.battle-ini {
-  // The strip above carries the turn order; keep only the GM's controls here.
-  :deep(.ini__strip),
-  :deep(.ini__empty),
-  :deep(.ini__summons) {
-    display: none;
-  }
-
-  :deep(.ini__tools > button:nth-child(n + 3)),
-  :deep(.ini__manage-bar > button:last-child) {
-    display: none;
-  }
+.battle-empty {
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--page-muted);
 }
 
 // Anchor for the player's quick-action panel (board only), which docks in the
@@ -326,15 +186,5 @@ async function addCustom() {
 .party__chat {
   flex: 1 1 380px;
   min-width: 0;
-}
-
-.add-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 12px;
-
-  &--top {
-    grid-template-columns: 1fr 110px;
-  }
 }
 </style>
