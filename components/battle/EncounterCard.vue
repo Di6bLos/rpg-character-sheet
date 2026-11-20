@@ -165,7 +165,23 @@ const tipKeys = computed(() =>
             ✎
           </button>
         </template>
-        <span class="ec__armor">Armor {{ armor }}</span>
+        <span class="ec__armor" title="Armor">
+          <svg
+            class="ec__shield"
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3Z" />
+          </svg>
+          <span class="ec__armor-word">Armor </span><span class="sr-only ec__armor-sr">Armor </span
+          >{{ armor }}
+        </span>
         <label class="ec__init" title="Initiative" @click.stop>
           <span class="sr-only">Initiative for {{ c.name }}</span>
           <input type="number" :value="c.initiative" inputmode="numeric" @change="onInit" />
@@ -225,6 +241,7 @@ const tipKeys = computed(() =>
 
 <style scoped lang="scss">
 .ec {
+  container: ec / inline-size;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -260,7 +277,7 @@ const tipKeys = computed(() =>
 .ec__top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -310,10 +327,34 @@ const tipKeys = computed(() =>
 
 .ec__armor {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   margin-left: auto;
   font-size: 11px;
   color: var(--page-muted);
   white-space: nowrap;
+}
+
+// Wide cards spell out "Armor None"; narrow ones (two columns at 1280px) show a shield,
+// so the name keeps its room.
+.ec__shield,
+.ec__armor-sr {
+  display: none;
+}
+
+@container ec (max-width: 300px) {
+  .ec__shield {
+    display: block;
+  }
+
+  .ec__armor-word {
+    display: none;
+  }
+
+  .ec__armor-sr {
+    display: inline;
+  }
 }
 
 .ec__init {
