@@ -12,15 +12,27 @@ const chat = useBoardChat()
 const tab = useCommsTab()
 const loreAvailable = useLoreAvailable()
 const uid = useId()
+const right = useBattleRight()
+const open = computed(() => right.state.value.chat)
 
 const current = computed(() => (tab.value === 'lore' && loreAvailable.value ? 'lore' : 'chat'))
 
-// The chat counts messages as read only while it is in view.
-watch(current, (t) => chat.setVisible(t === 'chat'), { flush: 'post' })
-// BoardChat marks itself visible as it mounts; correct that if the Lore tab was left open.
-onMounted(() => chat.setVisible(current.value === 'chat'))
+// The chat counts messages as read only while it is in view: its tab open, the
+// panel unfolded and the column not collapsed.
+const chatInView = computed(
+  () => current.value === 'chat' && open.value && right.state.value.column,
+)
+watch(chatInView, (on) => chat.setVisible(on), { flush: 'post' })
+// BoardChat marks itself visible as it mounts; correct that if it is out of view.
+onMounted(() => chat.setVisible(chatInView.value))
 
-const unread = computed(() => (current.value === 'lore' ? chat.totalUnread.value : 0))
+const unread = computed(() => (chatInView.value ? 0 : chat.totalUnread.value))
+
+/** A tab click also unfolds the panel. */
+function pick(t: 'chat' | 'lore') {
+  tab.value = t
+  if (!open.value) right.toggleChat()
+}
 
 function onKey(event: KeyboardEvent) {
   if (!loreAvailable.value) return
@@ -33,7 +45,11 @@ function onKey(event: KeyboardEvent) {
 </script>
 
 <template>
-  <section class="panel comms" aria-label="Chat and Lore Master">
+  <section
+    class="panel comms"
+    :class="{ 'comms--folded': !open }"
+    aria-label="Chat and Lore Master"
+  >
     <div class="comms__head">
       <div role="tablist" aria-label="Chat or Lore Master" class="comms__tabs" @keydown="onKey">
         <button
@@ -44,7 +60,7 @@ function onKey(event: KeyboardEvent) {
           :aria-controls="`${uid}-chat`"
           :tabindex="current === 'chat' ? 0 : -1"
           :aria-label="unread ? `Chat, ${plural(unread, 'unread message')}` : undefined"
-          @click="tab = 'chat'"
+          @click="pick('chat')"
         >
           Chat
           <span v-if="unread" class="comms__count" aria-hidden="true">{{ unread }}</span>
@@ -57,14 +73,22 @@ function onKey(event: KeyboardEvent) {
           :aria-selected="current === 'lore'"
           :aria-controls="`${uid}-lore`"
           :tabindex="current === 'lore' ? 0 : -1"
-          @click="tab = 'lore'"
+          @click="pick('lore')"
         >
           <span aria-hidden="true">✦</span> Lore Master
         </button>
       </div>
+      <BattlePanelToggle
+        class="comms__fold"
+        :dir="open ? 'up' : 'down'"
+        :label="open ? 'Hide the chat' : 'Show the chat'"
+        :aria-expanded="open"
+        :aria-controls="`${uid}-${current}`"
+        @click="right.toggleChat()"
+      />
     </div>
     <div
-      v-show="current === 'chat'"
+      v-show="open && current === 'chat'"
       :id="`${uid}-chat`"
       role="tabpanel"
       :aria-labelledby="`${uid}-chat-tab`"
@@ -74,7 +98,7 @@ function onKey(event: KeyboardEvent) {
     </div>
     <div
       v-if="loreAvailable"
-      v-show="current === 'lore'"
+      v-show="open && current === 'lore'"
       :id="`${uid}-lore`"
       role="tabpanel"
       :aria-labelledby="`${uid}-lore-tab`"
@@ -98,10 +122,16 @@ function onKey(event: KeyboardEvent) {
   overflow: hidden;
 }
 
+.comms--folded {
+  flex: none;
+  padding-bottom: 6px;
+}
+
 .comms__head {
   flex: none;
   display: flex;
   align-items: center;
+  gap: 8px;
   min-height: 32px;
   padding: 5px 14px 0;
 }
@@ -139,6 +169,10 @@ function onKey(event: KeyboardEvent) {
       outline-offset: 1px;
     }
   }
+}
+
+.comms__fold {
+  margin-left: auto;
 }
 
 .comms__count {
@@ -309,10 +343,11 @@ function onKey(event: KeyboardEvent) {
     font-size: 13px;
   }
 
+  // Beside the tabs, left of the fold button.
   :deep(.chat__title) {
     position: absolute;
     top: 4px;
-    right: 14px;
+    right: 48px;
   }
 
   :deep(.chat__title h2) {

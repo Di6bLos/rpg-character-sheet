@@ -16,6 +16,8 @@ const props = defineProps<{
 const emit = defineEmits<{ open: [characterId: string] }>()
 
 const auth = useAuthStore()
+const right = useBattleRight()
+const listId = useId()
 
 const heroes = computed(() =>
   props.roster.filter(
@@ -89,7 +91,10 @@ function label(r: RosterEntry): string {
 <template>
   <section
     class="panel party-cards"
-    :class="{ 'party-cards--empty': !heroes.length }"
+    :class="{
+      'party-cards--empty': !heroes.length,
+      'party-cards--folded': !right.state.value.party,
+    }"
     aria-labelledby="party-h"
   >
     <header class="party__head">
@@ -101,8 +106,25 @@ function label(r: RosterEntry): string {
       <span v-else class="party__count">{{
         `${heroes.length} ${heroes.length === 1 ? 'hero' : 'heroes'}`
       }}</span>
+      <span class="party__tools">
+        <BattlePanelToggle
+          v-if="heroes.length"
+          :dir="right.state.value.party ? 'up' : 'down'"
+          :label="right.state.value.party ? 'Hide the party' : 'Show the party'"
+          :aria-expanded="right.state.value.party"
+          :aria-controls="listId"
+          @click="right.toggleParty()"
+        />
+        <BattlePanelToggle
+          id="battle-right-collapse"
+          dir="right"
+          label="Collapse party and chat"
+          aria-expanded="true"
+          @click="right.toggleColumn()"
+        />
+      </span>
     </header>
-    <ul v-if="heroes.length" class="party__list">
+    <ul v-if="heroes.length" v-show="right.state.value.party" :id="listId" class="party__list">
       <li v-for="r in heroes" :key="r.character_id">
         <button
           type="button"
@@ -166,8 +188,9 @@ function label(r: RosterEntry): string {
   padding: 10px 14px;
   min-height: 0;
 
-  // No other heroes: one line, and Chat takes the rest.
-  &--empty {
+  // No other heroes, or folded: one line, and Chat takes the rest.
+  &--empty,
+  &--folded {
     flex: none;
     padding-block: 8px;
   }
@@ -175,8 +198,7 @@ function label(r: RosterEntry): string {
 
 .party__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 8px;
   min-width: 0;
 
@@ -186,6 +208,18 @@ function label(r: RosterEntry): string {
     font-family: var(--font-heading);
     font-size: 16px;
   }
+}
+
+.party__tools {
+  flex: none;
+  display: inline-flex;
+  gap: 4px;
+}
+
+// The count (or the empty note) and the buttons sit at the right.
+.party__count,
+.party__empty {
+  margin-left: auto;
 }
 
 .party__count,

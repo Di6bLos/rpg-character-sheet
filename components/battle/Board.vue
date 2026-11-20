@@ -21,6 +21,16 @@ defineSlots<{
 }>()
 
 const { gmControls } = useCampaignBoard()
+const right = useBattleRight()
+
+// Collapsing or opening the right column moves focus to the button that undoes it.
+watch(
+  () => right.state.value.column,
+  async (open) => {
+    await nextTick()
+    document.getElementById(open ? 'battle-right-collapse' : 'battle-rail-open')?.focus()
+  },
+)
 
 // The board starts under the app nav (and any banner above it): measure where
 // so its height is exactly what is left of the viewport.
@@ -40,7 +50,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
   <div
     ref="el"
     class="battle"
-    :class="{ 'battle--gm': gmControls }"
+    :class="{ 'battle--gm': gmControls, 'battle--rail': !right.state.value.column }"
     :style="top ? { '--battle-top': `${top}px` } : undefined"
   >
     <BattleBar :init="init" />
@@ -57,7 +67,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
         <div class="battle__col battle__col--left"><slot name="left" :hero="hero" /></div>
         <div class="battle__col battle__col--centre"><slot name="centre" :hero="hero" /></div>
       </BattleHeroScope>
-      <div class="battle__col battle__col--right"><slot name="right" /></div>
+      <!-- Kept mounted while collapsed, so the chat keeps its draft and live updates. -->
+      <div v-show="right.state.value.column" class="battle__col battle__col--right">
+        <slot name="right" />
+      </div>
+      <BattleRightRail v-if="!right.state.value.column" />
     </div>
   </div>
 </template>
@@ -88,6 +102,10 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
   flex: 1 1 0;
   display: grid;
   grid-template-columns: var(--battle-left) minmax(0, 1fr) 340px;
+
+  .battle--rail & {
+    grid-template-columns: var(--battle-left) minmax(0, 1fr) 48px;
+  }
   grid-template-rows: minmax(0, 1fr);
   gap: 14px;
   padding: 14px 20px 20px;

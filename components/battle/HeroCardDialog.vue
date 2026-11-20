@@ -19,6 +19,7 @@ const auth = useAuthStore()
 const campaigns = useCampaignStore()
 const chat = useBoardChat()
 const commsTab = useCommsTab()
+const right = useBattleRight()
 const { campaignId } = useCampaignBoard()
 
 const open = computed({
@@ -127,6 +128,7 @@ async function whisper() {
   if (!to) return
   chat.open(to)
   commsTab.value = 'chat'
+  right.showChat()
   characterId.value = null
   // After the dialog closes (and hands focus back), put the cursor in the message box.
   await nextTick()
