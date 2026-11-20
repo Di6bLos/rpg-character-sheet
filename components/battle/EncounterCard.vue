@@ -168,7 +168,13 @@ const tipKeys = computed(() =>
         </label>
       </div>
 
-      <p v-if="noHp" class="ec__nohp">Dies to any damage</p>
+      <div v-if="noHp" class="ec__nohp">
+        <span>Dies to any damage</span>
+        <!-- No HP to bring to 0, so these leave the order with Remove (asks first). -->
+        <button type="button" class="btn btn--quiet btn--sm" @click.stop="emit('remove')">
+          Remove
+        </button>
+      </div>
       <BattleEncounterHp
         v-else
         :name="c.name"
@@ -199,11 +205,6 @@ const tipKeys = computed(() =>
           :readonly="isPc"
           @set="(used: number) => init.setActions(c, { actions_used: used })"
         />
-        <span v-else-if="noHp && !isPc" @click.stop>
-          <button type="button" class="btn btn--quiet btn--sm" @click="emit('remove')">
-            Remove
-          </button>
-        </span>
       </div>
     </article>
   </UiTooltip>
@@ -328,9 +329,18 @@ const tipKeys = computed(() =>
 }
 
 .ec__nohp {
-  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 12px;
   color: var(--page-muted);
+
+  .btn {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
 }
 
 .ec__foot {
@@ -360,11 +370,5 @@ const tipKeys = computed(() =>
     padding: 0 10px;
     font-size: 12px;
   }
-}
-
-.ec__foot > span > .btn {
-  min-height: 28px;
-  padding: 0 10px;
-  font-size: 12px;
 }
 </style>
