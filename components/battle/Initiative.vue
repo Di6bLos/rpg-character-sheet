@@ -128,7 +128,8 @@ function onToken(c: TurnRow) {
   emit('select', c.id)
 }
 
-// Keep the acting token in view; scrollIntoView with block 'nearest' never moves the page.
+// Keep the acting token in view, from the first render on (it may start off-screen);
+// scrollIntoView with block 'nearest' never moves the page.
 const strip = ref<HTMLElement | null>(null)
 watch(
   () => props.init.activeId.value,
@@ -139,7 +140,7 @@ watch(
       el?.scrollIntoView({ inline: 'center', block: 'nearest' })
     })
   },
-  { flush: 'post' },
+  { flush: 'post', immediate: true },
 )
 </script>
 
