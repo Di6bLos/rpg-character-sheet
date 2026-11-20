@@ -4,6 +4,7 @@
 // columns scroll; the page itself never does. For players the left and centre
 // columns share the seated hero's sheet editor (HeroScope).
 import type { useInitiative } from '~/composables/useInitiative'
+import { LEFT_WIDTH } from '~/composables/useBattleLeft'
 import { RIGHT_WIDTH } from '~/composables/useBattleRight'
 
 defineProps<{
@@ -22,73 +23,55 @@ defineSlots<{
 }>()
 
 const { gmControls } = useCampaignBoard()
+const left = useBattleLeft()
 const right = useBattleRight()
 
-// The right column's width: dragged on its left edge, all the way to closed (the
-// rail) and back. It never squeezes the centre column below CENTRE_MIN; the CSS caps
-// it the same way when the window shrinks. The handle stays one element while the
-// column opens and closes, so a drag carries on through the snap.
+// Both side columns are dragged on their inner edge, all the way to closed (a rail) and
+// back (`useColumnHandle`). Neither squeezes the centre column below CENTRE_MIN; the
+// CSS caps them the same way when the window shrinks. Each handle stays one element
+// while its column opens and closes, so a drag carries on through the snap.
 const CENTRE_MIN = 460
 const cols = ref<HTMLElement | null>(null)
+const leftEl = ref<HTMLElement | null>(null)
 const rightEl = ref<HTMLElement | null>(null)
+const leftOpen = computed(() => left.state.value.column)
 const open = computed(() => right.state.value.column)
-let dragWidth: number | null = null
+const leftWidth = computed(() => left.widthFor(gmControls.value))
 
-function currentWidth() {
-  return open.value ? (rightEl.value?.getBoundingClientRect().width ?? right.state.value.width) : 0
-}
-function widthLimit() {
+/** How wide `el` may grow now: its width plus what the centre has beyond its minimum. */
+function growLimit(el: HTMLElement | null, max: number) {
   const centre = cols.value?.querySelector<HTMLElement>('.battle__col--centre')
   const centreNow = centre?.getBoundingClientRect().width ?? CENTRE_MIN
-  const rightNow = rightEl.value?.getBoundingClientRect().width ?? 0
-  return Math.min(RIGHT_WIDTH.max, rightNow + centreNow - CENTRE_MIN)
+  const now = el?.getBoundingClientRect().width ?? 0
+  return Math.min(max, now + centreNow - CENTRE_MIN)
 }
-/** Narrower than the close point: closed; otherwise open at that width (at least the minimum). */
-function applyWidth(px: number, save: boolean) {
-  if (px < RIGHT_WIDTH.close) right.setColumn(false, save)
-  else right.setWidth(Math.min(px, widthLimit()), save)
-}
-/** Dragging the closed rail left this far opens the column at its minimum width. */
-const OPEN_PULL = 24
-// Whether this drag began on the closed rail: only then does a short pull open it
-// (a drag that closes the column mid-way must stay closed while it carries on).
-let fromRail = false
-/** The width the drag began at, kept for reopening when the drag closes the column. */
-let startWidth = 0
-function onWidthMove(delta: number) {
-  if (dragWidth === null) {
-    fromRail = !open.value
-    dragWidth = currentWidth()
-    startWidth = open.value ? right.state.value.width : 0
-  }
-  dragWidth -= delta
-  if (fromRail && !open.value) {
-    if (dragWidth < OPEN_PULL) return
-    dragWidth = RIGHT_WIDTH.min
-  }
-  applyWidth(dragWidth, false)
-}
-/** A click on the handle opens or closes the column (it reopens at its last width). */
-function onWidthTap() {
-  if (open.value) right.closeAt(right.state.value.width)
-  else right.setWidth(right.state.value.width)
-}
-function onWidthKey(step: 'less' | 'more' | 'min' | 'max') {
-  const now = currentWidth()
-  // The handle is on the column's left edge: Left widens it, Right narrows it; End closes it.
-  if (step === 'max') return right.setColumn(false, false)
-  if (step === 'min') return applyWidth(RIGHT_WIDTH.max, false)
-  if (!open.value) return step === 'less' ? applyWidth(right.state.value.width, false) : undefined
-  applyWidth(step === 'less' ? now + 24 : Math.max(now - 24, RIGHT_WIDTH.close - 1), false)
-}
-function onWidthDrop() {
-  // Dragged shut: a click reopens it at the width it had before.
-  if (!open.value && startWidth) right.closeAt(startWidth)
-  else right.save()
-  dragWidth = null
-  fromRail = false
-  startWidth = 0
-}
+
+const leftHandle = useColumnHandle({
+  side: 'left',
+  bounds: LEFT_WIDTH,
+  open: () => leftOpen.value,
+  width: () => leftWidth.value,
+  measure: () => leftEl.value?.getBoundingClientRect().width ?? leftWidth.value,
+  limit: () => growLimit(leftEl.value, LEFT_WIDTH.max),
+  setOpen: left.setColumn,
+  setWidth: left.setWidth,
+  closeAt: left.closeAt,
+  save: left.save,
+})
+
+const rightHandle = useColumnHandle({
+  side: 'right',
+  bounds: RIGHT_WIDTH,
+  open: () => open.value,
+  width: () => right.state.value.width,
+  measure: () => rightEl.value?.getBoundingClientRect().width ?? right.state.value.width,
+  limit: () => growLimit(rightEl.value, RIGHT_WIDTH.max),
+  setOpen: right.setColumn,
+  setWidth: right.setWidth,
+  closeAt: right.closeAt,
+  save: right.save,
+})
+
 // The board starts under the app nav (and any banner above it): measure where
 // so its height is exactly what is left of the viewport.
 const el = ref<HTMLElement | null>(null)
@@ -107,10 +90,10 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
   <div
     ref="el"
     class="battle"
-    :class="{ 'battle--gm': gmControls, 'battle--rail': !open }"
     :style="{
       ...(top ? { '--battle-top': `${top}px` } : {}),
-      '--battle-right': `${right.state.value.width}px`,
+      '--battle-left': leftOpen ? `${leftWidth}px` : 'var(--battle-rail)',
+      '--battle-right': open ? `${right.state.value.width}px` : 'var(--battle-rail)',
     }"
   >
     <BattleBar :init="init" />
@@ -124,12 +107,37 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
         :round="round"
         :down-summons="downSummons"
       >
-        <div class="battle__col battle__col--left"><slot name="left" :hero="hero" /></div>
+        <!-- Kept mounted while closed, like the right column. -->
+        <div
+          ref="leftEl"
+          class="battle__side battle__side--left"
+          :class="{ 'is-closed': !leftOpen }"
+        >
+          <BattleSplitter
+            class="battle__split"
+            orientation="vertical"
+            :label="
+              leftOpen
+                ? `Resize the ${gmControls ? 'stat block' : 'hero'} column: drag, or click to close`
+                : `The ${gmControls ? 'stat block' : 'hero'} column is closed: click or drag right to open`
+            "
+            :value="leftOpen ? leftWidth : 0"
+            :min="0"
+            :max="LEFT_WIDTH.max"
+            @move="leftHandle.onMove"
+            @key="leftHandle.onKey"
+            @drop="leftHandle.onDrop"
+            @tap="leftHandle.onTap"
+          />
+          <div v-show="leftOpen" class="battle__col battle__col--left">
+            <slot name="left" :hero="hero" />
+          </div>
+        </div>
         <div class="battle__col battle__col--centre"><slot name="centre" :hero="hero" /></div>
       </BattleHeroScope>
       <!-- One element open or closed: the chat keeps its draft and live updates, and the
            handle keeps the pointer through a drag that opens or closes the column. -->
-      <div ref="rightEl" class="battle__right" :class="{ 'is-closed': !open }">
+      <div ref="rightEl" class="battle__side battle__side--right" :class="{ 'is-closed': !open }">
         <BattleSplitter
           class="battle__split"
           orientation="vertical"
@@ -141,10 +149,10 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
           :value="open ? right.state.value.width : 0"
           :min="0"
           :max="RIGHT_WIDTH.max"
-          @move="onWidthMove"
-          @key="onWidthKey"
-          @drop="onWidthDrop"
-          @tap="onWidthTap"
+          @move="rightHandle.onMove"
+          @key="rightHandle.onKey"
+          @drop="rightHandle.onDrop"
+          @tap="rightHandle.onTap"
         />
         <BattleRightRail v-if="!open" />
         <div v-show="open" class="battle__col battle__col--right">
@@ -157,15 +165,12 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
 
 <style scoped lang="scss">
 .battle {
-  --battle-left: 320px;
+  // A closed side column's rail.
+  --battle-rail: 22px;
   height: calc(100dvh - var(--battle-top, 69px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
-
-  &--gm {
-    --battle-left: 340px;
-  }
 }
 
 .battle__strip {
@@ -180,21 +185,19 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
 .battle__cols {
   flex: 1 1 0;
   display: grid;
-  // The right column is as wide as dragged, but never leaves the centre under 460px.
+  // Each side column is as wide as dragged (or the rail), but never leaves the centre
+  // under 460px: 28px is the two gaps.
   grid-template-columns:
-    var(--battle-left) minmax(0, 1fr)
+    min(var(--battle-left), max(240px, calc(100% - var(--battle-right) - 28px - 460px)))
+    minmax(0, 1fr)
     min(var(--battle-right), max(260px, calc(100% - var(--battle-left) - 28px - 460px)));
-
-  .battle--rail & {
-    grid-template-columns: var(--battle-left) minmax(0, 1fr) 22px;
-  }
   grid-template-rows: minmax(0, 1fr);
   gap: 14px;
   padding: 14px 20px 20px;
   min-height: 0;
 }
 
-.battle__right {
+.battle__side {
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -206,18 +209,26 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
   }
 }
 
-// Open: the handle fills the gap left of the column. Closed: the whole rail is the
-// handle, drawn as a slim panel edge.
+// Open: the handle fills the gap beside the column (right of the left one, left of the
+// right one). Closed: the whole rail is the handle, drawn as a slim panel edge.
 .battle__split {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: -14px;
   width: 14px;
   z-index: 1;
 
+  .battle__side--left > & {
+    right: -14px;
+  }
+
+  .battle__side--right > & {
+    left: -14px;
+  }
+
   .is-closed > & {
     left: 0;
+    right: auto;
     width: 100%;
     border: 1px solid var(--line);
     border-radius: 999px;

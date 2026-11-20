@@ -28,6 +28,7 @@ const actingCharacterId = computed(
 // encounter grid shows its vitals (GmHero). Party cards open the stats modal instead.
 /** The GM's pick (a card or token click); null follows the default. */
 const gmPick = ref<string | null>(null)
+const left = useBattleLeft()
 const rowOf = (id: string | null) => init.rows.value.find((c) => c.id === id)
 const isCreature = (id: string | null) => {
   const row = rowOf(id)
@@ -46,8 +47,13 @@ const gmSelected = computed(() => {
   return init.order.value.find((c) => c.kind === 'monster' || c.kind === 'npc')?.id ?? null
 })
 const gmHeroId = computed(() => seatedHero(gmSelected.value))
+/** Picks what the GM's left column shows, opening the column if it was closed. */
+function gmShow(id: string) {
+  gmPick.value = id
+  if (!left.state.value.column) left.setColumn(true)
+}
 function onToken(id: string) {
-  if (gmControls.value && (isCreature(id) || seatedHero(id))) gmPick.value = id
+  if (gmControls.value && (isCreature(id) || seatedHero(id))) gmShow(id)
 }
 /** A hero token: the GM gets the vitals on the left (onToken), players the stats modal. */
 function onHeroToken(characterId: string) {
@@ -56,7 +62,7 @@ function onHeroToken(characterId: string) {
 /** An encounter-grid hero card picks that hero's row. */
 function onGridHero(characterId: string) {
   const row = init.rows.value.find((c) => c.kind === 'pc' && c.character_id === characterId)
-  if (row) gmPick.value = row.id
+  if (row) gmShow(row.id)
 }
 </script>
 
@@ -88,10 +94,6 @@ function onGridHero(characterId: string) {
         :system="campaign.system"
         :turn-character-id="turnCharacterId"
       />
-      <!-- Here so the viewer's own hero gets the hero column's HP (same sheet editor). -->
-      <BattleHeroCardDialog v-model:character-id="cardId" :roster="roster" :gm="gmControls">
-        <template v-if="hero" #own-hp><BattleHeroHp /></template>
-      </BattleHeroCardDialog>
     </template>
     <template #centre="{ hero }">
       <template v-if="hero">
@@ -105,7 +107,7 @@ function onGridHero(characterId: string) {
           :roster="roster"
           :selected="gmSelected"
           :picked="gmPick"
-          @update:selected="(id: string | null) => (gmPick = id)"
+          @update:selected="(id: string | null) => (id ? gmShow(id) : (gmPick = null))"
           @hero="onGridHero"
         />
       </template>
@@ -116,6 +118,11 @@ function onGridHero(characterId: string) {
       <p v-else class="panel battle-empty">
         Seat a hero (Playing as, in the campaign menu) to play from the battle board.
       </p>
+      <!-- In the centre (inside the hero's sheet editor, so the viewer's own hero gets the
+           hero column's HP) and not the left column, which may be closed (hidden). -->
+      <BattleHeroCardDialog v-model:character-id="cardId" :roster="roster" :gm="gmControls">
+        <template v-if="hero" #own-hp><BattleHeroHp /></template>
+      </BattleHeroCardDialog>
     </template>
     <template #right>
       <BattlePartyCards
