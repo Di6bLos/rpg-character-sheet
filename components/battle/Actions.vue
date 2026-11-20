@@ -11,7 +11,7 @@ const FILTERS: ActionFilter[] = ['ready', 'all', 'attack', 'spell', 'react', 'ab
 
 const { canEdit } = useSheet<NimbleSheet>()
 const announce = useAnnounce()
-const { actions, onTurn, actionsLeft, mana, lastResult } = useBattleActions({
+const { actions, onTurn, actionsLeft, mana, lastResult, lastDetail } = useBattleActions({
   onResult: announce,
 })
 
@@ -80,7 +80,7 @@ const empty = computed(() =>
       <p v-if="!sections.length" class="actions__empty">{{ empty }}</p>
     </div>
     <p v-if="lastResult" class="actions__result" role="status">
-      <span class="actions__last">{{ lastResult }}</span>
+      <span class="actions__last" :title="lastDetail || undefined">{{ lastResult }}</span>
       <span class="actions__posted">Posted to party chat</span>
     </p>
   </section>

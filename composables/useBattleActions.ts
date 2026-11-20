@@ -39,9 +39,33 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
   const { draft } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
   const lastResult = ref('')
+  /** The full text behind a shortened result (own dice), for its tooltip. */
+  const lastDetail = ref('')
+  /** The tile being used, while its click runs. */
+  let using = ''
   const onResult = (message: string) => {
+    // Rolling their own dice, the player gets "Iriel: use Staff" instead of what to roll
+    // (the dice are on the tile; the full text stays in the tooltip). The party sees
+    // the same short line in chat.
+    if (using && sheet.value.ownDice && /\byourself\b/.test(message)) {
+      lastResult.value = `${draft.value.name}: use ${using}`
+      lastDetail.value = message
+      options.onResult?.(`uses ${using}`)
+      return
+    }
     lastResult.value = message
+    lastDetail.value = ''
     options.onResult?.(message)
+  }
+  function named(name: string, use: () => void): () => void {
+    return () => {
+      using = name
+      try {
+        use()
+      } finally {
+        using = ''
+      }
+    }
   }
 
   const nimble = useNimbleActions({ onResult })
@@ -264,12 +288,15 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
     return [...attacks, ...support]
   })
 
-  const actions = computed<BattleTile[]>(() => [
-    ...weapons.value,
-    ...spellTiles.value,
-    ...abilityTiles.value,
-    ...reactionTiles.value,
-  ])
+  const actions = computed<BattleTile[]>(() =>
+    [...weapons.value, ...spellTiles.value, ...abilityTiles.value, ...reactionTiles.value].map(
+      (t) => ({
+        ...t,
+        use: named(t.name, t.use),
+        choices: t.choices?.map((c) => ({ ...c, use: named(t.name, c.use) })),
+      }),
+    ),
+  )
 
   const mana = computed(() => {
     const { current, max, temp } = sheet.value.mana
@@ -282,5 +309,6 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
     actionsLeft: computed(() => nimble.left.value),
     mana,
     lastResult,
+    lastDetail,
   }
 }
