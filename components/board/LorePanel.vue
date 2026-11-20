@@ -5,21 +5,7 @@
 // saved a provider key, or the free agent (site's Gemini key) is on. From 1200px it docks in the page's right margin and
 // folds to a slim tab; below that a "Lore" tab under "Actions" opens it as a
 // drawer from the left. Same one-<dialog> approach as the quick-action panel.
-const site = useSiteStore()
-const aiKeys = useAiKeysStore()
-
-onMounted(() => {
-  // Without them the panel just stays hidden.
-  site.fetch().catch(() => undefined)
-  aiKeys.fetch().catch(() => undefined)
-})
-
-const visible = computed(
-  () =>
-    site.settings.ai_enabled &&
-    aiKeys.loaded &&
-    (aiKeys.keys.length > 0 || site.settings.free_ai_enabled),
-)
+const visible = useLoreAvailable()
 
 const panelId = useId()
 const { el, wide, drawerOpen, folded, setCollapsed, onClose, onBackdrop, dismiss } = useDockedPanel(

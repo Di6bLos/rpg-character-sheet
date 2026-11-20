@@ -19,6 +19,9 @@ const turnCharacterId = computed(
   () => init.order.value.find((c) => c.id === init.activeId.value)?.character_id ?? null,
 )
 const encounterRound = computed(() => (init.turnId.value ? init.round.value : null))
+/** The hero whose stats modal is open (party cards and hero initiative tokens). */
+const cardId = ref<string | null>(null)
+
 const actingCharacterId = computed(
   () => init.order.value.find((c) => c.id === init.turnId.value)?.character_id ?? null,
 )
@@ -117,7 +120,7 @@ async function addCustom() {
 </script>
 
 <template>
-  <!-- For now the battle board holds today's panels; later tasks replace each slot. -->
+  <!-- For now the GM's left and centre hold today's panels; Task 11 replaces them. -->
   <BattleBoard
     v-if="wide"
     :init="init"
@@ -126,7 +129,12 @@ async function addCustom() {
     :down-summons="downSummons"
   >
     <template #strip>
-      <BattleInitiative :init="init" :roster="roster" :gm="gmControls" />
+      <BattleInitiative
+        :init="init"
+        :roster="roster"
+        :gm="gmControls"
+        @hero="(id: string) => (cardId = id)"
+      />
     </template>
     <template #left="{ hero }">
       <BattleHero v-if="hero" />
@@ -136,6 +144,15 @@ async function addCustom() {
         :system="campaign.system"
         :turn-character-id="turnCharacterId"
       />
+      <!-- Here so the viewer's own hero gets the hero column's HP (same sheet editor). -->
+      <BattleHeroCardDialog
+        v-model:character-id="cardId"
+        :init="init"
+        :roster="roster"
+        :gm="gmControls"
+      >
+        <template v-if="hero" #own-hp><BattleHeroHp /></template>
+      </BattleHeroCardDialog>
     </template>
     <template #centre="{ hero }">
       <template v-if="hero">
@@ -152,7 +169,13 @@ async function addCustom() {
       />
     </template>
     <template #right>
-      <BoardChat class="battle-chat" :roster="roster" />
+      <BattlePartyCards
+        :roster="roster"
+        :gm="gmControls"
+        :acting-character-id="turnCharacterId"
+        @open="(id: string) => (cardId = id)"
+      />
+      <BattleComms :roster="roster" />
     </template>
   </BattleBoard>
   <div v-else class="party-layout">
@@ -266,7 +289,7 @@ async function addCustom() {
 <style scoped lang="scss">
 // Battle board, until Tasks 7–11 replace these panels: the bar carries the turn
 // controls, so hide Initiative's own Previous / Next turn and End encounter
-// (Add combatants and Sync summons stay). Chat fills the right column.
+// (Add combatants and Sync summons stay).
 .battle-ini {
   // The strip above carries the turn order; keep only the GM's controls here.
   :deep(.ini__strip),
@@ -279,13 +302,6 @@ async function addCustom() {
   :deep(.ini__manage-bar > button:last-child) {
     display: none;
   }
-}
-
-.battle-chat.battle-chat {
-  flex: 1 1 0;
-  height: auto;
-  min-height: 420px;
-  max-height: none;
 }
 
 // Anchor for the player's quick-action panel (board only), which docks in the
