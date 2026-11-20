@@ -275,11 +275,10 @@ const tipKeys = computed(() =>
   background: none;
   color: var(--page-muted);
   font-size: 12px;
-  opacity: 0;
 
-  .ec:hover &,
+  &:hover,
   &:focus-visible {
-    opacity: 1;
+    color: var(--page-text);
   }
 }
 

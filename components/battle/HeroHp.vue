@@ -222,6 +222,12 @@ function apply(sign: 1 | -1) {
   width: 24px;
   height: 24px;
   font-size: 14px;
+
+  // Fading the whole button lost the glyph on Cursed parchment; mute the glyph instead.
+  &:disabled {
+    opacity: 1;
+    color: var(--page-muted);
+  }
 }
 
 .hp__num {

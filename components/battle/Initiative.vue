@@ -266,13 +266,24 @@ watch(
   border-radius: var(--radius-control);
   background: var(--panel-bg);
   color: var(--panel-text);
+  // The strip sits outside .panel, so take the panel palette here (as .panel does), or
+  // page-palette text lands on Cursed parchment.
+  --page-text: var(--panel-text);
+  --page-soft: var(--panel-soft);
+  --page-muted: var(--panel-muted);
+  --line: var(--panel-line);
+  --line-strong: var(--panel-line-strong);
+  --track: var(--panel-track);
+  --inset: var(--panel-inset);
+  --accent-text: var(--accent-ink);
 
   &.is-foe {
     border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
   }
 
   &.is-now {
-    background: var(--accent-tint);
+    // The tint is translucent: lay it over the panel, not the page behind the strip.
+    background: linear-gradient(var(--accent-tint), var(--accent-tint)), var(--panel-bg);
     border-color: var(--accent);
   }
 
@@ -338,7 +349,7 @@ watch(
   font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--accent-text);
+  color: color-mix(in srgb, var(--accent-text) 60%, var(--page-text));
 }
 
 .tok__name {
@@ -351,7 +362,7 @@ watch(
 }
 
 .tok__dead {
-  color: var(--danger);
+  color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
 }
 
 .tok__hp {
@@ -363,7 +374,7 @@ watch(
   text-overflow: ellipsis;
 
   &.is-low {
-    color: var(--danger);
+    color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
   }
 }
 

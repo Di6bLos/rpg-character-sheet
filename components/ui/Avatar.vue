@@ -83,7 +83,9 @@ watch(
   border-radius: 50%;
   overflow: hidden;
   background: var(--inset, var(--line));
-  color: var(--accent-text);
+  // The readable accent is tuned for the panel itself; the inset is darker (lighter on
+  // dark themes), so pull it toward the text colour to keep the initials at AA.
+  color: color-mix(in srgb, var(--accent-text) 60%, var(--page-text));
   font-family: var(--font-heading);
   font-weight: 700;
   line-height: 1;

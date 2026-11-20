@@ -176,7 +176,7 @@ const abilities = computed(() => props.card.abilities.filter((a) => a.name))
   }
 
   &--dis span {
-    color: color-mix(in srgb, var(--danger) 65%, var(--page-text));
+    color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
     font-weight: 700;
   }
 }

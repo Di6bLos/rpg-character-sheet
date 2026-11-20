@@ -269,8 +269,9 @@ function onClick() {
   flex: none;
   font-size: 11px;
   font-weight: 600;
-  // Mixed with the text colour so it reads on dark panels and Cursed parchment.
-  color: color-mix(in srgb, var(--accent) 55%, var(--page-text));
+  // The readable accent (the ink variant inside a panel), pulled toward the text colour
+  // so it stays at AA on inset and tinted tiles too.
+  color: color-mix(in srgb, var(--accent-text) 60%, var(--page-text));
   white-space: nowrap;
 }
 

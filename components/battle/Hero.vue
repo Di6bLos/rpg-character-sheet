@@ -236,8 +236,9 @@ const stats = computed(() =>
 }
 
 .is-changed {
-  // Mixed with the text colour so it stays readable on the Cursed parchment panel.
-  color: color-mix(in srgb, var(--warn-text) 55%, var(--page-text));
+  // The readable accent (the ink variant inside a panel), pulled toward the text colour
+  // so it stays at AA on inset and tinted tiles too.
+  color: color-mix(in srgb, var(--accent-text) 60%, var(--page-text));
 }
 
 .hero__mana {
@@ -259,6 +260,12 @@ const stats = computed(() =>
   width: 24px;
   height: 24px;
   font-size: 14px;
+
+  // Fading the whole button lost the glyph on Cursed parchment; mute the glyph instead.
+  &:disabled {
+    opacity: 1;
+    color: var(--page-muted);
+  }
 }
 
 .hero__res {
@@ -302,7 +309,7 @@ const stats = computed(() =>
   }
 
   &--dis span {
-    color: color-mix(in srgb, var(--danger) 65%, var(--page-text));
+    color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
     font-weight: 700;
   }
 }
