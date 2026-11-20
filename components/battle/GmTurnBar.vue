@@ -124,7 +124,7 @@ const reroll = () => run(() => props.init.rollForNpcs())
         aria-label="Add creatures"
         @click="addOpen = true"
       >
-        + Add<span class="gtb__long"> creatures</span>
+        <span>+ Add<span class="gtb__long"> creatures</span></span>
       </button>
       <div ref="menuEl" class="gtb__more" @keydown.esc="closeMenu(true)">
         <button
