@@ -55,12 +55,19 @@ export function provideSheetEditor(
 
   let pendingSave: Promise<void> | null = null
 
-  /** Saves the draft. A call made while a save is in flight runs after it. */
-  async function save(): Promise<void> {
+  /**
+   * Saves the draft. A call made while a save is in flight runs after it. Each save is
+   * tracked per character, so a load elsewhere (the board after a layout swap) waits for it.
+   */
+  function save(): Promise<void> {
+    return sheetSaves.track(draft.value.id, saveInOrder())
+  }
+
+  async function saveInOrder(): Promise<void> {
     clearTimeout(timer)
     if (pendingSave) {
       await pendingSave
-      return save()
+      return saveInOrder()
     }
     if (!canEdit.value || !dirty.value) return
     pendingSave = persist()
