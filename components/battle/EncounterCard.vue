@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // One creature on the GM's encounter grid: portrait or initials, name (a pencil on hover
 // renames it in place: Enter saves, Escape cancels), initiative, the HP bar with numbers,
-// −5 / −1 / amount / +1 / +5 (EncounterHp), Armor, conditions and action pips
-// (EncounterPips: a click spends the next one, a spent one refunds). Slain creatures
+// −5 / −1 / amount / +1 / +5 (EncounterHp), Armor (in the name row), conditions and action
+// pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one refunds). Slain creatures
 // grey out with Remove and Revive. Heroes take HP through their own sheet (a pickup).
 import type { CampaignNpc, RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
@@ -39,7 +39,7 @@ const armor = computed(() =>
 const conditions = computed(() =>
   isPc.value ? (props.hero?.summary?.conditions ?? []) : (props.c.conditions ?? []),
 )
-const foot = computed(() => [`Armor ${armor.value}`, ...conditions.value].join(' · '))
+const foot = computed(() => conditions.value.join(' · '))
 
 /** Monsters' pips are the GM's to click; a hero's come from their sheet (read-only). */
 const pips = computed(() => {
@@ -135,7 +135,7 @@ const tipKeys = computed(() =>
           :class-slug="hero?.summary?.classSlug ?? null"
           :square="c.kind === 'monster'"
           :faded="slain"
-          :size="30"
+          :size="26"
         />
         <input
           v-if="editing"
@@ -165,6 +165,7 @@ const tipKeys = computed(() =>
             ✎
           </button>
         </template>
+        <span class="ec__armor">Armor {{ armor }}</span>
         <label class="ec__init" title="Initiative" @click.stop>
           <span class="sr-only">Initiative for {{ c.name }}</span>
           <input type="number" :value="c.initiative" inputmode="numeric" @change="onInit" />
@@ -186,20 +187,7 @@ const tipKeys = computed(() =>
         :temp="hp.temp"
         :slain="slain"
         @change="change"
-      />
-
-      <div class="ec__foot">
-        <template v-if="slain">
-          <span class="ec__slain" @click.stop>
-            <button type="button" class="btn btn--quiet btn--sm" @click="emit('remove')">
-              Remove
-            </button>
-            <button type="button" class="btn btn--ghost btn--sm" @click="init.adjustHp(c, 1)">
-              Revive
-            </button>
-          </span>
-        </template>
-        <span v-else class="ec__meta">{{ foot }}</span>
+      >
         <BattleEncounterPips
           v-if="pips && !slain"
           :name="c.name"
@@ -208,7 +196,29 @@ const tipKeys = computed(() =>
           :readonly="isPc"
           @set="(used: number) => init.setActions(c, { actions_used: used })"
         />
+      </BattleEncounterHp>
+      <!-- A creature with no HP still has its pips. -->
+      <BattleEncounterPips
+        v-if="noHp && pips"
+        class="ec__pips"
+        :name="c.name"
+        :total="pips.total"
+        :used="pips.used"
+        :readonly="isPc"
+        @set="(used: number) => init.setActions(c, { actions_used: used })"
+      />
+
+      <div v-if="slain" class="ec__foot">
+        <span class="ec__slain" @click.stop>
+          <button type="button" class="btn btn--quiet btn--sm" @click="emit('remove')">
+            Remove
+          </button>
+          <button type="button" class="btn btn--ghost btn--sm" @click="init.adjustHp(c, 1)">
+            Revive
+          </button>
+        </span>
       </div>
+      <p v-else-if="conditions.length" class="ec__foot ec__meta">{{ foot }}</p>
     </article>
   </UiTooltip>
 </template>
@@ -218,8 +228,8 @@ const tipKeys = computed(() =>
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 9px 10px;
+  gap: 5px;
+  padding: 6px 9px 7px;
   border-radius: var(--radius-control);
   border: 1px solid var(--line);
   background: var(--inset);
@@ -298,8 +308,15 @@ const tipKeys = computed(() =>
   font-weight: 600;
 }
 
-.ec__init {
+.ec__armor {
+  flex: none;
   margin-left: auto;
+  font-size: 11px;
+  color: var(--page-muted);
+  white-space: nowrap;
+}
+
+.ec__init {
   flex: none;
 
   input {
@@ -348,14 +365,18 @@ const tipKeys = computed(() =>
 .ec__foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  min-height: 18px;
+  margin: 0;
   font-size: 11px;
   color: var(--page-muted);
 }
 
+.ec__pips {
+  align-self: flex-end;
+}
+
 .ec__meta {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

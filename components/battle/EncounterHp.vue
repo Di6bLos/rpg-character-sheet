@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // An encounter card's HP: the bar with numbers, then −5 / −N / amount / +N / +5, where N
 // is the amount typed (1 when empty). Emits the change; the card decides where it goes.
+// The default slot lands at the end of the bar's row (the card's action pips).
 const props = defineProps<{
   name: string
   now: number
@@ -31,6 +32,8 @@ function stepTyped(sign: 1 | -1) {
     <span class="eh__num"
       >{{ slain ? 'Slain' : `${now}/${max}` }}<small v-if="temp"> +{{ temp }}</small></span
     >
+    <!-- The card's action pips sit on this row. -->
+    <slot />
   </div>
   <div v-if="!slain" class="eh__quick" role="group" :aria-label="`${name} hit points`" @click.stop>
     <button type="button" :aria-label="`${name}: lose 5 HP`" @click="emit('change', -5)">−5</button>
@@ -54,13 +57,14 @@ function stepTyped(sign: 1 | -1) {
 
 <style scoped lang="scss">
 .eh__hp {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
   gap: 8px;
   align-items: center;
 }
 
 .eh__bar {
+  flex: 1 1 auto;
+  min-width: 0;
   height: 8px;
   border-radius: 4px;
   background: var(--track);
