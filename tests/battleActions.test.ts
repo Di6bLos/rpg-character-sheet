@@ -8,6 +8,7 @@ import {
   weaponReason,
   type BattleAction,
 } from '../utils/battleActions'
+import { counterCost, usableOffTurn } from '../utils/nimblePlay'
 
 function act(patch: Partial<BattleAction> = {}): BattleAction {
   return {
@@ -79,6 +80,15 @@ describe('sectionsFor', () => {
     const s = sectionsFor(list, 'ready', '', false)
     const support = s.find((x) => x.title === 'Off-turn')
     expect(support?.actions.map((a) => a.name)).toEqual(['Rest'])
+  })
+
+  it('off turn, a support tile the sheet refuses (Not your turn) stays out of Off-turn', () => {
+    const offTurn = [
+      act({ name: 'Haste', kind: 'spell', group: 'support', unavailable: 'Not your turn' }),
+      act({ name: 'Free trick', kind: 'ability', group: 'support', offTurn: true }),
+    ]
+    const s = sectionsFor(offTurn, 'ready', '', false)
+    expect(s.flatMap((x) => x.actions).map((a) => a.name)).toEqual(['Free trick'])
   })
 
   it('all keeps unavailable and groups by kind and tier', () => {
@@ -153,5 +163,24 @@ describe('readyNote', () => {
     expect(readyNote([], { onTurn: false, actionsLeft: 0, mana: 3 })).toBe(
       'Not your turn · only reactions and off-turn options',
     )
+  })
+})
+
+describe('usableOffTurn (sheet rule: off-turn in combat only free uses and reactions)', () => {
+  const allowed = (text: string) => usableOffTurn(counterCost(text), text)
+
+  it('refuses uses that cost actions', () => {
+    expect(allowed('(1/encounter) Action: Grant all friendly Dying creatures 1 HP.')).toBe(false)
+    expect(allowed('(1/encounter) 2 actions: Expend your Judgment Dice.')).toBe(false)
+    expect(usableOffTurn({ actions: 1 }, 'Spend 1 action to gain 2 temp HP.')).toBe(false)
+  })
+
+  it('allows reactions, uses riding on Defend or Interpose, and free uses', () => {
+    expect(allowed('(1/round) Reaction: when an ally is hit, reduce the damage by 5.')).toBe(true)
+    expect(allowed('Whenever you Defend, gain 2 armor until your next turn.')).toBe(true)
+    expect(allowed('Action/Reaction: Shove a creature 2 spaces.')).toBe(true)
+    expect(allowed('You can Interpose for free.')).toBe(true)
+    expect(usableOffTurn(undefined, 'Gain advantage on your next save.')).toBe(true)
+    expect(usableOffTurn({ actions: 0 }, '')).toBe(true)
   })
 })

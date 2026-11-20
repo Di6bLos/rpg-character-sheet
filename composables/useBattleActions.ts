@@ -91,9 +91,8 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
   const spellTiles = computed<BattleTile[]>(() => {
     const attackNames = new Set(spells.spellAttacks.value.map((a) => a.name))
     const reactionNames = new Set(spells.reactionSpells.value.map((s) => s.name))
-    const summonOf = new Map(spells.summonSpells.value.map((s) => [s.name, s.summon]))
-    const full = (name: string) =>
-      !!summons.available.value.find((a) => a.id === summonOf.get(name))?.full
+    const summonOf = new Map(spells.summonSpells.value.map((s) => [s.name, s]))
+    const full = (summon: string) => !!summons.available.value.find((a) => a.id === summon)?.full
     type Castable = (typeof spells.tiers.value)[number]['spells'][number]
     const fields = (s: Castable) => ({
       tier: s.tier,
@@ -122,18 +121,21 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       .flatMap((g) => g.spells)
       .filter((s) => !attackNames.has(s.name) && !reactionNames.has(s.name))
       .map((s) => {
-        // Exactly SpellCard's cast button: busy, no actions, short (no turn or condition check).
-        const unavailable = s.busy
-          ? 'Finish casting first'
-          : s.noActions
-            ? 'No actions left'
-            : s.short
-              ? s.usesMinions
-                ? `Needs ${s.cost}`
-                : 'Not enough mana'
-              : full(s.name)
-                ? 'At the max'
-                : ''
+        // Summoning spells: exactly the Summons panel's card (its `blocked`, then At the max).
+        // Others: exactly SpellCard's cast button (notNow, busy, no actions, short).
+        const summon = summonOf.get(s.name)
+        const unavailable = summon
+          ? summon.blocked || (full(summon.summon) ? 'At the max' : '')
+          : s.notNow ||
+            (s.busy
+              ? 'Finish casting first'
+              : s.noActions
+                ? 'No actions left'
+                : s.short
+                  ? s.usesMinions
+                    ? `Needs ${s.cost}`
+                    : 'Not enough mana'
+                  : '')
         return {
           ...base,
           ...fields(s),
@@ -250,7 +252,8 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
           mana: 0,
           detail: `${c.left}/${c.max} ${c.label}`,
           desc: a.desc,
-          unavailable: c.left === 0 ? usedUpLabel(c) : c.short ? 'Not enough actions' : '',
+          unavailable:
+            c.left === 0 ? usedUpLabel(c) : c.notNow || (c.short ? 'Not enough actions' : ''),
           use: () => nimble.spend(c, a.name, 1),
         })),
       )

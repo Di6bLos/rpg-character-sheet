@@ -56,9 +56,12 @@ const { maxTier, cast } = useNimbleSpells()
           type="button"
           class="btn btn--sm cast"
           :class="{ 'btn--ghost': spell.tier === 0 }"
-          :disabled="!canEdit || !!blocked || spell.short || spell.busy || spell.noActions"
+          :disabled="
+            !canEdit || !!(blocked || spell.notNow) || spell.short || spell.busy || spell.noActions
+          "
           :title="
             blocked ||
+            spell.notNow ||
             (spell.busy
               ? `Still casting ${sheet.casting.spell}`
               : spell.noActions
@@ -73,13 +76,13 @@ const { maxTier, cast } = useNimbleSpells()
           "
           @click="cast(spell)"
         >
-          {{ blocked || spell.label }}
+          {{ blocked || spell.notNow || spell.label }}
         </button>
         <button
           v-if="spell.bloodLabel"
           type="button"
           class="btn btn--sm btn--ghost cast"
-          :disabled="!canEdit || !!blocked || spell.busy || spell.noActions"
+          :disabled="!canEdit || !!(blocked || spell.notNow) || spell.busy || spell.noActions"
           @click="cast(spell, true)"
         >
           {{ spell.bloodLabel }}
@@ -89,7 +92,9 @@ const { maxTier, cast } = useNimbleSpells()
           :key="a.key"
           type="button"
           class="btn btn--ghost btn--sm btn--wrap"
-          :disabled="!canEdit || !!blocked || spell.busy || spell.noActions || !!a.why"
+          :disabled="
+            !canEdit || !!(blocked || spell.notNow) || spell.busy || spell.noActions || !!a.why
+          "
           :title="a.why || undefined"
           @click="cast(spell, false, a.key)"
         >

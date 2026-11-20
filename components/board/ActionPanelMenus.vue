@@ -254,13 +254,15 @@ const spellGroups = computed(() =>
     ...g,
     spells: g.spells.map((s) => ({
       ...s,
-      blocked: s.busy
-        ? 'Finish casting first'
-        : s.noActions
-          ? 'No actions left'
-          : s.short
-            ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
-            : '',
+      blocked: s.notNow
+        ? s.notNow
+        : s.busy
+          ? 'Finish casting first'
+          : s.noActions
+            ? 'No actions left'
+            : s.short
+              ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
+              : '',
     })),
   })),
 )
@@ -276,8 +278,8 @@ const counterRows = computed(() =>
       label: [a.counters.length > 1 ? c.label : '', c.costText].filter(Boolean).join(' · '),
       left: c.left,
       max: c.max,
-      off: c.left === 0 || c.short,
-      warn: c.left === 0 ? usedUpLabel(c) : c.short ? 'Not enough actions' : '',
+      off: c.left === 0 || c.short || !!c.notNow,
+      warn: c.left === 0 ? usedUpLabel(c) : c.notNow || (c.short ? 'Not enough actions' : ''),
       linked: a.companion || (c.linked && !!diceMenu.value) || attackAbilityKeys.value.has(a.key),
       counter: c,
     })),

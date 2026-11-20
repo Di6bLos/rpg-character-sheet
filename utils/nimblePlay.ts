@@ -1050,6 +1050,16 @@ export function counterCost(text: string): CounterCost | undefined {
   return ACTION_COST.test(text) ? { actions: 1 } : undefined
 }
 
+/**
+ * Whether a use can still be made while you wait for your turn in combat: one that costs
+ * no actions (free), rides on a reaction (Defend, Interpose), or is a reaction itself
+ * ("Reaction:", "Action/Reaction"). Anything else that costs actions waits for your turn.
+ */
+export function usableOffTurn(cost: CounterCost | undefined, text: string): boolean {
+  if (!cost || cost.actions <= 0 || cost.reaction) return true
+  return REACTION_COST.test(text) || /\bAction\/Reaction\b/.test(text)
+}
+
 export function costLabel(cost: CounterCost | undefined): string {
   if (!cost) return ''
   if (cost.reaction) return `with ${cost.reaction}`
