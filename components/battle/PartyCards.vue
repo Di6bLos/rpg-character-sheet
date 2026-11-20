@@ -72,10 +72,17 @@ function mana(r: RosterEntry): string {
   return props.gm && m && m.max > 0 ? `mana ${m.current}/${m.max}` : ''
 }
 
+/** The card's accessible name: everything it shows, since aria-label replaces its content. */
 function label(r: RosterEntry): string {
   const name = r.character_name ?? r.display_name
-  const acting = r.character_id === props.actingCharacterId ? ', acting' : ''
-  return `${name}${acting}, ${hpText(r)} HP. Open stats`
+  const acting = r.character_id === props.actingCharacterId ? 'acting' : ''
+  const tempHp = r.summary?.tempHp
+  const guard = tempHp ? `${tempHp} temp HP` : `Armor ${r.summary?.ac ?? 'unknown'}`
+  const p = pips(r)
+  const actions = p ? `${p.total - p.used} of ${p.total} actions left` : ''
+  const hp = r.summary?.hp === undefined ? 'HP unknown' : `${hpText(r)} HP`
+  const parts = [name, acting, sub(r), hp, guard, mana(r), actions]
+  return `${parts.filter(Boolean).join(', ')}. Open stats`
 }
 </script>
 
@@ -122,10 +129,6 @@ function label(r: RosterEntry): string {
                   :class="{ 'is-used': n <= (pips(r)?.used ?? 0) }"
                 />
               </span>
-              <span v-if="pips(r)" class="sr-only"
-                >{{ (pips(r)?.total ?? 0) - (pips(r)?.used ?? 0) }} of {{ pips(r)?.total }} actions
-                left</span
-              >
             </span>
             <span class="pc__bar" aria-hidden="true">
               <span
