@@ -40,6 +40,11 @@ export function useSendHeroHp() {
         snackbar.error(error, `Could not send the HP change to ${name}`)
         return false
       }
+    } catch (err) {
+      // The call itself threw (offline, a client error): report it the same way, since
+      // callers fire and forget.
+      snackbar.error(err, `Could not send the HP change to ${name}`)
+      return false
     } finally {
       inFlight.value--
     }
