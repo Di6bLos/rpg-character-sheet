@@ -1,4 +1,4 @@
-// The Lore Master chat for the current campaign board. History lives in
+// The Scribe chat for the current campaign board. History lives in
 // sessionStorage (per campaign and user) and is gone when the tab closes.
 // Questions go to the `lore-master` Edge Function, which picks the GM or
 // player context on the server; this side only adds the public rules pack.
@@ -140,7 +140,7 @@ export function useLoreMaster() {
       if (key !== storageKey.value) return
       if (invokeError) throw invokeError
       const result = data as { reply?: string; free?: boolean; freeRemaining?: number } | null
-      if (!result?.reply) throw new Error('The Lore Master had nothing to say. Try again.')
+      if (!result?.reply) throw new Error('The Scribe had nothing to say. Try again.')
       messages.value.push({ role: 'assistant', content: result.reply })
       persist()
       if (result.free && typeof result.freeRemaining === 'number') {

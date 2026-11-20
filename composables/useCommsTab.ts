@@ -1,4 +1,4 @@
-/** The battle board's open Chat / Lore Master tab, so Whisper in the stats modal can switch it. */
+/** The battle board's open Chat / Scribe tab, so Whisper in the stats modal can switch it. */
 export type CommsTab = 'chat' | 'lore'
 
 export function useCommsTab() {

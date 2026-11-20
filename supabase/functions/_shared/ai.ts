@@ -11,7 +11,7 @@ export const NPC_MODELS: Record<Provider, string> = {
   openai: 'gpt-6-astra',
 }
 
-/** Models used by the Lore Master chat (many short turns on the user's key). */
+/** Models used by the Scribe chat (many short turns on the user's key). */
 export const CHAT_MODELS: Record<Provider, string> = {
   anthropic: 'claude-sonnet-5-5',
   google: 'gemini-3.8-flash',

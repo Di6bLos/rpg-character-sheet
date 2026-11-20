@@ -5,7 +5,7 @@ import type { SiteSettings, SiteSwitch } from '~/types'
 
 const STALE_MS = 60_000
 
-/** Site-wide switches admins control (shared NPC pool, AI features, free Lore Master). */
+/** Site-wide switches admins control (shared NPC pool, AI features, free Scribe). */
 export const useSiteStore = defineStore('site', () => {
   const settings = ref<SiteSettings>({
     npc_pool_campaign: true,
@@ -42,7 +42,7 @@ export const useSiteStore = defineStore('site', () => {
     settings.value = { ...settings.value, [key]: value }
   }
 
-  /** Admin only: free Lore Master questions per user per day (0–500). */
+  /** Admin only: free Scribe questions per user per day (0–500). */
   async function setFreeLimit(limit: number) {
     const { error } = await supabase.rpc('admin_set_free_ai_limit', { p_limit: limit })
     if (error) throw error

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The Lore Master on the Party tab: an AI chat for GMs (co-GM with the whole
+// The Scribe on the Party tab: an AI chat for GMs (co-GM with the whole
 // campaign) and players (rules and their own hero only; enforced by the
 // lore-master Edge Function). Shown when AI is on site-wide and the user has
 // saved a provider key, or the free agent (site's Gemini key) is on. From 1200px it docks in the page's right margin and
@@ -28,7 +28,7 @@ const { el, wide, drawerOpen, folded, setCollapsed, onClose, onBackdrop, dismiss
         :aria-expanded="drawerOpen"
         @click="drawerOpen = true"
       >
-        Lore
+        Scribe
       </button>
     </Teleport>
     <dialog
@@ -36,7 +36,7 @@ const { el, wide, drawerOpen, folded, setCollapsed, onClose, onBackdrop, dismiss
       ref="el"
       class="lp panel"
       :class="{ 'lp--folded': folded }"
-      aria-label="Lore Master"
+      aria-label="Scribe"
       @close="onClose"
       @click="onBackdrop"
     >
@@ -44,13 +44,13 @@ const { el, wide, drawerOpen, folded, setCollapsed, onClose, onBackdrop, dismiss
         v-if="folded"
         type="button"
         class="lp__unfold"
-        title="Show the Lore Master"
+        title="Show the Scribe"
         aria-expanded="false"
         :aria-controls="`${panelId}-inner`"
         @click="setCollapsed(false)"
       >
         <span aria-hidden="true">‹</span>
-        <span class="lp__unfold-label">Lore</span>
+        <span class="lp__unfold-label">Scribe</span>
       </button>
       <div v-show="!folded" :id="`${panelId}-inner`" class="lp__inner">
         <BoardLorePanelChat :drawer="!wide" @dismiss="dismiss" />
