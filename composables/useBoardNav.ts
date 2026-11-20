@@ -57,11 +57,14 @@ export function provideBoardNav(unread: () => number): BoardNav {
   )
 
   const tabs = computed(() => {
-    const list: BoardTab[] = [
+    const list: BoardTab[] = []
+    // The battle board is Nimble only.
+    if (campaign.value?.system === 'nimble') list.push({ id: 'battle', label: 'Battle', badge: 0 })
+    list.push(
       { id: 'party', label: 'Party', badge: unread() },
       { id: 'journal', label: 'Journal', badge: 0 },
       { id: 'maps', label: 'Maps & images', badge: 0 },
-    ]
+    )
     if (mode === 'console') list.push({ id: 'npcs', label: 'NPCs', badge: 0 })
     return list
   })
@@ -73,8 +76,12 @@ export function provideBoardNav(unread: () => number): BoardNav {
   /** Same tab in another campaign: its console if you run it, its board if you play in it. */
   function switchTo(id: string) {
     const current = tabs.value.find((t) => isCurrent(t.id))?.id ?? 'party'
-    const gm = store.byId(id)?.myRole === 'gm'
-    const tab = !gm && current === 'npcs' ? 'party' : current
+    const target = store.byId(id)
+    const gm = target?.myRole === 'gm'
+    const tab =
+      (!gm && current === 'npcs') || (current === 'battle' && target?.system !== 'nimble')
+        ? 'party'
+        : current
     return `/campaigns/${id}/${gm ? 'gm' : 'board'}/${tab}`
   }
 

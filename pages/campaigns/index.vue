@@ -216,7 +216,7 @@ async function create() {
           </div>
           <!-- GMs land on the console's Party tab (turn controls); players on the board's. -->
           <NuxtLink
-            :to="`/campaigns/${c.id}/${c.myRole === 'gm' ? 'gm' : 'board'}/party`"
+            :to="`/campaigns/${c.id}/${c.myRole === 'gm' ? 'gm' : 'board'}`"
             class="btn"
             :aria-label="`Enter ${c.name}`"
             >Enter</NuxtLink

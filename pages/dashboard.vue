@@ -180,7 +180,7 @@ const libDocs = computed(() => library.documents.slice(0, 4))
       </div>
       <NuxtLink
         v-if="current"
-        :to="`/campaigns/${current.id}/${current.myRole === 'gm' ? 'gm' : 'board'}/party`"
+        :to="`/campaigns/${current.id}/${current.myRole === 'gm' ? 'gm' : 'board'}`"
         class="btn"
       >
         <svg
@@ -316,7 +316,7 @@ const libDocs = computed(() => library.documents.slice(0, 4))
             </div>
             <div class="row" style="gap: 10px">
               <NuxtLink
-                :to="`/campaigns/${current.id}/${current.myRole === 'gm' ? 'gm' : 'board'}/party`"
+                :to="`/campaigns/${current.id}/${current.myRole === 'gm' ? 'gm' : 'board'}`"
                 class="btn btn--ghost"
                 style="flex: 1 1 140px"
                 >{{ current.myRole === 'gm' ? 'GM console' : 'Campaign board' }}</NuxtLink
