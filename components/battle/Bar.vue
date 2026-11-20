@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// The battle board's one-line bar: campaign name (a menu with the campaign switcher
-// and "Playing as"), the board tabs, the round, and on the right "Open full sheet"
-// for players or the GM's turn controls and Table (invites, session, players).
+// The battle board's one-line bar: campaign name, the board tabs, the round, and on the
+// right "Open full sheet" for players or the GM's turn controls (Prev, Next turn, New
+// round, End encounter). For the GM the campaign name opens
+// Table (invites, session, players); for players it opens a menu with the campaign
+// switcher and "Playing as".
 import type { useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'
 import { systemLabel } from '~/utils/systems'
@@ -52,7 +54,20 @@ async function endEncounter() {
 <template>
   <header v-if="campaign" class="bar" :class="{ 'bar--gm': gmControls }">
     <div ref="menuEl" class="bar__camp" @keydown.esc="closeMenu(true)">
+      <!-- GM: the name opens Table (invites, session, players). -->
       <button
+        v-if="gmControls"
+        type="button"
+        class="bar__title"
+        aria-haspopup="dialog"
+        :title="`${campaign.name}: table, invites and players`"
+        @click="tableOpen = true"
+      >
+        <span class="bar__name">{{ campaign.name }}</span>
+        <span class="bar__caret" aria-hidden="true">▾</span>
+      </button>
+      <button
+        v-else
         ref="menuBtn"
         type="button"
         class="bar__title"
@@ -64,7 +79,7 @@ async function endEncounter() {
         <span class="bar__name">{{ campaign.name }}</span>
         <span class="bar__caret" aria-hidden="true">▾</span>
       </button>
-      <div v-if="menuOpen" :id="menuId" class="bar__menu panel">
+      <div v-if="menuOpen && !gmControls" :id="menuId" class="bar__menu panel">
         <div class="bar__meta">
           <span class="bar__eyebrow">{{ gmControls ? 'GM console' : 'Campaign board' }}</span>
           <span class="small muted">{{ meta }}</span>
@@ -147,7 +162,6 @@ async function endEncounter() {
       >
         End encounter
       </button>
-      <button type="button" class="btn btn--ghost btn--sm" @click="tableOpen = true">Table</button>
     </div>
     <NuxtLink
       v-else-if="campaign.myCharacterId"

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The GM's turn bar on the battle board (top of the centre column): who is acting and
 // who is next, "+ Add creatures" (the add dialog), a menu with Add the party, Sync
-// summons and Reroll NPC initiative, and Next turn (Add party instead while out of an
-// encounter with heroes not seated). It also drops summons that left
+// summons and Reroll NPC initiative, and Add party while out of an encounter with
+// heroes not seated (Next turn is in the board's top bar). It also drops summons that left
 // their hero's sheet as the roster refreshes (as the Party tab's Initiative panel does).
 import type { RosterEntry } from '~/types'
 import type { useInitiative } from '~/composables/useInitiative'
@@ -170,8 +170,8 @@ const reroll = () => run(() => props.init.rollForNpcs())
           </button>
         </div>
       </div>
-      <!-- Out of combat with heroes still to seat, the main button seats the party;
-           once everyone is in, it is Next turn (which starts the encounter). -->
+      <!-- Out of combat with heroes still to seat, offer to seat the party
+           (Next turn is in the top bar). -->
       <button
         v-if="offerParty"
         type="button"
@@ -181,15 +181,6 @@ const reroll = () => run(() => props.init.rollForNpcs())
         @click="addParty"
       >
         Add party
-      </button>
-      <button
-        v-else
-        type="button"
-        class="btn btn--sm"
-        :disabled="!order.length"
-        @click="init.nextTurn"
-      >
-        Next turn ▸
       </button>
     </div>
     <BoardAddCombatants v-model="addOpen" :init="init" :roster="roster" />
