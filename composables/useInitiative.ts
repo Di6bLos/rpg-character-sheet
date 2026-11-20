@@ -192,8 +192,9 @@ export function useInitiative(
   })
 
   // --- GM actions ----------------------------------------------------------------
-  async function saveEncounter(patch: Partial<Encounter>) {
-    if (!encounter.value) return
+  /** Saves the turn order; false when there is no encounter or the write failed. */
+  async function saveEncounter(patch: Partial<Encounter>): Promise<boolean> {
+    if (!encounter.value) return false
     Object.assign(encounter.value, patch)
     const { error } = await supabase.from('encounters').upsert({
       campaign_id: campaignId.value,
@@ -201,6 +202,7 @@ export function useInitiative(
       active_combatant: encounter.value.active_combatant,
     })
     if (error) snackbar.error(error, 'Could not update the turn order')
+    return !error
   }
 
   /** Actions refill when a creature's own turn ends; a hero's summons ride on the hero's turn. */
@@ -236,11 +238,12 @@ export function useInitiative(
     }
   }
 
-  function nextTurn() {
+  async function nextTurn() {
     const next = turnAfter(order.value, turnId.value, round.value)
     if (!next) return
-    void saveEncounter({ active_combatant: next.active, round: next.round })
-    if (next.ended && isGm.value) void refillActions(next.ended)
+    const saved = await saveEncounter({ active_combatant: next.active, round: next.round })
+    // The turn didn't move on the server, so no turn ended: keep the actions as they are.
+    if (saved && next.ended && isGm.value) await refillActions(next.ended)
   }
 
   /** Start the next round at the top of the order. Actions are not refilled here. */
