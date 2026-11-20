@@ -95,6 +95,9 @@ export function useInitiative(
 
   // HP writes for one combatant go out one at a time, so quick clicks land in order.
   const hpWrites = new Map<string, Promise<void>>()
+  // Action pip writes too, one combatant at a time; `actionSeq` marks the latest click.
+  const actionWrites = keyedQueue()
+  const actionSeq = new Map<string, number>()
   /** HP the GM has set but the server hasn't confirmed yet; reloads keep it. */
   const pendingHp = new Map<string, number>()
 
@@ -381,8 +384,11 @@ export function useInitiative(
     }
   }
 
-  async function setActions(c: TurnRow, patch: { actions_used?: number; actions_max?: number }) {
-    if (!isGm.value) return
+  function setActions(
+    c: TurnRow,
+    patch: { actions_used?: number; actions_max?: number },
+  ): Promise<void> {
+    if (!isGm.value) return Promise.resolve()
     const prevMax = c.actions_max
     const prevUsed = c.actions_used
     const max = Math.max(0, Math.min(9, Math.round(patch.actions_max ?? prevMax ?? 1)))
@@ -394,12 +400,19 @@ export function useInitiative(
     }
     if (update.actions_max !== undefined) c.actions_max = update.actions_max
     if (update.actions_used !== undefined) c.actions_used = update.actions_used
-    const { error } = await supabase.from('combatants').update(update).eq('id', c.id)
-    if (error) {
-      c.actions_max = prevMax
-      c.actions_used = prevUsed
+    const id = c.id
+    const seq = (actionSeq.get(id) ?? 0) + 1
+    actionSeq.set(id, seq)
+    return actionWrites.run(id, async () => {
+      const { error } = await supabase.from('combatants').update(update).eq('id', id)
+      if (!error) return
       snackbar.error(error, 'Could not update actions')
-    }
+      // Only the latest click puts its values back; an earlier failure leaves later clicks be.
+      if (actionSeq.get(id) === seq) {
+        c.actions_max = prevMax
+        c.actions_used = prevUsed
+      }
+    })
   }
 
   async function pruneSummons(roster: RosterEntry[]) {
