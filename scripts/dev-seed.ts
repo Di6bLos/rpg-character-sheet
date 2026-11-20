@@ -1,7 +1,8 @@
 // Seeds the LOCAL Supabase stack with fixed test data, safely re-runnable:
 //   - admin@test.local (site admin), gm@test.local, player@test.local; password in utils/devAccounts
 //   - Nimble campaign "Test Table" run by the GM, with the player's level 5 Mage "Iriel" seated
-// Existing rows are kept (passwords and roles are reset); `--reset` also rebuilds Iriel's sheet.
+//   - five more players (DEV_PARTY in utils/devAccounts) seated there with level 5 heroes
+// Existing rows are kept (passwords and roles are reset); `--reset` also rebuilds the heroes' sheets.
 //
 //   npm run dev:seed            # usually via `npm run dev:local`
 //   npm run dev:seed -- --reset
@@ -13,7 +14,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { classBySlug } from '../data/nimble/classes'
-import { DEV_ACCOUNTS, DEV_PASSWORD, isLocalSupabase } from '../utils/devAccounts'
+import { DEV_ACCOUNTS, DEV_PARTY, DEV_PASSWORD, isLocalSupabase } from '../utils/devAccounts'
 import { build, levelTo } from '../utils/nimbleAutoBuild'
 
 export interface LocalStack {
@@ -99,7 +100,14 @@ async function retrying<T>(what: string, step: () => Promise<T>): Promise<T> {
   }
 }
 
-async function upsertUser(db: SupabaseClient, account: (typeof DEV_ACCOUNTS)[number]) {
+interface SeedAccount {
+  email: string
+  displayName: string
+  key: string
+  role: 'admin' | 'member'
+}
+
+async function upsertUser(db: SupabaseClient, account: SeedAccount) {
   const { data: list, error: listError } = await db.auth.admin.listUsers({ perPage: 1000 })
   if (listError) throw listError
   const existing = list.users.find((u) => u.email === account.email)
@@ -127,12 +135,58 @@ async function upsertUser(db: SupabaseClient, account: (typeof DEV_ACCOUNTS)[num
   return id
 }
 
-function buildHero() {
-  const cls = classBySlug(HERO.classSlug)
-  if (!cls) throw new Error(`Unknown class ${HERO.classSlug}`)
+function buildHero(hero: { classSlug: string; level: number }) {
+  const cls = classBySlug(hero.classSlug)
+  if (!cls) throw new Error(`Unknown class ${hero.classSlug}`)
   const sheet = build(cls)
-  levelTo(sheet, HERO.level, cls.subclasses[0]?.slug ?? '')
+  levelTo(sheet, hero.level, cls.subclasses[0]?.slug ?? '')
   return sheet
+}
+
+/** Creates (or with `reset` rebuilds) a user's hero and seats them with it. */
+async function seatHero(
+  db: SupabaseClient,
+  campaignId: string,
+  userId: string,
+  hero: { name: string; classSlug: string; level: number },
+  reset: boolean,
+) {
+  const { data: found } = await db
+    .from('characters')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', hero.name)
+    .maybeSingle()
+  let heroId = found?.id as string | undefined
+  if (!heroId) {
+    const { data, error } = await db
+      .from('characters')
+      .insert({
+        user_id: userId,
+        name: hero.name,
+        system: 'nimble',
+        level: hero.level,
+        sheet: buildHero(hero),
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+    heroId = data.id as string
+  } else if (reset) {
+    const { error } = await db
+      .from('characters')
+      .update({ level: hero.level, sheet: buildHero(hero) })
+      .eq('id', heroId)
+    if (error) throw error
+  }
+  const { error: seatError } = await db
+    .from('campaign_members')
+    .upsert(
+      { campaign_id: campaignId, user_id: userId, role: 'player', character_id: heroId },
+      { onConflict: 'campaign_id,user_id' },
+    )
+  if (seatError) throw seatError
+  return heroId
 }
 
 export async function seedLocal(stack: LocalStack, opts: { reset?: boolean } = {}) {
@@ -165,44 +219,15 @@ export async function seedLocal(stack: LocalStack, opts: { reset?: boolean } = {
     campaign = data
   }
 
-  // The player's hero.
-  const { data: hero } = await db
-    .from('characters')
-    .select('id')
-    .eq('user_id', player)
-    .eq('name', HERO.name)
-    .maybeSingle()
-  let heroId = hero?.id as string | undefined
-  if (!heroId) {
-    const { data, error } = await db
-      .from('characters')
-      .insert({
-        user_id: player,
-        name: HERO.name,
-        system: 'nimble',
-        level: HERO.level,
-        sheet: buildHero(),
-      })
-      .select('id')
-      .single()
-    if (error) throw error
-    heroId = data.id as string
-  } else if (opts.reset) {
-    const { error } = await db
-      .from('characters')
-      .update({ level: HERO.level, sheet: buildHero() })
-      .eq('id', heroId)
-    if (error) throw error
-  }
-
-  // Seat the player with the hero.
-  const { error: seatError } = await db
-    .from('campaign_members')
-    .upsert(
-      { campaign_id: campaign.id, user_id: player, role: 'player', character_id: heroId },
-      { onConflict: 'campaign_id,user_id' },
+  // The player's hero, then the rest of the party.
+  const reset = !!opts.reset
+  const heroId = await seatHero(db, campaign.id, player, HERO, reset)
+  for (const member of DEV_PARTY) {
+    const userId = await retrying(`Account ${member.email}`, () =>
+      upsertUser(db, { ...member, key: member.handle, role: 'member' }),
     )
-  if (seatError) throw seatError
+    await seatHero(db, campaign.id, userId, { ...member.hero, level: HERO.level }, reset)
+  }
 
   return { campaignId: campaign.id as string, heroId }
 }
@@ -221,6 +246,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       console.log('Seeded the local stack:')
       for (const a of DEV_ACCOUNTS)
         console.log(`  ${a.label.padEnd(7)} ${a.email} / ${DEV_PASSWORD}`)
+      for (const m of DEV_PARTY)
+        console.log(`  ${m.hero.name.padEnd(7)} ${m.email} / ${DEV_PASSWORD}`)
       console.log(`  Campaign "${CAMPAIGN}": /campaigns/${campaignId}/board`)
     })
     .catch((err) => {
