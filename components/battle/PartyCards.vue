@@ -87,17 +87,22 @@ function label(r: RosterEntry): string {
 </script>
 
 <template>
-  <section class="panel party" aria-labelledby="party-h">
+  <section
+    class="panel party-cards"
+    :class="{ 'party-cards--empty': !heroes.length }"
+    aria-labelledby="party-h"
+  >
     <header class="party__head">
       <h2 id="party-h">Party</h2>
-      <span class="party__count">{{
-        heroes.length ? `${heroes.length} ${heroes.length === 1 ? 'hero' : 'heroes'}` : ''
+      <!-- No one to show: the card is one line, so Chat below gets the room. -->
+      <p v-if="!heroes.length" class="party__empty">
+        {{ gm ? 'No heroes seated yet.' : 'No other heroes at this table yet.' }}
+      </p>
+      <span v-else class="party__count">{{
+        `${heroes.length} ${heroes.length === 1 ? 'hero' : 'heroes'}`
       }}</span>
     </header>
-    <p v-if="!heroes.length" class="party__empty">
-      {{ gm ? 'No heroes seated yet.' : 'No other heroes at this table yet.' }}
-    </p>
-    <ul v-else class="party__list">
+    <ul v-if="heroes.length" class="party__list">
       <li v-for="r in heroes" :key="r.character_id">
         <button
           type="button"
@@ -149,14 +154,20 @@ function label(r: RosterEntry): string {
 </template>
 
 <style scoped lang="scss">
-.party {
+// Not `.party`: PartyView's scoped `.party` (the narrow layout) would also style this root.
+.party-cards {
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  max-height: 40%;
+  gap: 6px;
+  padding: 10px 14px;
+  // Capped low so Chat keeps most of the column; more heroes scroll inside.
+  max-height: 30%;
   min-height: 0;
+
+  &--empty {
+    padding-block: 8px;
+  }
 }
 
 .party__head {
@@ -164,11 +175,13 @@ function label(r: RosterEntry): string {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 
   h2 {
+    flex: none;
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 17px;
+    font-size: 16px;
   }
 }
 
@@ -179,7 +192,11 @@ function label(r: RosterEntry): string {
 }
 
 .party__empty {
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .party__list {
@@ -203,7 +220,7 @@ function label(r: RosterEntry): string {
   grid-template-columns: 34px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  padding: 7px 8px;
+  padding: 5px 8px;
   border-radius: var(--radius-control);
   background: var(--inset);
   border: 1px solid var(--line);
@@ -232,7 +249,7 @@ function label(r: RosterEntry): string {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .pc__name {
@@ -241,6 +258,7 @@ function label(r: RosterEntry): string {
   gap: 6px;
   min-width: 0;
   font-size: 13px;
+  line-height: 18px;
   font-weight: 600;
 }
 

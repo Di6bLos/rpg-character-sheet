@@ -100,8 +100,8 @@ function onKey(event: KeyboardEvent) {
   flex: none;
   display: flex;
   align-items: center;
-  min-height: 44px;
-  padding: 10px 14px 0;
+  min-height: 38px;
+  padding: 8px 14px 0;
 }
 
 .comms__tabs {
@@ -177,12 +177,45 @@ function onKey(event: KeyboardEvent) {
   }
 
   :deep(.chat__head) {
-    padding-top: 10px;
+    padding: 6px 14px 0;
+  }
+
+  // Tighter than the Party tab's chat, so the log keeps its room in a short window.
+  // One row of conversations however many members there are: the extra ones scroll
+  // sideways (keyboard focus scrolls them into view).
+  :deep(.chat__tabs) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    // Room for the pills' focus ring inside the scroller.
+    margin: -3px -3px 0;
+    padding: 3px 3px 6px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    button {
+      flex: none;
+    }
+  }
+
+  :deep(.chat__note) {
+    padding: 4px 14px;
+    font-size: 12px;
+  }
+
+  :deep(.chat__log) {
+    padding-inline: 14px;
+  }
+
+  :deep(.chat__form) {
+    padding: 8px 14px 10px;
   }
 
   :deep(.chat__title) {
     position: absolute;
-    top: 8px;
+    top: 5px;
     right: 14px;
   }
 
