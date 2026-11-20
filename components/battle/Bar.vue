@@ -236,7 +236,7 @@ async function endEncounter() {
   flex-direction: column;
   gap: 12px;
   white-space: normal;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-pop);
 }
 
 .bar__meta {

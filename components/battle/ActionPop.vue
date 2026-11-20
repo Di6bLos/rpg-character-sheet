@@ -93,6 +93,6 @@ onBeforeUnmount(unlisten)
   max-width: min(320px, calc(100vw - 16px));
   padding: 8px;
   border-color: var(--line-strong);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  box-shadow: var(--shadow-pop);
 }
 </style>

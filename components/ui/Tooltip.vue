@@ -126,7 +126,7 @@ onBeforeUnmount(unlisten)
   border: 1px solid var(--panel-line-strong);
   background: var(--panel-bg);
   color: var(--panel-text);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  box-shadow: var(--shadow-pop);
   font-family: var(--font-body, inherit);
   font-size: 12px;
   line-height: 1.45;
