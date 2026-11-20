@@ -232,13 +232,25 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [x] Shared composables extracted from the sheet panels; `UiTooltip`
 - [x] Tests: battle actions, turn steps, initiative helpers, HP change
 
+### GM token menu (right-click an initiative token)
+
+- [x] Right-click (or the context-menu key / Shift+F10) on a token opens a menu for the GM; players keep the browser's menu
+- [x] Make active turn: jumps straight to that creature; the copy picked in the carousel sets the round (past the dashed line = next round); the ended turn refills actions like Next turn, skipped creatures don't
+- [x] Undo in the toast puts the turn, round and refilled actions back
+- [x] Change initiative from the menu
+- [x] Remove from encounter, with a confirm step inside the menu
+- [x] Tests: `turnTo` in `tests/initiative.test.ts`
+
+### GM keyboard shortcuts (future)
+
+- [ ] `→` / `Space`: Next turn
+- [ ] `←`: Previous turn
+- [ ] `Esc`: re-centre the carousel on the acting token
+- [ ] Ignore the keys while typing in an input, textarea or the chat, and while a dialog is open
+- [ ] List the shortcuts somewhere the GM can find them (tooltip on Next turn or a "?" help)
+
 ##
 
-- quick reference for monsters in combat
-- easier way for GM to view player stats
-- quicker way to add the same monsters
-- Moderators can see other players sheets
-- Make the turn selection easier
-- add toggle for initiative turn order, or just affects how many actions you start with
 - conditions review https://nimble.nexus/rules/conditions
 - GM only backstory section
+- Fix the the delete campaign section text. its not wrapping, getting cut off my container an button

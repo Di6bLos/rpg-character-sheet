@@ -5,6 +5,8 @@
 // wheel browses it, and the next turn change centres the acting token again.
 // Heroes show their HP from the roster; creatures show theirs to the GM only (players
 // see only that one is down). Summons sit under their summoner.
+// The GM right-clicks a token (or uses the context-menu key) for its menu: make it the
+// acting turn, change its initiative, remove it (`BattleTokenMenu`).
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
@@ -277,6 +279,38 @@ function onClickCapture(e: MouseEvent) {
   e.stopPropagation()
 }
 
+// --- GM token menu --------------------------------------------------------------------
+const menu = ref<{ c: TurnRow; key: number; anchor: HTMLElement } | null>(null)
+/** Opened a tick after `menu` is set: the popover places itself when it turns on. */
+const menuOpen = ref(false)
+/** Which round the picked copy belongs to, from the current one: rounds start at index 0. */
+const menuRoundOffset = computed(() => {
+  const n = props.init.order.value.length
+  if (!menu.value || !n) return 0
+  return Math.floor(menu.value.key / n) - Math.floor(cursor.value / n)
+})
+
+/** The keyboard's context-menu key or Shift+F10, for browsers that don't send `contextmenu`. */
+function onTokenKey(slot: Slot, e: KeyboardEvent) {
+  if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) void onContextMenu(slot, e)
+}
+
+async function onContextMenu(slot: Slot, e: MouseEvent | KeyboardEvent) {
+  // Players keep the browser's own menu.
+  if (!props.gm) return
+  e.preventDefault()
+  menuOpen.value = false
+  menu.value = { c: slot.c, key: slot.key, anchor: e.currentTarget as HTMLElement }
+  await nextTick()
+  menuOpen.value = true
+}
+
+// The row moving (a turn change, browsing, a new order) leaves the menu's token behind.
+watch(
+  () => [props.init.activeId.value, browse.value, props.init.order.value.map((c) => c.id).join()],
+  () => (menuOpen.value = false),
+)
+
 /** Tabbing to a token off the visible part centres it (a click never moves the row). */
 function onFocus(slot: Slot, e: FocusEvent) {
   if ((e.target as HTMLElement | null)?.matches(':focus-visible'))
@@ -331,6 +365,8 @@ function onFocus(slot: Slot, e: FocusEvent) {
               :tabindex="primary ? undefined : -1"
               :aria-label="`${c.name}, initiative ${c.initiative}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
               @click="onToken(c)"
+              @contextmenu="onContextMenu({ key, c, primary, now, next, roundStart }, $event)"
+              @keydown="onTokenKey({ key, c, primary, now, next, roundStart }, $event)"
             >
               <span class="tok__score" title="Initiative">{{ c.initiative }}</span>
               <span v-if="now" class="tok__badge tok__badge--now">Acting</span>
@@ -386,6 +422,14 @@ function onFocus(slot: Slot, e: FocusEvent) {
         </div>
       </li>
     </TransitionGroup>
+    <BattleTokenMenu
+      v-if="menu"
+      v-model="menuOpen"
+      :init="init"
+      :c="menu.c"
+      :anchor="menu.anchor"
+      :round-offset="menuRoundOffset"
+    />
   </div>
   <p v-else class="strip__empty small muted">
     No encounter running. Tokens appear here when the GM rolls initiative.

@@ -234,6 +234,26 @@ export function turnAfter(
   return { active: order[next]!.id, round, ended }
 }
 
+/**
+ * The GM picks whose turn it is: `targetId`, `roundOffset` rounds from the current one
+ * (the carousel shows the order repeating, so the copy picked says which round). The
+ * acting creature's turn ends unless nothing was acting. Never below round 1. Null when
+ * nothing would change or the target isn't in the order.
+ */
+export function turnTo(
+  order: { id: string }[],
+  activeId: string | null,
+  round: number,
+  targetId: string,
+  roundOffset: number,
+): { active: string; round: number; ended: string | null } | null {
+  if (!order.some((c) => c.id === targetId)) return null
+  const next = Math.max(1, round + Math.trunc(roundOffset))
+  if (targetId === activeId && next === round) return null
+  const acting = activeId !== null && order.some((c) => c.id === activeId)
+  return { active: targetId, round: next, ended: acting ? activeId : null }
+}
+
 /** Start of the next round: the top of the order, whoever was left unacted. Null when empty. */
 export function newRoundStart(
   order: { id: string }[],

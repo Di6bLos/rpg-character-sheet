@@ -12,6 +12,7 @@ import {
   summonOwner,
   syncSummonRows,
   turnAfter,
+  turnTo,
 } from '~/utils/initiative'
 
 export type TurnRow = InitiativeRow & { init_mod: number; created_at: string }
@@ -208,10 +209,13 @@ export function useInitiative(
     return !error
   }
 
-  /** Actions refill when a creature's own turn ends; a hero's summons ride on the hero's turn. */
-  async function refillActions(endedId: string) {
+  /**
+   * Actions refill when a creature's own turn ends; a hero's summons ride on the hero's turn.
+   * Returns what was spent before, for an undo.
+   */
+  async function refillActions(endedId: string): Promise<{ id: string; used: number }[]> {
     const ended = rows.value.find((r) => r.id === endedId)
-    if (!ended) return
+    if (!ended) return []
     const spent = (r: TurnRow) => (r.actions_used ?? 0) > 0
     const targets =
       ended.kind === 'pc'
@@ -225,7 +229,7 @@ export function useInitiative(
         : ended.kind === 'monster' || ended.kind === 'npc'
           ? [ended].filter(spent)
           : []
-    if (!targets.length) return
+    if (!targets.length) return []
     const before = targets.map((r) => ({ row: r, used: r.actions_used }))
     for (const r of targets) r.actions_used = 0
     const { error } = await supabase
@@ -238,6 +242,39 @@ export function useInitiative(
     if (error) {
       for (const b of before) b.row.actions_used = b.used
       snackbar.error(error, 'Could not refill actions')
+      return []
+    }
+    return before.map((b) => ({ id: b.row.id, used: b.used ?? 0 }))
+  }
+
+  /**
+   * The GM makes `id` the acting combatant, `roundOffset` rounds from now (from the copy
+   * picked in the carousel). The turn that ends refills like Next turn; skipped creatures
+   * get nothing. Returns an undo that puts the turn, round and refilled actions back, or
+   * null when nothing changed.
+   */
+  async function jumpTo(id: string, roundOffset = 0): Promise<(() => Promise<void>) | null> {
+    if (!isGm.value || !encounter.value) return null
+    const prev = { active_combatant: encounter.value.active_combatant, round: round.value }
+    const next = turnTo(order.value, turnId.value, round.value, id, roundOffset)
+    if (!next) return null
+    const saved = await saveEncounter({ active_combatant: next.active, round: next.round })
+    if (!saved) return null
+    const refilled = next.ended ? await refillActions(next.ended) : []
+    return async () => {
+      if (!(await saveEncounter(prev))) return
+      if (!refilled.length) return
+      for (const r of refilled) {
+        const row = rows.value.find((x) => x.id === r.id)
+        if (row) row.actions_used = r.used
+      }
+      const results = await Promise.all(
+        refilled.map((r) =>
+          supabase.from('combatants').update({ actions_used: r.used }).eq('id', r.id),
+        ),
+      )
+      const failed = results.find((x) => x.error)
+      if (failed?.error) snackbar.error(failed.error, 'Could not put the actions back')
     }
   }
 
@@ -474,6 +511,7 @@ export function useInitiative(
     insert,
     nextTurn,
     prevTurn,
+    jumpTo,
     newRound,
     rename,
     setConditions,
