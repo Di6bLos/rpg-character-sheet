@@ -60,7 +60,9 @@ const upcasting = ref(false)
 
 function onClick() {
   if (a.value.choices) {
-    if (!off.value) picking.value = !picking.value
+    // A dimmed tile opens nothing, but still closes a picker it opened before it dimmed
+    // (the picker leaves clicks on its own tile to this handler).
+    if (!off.value || picking.value) picking.value = !picking.value
     return
   }
   guarded(a.value)
