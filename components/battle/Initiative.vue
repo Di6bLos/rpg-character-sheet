@@ -1,5 +1,8 @@
 <script setup lang="ts">
-// The battle board's initiative strip: one scrolling row of tokens in turn order.
+// The battle board's initiative strip: an endless carousel of tokens in turn order, the
+// acting one centred and a little larger. The order repeats on both sides (a dashed line
+// marks where a round starts again); each turn change slides it one step. The wheel
+// browses it, and the next turn change centres the acting token again.
 // Heroes show their numbers from the roster; enemies show a band to players (numbers
 // for the GM). Summons sit under their summoner.
 import type { RosterEntry } from '~/types'
@@ -40,15 +43,6 @@ function isDown(c: TurnRow) {
   return c.hp_band === 'Down' || (c.kind === 'summon' && c.hp_max !== null && (c.hp ?? 0) <= 0)
 }
 
-/** "Next": only the viewer's own hero, when it is up right after the active combatant. */
-const nextId = computed(() => {
-  const order = props.init.order.value
-  const at = order.findIndex((c) => c.id === props.init.activeId.value)
-  if (at < 0 || order.length < 2) return null
-  const after = order[(at + 1) % order.length]
-  return after && isMine(after) ? after.id : null
-})
-
 function hpText(c: TurnRow): string {
   if (c.kind === 'pc') {
     const s = rosterFor(c)?.summary
@@ -60,7 +54,8 @@ function hpText(c: TurnRow): string {
   return c.hp_band ?? ''
 }
 
-/** 0 to 1 for the minibar, only where the numbers are shown. */
+/** 0 to 1 for the minibar. Players see enemies by band only, so the bar steps by band. */
+const BAND_FILL: Record<string, number> = { Unhurt: 1, Hurt: 0.75, Bloodied: 0.5, Down: 0 }
 function hpFill(c: TurnRow): number | null {
   if (c.kind === 'pc') {
     const s = rosterFor(c)?.summary
@@ -69,7 +64,23 @@ function hpFill(c: TurnRow): number | null {
   }
   if (props.gm && c.hp !== null && (c.hp_max ?? 0) > 0)
     return Math.min(1, Math.max(0, c.hp / (c.hp_max ?? 1)))
-  return null
+  return c.hp_band ? (BAND_FILL[c.hp_band] ?? null) : null
+}
+
+function isLow(c: TurnRow): boolean {
+  const f = hpFill(c)
+  return isDown(c) || c.hp_band === 'Bloodied' || (f !== null && f <= 0.5)
+}
+
+/** HP as words for the tooltip and screen readers; the token itself only shows the bar. */
+function hpLabel(c: TurnRow): string {
+  if (isDown(c)) return c.kind === 'summon' ? 'Slain' : 'Down'
+  const t = hpText(c)
+  return t ? `HP ${t}` : ''
+}
+
+function tokenTitle(c: TurnRow): string {
+  return unseated(c) ? `${c.name} (not seated at this table)` : c.name
 }
 
 function conditions(c: TurnRow): string[] {
@@ -110,120 +121,253 @@ function onToken(c: TurnRow) {
   emit('select', c.id)
 }
 
-// Keep the acting token in view, from the first render on (it may start off-screen);
-// scrollIntoView with block 'nearest' never moves the page.
-const strip = ref<HTMLElement | null>(null)
+/** Token width plus the gap between tokens; keep in step with the styles. */
+const STEP = 106
+/** Wheel travel per token step. */
+const WHEEL_STEP = 60
+
+const mod = (a: number, n: number) => ((a % n) + n) % n
+
+// The viewport's width decides how many slots to draw (one more on each side than fits).
+const viewport = ref<HTMLElement | null>(null)
+const width = ref(0)
+let ro: ResizeObserver | undefined
+watch(viewport, (el, old) => {
+  ro ??= new ResizeObserver(([e]) => (width.value = e?.contentRect.width ?? 0))
+  if (old) ro.unobserve(old)
+  if (el) ro.observe(el)
+})
+onBeforeUnmount(() => ro?.disconnect())
+
+/**
+ * A running position in the endless row: slot keys are positions, so a step forward keeps
+ * every token's element and slides it. It moves the shortest way to the acting token, so
+ * Next turn (and a new round, wrapping) slides one step left and Prev one step right.
+ */
+const cursor = ref(0)
+/** How far the reader has browsed off the acting token. */
+const browse = ref(0)
 watch(
-  () => props.init.activeId.value,
-  (id) => {
-    if (!id) return
-    nextTick(() => {
-      const el = strip.value?.querySelector<HTMLElement>(`[data-token="${id}"]`)
-      el?.scrollIntoView({ inline: 'center', block: 'nearest' })
-    })
+  () => [props.init.activeId.value, props.init.order.value.map((c) => c.id).join()] as const,
+  () => {
+    const order = props.init.order.value
+    const n = order.length
+    if (!n) return
+    const target = Math.max(
+      0,
+      order.findIndex((c) => c.id === props.init.activeId.value),
+    )
+    let d = target - mod(cursor.value, n)
+    if (d > n / 2) d -= n
+    else if (d <= -n / 2) d += n
+    cursor.value += d
+    browse.value = 0
   },
-  { flush: 'post', immediate: true },
+  { immediate: true },
 )
+
+interface Slot {
+  key: number
+  c: TurnRow
+  /** The one copy screen readers and Tab reach: one full round around the centre. */
+  primary: boolean
+  /** The acting combatant, enlarged; every copy of it, so browsing never loses it. */
+  now: boolean
+  next: boolean
+  roundStart: boolean
+}
+
+const slots = computed<Slot[]>(() => {
+  const order = props.init.order.value
+  const n = order.length
+  if (!n) return []
+  const half = Math.ceil(Math.max(1, Math.ceil(width.value / STEP)) / 2)
+  const center = cursor.value + browse.value
+  const first = center - Math.floor((n - 1) / 2)
+  const acting = !!props.init.activeId.value
+  const out: Slot[] = []
+  for (let k = -half; k <= half; k++) {
+    const key = center + k
+    const i = mod(key, n)
+    const c = order[i]
+    if (!c) continue
+    out.push({
+      key,
+      c,
+      primary: key >= first && key < first + n,
+      now: acting && i === mod(cursor.value, n),
+      // "Next": only the viewer's own hero, when it is up right after the acting one.
+      next: acting && n > 1 && i === mod(cursor.value + 1, n) && isMine(c),
+      roundStart: n > 1 && i === 0,
+    })
+  }
+  return out
+})
+
+let wheel = 0
+function onWheel(e: WheelEvent) {
+  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+  if (!d) return
+  e.preventDefault()
+  wheel += d
+  while (Math.abs(wheel) >= WHEEL_STEP) {
+    browse.value += Math.sign(wheel)
+    wheel -= Math.sign(wheel) * WHEEL_STEP
+  }
+}
+
+/** Tabbing to a token off the visible part centres it (a click never moves the row). */
+function onFocus(slot: Slot, e: FocusEvent) {
+  if ((e.target as HTMLElement | null)?.matches(':focus-visible'))
+    browse.value = slot.key - cursor.value
+}
 </script>
 
 <template>
-  <ol v-if="init.order.value.length" ref="strip" class="strip" aria-label="Turn order">
-    <li
-      v-for="c in init.order.value"
-      :key="c.id"
-      class="tok"
-      :class="{
-        'is-now': c.id === init.activeId.value,
-        'is-mine': isMine(c),
-        'is-foe': c.kind !== 'pc',
-        'is-down': isDown(c),
-      }"
-      :aria-current="c.id === init.activeId.value ? 'step' : undefined"
-    >
-      <button
-        type="button"
-        class="tok__main"
-        :data-token="c.id"
-        :title="unseated(c) ? `${c.name} (not seated at this table)` : c.name"
-        :aria-label="`${c.name}, initiative ${c.initiative}`"
-        @click="onToken(c)"
+  <div
+    v-if="init.order.value.length"
+    ref="viewport"
+    class="strip"
+    role="group"
+    aria-label="Turn order"
+    @wheel="onWheel"
+  >
+    <TransitionGroup tag="ol" name="slot" class="strip__row">
+      <li
+        v-for="{ key, c, primary, now, next, roundStart } in slots"
+        :key="key"
+        class="slot"
+        :class="{ 'is-round-start': roundStart }"
+        :aria-hidden="primary ? undefined : 'true'"
+        :aria-current="now && primary ? 'step' : undefined"
+        @focusin="onFocus({ key, c, primary, now, next, roundStart }, $event)"
       >
-        <span class="tok__badges">
-          <span v-if="c.id === init.activeId.value" class="tok__badge tok__badge--now">Acting</span>
-          <span v-else-if="c.id === nextId" class="tok__badge">Next</span>
-        </span>
-        <span class="tok__top">
-          <span class="tok__score" title="Initiative">{{ c.initiative }}</span>
-          <UiAvatar
-            :name="c.name"
-            :portrait-path="portraitPath(c)"
-            :src="c.kind === 'pc' ? null : npcImageUrl(c.portrait_path)"
-            :class-slug="rosterFor(c)?.summary?.classSlug ?? null"
-            :square="c.kind === 'monster'"
-            :faded="isDown(c)"
-            :dead="isDead(c)"
-            :size="36"
-          />
-        </span>
-        <span class="tok__name"
-          >{{ c.name }}<span v-if="isDead(c)" class="tok__dead"> (dead)</span></span
+        <div
+          class="tok"
+          :class="{
+            'is-now': now,
+            'is-mine': isMine(c),
+            'is-foe': c.kind !== 'pc',
+            'is-down': isDown(c),
+          }"
         >
-        <span class="tok__hp" :class="{ 'is-low': isDown(c) || c.hp_band === 'Bloodied' }">{{
-          isDown(c) ? (c.kind === 'summon' ? 'Slain' : 'Down') : hpText(c) || ' '
-        }}</span>
-        <span class="tok__bar" aria-hidden="true">
-          <span v-if="hpFill(c) !== null" :style="{ width: `${(hpFill(c) ?? 0) * 100}%` }" />
-        </span>
-        <span class="tok__foot">
-          <span v-for="cond in conditions(c).slice(0, 2)" :key="cond" class="tok__chip">{{
-            cond
-          }}</span>
-          <span
-            v-if="conditions(c).length > 2"
-            class="tok__chip"
-            :title="conditions(c).slice(2).join(', ')"
-            >+{{ conditions(c).length - 2 }}</span
-          >
-        </span>
-      </button>
-      <div v-if="c.kind === 'pc' && init.summonsOf(c.character_id).length" class="tok__summons">
-        <button
-          v-for="s in init.summonsOf(c.character_id)"
-          :key="s.id"
-          type="button"
-          class="tok__summon"
-          :title="summonName(s)"
-          :aria-label="`${summonName(s)}, summon of ${c.name}`"
-          @click="emit('select', s.id)"
-        >
-          <UiAvatar
-            :name="summonName(s)"
-            :portrait-path="summonMember(s)?.portrait ?? null"
-            :beast="summonMember(s)?.beast ?? null"
-            :size="20"
-          />
-        </button>
-      </div>
-    </li>
-  </ol>
+          <UiTooltip :title="tokenTitle(c)" :sub="hpLabel(c)" :text="conditions(c).join(', ')">
+            <button
+              type="button"
+              class="tok__main"
+              :tabindex="primary ? undefined : -1"
+              :aria-label="`${c.name}, initiative ${c.initiative}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
+              @click="onToken(c)"
+            >
+              <span class="tok__score" title="Initiative">{{ c.initiative }}</span>
+              <span v-if="now" class="tok__badge tok__badge--now">Acting</span>
+              <span v-else-if="next" class="tok__badge">Next</span>
+              <UiAvatar
+                class="tok__avatar"
+                :name="c.name"
+                :portrait-path="portraitPath(c)"
+                :src="c.kind === 'pc' ? null : npcImageUrl(c.portrait_path)"
+                :class-slug="rosterFor(c)?.summary?.classSlug ?? null"
+                :square="c.kind === 'monster'"
+                :faded="isDown(c)"
+                :dead="isDead(c)"
+                :size="64"
+              />
+              <span class="tok__plate">
+                <span class="tok__name"
+                  >{{ c.name }}<span v-if="isDead(c)" class="tok__dead"> (dead)</span></span
+                >
+                <span class="tok__bar" :class="{ 'is-low': isLow(c) }" aria-hidden="true">
+                  <span
+                    v-if="hpFill(c) !== null"
+                    :style="{ width: `${(hpFill(c) ?? 0) * 100}%` }"
+                  />
+                </span>
+              </span>
+            </button>
+          </UiTooltip>
+          <div v-if="c.kind === 'pc' && init.summonsOf(c.character_id).length" class="tok__summons">
+            <button
+              v-for="s in init.summonsOf(c.character_id)"
+              :key="s.id"
+              type="button"
+              class="tok__summon"
+              :tabindex="primary ? undefined : -1"
+              :title="summonName(s)"
+              :aria-label="`${summonName(s)}, summon of ${c.name}`"
+              @click="emit('select', s.id)"
+            >
+              <UiAvatar
+                :name="summonName(s)"
+                :portrait-path="summonMember(s)?.portrait ?? null"
+                :beast="summonMember(s)?.beast ?? null"
+                :size="20"
+              />
+            </button>
+          </div>
+        </div>
+      </li>
+    </TransitionGroup>
+  </div>
   <p v-else class="strip__empty small muted">
     No encounter running. Tokens appear here when the GM rolls initiative.
   </p>
 </template>
 
 <style scoped lang="scss">
+// Tokens past the edges are clipped (clip, not hidden: focus must never scroll the row
+// off centre) and fade out, so the row reads as endless.
 .strip {
+  overflow: clip;
+  padding: 14px 0 8px;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 48px,
+    #000 calc(100% - 48px),
+    transparent
+  );
+}
+
+// More slots than fit, centred: the acting token lands in the middle and the extras
+// overflow evenly on both sides.
+.strip__row {
   list-style: none;
   margin: 0;
-  padding: 4px 2px 8px;
+  padding: 0;
   display: flex;
   flex-wrap: nowrap;
+  justify-content: center;
   align-items: stretch;
   gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+}
+
+.slot {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+
+  // Where the order starts over: a dashed line in the gap before the first token.
+  &.is-round-start::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 10%;
+    bottom: 10%;
+    border-left: 1px dashed var(--line-strong);
+  }
+}
+
+.slot-move {
+  transition: transform 0.35s ease;
+}
+
+.slot-enter-active {
+  transition: opacity 0.35s ease;
+}
+
+.slot-enter-from {
+  opacity: 0;
 }
 
 .strip__empty {
@@ -232,10 +376,10 @@ watch(
 }
 
 .tok {
-  flex: 0 0 auto;
-  width: 124px;
-  min-width: 112px;
-  max-width: 136px;
+  flex: 1 1 auto;
+  width: 96px;
+  position: relative;
+  transition: transform 0.35s ease;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line);
@@ -258,6 +402,9 @@ watch(
   }
 
   &.is-now {
+    // Larger than the rest; the 10px gaps leave room for it.
+    transform: scale(1.15);
+    z-index: 1;
     // The tint is translucent: lay it over the panel, not the page behind the strip.
     background: linear-gradient(var(--accent-tint), var(--accent-tint)), var(--panel-bg);
     border-color: var(--accent);
@@ -280,8 +427,9 @@ watch(
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 3px;
-  padding: 6px 8px 7px;
+  padding: 6px 6px 6px;
   cursor: pointer;
   border-radius: inherit;
 
@@ -291,22 +439,51 @@ watch(
   }
 }
 
-.tok__badges {
-  height: 14px;
-  display: flex;
-  justify-content: flex-end;
+// Initiative: a small coin on the token's top-left corner.
+.tok__score {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 2;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--panel-bg);
+  color: color-mix(in srgb, var(--accent-text) 60%, var(--page-text));
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--line));
+
+  .is-now & {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+  }
 }
 
+// Acting / Next sits on the token's top edge, so it costs no height.
 .tok__badge {
-  font-size: 0.625rem;
-  line-height: 14px;
-  padding: 0 6px;
+  position: absolute;
+  top: -7px;
+  right: 6px;
+  z-index: 2;
+  font-size: 0.5625rem;
+  line-height: 13px;
+  padding: 0 5px;
   border-radius: 7px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--accent-text);
   border: 1px solid var(--accent);
+  // Half of it sits over the page: give it the panel behind its text.
+  background: var(--panel-bg);
 
   &--now {
     background: var(--accent);
@@ -314,24 +491,31 @@ watch(
   }
 }
 
-.tok__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+.tok__avatar {
+  margin-top: 2px;
 }
 
-.tok__score {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--accent-text) 60%, var(--page-text));
+// Name and bar laid over the bottom of the portrait.
+.tok__plate {
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
+  margin-top: -16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 5px 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
 }
 
 .tok__name {
   display: block;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -339,19 +523,6 @@ watch(
 
 .tok__dead {
   color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
-}
-
-.tok__hp {
-  display: block;
-  font-size: 0.6875rem;
-  color: var(--panel-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  &.is-low {
-    color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
-  }
 }
 
 .tok__bar {
@@ -366,62 +537,25 @@ watch(
     height: 100%;
     background: var(--accent);
   }
-}
 
-.tok__foot {
-  min-height: 16px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.tok__chip {
-  font-size: 0.625rem;
-  line-height: 14px;
-  padding: 0 5px;
-  border-radius: 7px;
-  background: var(--panel-inset);
-  color: var(--panel-soft);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
+  &.is-low span {
+    background: var(--danger);
+  }
 }
 
 .tok__summons {
   display: flex;
+  justify-content: center;
   gap: 4px;
-  padding: 0 8px 6px;
+  padding: 4px 6px 6px;
   border-top: 1px dashed var(--line);
-  padding-top: 4px;
 }
 
-// Short windows (1280x720, 1200x800): the Acting / Next badge sits on the token's top edge
-// instead of its own row, so the strip gives the columns below about 20px more.
-@media (max-height: 820px) {
-  .strip {
-    padding-top: 8px;
-    padding-bottom: 6px;
-  }
-
+@media (prefers-reduced-motion: reduce) {
+  .slot-move,
+  .slot-enter-active,
   .tok {
-    position: relative;
-  }
-
-  .tok__badges {
-    position: absolute;
-    top: -7px;
-    right: 8px;
-  }
-
-  // Half of it sits over the page: give it the panel behind its text.
-  .tok__badge {
-    background: var(--panel-bg);
-  }
-
-  .tok__badge--now {
-    background: var(--accent);
+    transition: none;
   }
 }
 

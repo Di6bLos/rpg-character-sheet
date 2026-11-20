@@ -30,7 +30,7 @@ function isDead(r: RosterEntry) {
   return !!s && (s.woundsMax ?? 0) > 0 && (s.wounds ?? 0) >= (s.woundsMax ?? 0)
 }
 
-/** One line: dead or dying first, then summons, Wounds, or the first condition. */
+/** One line: dead or dying first, then summons or Wounds. Conditions get their own row. */
 function status(r: RosterEntry): string {
   const s = r.summary
   if (!s) return ''
@@ -38,8 +38,11 @@ function status(r: RosterEntry): string {
   if (s.dying) return 'Dying'
   const summons = (s.summons ?? []).filter((m) => !m.hpMax || m.hp > 0).length
   if (summons) return plural(summons, 'summon')
-  if (s.wounds) return `Wounds ${s.wounds}`
-  return s.conditions?.[0] ?? ''
+  return s.wounds ? `Wounds ${s.wounds}` : ''
+}
+
+function conditions(r: RosterEntry): string[] {
+  return r.summary?.conditions ?? []
 }
 
 function sub(r: RosterEntry): string {
@@ -82,7 +85,8 @@ function label(r: RosterEntry): string {
   const p = pips(r)
   const actions = p ? `${p.total - p.used} of ${p.total} actions left` : ''
   const hp = r.summary?.hp === undefined ? 'HP unknown' : `${hpText(r)} HP`
-  const parts = [name, acting, sub(r), hp, guard, mana(r), actions]
+  const conds = conditions(r).join(', ')
+  const parts = [name, acting, sub(r), hp, guard, mana(r), actions, conds]
   return `${parts.filter(Boolean).join(', ')}. Open stats`
 }
 </script>
@@ -147,6 +151,9 @@ function label(r: RosterEntry): string {
                 :class="{ 'is-low': hpFill(r) <= 0.5 }"
                 :style="{ width: `${hpFill(r) * 100}%` }"
               />
+            </span>
+            <span v-if="conditions(r).length" class="pc__conds" aria-hidden="true">
+              <span v-for="cond in conditions(r)" :key="cond" class="pc__cond">{{ cond }}</span>
             </span>
           </span>
           <span class="pc__right">
@@ -354,6 +361,24 @@ function label(r: RosterEntry): string {
       background: var(--danger);
     }
   }
+}
+
+.pc__conds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.pc__cond {
+  font-size: 10px;
+  line-height: 14px;
+  padding: 0 5px;
+  border-radius: 7px;
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
+  color: var(--page-soft);
+  white-space: nowrap;
 }
 
 .pc__right {
