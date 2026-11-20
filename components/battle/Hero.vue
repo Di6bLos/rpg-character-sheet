@@ -10,8 +10,10 @@ import { sheetResource } from '~/utils/nimbleBuild'
 import { encounterMana, isDead, isHollowOne } from '~/utils/nimblePlay'
 
 const { draft, canEdit, portrait } = useSheet<NimbleSheet>()
-// Statuses other heroes give this one (Helped); the quick-action panel does this below 1200px.
+// Statuses other heroes give this one (Helped) and HP changes from the GM; the
+// quick-action panel does this below 1200px.
 useHeroEffects()
+useHeroHpChanges()
 const sheet = computed(() => draft.value.sheet)
 const { diceLeft, speed } = useNimbleVitals()
 

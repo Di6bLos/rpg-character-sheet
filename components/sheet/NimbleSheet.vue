@@ -13,6 +13,7 @@ import { availableSummons } from '~/utils/nimbleSummons'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 useHeroEffects()
+useHeroHpChanges()
 const sheet = computed(() => draft.value.sheet)
 const ownDice = computed({
   get: () => sheet.value.ownDice,

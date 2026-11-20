@@ -2,15 +2,14 @@
 // A hero's stats modal, opened from a party card or a hero initiative token. Loads the
 // public subset (campaign_hero_card) and shows only what it returns. Side: portrait,
 // identity, HP, Wounds, Armor / Speed / Init, conditions. Main: HeroCardStats.
-// HP controls: the GM's go to the hero's initiative row (init.adjustHp); for the
-// viewer's own hero the page passes the hero column's HP (`own-hp`, inside its sheet
-// editor). Footer: Whisper and Open full sheet.
+// HP controls: the GM's send a change to the hero's own sheet (hero_hp_changes, applied
+// there by useHeroHpChanges); for the viewer's own hero the page passes the hero
+// column's HP (`own-hp`, inside its sheet editor). Footer: Whisper and Open full sheet.
 import type { HeroCard, RosterEntry } from '~/types'
-import type { useInitiative } from '~/composables/useInitiative'
+import { supabase } from '~/lib/supabase'
 import { sign } from '~/utils/dice'
 
 const props = defineProps<{
-  init: ReturnType<typeof useInitiative>
   roster: RosterEntry[]
   gm: boolean
 }>()
@@ -21,7 +20,8 @@ const auth = useAuthStore()
 const campaigns = useCampaignStore()
 const chat = useBoardChat()
 const commsTab = useCommsTab()
-const { campaignId, isGm } = useCampaignBoard()
+const snackbar = useSnackbarStore()
+const { campaignId, reloadRoster } = useCampaignBoard()
 
 const open = computed({
   get: () => characterId.value !== null,
@@ -96,19 +96,44 @@ function pct(n: number, max: number): number {
   return max > 0 ? Math.min(100, Math.max(0, (n / max) * 100)) : 0
 }
 
-// --- GM: HP on the hero's initiative row --------------------------------------------
-const combatant = computed(() =>
-  props.init.order.value.find((c) => c.kind === 'pc' && c.character_id === characterId.value),
-)
-const amount = ref<number | null>(null)
-const uid = useId()
+const ROSTER_AFTER_MS = 4000
 
-function adjust(sign: 1 | -1) {
-  const c = combatant.value
-  if (!c) return
-  const n = Math.max(1, Math.floor(Number(amount.value) || 1))
-  void props.init.adjustHp(c, sign * n)
+// --- GM: send an HP change to the hero's sheet ---------------------------------------
+const amount = ref<number | null>(null)
+const crit = ref(false)
+const sending = ref(false)
+const sent = ref('')
+const uid = useId()
+watch(characterId, () => {
   amount.value = null
+  crit.value = false
+  sent.value = ''
+})
+
+/** − sends the amount as damage (with Crit if on), + as healing; an empty field means 1. */
+async function adjust(sign: 1 | -1) {
+  const id = characterId.value
+  const name = title.value
+  if (!id || sending.value) return
+  const n = Math.min(999, Math.max(1, Math.floor(Number(amount.value) || 1)))
+  const isCrit = sign < 0 && crit.value
+  sending.value = true
+  const { error: failed } = await supabase.from('hero_hp_changes').insert({
+    campaign_id: campaignId.value,
+    character_id: id,
+    amount: sign * n,
+    crit: isCrit,
+  })
+  sending.value = false
+  if (failed) {
+    snackbar.error(failed, `Could not send the HP change to ${name}`)
+    return
+  }
+  amount.value = null
+  crit.value = false
+  // The player's sheet applies it and autosaves; refresh the roster once that has landed.
+  setTimeout(() => void reloadRoster().catch(() => undefined), ROSTER_AFTER_MS)
+  sent.value = `Sent to ${name}: ${sign < 0 ? `${n} damage${isCrit ? ' (crit)' : ''}` : `heal ${n}`}. Their sheet applies it.`
 }
 
 // --- Footer ---------------------------------------------------------------------------
@@ -174,41 +199,48 @@ async function whisper() {
         </div>
 
         <div v-if="gm" class="hc__gm">
-          <template v-if="combatant">
-            <span class="hc__sect"
-              >Initiative HP · {{ combatant.hp ?? 0 }} / {{ combatant.hp_max ?? 0 }}</span
+          <span class="hc__sect">Change HP</span>
+          <div class="hc__ctl">
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`${card.name}: take ${amount || 1} damage`"
+              :disabled="sending"
+              @click="adjust(-1)"
             >
-            <div class="hc__ctl">
-              <button
-                type="button"
-                class="step step--xs"
-                :aria-label="`${card.name}: lose ${amount || 1} hit points`"
-                @click="adjust(-1)"
-              >
-                −
-              </button>
-              <label class="sr-only" :for="`${uid}-amt`">HP amount</label>
-              <input
-                :id="`${uid}-amt`"
-                v-model.number="amount"
-                class="input hc__amt"
-                type="number"
-                min="1"
-                inputmode="numeric"
-                placeholder="amount"
-                @keydown.enter.prevent="adjust(-1)"
-              />
-              <button
-                type="button"
-                class="step step--xs"
-                :aria-label="`${card.name}: gain ${amount || 1} hit points`"
-                @click="adjust(1)"
-              >
-                +
-              </button>
-            </div>
-          </template>
-          <p v-else class="hc__hint">Add {{ card.name }} to initiative to adjust HP here.</p>
+              −
+            </button>
+            <label class="sr-only" :for="`${uid}-amt`">HP amount</label>
+            <input
+              :id="`${uid}-amt`"
+              v-model.number="amount"
+              class="input hc__amt"
+              type="number"
+              min="1"
+              inputmode="numeric"
+              placeholder="amount"
+              @keydown.enter.prevent="adjust(-1)"
+            />
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`${card.name}: heal ${amount || 1}`"
+              :disabled="sending"
+              @click="adjust(1)"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm hc__crit"
+              :aria-pressed="crit"
+              title="The damage is from a critical hit"
+              @click="crit = !crit"
+            >
+              Crit
+            </button>
+          </div>
+          <p class="hc__hint" role="status">{{ sent }}</p>
         </div>
 
         <div v-if="live.woundsMax && !ownHp()" class="hc__wounds">
@@ -255,7 +287,7 @@ async function whisper() {
         Whisper
       </button>
       <NuxtLink
-        v-if="characterId && (isGm || own)"
+        v-if="characterId && (gm || own)"
         :to="`/character/${characterId}`"
         class="btn btn--sm"
       >
@@ -394,6 +426,12 @@ async function whisper() {
   min-height: 32px;
   padding: 4px 8px;
   text-align: center;
+}
+
+.hc__crit[aria-pressed='true'] {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-color: var(--danger);
 }
 
 .hc__wounds {

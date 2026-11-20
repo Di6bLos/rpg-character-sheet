@@ -106,6 +106,7 @@ const {
 } = useNimbleSummons({ onResult: announce })
 const { allies, help } = useHelpAlly({ onResult: announce })
 useHeroEffects()
+useHeroHpChanges()
 const isFull = (id: string) => !!summonable.value.find((a) => a.id === id)?.full
 
 /** One row per summon kind, a stack for identical minions; hand-added ones each get a row. */

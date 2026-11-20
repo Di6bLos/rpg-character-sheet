@@ -276,6 +276,18 @@ export interface HeroCard {
   abilities: { name: string; desc: string; src: string }[]
 }
 
+/** An HP change the GM sent to a seated hero, waiting for the hero's own sheet (`hero_hp_changes`). */
+export interface HeroHpChange {
+  id: string
+  campaign_id: string
+  character_id: string
+  /** Negative is damage, positive is healing. */
+  amount: number
+  crit: boolean
+  created_by: string | null
+  created_at: string
+}
+
 export type HpBand = 'Unhurt' | 'Hurt' | 'Bloodied' | 'Down'
 
 export type NpcKind = 'monster' | 'humanoid'

@@ -145,12 +145,7 @@ async function addCustom() {
         :turn-character-id="turnCharacterId"
       />
       <!-- Here so the viewer's own hero gets the hero column's HP (same sheet editor). -->
-      <BattleHeroCardDialog
-        v-model:character-id="cardId"
-        :init="init"
-        :roster="roster"
-        :gm="gmControls"
-      >
+      <BattleHeroCardDialog v-model:character-id="cardId" :roster="roster" :gm="gmControls">
         <template v-if="hero" #own-hp><BattleHeroHp /></template>
       </BattleHeroCardDialog>
     </template>
