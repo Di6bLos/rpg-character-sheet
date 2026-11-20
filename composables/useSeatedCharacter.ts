@@ -25,7 +25,8 @@ export function useSeatedCharacter(failure: string) {
       if (!id) return
       try {
         // A layout swap unmounts the old sheet editor, which saves as it goes; wait for
-        // the flush to finish and that save to land so the load gets the saved copy.
+        // the flush to finish and that save to land so the load gets the saved copy (a
+        // stalled save is given a few seconds, then the load goes ahead).
         await nextTick()
         await sheetSaves.settled(id)
         if (characterId.value !== id) return

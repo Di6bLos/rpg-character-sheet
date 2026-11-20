@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { pendingSaves } from '../utils/pendingSaves'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { pendingSaves, SAVE_WAIT_MS } from '../utils/pendingSaves'
 
 function deferred() {
   let resolve!: () => void
@@ -64,5 +64,40 @@ describe('pendingSaves', () => {
     await flush()
     expect(other).toBe(true)
     write.resolve()
+  })
+
+  describe('when a save stalls', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('lets the load go ahead after the timeout', async () => {
+      vi.useFakeTimers()
+      const saves = pendingSaves()
+      const write = deferred()
+      void saves.track('hero', write.promise)
+      let done = false
+      void saves.settled('hero').then(() => (done = true))
+      await vi.advanceTimersByTimeAsync(SAVE_WAIT_MS - 1)
+      expect(done).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(done).toBe(true)
+      write.resolve()
+    })
+
+    it('takes a custom timeout, and a save that lands first still wins', async () => {
+      vi.useFakeTimers()
+      const saves = pendingSaves()
+      const write = deferred()
+      void saves.track('hero', write.promise)
+      let done = false
+      void saves.settled('hero', 50).then(() => (done = true))
+      await vi.advanceTimersByTimeAsync(10)
+      expect(done).toBe(false)
+      write.resolve()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(done).toBe(true)
+      expect(vi.getTimerCount()).toBe(0)
+    })
   })
 })
