@@ -1,4 +1,4 @@
-import type { CampaignNpc, StatEntry } from '~/types'
+import type { CampaignNpc } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 
 /** Fetches already started for a campaign and set of linked ids (two callers, one fetch). */
@@ -54,12 +54,4 @@ export function useCombatantNpcs(init: ReturnType<typeof useInitiative>) {
 export function statTop(npc: CampaignNpc | undefined, label: string): string {
   const want = label.toLowerCase()
   return npc?.stat_block.top?.find(([k]) => k.toLowerCase() === want)?.[1]?.trim() ?? ''
-}
-
-/** Every entry under a section title ("Actions"), across sections of that name. */
-export function statSection(npc: CampaignNpc | undefined, title: string): StatEntry[] {
-  const want = title.toLowerCase()
-  return (npc?.stat_block.sections ?? [])
-    .filter((s) => s.title.toLowerCase() === want)
-    .flatMap((s) => s.items)
 }
