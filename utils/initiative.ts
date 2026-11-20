@@ -253,7 +253,7 @@ export function turnAfter(
 
 /**
  * The GM picks whose turn it is: `targetId`, `roundOffset` rounds from the current one
- * (the carousel shows the order repeating, so the copy picked says which round). The
+ * (the strip keeps past rounds, so the token picked says which round). The
  * acting creature's turn ends unless nothing was acting. Never below round 1. Null when
  * nothing would change or the target isn't in the order.
  */

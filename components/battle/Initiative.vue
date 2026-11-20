@@ -1,8 +1,10 @@
 <script setup lang="ts">
-// The battle board's initiative strip: an endless carousel of tokens in turn order, the
-// acting one centred and a little larger. The order repeats on both sides (a dashed line
-// marks where a round starts again); each turn change slides it one step. Dragging or the
-// wheel browses it, and the next turn change centres the acting token again.
+// The battle board's initiative strip: tokens in turn order, the acting one centred and a
+// little larger. Each round opens with a "Round N" cap and closes with "Round end"; rounds
+// already played stay on the left, dimmed like this round's turns already taken, and
+// nothing past the current round shows (empty ghost slots fill the sides). Each turn
+// change slides it, a new round slides on past the caps. Dragging or the wheel browses it
+// (from round 1 to this round's end), and the next turn change centres the acting token.
 // Heroes show their HP from the roster; creatures show theirs to the GM only (players
 // see only that one is down). Summons sit under their summoner.
 // The GM right-clicks a token (or uses the context-menu key) for its menu: make it the
@@ -10,6 +12,7 @@
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
+import { activeKey, browseBounds, slotAt, type StripSlot } from '~/utils/initiativeStrip'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -127,8 +130,6 @@ const STEP = 106
 /** Wheel travel per token step. */
 const WHEEL_STEP = 60
 
-const mod = (a: number, n: number) => ((a % n) + n) % n
-
 // The viewport's width decides how many slots to draw (one more on each side than fits).
 const viewport = ref<HTMLElement | null>(null)
 const width = ref(0)
@@ -140,42 +141,52 @@ watch(viewport, (el, old) => {
 })
 onBeforeUnmount(() => ro?.disconnect())
 
+/** The acting combatant's place in the order; -1 while no one is acting. */
+const activeIndex = computed(() =>
+  props.init.activeId.value
+    ? props.init.order.value.findIndex((c) => c.id === props.init.activeId.value)
+    : -1,
+)
+
 /**
- * A running position in the endless row: slot keys are positions, so a step forward keeps
- * every token's element and slides it. It moves the shortest way to the acting token, so
- * Next turn (and a new round, wrapping) slides one step left and Prev one step right.
+ * The acting token's position in the row (`utils/initiativeStrip.ts`). Slot keys are
+ * positions, so a turn change keeps every token's element and slides it, a new round
+ * included (past the "Round end" and the new "Round" cap).
  */
-const cursor = ref(0)
+const cursor = computed(() =>
+  activeKey(props.init.round.value, activeIndex.value, props.init.order.value.length),
+)
 /** How far the reader has browsed off the acting token. */
 const browse = ref(0)
 watch(
-  () => [props.init.activeId.value, props.init.order.value.map((c) => c.id).join()] as const,
-  () => {
-    const order = props.init.order.value
-    const n = order.length
-    if (!n) return
-    const target = Math.max(
-      0,
-      order.findIndex((c) => c.id === props.init.activeId.value),
-    )
-    let d = target - mod(cursor.value, n)
-    if (d > n / 2) d -= n
-    else if (d <= -n / 2) d += n
-    cursor.value += d
-    browse.value = 0
-  },
-  { immediate: true },
+  () => [cursor.value, props.init.order.value.map((c) => c.id).join()] as const,
+  () => (browse.value = 0),
 )
+
+/** Browse to `v`, held between round 1's cap and this round's end. */
+function setBrowse(v: number) {
+  const { min, max } = browseBounds(
+    props.init.order.value.length,
+    props.init.round.value,
+    cursor.value,
+  )
+  browse.value = Math.min(max, Math.max(min, v))
+}
 
 interface Slot {
   key: number
-  c: TurnRow
-  /** The one copy screen readers and Tab reach: one full round around the centre. */
+  kind: StripSlot['kind']
+  /** The round a cap, end cap or token belongs to (0 for a ghost). */
+  round: number
+  /** The combatant, on token slots. */
+  c: TurnRow | null
+  /** A token of the current round: the copy screen readers and Tab reach. */
   primary: boolean
-  /** The acting combatant, enlarged; every copy of it, so browsing never loses it. */
+  /** The acting combatant, enlarged. */
   now: boolean
   next: boolean
-  roundStart: boolean
+  /** Already acted: an earlier round, or this round before the acting one. */
+  done: boolean
 }
 
 const slots = computed<Slot[]>(() => {
@@ -185,22 +196,39 @@ const slots = computed<Slot[]>(() => {
   // One spare slot per side, so a drag never shows an empty edge.
   const half = Math.ceil(Math.max(1, Math.ceil(width.value / STEP)) / 2) + 1
   const center = cursor.value + browse.value
-  const first = center - Math.floor((n - 1) / 2)
-  const acting = !!props.init.activeId.value
+  const round = props.init.round.value
+  const active = activeIndex.value
   const out: Slot[] = []
   for (let k = -half; k <= half; k++) {
     const key = center + k
-    const i = mod(key, n)
-    const c = order[i]
+    const s = slotAt(key, n, round, active)
+    if (s.kind !== 'token') {
+      const r = s.kind === 'ghost' ? 0 : s.round
+      out.push({
+        key,
+        kind: s.kind,
+        round: r,
+        c: null,
+        primary: false,
+        now: false,
+        next: false,
+        done: false,
+      })
+      continue
+    }
+    const c = order[s.index]
     if (!c) continue
+    const primary = s.round === round
     out.push({
       key,
+      kind: 'token',
+      round: s.round,
       c,
-      primary: key >= first && key < first + n,
-      now: acting && i === mod(cursor.value, n),
+      primary,
+      now: primary && active >= 0 && s.index === active,
       // "Next": only the viewer's own hero, when it is up right after the acting one.
-      next: acting && n > 1 && i === mod(cursor.value + 1, n) && isMine(c),
-      roundStart: n > 1 && i === 0,
+      next: primary && active >= 0 && s.index === active + 1 && isMine(c),
+      done: s.done,
     })
   }
   return out
@@ -213,7 +241,7 @@ function onWheel(e: WheelEvent) {
   e.preventDefault()
   wheel += d
   while (Math.abs(wheel) >= WHEEL_STEP) {
-    browse.value += Math.sign(wheel)
+    setBrowse(browse.value + Math.sign(wheel))
     wheel -= Math.sign(wheel) * WHEEL_STEP
   }
 }
@@ -235,6 +263,16 @@ function onPointerDown(e: PointerEvent) {
   dragged = false
 }
 
+/** Dragging by `d` px would pull the row past an end (right: before round 1; left: past now). */
+function atEdge(d: number) {
+  const { min, max } = browseBounds(
+    props.init.order.value.length,
+    props.init.round.value,
+    cursor.value,
+  )
+  return (d > 0 && browse.value <= min) || (d < 0 && browse.value >= max)
+}
+
 function onPointerMove(e: PointerEvent) {
   if (e.pointerId !== pointer) return
   const dx = e.clientX - startX
@@ -248,11 +286,12 @@ function onPointerMove(e: PointerEvent) {
   let d = offset.value + dx
   startX = e.clientX
   // Dragging right brings earlier tokens in: browse back one per step crossed.
-  while (Math.abs(d) >= STEP) {
-    browse.value -= Math.sign(d)
+  while (Math.abs(d) >= STEP && !atEdge(d)) {
+    setBrowse(browse.value - Math.sign(d))
     d -= Math.sign(d) * STEP
   }
-  offset.value = d
+  // At either end the row stops following the pointer.
+  offset.value = atEdge(d) ? 0 : d
 }
 
 async function onPointerUp(e: PointerEvent) {
@@ -260,8 +299,8 @@ async function onPointerUp(e: PointerEvent) {
   pointer = null
   if (!dragging.value) return
   // Snap to the nearest token: past half a step counts as the next one.
-  if (Math.abs(offset.value) > STEP / 2) {
-    browse.value -= Math.sign(offset.value)
+  if (Math.abs(offset.value) > STEP / 2 && !atEdge(offset.value)) {
+    setBrowse(browse.value - Math.sign(offset.value))
     offset.value -= Math.sign(offset.value) * STEP
   }
   // Let the re-keyed slots render with moves still off, then ease the rest back to 0.
@@ -280,15 +319,11 @@ function onClickCapture(e: MouseEvent) {
 }
 
 // --- GM token menu --------------------------------------------------------------------
-const menu = ref<{ c: TurnRow; key: number; anchor: HTMLElement } | null>(null)
+const menu = ref<{ c: TurnRow; round: number; anchor: HTMLElement } | null>(null)
 /** Opened a tick after `menu` is set: the popover places itself when it turns on. */
 const menuOpen = ref(false)
-/** Which round the picked copy belongs to, from the current one: rounds start at index 0. */
-const menuRoundOffset = computed(() => {
-  const n = props.init.order.value.length
-  if (!menu.value || !n) return 0
-  return Math.floor(menu.value.key / n) - Math.floor(cursor.value / n)
-})
+/** Which round the picked copy belongs to, from the current one (0, or earlier rounds). */
+const menuRoundOffset = computed(() => (menu.value ? menu.value.round - props.init.round.value : 0))
 
 /** The keyboard's context-menu key or Shift+F10, for browsers that don't send `contextmenu`. */
 function onTokenKey(slot: Slot, e: KeyboardEvent) {
@@ -297,24 +332,24 @@ function onTokenKey(slot: Slot, e: KeyboardEvent) {
 
 async function onContextMenu(slot: Slot, e: MouseEvent | KeyboardEvent) {
   // Players keep the browser's own menu.
-  if (!props.gm) return
+  if (!props.gm || !slot.c) return
   e.preventDefault()
   menuOpen.value = false
-  menu.value = { c: slot.c, key: slot.key, anchor: e.currentTarget as HTMLElement }
+  menu.value = { c: slot.c, round: slot.round, anchor: e.currentTarget as HTMLElement }
   await nextTick()
   menuOpen.value = true
 }
 
 // The row moving (a turn change, browsing, a new order) leaves the menu's token behind.
 watch(
-  () => [props.init.activeId.value, browse.value, props.init.order.value.map((c) => c.id).join()],
+  () => [cursor.value, browse.value, props.init.order.value.map((c) => c.id).join()],
   () => (menuOpen.value = false),
 )
 
 /** Tabbing to a token off the visible part centres it (a click never moves the row). */
 function onFocus(slot: Slot, e: FocusEvent) {
   if ((e.target as HTMLElement | null)?.matches(':focus-visible'))
-    browse.value = slot.key - cursor.value
+    setBrowse(slot.key - cursor.value)
 }
 </script>
 
@@ -341,90 +376,108 @@ function onFocus(slot: Slot, e: FocusEvent) {
       :style="offset ? { transform: `translateX(${offset}px)` } : undefined"
     >
       <li
-        v-for="{ key, c, primary, now, next, roundStart } in slots"
-        :key="key"
+        v-for="slot in slots"
+        :key="slot.key"
         class="slot"
-        :class="{ 'is-round-start': roundStart }"
-        :aria-hidden="primary ? undefined : 'true'"
-        :aria-current="now && primary ? 'step' : undefined"
-        @focusin="onFocus({ key, c, primary, now, next, roundStart }, $event)"
+        :aria-hidden="slot.primary ? undefined : 'true'"
+        :aria-current="slot.now ? 'step' : undefined"
+        @focusin="onFocus(slot, $event)"
       >
-        <div
-          class="tok"
-          :class="{
-            'is-now': now,
-            'is-mine': isMine(c),
-            'is-foe': c.kind !== 'pc',
-            'is-down': isDown(c),
-          }"
-        >
-          <UiTooltip :title="tokenTitle(c)" :sub="hpLabel(c)" :text="conditions(c).join(', ')">
-            <button
-              type="button"
-              class="tok__main"
-              :tabindex="primary ? undefined : -1"
-              :aria-label="`${c.name}, ${c.initiative_rolled ? `initiative ${c.initiative}` : 'waiting for Initiative'}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
-              @click="onToken(c)"
-              @contextmenu="onContextMenu({ key, c, primary, now, next, roundStart }, $event)"
-              @keydown="onTokenKey({ key, c, primary, now, next, roundStart }, $event)"
-            >
-              <span
-                class="tok__score"
-                :class="{ 'is-waiting': !c.initiative_rolled }"
-                :title="c.initiative_rolled ? 'Initiative' : 'Waiting for their Initiative roll'"
-                >{{ c.initiative_rolled ? c.initiative : '–' }}</span
-              >
-              <span v-if="now" class="tok__badge tok__badge--now">Acting</span>
-              <span v-else-if="next" class="tok__badge">Next</span>
-              <UiAvatar
-                class="tok__avatar"
-                :name="c.name"
-                :portrait-path="portraitPath(c)"
-                :src="c.kind === 'pc' ? null : npcImageUrl(c.portrait_path)"
-                :class-slug="rosterFor(c)?.summary?.classSlug ?? null"
-                :square="c.kind === 'monster'"
-                :faded="isDown(c)"
-                :dead="isDead(c)"
-                :size="64"
-              />
-              <span class="tok__plate">
-                <span class="tok__name"
-                  >{{ c.name }}<span v-if="isDead(c)" class="tok__dead"> (dead)</span></span
-                >
-                <!-- No HP to show (a creature, to players): the bar keeps its room, unseen. -->
-                <span
-                  class="tok__bar"
-                  :class="{ 'is-low': isLow(c), 'is-none': hpFill(c) === null }"
-                  aria-hidden="true"
-                >
-                  <span
-                    v-if="hpFill(c) !== null"
-                    :style="{ width: `${(hpFill(c) ?? 0) * 100}%` }"
-                  />
-                </span>
-              </span>
-            </button>
-          </UiTooltip>
-          <div v-if="c.kind === 'pc' && init.summonsOf(c.character_id).length" class="tok__summons">
-            <button
-              v-for="s in init.summonsOf(c.character_id)"
-              :key="s.id"
-              type="button"
-              class="tok__summon"
-              :tabindex="primary ? undefined : -1"
-              :title="summonName(s)"
-              :aria-label="`${summonName(s)}, summon of ${c.name}`"
-              @click="emit('select', s.id)"
-            >
-              <UiAvatar
-                :name="summonName(s)"
-                :portrait-path="summonMember(s)?.portrait ?? null"
-                :beast="summonMember(s)?.beast ?? null"
-                :size="20"
-              />
-            </button>
-          </div>
+        <div v-if="slot.kind === 'cap'" class="mark mark--cap">
+          <span class="mark__label">Round</span>
+          <span class="mark__num">{{ slot.round }}</span>
         </div>
+        <div v-else-if="slot.kind === 'end'" class="mark mark--end">
+          <span class="mark__label">Round {{ slot.round }}</span>
+          <span class="mark__end">end</span>
+        </div>
+        <div v-else-if="!slot.c" class="mark mark--ghost">
+          <span class="mark__coin" />
+        </div>
+        <template v-else>
+          <div
+            v-for="c in [slot.c]"
+            :key="c.id"
+            class="tok"
+            :class="{
+              'is-now': slot.now,
+              'is-done': slot.done,
+              'is-mine': isMine(c),
+              'is-foe': c.kind !== 'pc',
+              'is-down': isDown(c),
+            }"
+          >
+            <UiTooltip :title="tokenTitle(c)" :sub="hpLabel(c)" :text="conditions(c).join(', ')">
+              <button
+                type="button"
+                class="tok__main"
+                :tabindex="slot.primary ? undefined : -1"
+                :aria-label="`${c.name}, ${c.initiative_rolled ? `initiative ${c.initiative}` : 'waiting for Initiative'}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
+                @click="onToken(c)"
+                @contextmenu="onContextMenu(slot, $event)"
+                @keydown="onTokenKey(slot, $event)"
+              >
+                <span
+                  class="tok__score"
+                  :class="{ 'is-waiting': !c.initiative_rolled }"
+                  :title="c.initiative_rolled ? 'Initiative' : 'Waiting for their Initiative roll'"
+                  >{{ c.initiative_rolled ? c.initiative : '–' }}</span
+                >
+                <span v-if="slot.now" class="tok__badge tok__badge--now">Acting</span>
+                <span v-else-if="slot.next" class="tok__badge">Next</span>
+                <UiAvatar
+                  class="tok__avatar"
+                  :name="c.name"
+                  :portrait-path="portraitPath(c)"
+                  :src="c.kind === 'pc' ? null : npcImageUrl(c.portrait_path)"
+                  :class-slug="rosterFor(c)?.summary?.classSlug ?? null"
+                  :square="c.kind === 'monster'"
+                  :faded="isDown(c)"
+                  :dead="isDead(c)"
+                  :size="64"
+                />
+                <span class="tok__plate">
+                  <span class="tok__name"
+                    >{{ c.name }}<span v-if="isDead(c)" class="tok__dead"> (dead)</span></span
+                  >
+                  <!-- No HP to show (a creature, to players): the bar keeps its room, unseen. -->
+                  <span
+                    class="tok__bar"
+                    :class="{ 'is-low': isLow(c), 'is-none': hpFill(c) === null }"
+                    aria-hidden="true"
+                  >
+                    <span
+                      v-if="hpFill(c) !== null"
+                      :style="{ width: `${(hpFill(c) ?? 0) * 100}%` }"
+                    />
+                  </span>
+                </span>
+              </button>
+            </UiTooltip>
+            <div
+              v-if="c.kind === 'pc' && init.summonsOf(c.character_id).length"
+              class="tok__summons"
+            >
+              <button
+                v-for="s in init.summonsOf(c.character_id)"
+                :key="s.id"
+                type="button"
+                class="tok__summon"
+                :tabindex="slot.primary ? undefined : -1"
+                :title="summonName(s)"
+                :aria-label="`${summonName(s)}, summon of ${c.name}`"
+                @click="emit('select', s.id)"
+              >
+                <UiAvatar
+                  :name="summonName(s)"
+                  :portrait-path="summonMember(s)?.portrait ?? null"
+                  :beast="summonMember(s)?.beast ?? null"
+                  :size="20"
+                />
+              </button>
+            </div>
+          </div>
+        </template>
       </li>
     </TransitionGroup>
     <BattleTokenMenu
@@ -494,16 +547,6 @@ function onFocus(slot: Slot, e: FocusEvent) {
   flex: 0 0 auto;
   position: relative;
   display: flex;
-
-  // Where the order starts over: a dashed line in the gap before the first token.
-  &.is-round-start::before {
-    content: '';
-    position: absolute;
-    left: -6px;
-    top: 10%;
-    bottom: 10%;
-    border-left: 1px dashed var(--line-strong);
-  }
 }
 
 .slot-move {
@@ -516,6 +559,67 @@ function onFocus(slot: Slot, e: FocusEvent) {
 
 .slot-enter-from {
   opacity: 0;
+}
+
+// Round caps and the empty ghost slots: token-sized, so every step stays STEP wide.
+.mark {
+  flex: 1 1 auto;
+  width: 96px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: var(--radius-control);
+  color: var(--panel-muted);
+  --line: var(--panel-line);
+  --line-strong: var(--panel-line-strong);
+}
+
+.mark__label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mark__num {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent-ink);
+}
+
+.mark__end {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.mark--cap {
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: linear-gradient(var(--accent-tint), var(--accent-tint)), var(--panel-bg);
+}
+
+.mark--end {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel-bg) 70%, transparent);
+}
+
+// An empty slot: a faint dashed coin where a token would stand.
+.mark--ghost {
+  border: 1px dashed var(--line);
+  opacity: 0.45;
+}
+
+.mark__coin {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px dashed var(--line-strong);
 }
 
 .strip__empty {
@@ -565,6 +669,18 @@ function onFocus(slot: Slot, e: FocusEvent) {
 
   &.is-down {
     opacity: 0.7;
+  }
+
+  // Already acted (an earlier round, or this round before the acting token).
+  &.is-done {
+    opacity: 0.5;
+    filter: saturate(0.4);
+
+    &:hover,
+    &:focus-within {
+      opacity: 1;
+      filter: none;
+    }
   }
 }
 

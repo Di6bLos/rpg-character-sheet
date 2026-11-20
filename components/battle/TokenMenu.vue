@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The GM's menu on an initiative token (right-click, or the keyboard's context-menu key):
-// make it the acting turn (the copy picked says which round; Undo in the toast puts the
-// turn back), change its initiative, or remove it from the encounter (asks first).
+// make it the acting turn (a token from a round already played goes back to that round;
+// Undo in the toast puts the turn back), change its initiative, or remove it from the encounter (asks first).
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { turnTo } from '~/utils/initiative'
 
@@ -9,7 +9,7 @@ const props = defineProps<{
   init: ReturnType<typeof useInitiative>
   c: TurnRow
   anchor: HTMLElement | null
-  /** Rounds from the current one, for the copy of the token that was picked. */
+  /** Rounds from the current one for the token picked: 0, or negative for a past round. */
   roundOffset: number
 }>()
 const open = defineModel<boolean>({ required: true })
