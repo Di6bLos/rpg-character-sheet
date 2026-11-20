@@ -38,12 +38,25 @@ async function place() {
 
 function show() {
   if (!has.value) return
+  if (!open.value) listen()
   open.value = true
   void place()
 }
 
 function hide() {
   open.value = false
+  unlisten()
+}
+
+// Scrolling or resizing hides an open tooltip; the listeners exist only while it shows.
+function listen() {
+  window.addEventListener('scroll', hide, { passive: true, capture: true })
+  window.addEventListener('resize', hide)
+}
+
+function unlisten() {
+  window.removeEventListener('scroll', hide, { capture: true })
+  window.removeEventListener('resize', hide)
 }
 
 function onOut(event: MouseEvent) {
@@ -65,17 +78,10 @@ function describe() {
   else el.removeAttribute('aria-describedby')
 }
 
-onMounted(() => {
-  describe()
-  window.addEventListener('scroll', hide, { passive: true, capture: true })
-  window.addEventListener('resize', hide)
-})
+onMounted(describe)
 onUpdated(describe)
 watch(has, describe)
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', hide, { capture: true })
-  window.removeEventListener('resize', hide)
-})
+onBeforeUnmount(unlisten)
 </script>
 
 <template>
