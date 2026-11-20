@@ -27,7 +27,8 @@ function heroFor(c: TurnRow) {
 
 function onSelect(c: TurnRow) {
   if (c.kind === 'pc') {
-    if (c.character_id) emit('hero', c.character_id)
+    // Only seated heroes have a card to open; the RPC refuses the others.
+    if (c.character_id && heroFor(c)) emit('hero', c.character_id)
     return
   }
   selected.value = c.id

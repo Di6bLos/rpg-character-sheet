@@ -118,8 +118,13 @@ function summonMember(c: TurnRow) {
     ?.summary?.summons?.find((s) => s.id === id)
 }
 
+/** A hero in the encounter who isn't seated here has no card to open (the RPC refuses it). */
+function unseated(c: TurnRow) {
+  return c.kind === 'pc' && !rosterFor(c)
+}
+
 function onToken(c: TurnRow) {
-  if (c.kind === 'pc' && c.character_id) emit('hero', c.character_id)
+  if (c.kind === 'pc' && c.character_id && rosterFor(c)) emit('hero', c.character_id)
   emit('select', c.id)
 }
 
@@ -156,7 +161,7 @@ watch(
         type="button"
         class="tok__main"
         :data-token="c.id"
-        :title="c.name"
+        :title="unseated(c) ? `${c.name} (not seated at this table)` : c.name"
         :aria-label="`${c.name}, initiative ${c.initiative}`"
         @click="onToken(c)"
       >
