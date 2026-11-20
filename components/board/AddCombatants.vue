@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The GM's "Add to initiative" dialog: seat the party characters not in the order yet,
 // or add custom combatants (one, or a lettered group continuing after any of the same
-// name). Index creatures with stat blocks are added from the console's NPCs page.
+// name), or find a creature in the campaign's index or the shared library and add it
+// with its stat block (AddFromIndex).
 // Opened from the Party tab's Initiative panel and the battle board's GM turn bar.
 import type { Combatant, RosterEntry } from '~/types'
 import type { useInitiative } from '~/composables/useInitiative'
@@ -15,7 +16,7 @@ const props = defineProps<{
 const open = defineModel<boolean>({ required: true })
 
 const snackbar = useSnackbarStore()
-const { mode, campaignId } = useCampaignBoard()
+const { campaignId } = useCampaignBoard()
 const uid = useId()
 
 const adding = ref(false)
@@ -91,7 +92,7 @@ async function addCustom() {
 </script>
 
 <template>
-  <UiDialog v-model="open" title="Add to initiative" width="540px">
+  <UiDialog v-model="open" title="Add to initiative" width="580px">
     <div class="stack">
       <div v-if="partyMissing.length" class="row" style="justify-content: space-between">
         <span class="small"
@@ -101,10 +102,11 @@ async function addCustom() {
           Add the party
         </button>
       </div>
-      <p v-if="mode === 'console'" class="small muted">
-        To add creatures from your index (with their portraits and a journal entry for the party),
-        use
-        <NuxtLink :to="`/campaigns/${campaignId}/gm/npcs`" @click="open = false">NPCs</NuxtLink>.
+      <BoardAddFromIndex @added="open = false" />
+      <p class="small muted">
+        More filters, new creatures and journal entries are on the
+        <NuxtLink :to="`/campaigns/${campaignId}/gm/npcs`" @click="open = false">NPCs</NuxtLink>
+        page. Or add a custom combatant:
       </p>
       <form class="stack" @submit.prevent="addCustom">
         <div class="add-grid add-grid--top">

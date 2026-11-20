@@ -1,11 +1,10 @@
 <script setup lang="ts">
 // The battle board's initiative strip: one scrolling row of tokens in turn order.
-// Heroes show their numbers and action pips from the roster; enemies show a band to
-// players (numbers and pips for the GM). Summons sit under their summoner.
+// Heroes show their numbers from the roster; enemies show a band to players (numbers
+// for the GM). Summons sit under their summoner.
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
-import { turnActionsFor } from '~/utils/nimblePlay'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -70,23 +69,6 @@ function hpFill(c: TurnRow): number | null {
   }
   if (props.gm && c.hp !== null && (c.hp_max ?? 0) > 0)
     return Math.min(1, Math.max(0, c.hp / (c.hp_max ?? 1)))
-  return null
-}
-
-/** Action pips: heroes from the roster, monsters only for the GM; extra actions add pips. */
-function pips(c: TurnRow): { total: number; used: number } | null {
-  if (c.kind === 'pc') {
-    const s = rosterFor(c)?.summary
-    if (!s) return null
-    const max = turnActionsFor(s.abilityNames ?? [], !!s.dying)
-    const spent = s.actionsSpent ?? 0
-    return { total: Math.max(max, max - spent), used: Math.min(Math.max(0, spent), max) }
-  }
-  if (props.gm && c.actions_max !== null && c.actions_max !== undefined)
-    return {
-      total: c.actions_max,
-      used: Math.min(c.actions_used ?? 0, c.actions_max),
-    }
   return null
 }
 
@@ -193,18 +175,6 @@ watch(
           <span v-if="hpFill(c) !== null" :style="{ width: `${(hpFill(c) ?? 0) * 100}%` }" />
         </span>
         <span class="tok__foot">
-          <span
-            v-if="pips(c)"
-            class="tok__pips"
-            role="img"
-            :aria-label="`${(pips(c)?.total ?? 0) - (pips(c)?.used ?? 0)} of ${pips(c)?.total} actions left`"
-          >
-            <i
-              v-for="n in pips(c)?.total ?? 0"
-              :key="n"
-              :class="{ 'is-used': n <= (pips(c)?.used ?? 0) }"
-            />
-          </span>
           <span v-for="cond in conditions(c).slice(0, 2)" :key="cond" class="tok__chip">{{
             cond
           }}</span>
@@ -405,24 +375,6 @@ watch(
   gap: 4px;
   overflow: hidden;
   white-space: nowrap;
-}
-
-.tok__pips {
-  display: inline-flex;
-  gap: 3px;
-  flex: 0 0 auto;
-
-  i {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent);
-
-    &.is-used {
-      background: transparent;
-      box-shadow: inset 0 0 0 1px var(--panel-muted);
-    }
-  }
 }
 
 .tok__chip {
