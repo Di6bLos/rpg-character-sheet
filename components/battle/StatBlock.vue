@@ -31,21 +31,47 @@ const sub = computed(() => {
 })
 
 // --- Name ------------------------------------------------------------------------------
+// The draft belongs to one combatant (`nameFor`). When the selection moves mid-edit (the
+// turn passes, a token click), the draft is saved to the creature it was typed for, never
+// to the newly selected one, and the input starts over with the new creature's name.
 const name = ref('')
+const nameFor = ref<string | null>(null)
+const editing = ref(false)
+
+const rowById = (id: string | null) => props.init.rows.value.find((r) => r.id === id)
+
+function commitName(id: string | null, text: string) {
+  const row = rowById(id)
+  if (!row || text.trim() === row.name) return
+  void props.init.rename(row, text).then((ok) => {
+    // Put the saved name back only if the input still shows this creature.
+    if (!ok && nameFor.value === row.id) name.value = row.name
+  })
+}
+
 watch(
-  () => c.value?.name,
-  (n) => {
-    name.value = n ?? ''
+  () => c.value?.id ?? null,
+  (id, before) => {
+    if (before && nameFor.value === before) commitName(before, name.value)
+    nameFor.value = id
+    name.value = c.value?.name ?? ''
   },
   { immediate: true },
 )
-async function saveName() {
-  const row = c.value
-  if (!row || name.value.trim() === row.name) return
-  if (!(await props.init.rename(row, name.value))) name.value = row.name
+// A rename from elsewhere (the grid, a refresh) shows, unless the GM is typing.
+watch(
+  () => c.value?.name,
+  (n) => {
+    if (!editing.value) name.value = n ?? ''
+  },
+)
+
+function saveName() {
+  editing.value = false
+  commitName(nameFor.value, name.value)
 }
 function resetName(event: KeyboardEvent) {
-  name.value = c.value?.name ?? ''
+  name.value = rowById(nameFor.value)?.name ?? ''
   ;(event.target as HTMLInputElement).blur()
 }
 
@@ -73,6 +99,7 @@ function onMax(event: Event) {
         maxlength="80"
         @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
         @keydown.esc.prevent="resetName"
+        @focus="editing = true"
         @blur="saveName"
       />
       <span v-if="sub" class="sbk__sub">{{ sub }}</span>
