@@ -25,6 +25,21 @@ function isCurrent(match: string[]) {
 
 const initial = computed(() => (auth.profile?.display_name?.[0] ?? '?').toUpperCase())
 
+// "Manual dice", for all the player's heroes; the menu stays open to show it.
+const snackbar = useSnackbarStore()
+const ownDice = computed(() => auth.profile?.own_dice ?? false)
+const savingDice = ref(false)
+async function toggleOwnDice() {
+  savingDice.value = true
+  try {
+    await auth.updateProfile({ own_dice: !ownDice.value })
+  } catch (err) {
+    snackbar.error(err, 'Could not change how dice are rolled')
+  } finally {
+    savingDice.value = false
+  }
+}
+
 async function signOut() {
   menuOpen.value = false
   await auth.logout()
@@ -79,6 +94,18 @@ watch(
               <span class="muted small">@{{ auth.profile?.handle }}</span>
             </div>
             <NuxtLink v-if="auth.isStaff" to="/admin" role="menuitem">Admin area</NuxtLink>
+            <button
+              type="button"
+              role="menuitemcheckbox"
+              class="account__toggle"
+              :aria-checked="ownDice"
+              :disabled="savingDice || auth.isSuspended"
+              title="The app checks things off but rolls nothing; you roll at the table. For all your heroes."
+              @click="toggleOwnDice"
+            >
+              Manual dice
+              <span class="account__switch" aria-hidden="true"><span /></span>
+            </button>
             <NuxtLink to="/settings" role="menuitem">Settings</NuxtLink>
             <button type="button" role="menuitem" @click="signOut">Sign out</button>
           </div>
@@ -209,6 +236,54 @@ watch(
     &:hover {
       background: var(--accent-tint);
     }
+  }
+}
+
+.account__toggle {
+  justify-content: space-between;
+  gap: 12px;
+
+  &:disabled {
+    cursor: progress;
+  }
+}
+
+// A small switch drawn for the menu item (the item itself is the checkbox).
+.account__switch {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--track);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition: background 0.15s;
+
+  span {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--page-muted);
+    transition: transform 0.15s;
+  }
+
+  [aria-checked='true'] > & {
+    background: var(--accent);
+
+    span {
+      background: var(--on-accent);
+      transform: translateX(14px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account__switch,
+  .account__switch span {
+    transition: none;
   }
 }
 

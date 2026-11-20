@@ -62,7 +62,6 @@ const {
   addFury,
   endRage,
   spendFury,
-  setOwnDice,
   malfunctions,
   toggleMalfunction,
   inventions,
@@ -298,14 +297,6 @@ const effectRows = computed(() =>
     <header class="apm__head">
       <div class="apm__who">
         <strong>{{ draft.name }}<span v-if="isDead(sheet)" class="apm__dead"> (dead)</span></strong>
-        <UiSwitch
-          :model-value="sheet.ownDice"
-          label="I roll my own dice"
-          small
-          :disabled="!canEdit"
-          class="apm__own"
-          @update:model-value="setOwnDice"
-        />
       </div>
       <NuxtLink
         :to="sheetLink"
@@ -1708,18 +1699,6 @@ const effectRows = computed(() =>
 .apm__dead {
   color: var(--danger);
   font-size: 0.85em;
-}
-
-.apm__own {
-  justify-content: flex-start;
-  gap: 8px;
-  min-height: 28px;
-  font-size: 12px;
-  color: var(--page-muted);
-
-  :deep(.switch__label) {
-    white-space: nowrap;
-  }
 }
 
 .apm__menu--off {

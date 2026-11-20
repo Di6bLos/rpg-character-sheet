@@ -1,6 +1,6 @@
 import type { InjectionKey, Ref } from 'vue'
 import type { Character } from '~/types'
-import type { AnySheet } from '~/types/sheets'
+import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
 
 export interface SheetEditor<T extends AnySheet = AnySheet> {
@@ -124,6 +124,19 @@ export function provideSheetEditor(
   )
 
   onBeforeUnmount(saveQuietly)
+
+  // "Manual dice" is the player's (account menu, `profiles.own_dice`); copy it
+  // onto the Nimble sheet they edit, where the rules read `sheet.ownDice`.
+  const auth = useAuthStore()
+  watch(
+    () => auth.profile?.own_dice,
+    (on) => {
+      if (on === undefined || !canEdit.value || draft.value.system !== 'nimble') return
+      const sheet = draft.value.sheet as NimbleSheet
+      if (sheet.ownDice !== on) sheet.ownDice = on
+    },
+    { immediate: true },
+  )
 
   function adjustHp(delta: number) {
     if (!canEdit.value) return

@@ -1232,9 +1232,6 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     spendFury: (index: number) => canEdit.value && act(spendFury(sheet.value, index)),
     rollJudgment: (values?: number[]) =>
       canEdit.value && act(rollJudgment(sheet.value, draft.value.level, Math.random, values)),
-    setOwnDice: (on: boolean) => {
-      if (canEdit.value) sheet.value.ownDice = on
-    },
     expendJudgment: () => canEdit.value && act(expendJudgment(sheet.value)),
     toggleCrit: () => {
       if (canEdit.value) sheet.value.resource.count = sheet.value.resource.count ? 0 : 1

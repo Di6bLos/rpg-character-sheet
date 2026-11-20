@@ -21,6 +21,8 @@ export interface Profile {
   accent: string | null
   /** 3D dice colour in the dice tray; null follows the accent. */
   dice_color: string | null
+  /** "I roll my own dice": the app checks things off but rolls nothing, for all their heroes. */
+  own_dice: boolean
   notify_secret: boolean
   notify_journal: boolean
   notify_board: boolean
