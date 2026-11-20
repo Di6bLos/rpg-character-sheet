@@ -103,6 +103,7 @@ function onToken(id: string) {
           :init="init"
           :roster="roster"
           :selected="gmSelected"
+          :picked="gmPick"
           @update:selected="(id: string | null) => (gmPick = id)"
           @hero="(id: string) => (cardId = id)"
         />

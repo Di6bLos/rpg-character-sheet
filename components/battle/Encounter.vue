@@ -9,6 +9,8 @@ import { sortOrder } from '~/utils/initiative'
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
   roster: RosterEntry[]
+  /** The GM's explicit pick (a card or token click), without the acting-creature fallback. */
+  picked?: string | null
 }>()
 const selected = defineModel<string | null>('selected', { required: true })
 const emit = defineEmits<{ hero: [characterId: string] }>()
@@ -34,11 +36,15 @@ function onSelect(c: TurnRow) {
   selected.value = c.id
 }
 
-// The stat block follows a token click into the other group: show that group.
-watch(selected, (id) => {
-  const c = props.init.rows.value.find((r) => r.id === id)
-  if (c) filter.value = isEnemy(c) ? 'enemies' : 'allies'
-})
+// An explicit pick in the other group (a token click) shows that group. The selection
+// falling back to the acting creature as turns pass leaves the chip alone.
+watch(
+  () => props.picked,
+  (id) => {
+    const c = props.init.rows.value.find((r) => r.id === id)
+    if (c) filter.value = isEnemy(c) ? 'enemies' : 'allies'
+  },
+)
 
 // --- Remove ---------------------------------------------------------------------------
 const removing = ref<TurnRow | null>(null)
