@@ -14,6 +14,7 @@ const { draft, canEdit, portrait } = useSheet<NimbleSheet>()
 // quick-action panel does this below 1200px.
 useHeroEffects()
 useHeroHpChanges()
+useHeroConditionChanges()
 const sheet = computed(() => draft.value.sheet)
 const { diceLeft, speed } = useNimbleVitals()
 

@@ -14,6 +14,7 @@ import { availableSummons } from '~/utils/nimbleSummons'
 const { draft } = useSheet<NimbleSheet>()
 useHeroEffects()
 useHeroHpChanges()
+useHeroConditionChanges()
 const sheet = computed(() => draft.value.sheet)
 
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']

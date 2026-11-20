@@ -1,15 +1,22 @@
 <script setup lang="ts">
-// The stat block's conditions, as the hero column has them: the active ones as chips
-// (hover for what they do, click to remove) and + Add, which opens a picker of Nimble's
-// conditions and spell statuses (tap to toggle) with what each active one does.
-// Bloodied, Dying and Wounded are left out: a creature's HP band shows those. Monster
-// conditions are plain names on the combatant, with no end timing.
-import type { TurnRow, useInitiative } from '~/composables/useInitiative'
+// A creature's or hero's conditions, as the hero column has them: the active ones as
+// chips (hover for what they do, click to remove) and + Add, which opens a picker of
+// Nimble's conditions and spell statuses (tap to toggle) with what each active one does.
+// Bloodied, Dying and Wounded are left out: HP shows those. The caller applies each
+// toggle: the stat block writes the combatant, the hero vitals send it to the hero's sheet.
 import { AUTO_CONDITIONS, CONDITIONS } from '~/data/nimble/core'
 import { SPELL_STATUSES } from '~/utils/nimbleConditions'
 
-const props = defineProps<{ init: ReturnType<typeof useInitiative>; c: TurnRow }>()
-const c = computed(() => props.c)
+const props = defineProps<{
+  /** Whose conditions, for labels. */
+  name: string
+  /** Changes when another creature is shown; the open picker closes. */
+  subject: string
+  conditions: string[]
+  /** The line under the picker: what happens to a condition set here. */
+  note: string
+}>()
+const emit = defineEmits<{ toggle: [name: string, on: boolean] }>()
 
 const SPELL_NAMES = new Set(SPELL_STATUSES.map((s) => s.name))
 const OPTIONS = [...CONDITIONS, ...SPELL_STATUSES]
@@ -17,25 +24,20 @@ const OPTIONS = [...CONDITIONS, ...SPELL_STATUSES]
   .map((x) => ({ ...x, spell: SPELL_NAMES.has(x.name) }))
 const DESC = new Map(OPTIONS.map((x) => [x.name, x.desc]))
 
-const conditions = computed(() => c.value.conditions ?? [])
 const options = computed(() =>
-  OPTIONS.map((x) => ({ ...x, on: conditions.value.includes(x.name) })),
+  OPTIONS.map((x) => ({ ...x, on: props.conditions.includes(x.name) })),
 )
-/** Active conditions with what they do; a custom name the GM typed elsewhere has none. */
-const active = computed(() => conditions.value.map((n) => ({ name: n, desc: DESC.get(n) ?? '' })))
+/** Active conditions with what they do; a custom name typed elsewhere has none. */
+const active = computed(() => props.conditions.map((n) => ({ name: n, desc: DESC.get(n) ?? '' })))
 
 function toggle(name: string) {
-  const list = conditions.value
-  void props.init.setConditions(
-    c.value,
-    list.includes(name) ? list.filter((x) => x !== name) : [...list, name],
-  )
+  emit('toggle', name, !props.conditions.includes(name))
 }
 
 const addOpen = ref(false)
-// The picker is for one creature: close it when the GM selects another.
+// The picker is for one creature: close it when another is shown.
 watch(
-  () => c.value.id,
+  () => props.subject,
   () => (addOpen.value = false),
 )
 </script>
@@ -47,7 +49,7 @@ watch(
       <button
         type="button"
         class="btn btn--ghost btn--sm cond__add"
-        :aria-label="`Add a condition to ${c.name}`"
+        :aria-label="`Add a condition to ${name}`"
         @click="addOpen = true"
       >
         + Add
@@ -68,7 +70,7 @@ watch(
     </div>
     <p v-else class="cond__none">None</p>
 
-    <UiDialog v-model="addOpen" :title="`Conditions · ${c.name}`" width="560px">
+    <UiDialog v-model="addOpen" :title="`Conditions · ${name}`" width="560px">
       <div class="pick">
         <div class="pick__chips">
           <button
@@ -102,10 +104,7 @@ watch(
             <strong>{{ a.name }}.</strong> {{ a.desc }}
           </p>
         </div>
-        <p class="pick__note">
-          Conditions on creatures stay until you remove them; the party sees them on the initiative
-          strip.
-        </p>
+        <p class="pick__note">{{ note }}</p>
       </div>
     </UiDialog>
   </div>

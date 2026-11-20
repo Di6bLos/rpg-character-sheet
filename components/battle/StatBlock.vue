@@ -21,6 +21,13 @@ const c = computed<TurnRow | undefined>(() =>
 )
 const npc = computed(() => npcFor(c.value))
 
+function toggleCondition(name: string, on: boolean) {
+  const row = c.value
+  if (!row) return
+  const list = row.conditions ?? []
+  void props.init.setConditions(row, on ? [...list, name] : list.filter((x) => x !== name))
+}
+
 const KIND = { pc: 'Hero', npc: 'NPC', monster: 'Monster', summon: 'Summon' } as const
 const sub = computed(() => {
   const n = npc.value
@@ -134,7 +141,13 @@ function onMax(event: Event) {
         </div>
       </div>
 
-      <BattleStatBlockConditions :init="init" :c="c" />
+      <BattleConditionPicker
+        :name="c.name"
+        :subject="c.id"
+        :conditions="c.conditions ?? []"
+        note="Conditions on creatures stay until you remove them; the party sees them on the initiative strip."
+        @toggle="toggleCondition"
+      />
 
       <template v-if="npc">
         <hr class="sbk__rule" />

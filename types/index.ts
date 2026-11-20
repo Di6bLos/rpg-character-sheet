@@ -290,6 +290,17 @@ export interface HeroHpChange {
   created_at: string
 }
 
+export interface HeroConditionChange {
+  id: string
+  campaign_id: string
+  character_id: string
+  condition: string
+  /** True adds the condition, false removes it. */
+  add: boolean
+  created_by: string | null
+  created_at: string
+}
+
 export type HpBand = 'Unhurt' | 'Hurt' | 'Bloodied' | 'Down'
 
 export type NpcKind = 'monster' | 'humanoid'

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // A hero's vitals on the battle board: portrait and identity, HP (the GM's controls
 // send a change to the hero's own sheet through hero_hp_changes, applied there by
-// useHeroHpChanges), mana for the GM, Wounds, Armor / Speed / Init and conditions. The stats modal's
+// useHeroHpChanges), mana for the GM, Wounds, Armor / Speed / Init and conditions (the GM
+// adds and removes them through hero_condition_changes, applied by useHeroConditionChanges). The stats modal's
 // side and the GM's left column (a hero picked on the initiative strip) both show it.
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
 import type { HeroCard, RosterEntry } from '~/types'
@@ -35,6 +36,37 @@ const identity = computed(() => {
 
 function pct(n: number, max: number): number {
   return max > 0 ? Math.min(100, Math.max(0, (n / max) * 100)) : 0
+}
+
+// --- GM: add or remove conditions (sent to the hero's sheet like HP) ------------------
+const { send: sendCondition } = useSendHeroCondition()
+/** Toggles sent but not in the roster yet, so the chips answer at once. */
+const pending = ref(new Map<string, boolean>())
+watch(
+  () => props.characterId,
+  () => pending.value.clear(),
+)
+// Drop each toggle once the roster shows it; later clicks still in flight stay.
+watch(
+  () => props.live.conditions.join(),
+  () => {
+    for (const [n, on] of pending.value)
+      if (props.live.conditions.includes(n) === on) pending.value.delete(n)
+  },
+)
+const shownConditions = computed(() => {
+  const list = props.live.conditions.filter((n) => pending.value.get(n) !== false)
+  for (const [n, on] of pending.value) if (on && !list.includes(n)) list.push(n)
+  return list
+})
+
+async function toggleCondition(name: string, on: boolean) {
+  pending.value.set(name, on)
+  if (!(await sendCondition(props.characterId, props.card.name, name, on))) {
+    pending.value.delete(name)
+    return
+  }
+  sent.value = `${props.card.name}: ${on ? name : `no longer ${name}`}.`
 }
 
 // --- GM: send an HP change to the hero's sheet ---------------------------------------
@@ -166,7 +198,15 @@ async function adjust(sign: 1 | -1) {
       </div>
     </div>
 
-    <div>
+    <BattleConditionPicker
+      v-if="gm"
+      :name="card.name"
+      :subject="characterId"
+      :conditions="shownConditions"
+      :note="`Saved to ${card.name}'s sheet; it ends on its usual timing, or when you remove it.`"
+      @toggle="toggleCondition"
+    />
+    <div v-else>
       <span class="hc__sect">Conditions</span>
       <ul v-if="live.conditions.length" class="hc__chips">
         <li v-for="c in live.conditions" :key="c">{{ c }}</li>
