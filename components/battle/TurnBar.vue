@@ -41,6 +41,14 @@ const headline = computed(() =>
   }),
 )
 
+// "Goblin F is acting · round 3": the bar shows the first part as the title and moves the
+// rest to the start of the sub line, so the title fits beside the pips at 1200px.
+const headMain = computed(() => headline.value.split(' · ')[0] ?? headline.value)
+const headTail = computed(() => {
+  const tail = headline.value.split(' · ').slice(1).join(' · ')
+  return tail && tail.charAt(0).toUpperCase() + tail.slice(1)
+})
+
 /** The GM's encounter is running (someone has the turn) but this sheet hasn't joined it. */
 const joining = computed(() => !!props.init.turnId.value && !sheet.value.inEncounter)
 
@@ -63,48 +71,56 @@ const leftText = computed(
 
 const reactions = computed(() => {
   const used = [...new Set(sheet.value.reactionsUsed)]
-  return used.length ? `${used.join(', ')} used` : 'Ready'
+  return used.length ? `Reactions: ${used.join(', ')} used` : 'Reactions ready'
 })
 </script>
 
 <template>
   <section class="panel turn" :class="{ 'turn--now': sheet.turnActive }" aria-label="Your turn">
     <div class="turn__who">
-      <strong class="turn__title" role="status">{{ headline }}</strong>
-      <span class="turn__sub">{{ sub }}</span>
+      <strong class="turn__title" role="status" :title="headline"
+        >{{ headMain }}<span v-if="headTail" class="sr-only"> · {{ headTail }}</span></strong
+      >
+      <span
+        v-if="headTail || sub"
+        class="turn__sub"
+        :title="[headTail, sub].filter(Boolean).join(' · ')"
+        ><span aria-hidden="true">{{ headTail }}{{ headTail && sub ? ' · ' : '' }}</span
+        >{{ sub }}</span
+      >
     </div>
 
     <div class="turn__pips" role="group" :aria-label="`Actions: ${leftText}`">
-      <button
-        v-for="n in pips"
-        :key="n"
-        type="button"
-        class="turn__pip"
-        :class="{ on: n <= left, extra: n > perTurn }"
-        :aria-label="`${n <= left ? 'Spend' : 'Restore'} action ${n}`"
-        :disabled="!canEdit"
-        @click="toggleAction(n)"
-      />
-      <UiTooltip
-        title="Extra action"
-        text="An ally or ability gave you an extra action (Stim Pack, Chorus of Champions…); it lasts until your turn ends."
-      >
+      <span class="turn__pipline">
         <button
+          v-for="n in pips"
+          :key="n"
           type="button"
-          class="turn__add"
-          aria-label="Gain an extra action"
+          class="turn__pip"
+          :class="{ on: n <= left, extra: n > perTurn }"
+          :aria-label="`${n <= left ? 'Spend' : 'Restore'} action ${n}`"
           :disabled="!canEdit"
-          @click="extraAction"
+          @click="toggleAction(n)"
+        />
+        <UiTooltip
+          title="Extra action"
+          text="An ally or ability gave you an extra action (Stim Pack, Chorus of Champions…); it lasts until your turn ends."
         >
-          +1
-        </button>
-      </UiTooltip>
-      <span class="turn__left">{{ leftText }}</span>
-    </div>
-
-    <div class="turn__react">
-      <span>Reactions</span>
-      <b>{{ reactions }}</b>
+          <button
+            type="button"
+            class="turn__add"
+            aria-label="Gain an extra action"
+            :disabled="!canEdit"
+            @click="extraAction"
+          >
+            +1
+          </button>
+        </UiTooltip>
+      </span>
+      <span class="turn__status">
+        <span class="turn__left">{{ leftText }}</span>
+        <span class="turn__react" :title="reactions">{{ reactions }}</span>
+      </span>
     </div>
 
     <div class="turn__steps">
@@ -193,12 +209,13 @@ const reactions = computed(() => {
 
 <style scoped lang="scss">
 .turn {
+  container: turn / inline-size;
   flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
-  padding: 10px 14px;
+  gap: 6px 10px;
+  padding: 8px 12px;
 
   &--now {
     border-color: var(--accent);
@@ -213,9 +230,18 @@ const reactions = computed(() => {
 .turn__who {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1 1 220px;
+  gap: 1px;
+  // Takes what the pips and the step button leave, so the bar stays on one row at 1200px;
+  // long lines truncate (the full text is in their title).
+  flex: 1 1 0;
+  min-width: 80px;
+}
+
+.turn__title,
+.turn__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .turn__title {
@@ -229,9 +255,36 @@ const reactions = computed(() => {
 }
 
 .turn__pips {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+}
+
+.turn__pipline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// A narrow bar (1200–1360px windows) puts the action count and reactions under the pips,
+// so the headline keeps its room and the bar stays on one row.
+@container turn (max-width: 620px) {
+  .turn__pips {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .turn__status {
+    margin-left: 0;
+  }
+
+  .turn__left,
+  .turn__react {
+    font-size: 11px;
+    line-height: 1.2;
+  }
 }
 
 .turn__pip {
@@ -264,27 +317,29 @@ const reactions = computed(() => {
   font-weight: 700;
 }
 
-.turn__left {
-  margin-left: 4px;
-  font-size: 12px;
-  color: var(--page-soft);
+.turn__status {
+  display: flex;
+  flex-direction: column;
+  margin-left: 3px;
+  line-height: 1.25;
   white-space: nowrap;
 }
 
-.turn__react {
-  display: flex;
-  flex-direction: column;
-  font-size: 11px;
-  color: var(--page-muted);
-  text-align: right;
+.turn__left {
+  font-size: 12px;
+  color: var(--page-text);
+}
 
-  b {
-    font-size: 12px;
-    color: var(--page-text);
-  }
+.turn__react {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--page-soft);
 }
 
 .turn__steps {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
