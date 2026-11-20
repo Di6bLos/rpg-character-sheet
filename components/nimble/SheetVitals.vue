@@ -367,10 +367,6 @@ function confirmRest() {
   }
 }
 
-.meter--danger > span {
-  background: var(--danger);
-}
-
 .temp-label {
   font-size: 12px;
   font-weight: 600;

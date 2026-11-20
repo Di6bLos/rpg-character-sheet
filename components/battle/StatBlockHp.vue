@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// The stat block's HP: the bar with numbers, then −, amount, + and Set (Enter in the
-// amount sets it). An empty amount means 1 for − and +.
+// The stat block's HP: the numbers, the draggable bar the hero column uses (drag or the
+// arrow keys preview the change, let go or Enter applies it), then −, amount, + and Set
+// (Enter in the amount sets it). An empty amount means 1 for − and +.
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 
 const props = defineProps<{ init: ReturnType<typeof useInitiative>; c: TurnRow }>()
@@ -8,9 +9,7 @@ const c = computed(() => props.c)
 
 const hpMax = computed(() => c.value.hp_max ?? 0)
 const hp = computed(() => c.value.hp ?? 0)
-const fill = computed(() =>
-  hpMax.value > 0 ? Math.min(100, Math.max(0, (hp.value / hpMax.value) * 100)) : 0,
-)
+const tone = computed(() => (hp.value * 2 <= hpMax.value ? 'danger' : ''))
 const amount = ref<number | null>(null)
 watch(
   () => props.c.id,
@@ -35,10 +34,19 @@ function setHp() {
 
 <template>
   <div v-if="hpMax > 0" class="sbk__hp">
-    <div class="sbk__bar">
-      <span class="sbk__fill" :class="{ 'is-low': fill <= 50 }" :style="{ width: `${fill}%` }" />
-      <span class="sbk__bar-text">{{ hp <= 0 ? 'Slain' : `${hp} / ${hpMax}` }}</span>
+    <div class="sbk__head">
+      <span class="sbk__label">Hit points</span>
+      <span class="sbk__value" aria-live="polite">{{
+        hp <= 0 ? 'Slain' : `${hp} / ${hpMax}`
+      }}</span>
     </div>
+    <NimbleHpBar
+      class="sbk__drag"
+      :hp="hp"
+      :max="hpMax"
+      :tone="tone"
+      @change="(delta: number) => init.adjustHp(c, delta)"
+    />
     <div class="sbk__ctl" role="group" :aria-label="`${c.name} hit points`">
       <button
         type="button"
@@ -79,35 +87,30 @@ function setHp() {
   gap: 8px;
 }
 
-.sbk__bar {
-  position: relative;
-  height: 22px;
-  border-radius: 6px;
-  background: var(--track);
-  overflow: hidden;
-}
-
-.sbk__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--secondary);
-
-  &.is-low {
-    background: var(--danger);
-  }
-}
-
-.sbk__bar-text {
-  position: relative;
+.sbk__head {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-size: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sbk__label {
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--page-muted);
+}
+
+.sbk__value {
+  font-family: var(--font-heading);
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
-  color: var(--page-text);
-  text-shadow: 0 0 3px var(--panel-bg);
+}
+
+// A little thicker than the hero column's, as the old bar was.
+.sbk__drag :deep(.meter) {
+  height: 12px;
 }
 
 .sbk__ctl {

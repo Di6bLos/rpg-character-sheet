@@ -702,6 +702,10 @@ select.input {
     background: var(--accent);
   }
 
+  &--danger > span {
+    background: var(--danger);
+  }
+
   &--thin {
     height: 6px;
   }
