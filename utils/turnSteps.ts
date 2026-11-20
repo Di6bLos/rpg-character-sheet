@@ -13,13 +13,24 @@ interface TurnState {
   turnDone: boolean
   ownDice: boolean
   awaitingInitiative?: boolean
+  /**
+   * Seated in the GM's encounter: the tracker runs the encounter and the rounds, so the
+   * player only rolls Initiative and starts or ends their turn.
+   */
+  gmEncounter?: boolean
 }
 
 /**
  * The step buttons to show, in order: New encounter → Roll Initiative → Start turn →
- * End turn → New round → …, with End encounter beside them between turns.
+ * End turn → New round → …, with End encounter beside them between turns. In the GM's
+ * encounter: Roll Initiative, then Start turn ↔ End turn.
  */
 export function turnSteps(s: TurnState): TurnStep[] {
+  if (s.gmEncounter) {
+    if (s.turnActive) return ['end']
+    if (s.awaitingInitiative) return s.ownDice ? [] : ['initiative']
+    return ['start']
+  }
   const steps: TurnStep[] = []
   if (!s.inEncounter) steps.push('encounter')
   if (s.awaitingInitiative && !s.ownDice && !s.turnActive) steps.push('initiative')
@@ -28,6 +39,25 @@ export function turnSteps(s: TurnState): TurnStep[] {
   else if (s.inEncounter && s.turnDone && !s.turnActive) steps.push('round')
   if (s.turnActive) steps.push('end')
   return steps
+}
+
+/**
+ * What the hero's sheet does when the GM seats it in, or takes it out of, their encounter
+ * (`seated`: null while unknown). Freshly seated starts a new encounter (unless it is
+ * already waiting for Initiative); found seated on load joins only when not in one yet;
+ * taken out (removed, or the encounter ended) ends it.
+ */
+export function seatChange(
+  before: boolean | null | undefined,
+  seated: boolean | null,
+  s: Pick<TurnState, 'inEncounter' | 'awaitingInitiative'>,
+): 'begin' | 'end' | null {
+  if (seated === null) return null
+  if (seated) {
+    if (before === false) return s.awaitingInitiative ? null : 'begin'
+    return before === true || s.inEncounter ? null : 'begin'
+  }
+  return before === true && s.inEncounter ? 'end' : null
 }
 
 /** Players who roll their own dice type their Initiative total instead of rolling. */

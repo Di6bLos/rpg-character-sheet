@@ -1510,7 +1510,8 @@ export function initiativeRoll(
       odds: advantage ? -1 : 0,
     })
   const max = turnActions(sheet)
-  const start = initiativeActions(roll, natural, max)
+  // Classic initiative only orders the turns: every hero starts with full actions.
+  const start = sheet.classicInitiative ? max : initiativeActions(roll, natural, max)
   sheet.actionsSpent = max - start
   const extra = [
     cheat ? ` Cheat: ${rolled} raised to 10.` : '',
@@ -1532,7 +1533,7 @@ export function initiativeRoll(
       ? ' Add your Elemental Surge d4s to temporary mana.'
       : ''
   return {
-    message: `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}.${extra}${surgeDice}`,
+    message: `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}${sheet.classicInitiative ? ' (Classic initiative)' : ''}.${extra}${surgeDice}`,
     total: roll,
   }
 }

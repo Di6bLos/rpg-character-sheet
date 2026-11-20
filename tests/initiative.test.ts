@@ -385,3 +385,27 @@ describe('turnTo', () => {
     expect(turnTo(order, 'b', 1, 'b', -1)).toBeNull()
   })
 })
+
+describe('sortOrder by initiative mode', () => {
+  const at = '2026-01-01T00:00:00Z'
+  const rows = [
+    { id: 'gob', name: 'Goblin', kind: 'monster' as const, initiative: 19, created_at: at },
+    { id: 'ann', name: 'Ann', kind: 'pc' as const, initiative: 8, created_at: at },
+    { id: 'bob', name: 'Bob', kind: 'pc' as const, initiative: 14, created_at: at },
+    { id: 'npc', name: 'Guard', kind: 'npc' as const, initiative: 11, created_at: at },
+  ]
+
+  it('classic orders everyone by the roll', () => {
+    expect(sortOrder(rows, 'classic').map((r) => r.id)).toEqual(['gob', 'bob', 'npc', 'ann'])
+  })
+
+  it('nimble puts every hero first, each group by the roll', () => {
+    expect(sortOrder(rows, 'nimble').map((r) => r.id)).toEqual(['bob', 'ann', 'gob', 'npc'])
+  })
+
+  it('heroes waiting for their Initiative sit at the top in both modes', () => {
+    const waiting = rows.map((r) => (r.id === 'ann' ? { ...r, initiative_rolled: false } : r))
+    expect(sortOrder(waiting, 'classic').map((r) => r.id)).toEqual(['ann', 'gob', 'bob', 'npc'])
+    expect(sortOrder(waiting, 'nimble').map((r) => r.id)).toEqual(['ann', 'bob', 'gob', 'npc'])
+  })
+})

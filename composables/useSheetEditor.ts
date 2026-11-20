@@ -2,6 +2,8 @@ import type { InjectionKey, Ref } from 'vue'
 import type { Character } from '~/types'
 import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
+import { beginEncounter, endEncounter } from '~/utils/nimblePlay'
+import { seatChange } from '~/utils/turnSteps'
 
 export interface SheetEditor<T extends AnySheet = AnySheet> {
   /** Working copy; mutate freely, it autosaves for the owner. */
@@ -12,6 +14,8 @@ export interface SheetEditor<T extends AnySheet = AnySheet> {
   lastRoll: Ref<string>
   campaignName: Ref<string>
   campaignId: Ref<string | null>
+  /** The hero is seated in the GM's encounter: the tracker runs it, not the player. */
+  gmEncounter: Ref<boolean>
   portrait: Ref<string | null>
   uploadingPortrait: Ref<boolean>
   hpPct: Ref<number>
@@ -138,6 +142,39 @@ export function provideSheetEditor(
     { immediate: true },
   )
 
+  // The GM's encounter, for a Nimble hero the player edits in a campaign: its initiative
+  // rules (Classic starts heroes with full actions, read as `sheet.classicInitiative`),
+  // and whether the hero is seated on the tracker. Being seated joins the encounter
+  // (New encounter, then Roll Initiative); leaving the tracker ends it, and while seated
+  // the turn steps are only Roll Initiative, Start turn and End turn (`gmEncounter`).
+  const tracked = computed(() => canEdit.value && draft.value.system === 'nimble')
+  const encounter = useCampaignEncounter(
+    computed(() => (tracked.value ? campaignId.value : null)),
+    computed(() => (tracked.value ? draft.value.id : null)),
+  )
+  watch(
+    encounter.mode,
+    (mode) => {
+      if (mode === null || !tracked.value) return
+      const sheet = draft.value.sheet as NimbleSheet
+      const classic = mode === 'classic'
+      if ((sheet.classicInitiative ?? false) !== classic) sheet.classicInitiative = classic
+    },
+    { immediate: true },
+  )
+  watch(
+    encounter.seated,
+    (seated, before) => {
+      if (!tracked.value) return
+      const sheet = draft.value.sheet as NimbleSheet
+      const change = seatChange(before, seated, sheet)
+      if (change === 'begin') lastRoll.value = beginEncounter(sheet)
+      else if (change === 'end') lastRoll.value = endEncounter(sheet, draft.value.level)
+    },
+    { immediate: true },
+  )
+  const gmEncounter = computed(() => tracked.value && encounter.seated.value === true)
+
   function adjustHp(delta: number) {
     if (!canEdit.value) return
     const sheet = draft.value.sheet
@@ -186,6 +223,7 @@ export function provideSheetEditor(
     lastRoll,
     campaignName,
     campaignId,
+    gmEncounter,
     uploadingPortrait,
     portrait: computed(() => {
       const override = (draft.value.sheet as { portraitOverride?: string }).portraitOverride

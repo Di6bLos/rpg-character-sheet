@@ -322,6 +322,11 @@ export interface NimbleSheet extends SheetCommon {
   formPortraits: Record<string, string>
   portraitOverride: string
   ownDice: boolean
+  /**
+   * The seated campaign plays Classic initiative (copied from the board by the sheet
+   * editor): the roll only orders turns, so Initiative starts the hero with full actions.
+   */
+  classicInitiative?: boolean
   /** Between Start turn and End turn. */
   turnActive: boolean
   /** From New encounter until a Safe Rest. */

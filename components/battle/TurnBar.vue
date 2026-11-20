@@ -13,6 +13,7 @@ const { draft, canEdit } = useSheet<NimbleSheet>()
 const announce = useAnnounce()
 const {
   sheet,
+  gmEncounter,
   perTurn,
   left,
   pips,
@@ -49,8 +50,19 @@ const headTail = computed(() => {
   return tail && tail.charAt(0).toUpperCase() + tail.slice(1)
 })
 
-/** The GM's encounter is running (someone has the turn) but this sheet hasn't joined it. */
-const joining = computed(() => !!props.init.turnId.value && !sheet.value.inEncounter)
+/**
+ * The GM's encounter is running (someone has the turn) but this hero isn't on the tracker:
+ * seated heroes join on their own.
+ */
+const joining = computed(
+  () => !!props.init.turnId.value && !sheet.value.inEncounter && !gmEncounter.value,
+)
+/** In the GM's encounter, someone else has the turn: Start turn waits for the tracker. */
+const otherActing = computed(() => {
+  if (!gmEncounter.value) return false
+  const acting = props.init.order.value.find((c) => c.id === props.init.turnId.value)
+  return !!acting && acting.character_id !== draft.value.id
+})
 
 const sub = computed(() =>
   [
@@ -165,7 +177,10 @@ const reactions = computed(() => {
         v-if="steps.includes('start')"
         type="button"
         class="btn btn--sm"
-        :disabled="!canEdit"
+        :disabled="!canEdit || otherActing"
+        :title="
+          otherActing ? 'Not your turn yet: it starts when initiative reaches you' : undefined
+        "
         @click="beginTurn"
       >
         Start turn

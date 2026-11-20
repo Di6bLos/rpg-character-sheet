@@ -94,7 +94,8 @@ function onInit(event: Event) {
   // A cleared field is not 0 (that would drop the creature to the bottom): ignore it.
   if (raw === '') return
   const v = Number(raw)
-  if (Number.isFinite(v) && v !== props.c.initiative) void props.init.setInitiative(props.c, v)
+  if (Number.isFinite(v) && (v !== props.c.initiative || !props.c.initiative_rolled))
+    void props.init.setInitiative(props.c, v)
 }
 
 // --- Tooltip ----------------------------------------------------------------------
@@ -184,7 +185,13 @@ const tipKeys = computed(() =>
         </span>
         <label class="ec__init" title="Initiative" @click.stop>
           <span class="sr-only">Initiative for {{ c.name }}</span>
-          <input type="number" :value="c.initiative" inputmode="numeric" @change="onInit" />
+          <input
+            type="number"
+            :value="c.initiative_rolled ? c.initiative : ''"
+            placeholder="–"
+            inputmode="numeric"
+            @change="onInit"
+          />
         </label>
       </div>
 

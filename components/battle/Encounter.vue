@@ -18,8 +18,15 @@ const emit = defineEmits<{ hero: [characterId: string] }>()
 const { npcFor } = useCombatantNpcs(props.init)
 
 const isEnemy = (c: TurnRow) => c.kind === 'monster' || c.kind === 'npc'
-const enemies = computed(() => sortOrder(props.init.rows.value.filter(isEnemy)))
-const allies = computed(() => sortOrder(props.init.rows.value.filter((c) => !isEnemy(c))))
+const enemies = computed(() =>
+  sortOrder(props.init.rows.value.filter(isEnemy), props.init.mode.value),
+)
+const allies = computed(() =>
+  sortOrder(
+    props.init.rows.value.filter((c) => !isEnemy(c)),
+    props.init.mode.value,
+  ),
+)
 const filter = ref<'enemies' | 'allies'>('enemies')
 const shown = computed(() => (filter.value === 'enemies' ? enemies.value : allies.value))
 

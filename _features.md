@@ -241,6 +241,24 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [x] Remove from encounter, with a confirm step inside the menu
 - [x] Tests: `turnTo` in `tests/initiative.test.ts`
 
+### Initiative rules toggle (Nimble / Classic)
+
+- [x] `encounters.initiative_mode` (`nimble` default, `classic`) and `combatants.initiative_rolled` (migration `20261120140000_initiative_mode.sql`); `campaign_initiative()` returns it, `set_my_initiative` marks the hero rolled
+- [x] Nimble: heroes always act first (each group by its roll); the roll sets the hero's starting actions
+- [x] Classic: the roll sets the turn order; heroes start with full actions (`sheet.classicInitiative`, copied live from the campaign by the sheet editor)
+- [x] GM toggle under "Initiative rules" in the battle board's ⋯ menu; a select on the Party-tab tracker below 1200px
+- [x] Add party seats heroes waiting ("–", top of the order) until the player rolls or the GM types their Initiative; no more placeholder d20
+- [x] Tests: `sortOrder` by mode, Classic starting actions
+- [ ] Apply `20261120140000_initiative_mode.sql` to the hosted project
+
+### Players follow the GM's encounter
+
+- [x] Seated by the GM (Add party, Add creatures' party), the hero's sheet joins on its own: New encounter runs and it asks for Initiative (`useCampaignEncounter` → `seatChange` in the sheet editor; sheet page, battle board and quick-action panel)
+- [x] Taken off the tracker (removed, or End encounter) ends the hero's encounter
+- [x] While seated the player's steps are only Roll Initiative (or the typed total), Start turn and End turn: no New encounter, New round or End encounter (`turnSteps` with `gmEncounter`)
+- [x] Start turn waits (disabled) while someone else has the turn on the board
+- [x] Tests: `seatChange` and the GM-encounter steps in `tests/turnSteps.test.ts`
+
 ### GM keyboard shortcuts (future)
 
 - [ ] `→` / `Space`: Next turn
@@ -254,3 +272,4 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - conditions review https://nimble.nexus/rules/conditions
 - GM only backstory section
 - Fix the the delete campaign section text. its not wrapping, getting cut off my container an button
+- Lets update the carousel tracker again. I dont want to be able to scroll to the next rown. I want the

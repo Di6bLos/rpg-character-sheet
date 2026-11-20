@@ -4,7 +4,7 @@
 // summons and Reroll NPC initiative, and Add party while out of an encounter with
 // heroes not seated (Next turn is in the board's top bar). It also drops summons that left
 // their hero's sheet as the roster refreshes (as the Party tab's Initiative panel does).
-import type { RosterEntry } from '~/types'
+import type { InitiativeMode, RosterEntry } from '~/types'
 import type { useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'
 
@@ -113,6 +113,20 @@ const syncSummons = () =>
   })
 
 const reroll = () => run(() => props.init.rollForNpcs())
+
+const MODES: { mode: InitiativeMode; label: string; note: string }[] = [
+  {
+    mode: 'nimble',
+    label: 'Nimble',
+    note: 'Heroes go first; the roll sets their starting actions',
+  },
+  {
+    mode: 'classic',
+    label: 'Classic',
+    note: 'The roll sets the turn order; heroes start with full actions',
+  },
+]
+const setMode = (mode: InitiativeMode) => run(() => props.init.setMode(mode))
 </script>
 
 <template>
@@ -168,6 +182,21 @@ const reroll = () => run(() => props.init.rollForNpcs())
             Reroll NPC initiative
             <small>Every monster and NPC rolls again</small>
           </button>
+          <div class="gtb__modes" role="group" aria-labelledby="gtb-modes-h">
+            <span id="gtb-modes-h" class="gtb__modes-h">Initiative rules</span>
+            <button
+              v-for="m in MODES"
+              :key="m.mode"
+              type="button"
+              class="gtb__item gtb__mode"
+              :aria-pressed="init.mode.value === m.mode"
+              :disabled="busy"
+              @click="setMode(m.mode)"
+            >
+              {{ m.label }}
+              <small>{{ m.note }}</small>
+            </button>
+          </div>
         </div>
       </div>
       <!-- Out of combat with heroes still to seat, offer to seat the party
@@ -289,6 +318,43 @@ const reroll = () => run(() => props.init.rollForNpcs())
 
   &:disabled {
     opacity: 0.5;
+  }
+}
+
+.gtb__modes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.gtb__modes-h {
+  padding: 0 10px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--page-muted);
+}
+
+// The picked rules: a check before the name and the accent edge.
+.gtb__mode {
+  position: relative;
+  padding-left: 28px;
+
+  &[aria-pressed='true'] {
+    background: var(--accent-tint);
+    box-shadow: inset 2px 0 0 var(--accent);
+
+    &::before {
+      content: '✓';
+      position: absolute;
+      left: 10px;
+      top: 8px;
+      color: var(--accent-text);
+    }
   }
 }
 </style>

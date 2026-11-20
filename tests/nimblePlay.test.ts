@@ -351,6 +351,15 @@ describe('nimble turn tracker', () => {
     expect(sheet.initiative).toBeNull()
   })
 
+  it('Classic initiative starts every hero with full actions, whatever the roll', () => {
+    const sheet = hero({ initMod: 0, classicInitiative: true })
+    beginEncounter(sheet)
+    expect(rollInitiative(sheet, 1, () => 0.5, 3)).toMatch(
+      /^Initiative 3 \(as you rolled it\): you start with 3 actions \(Classic initiative\)\./,
+    )
+    expect(actionsLeft(sheet)).toBe(3)
+  })
+
   it('starts combat with 1, 2 or all actions by the Initiative roll', () => {
     const roll = (value: number) => () => (value - 0.5) / 20
     const sheet = hero({ initMod: 2 })

@@ -57,10 +57,10 @@ async function makeActive(close: (refocus?: boolean) => void) {
 
 // --- Initiative -----------------------------------------------------------------------
 // A number input's v-model hands back a number, or '' when cleared.
-const score = ref<number | string>(props.c.initiative)
+const score = ref<number | string>(props.c.initiative_rolled ? props.c.initiative : '')
 watch(open, (on) => {
   if (!on) return
-  score.value = props.c.initiative
+  score.value = props.c.initiative_rolled ? props.c.initiative : ''
   confirming.value = false
 })
 const scoreValue = computed(() => {
@@ -72,7 +72,8 @@ const scoreValue = computed(() => {
 async function saveScore(close: (refocus?: boolean) => void) {
   const v = scoreValue.value
   if (v === null) return
-  if (v !== props.c.initiative) await props.init.setInitiative(props.c, v)
+  if (v !== props.c.initiative || !props.c.initiative_rolled)
+    await props.init.setInitiative(props.c, v)
   close()
 }
 

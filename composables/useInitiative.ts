@@ -1,6 +1,6 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
-import type { Combatant, Encounter, InitiativeRow, RosterEntry } from '~/types'
+import type { Combatant, Encounter, InitiativeMode, InitiativeRow, RosterEntry } from '~/types'
 import { rollDie } from '~/utils/dice'
 import {
   clampHp,
@@ -37,6 +37,7 @@ function fromCombatant(c: Combatant): TurnRow {
     conditions: c.conditions ?? [],
     actions_max: c.actions_max,
     actions_used: c.actions_used,
+    initiative_rolled: c.initiative_rolled ?? true,
   }
 }
 
@@ -60,8 +61,16 @@ export function useInitiative(
   const loading = ref(true)
   let channel: RealtimeChannel | null = null
 
+  /** The campaign's initiative rules (see `InitiativeMode`); Nimble until the GM picks. */
+  const mode = computed<InitiativeMode>(() => encounter.value?.initiative_mode ?? 'nimble')
+
   /** Turn order: summons act on their summoner's turn, so they sit under the hero instead. */
-  const order = computed(() => sortOrder(rows.value.filter((r) => r.kind !== 'summon')))
+  const order = computed(() =>
+    sortOrder(
+      rows.value.filter((r) => r.kind !== 'summon'),
+      mode.value,
+    ),
+  )
 
   /** A hero's living summons in initiative, for the dropdown under their portrait. */
   function summonsOf(characterId: string | null): TurnRow[] {
@@ -78,7 +87,7 @@ export function useInitiative(
   }
   /** The first living combatant after `id` in the full order (slain summons included). */
   function livingAfter(id: string): string | null {
-    const all = sortOrder(rows.value)
+    const all = sortOrder(rows.value, mode.value)
     const at = all.findIndex((c) => c.id === id)
     if (at < 0) return null
     const live = new Set(order.value.map((c) => c.id))
@@ -123,6 +132,7 @@ export function useInitiative(
         created_at: String(i).padStart(6, '0'),
         summon_key: r.summon_key ?? null,
         conditions: r.conditions ?? [],
+        initiative_rolled: r.initiative_rolled ?? true,
       }))
     }
   }
@@ -130,7 +140,7 @@ export function useInitiative(
   async function loadEncounter() {
     const { data, error } = await supabase
       .from('encounters')
-      .select('campaign_id, round, active_combatant')
+      .select('campaign_id, round, active_combatant, initiative_mode')
       .eq('campaign_id', campaignId.value)
       .maybeSingle()
     if (error) throw error
@@ -138,6 +148,7 @@ export function useInitiative(
       campaign_id: campaignId.value,
       round: 1,
       active_combatant: null,
+      initiative_mode: 'nimble',
     }
   }
 
@@ -204,6 +215,7 @@ export function useInitiative(
       campaign_id: campaignId.value,
       round: encounter.value.round,
       active_combatant: encounter.value.active_combatant,
+      initiative_mode: encounter.value.initiative_mode,
     })
     if (error) snackbar.error(error, 'Could not update the turn order')
     return !error
@@ -319,7 +331,10 @@ export function useInitiative(
     rows.value = [...rows.value.filter((r) => !ids.has(r.id)), ...added]
   }
 
-  /** Seats every character in the roster that isn't in the order yet, rolling initiative. */
+  /**
+   * Seats every character in the roster that isn't in the order yet. They wait at the top
+   * of the order until their Initiative arrives (the player rolls it, or the GM types it).
+   */
   async function addParty(roster: RosterEntry[]) {
     const missing = roster.filter(
       (r) => r.character_id && !rows.value.some((c) => c.character_id === r.character_id),
@@ -331,7 +346,8 @@ export function useInitiative(
         return {
           name: r.character_name ?? r.display_name,
           kind: 'pc' as const,
-          initiative: rollDie(20) + mod,
+          initiative: 0,
+          initiative_rolled: false,
           init_mod: mod,
           hp: r.summary?.hp ?? 0,
           hp_max: r.summary?.hpMax ?? 0,
@@ -365,9 +381,15 @@ export function useInitiative(
         (r) => c.kind === 'pc' && !!r.summon_key && summonOwner(r.summon_key) === c.character_id,
       ),
     ]
-    for (const r of moved) r.initiative = value
+    for (const r of moved) {
+      r.initiative = value
+      r.initiative_rolled = true
+    }
     const ids = moved.map((r) => r.id)
-    const { error } = await supabase.from('combatants').update({ initiative: value }).in('id', ids)
+    const { error } = await supabase
+      .from('combatants')
+      .update({ initiative: value, initiative_rolled: true })
+      .in('id', ids)
     if (error) snackbar.error(error, 'Could not change initiative')
   }
 
@@ -492,6 +514,13 @@ export function useInitiative(
     rows.value = rows.value.filter((x) => x.id !== c.id)
   }
 
+  /** The GM switches the campaign's initiative rules; the order re-sorts for everyone. */
+  async function setMode(next: InitiativeMode) {
+    if (!isGm.value || !encounter.value || mode.value === next) return
+    const before = encounter.value.initiative_mode
+    if (!(await saveEncounter({ initiative_mode: next }))) encounter.value.initiative_mode = before
+  }
+
   async function endEncounter() {
     const { error } = await supabase.from('combatants').delete().eq('campaign_id', campaignId.value)
     if (error) return snackbar.error(error, 'Could not clear the encounter')
@@ -501,6 +530,8 @@ export function useInitiative(
 
   return {
     rows,
+    mode,
+    setMode,
     order,
     summonsOf,
     activeId,

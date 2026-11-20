@@ -1,4 +1,12 @@
-import type { CampaignNpc, Combatant, HpBand, InitiativeRow, NpcKind, RosterEntry } from '~/types'
+import type {
+  CampaignNpc,
+  Combatant,
+  HpBand,
+  InitiativeMode,
+  InitiativeRow,
+  NpcKind,
+  RosterEntry,
+} from '~/types'
 import { summonById } from '~/data/nimble/summons'
 import { rollDie, type Rng } from './dice'
 
@@ -53,16 +61,25 @@ export function hpBand(hp: number, hpMax: number): HpBand | null {
 
 const byteOrder = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
+type SortRow = Pick<Combatant, 'initiative' | 'created_at' | 'name' | 'id'> &
+  Partial<Pick<Combatant, 'kind' | 'initiative_rolled'>>
+
+/** Sort group: heroes still waiting for their Initiative, then (Nimble) heroes, then the rest. */
+function sortGroup(r: SortRow, mode: InitiativeMode): number {
+  if (r.kind === 'pc' && r.initiative_rolled === false) return 0
+  return mode === 'nimble' && r.kind !== 'pc' ? 2 : 1
+}
+
 /**
- * Highest initiative first; ties keep the order they were added in, then go
- * by name and id (copies added together share a timestamp). Mirrors the
- * ORDER BY of `campaign_initiative()` so the GM and players see one order.
+ * Turn order. Heroes waiting for their Initiative come first; in Nimble mode every hero
+ * acts before the creatures. Then highest initiative first; ties keep the order they were
+ * added in, then go by name and id (copies added together share a timestamp), like the
+ * ORDER BY of `campaign_initiative()`, so the GM and players see one order.
  */
-export function sortOrder<T extends Pick<Combatant, 'initiative' | 'created_at' | 'name' | 'id'>>(
-  rows: T[],
-): T[] {
+export function sortOrder<T extends SortRow>(rows: T[], mode: InitiativeMode = 'classic'): T[] {
   return [...rows].sort(
     (a, b) =>
+      sortGroup(a, mode) - sortGroup(b, mode) ||
       b.initiative - a.initiative ||
       byteOrder(a.created_at, b.created_at) ||
       byteOrder(a.name, b.name) ||

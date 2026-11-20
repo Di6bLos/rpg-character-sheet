@@ -363,12 +363,17 @@ function onFocus(slot: Slot, e: FocusEvent) {
               type="button"
               class="tok__main"
               :tabindex="primary ? undefined : -1"
-              :aria-label="`${c.name}, initiative ${c.initiative}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
+              :aria-label="`${c.name}, ${c.initiative_rolled ? `initiative ${c.initiative}` : 'waiting for Initiative'}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
               @click="onToken(c)"
               @contextmenu="onContextMenu({ key, c, primary, now, next, roundStart }, $event)"
               @keydown="onTokenKey({ key, c, primary, now, next, roundStart }, $event)"
             >
-              <span class="tok__score" title="Initiative">{{ c.initiative }}</span>
+              <span
+                class="tok__score"
+                :class="{ 'is-waiting': !c.initiative_rolled }"
+                :title="c.initiative_rolled ? 'Initiative' : 'Waiting for their Initiative roll'"
+                >{{ c.initiative_rolled ? c.initiative : '–' }}</span
+              >
               <span v-if="now" class="tok__badge tok__badge--now">Acting</span>
               <span v-else-if="next" class="tok__badge">Next</span>
               <UiAvatar
@@ -607,6 +612,16 @@ function onFocus(slot: Slot, e: FocusEvent) {
     background: var(--accent);
     color: var(--on-accent);
     border-color: var(--accent);
+  }
+}
+
+// A hero still waiting for their Initiative: a dashed coin.
+.tok__score.is-waiting {
+  border-style: dashed;
+  color: var(--page-muted);
+
+  .is-now & {
+    color: var(--on-accent);
   }
 }
 

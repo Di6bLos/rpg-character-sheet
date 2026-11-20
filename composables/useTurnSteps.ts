@@ -25,13 +25,23 @@ export function useTurnSteps(
     onResult?: (message: string) => void
   } = {},
 ) {
-  const { draft, canEdit, say } = useSheet<NimbleSheet>()
+  const { draft, canEdit, say, gmEncounter } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
 
   const perTurn = computed(() => turnActions(sheet.value))
   const left = computed(() => actionsLeft(sheet.value))
   const pips = computed(() => actionPips(sheet.value))
-  const steps = computed(() => turnSteps(sheet.value))
+  // Seated in the GM's encounter, the tracker runs the encounter and the rounds.
+  const steps = computed(() =>
+    turnSteps({
+      inEncounter: sheet.value.inEncounter,
+      turnActive: sheet.value.turnActive,
+      turnDone: sheet.value.turnDone,
+      ownDice: sheet.value.ownDice,
+      awaitingInitiative: sheet.value.awaitingInitiative,
+      gmEncounter: gmEncounter.value,
+    }),
+  )
   const typed = computed(() => typesInitiative(sheet.value))
   const rushedNote = computed(() =>
     sheet.value.rushed
@@ -94,6 +104,7 @@ export function useTurnSteps(
 
   return {
     sheet,
+    gmEncounter,
     perTurn,
     left,
     pips,

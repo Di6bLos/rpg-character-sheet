@@ -4,6 +4,7 @@
 // Previous / Next and a list to adjust HP, initiative and remove combatants.
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
+import type { InitiativeMode } from '~/types'
 import { plural } from '~/utils/format'
 import { summonById } from '~/data/nimble/summons'
 import { isSlainSummon, summonKey, summonOwner } from '~/utils/initiative'
@@ -170,9 +171,17 @@ async function syncSummons() {
 }
 
 function onInit(c: TurnRow, event: Event) {
-  const v = Number((event.target as HTMLInputElement).value)
-  if (Number.isFinite(v) && v !== c.initiative) void props.init.setInitiative(c, v)
+  const raw = (event.target as HTMLInputElement).value.trim()
+  if (raw === '') return
+  const v = Number(raw)
+  if (Number.isFinite(v) && (v !== c.initiative || !c.initiative_rolled))
+    void props.init.setInitiative(c, v)
 }
+
+/** A seated hero still waiting for their Initiative shows a dash, not 0. */
+const score = (c: TurnRow) => (c.initiative_rolled ? String(c.initiative) : '–')
+const scoreTitle = (c: TurnRow) =>
+  c.initiative_rolled ? `Initiative ${c.initiative}` : 'Waiting for their Initiative roll'
 </script>
 
 <template>
@@ -254,12 +263,9 @@ function onInit(c: TurnRow, event: Event) {
               :dead="heroDead(c)"
               :size="60"
             />
-            <span
-              class="ini__score"
-              :aria-label="`Initiative ${c.initiative}`"
-              :title="`Initiative ${c.initiative}`"
-              >{{ c.initiative }}</span
-            >
+            <span class="ini__score" :aria-label="scoreTitle(c)" :title="scoreTitle(c)">{{
+              score(c)
+            }}</span>
             <span v-if="heroSummons(c).length" class="ini__count" aria-hidden="true">{{
               heroSummons(c).length
             }}</span>
@@ -330,6 +336,17 @@ function onInit(c: TurnRow, event: Event) {
         <button type="button" class="btn btn--quiet btn--sm" @click="init.rollForNpcs">
           Reroll NPC initiative
         </button>
+        <label class="ini__mode">
+          <span>Initiative rules</span>
+          <select
+            class="input"
+            :value="init.mode.value"
+            @change="init.setMode(($event.target as HTMLSelectElement).value as InitiativeMode)"
+          >
+            <option value="nimble">Nimble (heroes first)</option>
+            <option value="classic">Classic (roll order)</option>
+          </select>
+        </label>
         <button type="button" class="btn btn--quiet btn--sm" @click="init.endEncounter">
           End encounter
         </button>
@@ -341,7 +358,8 @@ function onInit(c: TurnRow, event: Event) {
             <input
               class="input"
               type="number"
-              :value="c.initiative"
+              :value="c.initiative_rolled ? c.initiative : ''"
+              placeholder="–"
               inputmode="numeric"
               @change="onInit(c, $event)"
             />
@@ -717,6 +735,20 @@ function onInit(c: TurnRow, event: Event) {
   gap: 6px;
   border-top: 1px solid var(--line);
   padding-top: 10px;
+}
+
+.ini__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--page-muted);
+
+  select {
+    width: auto;
+    min-height: 36px;
+    padding: 4px 8px;
+  }
 }
 
 .ini__list li.is-summon {

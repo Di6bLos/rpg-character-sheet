@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { turnHeadline, turnSteps, typesInitiative } from '../utils/turnSteps'
+import { seatChange, turnHeadline, turnSteps, typesInitiative } from '../utils/turnSteps'
 
 const idle = {
   inEncounter: false,
@@ -61,5 +61,59 @@ describe('turnHeadline', () => {
     expect(turnHeadline({ ...base, turnId: null })).toBe('Waiting for your turn')
     expect(turnHeadline({ ...base, turnId: null, inEncounter: false })).toBe('Not in combat')
     expect(turnHeadline({ ...base, turnId: 'c' })).toBe('Waiting for your turn')
+  })
+})
+
+describe('turnSteps in the GM encounter', () => {
+  const seated = {
+    inEncounter: true,
+    turnActive: false,
+    turnDone: false,
+    ownDice: false,
+    awaitingInitiative: true,
+    gmEncounter: true,
+  }
+
+  it('asks for Initiative first (typed in when rolling your own dice)', () => {
+    expect(turnSteps(seated)).toEqual(['initiative'])
+    expect(turnSteps({ ...seated, ownDice: true })).toEqual([])
+    expect(typesInitiative({ ...seated, ownDice: true })).toBe(true)
+  })
+
+  it('only starts and ends turns: no New encounter, New round or End encounter', () => {
+    const rolled = { ...seated, awaitingInitiative: false }
+    expect(turnSteps(rolled)).toEqual(['start'])
+    expect(turnSteps({ ...rolled, turnActive: true })).toEqual(['end'])
+    expect(turnSteps({ ...rolled, turnDone: true })).toEqual(['start'])
+  })
+})
+
+describe('seatChange', () => {
+  const idle = { inEncounter: false, awaitingInitiative: false }
+  const fighting = { inEncounter: true, awaitingInitiative: false }
+
+  it('starts an encounter when the GM seats the hero', () => {
+    expect(seatChange(false, true, idle)).toBe('begin')
+    // A stale fight the player never ended: a fresh seat is a new encounter.
+    expect(seatChange(false, true, fighting)).toBe('begin')
+    expect(seatChange(false, true, { inEncounter: true, awaitingInitiative: true })).toBeNull()
+  })
+
+  it('on load, joins only when not in an encounter yet', () => {
+    expect(seatChange(null, true, idle)).toBe('begin')
+    expect(seatChange(undefined, true, idle)).toBe('begin')
+    expect(seatChange(null, true, fighting)).toBeNull()
+  })
+
+  it('ends the encounter when the hero leaves the tracker', () => {
+    expect(seatChange(true, false, fighting)).toBe('end')
+    expect(seatChange(true, false, idle)).toBeNull()
+    // Found unseated on load (a solo fight in a campaign) is left alone.
+    expect(seatChange(null, false, fighting)).toBeNull()
+  })
+
+  it('does nothing while unknown or unchanged', () => {
+    expect(seatChange(true, null, fighting)).toBeNull()
+    expect(seatChange(true, true, idle)).toBeNull()
   })
 })

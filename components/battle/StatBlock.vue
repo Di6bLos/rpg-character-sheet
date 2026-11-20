@@ -123,7 +123,7 @@ function onMax(event: Event) {
           ><span>Speed</span>
         </div>
         <div class="sbk__tile">
-          <b>{{ c.initiative }}</b
+          <b>{{ c.initiative_rolled ? c.initiative : '–' }}</b
           ><span>Init</span>
         </div>
         <div class="sbk__tile">

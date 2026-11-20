@@ -203,10 +203,17 @@ export interface Message {
 
 export type MessageKind = 'chat' | 'action'
 
+/**
+ * nimble: heroes act first and the Initiative roll sets their starting actions;
+ * classic: the roll sets the turn order and heroes start with full actions.
+ */
+export type InitiativeMode = 'nimble' | 'classic'
+
 export interface Encounter {
   campaign_id: string
   round: number
   active_combatant: string | null
+  initiative_mode: InitiativeMode
 }
 
 export interface Combatant {
@@ -227,6 +234,8 @@ export interface Combatant {
   conditions: string[]
   actions_max: number
   actions_used: number
+  /** False while a seated hero waits for their Initiative (they sit at the top). */
+  initiative_rolled: boolean
   created_at: string
 }
 
@@ -249,6 +258,7 @@ export interface InitiativeRow {
   /** GM only; null for players. */
   actions_max: number | null
   actions_used: number | null
+  initiative_rolled: boolean
 }
 
 /** What `campaign_hero_card()` returns: the public part of a seated hero. */
