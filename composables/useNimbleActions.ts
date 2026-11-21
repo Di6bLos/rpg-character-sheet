@@ -876,10 +876,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               .flatMap((a) => (a.key === e.form?.cost ? a.counters : []))
               .find((c) => c.period === 'rest')
           : undefined
+      // What using it pays: the form's charge counter, else the ability's own cost.
+      const desc =
+        sheet.value.abilities.find((a) => abilityBaseName(a.name) === e.source)?.desc ?? ''
+      const pays = cost ? cost.cost : counterCost(desc)
       return {
         ...e,
         on: sheet.value.effects.some((x) => x.source === e.source),
         cost,
+        /** 'Not your turn' while waiting in combat, unless it's free or a reaction. */
+        notNow: offTurn.value && !usableOffTurn(pays, cost?.text || desc) ? NOT_TURN : '',
       }
     }),
   )
@@ -888,6 +894,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     if (!canEdit.value) return
     const effect = effects.value.find((e) => e.source === source)
     if (!effect) return
+    if (effect.notNow) return report(`${source}: ${effect.notNow}.`)
     const limited = !effect.cost && abilities.value.find((a) => a.key === source)
     const counter = limited ? limited.counters[0] : undefined
     if (limited && counter) {

@@ -1342,7 +1342,10 @@ const effectRows = computed(() =>
             class="apm__row"
             :class="{ 'apm__row--used': e.on }"
             :aria-pressed="e.on"
-            :aria-disabled="!canEdit || (!e.on && !!e.cost && e.cost.left < 1) || undefined"
+            :aria-disabled="
+              !canEdit || (!e.on && ((!!e.cost && e.cost.left < 1) || !!e.notNow)) || undefined
+            "
+            :title="(!e.on && e.notNow) || undefined"
             @click="canEdit && (e.on ? stopEffect(e.source) : useEffect(e.source))"
           >
             <span class="apm__name">{{ e.source }}</span>
