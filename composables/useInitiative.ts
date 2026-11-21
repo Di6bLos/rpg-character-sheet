@@ -61,8 +61,15 @@ export function useInitiative(
   const loading = ref(true)
   let channel: RealtimeChannel | null = null
 
-  /** The campaign's initiative rules (see `InitiativeMode`); Nimble until the GM picks. */
-  const mode = computed<InitiativeMode>(() => encounter.value?.initiative_mode ?? 'nimble')
+  /**
+   * Until the GM picks: Nimble rules for a Nimble campaign, Classic (the roll orders
+   * everyone) for D&D 5e and Pathfinder 2e.
+   */
+  const campaigns = useCampaignStore()
+  const defaultMode = (): InitiativeMode =>
+    (campaigns.byId(campaignId.value)?.system ?? 'nimble') === 'nimble' ? 'nimble' : 'classic'
+  /** The campaign's initiative rules (see `InitiativeMode`). */
+  const mode = computed<InitiativeMode>(() => encounter.value?.initiative_mode ?? defaultMode())
 
   /** Turn order: summons act on their summoner's turn, so they sit under the hero instead. */
   const order = computed(() =>
@@ -148,7 +155,7 @@ export function useInitiative(
       campaign_id: campaignId.value,
       round: 1,
       active_combatant: null,
-      initiative_mode: 'nimble',
+      initiative_mode: defaultMode(),
     }
   }
 
