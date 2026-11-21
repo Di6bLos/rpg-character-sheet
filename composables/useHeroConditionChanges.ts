@@ -93,10 +93,29 @@ export function useHeroConditionChanges() {
     }
   }
 
-  // Listen first, then read what is waiting, so nothing slips between the two.
-  async function start() {
+  // One pickup at a time, in arrival order: claim-and-apply runs serially, so a heal
+  // sent after damage can't land first.
+  let queue: Promise<void> = Promise.resolve()
+  function serial(job: () => Promise<void>) {
+    queue = queue.then(job).catch(() => undefined)
+  }
+
+  /** Reads what is waiting, oldest first. */
+  async function catchUp(id: string) {
+    const { data } = await supabase
+      .from('hero_condition_changes')
+      .select('id, condition, add, created_at')
+      .eq('character_id', id)
+      .order('created_at')
+    await take((data ?? []) as Row[])
+  }
+
+  // Read what is waiting now, and again each time the listener is (re)connected, so a
+  // change sent while joining or while disconnected isn't missed; `taken` drops repeats.
+  function start() {
     if (channel || draft.value.system !== 'nimble') return
     const id = draft.value.id
+    serial(() => catchUp(id))
     channel = supabase
       .channel(`hero-condition-changes-${id}`)
       .on(
@@ -107,21 +126,18 @@ export function useHeroConditionChanges() {
           table: 'hero_condition_changes',
           filter: `character_id=eq.${id}`,
         },
-        (payload) => void take([payload.new as Row]),
+        (payload) => serial(() => take([payload.new as Row])),
       )
-      .subscribe()
-    const { data } = await supabase
-      .from('hero_condition_changes')
-      .select('id, condition, add, created_at')
-      .eq('character_id', id)
-    await take((data ?? []) as Row[])
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') serial(() => catchUp(id))
+      })
   }
 
   onMounted(() => {
     watch(
       canEdit,
       (on) => {
-        if (on) void start()
+        if (on) start()
       },
       { immediate: true },
     )
