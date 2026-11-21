@@ -1,13 +1,13 @@
 import type { CampaignNpc } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 
-/** Fetches already started for a campaign and set of linked ids (two callers, one fetch). */
-let fetchedKey = ''
+/** The fetch in flight for a campaign and set of linked ids (two callers, one fetch). */
+let fetchingKey = ''
 
 /**
  * The GM's campaign NPCs behind linked combatants (`campaign_npc_id`), from the NPC
  * store (the console's NPCs page fills the same list). Fetches when the board shows a
- * linked combatant the store doesn't have yet, once per set of ids.
+ * linked combatant the store doesn't have yet, once per set of ids at a time.
  */
 export function useCombatantNpcs(init: ReturnType<typeof useInitiative>) {
   const store = useNpcStore()
@@ -34,11 +34,16 @@ export function useCombatantNpcs(init: ReturnType<typeof useInitiative>) {
     [campaignId, missing],
     ([cid, ids]) => {
       const key = `${cid}:${ids}`
-      if (!ids || key === fetchedKey) return
-      fetchedKey = key
-      store.fetchCampaign(cid).catch(() => {
-        fetchedKey = ''
-      })
+      if (!ids || key === fetchingKey) return
+      fetchingKey = key
+      // Only while in flight: the store can be reset (sign-out) or swapped to another
+      // campaign later, and the same ids must then load again.
+      store
+        .fetchCampaign(cid)
+        .catch(() => undefined)
+        .finally(() => {
+          if (fetchingKey === key) fetchingKey = ''
+        })
     },
     { immediate: true },
   )
