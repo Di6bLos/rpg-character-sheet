@@ -14,6 +14,7 @@ const characterId = defineModel<string | null>('characterId', { required: true }
 defineSlots<{ 'own-hp'?: () => unknown }>()
 
 const auth = useAuthStore()
+const { campaignId } = useCampaignBoard()
 const chat = useBoardChat()
 const commsTab = useCommsTab()
 const right = useBattleRight()
@@ -83,7 +84,7 @@ async function whisper() {
       </button>
       <NuxtLink
         v-if="characterId && (gm || own)"
-        :to="`/character/${characterId}`"
+        :to="`/character/${characterId}?campaign=${campaignId}`"
         class="btn btn--sm"
       >
         Open full sheet
