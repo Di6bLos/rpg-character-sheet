@@ -38,6 +38,7 @@ const PLAY_STATE = new Set([
   'formPortraits',
   'portraitOverride',
   'ownDice',
+  'classicInitiative',
   'turnActive',
   'inEncounter',
   'turnDone',
