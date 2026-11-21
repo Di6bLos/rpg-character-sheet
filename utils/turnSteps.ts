@@ -18,18 +18,21 @@ interface TurnState {
    * player only rolls Initiative and starts or ends their turn.
    */
   gmEncounter?: boolean
+  /** In the GM's encounter: the tracker is on this hero (false while it is on someone else). */
+  myTurn?: boolean
 }
 
 /**
  * The step buttons to show, in order: New encounter → Roll Initiative → Start turn →
  * End turn → New round → …, with End encounter beside them between turns. In the GM's
- * encounter: Roll Initiative, then Start turn ↔ End turn.
+ * encounter: Roll Initiative, then Start turn (on the hero's turn) → End turn.
  */
 export function turnSteps(s: TurnState): TurnStep[] {
   if (s.gmEncounter) {
     if (s.turnActive) return ['end']
     if (s.awaitingInitiative) return s.ownDice ? [] : ['initiative']
-    return ['start']
+    // Only on the hero's own turn, and once: after End turn, Start waits for the next round.
+    return s.myTurn === false || s.turnDone ? [] : ['start']
   }
   const steps: TurnStep[] = []
   if (!s.inEncounter) steps.push('encounter')

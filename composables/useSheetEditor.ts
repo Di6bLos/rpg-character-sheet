@@ -2,7 +2,7 @@ import type { InjectionKey, Ref } from 'vue'
 import type { Character } from '~/types'
 import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
-import { beginEncounter, endEncounter } from '~/utils/nimblePlay'
+import { beginEncounter, endEncounter, initiativeRoll } from '~/utils/nimblePlay'
 import { seatChange } from '~/utils/turnSteps'
 
 export interface SheetEditor<T extends AnySheet = AnySheet> {
@@ -16,6 +16,10 @@ export interface SheetEditor<T extends AnySheet = AnySheet> {
   campaignId: Ref<string | null>
   /** The hero is seated in the GM's encounter: the tracker runs it, not the player. */
   gmEncounter: Ref<boolean>
+  /** Whose turn the GM's tracker is on (a character id; null between turns or for a creature). */
+  trackerTurnId: Ref<string | null>
+  /** The tracker's round while a turn is running, else null. */
+  trackerRound: Ref<number | null>
   portrait: Ref<string | null>
   uploadingPortrait: Ref<boolean>
   hpPct: Ref<number>
@@ -153,10 +157,17 @@ export function provideSheetEditor(
     computed(() => (tracked.value ? draft.value.id : null)),
   )
   watch(
-    encounter.mode,
-    (mode) => {
-      if (mode === null || !tracked.value) return
+    [encounter.mode, campaignId],
+    ([mode, campaign]) => {
+      if (!tracked.value) return
       const sheet = draft.value.sheet as NimbleSheet
+      // No campaign: the default Nimble rule. Unknown yet (loading, or a failed load):
+      // keep what the sheet has.
+      if (!campaign) {
+        if (sheet.classicInitiative) sheet.classicInitiative = false
+        return
+      }
+      if (mode === null) return
       const classic = mode === 'classic'
       if ((sheet.classicInitiative ?? false) !== classic) sheet.classicInitiative = classic
     },
@@ -174,6 +185,17 @@ export function provideSheetEditor(
     { immediate: true },
   )
   const gmEncounter = computed(() => tracked.value && encounter.seated.value === true)
+  // The GM typed this hero's Initiative while the sheet waits for it: take that score
+  // (starting actions and "when you roll Initiative" effects) instead of asking for a
+  // roll that would overwrite it. Only on the change seen here, so an old score on the
+  // tracker is never applied to a new encounter.
+  watch(encounter.hero, (now, before) => {
+    if (!tracked.value || !now?.rolled || before?.rolled !== false) return
+    const sheet = draft.value.sheet as NimbleSheet
+    if (!sheet.awaitingInitiative) return
+    const { message } = initiativeRoll(sheet, draft.value.level, Math.random, now.initiative)
+    lastRoll.value = `GM set your Initiative. ${message}`
+  })
 
   function adjustHp(delta: number) {
     if (!canEdit.value) return
@@ -224,6 +246,8 @@ export function provideSheetEditor(
     campaignName,
     campaignId,
     gmEncounter,
+    trackerTurnId: encounter.turnCharacterId,
+    trackerRound: encounter.round,
     uploadingPortrait,
     portrait: computed(() => {
       const override = (draft.value.sheet as { portraitOverride?: string }).portraitOverride

@@ -84,7 +84,14 @@ describe('turnSteps in the GM encounter', () => {
     const rolled = { ...seated, awaitingInitiative: false }
     expect(turnSteps(rolled)).toEqual(['start'])
     expect(turnSteps({ ...rolled, turnActive: true })).toEqual(['end'])
-    expect(turnSteps({ ...rolled, turnDone: true })).toEqual(['start'])
+  })
+
+  it("starts only on the hero's own turn, and not again once it is over", () => {
+    const rolled = { ...seated, awaitingInitiative: false }
+    expect(turnSteps({ ...rolled, myTurn: true })).toEqual(['start'])
+    expect(turnSteps({ ...rolled, myTurn: false })).toEqual([])
+    // Ended while the tracker still points here: the next round resets turnDone.
+    expect(turnSteps({ ...rolled, myTurn: true, turnDone: true })).toEqual([])
   })
 })
 

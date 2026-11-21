@@ -10,6 +10,8 @@ const {
   pips,
   steps,
   typed,
+  unsent,
+  resendInitiative,
   rushedNote,
   toggleAction,
   extraAction,
@@ -124,6 +126,16 @@ const {
           @click="initiative()"
         >
           Roll Initiative
+        </button>
+        <button
+          v-if="unsent !== null"
+          type="button"
+          class="btn btn--sm"
+          :disabled="!canEdit"
+          title="The initiative tracker didn't get your total: sends the same one again"
+          @click="resendInitiative"
+        >
+          Resend Initiative
         </button>
         <button
           v-if="steps.includes('endEncounter')"

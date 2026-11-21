@@ -25,12 +25,14 @@ export function useTurnSteps(
     onResult?: (message: string) => void
   } = {},
 ) {
-  const { draft, canEdit, say, gmEncounter } = useSheet<NimbleSheet>()
+  const { draft, canEdit, say, gmEncounter, trackerTurnId } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
 
   const perTurn = computed(() => turnActions(sheet.value))
   const left = computed(() => actionsLeft(sheet.value))
   const pips = computed(() => actionPips(sheet.value))
+  /** Seated in the GM's encounter: the tracker is on this hero. */
+  const myTurn = computed(() => trackerTurnId.value === draft.value.id)
   // Seated in the GM's encounter, the tracker runs the encounter and the rounds.
   const steps = computed(() =>
     turnSteps({
@@ -40,6 +42,7 @@ export function useTurnSteps(
       ownDice: sheet.value.ownDice,
       awaitingInitiative: sheet.value.awaitingInitiative,
       gmEncounter: gmEncounter.value,
+      myTurn: myTurn.value,
     }),
   )
   const typed = computed(() => typesInitiative(sheet.value))
@@ -67,7 +70,8 @@ export function useTurnSteps(
   }
 
   function beginTurn() {
-    if (canEdit.value) say(startTurn(sheet.value, draft.value.level))
+    if (!canEdit.value || !steps.value.includes('start')) return
+    say(startTurn(sheet.value, draft.value.level))
   }
 
   function finishTurn() {
@@ -87,6 +91,14 @@ export function useTurnSteps(
   }
 
   const sendInitiative = useSendInitiative()
+  /** A total the tracker didn't get (the write failed): offered again, never rerolled. */
+  const unsent = ref<number | null>(null)
+
+  async function send(total: number, message: string) {
+    const { note, failed } = await sendInitiative(total)
+    unsent.value = failed ? total : null
+    if (note) say(`${message}${note}`)
+  }
 
   /** Rolls Initiative, or takes the typed total (`values[0]`) when rolling your own dice. */
   async function initiative(values?: number[]) {
@@ -98,8 +110,14 @@ export function useTurnSteps(
       values?.[0],
     )
     report(message)
-    const sent = await sendInitiative(total)
-    if (sent) say(`${message}${sent}`)
+    await send(total, message)
+  }
+
+  /** Sends the total that failed to reach the tracker again. */
+  async function resendInitiative() {
+    const total = unsent.value
+    if (!canEdit.value || total === null) return
+    await send(total, `Initiative ${total}.`)
   }
 
   return {
@@ -120,5 +138,7 @@ export function useTurnSteps(
     startEncounter,
     finishEncounter,
     initiative,
+    unsent,
+    resendInitiative,
   }
 }

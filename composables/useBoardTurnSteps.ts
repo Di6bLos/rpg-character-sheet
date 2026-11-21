@@ -5,23 +5,20 @@ import { endTurn, newRound, startTurn } from '~/utils/nimblePlay'
 import { slaySummon } from '~/utils/nimbleSummons'
 
 /**
- * The board's automatic turn steps for the player's seated hero, run on the board's
- * own sheet editor (the quick-action panel below 1200px, the battle board above):
- * End turn / Start turn / New round as the initiative tracker moves, a one-time line-up
- * with a tracker already mid-turn, and marking summons the GM dropped to 0 HP slain
- * (posted to party chat). Call once per editor.
+ * The turn steps the GM's initiative tracker drives on a seated hero's sheet editor:
+ * End turn / Start turn / New round as the tracker moves, and a one-time line-up with a
+ * tracker already mid-turn. The board runs it through useBoardTurnSteps; the full sheet
+ * runs it on its own editor with the tracker read by useCampaignEncounter. Call once
+ * per editor.
  */
-export function useBoardTurnSteps(
+export function useTrackerTurnSteps(
   editor: SheetEditor,
   props: {
     characterId: string
     turnCharacterId: Ref<string | null>
     round: Ref<number | null>
-    downSummons: Ref<string[]>
   },
 ): void {
-  const chat = useBoardChat()
-
   watch(
     () => [props.turnCharacterId.value, props.round.value] as const,
     ([now, round], [before, prevRound]) => {
@@ -65,6 +62,25 @@ export function useBoardTurnSteps(
     },
     { immediate: true },
   )
+}
+
+/**
+ * The board's automatic turn steps for the player's seated hero, run on the board's
+ * own sheet editor (the quick-action panel below 1200px, the battle board above): the
+ * tracker's turn steps (useTrackerTurnSteps), and marking summons the GM dropped to
+ * 0 HP slain (posted to party chat). Call once per editor.
+ */
+export function useBoardTurnSteps(
+  editor: SheetEditor,
+  props: {
+    characterId: string
+    turnCharacterId: Ref<string | null>
+    round: Ref<number | null>
+    downSummons: Ref<string[]>
+  },
+): void {
+  const chat = useBoardChat()
+  useTrackerTurnSteps(editor, props)
 
   watch(
     props.downSummons,

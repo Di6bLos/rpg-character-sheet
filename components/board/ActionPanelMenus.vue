@@ -7,15 +7,11 @@ import {
   actionPips,
   actionsLeft,
   freeMove,
-  endEncounter,
   gainAction,
   heal,
   isHollowOne,
   isDead,
   takeDamage,
-  beginEncounter,
-  initiativeRoll,
-  newRound,
   stopCasting,
   toggleActionPip,
   turnActions,
@@ -152,28 +148,18 @@ function toggleAction(n: number) {
   if (canEdit.value) toggleActionPip(sheet.value, n)
 }
 
-function startEncounter() {
-  if (!canEdit.value) return
-  const message = beginEncounter(sheet.value)
-  say(message)
-  announce(message)
-}
-
-const sendInitiative = useSendInitiative()
-
-async function initiative(values?: number[]) {
-  if (!canEdit.value) return
-  const { message, total } = initiativeRoll(
-    sheet.value,
-    draft.value.level,
-    Math.random,
-    values?.[0],
-  )
-  say(message)
-  announce(message)
-  const sent = await sendInitiative(total)
-  if (sent) say(`${message}${sent}`)
-}
+// The turn steps the sheet and the battle board use: seated in the GM's encounter the
+// tracker runs the encounter and the rounds, and Start turn waits for the hero's turn.
+const {
+  steps,
+  typed,
+  unsent,
+  resendInitiative,
+  startEncounter,
+  finishEncounter,
+  initiative,
+  nextRound,
+} = useTurnSteps({ onResult: announce })
 
 function damageOne() {
   if (!canEdit.value) return
@@ -186,13 +172,6 @@ function damageOne() {
 
 function healOne() {
   if (canEdit.value) heal(sheet.value, 1)
-}
-
-function finishEncounter() {
-  if (!canEdit.value) return
-  const message = endEncounter(sheet.value, draft.value.level)
-  say(message)
-  announce(message)
 }
 
 function extraAction() {
@@ -447,7 +426,7 @@ const effectRows = computed(() =>
     </div>
     <div class="apm__steps">
       <button
-        v-if="!sheet.inEncounter"
+        v-if="steps.includes('encounter')"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"
@@ -457,7 +436,7 @@ const effectRows = computed(() =>
         New encounter
       </button>
       <button
-        v-if="sheet.awaitingInitiative && !sheet.ownDice && !sheet.turnActive"
+        v-if="steps.includes('initiative')"
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
@@ -467,7 +446,17 @@ const effectRows = computed(() =>
         Roll Initiative
       </button>
       <button
-        v-if="sheet.inEncounter && !sheet.turnActive"
+        v-if="unsent !== null"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit"
+        title="The initiative tracker didn't get your total: sends the same one again"
+        @click="resendInitiative"
+      >
+        Resend Initiative
+      </button>
+      <button
+        v-if="steps.includes('endEncounter')"
         type="button"
         class="btn btn--quiet btn--sm"
         :disabled="!canEdit"
@@ -477,29 +466,27 @@ const effectRows = computed(() =>
         End encounter
       </button>
       <button
-        v-if="
-          !sheet.turnActive && sheet.inEncounter && !sheet.turnDone && !sheet.awaitingInitiative
-        "
+        v-if="steps.includes('start')"
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
         title="Refills once-per-turn abilities and pays spells still being cast"
-        @click="startTurn"
+        @click="steps.includes('start') && startTurn()"
       >
         Start turn
       </button>
       <button
-        v-else-if="sheet.inEncounter && sheet.turnDone && !sheet.turnActive"
+        v-else-if="steps.includes('round')"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"
         title="Your turn is over for this round; tap when the next round begins"
-        @click="say(newRound(sheet, draft.level))"
+        @click="nextRound"
       >
         New round
       </button>
       <button
-        v-if="sheet.turnActive"
+        v-if="steps.includes('end')"
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
@@ -510,7 +497,7 @@ const effectRows = computed(() =>
       </button>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && sheet.awaitingInitiative && !sheet.turnActive"
+      v-if="typed"
       label="Your Initiative total"
       action="Set Initiative"
       signed
