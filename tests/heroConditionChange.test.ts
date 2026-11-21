@@ -33,6 +33,16 @@ describe('GM hero condition changes', () => {
     expect(sheet.conditionEnds?.Prone).toBeUndefined()
   })
 
+  it('removing a condition ends the status behind it, as the sheet toggle does', () => {
+    const sheet = hero({
+      conditions: ['Invisible'],
+      effects: [{ condition: 'Invisible', source: 'Shadow Step', ends: ['attack'] }],
+    })
+    applyConditionChange(sheet, { id: 'a', condition: 'Invisible', add: false })
+    expect(sheet.conditions).toEqual([])
+    expect(sheet.effects).toEqual([])
+  })
+
   it('says nothing when the sheet already matches', () => {
     const sheet = hero({ conditions: ['Prone'] })
     expect(applyConditionChange(sheet, { id: 'a', condition: 'Prone', add: true })).toBe('')

@@ -1,6 +1,7 @@
 import type { HeroConditionChange } from '~/types'
 import type { NimbleSheet } from '~/types/sheets'
 import { addCondition, removeCondition } from '~/utils/nimbleConditions'
+import { clearEffect } from '~/utils/nimbleEffects'
 
 type Change = Pick<HeroConditionChange, 'id' | 'condition' | 'add'> & { created_at?: string }
 
@@ -44,6 +45,8 @@ export function applyConditionChange(sheet: NimbleSheet, change: Change): string
     return `GM: you are ${name}.`
   }
   if (!has) return ''
+  // As the sheet's own toggle: an ability or spell status behind it ends too.
+  clearEffect(sheet, name)
   removeCondition(sheet, name)
   return `GM: no longer ${name}.`
 }
