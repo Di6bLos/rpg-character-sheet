@@ -98,29 +98,45 @@ describe('turnSteps in the GM encounter', () => {
 describe('seatChange', () => {
   const idle = { inEncounter: false, awaitingInitiative: false }
   const fighting = { inEncounter: true, awaitingInitiative: false }
+  /** In the GM's fight from seat `a`. */
+  const inA = { ...fighting, gmCombatant: 'a' }
 
   it('starts an encounter when the GM seats the hero', () => {
-    expect(seatChange(false, true, idle)).toBe('begin')
+    expect(seatChange(false, 'a', idle)).toBe('begin')
     // A stale fight the player never ended: a fresh seat is a new encounter.
-    expect(seatChange(false, true, fighting)).toBe('begin')
-    expect(seatChange(false, true, { inEncounter: true, awaitingInitiative: true })).toBeNull()
+    expect(seatChange(false, 'a', fighting)).toBe('begin')
+    expect(seatChange(false, 'a', { inEncounter: true, awaitingInitiative: true })).toBeNull()
   })
 
   it('on load, joins only when not in an encounter yet', () => {
-    expect(seatChange(null, true, idle)).toBe('begin')
-    expect(seatChange(undefined, true, idle)).toBe('begin')
-    expect(seatChange(null, true, fighting)).toBeNull()
+    expect(seatChange(null, 'a', idle)).toBe('begin')
+    expect(seatChange(undefined, 'a', idle)).toBe('begin')
+    expect(seatChange(null, 'a', fighting)).toBeNull()
+  })
+
+  it('on load, keeps the same fight but starts over in a new one', () => {
+    expect(seatChange(undefined, 'a', inA)).toBeNull()
+    // The GM ended fight A and seated the party in fight B while the player was away.
+    expect(seatChange(undefined, 'b', inA)).toBe('begin')
+    // Removed and re-added while the sheet was open.
+    expect(seatChange('a', 'b', inA)).toBe('begin')
   })
 
   it('ends the encounter when the hero leaves the tracker', () => {
-    expect(seatChange(true, false, fighting)).toBe('end')
-    expect(seatChange(true, false, idle)).toBeNull()
-    // Found unseated on load (a solo fight in a campaign) is left alone.
+    expect(seatChange('a', false, fighting)).toBe('end')
+    expect(seatChange('a', false, idle)).toBeNull()
+  })
+
+  it('on load, ends a GM fight that ended while away, not a solo one', () => {
+    expect(seatChange(undefined, false, inA)).toBe('end')
+    expect(seatChange(null, false, inA)).toBe('end')
+    // A solo fight in a campaign (no saved seat) is left alone.
     expect(seatChange(null, false, fighting)).toBeNull()
   })
 
   it('does nothing while unknown or unchanged', () => {
-    expect(seatChange(true, null, fighting)).toBeNull()
-    expect(seatChange(true, true, idle)).toBeNull()
+    expect(seatChange('a', null, fighting)).toBeNull()
+    expect(seatChange('a', 'a', idle)).toBeNull()
+    expect(seatChange('a', 'a', inA)).toBeNull()
   })
 })

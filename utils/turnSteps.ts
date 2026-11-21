@@ -45,22 +45,36 @@ export function turnSteps(s: TurnState): TurnStep[] {
 }
 
 /**
- * What the hero's sheet does when the GM seats it in, or takes it out of, their encounter
- * (`seated`: null while unknown). Freshly seated starts a new encounter (unless it is
- * already waiting for Initiative); found seated on load joins only when not in one yet;
- * taken out (removed, or the encounter ended) ends it.
+ * Where the hero sits on the GM's tracker: its combatant id while seated, false when not
+ * seated, null while unknown.
+ */
+export type Seat = string | false | null
+
+/**
+ * What the hero's sheet does when the GM seats it in, or takes it out of, their encounter.
+ * `gmCombatant` is the seat the sheet last joined (saved with it), so a load can tell the
+ * same fight from a new one, and the GM's fight from one the player runs alone:
+ * - seated: a new seat (seen live, or a different one than saved) starts a new encounter,
+ *   unless it is already waiting for Initiative; found on load in no saved seat, it joins
+ *   only when not in an encounter yet;
+ * - not seated: ends the encounter when it was the GM's (seen leaving live, or a saved
+ *   seat that is gone); a fight with no saved seat is the player's own and stays.
  */
 export function seatChange(
-  before: boolean | null | undefined,
-  seated: boolean | null,
-  s: Pick<TurnState, 'inEncounter' | 'awaitingInitiative'>,
+  before: Seat | undefined,
+  seat: Seat,
+  s: Pick<TurnState, 'inEncounter' | 'awaitingInitiative'> & { gmCombatant?: string },
 ): 'begin' | 'end' | null {
-  if (seated === null) return null
-  if (seated) {
+  if (seat === null) return null
+  if (seat) {
+    // A different seat than the one joined: the GM ended that fight and started another.
+    if (s.gmCombatant && s.gmCombatant !== seat) return 'begin'
     if (before === false) return s.awaitingInitiative ? null : 'begin'
-    return before === true || s.inEncounter ? null : 'begin'
+    if (before) return null
+    return s.gmCombatant === seat || s.inEncounter ? null : 'begin'
   }
-  return before === true && s.inEncounter ? 'end' : null
+  if (!s.inEncounter) return null
+  return before || s.gmCombatant ? 'end' : null
 }
 
 /** Players who roll their own dice type their Initiative total instead of rolling. */

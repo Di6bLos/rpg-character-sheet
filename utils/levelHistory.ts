@@ -44,6 +44,7 @@ const PLAY_STATE = new Set([
   'turnDone',
   'awaitingInitiative',
   'initiative',
+  'gmCombatant',
   'effects',
   'languages',
   'heightWeight',

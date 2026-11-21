@@ -6,6 +6,8 @@ let seq = 0
 
 /** The hero's own row on the tracker: its Initiative, and whether it has arrived yet. */
 export interface SeatedInitiative {
+  /** The hero's combatant row: a new one means a new seat (a new fight). */
+  combatantId: string
   initiative: number
   rolled: boolean
 }
@@ -55,7 +57,11 @@ export function useCampaignEncounter(
       const mine = list.find((r) => r.kind === 'pc' && r.character_id === characterId.value)
       seated.value = !!mine
       hero.value = mine
-        ? { initiative: mine.initiative, rolled: mine.initiative_rolled ?? true }
+        ? {
+            combatantId: mine.id,
+            initiative: mine.initiative,
+            rolled: mine.initiative_rolled ?? true,
+          }
         : null
       if (!enc.error) {
         const active = enc.data?.active_combatant as string | null | undefined

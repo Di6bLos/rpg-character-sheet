@@ -3,7 +3,7 @@ import type { Character } from '~/types'
 import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
 import { beginEncounter, endEncounter, initiativeRoll } from '~/utils/nimblePlay'
-import { seatChange } from '~/utils/turnSteps'
+import { seatChange, type Seat } from '~/utils/turnSteps'
 
 export interface SheetEditor<T extends AnySheet = AnySheet> {
   /** Working copy; mutate freely, it autosaves for the owner. */
@@ -173,14 +173,24 @@ export function provideSheetEditor(
     },
     { immediate: true },
   )
+  // The seat (combatant id) is saved on the sheet as `gmCombatant`, so a later load can
+  // tell the same fight from a new one, or from one the GM ended while the player was away.
+  const seat = computed<Seat>(() => {
+    const seated = encounter.seated.value
+    if (seated === null) return null
+    return seated ? (encounter.hero.value?.combatantId ?? null) : false
+  })
   watch(
-    encounter.seated,
-    (seated, before) => {
+    seat,
+    (now, before) => {
       if (!tracked.value) return
       const sheet = draft.value.sheet as NimbleSheet
-      const change = seatChange(before, seated, sheet)
+      const change = seatChange(before, now, sheet)
       if (change === 'begin') lastRoll.value = beginEncounter(sheet)
       else if (change === 'end') lastRoll.value = endEncounter(sheet, draft.value.level)
+      if (now === null) return
+      const joined = now || undefined
+      if (sheet.gmCombatant !== joined) sheet.gmCombatant = joined
     },
     { immediate: true },
   )
