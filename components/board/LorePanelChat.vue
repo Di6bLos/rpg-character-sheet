@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The Lore Master conversation: messages, suggestions and the question box.
+// The Scribe conversation: messages, suggestions and the question box.
 import { providerLabel } from '~/stores/aiKeys'
 import { loreHtml } from '~/utils/loreText'
 
@@ -73,11 +73,11 @@ onMounted(() => {
   <div class="lore">
     <header class="lore__head">
       <div class="lore__who">
-        <strong>Lore Master</strong>
+        <strong>Scribe</strong>
         <span class="lore__sub"
           >{{ isGm ? 'Co-GM' : 'Rules & your hero'
           }}<template v-if="provider"> · {{ provider }}</template
-          ><UiHelp v-if="free" label="About the free Lore Master" :text="freeHelp"
+          ><UiHelp v-if="free" label="About the free Scribe" :text="freeHelp"
         /></span>
       </div>
       <button
@@ -94,7 +94,7 @@ onMounted(() => {
         type="button"
         class="btn btn--ghost btn--icon lore__icon"
         data-lp-dismiss
-        :aria-label="drawer ? 'Close the Lore Master' : 'Collapse the Lore Master'"
+        :aria-label="drawer ? 'Close the Scribe' : 'Collapse the Scribe'"
         :title="drawer ? 'Close' : 'Collapse'"
         @click="emit('dismiss')"
       >
@@ -146,7 +146,7 @@ onMounted(() => {
       <NuxtLink to="/settings">Add your own key</NuxtLink> to keep going.
     </p>
     <form v-else class="lore__ask" @submit.prevent="ask()">
-      <label :for="`lore-q-${isGm ? 'gm' : 'pc'}`" class="sr-only">Ask the Lore Master</label>
+      <label :for="`lore-q-${isGm ? 'gm' : 'pc'}`" class="sr-only">Ask the Scribe</label>
       <textarea
         :id="`lore-q-${isGm ? 'gm' : 'pc'}`"
         ref="box"

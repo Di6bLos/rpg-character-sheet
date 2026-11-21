@@ -4,6 +4,7 @@ import {
   abilityMod,
   critDice,
   mapPenalties,
+  findDice,
   parseDice,
   rollAttack,
   rollDice,
@@ -85,6 +86,18 @@ describe('dice', () => {
     expect(parseDice('3d10')).toEqual({ count: 3, sides: 10, mod: 0 })
     expect(parseDice('sword')).toBeNull()
     expect(parseDice('0d6')).toBeNull()
+  })
+
+  it('finds the first dice expression in free text', () => {
+    expect(findDice('1d6+2 (or Shoot, Range 8).')).toEqual({
+      text: '1d6+2',
+      dice: { count: 1, sides: 6, mod: 2 },
+    })
+    expect(findDice('On death: 4d6 acid damage to ALL adjacent creatures.')?.text).toBe('4d6')
+    expect(findDice('Claw 2d8 \u2212 1 slashing')?.text).toBe('2d8-1')
+    expect(findDice('Bite 1d8+1d6 poison')?.text).toBe('1d8')
+    expect(findDice('Slam 1d8+12d6')?.text).toBe('1d8')
+    expect(findDice('DC 12 DEX save or Grappled.')).toBeNull()
   })
 
   it('rolls within range and applies the modifier', () => {

@@ -11,15 +11,11 @@ import { isDead } from '~/utils/nimblePlay'
 import { DEAD_PORTRAIT } from '~/utils/deadPortrait'
 import { availableSummons } from '~/utils/nimbleSummons'
 
-const { draft, canEdit } = useSheet<NimbleSheet>()
+const { draft } = useSheet<NimbleSheet>()
 useHeroEffects()
+useHeroHpChanges()
+useHeroConditionChanges()
 const sheet = computed(() => draft.value.sheet)
-const ownDice = computed({
-  get: () => sheet.value.ownDice,
-  set: (on: boolean) => {
-    if (canEdit.value) sheet.value.ownDice = on
-  },
-})
 
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
 
@@ -98,13 +94,6 @@ const skills = computed(() =>
           <span class="small muted"><SheetCampaignLink /></span>
         </div>
         <h1>{{ draft.name }}<span v-if="dead" class="dead-tag"> (dead)</span></h1>
-        <UiSwitch
-          v-model="ownDice"
-          label="I roll my own dice (the app only checks things off)"
-          small
-          :disabled="!canEdit"
-          class="own-dice"
-        />
         <div class="identity__line">
           <span
             >Level <strong>{{ draft.level }}</strong></span
@@ -202,14 +191,6 @@ const skills = computed(() =>
 .dead-tag {
   font-size: 0.6em;
   color: var(--danger);
-}
-
-.own-dice {
-  justify-content: flex-start;
-  gap: 10px;
-  align-self: flex-start;
-  font-size: 13px;
-  color: var(--page-soft);
 }
 
 .identity {

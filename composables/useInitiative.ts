@@ -1,8 +1,19 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
-import type { Combatant, Encounter, InitiativeRow, RosterEntry } from '~/types'
+import type { Combatant, Encounter, InitiativeMode, InitiativeRow, RosterEntry } from '~/types'
 import { rollDie } from '~/utils/dice'
-import { hpBand, isSlainSummon, sortOrder, summonOwner, syncSummonRows } from '~/utils/initiative'
+import {
+  clampHp,
+  hpBand,
+  isSlainSummon,
+  newRoundStart,
+  renamedCombatant,
+  sortOrder,
+  summonOwner,
+  syncSummonRows,
+  turnAfter,
+  turnTo,
+} from '~/utils/initiative'
 
 export type TurnRow = InitiativeRow & { init_mod: number; created_at: string }
 
@@ -23,6 +34,10 @@ function fromCombatant(c: Combatant): TurnRow {
     init_mod: c.init_mod,
     created_at: c.created_at,
     summon_key: c.summon_key,
+    conditions: c.conditions ?? [],
+    actions_max: c.actions_max,
+    actions_used: c.actions_used,
+    initiative_rolled: c.initiative_rolled ?? true,
   }
 }
 
@@ -46,8 +61,23 @@ export function useInitiative(
   const loading = ref(true)
   let channel: RealtimeChannel | null = null
 
+  /**
+   * Until the GM picks: Nimble rules for a Nimble campaign, Classic (the roll orders
+   * everyone) for D&D 5e and Pathfinder 2e.
+   */
+  const campaigns = useCampaignStore()
+  const defaultMode = (): InitiativeMode =>
+    (campaigns.byId(campaignId.value)?.system ?? 'nimble') === 'nimble' ? 'nimble' : 'classic'
+  /** The campaign's initiative rules (see `InitiativeMode`). */
+  const mode = computed<InitiativeMode>(() => encounter.value?.initiative_mode ?? defaultMode())
+
   /** Turn order: summons act on their summoner's turn, so they sit under the hero instead. */
-  const order = computed(() => sortOrder(rows.value.filter((r) => r.kind !== 'summon')))
+  const order = computed(() =>
+    sortOrder(
+      rows.value.filter((r) => r.kind !== 'summon'),
+      mode.value,
+    ),
+  )
 
   /** A hero's living summons in initiative, for the dropdown under their portrait. */
   function summonsOf(characterId: string | null): TurnRow[] {
@@ -64,7 +94,7 @@ export function useInitiative(
   }
   /** The first living combatant after `id` in the full order (slain summons included). */
   function livingAfter(id: string): string | null {
-    const all = sortOrder(rows.value)
+    const all = sortOrder(rows.value, mode.value)
     const at = all.findIndex((c) => c.id === id)
     if (at < 0) return null
     const live = new Set(order.value.map((c) => c.id))
@@ -82,6 +112,9 @@ export function useInitiative(
 
   // HP writes for one combatant go out one at a time, so quick clicks land in order.
   const hpWrites = new Map<string, Promise<void>>()
+  // Action pip writes too, one combatant at a time; `actionSeq` marks the latest click.
+  const actionWrites = keyedQueue()
+  const actionSeq = new Map<string, number>()
   /** HP the GM has set but the server hasn't confirmed yet; reloads keep it. */
   const pendingHp = new Map<string, number>()
 
@@ -105,6 +138,8 @@ export function useInitiative(
         init_mod: 0,
         created_at: String(i).padStart(6, '0'),
         summon_key: r.summon_key ?? null,
+        conditions: r.conditions ?? [],
+        initiative_rolled: r.initiative_rolled ?? true,
       }))
     }
   }
@@ -112,7 +147,7 @@ export function useInitiative(
   async function loadEncounter() {
     const { data, error } = await supabase
       .from('encounters')
-      .select('campaign_id, round, active_combatant')
+      .select('campaign_id, round, active_combatant, initiative_mode')
       .eq('campaign_id', campaignId.value)
       .maybeSingle()
     if (error) throw error
@@ -120,6 +155,7 @@ export function useInitiative(
       campaign_id: campaignId.value,
       round: 1,
       active_combatant: null,
+      initiative_mode: defaultMode(),
     }
   }
 
@@ -178,29 +214,102 @@ export function useInitiative(
   })
 
   // --- GM actions ----------------------------------------------------------------
-  async function saveEncounter(patch: Partial<Encounter>) {
-    if (!encounter.value) return
+  /** Saves the turn order; false when there is no encounter or the write failed. */
+  async function saveEncounter(patch: Partial<Encounter>): Promise<boolean> {
+    if (!encounter.value) return false
     Object.assign(encounter.value, patch)
     const { error } = await supabase.from('encounters').upsert({
       campaign_id: campaignId.value,
       round: encounter.value.round,
       active_combatant: encounter.value.active_combatant,
+      initiative_mode: encounter.value.initiative_mode,
     })
     if (error) snackbar.error(error, 'Could not update the turn order')
+    return !error
   }
 
-  function nextTurn() {
-    if (!order.value.length) return
-    if (!turnId.value) {
-      void saveEncounter({ active_combatant: order.value[0]!.id })
-      return
+  /**
+   * Actions refill when a creature's own turn ends; a hero's summons ride on the hero's turn.
+   * Returns what was spent before, for an undo.
+   */
+  async function refillActions(endedId: string): Promise<{ id: string; used: number }[]> {
+    const ended = rows.value.find((r) => r.id === endedId)
+    if (!ended) return []
+    const spent = (r: TurnRow) => (r.actions_used ?? 0) > 0
+    const targets =
+      ended.kind === 'pc'
+        ? rows.value.filter(
+            (r) =>
+              r.kind === 'summon' &&
+              !!r.summon_key &&
+              summonOwner(r.summon_key) === ended.character_id &&
+              spent(r),
+          )
+        : ended.kind === 'monster' || ended.kind === 'npc'
+          ? [ended].filter(spent)
+          : []
+    if (!targets.length) return []
+    const before = targets.map((r) => ({ row: r, used: r.actions_used }))
+    for (const r of targets) r.actions_used = 0
+    const { error } = await supabase
+      .from('combatants')
+      .update({ actions_used: 0 })
+      .in(
+        'id',
+        targets.map((r) => r.id),
+      )
+    if (error) {
+      for (const b of before) b.row.actions_used = b.used
+      snackbar.error(error, 'Could not refill actions')
+      return []
     }
-    const idx = order.value.findIndex((c) => c.id === activeId.value)
-    if (idx + 1 >= order.value.length) {
-      void saveEncounter({ active_combatant: order.value[0]!.id, round: round.value + 1 })
-    } else {
-      void saveEncounter({ active_combatant: order.value[idx + 1]!.id })
+    return before.map((b) => ({ id: b.row.id, used: b.used ?? 0 }))
+  }
+
+  /**
+   * The GM makes `id` the acting combatant, `roundOffset` rounds from now (from the copy
+   * picked in the carousel). The turn that ends refills like Next turn; skipped creatures
+   * get nothing. Returns an undo that puts the turn, round and refilled actions back, or
+   * null when nothing changed.
+   */
+  async function jumpTo(id: string, roundOffset = 0): Promise<(() => Promise<void>) | null> {
+    if (!isGm.value || !encounter.value) return null
+    const prev = { active_combatant: encounter.value.active_combatant, round: round.value }
+    const next = turnTo(order.value, turnId.value, round.value, id, roundOffset)
+    if (!next) return null
+    const saved = await saveEncounter({ active_combatant: next.active, round: next.round })
+    if (!saved) return null
+    const refilled = next.ended ? await refillActions(next.ended) : []
+    return async () => {
+      if (!(await saveEncounter(prev))) return
+      if (!refilled.length) return
+      for (const r of refilled) {
+        const row = rows.value.find((x) => x.id === r.id)
+        if (row) row.actions_used = r.used
+      }
+      const results = await Promise.all(
+        refilled.map((r) =>
+          supabase.from('combatants').update({ actions_used: r.used }).eq('id', r.id),
+        ),
+      )
+      const failed = results.find((x) => x.error)
+      if (failed?.error) snackbar.error(failed.error, 'Could not put the actions back')
     }
+  }
+
+  async function nextTurn() {
+    const next = turnAfter(order.value, turnId.value, round.value)
+    if (!next) return
+    const saved = await saveEncounter({ active_combatant: next.active, round: next.round })
+    // The turn didn't move on the server, so no turn ended: keep the actions as they are.
+    if (saved && next.ended && isGm.value) await refillActions(next.ended)
+  }
+
+  /** Start the next round at the top of the order. Actions are not refilled here. */
+  function newRound() {
+    const next = newRoundStart(order.value, round.value)
+    if (!next) return
+    void saveEncounter({ active_combatant: next.active, round: next.round })
   }
 
   function prevTurn() {
@@ -229,7 +338,10 @@ export function useInitiative(
     rows.value = [...rows.value.filter((r) => !ids.has(r.id)), ...added]
   }
 
-  /** Seats every character in the roster that isn't in the order yet, rolling initiative. */
+  /**
+   * Seats every character in the roster that isn't in the order yet. They wait at the top
+   * of the order until their Initiative arrives (the player rolls it, or the GM types it).
+   */
   async function addParty(roster: RosterEntry[]) {
     const missing = roster.filter(
       (r) => r.character_id && !rows.value.some((c) => c.character_id === r.character_id),
@@ -241,7 +353,8 @@ export function useInitiative(
         return {
           name: r.character_name ?? r.display_name,
           kind: 'pc' as const,
-          initiative: rollDie(20) + mod,
+          initiative: 0,
+          initiative_rolled: false,
           init_mod: mod,
           hp: r.summary?.hp ?? 0,
           hp_max: r.summary?.hpMax ?? 0,
@@ -275,16 +388,22 @@ export function useInitiative(
         (r) => c.kind === 'pc' && !!r.summon_key && summonOwner(r.summon_key) === c.character_id,
       ),
     ]
-    for (const r of moved) r.initiative = value
+    for (const r of moved) {
+      r.initiative = value
+      r.initiative_rolled = true
+    }
     const ids = moved.map((r) => r.id)
-    const { error } = await supabase.from('combatants').update({ initiative: value }).in('id', ids)
+    const { error } = await supabase
+      .from('combatants')
+      .update({ initiative: value, initiative_rolled: true })
+      .in('id', ids)
     if (error) snackbar.error(error, 'Could not change initiative')
   }
 
   function adjustHp(c: TurnRow, delta: number): Promise<void> {
     const id = c.id
     const max = c.hp_max ?? 0
-    const hp = Math.max(0, Math.min(max, (c.hp ?? 0) + delta))
+    const hp = clampHp(c.hp, delta, c.hp_max)
     c.hp = hp
     c.hp_band = c.kind === 'pc' ? null : hpBand(hp, max)
     pendingHp.set(id, hp)
@@ -302,6 +421,64 @@ export function useInitiative(
     })
     hpWrites.set(id, write)
     return write
+  }
+
+  /** Renames a combatant (the name column only). False when the name is blank or it failed. */
+  async function rename(c: TurnRow, raw: string): Promise<boolean> {
+    if (!isGm.value) return false
+    const name = renamedCombatant(raw)
+    if (name === null) return false
+    const previous = c.name
+    c.name = name
+    const { error } = await supabase.from('combatants').update({ name }).eq('id', c.id)
+    if (error) {
+      c.name = previous
+      snackbar.error(error, 'Could not rename the combatant')
+      return false
+    }
+    return true
+  }
+
+  async function setConditions(c: TurnRow, conditions: string[]) {
+    if (!isGm.value) return
+    const previous = c.conditions
+    c.conditions = conditions
+    const { error } = await supabase.from('combatants').update({ conditions }).eq('id', c.id)
+    if (error) {
+      c.conditions = previous
+      snackbar.error(error, 'Could not update conditions')
+    }
+  }
+
+  function setActions(
+    c: TurnRow,
+    patch: { actions_used?: number; actions_max?: number },
+  ): Promise<void> {
+    if (!isGm.value) return Promise.resolve()
+    const prevMax = c.actions_max
+    const prevUsed = c.actions_used
+    const max = Math.max(0, Math.min(9, Math.round(patch.actions_max ?? prevMax ?? 1)))
+    const update: { actions_max?: number; actions_used?: number } = {}
+    if (patch.actions_max !== undefined) update.actions_max = max
+    if (patch.actions_used !== undefined || patch.actions_max !== undefined) {
+      const used = patch.actions_used ?? prevUsed ?? 0
+      update.actions_used = Math.max(0, Math.min(max, Math.round(used)))
+    }
+    if (update.actions_max !== undefined) c.actions_max = update.actions_max
+    if (update.actions_used !== undefined) c.actions_used = update.actions_used
+    const id = c.id
+    const seq = (actionSeq.get(id) ?? 0) + 1
+    actionSeq.set(id, seq)
+    return actionWrites.run(id, async () => {
+      const { error } = await supabase.from('combatants').update(update).eq('id', id)
+      if (!error) return
+      snackbar.error(error, 'Could not update actions')
+      // Only the latest click puts its values back; an earlier failure leaves later clicks be.
+      if (actionSeq.get(id) === seq) {
+        c.actions_max = prevMax
+        c.actions_used = prevUsed
+      }
+    })
   }
 
   async function pruneSummons(roster: RosterEntry[]) {
@@ -344,6 +521,13 @@ export function useInitiative(
     rows.value = rows.value.filter((x) => x.id !== c.id)
   }
 
+  /** The GM switches the campaign's initiative rules; the order re-sorts for everyone. */
+  async function setMode(next: InitiativeMode) {
+    if (!isGm.value || !encounter.value || mode.value === next) return
+    const before = encounter.value.initiative_mode
+    if (!(await saveEncounter({ initiative_mode: next }))) encounter.value.initiative_mode = before
+  }
+
   async function endEncounter() {
     const { error } = await supabase.from('combatants').delete().eq('campaign_id', campaignId.value)
     if (error) return snackbar.error(error, 'Could not clear the encounter')
@@ -353,6 +537,8 @@ export function useInitiative(
 
   return {
     rows,
+    mode,
+    setMode,
     order,
     summonsOf,
     activeId,
@@ -363,6 +549,11 @@ export function useInitiative(
     insert,
     nextTurn,
     prevTurn,
+    jumpTo,
+    newRound,
+    rename,
+    setConditions,
+    setActions,
     addParty,
     pruneSummons,
     syncSummons,

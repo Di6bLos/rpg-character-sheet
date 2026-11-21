@@ -329,6 +329,6 @@ Deno.serve(async (req) => {
   } catch (err) {
     if (err instanceof HttpError) return json({ error: err.message }, err.status)
     console.error('lore-master failed', err)
-    return json({ error: 'Something went wrong asking the Lore Master.' }, 500)
+    return json({ error: 'Something went wrong asking the Scribe.' }, 500)
   }
 })

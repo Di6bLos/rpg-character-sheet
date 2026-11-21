@@ -7,15 +7,11 @@ import {
   actionPips,
   actionsLeft,
   freeMove,
-  endEncounter,
   gainAction,
   heal,
   isHollowOne,
   isDead,
   takeDamage,
-  beginEncounter,
-  initiativeRoll,
-  newRound,
   stopCasting,
   toggleActionPip,
   turnActions,
@@ -27,7 +23,7 @@ const emit = defineEmits<{ dismiss: [] }>()
 
 const { draft, canEdit, lastRoll, say } = useSheet<NimbleSheet>()
 const { campaignId } = useCampaignBoard()
-const chat = useBoardChat()
+const post = useAnnounce()
 const sheet = computed(() => draft.value.sheet)
 const uid = useId()
 
@@ -36,7 +32,7 @@ const seq = ref(0)
 
 function announce(message: string) {
   seq.value += 1
-  void chat.send(`${draft.value.name} · ${message}`, 'party', 'action')
+  post(message)
 }
 
 const {
@@ -62,7 +58,6 @@ const {
   addFury,
   endRage,
   spendFury,
-  setOwnDice,
   malfunctions,
   toggleMalfunction,
   inventions,
@@ -106,6 +101,8 @@ const {
 } = useNimbleSummons({ onResult: announce })
 const { allies, help } = useHelpAlly({ onResult: announce })
 useHeroEffects()
+useHeroHpChanges()
+useHeroConditionChanges()
 const isFull = (id: string) => !!summonable.value.find((a) => a.id === id)?.full
 
 /** One row per summon kind, a stack for identical minions; hand-added ones each get a row. */
@@ -151,28 +148,18 @@ function toggleAction(n: number) {
   if (canEdit.value) toggleActionPip(sheet.value, n)
 }
 
-function startEncounter() {
-  if (!canEdit.value) return
-  const message = beginEncounter(sheet.value)
-  say(message)
-  announce(message)
-}
-
-const sendInitiative = useSendInitiative()
-
-async function initiative(values?: number[]) {
-  if (!canEdit.value) return
-  const { message, total } = initiativeRoll(
-    sheet.value,
-    draft.value.level,
-    Math.random,
-    values?.[0],
-  )
-  say(message)
-  announce(message)
-  const sent = await sendInitiative(total)
-  if (sent) say(`${message}${sent}`)
-}
+// The turn steps the sheet and the battle board use: seated in the GM's encounter the
+// tracker runs the encounter and the rounds, and Start turn waits for the hero's turn.
+const {
+  steps,
+  typed,
+  unsent,
+  resendInitiative,
+  startEncounter,
+  finishEncounter,
+  initiative,
+  nextRound,
+} = useTurnSteps({ onResult: announce })
 
 function damageOne() {
   if (!canEdit.value) return
@@ -185,13 +172,6 @@ function damageOne() {
 
 function healOne() {
   if (canEdit.value) heal(sheet.value, 1)
-}
-
-function finishEncounter() {
-  if (!canEdit.value) return
-  const message = endEncounter(sheet.value, draft.value.level)
-  say(message)
-  announce(message)
 }
 
 function extraAction() {
@@ -253,15 +233,17 @@ const spellGroups = computed(() =>
     ...g,
     spells: g.spells.map((s) => ({
       ...s,
-      blocked: s.needs
-        ? s.needs
-        : s.busy
-          ? 'Finish casting first'
-          : s.noActions
-            ? 'No actions left'
-            : s.short
-              ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
-              : '',
+      blocked: s.notNow
+        ? s.notNow
+        : s.needs
+          ? s.needs
+          : s.busy
+            ? 'Finish casting first'
+            : s.noActions
+              ? 'No actions left'
+              : s.short
+                ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
+                : '',
     })),
   })),
 )
@@ -277,8 +259,8 @@ const counterRows = computed(() =>
       label: [a.counters.length > 1 ? c.label : '', c.costText].filter(Boolean).join(' · '),
       left: c.left,
       max: c.max,
-      off: c.left === 0 || c.short,
-      warn: c.left === 0 ? usedUpLabel(c) : c.short ? 'Not enough actions' : '',
+      off: c.left === 0 || c.short || !!c.notNow,
+      warn: c.left === 0 ? usedUpLabel(c) : c.notNow || (c.short ? 'Not enough actions' : ''),
       linked: a.companion || (c.linked && !!diceMenu.value) || attackAbilityKeys.value.has(a.key),
       counter: c,
     })),
@@ -297,14 +279,6 @@ const effectRows = computed(() =>
     <header class="apm__head">
       <div class="apm__who">
         <strong>{{ draft.name }}<span v-if="isDead(sheet)" class="apm__dead"> (dead)</span></strong>
-        <UiSwitch
-          :model-value="sheet.ownDice"
-          label="I roll my own dice"
-          small
-          :disabled="!canEdit"
-          class="apm__own"
-          @update:model-value="setOwnDice"
-        />
       </div>
       <NuxtLink
         :to="sheetLink"
@@ -454,7 +428,7 @@ const effectRows = computed(() =>
     </div>
     <div class="apm__steps">
       <button
-        v-if="!sheet.inEncounter"
+        v-if="steps.includes('encounter')"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"
@@ -464,7 +438,7 @@ const effectRows = computed(() =>
         New encounter
       </button>
       <button
-        v-if="sheet.awaitingInitiative && !sheet.ownDice && !sheet.turnActive"
+        v-if="steps.includes('initiative')"
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
@@ -474,7 +448,17 @@ const effectRows = computed(() =>
         Roll Initiative
       </button>
       <button
-        v-if="sheet.inEncounter && !sheet.turnActive"
+        v-if="unsent !== null"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit"
+        title="The initiative tracker didn't get your total: sends the same one again"
+        @click="resendInitiative"
+      >
+        Resend Initiative
+      </button>
+      <button
+        v-if="steps.includes('endEncounter')"
         type="button"
         class="btn btn--quiet btn--sm"
         :disabled="!canEdit"
@@ -484,29 +468,27 @@ const effectRows = computed(() =>
         End encounter
       </button>
       <button
-        v-if="
-          !sheet.turnActive && sheet.inEncounter && !sheet.turnDone && !sheet.awaitingInitiative
-        "
+        v-if="steps.includes('start')"
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
         title="Refills once-per-turn abilities and pays spells still being cast"
-        @click="startTurn"
+        @click="steps.includes('start') && startTurn()"
       >
         Start turn
       </button>
       <button
-        v-else-if="sheet.inEncounter && sheet.turnDone && !sheet.turnActive"
+        v-else-if="steps.includes('round')"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"
         title="Your turn is over for this round; tap when the next round begins"
-        @click="say(newRound(sheet, draft.level))"
+        @click="nextRound"
       >
         New round
       </button>
       <button
-        v-if="sheet.turnActive"
+        v-if="steps.includes('end')"
         type="button"
         class="btn btn--sm"
         :disabled="!canEdit"
@@ -517,7 +499,7 @@ const effectRows = computed(() =>
       </button>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && sheet.awaitingInitiative && !sheet.turnActive"
+      v-if="typed"
       label="Your Initiative total"
       action="Set Initiative"
       signed
@@ -1186,8 +1168,8 @@ const effectRows = computed(() =>
                     v-if="s.bloodLabel"
                     type="button"
                     class="btn btn--ghost btn--sm"
-                    :disabled="!canEdit || s.busy || s.noActions"
-                    title="Take 1 Wound instead (My Blood, My Power)"
+                    :disabled="!canEdit || s.busy || s.noActions || !!s.notNow"
+                    :title="s.notNow || 'Take 1 Wound instead (My Blood, My Power)'"
                     @click="cast(s, true)"
                   >
                     {{ s.bloodLabel }}
@@ -1197,8 +1179,8 @@ const effectRows = computed(() =>
                     :key="a.key"
                     type="button"
                     class="btn btn--ghost btn--sm btn--wrap"
-                    :disabled="!canEdit || s.busy || s.noActions || !!a.why"
-                    :title="a.why || undefined"
+                    :disabled="!canEdit || s.busy || s.noActions || !!s.notNow || !!a.why"
+                    :title="s.notNow || a.why || undefined"
                     @click="cast(s, false, a.key)"
                   >
                     {{ a.why || a.label }}
@@ -1362,7 +1344,10 @@ const effectRows = computed(() =>
             class="apm__row"
             :class="{ 'apm__row--used': e.on }"
             :aria-pressed="e.on"
-            :aria-disabled="!canEdit || (!e.on && !!e.cost && e.cost.left < 1) || undefined"
+            :aria-disabled="
+              !canEdit || (!e.on && ((!!e.cost && e.cost.left < 1) || !!e.notNow)) || undefined
+            "
+            :title="(!e.on && e.notNow) || undefined"
             @click="canEdit && (e.on ? stopEffect(e.source) : useEffect(e.source))"
           >
             <span class="apm__name">{{ e.source }}</span>
@@ -1707,18 +1692,6 @@ const effectRows = computed(() =>
 .apm__dead {
   color: var(--danger);
   font-size: 0.85em;
-}
-
-.apm__own {
-  justify-content: flex-start;
-  gap: 8px;
-  min-height: 28px;
-  font-size: 12px;
-  color: var(--page-muted);
-
-  :deep(.switch__label) {
-    white-space: nowrap;
-  }
 }
 
 .apm__menu--off {

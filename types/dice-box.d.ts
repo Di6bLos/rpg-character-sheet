@@ -11,6 +11,10 @@ declare module '@3d-dice/dice-box-threejs' {
   export default class DiceBox {
     constructor(selector: string, config?: Record<string, unknown>)
     diceList: DiceMesh[]
+    /** The cannon-es world; `step` advances the physics by one fixed step. */
+    world: { step(dt: number): void }
+    /** 'simulate' while finding where the dice land, 'throw' while it plays on screen. */
+    animstate: string
     camera: unknown
     scene: unknown
     renderer: { render(scene: unknown, camera: unknown): void }

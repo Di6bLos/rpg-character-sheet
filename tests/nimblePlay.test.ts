@@ -9,6 +9,7 @@ import { abilityArmor } from '../utils/nimbleArmor'
 import {
   abilityCounters,
   actionsLeft,
+  turnActionsFor,
   actionPips,
   endEncounter,
   gainAction,
@@ -204,6 +205,18 @@ describe('nimble rests', () => {
     expect(sheet.hp).toBe(5)
   })
 
+  it("Catch Breath takes the player's own Hit Die rolls (Manual dice)", () => {
+    const sheet = hero({ hp: 10, hpMax: 40, stats: { STR: 1, DEX: 0, INT: 0, WIL: 0 } })
+    // Two entered: two dice spent; a 12 on a d8 counts as 8.
+    const message = fieldRest(sheet, { dice: 1, camp: false, rolls: [3, 12] })
+    expect(hitDiceLeft(sheet)).toBe(1)
+    expect(sheet.hp).toBe(10 + (3 + 1) + (8 + 1))
+    expect(message).toContain('rolled 3, 8')
+    // Making camp ignores entered rolls.
+    fieldRest(sheet, { dice: 1, camp: true, rolls: [1] })
+    expect(sheet.hp).toBe(23 + 9)
+  })
+
   it('reports healing lost over max HP', () => {
     const sheet = hero({ hp: 18 })
     expect(fieldRest(sheet, { dice: 1, camp: true })).toBe(
@@ -348,6 +361,15 @@ describe('nimble turn tracker', () => {
     expect(actionsLeft(sheet)).toBe(3)
     beginEncounter(sheet)
     expect(sheet.initiative).toBeNull()
+  })
+
+  it('Classic initiative starts every hero with full actions, whatever the roll', () => {
+    const sheet = hero({ initMod: 0, classicInitiative: true })
+    beginEncounter(sheet)
+    expect(rollInitiative(sheet, 1, () => 0.5, 3)).toMatch(
+      /^Initiative 3 \(as you rolled it\): you start with 3 actions \(Classic initiative\)\./,
+    )
+    expect(actionsLeft(sheet)).toBe(3)
   })
 
   it('starts combat with 1, 2 or all actions by the Initiative roll', () => {
@@ -1616,5 +1638,21 @@ describe('class wiring', () => {
     expect(
       abilityTrigger(sheet, 7, 'Your allies within 12 spaces who can hear you gain WIL temp HP.'),
     ).toBeNull()
+  })
+})
+
+describe('turnActionsFor', () => {
+  it('gives 3, 4 with Windborne, 1 or 2 while dying', () => {
+    expect(turnActionsFor([], false)).toBe(3)
+    expect(turnActionsFor(['Windborne'], false)).toBe(4)
+    expect(turnActionsFor([], true)).toBe(1)
+    expect(turnActionsFor(['Enduring Rage'], true)).toBe(2)
+    expect(turnActionsFor(['Windborne'], true)).toBe(2)
+    expect(turnActionsFor(['Enduring Rage'], false)).toBe(3)
+  })
+  it('reads the base name of an upgraded ability', () => {
+    const upgraded = 'Windborne: (Upgrade)'
+    const base = abilityBaseName(upgraded)
+    expect(turnActionsFor([upgraded], false)).toBe(base === 'Windborne' ? 4 : 3)
   })
 })

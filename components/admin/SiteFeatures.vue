@@ -39,11 +39,11 @@ const GROUPS: { title: string; features: Feature[] }[] = [
       {
         key: 'ai_enabled',
         label: 'AI features',
-        help: 'The NPC generator and the Lore Master, on each user’s own Claude, Gemini or ChatGPT API key.',
+        help: 'The NPC generator and the Scribe, on each user’s own Claude, Gemini or ChatGPT API key.',
       },
       {
         key: 'free_ai_enabled',
-        label: 'Free Lore Master',
+        label: 'Free Scribe',
         help: 'Users without their own key get a daily allowance on the site’s Gemini key. Set the FREE_AI_GEMINI_KEY secret on the lore-master function first.',
       },
     ],
@@ -80,7 +80,7 @@ async function saveLimit() {
   busy.value = 'free_ai_daily_limit'
   try {
     await site.setFreeLimit(value)
-    snackbar.show(`Free Lore Master: ${value} questions a day`)
+    snackbar.show(`Free Scribe: ${value} questions a day`)
   } catch (err) {
     limit.value = site.settings.free_ai_daily_limit
     snackbar.error(err, 'Could not change the daily limit')

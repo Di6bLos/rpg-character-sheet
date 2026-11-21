@@ -39,6 +39,7 @@ import {
   costShort,
   counterCost,
   type CounterCost,
+  usableOffTurn,
   dyingAttackSave,
   endTurn,
   expendJudgment,
@@ -669,6 +670,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             pct: Math.round((left / c.max) * 100),
             costText: costLabel(c.cost),
             short: costShort(sheet.value, c.cost),
+            /** 'Not your turn' while waiting in combat, unless it's free or a reaction. */
+            notNow: offTurn.value && !usableOffTurn(c.cost, c.text || ability.desc) ? NOT_TURN : '',
             linked: !!linkedTo.value?.test(c.text || ability.desc),
           }
         })
@@ -702,13 +705,15 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const why =
         left === 0
           ? usedUpLabel(list.find((c) => c.left === 0))
-          : charges > sheet.value.resource.count
-            ? `Needs ${charges} ${resource.value?.diceName.toLowerCase() || 'charge'}${charges === 1 ? '' : 's'}`
-            : mana > manaPool(sheet.value)
-              ? `Needs ${mana} mana`
-              : list.some((c) => c.short)
-                ? 'Not enough actions'
-                : ''
+          : list.some((c) => c.notNow)
+            ? NOT_TURN
+            : charges > sheet.value.resource.count
+              ? `Needs ${charges} ${resource.value?.diceName.toLowerCase() || 'charge'}${charges === 1 ? '' : 's'}`
+              : mana > manaPool(sheet.value)
+                ? `Needs ${mana} mana`
+                : list.some((c) => c.short)
+                  ? 'Not enough actions'
+                  : ''
       return {
         key: `${a.key}:${name}`,
         ability: a.key,
@@ -748,6 +753,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       return report(companionAttack(sheet.value, draft.value.level))
     const label = counter.name ? `${name} — ${counter.name}` : name
     const text = sheet.value.abilities.find((a) => a.name === name)?.desc ?? ''
+    if (amount > 0 && offTurn.value && !usableOffTurn(counter.cost, counter.text || text))
+      return report(`${label}: not your turn.`)
     const mana = amount > 0 ? manaCost(counter.text || text) : 0
     if (mana > manaPool(sheet.value)) return report(`${label} needs ${mana} mana.`)
     let paid = ''
@@ -869,10 +876,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               .flatMap((a) => (a.key === e.form?.cost ? a.counters : []))
               .find((c) => c.period === 'rest')
           : undefined
+      // What using it pays: the form's charge counter, else the ability's own cost.
+      const desc =
+        sheet.value.abilities.find((a) => abilityBaseName(a.name) === e.source)?.desc ?? ''
+      const pays = cost ? cost.cost : counterCost(desc)
       return {
         ...e,
         on: sheet.value.effects.some((x) => x.source === e.source),
         cost,
+        /** 'Not your turn' while waiting in combat, unless it's free or a reaction. */
+        notNow: offTurn.value && !usableOffTurn(pays, cost?.text || desc) ? NOT_TURN : '',
       }
     }),
   )
@@ -881,6 +894,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     if (!canEdit.value) return
     const effect = effects.value.find((e) => e.source === source)
     if (!effect) return
+    if (effect.notNow) return report(`${source}: ${effect.notNow}.`)
     const limited = !effect.cost && abilities.value.find((a) => a.key === source)
     const counter = limited ? limited.counters[0] : undefined
     if (limited && counter) {
@@ -992,11 +1006,14 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       if (attack && cost && !cost.attack && !FREE_ATTACK.test(a.desc)) cost.attack = true
       const mana = manaCost(a.desc)
       const short = costShort(sheet.value, cost)
-      const why = short
-        ? 'Not enough actions'
-        : mana > manaPool(sheet.value)
-          ? `Needs ${mana} mana`
-          : ''
+      const notNow = offTurn.value && !usableOffTurn(cost, a.desc)
+      const why = notNow
+        ? NOT_TURN
+        : short
+          ? 'Not enough actions'
+          : mana > manaPool(sheet.value)
+            ? `Needs ${mana} mana`
+            : ''
       return [
         {
           name: a.name,
@@ -1010,6 +1027,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           why,
           use: () => {
             if (!canEdit.value) return
+            if (offTurn.value && !usableOffTurn(cost, a.desc))
+              return report(`${a.name}: not your turn.`)
             if (mana > manaPool(sheet.value)) return report(`${a.name} needs ${mana} mana.`)
             const before = sheet.value.actionsSpent
             const paid = payCost(sheet.value, cost)
@@ -1220,9 +1239,6 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     spendFury: (index: number) => canEdit.value && act(spendFury(sheet.value, index)),
     rollJudgment: (values?: number[]) =>
       canEdit.value && act(rollJudgment(sheet.value, draft.value.level, Math.random, values)),
-    setOwnDice: (on: boolean) => {
-      if (canEdit.value) sheet.value.ownDice = on
-    },
     expendJudgment: () => canEdit.value && act(expendJudgment(sheet.value)),
     toggleCrit: () => {
       if (canEdit.value) sheet.value.resource.count = sheet.value.resource.count ? 0 : 1

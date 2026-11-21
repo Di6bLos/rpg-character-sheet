@@ -24,6 +24,47 @@ export const DEV_ACCOUNTS: DevAccount[] = [
   },
 ]
 
+/** Extra players seated at "Test Table" with level 5 heroes (sign in with the form). */
+export interface DevPartyMember {
+  email: string
+  displayName: string
+  handle: string
+  hero: { name: string; classSlug: string }
+}
+
+export const DEV_PARTY: DevPartyMember[] = [
+  {
+    email: 'bram@test.local',
+    displayName: 'bram',
+    handle: 'bram',
+    hero: { name: 'Bram', classSlug: 'berserker' },
+  },
+  {
+    email: 'wren@test.local',
+    displayName: 'wren',
+    handle: 'wren',
+    hero: { name: 'Wren', classSlug: 'hunter' },
+  },
+  {
+    email: 'thorne@test.local',
+    displayName: 'thorne',
+    handle: 'thorne',
+    hero: { name: 'Thorne', classSlug: 'oathsworn' },
+  },
+  {
+    email: 'sable@test.local',
+    displayName: 'sable',
+    handle: 'sable',
+    hero: { name: 'Sable', classSlug: 'shadowmancer' },
+  },
+  {
+    email: 'lark@test.local',
+    displayName: 'lark',
+    handle: 'lark',
+    hero: { name: 'Lark', classSlug: 'songweaver' },
+  },
+]
+
 /** The dev server talks to the local Supabase stack, not the hosted project. */
 export function isLocalSupabase(url: string): boolean {
   try {

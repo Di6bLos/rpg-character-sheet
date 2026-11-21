@@ -64,7 +64,8 @@ const inventionOf = (name: string) => INVENTIONS.find((i) => i.name === abilityB
           type="button"
           class="btn btn--ghost btn--sm"
           style="align-self: flex-start"
-          :disabled="!canEdit || effectBy.get(a.name)?.on"
+          :disabled="!canEdit || effectBy.get(a.name)?.on || !!effectBy.get(a.name)?.notNow"
+          :title="effectBy.get(a.name)?.notNow || undefined"
           @click="useEffect(a.name)"
         >
           {{

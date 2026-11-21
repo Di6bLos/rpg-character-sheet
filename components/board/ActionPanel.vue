@@ -6,40 +6,14 @@
 // One <dialog> serves both (useDockedPanel), so the sheet editor inside stays
 // mounted and unsaved changes survive a resize. The edge tab joins the stack in
 // PartyView's `.edge-tabs`, above the Lore Master's.
-import type { Character } from '~/types'
-import type { AnySheet } from '~/types/sheets'
-
 const props = defineProps<{
   downSummons: string[]
   turnCharacterId: string | null
   round: number | null
 }>()
 
-const auth = useAuthStore()
-const characters = useCharacterStore()
-const snackbar = useSnackbarStore()
-const { campaign, isGm } = useCampaignBoard()
-
-const characterId = computed(() =>
-  !isGm.value && campaign.value?.system === 'nimble' ? campaign.value.myCharacterId : null,
-)
-const character = ref<Character<AnySheet> | null>(null)
-const canEdit = computed(() => character.value?.user_id === auth.userId && !auth.isSuspended)
-
-watch(
-  characterId,
-  async (id) => {
-    character.value = null
-    if (!id) return
-    try {
-      const found = await characters.fetchOne(id)
-      if (characterId.value === id) character.value = found
-    } catch (err) {
-      snackbar.error(err, 'Could not load your character for quick actions')
-    }
-  },
-  { immediate: true },
-)
+const { campaign } = useCampaignBoard()
+const { character, canEdit } = useSeatedCharacter('Could not load your character for quick actions')
 
 // --- Docked or drawer ------------------------------------------------------------
 const panelId = useId()
