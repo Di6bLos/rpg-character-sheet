@@ -1,12 +1,32 @@
 <script setup lang="ts">
 // The creature being attacked: its armor, whether it is vulnerable to this
-// attack's damage, and Sunder Armor. Damage on the cards and in results counts
+// attack's damage, Sunder Armor, and the statuses the hero's spells need or set
+// (Smoldering, Hampered). Damage on the cards and in results counts
 // them (Core p. 14).
 import type { NimbleSheet } from '~/types/sheets'
 import { TARGET_ARMORS } from '~/utils/nimbleTargetArmor'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const target = useAttackTarget()
+
+const { known } = useNimbleSpells()
+/** Statuses on the target that one of the hero's spells needs or changes. */
+const spellStatuses = computed(() => {
+  const text = known.value.map((s) => s.desc).join(' ')
+  return [
+    /\bSmoldering\b/.test(text) && {
+      key: 'smoldering' as const,
+      label: 'Smoldering',
+      title: 'Ignite needs it; Flame Dart’s crit sets it and Ignite’s hit ends it',
+    },
+    /\bHampered\b|On hit: Slowed/.test(text) && {
+      key: 'hampered' as const,
+      label: 'Hampered',
+      title:
+        'Slowed, Dazed, Grappled, Restrained or Prone; Shatter crits on any max die against it',
+    },
+  ].filter((x) => !!x)
+})
 
 const canSunder = computed(() =>
   draft.value.sheet.abilities.some((a) =>
@@ -64,6 +84,19 @@ function set(patch: Partial<typeof target.value>) {
         @click="set({ sundered: !target.sundered })"
       >
         Sundered (melee ignores armor)
+      </button>
+      <button
+        v-for="st in spellStatuses"
+        :key="st.key"
+        type="button"
+        class="chip"
+        :class="{ 'chip--on': target[st.key] }"
+        :aria-pressed="target[st.key]"
+        :disabled="!canEdit"
+        :title="st.title"
+        @click="set({ [st.key]: !target[st.key] })"
+      >
+        {{ st.label }}
       </button>
     </div>
   </div>

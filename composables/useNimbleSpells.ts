@@ -32,8 +32,16 @@ import {
 } from '~/utils/nimblePlay'
 import { endEffects } from '~/utils/nimbleEffects'
 import { rollSpellDamage, spellDamage } from '~/utils/nimbleSpellDamage'
+import {
+  chargedActions,
+  critBonus,
+  critsOnAnyMax,
+  spellNeeds,
+  spellOnHit,
+  spellSelfEffects,
+} from '~/utils/nimbleSpellRules'
 import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
-import { parseDice, rollDie } from '~/utils/dice'
+import { parseDice, rollDie, showOutcome } from '~/utils/dice'
 import {
   armorDice,
   armorDiceWhy,
@@ -226,7 +234,8 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const usesPact = !!pact.value && s.tier > 0
         const usesMinions = reaver.value && s.tier > 0
         const discount = !!archmage.value && s.tier > 0 && !usesPact && !usesMinions
-        const actions = Math.max(0, spellActions(s.cast) - (discount ? 1 : 0))
+        const actions =
+          chargedActions(sheet.value, s) ?? Math.max(0, spellActions(s.cast) - (discount ? 1 : 0))
         const mana = discount ? Math.max(0, at - 5) : at
         const left = actionsLeft(sheet.value)
         const spread = actions > left && left > 0
@@ -252,6 +261,8 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
           mana,
           discount,
           used: ONCE_PER_TURN.test(s.desc) && !!sheet.value.uses[`${s.name}@turn`]?.used,
+          /** What the spell needs that isn't there (you Charged, a Smoldering target). */
+          needs: spellNeeds(sheet.value, s, target.value),
           alts: spellAlts(s, mana, !usesPact && !usesMinions),
           actions,
           usesPact,
@@ -306,6 +317,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     if (incapacitated) return say(`${s.name}: you are ${incapacitated} and can’t cast.`)
     if (s.notNow) return say(`${s.name}: not your turn.`)
     if (s.used) return say(`${s.name}: already cast this turn (1/turn).`)
+    if (s.needs) return say(`${s.name}: ${s.needs.toLowerCase()}.`)
     if (s.noActions) {
       const message = 'No actions left: they come back when your turn ends.'
       say(message)
@@ -346,6 +358,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         sheet.value.uses[counter.id] = { ...sheet.value.uses[counter.id], used: counter.used + 1 }
       notes.push(primordial(s, s.mana))
     }
+    notes.push(spellSelfEffects(sheet.value, s).trim())
     // Actions the turn can't cover carry over; Concentration starts once it is cast.
     const progress = castSpell(sheet.value, s.name, s.actions, draft.value.level, s.at).trim()
     if (progress) notes.push(progress)
@@ -407,14 +420,30 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const rushed = sheet.value.rushed + conditionMods(sheet.value, situation.value).disadvantage
     const rush =
       rushed > 0 ? ` with ${rushed}× disadvantage` : rushed < 0 ? ` with ${-rushed}× advantage` : ''
-    if (sheet.value.ownDice || !damage.rollable)
-      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.${armorRule(armorOf(s))}`
+    if (sheet.value.ownDice || !damage.rollable) {
+      const reminder = spellOnHit(s, { miss: false, crit: false }, target.value).note
+      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.${armorRule(armorOf(s))}${reminder}`
+    }
     const result = rollSpellDamage(damage, Math.random, rushed)
     if (!result) return ''
-    if (result.miss) return `Miss (first die rolled a 1)${rush} [${result.detail}].`
-    const crit = result.crit ? ` ${critTriggers(sheet.value, draft.value.level, s.name)}` : ''
-    const hit = armorHit(result.total, parseDice(damage.dice)?.mod ?? 0, armorOf(s), result.crit)
-    return `${hit.damage}${type} damage${hit.note}${result.crit ? ' · critical' : ''}${rush} [${damage.dice}: ${result.detail}].${crit.trimEnd()}`
+    if (result.miss) {
+      showOutcome({ label: s.name, total: 0, detail: 'Miss (first die rolled a 1).' })
+      return `Miss (first die rolled a 1)${rush} [${result.detail}].`
+    }
+    const expr = parseDice(damage.dice)
+    const maxCrit = !result.crit && critsOnAnyMax(s, target.value, result.dice, expr?.sides ?? 0)
+    const isCrit = result.crit || maxCrit
+    const bonus = isCrit ? critBonus(s, s.at) : 0
+    const crit = isCrit ? ` ${critTriggers(sheet.value, draft.value.level, s.name)}` : ''
+    const hit = armorHit(result.total + bonus, expr?.mod ?? 0, armorOf(s), isCrit)
+    const effects = spellOnHit(s, { miss: false, crit: isCrit }, target.value)
+    target.value = { ...target.value, ...effects.target }
+    const why = maxCrit ? ' (a max die against a Hampered target)' : ''
+    const extra = bonus ? `, +${bonus} on the crit` : ''
+    const line = `${hit.damage}${type} damage${hit.note}${isCrit ? ` · critical${why}` : ''}${rush} [${damage.dice}: ${result.detail}${extra}].${effects.note}${crit.trimEnd()}`
+    // The tray's total: modifiers, crit damage and armor, not just the dice.
+    showOutcome({ label: s.name, total: hit.damage, detail: line })
+    return line
   }
 
   const spellAttacks = computed(() =>
@@ -493,17 +522,19 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       .map((s) => ({
         ...s,
         trigger: /\bReaction:\s*([^.]+)/.exec(s.desc)?.[1]?.trim() ?? '',
-        blocked: s.used
-          ? 'Used this turn'
-          : s.busy
-            ? 'Finish casting first'
-            : s.noActions
-              ? 'No actions left'
-              : s.short
-                ? s.usesMinions
-                  ? `Needs ${s.cost}`
-                  : `Needs ${s.mana} mana`
-                : '',
+        blocked: s.needs
+          ? s.needs
+          : s.used
+            ? 'Used this turn'
+            : s.busy
+              ? 'Finish casting first'
+              : s.noActions
+                ? 'No actions left'
+                : s.short
+                  ? s.usesMinions
+                    ? `Needs ${s.cost}`
+                    : `Needs ${s.mana} mana`
+                  : '',
       })),
   )
 
@@ -518,17 +549,19 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         blocked:
           sheet.value.inEncounter && !sheet.value.turnActive
             ? 'Not your turn'
-            : s.used
-              ? 'Used this turn'
-              : s.busy
-                ? 'Finish casting first'
-                : s.noActions
-                  ? 'No actions left'
-                  : s.short
-                    ? s.usesMinions
-                      ? `Needs ${s.cost}`
-                      : `Needs ${s.mana} mana`
-                    : '',
+            : s.needs
+              ? s.needs
+              : s.used
+                ? 'Used this turn'
+                : s.busy
+                  ? 'Finish casting first'
+                  : s.noActions
+                    ? 'No actions left'
+                    : s.short
+                      ? s.usesMinions
+                        ? `Needs ${s.cost}`
+                        : `Needs ${s.mana} mana`
+                      : '',
       })),
   )
 
