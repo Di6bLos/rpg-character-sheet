@@ -205,6 +205,18 @@ describe('nimble rests', () => {
     expect(sheet.hp).toBe(5)
   })
 
+  it("Catch Breath takes the player's own Hit Die rolls (Manual dice)", () => {
+    const sheet = hero({ hp: 10, hpMax: 40, stats: { STR: 1, DEX: 0, INT: 0, WIL: 0 } })
+    // Two entered: two dice spent; a 12 on a d8 counts as 8.
+    const message = fieldRest(sheet, { dice: 1, camp: false, rolls: [3, 12] })
+    expect(hitDiceLeft(sheet)).toBe(1)
+    expect(sheet.hp).toBe(10 + (3 + 1) + (8 + 1))
+    expect(message).toContain('rolled 3, 8')
+    // Making camp ignores entered rolls.
+    fieldRest(sheet, { dice: 1, camp: true, rolls: [1] })
+    expect(sheet.hp).toBe(23 + 9)
+  })
+
   it('reports healing lost over max HP', () => {
     const sheet = hero({ hp: 18 })
     expect(fieldRest(sheet, { dice: 1, camp: true })).toBe(

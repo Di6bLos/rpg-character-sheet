@@ -10,6 +10,7 @@ const {
   camp,
   restDice,
   canFieldRest,
+  ownRestRolls,
   fieldRestTitle,
   adjustRestDice,
   rest,
@@ -19,8 +20,9 @@ const {
 const fieldOpen = ref(false)
 const safeOpen = ref(false)
 
-function fieldRest() {
-  rest()
+/** `rolls`: the Hit Dice the player rolled, with Manual dice. */
+function fieldRest(rolls?: number[]) {
+  rest(rolls)
   fieldOpen.value = false
 }
 
@@ -59,7 +61,14 @@ function safeRest() {
           HP {{ sheet.hp }} / {{ sheet.hpMax }}
         </p>
         <UiSwitch v-model="camp" label="Made camp (8h, food & sleep)" :disabled="!canEdit" />
-        <div class="row" style="gap: 8px">
+        <NimbleDiceEntry
+          v-if="ownRestRolls"
+          :label="`Hit Dice rolled, e.g. ${Math.ceil(sheet.hitDie / 2)}, ${sheet.hitDie}`"
+          action="Catch Breath"
+          :disabled="!canFieldRest"
+          @submit="fieldRest"
+        />
+        <div v-else class="row" style="gap: 8px">
           <span class="small">Hit Dice to spend</span>
           <button
             type="button"
@@ -85,7 +94,13 @@ function safeRest() {
       </div>
       <template #actions>
         <button type="button" class="btn btn--ghost" @click="fieldOpen = false">Not yet</button>
-        <button type="button" class="btn" :disabled="!canFieldRest" @click="fieldRest">
+        <button
+          v-if="!ownRestRolls"
+          type="button"
+          class="btn"
+          :disabled="!canFieldRest"
+          @click="fieldRest()"
+        >
           {{ camp ? 'Make Camp' : 'Catch Breath' }}
         </button>
       </template>

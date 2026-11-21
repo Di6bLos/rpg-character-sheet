@@ -26,6 +26,7 @@ const {
   camp,
   restDice,
   canFieldRest,
+  ownRestRolls,
   fieldRestTitle,
   adjustRestDice,
   rest,
@@ -192,7 +193,15 @@ function confirmRest() {
           <i v-for="n in sheet.hitDice" :key="n" class="hd" :class="{ on: n <= diceLeft }" />
         </div>
         <UiSwitch v-model="camp" label="Made camp (8h, food & sleep)" :disabled="!canEdit" />
-        <div class="row" style="gap: 6px">
+        <NimbleDiceEntry
+          v-if="ownRestRolls"
+          :label="`Hit Dice rolled, e.g. ${Math.ceil(sheet.hitDie / 2)}, ${sheet.hitDie}`"
+          action="Catch Breath"
+          :title="fieldRestTitle"
+          :disabled="!canFieldRest"
+          @submit="rest"
+        />
+        <div v-else class="row" style="gap: 6px">
           <div class="row rest-count" style="gap: 4px">
             <button
               type="button"
@@ -219,7 +228,7 @@ function confirmRest() {
             class="btn btn--ghost btn--sm rest-btn"
             :disabled="!canFieldRest"
             :title="fieldRestTitle"
-            @click="rest"
+            @click="rest()"
           >
             {{ camp ? 'Make Camp' : 'Catch Breath' }}
           </button>

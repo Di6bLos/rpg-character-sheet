@@ -112,11 +112,14 @@ export function useNimbleVitals() {
   const canFieldRest = computed(
     () => canEdit.value && !fullHp.value && diceLeft.value > 0 && restDice.value > 0,
   )
+  /** Catch Breath with Manual dice: the player rolls the Hit Dice and enters each one. */
+  const ownRestRolls = computed(() => sheet.value.ownDice && !camp.value)
   const fieldRestTitle = computed(() => {
     if (diceLeft.value === 0) return 'No Hit Dice left: they come back on a Safe Rest'
     if (fullHp.value) return 'Already at full HP'
-    return camp.value
-      ? '8 hours with food and sleep: each Hit Die gives its maximum plus STR'
+    if (camp.value) return '8 hours with food and sleep: each Hit Die gives its maximum plus STR'
+    return ownRestRolls.value
+      ? `10 minutes: roll your Hit Dice (d${sheet.value.hitDie}, up to ${diceLeft.value}) and enter each one; STR is added to each`
       : '10 minutes: roll each Hit Die and add STR'
   })
 
@@ -126,9 +129,15 @@ export function useNimbleVitals() {
     diceChosen.value = Math.min(diceLeft.value, Math.max(1, restDice.value + delta))
   }
 
-  function rest() {
+  /** `rolls`: the player's own Hit Die rolls, required for Catch Breath with Manual dice. */
+  function rest(rolls?: number[]) {
     if (!canFieldRest.value) return
-    const message = fieldRest(sheet.value, { dice: restDice.value, camp: camp.value })
+    if (ownRestRolls.value && !rolls?.length) return
+    const message = fieldRest(sheet.value, {
+      dice: restDice.value,
+      camp: camp.value,
+      rolls: ownRestRolls.value ? rolls : undefined,
+    })
     if (message) say(message)
     diceChosen.value = null
   }
@@ -157,6 +166,7 @@ export function useNimbleVitals() {
     camp,
     restDice,
     canFieldRest,
+    ownRestRolls,
     fieldRestTitle,
     adjustRestDice,
     rest,

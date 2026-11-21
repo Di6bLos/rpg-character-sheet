@@ -719,6 +719,11 @@ export interface FieldRestOptions {
   dice: number
   /** Made camp (8 hours with food and sleep): each die gives its maximum instead of a roll. */
   camp: boolean
+  /**
+   * The player's own Hit Die rolls (Catch Breath with Manual dice), one per die, kept to
+   * the die's faces: how many there are is how many dice are spent (up to the dice left).
+   */
+  rolls?: number[]
 }
 
 /**
@@ -741,14 +746,18 @@ export function fieldRestDice(sheet: NimbleSheet, camp: boolean): number {
  */
 export function fieldRest(
   sheet: NimbleSheet,
-  { dice, camp }: FieldRestOptions,
+  { dice, camp, rolls }: FieldRestOptions,
   rng: Rng = Math.random,
 ): string {
-  const count = Math.min(hitDiceLeft(sheet), Math.max(0, Math.floor(dice)))
+  const own =
+    !camp && rolls?.length
+      ? rolls.map((v) => Math.min(sheet.hitDie, Math.max(1, Math.round(v))))
+      : null
+  const count = Math.min(hitDiceLeft(sheet), own ? own.length : Math.max(0, Math.floor(dice)))
   if (count === 0 || sheet.hp >= sheet.hpMax) return ''
-  const values = Array.from({ length: count }, () =>
-    camp ? sheet.hitDie : rollDie(sheet.hitDie, rng),
-  )
+  const values = own
+    ? own.slice(0, count)
+    : Array.from({ length: count }, () => (camp ? sheet.hitDie : rollDie(sheet.hitDie, rng)))
   const total = values.reduce((sum, v) => sum + Math.max(0, v + sheet.stats.STR), 0)
   const before = sheet.hp
   sheet.hitDiceUsed += count
