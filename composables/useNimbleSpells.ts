@@ -2,6 +2,7 @@
 // spends the spell's actions and its mana (or a use of Pilfered Power, or a
 // Reaver's minions or Wound), and starts Concentration when the spell needs it.
 // Shared by the sheet's Spells panel and the board's action panel.
+import { castReason, spellNotNow } from '~/utils/battleActions'
 import { SPELL_RULES } from '~/data/nimble/spells'
 import { summonBySource } from '~/data/nimble/summons'
 import type { SpellDef } from '~/data/nimble/types'
@@ -45,6 +46,7 @@ import type { NimbleResultOptions } from './useNimbleActions'
 
 /** A spell that is itself 1/turn ("… 1/turn. …"), not one with a 1/turn part (Summon Shadows' command). */
 const ONCE_PER_TURN = /(?:^|\.\s+)1\/turn\./
+const REACTION = /\bReaction:/
 
 export function useNimbleSpells(options: NimbleResultOptions = {}) {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
@@ -231,9 +233,22 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const acts = spread ? ` · ${left} of ${actions} act` : actions ? ` · ${actions} act` : ''
         const verb = spread ? 'Start casting' : 'Cast'
         const n = minionCost.value
+        // Waiting for your turn in combat: only reaction spells and free (0-action) casts;
+        // a damaging spell is an attack and waits whatever it costs (castReason).
+        const waiting = sheet.value.inEncounter && !sheet.value.turnActive
+        const notNow = spellNotNow(
+          {
+            reaction: REACTION.test(s.desc),
+            actions,
+            damaging: waiting && !!spellDamage(sheet.value, draft.value.level, s, at),
+          },
+          sheet.value,
+        )
         return {
           ...s,
           at,
+          /** 'Not your turn' while waiting in combat (reaction spells and free casts excepted). */
+          notNow,
           mana,
           discount,
           used: ONCE_PER_TURN.test(s.desc) && !!sheet.value.uses[`${s.name}@turn`]?.used,
@@ -289,6 +304,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     if (!canEdit.value || s.busy) return
     const incapacitated = conditionMods(sheet.value, situation.value).incapacitated
     if (incapacitated) return say(`${s.name}: you are ${incapacitated} and can’t cast.`)
+    if (s.notNow) return say(`${s.name}: not your turn.`)
     if (s.used) return say(`${s.name}: already cast this turn (1/turn).`)
     if (s.noActions) {
       const message = 'No actions left: they come back when your turn ends.'
@@ -406,25 +422,14 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       .flatMap((g) => g.spells)
       .flatMap((s) => {
         const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
-        if (!damage || /\bReaction:/.test(s.desc)) return []
+        if (!damage || REACTION.test(s.desc)) return []
         const range = /^(Range|Reach|Line|Cone)[^.]*/.exec(s.desc)?.[0] ?? ''
         const cond = conditionMods(sheet.value, situation.value)
         const odds = sheet.value.rushed + cond.disadvantage
-        const why = cond.incapacitated
-          ? cond.incapacitated
-          : sheet.value.inEncounter && !sheet.value.turnActive
-            ? 'Not your turn'
-            : s.used
-              ? 'Used this turn'
-              : s.busy
-                ? 'Finish casting first'
-                : s.noActions
-                  ? 'No actions left'
-                  : s.short
-                    ? s.usesMinions
-                      ? `Needs ${s.cost}`
-                      : 'Not enough mana'
-                    : ''
+        const why = castReason(s, {
+          turnActive: !sheet.value.inEncounter || sheet.value.turnActive,
+          incapacitated: cond.incapacitated,
+        })
         return [
           {
             key: `spell:${s.name}`,
@@ -484,7 +489,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
   const reactionSpells = computed(() =>
     tiers.value
       .flatMap((g) => g.spells)
-      .filter((s) => /\bReaction:/.test(s.desc))
+      .filter((s) => REACTION.test(s.desc))
       .map((s) => ({
         ...s,
         trigger: /\bReaction:\s*([^.]+)/.exec(s.desc)?.[1]?.trim() ?? '',

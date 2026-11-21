@@ -3,7 +3,8 @@
 // die per step of advantage or disadvantage (the dropped ones fade), the Primary
 // Die tagged, a crit's explosions thrown after, CRIT or MISS called out. Nothing
 // shows for players who roll their own dice (the app rolls nothing), with reduced
-// motion, or once turned off here. It stays until clicked or Esc. A modal dialog
+// motion, or once turned off here or in Settings (`useDiceAnimation`, which also sets
+// how fast the dice tumble). It stays until clicked or Esc. A modal dialog
 // opened last, so it sits above the board's drawer and any other open dialog and
 // still takes clicks (a popover outside a modal dialog would be inert).
 import type DiceBox from '@3d-dice/dice-box-threejs'
@@ -17,7 +18,6 @@ interface Die {
   role: Role
 }
 
-const SKIP_KEY = 'lantern-dice-skip'
 const SIDES = new Set([4, 6, 8, 10, 12, 20])
 const TAGS: Partial<Record<Role, string>> = { primary: 'Primary', dropped: 'Dropped', crit: 'Crit' }
 
@@ -27,7 +27,7 @@ const stage = ref<HTMLElement | null>(null)
 const rolls = ref<ShownRoll[]>([])
 const settled = ref(false)
 const tags = ref<{ x: number; y: number; text: string; role: Role }[]>([])
-const skip = ref(false)
+const prefs = useDiceAnimation()
 
 let box: DiceBox | null = null
 let pending: ShownRoll[] = []
@@ -36,13 +36,8 @@ let throwId = 0
 let stop: (() => void) | undefined
 
 onMounted(() => {
-  try {
-    skip.value = localStorage.getItem(SKIP_KEY) === '1'
-  } catch {
-    skip.value = false
-  }
   stop = onDiceShown((roll) => {
-    if (skip.value || !SIDES.has(roll.sides)) return
+    if (!prefs.animate.value || !SIDES.has(roll.sides)) return
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
     pending.push(roll)
     // One action can roll several times (a stack of summons): throw them together.
@@ -58,13 +53,31 @@ onBeforeUnmount(() => {
 })
 
 function setSkip(on: boolean) {
-  skip.value = on
-  try {
-    localStorage.setItem(SKIP_KEY, on ? '1' : '0')
-  } catch {
-    // Private windows can refuse storage; the choice still holds for this visit.
-  }
+  prefs.setAnimate(!on)
   if (on) close()
+}
+watch(prefs.animate, (on) => {
+  if (!on) close()
+})
+
+/**
+ * Speed: the library first simulates the throw to find where the dice land, then
+ * replays the same physics steps on screen, as many per frame as the clock says.
+ * Taking more (or fewer) of those steps per frame while it replays changes only how
+ * fast the throw plays; the simulation, and so where the dice land, stays the same.
+ */
+function scaleSpeed(b: DiceBox) {
+  const world = b.world
+  const step = world.step.bind(world)
+  let owed = 0
+  world.step = (dt: number) => {
+    if (b.animstate !== 'throw') return step(dt)
+    owed += prefs.speed.value
+    while (owed >= 1) {
+      step(dt)
+      owed -= 1
+    }
+  }
 }
 
 /** Lone dice of one size in a row (minions, mana dice, NPC Initiative) share a line. */
@@ -170,6 +183,7 @@ async function ensureBox(): Promise<DiceBox> {
     strength: 1.3,
   })
   await box.initialize()
+  scaleSpeed(box)
   return box
 }
 
@@ -284,7 +298,7 @@ function close() {
       <label class="tray__skip">
         <input
           type="checkbox"
-          :checked="skip"
+          :checked="!prefs.animate.value"
           @change="setSkip(($event.target as HTMLInputElement).checked)"
         />
         Don’t animate dice

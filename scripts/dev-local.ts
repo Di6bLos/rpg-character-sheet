@@ -7,7 +7,7 @@
 //   DEV_LOCAL_PORT=3200 npm run dev:local   # another fixed port
 import { execFileSync, spawn } from 'node:child_process'
 import { connect } from 'node:net'
-import { DEV_ACCOUNTS, DEV_PASSWORD } from '../utils/devAccounts'
+import { DEV_ACCOUNTS, DEV_PARTY, DEV_PASSWORD } from '../utils/devAccounts'
 import { localStack, seedLocal } from './dev-seed'
 
 /** Fixed so the URL never changes; DEV_LOCAL_PORT overrides it if 3100 is needed elsewhere. */
@@ -74,6 +74,8 @@ async function main() {
     `\nLocal test accounts (password ${DEV_PASSWORD}), also one-click on the sign-in page:`,
   )
   for (const a of DEV_ACCOUNTS) console.log(`  ${a.label.padEnd(7)} ${a.email}`)
+  console.log('More seated players (sign in with the form):')
+  for (const m of DEV_PARTY) console.log(`  ${m.hero.name.padEnd(7)} ${m.email}`)
   console.log(`Test campaign: http://localhost:${PORT}/campaigns/${campaignId}/board\n`)
 
   // Process env wins over .env.local, so this server talks to the local stack.

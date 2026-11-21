@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Battle Board Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --page: #14110e; --text: #efe6d4; --soft: #cdbfa6; --muted: #a8997f;
+  --line: #3a3127; --line-strong: #5a4c3a; --nav: #0f0d0a;
+  --panel: #1d1914; --inset: #241e17; --track: #2c251d; --field: #14110e;
+  --accent: #e0b054; --on-accent: #141010; --tint: rgba(224,176,84,.16);
+  --secondary: #6fc2b4; --danger: #e2735f; --danger-bg: #3a1d17;
+  --ok-bg: #1f3531; --ok-text: #bfe9e1; --warn-bg: #3a2f1c; --warn-text: #f0cb7e;
+  --frost: #79a7d3; --arcane: #9b7be0; --ember: #d9822b;
+  --r: 10px; --rc: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: radial-gradient(1200px 600px at 20% -10%, #2a2118 0%, transparent 60%), var(--page);
+  color: var(--text); font: 13px/1.4 Inter, system-ui, sans-serif;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+h2, h3 { font-family: Cinzel, serif; letter-spacing: .04em; margin: 0; font-weight: 700; }
+h2 { font-size: 13px; text-transform: uppercase; color: var(--soft); }
+.muted { color: var(--muted); } .small { font-size: 11px; }
+
+/* --- mockup switcher (not part of the design) --- */
+.mock-switch { position: fixed; top: 8px; left: 50%; translate: -50% 0; z-index: 100;
+  display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: #000c; border: 1px solid var(--line-strong); }
+.mock-switch button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; font-size: 12px; }
+.mock-switch button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+
+/* --- app nav (existing) --- */
+.appnav { height: 44px; flex: none; display: flex; align-items: center; gap: 22px; padding: 0 20px;
+  background: var(--nav); border-bottom: 1px solid var(--line); }
+.appnav b { font-family: Cinzel, serif; color: var(--accent); letter-spacing: .12em; }
+.appnav a { color: var(--muted); text-decoration: none; font-size: 12px; }
+.appnav a.on { color: var(--text); }
+.appnav .sp { flex: 1; }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--track); border: 1px solid var(--line-strong); }
+
+/* --- board bar: campaign + tabs + round, one line --- */
+.bar { height: 48px; flex: none; display: flex; align-items: center; gap: 18px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+.bar__title { font-family: Cinzel, serif; font-size: 18px; font-weight: 700; letter-spacing: .06em; }
+.bar__tabs { display: flex; gap: 4px; }
+.bar__tabs a { padding: 6px 12px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 12px; }
+.bar__tabs a.on { background: var(--tint); color: var(--accent); font-weight: 600; }
+.bar .sp { flex: 1; }
+.round { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border: 1px solid var(--line); border-radius: 999px; }
+.round b { font-family: Cinzel, serif; color: var(--accent); }
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 600;
+  border-radius: var(--rc); padding: 6px 12px; font-size: 12px; }
+.btn--ghost { background: transparent; color: var(--text); border-color: var(--line-strong); }
+.btn--sm { padding: 3px 9px; font-size: 11px; }
+.btn--danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+
+/* --- initiative strip --- */
+.init { flex: none; display: flex; align-items: stretch; gap: 8px; padding: 10px 20px; border-bottom: 1px solid var(--line); overflow: hidden; }
+.init__label { display: flex; flex-direction: column; justify-content: center; padding-right: 8px; border-right: 1px solid var(--line); min-width: 92px; }
+.init__label h2 { font-size: 12px; }
+.tok { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; min-width: 132px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
+.tok--monster { background: #201713; border-color: #4a2e25; }
+.tok--active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(224,176,84,.25); }
+.tok--me { outline: 1px dashed var(--secondary); outline-offset: 2px; }
+.tok--done { opacity: .55; }
+.tok__face { width: 34px; height: 34px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-family: Cinzel, serif; font-weight: 700; font-size: 13px; background: var(--track); border: 1px solid var(--line-strong); }
+.tok--monster .tok__face { background: #3a1d17; border-color: #6a3a2c; color: #f7c9bc; }
+.tok__init { position: absolute; top: -7px; left: -5px; font-size: 10px; font-weight: 700; background: var(--page);
+  border: 1px solid var(--line-strong); border-radius: 999px; padding: 0 5px; }
+.tok__name { font-weight: 600; font-size: 12px; white-space: nowrap; }
+.tok__sub { font-size: 10px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.minibar { width: 64px; height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; margin-top: 3px; }
+.minibar i { display: block; height: 100%; background: var(--secondary); }
+.minibar--hurt i { background: var(--ember); } .minibar--low i { background: var(--danger); }
+.pips { display: inline-flex; gap: 2px; }
+.pips i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.pips i.off { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.tok__now { position: absolute; bottom: -8px; left: 50%; translate: -50% 0; font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; padding: 1px 6px; border-radius: 999px; background: var(--accent); color: var(--on-accent); white-space: nowrap; }
+.tok__next { background: var(--secondary); color: var(--on-accent); }
+
+/* --- main grid --- */
+.main { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px minmax(0,1fr) 340px; gap: 14px; padding: 14px 20px 14px; }
+.col { min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.panel--grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.panel__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.scroll { overflow: auto; min-height: 0; flex: 1; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+/* --- my hero --- */
+.hero { display: flex; gap: 10px; align-items: center; }
+.hero__face { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; font-family: Cinzel, serif; font-size: 20px; font-weight: 700;
+  background: linear-gradient(135deg, #3b2c4a, #1e1a2a); border: 1px solid var(--line-strong); color: #d9cdf5; }
+.hero__name { font-family: Cinzel, serif; font-size: 17px; font-weight: 700; }
+.hpbox { margin-top: 12px; }
+.hpbar { position: relative; height: 22px; border-radius: 6px; background: var(--track); overflow: hidden; border: 1px solid var(--line); }
+.hpbar__fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #3f8f82, var(--secondary)); }
+.hpbar__temp { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(45deg, var(--frost) 0 4px, #5f8bb5 4px 8px); opacity: .85; }
+.hpbar__txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; text-shadow: 0 1px 2px #000; }
+.hpctl { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px; margin-top: 8px; align-items: center; }
+.hpctl input { width: 100%; background: var(--field); border: 1px solid var(--line-strong); color: var(--text); border-radius: var(--rc); padding: 5px 8px; font: inherit; text-align: center; }
+.sq { width: 30px; height: 28px; border-radius: var(--rc); border: 1px solid var(--line-strong); background: var(--inset); font-weight: 700; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
+.tile { background: var(--inset); border: 1px solid var(--line); border-radius: var(--rc); padding: 6px 4px; text-align: center; }
+.tile b { display: block; font-size: 16px; font-family: Cinzel, serif; }
+.tile span { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.wounds { display: flex; gap: 4px; align-items: center; margin-top: 10px; font-size: 11px; color: var(--muted); }
+.wounds i { width: 11px; height: 11px; transform: rotate(45deg); border: 1px solid var(--line-strong); }
+.wounds i.on { background: var(--danger); border-color: var(--danger); }
+.mana { margin-top: 12px; }
+.mana__row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.mana__row b { color: var(--arcane); font-size: 13px; }
+.mana__gems { display: flex; gap: 3px; }
+.mana__gems i { flex: 1; height: 8px; border-radius: 2px; background: var(--arcane); }
+.mana__gems i.off { background: var(--track); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--soft); background: transparent; }
+.chip--on { background: var(--tint); border-color: var(--accent); color: var(--accent); }
+.chip--frost { background: rgba(121,167,211,.15); border-color: var(--frost); color: #cfe1f3; }
+.chip--bad { background: var(--danger-bg); border-color: var(--danger); color: #f7c9bc; }
+.stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; font-size: 11px; text-align: center; margin-top: 10px; }
+.stats div { padding: 4px 0; border-radius: 6px; background: var(--inset); }
+.stats b { display: block; font-size: 13px; }
+.adv { color: var(--secondary); } .dis { color: var(--danger); }
+.sect { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 12px 0 6px; display: flex; justify-content: space-between; }
+
+/* --- turn bar + actions --- */
+.turn { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: var(--r);
+  background: linear-gradient(90deg, rgba(224,176,84,.18), rgba(224,176,84,.04)); border: 1px solid rgba(224,176,84,.5); }
+.turn--wait { background: var(--panel); border-color: var(--line); }
+.turn__title { font-family: Cinzel, serif; font-size: 15px; font-weight: 700; }
+.bigpips { display: flex; gap: 6px; }
+.bigpips button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--accent); background: var(--accent); padding: 0; }
+.bigpips button.off { background: transparent; border-color: var(--line-strong); }
+.turn .sp { flex: 1; }
+.filters { display: flex; gap: 6px; align-items: center; }
+.filters button { white-space: nowrap; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 4px 10px; border-radius: 999px; font-size: 11.5px; }
+.filters button.on { color: var(--text); border-color: var(--accent); background: var(--tint); }
+.filters .sp { flex: 1; }
+.search { background: var(--field); border: 1px solid var(--line); border-radius: 999px; color: var(--text); padding: 4px 10px; font: inherit; font-size: 11.5px; width: 150px; }
+
+.groups { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px 14px; align-content: start; }
+.group h3 { font-family: Inter, sans-serif; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.group h3::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.group h3 .cost { color: var(--arcane); text-transform: none; letter-spacing: 0; }
+.group--wide { grid-column: 1 / -1; }
+.acts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.act { position: relative; text-align: left; border: 1px solid var(--line); background: var(--inset); border-radius: var(--rc);
+  padding: 7px 9px; display: flex; flex-direction: column; gap: 3px; transition: border-color .12s, background .12s; }
+.act:hover, .act:focus-visible { border-color: var(--accent); background: #2b2319; outline: none; }
+.act__top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.act__name { font-weight: 600; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act__meta { display: flex; gap: 8px; font-size: 11px; color: var(--muted); align-items: center; }
+.dmg { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cost-a { display: inline-flex; gap: 2px; } .cost-a i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.cost-m { color: var(--arcane); font-weight: 600; font-size: 11px; }
+.el { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.el--fire { background: var(--ember); } .el--ice { background: var(--frost); } .el--light { background: #e8d36b; } .el--wpn { background: var(--soft); }
+.act--used { opacity: .45; }
+.act--react { border-style: dashed; }
+.act__tag { font-size: 9.5px; padding: 0 5px; border-radius: 4px; background: var(--warn-bg); color: var(--warn-text); }
+
+/* tooltip */
+.tip { position: fixed; z-index: 50; width: 300px; pointer-events: none; opacity: 0; transition: opacity .1s;
+  background: #0f0d0a; border: 1px solid var(--line-strong); border-radius: var(--r); padding: 10px 12px; box-shadow: 0 12px 32px rgba(0,0,0,.6); }
+.tip.show { opacity: 1; }
+.tip h4 { margin: 0 0 2px; font-size: 13px; }
+.tip .tip__sub { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.tip p { margin: 0; font-size: 12px; color: var(--soft); }
+.tip .tip__keys { margin-top: 8px; font-size: 10.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
+
+.result { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-radius: var(--rc); background: var(--ok-bg); color: var(--ok-text); font-size: 12px; }
+.result b { font-family: Cinzel, serif; font-size: 18px; color: #fff; }
+
+/* --- party cards --- */
+.party { display: flex; flex-direction: column; gap: 6px; }
+.pc { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 7px 8px; border-radius: var(--rc); background: var(--inset); border: 1px solid var(--line); }
+.pc--active { border-color: var(--accent); }
+.pc__face { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-family: Cinzel, serif; font-weight: 700; background: var(--track); border: 1px solid var(--line-strong); }
+.pc__name { font-weight: 600; font-size: 12.5px; display: flex; gap: 6px; align-items: center; }
+.pc__sub { font-size: 10.5px; color: var(--muted); }
+.pc__hp { width: 100%; height: 5px; border-radius: 3px; background: var(--track); overflow: hidden; margin-top: 4px; }
+.pc__hp i { display: block; height: 100%; background: var(--secondary); }
+.pc__right { text-align: right; font-size: 11px; color: var(--muted); }
+.pc__right b { color: var(--text); font-size: 12px; }
+.tag { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; padding: 1px 5px; border-radius: 4px; background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.tag--rage { background: var(--danger-bg); color: #f7c9bc; }
+
+/* --- chat --- */
+.chat__log { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.msg b { font-weight: 600; } .msg time { color: var(--muted); font-size: 10px; margin-left: 4px; }
+.msg p { margin: 2px 0 0; color: var(--soft); }
+.msg--roll { border-left: 2px solid var(--accent); padding-left: 8px; color: var(--muted); font-size: 11.5px; }
+.msg--secret p { color: var(--secondary); }
+.chat__in { display: flex; gap: 6px; margin-top: 10px; }
+.chat__in input { flex: 1; background: var(--field); border: 1px solid var(--line-strong); color: var(--text); border-radius: var(--rc); padding: 7px 10px; font: inherit; }
+
+/* --- lore master (floating) --- */
+.lore-fab { position: fixed; right: 22px; bottom: 22px; z-index: 40; display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px 10px 12px; border-radius: 999px; border: 1px solid var(--accent); background: #1d1914; color: var(--accent);
+  font-family: Cinzel, serif; font-weight: 700; letter-spacing: .06em; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.lore-fab svg { width: 20px; height: 20px; }
+.lore { position: fixed; right: 22px; bottom: 76px; width: 380px; height: 520px; z-index: 41; display: none; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,.6); padding: 14px; }
+.lore.open { display: flex; }
+.lore__q { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.lore__q button { text-align: left; border: 1px solid var(--line); background: var(--inset); border-radius: var(--rc); padding: 7px 10px; font-size: 12px; color: var(--soft); }
+.lore__a { background: var(--inset); border-radius: var(--rc); padding: 10px; font-size: 12px; color: var(--soft); }
+
+/* --- GM specifics --- */
+.gm-turn { display: flex; align-items: center; gap: 6px; }
+.monsters { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; align-content: start; }
+.mon { border: 1px solid #4a2e25; background: #1f1712; border-radius: var(--r); padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; cursor: pointer; }
+.mon--sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.mon--active { box-shadow: 0 0 0 1px var(--accent), 0 0 16px rgba(224,176,84,.25); border-color: var(--accent); }
+.mon--dead { opacity: .45; }
+.mon__top { display: flex; align-items: center; gap: 8px; }
+.mon__name { font-weight: 600; flex: 1; font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+.mon__name .pen { opacity: 0; border: 0; background: none; color: var(--muted); padding: 0; font-size: 11px; }
+.mon:hover .pen { opacity: 1; }
+.mon__hp { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.mon__bar { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; }
+.mon__bar i { display: block; height: 100%; background: var(--danger); }
+.mon__num { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 12px; }
+.quick { display: flex; gap: 4px; }
+.quick button { flex: 1; border: 1px solid var(--line-strong); background: var(--inset); border-radius: 6px; padding: 3px 0; font-size: 11px; font-weight: 600; }
+.quick input { width: 48px; background: var(--field); border: 1px solid var(--line-strong); color: var(--text); border-radius: 6px; text-align: center; font: inherit; font-size: 11px; }
+.mon__foot { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: var(--muted); }
+.statblock .sb__title { display: flex; align-items: baseline; gap: 8px; }
+.statblock input.rename { background: transparent; border: 0; border-bottom: 1px dashed var(--line-strong); color: var(--text); font-family: Cinzel, serif; font-size: 17px; font-weight: 700; width: 100%; padding: 2px 0; }
+.sb__line { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.sb__entry { margin: 6px 0; font-size: 12px; color: var(--soft); }
+.sb__entry b { color: var(--text); }
+.sb__entry .btn { margin-left: 4px; }
+.sb__hr { border: 0; border-top: 1px solid var(--line); margin: 10px 0; }
+.legend { font-size: 10.5px; color: var(--muted); }
+.ptabs { display: flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--inset); }
+.ptabs button { border: 0; background: none; padding: 4px 12px; border-radius: 999px; font-family: Cinzel, serif; font-weight: 700; font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+.ptabs button.on { background: var(--tint); color: var(--accent); }
+
+.count { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 10px; font-weight: 700; margin-left: 2px; }
+.act[disabled] { opacity: .42; cursor: not-allowed; }
+.act__why { font-size: 10px; color: var(--warn-text); }
+.empty { color: var(--muted); font-size: 12px; padding: 8px 0; }
+.ready-note { grid-column: 1 / -1; font-size: 11px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.pc { cursor: pointer; } .pc:hover { border-color: var(--line-strong); background: #2b2319; }
+.tok:has([data-n]) { cursor: pointer; }
+dialog.sheet { width: 760px; max-width: calc(100vw - 32px); max-height: calc(100vh - 64px); padding: 0; border: 1px solid var(--line-strong); border-radius: 14px;
+  background: var(--panel); color: var(--text); box-shadow: 0 24px 64px rgba(0,0,0,.7); }
+dialog.sheet::backdrop { background: rgba(5,4,3,.65); }
+.sh { display: grid; grid-template-columns: 260px 1fr; }
+.sh__side { padding: 18px; border-right: 1px solid var(--line); background: var(--inset); }
+.sh__main { padding: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; align-content: start; }
+.sh__main .full { grid-column: 1 / -1; }
+.sh__face { width: 64px; height: 64px; border-radius: 14px; display: grid; place-items: center; font-family: Cinzel, serif; font-size: 26px; font-weight: 700; background: var(--track); border: 1px solid var(--line-strong); }
+.sh__name { font-family: Cinzel, serif; font-size: 20px; font-weight: 700; margin-top: 10px; }
+.skills { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 12px; }
+.skills span:nth-child(even) { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.abil { font-size: 12px; color: var(--soft); margin: 4px 0; } .abil b { color: var(--text); }
+.sh__foot { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line); }
+.x { position: absolute; top: 10px; right: 10px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="mock-switch" role="group" aria-label="Mockup">
+  <button aria-pressed="true" data-view="player">Player view</button>
+  <button aria-pressed="false" data-view="gm">GM view</button>
+  <button aria-pressed="false" data-view="wait">Player · waiting</button>
+</div>
+
+<nav class="appnav">
+  <b>LANTERN</b><a>Dashboard</a><a>Characters</a><a class="on">Campaigns</a><a>Library</a><span class="sp"></span><span class="avatar"></span>
+</nav>
+
+<header class="bar">
+  <span class="bar__title">Test Table</span>
+  <nav class="bar__tabs"><a class="on">Party</a><a>Journal</a><a>Maps &amp; images</a><a class="gm-only hidden">NPCs</a></nav>
+  <span class="sp"></span>
+  <!-- player -->
+  <div class="round player-only"><span class="muted small">Round</span><b>3</b><span class="muted small">· Marx is acting</span>&nbsp;</div>
+  <button class="btn btn--ghost player-only">Open full sheet ↗</button>
+  <!-- gm -->
+  <div class="gm-turn gm-only hidden">
+    <div class="round"><span class="muted small">Round</span><b>3</b>&nbsp;</div>
+    <button class="btn btn--ghost btn--sm" title="Previous turn">◀ Prev</button>
+    <button class="btn btn--sm">Next turn ▶</button>
+    <button class="btn btn--ghost btn--sm" id="newRound" title="Start round 4: refills everyone's actions">New round ⟳</button>
+    <button class="btn btn--danger btn--sm">End encounter</button>
+  </div>
+</header>
+
+<!-- Initiative: one row, full width, always visible -->
+<section class="init" aria-label="Initiative">
+  <div class="init__label"><h2>Initiative</h2><span class="small muted">8 in order</span></div>
+  <div class="tok tok--done"><span class="tok__init">19</span><span class="tok__face">GT</span><div><div class="tok__name">Goblin Taskmaster</div><div class="tok__sub"><span class="gm-only hidden">22/30</span><span class="player-only">Hurt</span><span class="pips"><i class="off"></i><i class="off"></i></span></div><div class="minibar minibar--hurt"><i style="width:73%"></i></div></div></div>
+  <div class="tok tok--active"><span class="tok__init">17</span><span class="tok__face">M</span><div><div class="tok__name" data-n="Marx">Marx</div><div class="tok__sub">23/23 <span class="pips"><i></i><i class="off"></i><i class="off"></i></span></div><div class="minibar"><i style="width:100%"></i></div></div><span class="tok__now">Acting</span></div>
+  <div class="tok tok--monster"><span class="tok__init">15</span><span class="tok__face">GA</span><div><div class="tok__name">Goblin A</div><div class="tok__sub"><span class="gm-only hidden">4/15</span><span class="player-only">Bloodied</span></div><div class="minibar minibar--low"><i style="width:27%"></i></div></div></div>
+  <div class="tok tok--me"><span class="tok__init">14</span><span class="tok__face">I</span><div><div class="tok__name" data-n="Iriel">Iriel <span class="muted small player-only">(you)</span></div><div class="tok__sub">30/30 +6 <span class="pips"><i></i><i></i><i></i></span></div><div class="minibar"><i style="width:100%"></i></div></div><span class="tok__now tok__next player-only">Next</span></div>
+  <div class="tok tok--monster"><span class="tok__init">12</span><span class="tok__face">GB</span><div><div class="tok__name">Goblin B</div><div class="tok__sub"><span class="gm-only hidden">15/15</span><span class="player-only">Unhurt</span></div><div class="minibar"><i style="width:100%"></i></div></div></div>
+  <div class="tok"><span class="tok__init">10</span><span class="tok__face">B</span><div><div class="tok__name" data-n="Brannoc">Brannoc</div><div class="tok__sub">18/41 <span class="pips"><i></i><i></i><i></i></span></div><div class="minibar minibar--hurt"><i style="width:44%"></i></div></div></div>
+  <div class="tok"><span class="tok__init">8</span><span class="tok__face">S</span><div><div class="tok__name" data-n="Sela">Sela</div><div class="tok__sub">27/32 <span class="pips"><i></i><i></i><i></i></span></div><div class="minibar"><i style="width:84%"></i></div></div></div>
+  <div class="tok tok--monster"><span class="tok__init">6</span><span class="tok__face">GR</span><div><div class="tok__name">Goblin Ratrider</div><div class="tok__sub"><span class="gm-only hidden">30/30</span><span class="player-only">Unhurt</span></div><div class="minibar"><i style="width:100%"></i></div></div></div>
+</section>
+
+<!-- ================= PLAYER ================= -->
+<main class="main player-only" id="player">
+  <!-- Left: my hero, fully controllable -->
+  <div class="col">
+    <section class="panel panel--grow">
+      <div class="scroll">
+        <div class="hero">
+          <div class="hero__face">I</div>
+          <div style="flex:1">
+            <div class="hero__name">Iriel</div>
+            <div class="small muted">Human Mage · Invoker of Control · Lvl 5</div>
+          </div>
+        </div>
+        <div class="hpbox">
+          <div class="sect" style="margin-top:0"><span>Hit points</span><span>drag the bar or type</span></div>
+          <div class="hpbar"><div class="hpbar__fill" style="width:100%"></div><div class="hpbar__temp" style="width:20%"></div><div class="hpbar__txt">30 / 30 · +6 temp</div></div>
+          <div class="hpctl"><button class="sq">−</button><input value="" placeholder="amount"><button class="sq">+</button><button class="btn btn--ghost btn--sm" title="Taking a critical hit">Crit</button></div>
+          <div class="wounds">Wounds <i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><b>2</b><span>Armor</span></div>
+          <div class="tile"><b>6</b><span>Speed</span></div>
+          <div class="tile"><b>+1</b><span>Init</span></div>
+          <div class="tile"><b>6</b><span>Hit dice</span></div>
+        </div>
+        <div class="mana">
+          <div class="mana__row"><span>Mana</span><span><b>13</b> / 14</span></div>
+          <div class="mana__gems"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="off"></i></div>
+        </div>
+        <div class="sect"><span>Conditions</span><button class="btn btn--ghost btn--sm" style="padding:0 7px">+ Add</button></div>
+        <div class="chips"><span class="chip chip--frost" title="Ends at the start of your next turn">❄ Frost Shield · +6 temp</span></div>
+        <div class="sect"><span>Stats &amp; saves</span></div>
+        <div class="stats">
+          <div><b>+0</b><span class="dis">STR ▼</span></div><div><b>+0</b>DEX</div><div><b>+3</b><span class="adv">INT ▲</span></div><div><b>+2</b>WIL</div>
+        </div>
+        <div class="sect"><span>Rest</span></div>
+        <div style="display:flex;gap:6px"><button class="btn btn--ghost btn--sm" style="flex:1">Field rest</button><button class="btn btn--ghost btn--sm" style="flex:1">Safe rest</button></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Centre: turn + every action -->
+  <div class="col">
+    <div class="turn" id="turnBar">
+      <div>
+        <div class="turn__title" id="turnTitle">Your turn</div>
+        <div class="small muted" id="turnSub">Round 3 · Rushed: next attack +1 disadvantage</div>
+      </div>
+      <div class="bigpips" id="pips" title="Actions left (click to spend or refund)"><button></button><button class="off"></button><button class="off"></button></div>
+      <span class="sp"></span>
+      <div class="small muted" style="text-align:right">Reaction<br><b style="color:var(--text)">Ready</b></div>
+      <button class="btn" id="turnBtn">End turn</button>
+    </div>
+
+    <section class="panel panel--grow">
+      <div class="filters" id="filters" style="margin-bottom:10px">
+        <button class="on" data-f="ready">Ready now <span class="count" id="readyCount"></span></button><button data-f="all">All</button><button data-f="attack">Attacks</button><button data-f="spell">Spells</button><button data-f="react">Reactions</button><button data-f="ability">Abilities</button>
+        <span class="sp"></span><input class="search" id="search" placeholder="Find an action…">
+      </div>
+      <div class="scroll"><div class="groups" id="groups"></div></div>
+      <div class="result" style="margin-top:10px"><span>Last roll</span><b>11</b><span>Zap on Goblin A: 2d8 (5, 6) · posted to party chat</span></div>
+    </section>
+  </div>
+
+  <!-- Right: party + chat -->
+  <div class="col">
+    <section class="panel">
+      <div class="panel__head"><h2>Party</h2><span class="small muted">4 heroes</span></div>
+      <div class="party">
+        <div class="pc pc--active" role="button" tabindex="0"><div class="pc__face">M</div><div><div class="pc__name" data-n="Marx">Marx <span class="tag">Acting</span></div><div class="pc__sub">Shadowmancer 3 · 1 minion</div><div class="pc__hp"><i style="width:100%"></i></div></div><div class="pc__right"><b>23/23</b><br>Armor 4</div></div>
+        <div class="pc" role="button" tabindex="0"><div class="pc__face">B</div><div><div class="pc__name" data-n="Brannoc">Brannoc <span class="tag tag--rage">Raging</span></div><div class="pc__sub">Berserker 5 · Wounds 1</div><div class="pc__hp"><i style="width:44%;background:var(--ember)"></i></div></div><div class="pc__right"><b>18/41</b><br>Armor 3</div></div>
+        <div class="pc" role="button" tabindex="0"><div class="pc__face">S</div><div><div class="pc__name" data-n="Sela">Sela</div><div class="pc__sub">Songweaver 5 · Prone</div><div class="pc__hp"><i style="width:84%"></i></div></div><div class="pc__right"><b>27/32</b><br>Armor 2</div></div>
+      </div>
+    </section>
+    <section class="panel panel--grow">
+      <div class="panel__head"><div class="ptabs"><button class="on" data-pt="chat">Chat</button><button data-pt="lore">✦ Lore Master</button></div><label class="small muted chat-only"><input type="checkbox" checked> Battle log</label></div>
+      <div class="chat-body" style="flex:1;min-height:0;display:flex;flex-direction:column"><div class="scroll">
+        <div class="chat__log">
+          <div class="msg"><b>GM</b><time>20:41</time><p>The taskmaster bellows and two more goblins scramble over the barricade.</p></div>
+          <div class="msg msg--roll">Brannoc · Cleave → 14 damage to Goblin A</div>
+          <div class="msg"><b>Brannoc</b><time>20:43</time><p>Somebody finish that one, I'm out of actions.</p></div>
+          <div class="msg msg--roll">Iriel · Zap → 11 damage to Goblin A</div>
+          <div class="msg msg--secret"><b>GM → you</b><time>20:44</time><p>You notice the ratrider's saddle is soaked in lamp oil.</p></div>
+          <div class="msg msg--roll">Marx · Command minions → 4 damage</div>
+        </div>
+      </div>
+      <div class="chat__in"><input placeholder="Message the party…"><button class="btn btn--ghost btn--sm">To ▾</button></div></div>
+      <div class="lore-body hidden" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <div class="small muted">Rules and your hero, from the Nimble core rules</div>
+        <div class="lore__q"><button>What can I do with 2 actions left?</button><button>Does Arc Lightning hit an ally who's closest?</button><button>How does Rushed disadvantage work?</button></div>
+        <div class="scroll"><div class="lore__a"><b>You</b>: Can I cast Frost Shield when it's not my turn?<br><br><b>Lore Master</b>: Yes. Frost Shield is a Reaction: when you're attacked, spend 1 mana and your reaction to gain 6 temp HP (2×INT) and Defend for free. The ice melts at the start of your next turn.</div></div>
+        <div class="chat__in"><input placeholder="Ask about rules or your hero…"><button class="btn btn--sm">Ask</button></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ================= GM ================= -->
+<main class="main hidden" id="gm" style="grid-template-columns: 340px minmax(0,1fr) 340px;">
+  <!-- Left: selected stat block -->
+  <div class="col">
+    <section class="panel panel--grow statblock">
+      <div class="scroll">
+        <div class="small muted" style="margin-bottom:4px">Selected · click a creature to switch</div>
+        <input class="rename" value="Goblin Taskmaster" aria-label="Name">
+        <div class="small muted" style="margin-top:4px">Small Humanoid · Level 2 · GM's Guide p. 33</div>
+        <div class="hpbox">
+          <div class="hpbar"><div class="hpbar__fill" style="width:73%;background:linear-gradient(90deg,#9c3b2c,var(--danger))"></div><div class="hpbar__txt">22 / 30</div></div>
+          <div class="hpctl"><button class="sq">−</button><input placeholder="amount"><button class="sq">+</button><button class="btn btn--ghost btn--sm">Set</button></div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><b>M</b><span>Armor</span></div><div class="tile"><b>6</b><span>Speed</span></div><div class="tile"><b>19</b><span>Init</span></div><div class="tile"><b>0/2</b><span>Actions</span></div>
+        </div>
+        <div class="sect"><span>Conditions</span><button class="btn btn--ghost btn--sm" style="padding:0 7px">+ Add</button></div>
+        <div class="chips"><span class="chip chip--bad">Smoldering</span></div>
+        <hr class="sb__hr">
+        <div class="sect" style="margin-top:0"><span>Traits</span></div>
+        <div class="sb__entry"><b>Haha, Missed Me!</b> Whenever an attack misses you, deal 1 psychic damage in return.</div>
+        <div class="sb__entry"><b>Meat Shield.</b> Can force other goblins to Interpose for him.</div>
+        <div class="sect"><span>Actions</span></div>
+        <div class="sb__entry"><b>Stab.</b> 1d6+2 (or Shoot, Range 8). Then: <button class="btn btn--sm">Roll 1d6+2</button></div>
+        <div class="sb__entry"><b>Get in here!</b> Call a goblin minion to the fight. <button class="btn btn--ghost btn--sm">+ Add minion</button></div>
+        <div class="sect"><span>Notes</span></div>
+        <div class="sb__entry muted">Flees when below 10 HP. Knows where the cage key is.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Centre: encounter -->
+  <div class="col">
+    <div class="turn">
+      <div><div class="turn__title">Marx is acting</div><div class="small muted">Round 3 · Up next: Goblin A, then Iriel</div></div>
+      <span class="sp"></span>
+      <button class="btn btn--ghost">+ Add creatures</button>
+      <button class="btn">Next turn ▶</button>
+    </div>
+    <section class="panel panel--grow">
+      <div class="filters" style="margin-bottom:10px">
+        <h2 style="margin-right:6px">Encounter</h2><button class="on">Enemies (5)</button><button>Allies &amp; summons (1)</button><span class="sp"></span>
+        <span class="legend">Hover a creature for its stat block · type a number and press − or +</span>
+      </div>
+      <div class="scroll">
+        <div class="monsters">
+          <div class="mon mon--sel" data-tip="Goblin Taskmaster|Level 2 · Medium armor · Speed 6|Stab 1d6+2 (or Shoot, Range 8). Then: Get in here! — call a goblin minion. Meat Shield: other goblins Interpose for him.|Selected">
+            <div class="mon__top"><span class="tok__face" style="width:30px;height:30px;font-size:11px;background:#3a1d17;color:#f7c9bc">GT</span><span class="mon__name">Goblin Taskmaster <button class="pen" title="Rename">✎</button></span><span class="small muted">19</span></div>
+            <div class="mon__hp"><div class="mon__bar"><i style="width:73%"></i></div><span class="mon__num">22/30</span></div>
+            <div class="quick"><button>−5</button><button>−1</button><input placeholder="±"><button>+1</button><button>+5</button></div>
+            <div class="mon__foot"><span>Armor M · Smoldering</span><span class="pips" title="Actions"><i class="off"></i><i class="off"></i></span></div>
+          </div>
+          <div class="mon" data-tip="Goblin A|Level 1/3 · No armor · Speed 6|Stab 1d6+2 (or Shoot, Range 8). Haha, Missed Me!|Click to select">
+            <div class="mon__top"><span class="tok__face" style="width:30px;height:30px;font-size:11px;background:#3a1d17;color:#f7c9bc">GA</span><span class="mon__name">Goblin A <button class="pen" title="Rename">✎</button></span><span class="small muted">15</span></div>
+            <div class="mon__hp"><div class="mon__bar"><i style="width:27%"></i></div><span class="mon__num">4/15</span></div>
+            <div class="quick"><button>−5</button><button>−1</button><input placeholder="±"><button>+1</button><button>+5</button></div>
+            <div class="mon__foot"><span>Armor — · Bloodied</span><span class="pips"><i></i><i></i></span></div>
+          </div>
+          <div class="mon" data-tip="Goblin B|Level 1/3 · No armor · Speed 6|Stab 1d6+2 (or Shoot, Range 8). Haha, Missed Me!|Click to select">
+            <div class="mon__top"><span class="tok__face" style="width:30px;height:30px;font-size:11px;background:#3a1d17;color:#f7c9bc">GB</span><span class="mon__name">Snaggletooth <button class="pen" title="Rename">✎</button></span><span class="small muted">12</span></div>
+            <div class="mon__hp"><div class="mon__bar"><i style="width:100%"></i></div><span class="mon__num">15/15</span></div>
+            <div class="quick"><button>−5</button><button>−1</button><input placeholder="±"><button>+1</button><button>+5</button></div>
+            <div class="mon__foot"><span>Goblin B, renamed</span><span class="pips"><i></i><i></i></span></div>
+          </div>
+          <div class="mon" data-tip="Goblin Ratrider|Level 2 · Speed 10|Bite &amp; Stab (2×) 1d6+2, on crit Prone. CHAAARGE!: 4+ spaces straight, attack with advantage once.|Click to select">
+            <div class="mon__top"><span class="tok__face" style="width:30px;height:30px;font-size:11px;background:#3a1d17;color:#f7c9bc">GR</span><span class="mon__name">Goblin Ratrider <button class="pen" title="Rename">✎</button></span><span class="small muted">6</span></div>
+            <div class="mon__hp"><div class="mon__bar"><i style="width:100%"></i></div><span class="mon__num">30/30</span></div>
+            <div class="quick"><button>−5</button><button>−1</button><input placeholder="±"><button>+1</button><button>+5</button></div>
+            <div class="mon__foot"><span>Speed 10</span><span class="pips"><i></i><i></i></span></div>
+          </div>
+          <div class="mon mon--dead" data-tip="Goblin Minion|Minion · 1/4|Stab 1d6 (minion rules). Dies to any damage.|Slain">
+            <div class="mon__top"><span class="tok__face" style="width:30px;height:30px;font-size:11px">☠</span><span class="mon__name">Goblin Minion</span><span class="small muted">—</span></div>
+            <div class="mon__hp"><div class="mon__bar"><i style="width:0"></i></div><span class="mon__num">Slain</span></div>
+            <div class="mon__foot"><span>Remove · Revive</span><span></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Right: party (full numbers) + chat -->
+  <div class="col">
+    <section class="panel">
+      <div class="panel__head"><h2>Party</h2><span class="small muted">click to view sheet</span></div>
+      <div class="party">
+        <div class="pc pc--active" role="button" tabindex="0"><div class="pc__face">M</div><div><div class="pc__name" data-n="Marx">Marx <span class="tag">Acting</span></div><div class="pc__sub">Shadowmancer 3 · <span class="pips gmpips"><i></i><i class="off"></i><i class="off"></i></span></div><div class="pc__hp"><i style="width:100%"></i></div></div><div class="pc__right"><b>23/23</b><br>Armor 4</div></div>
+        <div class="pc" role="button" tabindex="0"><div class="pc__face">I</div><div><div class="pc__name" data-n="Iriel">Iriel</div><div class="pc__sub">Mage 5 · mana 13/14 · <span class="pips gmpips"><i></i><i></i><i></i></span></div><div class="pc__hp"><i style="width:100%"></i></div></div><div class="pc__right"><b>30/30</b><br>+6 temp</div></div>
+        <div class="pc" role="button" tabindex="0"><div class="pc__face">B</div><div><div class="pc__name" data-n="Brannoc">Brannoc <span class="tag tag--rage">Raging</span></div><div class="pc__sub">Berserker 5 · <span class="pips gmpips"><i class="off"></i><i class="off"></i><i class="off"></i></span></div><div class="pc__hp"><i style="width:44%;background:var(--ember)"></i></div></div><div class="pc__right"><b>18/41</b><br>Wounds 1</div></div>
+        <div class="pc" role="button" tabindex="0"><div class="pc__face">S</div><div><div class="pc__name" data-n="Sela">Sela</div><div class="pc__sub">Songweaver 5 · <span class="pips gmpips"><i></i><i></i><i class="off"></i></span></div><div class="pc__hp"><i style="width:84%"></i></div></div><div class="pc__right"><b>27/32</b><br>Prone</div></div>
+      </div>
+    </section>
+    <section class="panel panel--grow">
+      <div class="panel__head"><div class="ptabs"><button class="on" data-pt="chat">Chat</button><button data-pt="lore">✦ Lore Master</button></div><label class="small muted chat-only"><input type="checkbox" checked> Battle log</label></div>
+      <div class="chat-body" style="flex:1;min-height:0;display:flex;flex-direction:column"><div class="scroll">
+        <div class="chat__log">
+          <div class="msg msg--roll">Brannoc · Cleave → 14 damage to Goblin A</div>
+          <div class="msg msg--roll">Iriel · Zap → 11 damage to Goblin A</div>
+          <div class="msg msg--roll">Marx · Command minions → 4 damage</div>
+          <div class="msg"><b>Sela</b><time>20:45</time><p>Can I stand up and still cast?</p></div>
+        </div>
+      </div>
+      <div class="chat__in"><input placeholder="Message the party, or whisper…"><button class="btn btn--ghost btn--sm">To ▾</button></div></div>
+      <div class="lore-body hidden" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <div class="small muted">Rules and your hero, from the Nimble core rules</div>
+        <div class="lore__q"><button>What can I do with 2 actions left?</button><button>Does Arc Lightning hit an ally who's closest?</button><button>How does Rushed disadvantage work?</button></div>
+        <div class="scroll"><div class="lore__a"><b>You</b>: Can I cast Frost Shield when it's not my turn?<br><br><b>Lore Master</b>: Yes. Frost Shield is a Reaction: when you're attacked, spend 1 mana and your reaction to gain 6 temp HP (2×INT) and Defend for free. The ice melts at the start of your next turn.</div></div>
+        <div class="chat__in"><input placeholder="Ask about rules or your hero…"><button class="btn btn--sm">Ask</button></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<dialog class="sheet" id="sheet"><div style="position:relative">
+  <button class="btn btn--ghost btn--sm x" id="sheetX" aria-label="Close">✕</button>
+  <div class="sh">
+    <div class="sh__side" id="shSide"></div>
+    <div class="sh__main" id="shMain"></div>
+  </div>
+  <div class="sh__foot"><span class="small muted" id="shNote"></span><div style="display:flex;gap:6px"><button class="btn btn--ghost btn--sm">Whisper</button><button class="btn btn--sm" id="shOpen">Open full sheet ↗</button></div></div>
+</div></dialog>
+<div class="tip" id="tip"><h4></h4><div class="tip__sub"></div><p></p><div class="tip__keys"></div></div>
+
+<script>
+// ---------- Iriel's actions as data, so the filters can work on them ----------
+// cat: attack (deals damage) · support · react · ability   kind: weapon | spell | ability | react
+// when: 'turn' (on your turn) · 'any' (also off-turn) · 'off' (reaction) · needs: condition
+const ACTS = [
+  { n: 'Staff', el: 'wpn', kind: 'weapon', cat: 'attack', a: 1, dmg: '1d8', meta: 'melee', sub: 'Weapon · Melee', txt: '1d8 bludgeoning. 2-handed.' },
+  { n: 'Flame Dart', el: 'fire', kind: 'spell', tier: 0, cat: 'attack', a: 1, dmg: '1d10', meta: 'R8', sub: 'Fire · Cantrip · Single target', txt: 'Range 8. Damage 1d10. On crit: Smoldering.' },
+  { n: 'Ice Lance', el: 'ice', kind: 'spell', tier: 0, cat: 'attack', a: 1, dmg: '1d6', meta: 'R12 · Slowed', sub: 'Ice · Cantrip · Single target', txt: 'Range 12. Damage 1d6 cold or piercing. On hit: Slowed.' },
+  { n: 'Zap', el: 'light', kind: 'spell', tier: 0, cat: 'attack', a: 1, dmg: '2d8', meta: 'R12', sub: 'Lightning · Cantrip · Single target', txt: 'Range 12. Damage 2d8. On miss: the lightning strikes you instead.' },
+  { n: 'Snowblind', el: 'ice', kind: 'spell', tier: 0, cat: 'attack', a: 1, dmg: '1d6', meta: 'Reach 1', sub: 'Ice · Cantrip · Single target', txt: 'Reach 1. Damage 1d6. On hit: Blinded until the end of their next turn.' },
+  { n: 'Overload', el: 'light', kind: 'spell', tier: 0, cat: 'attack', a: 1, dmg: '2d8', meta: 'Reach 2 · AoE', needs: 'Needs Charged', sub: 'Lightning · Cantrip · AoE', txt: 'Castable only while Charged, ending the condition. Reach 2. Damage 2d8 to others within Reach.' },
+  { n: "Heart's Fire", el: 'fire', kind: 'spell', tier: 0, cat: 'support', a: 1, when: 'any', offMana: 1, meta: 'ally +1 action', sub: 'Fire · Cantrip · Single target', txt: 'Range 4. Give an ally within Range an extra action. Spend 1 mana to cast this when it is not your turn.' },
+  { n: 'Arc Lightning', el: 'light', kind: 'spell', tier: 1, cat: 'attack', a: 2, m: 1, dmg: '3d8', meta: 'R12 · chains', sub: 'Lightning · Tier 1 · Single target', txt: "Range 12. Damage 3d8. The bolt also hits the next closest creature (an ally if they're closest!). On miss: strikes you. Upcast: +4 damage." },
+  { n: 'Ignite', el: 'fire', kind: 'spell', tier: 1, cat: 'attack', a: 2, m: 1, dmg: '4d10', meta: 'Smoldering target', sub: 'Fire · Tier 1 · Single target', txt: 'Range 8. Damage 4d10 to a Smoldering target, ending the condition on hit. Upcast: +10 damage.' },
+  { n: 'Shatter', el: 'ice', kind: 'spell', tier: 2, cat: 'attack', a: 2, m: 2, dmg: '3d6', meta: 'crit +20', sub: 'Ice · Tier 2 · Single target', txt: 'Range 12. Damage 3d6. A max die against a Hampered target counts as a crit. On crit: +20 damage.' },
+  { n: 'Enchant Weapon', el: 'fire', kind: 'spell', tier: 2, cat: 'support', a: 1, m: 2, meta: '+3 dmg · conc.', sub: 'Fire · Tier 2 · Concentration', txt: 'A weapon you touch deals +INT (3) damage and inflicts Smoldering on crit, up to 1 minute.' },
+  { n: 'Demand Control', kind: 'ability', cat: 'support', a: 0, tag: '1/round', meta: 'free · 2 of 4 used', sub: 'Invoker of Control · 1/round', txt: "On your turn, choose 1 option from the Control Table you haven't chosen yet: I INSIST (cast a cantrip for free, ignoring disadvantage; it cannot miss), ELEMENTAL AFFLICTION, …" },
+  { n: 'Echo Casting', kind: 'ability', cat: 'support', a: 0, mtxt: '+1 mana', meta: 'Spellshaper · next spell', sub: 'Spellshaper · 1/turn', txt: 'Spend extra mana to cast the same tier 1+ spell again on another target.' },
+  { n: 'Dim. Compression', kind: 'ability', cat: 'support', a: 0, mtxt: '+1 mana', meta: 'Spellshaper · next spell', sub: 'Spellshaper · 1/turn', txt: "Spend extra mana to change a spell's Range into Reach, or Reach into Range." },
+  { n: 'Defend', kind: 'react', cat: 'react', when: 'off', meta: '−2 damage', sub: 'Reaction', txt: 'When attacked, reduce the damage by your Armor (2).' },
+  { n: 'Interpose', kind: 'react', cat: 'react', when: 'off', meta: 'take an ally’s hit', sub: 'Reaction', txt: 'When an adjacent ally is attacked, take the hit instead.' },
+  { n: 'Opportunity', kind: 'react', cat: 'react', when: 'off', dmg: '1d8', meta: 'Staff · +1 dis', sub: 'Reaction', txt: 'When an enemy leaves your reach, attack with a melee weapon (+1 disadvantage).' },
+  { n: 'Frost Shield', el: 'ice', kind: 'react', tier: 1, cat: 'react', when: 'off', m: 1, meta: '+6 temp, Defend', sub: 'Ice · Tier 1 · Reaction', txt: 'When attacked, gain 2×INT (6) temp HP and Defend for free. The ice melts at the start of your next turn.' },
+  { n: 'Alacrity', el: 'light', kind: 'react', tier: 2, cat: 'react', when: 'off', m: 2, meta: 'Defend, teleport 4', sub: 'Lightning · Tier 2 · Reaction', txt: 'When attacked, Defend for free. After damage, gain Charged then teleport up to 4 spaces.' },
+]
+const state = { filter: 'ready', onTurn: true, actions: 1, mana: 13, q: '' }
+
+/** Why an action can't be used right now, or '' when it can. */
+function why(x) {
+  if (x.needs) return x.needs
+  if (x.kind === 'react') return ''               // reactions stay ready all round
+  if (!state.onTurn) return x.when === 'any' ? (state.mana >= (x.offMana || 0) ? '' : 'Not enough mana') : 'Not your turn'
+  if ((x.a || 0) > state.actions) return `Needs ${x.a} actions`
+  if ((x.m || 0) > state.mana) return 'Not enough mana'
+  return ''
+}
+const pip = (n) => n ? `<span class="cost-a">${'<i></i>'.repeat(n)}</span>` : ''
+function tile(x) {
+  const w = why(x)
+  const cost = x.m ? `<span class="cost-m">${x.m}</span>` : x.mtxt ? `<span class="cost-m">${x.mtxt}</span>` : x.tag ? `<span class="act__tag">${x.tag}</span>` : ''
+  const offCost = !state.onTurn && x.offMana ? `<span class="cost-m">${x.offMana} off-turn</span>` : ''
+  const keys = [x.a ? `${x.a} action${x.a > 1 ? 's' : ''}` : x.kind === 'react' ? 'Spends your reaction' : 'No action', x.m ? `${x.m} mana` : '', w ? `· ${w}` : '· Click to use'].filter(Boolean).join(' · ')
+  return `<button class="act ${x.kind === 'react' ? 'act--react' : ''}" ${w ? 'disabled' : ''} data-tip="${x.n}|${x.sub}|${x.txt}|${keys}">
+    <div class="act__top"><span class="act__name">${x.el ? `<span class="el el--${x.el}"></span> ` : ''}${x.n}</span>${offCost || cost || pip(x.a)}</div>
+    <div class="act__meta">${x.dmg ? `<span class="dmg">${x.dmg}</span>` : ''}<span>${x.meta}</span></div>
+    ${w && state.filter !== 'ready' ? `<span class="act__why">${w}</span>` : ''}</button>`
+}
+function group(title, list, extra = '', wide = false) {
+  if (!list.length) return ''
+  return `<div class="group ${wide ? 'group--wide' : ''}"><h3>${title} ${extra}</h3><div class="acts">${list.map(tile).join('')}</div></div>`
+}
+function render() {
+  const q = state.q.toLowerCase()
+  const pool = ACTS.filter((x) => !q || (x.n + x.txt).toLowerCase().includes(q))
+  const ready = pool.filter((x) => !why(x))
+  const tiers = (list) => [
+    group('Cantrips', list.filter((x) => x.tier === 0), '<span class="cost">free</span>', true),
+    group('Tier 1', list.filter((x) => x.tier === 1), '<span class="cost">1 mana</span>'),
+    group('Tier 2', list.filter((x) => x.tier === 2), '<span class="cost">2 mana</span>'),
+  ].join('')
+  let html = ''
+  const f = state.filter
+  if (f === 'ready') {
+    const note = state.onTurn
+      ? `${state.actions} action${state.actions === 1 ? '' : 's'} left · ${state.mana} mana · hiding ${pool.length - ready.length} you can't use now`
+      : `Not your turn · only reactions and off-turn options · hiding ${pool.length - ready.length}`
+    html = `<div class="ready-note">${note}</div>` +
+      group('Attack', ready.filter((x) => x.cat === 'attack'), '<span class="small" style="text-transform:none;letter-spacing:0">weapons, damage spells, summons</span>', true) +
+      group(state.onTurn ? 'Boost &amp; support' : 'Off-turn', ready.filter((x) => x.cat === 'support')) +
+      group('Reactions', ready.filter((x) => x.cat === 'react'), '<span class="small" style="text-transform:none;letter-spacing:0">· 1 per round</span>')
+    if (!ready.length) html += '<div class="empty">Nothing you can do right now.</div>'
+  } else if (f === 'all') {
+    html = group('Weapons', pool.filter((x) => x.kind === 'weapon')) + group('Class abilities', pool.filter((x) => x.kind === 'ability')) +
+      group('Reactions', pool.filter((x) => x.kind === 'react'), '', true) + tiers(pool.filter((x) => x.kind === 'spell'))
+  } else if (f === 'attack') html = group('Attacks', pool.filter((x) => x.cat === 'attack'), '', true)
+  else if (f === 'spell') html = tiers(pool.filter((x) => x.kind === 'spell' || (x.kind === 'react' && x.tier != null)))
+  else if (f === 'react') html = group('Reactions', pool.filter((x) => x.kind === 'react'), '', true)
+  else html = group('Class abilities', pool.filter((x) => x.kind === 'ability'), '', true)
+  document.getElementById('groups').innerHTML = html
+  document.getElementById('readyCount').textContent = ACTS.filter((x) => !why(x)).length
+  bindTips(document.getElementById('groups'))
+}
+document.querySelectorAll('#filters [data-f]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#filters [data-f]').forEach((x) => x.classList.toggle('on', x === b))
+  state.filter = b.dataset.f; render()
+}))
+document.getElementById('search').addEventListener('input', (e) => { state.q = e.target.value; render() })
+
+// Action pips: click to spend / refund; the Ready list follows
+function syncPips() {
+  const pips = [...document.querySelectorAll('#pips button')]
+  state.actions = pips.filter((p) => !p.classList.contains('off')).length
+  if (state.onTurn) document.getElementById('turnSub').textContent = `Round 3 · ${state.actions} action${state.actions === 1 ? '' : 's'} left · Rushed: next attack +1 disadvantage`
+  render()
+}
+document.querySelectorAll('#pips button').forEach((p) => p.addEventListener('click', () => { p.classList.toggle('off'); syncPips() }))
+
+// Mockup switcher
+document.querySelectorAll('.mock-switch button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.mock-switch button').forEach((x) => x.setAttribute('aria-pressed', x === b))
+  const v = b.dataset.view, gm = v === 'gm'
+  document.body.dataset.view = v
+  document.querySelectorAll('.gm-only').forEach((e) => e.classList.toggle('hidden', !gm))
+  document.querySelectorAll('.player-only').forEach((e) => e.classList.toggle('hidden', gm))
+  document.getElementById('player').classList.toggle('hidden', gm)
+  document.getElementById('gm').classList.toggle('hidden', !gm)
+  const wait = v === 'wait'
+  state.onTurn = !wait
+  document.getElementById('turnBar').classList.toggle('turn--wait', wait)
+  document.getElementById('turnTitle').textContent = wait ? 'Marx is acting · you are next' : 'Your turn'
+  document.getElementById('turnBtn').textContent = wait ? 'Start turn' : 'End turn'
+  document.getElementById('turnBtn').disabled = wait
+  if (wait) document.getElementById('turnSub').textContent = 'Off-turn: attacks are locked, reactions stay ready'
+  syncPips()
+}))
+
+// Tooltips
+const tip = document.getElementById('tip')
+function bindTips(root) {
+  root.querySelectorAll('[data-tip]').forEach((el) => {
+    el.addEventListener('mouseenter', () => {
+      const [t, s, p, k] = el.dataset.tip.split('|')
+      tip.querySelector('h4').textContent = t; tip.querySelector('.tip__sub').textContent = s
+      tip.querySelector('p').textContent = p; tip.querySelector('.tip__keys').textContent = k || ''
+      const r = el.getBoundingClientRect()
+      let x = r.left, y = r.bottom + 6
+      if (x + 300 > innerWidth - 10) x = innerWidth - 310
+      tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.classList.add('show')
+      const th = tip.offsetHeight; if (y + th > innerHeight - 10) tip.style.top = (r.top - th - 6) + 'px'
+    })
+    el.addEventListener('mouseleave', () => tip.classList.remove('show'))
+  })
+}
+bindTips(document.getElementById('gm'))
+syncPips()
+
+// ---------- Party member stats modal ----------
+const PCS = {
+  Marx: { face: 'M', cls: 'Elf Shadowmancer · Reaver · Lvl 3', hp: 23, max: 23, temp: 0, wounds: 0, armor: 4, speed: 7, init: '+2 (adv)', stats: { STR: 0, DEX: 2, INT: 2, WIL: -1 }, adv: 'INT', dis: 'WIL',
+    conds: [], skills: [['Arcana', 4], ['Stealth', 4], ['Insight', 0], ['Perception', -1]], res: [['Pilfered Power', '0 uses'], ['Shadow Exploit', '1/encounter']],
+    summons: ['Shadow minion A · 1/1 HP'], abil: [['Conduit of Shadow', 'You and your minions attack separately: no Rushed penalty for commanding them.'], ['Gaze of Two Minds', 'See through a minion’s eyes.']] },
+  Iriel: { face: 'I', cls: 'Human Mage · Invoker of Control · Lvl 5', hp: 30, max: 30, temp: 6, wounds: 0, armor: 2, speed: 6, init: '+1', stats: { STR: 0, DEX: 0, INT: 3, WIL: 2 }, adv: 'INT', dis: 'STR',
+    conds: ['Frost Shield (+6 temp)'], skills: [['Arcana', 4], ['Lore', 4], ['Might', 3], ['Insight', 3]], res: [['Mana', '13 / 14']], summons: [],
+    abil: [['Demand Control', '1/round: pick from the Control Table.'], ['Echo Casting', 'Spend extra mana to cast again on another target.']] },
+  Brannoc: { face: 'B', cls: 'Dwarf Berserker · Lvl 5', hp: 18, max: 41, temp: 0, wounds: 1, armor: 3, speed: 6, init: '+1', stats: { STR: 3, DEX: 1, INT: -1, WIL: 1 }, adv: 'STR', dis: 'INT',
+    conds: ['Raging'], skills: [['Might', 5], ['Perception', 2], ['Naturecraft', 1], ['Lore', -1]], res: [['Fury Dice', '3 × d6']], summons: [],
+    abil: [['Rage', 'Bonus damage with Fury Dice while raging.'], ['Thick Skin', 'Ignore the first Wound each encounter.']] },
+  Sela: { face: 'S', cls: 'Half-elf Songweaver · Lvl 5', hp: 27, max: 32, temp: 0, wounds: 0, armor: 2, speed: 6, init: '+2', stats: { STR: -1, DEX: 2, INT: 1, WIL: 3 }, adv: 'WIL', dis: 'STR',
+    conds: ['Prone'], skills: [['Influence', 5], ['Insight', 4], ['Finesse', 3], ['Lore', 2]], res: [['Mana', '9 / 16'], ['Songs', '2 left']], summons: [],
+    abil: [['Vicious Mockery', 'Cantrip: psychic damage and disadvantage.'], ['Inspire', 'Give an ally advantage on their next roll.']] },
+}
+const sign = (n) => (n >= 0 ? '+' : '') + n
+function openSheet(name) {
+  const c = PCS[name]; if (!c) return
+  const gm = document.body.dataset.view === 'gm'
+  const mine = name === 'Iriel' && !gm
+  const pct = Math.round((c.hp / c.max) * 100)
+  document.getElementById('shSide').innerHTML = `
+    <div class="sh__face">${c.face}</div><div class="sh__name">${name}</div><div class="small muted">${c.cls}</div>
+    <div class="hpbox"><div class="hpbar"><div class="hpbar__fill" style="width:${pct}%"></div>${c.temp ? `<div class="hpbar__temp" style="width:${Math.round(c.temp / c.max * 100)}%"></div>` : ''}<div class="hpbar__txt">${c.hp} / ${c.max}${c.temp ? ` · +${c.temp} temp` : ''}</div></div>
+    ${gm || mine ? '<div class="hpctl"><button class="sq">−</button><input placeholder="amount"><button class="sq">+</button><button class="btn btn--ghost btn--sm">Crit</button></div>' : ''}
+    <div class="wounds">Wounds ${Array.from({ length: 6 }, (_, i) => `<i class="${i < c.wounds ? 'on' : ''}"></i>`).join('')}</div></div>
+    <div class="tiles" style="grid-template-columns:repeat(3,1fr)"><div class="tile"><b>${c.armor}</b><span>Armor</span></div><div class="tile"><b>${c.speed}</b><span>Speed</span></div><div class="tile"><b style="font-size:13px">${c.init}</b><span>Init</span></div></div>
+    <div class="sect"><span>Conditions</span></div><div class="chips">${c.conds.length ? c.conds.map((x) => `<span class="chip ${x === 'Prone' ? 'chip--bad' : 'chip--on'}">${x}</span>`).join('') : '<span class="small muted">None</span>'}</div>`
+  document.getElementById('shMain').innerHTML = `
+    <div class="full"><div class="sect" style="margin-top:0"><span>Stats &amp; saves</span></div>
+    <div class="stats">${Object.entries(c.stats).map(([k, v]) => `<div><b>${sign(v)}</b><span class="${k === c.adv ? 'adv' : k === c.dis ? 'dis' : ''}">${k}${k === c.adv ? ' ▲' : k === c.dis ? ' ▼' : ''}</span></div>`).join('')}</div></div>
+    <div><div class="sect"><span>Top skills</span></div><div class="skills">${c.skills.map(([k, v]) => `<span>${k}</span><span>${sign(v)}</span>`).join('')}</div></div>
+    <div><div class="sect"><span>Resources</span></div><div class="skills">${c.res.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('')}</div>
+      ${c.summons.length ? `<div class="sect"><span>Summons</span></div>${c.summons.map((s) => `<div class="abil">${s}</div>`).join('')}` : ''}</div>
+    <div class="full"><div class="sect"><span>Key abilities</span></div>${c.abil.map(([k, v]) => `<div class="abil"><b>${k}.</b> ${v}</div>`).join('')}</div>`
+  document.getElementById('shNote').textContent = gm ? 'GM: you can adjust HP here' : mine ? 'Your hero' : 'Read only'
+  document.getElementById('shOpen').classList.toggle('hidden', !(gm || mine))
+  document.getElementById('sheet').showModal()
+}
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('.pc, .tok')
+  const n = card?.querySelector('[data-n]')?.dataset.n
+  if (n) openSheet(n)
+})
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.classList?.contains('pc')) e.target.click()
+})
+document.getElementById('sheetX').addEventListener('click', () => document.getElementById('sheet').close())
+document.getElementById('sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') e.target.close() })
+
+// Chat / Lore Master tabs
+document.querySelectorAll('.ptabs').forEach((tabs) => {
+  const panel = tabs.closest('.panel')
+  tabs.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b))
+    const lore = b.dataset.pt === 'lore'
+    panel.querySelector('.chat-body').classList.toggle('hidden', lore)
+    panel.querySelector('.lore-body').classList.toggle('hidden', !lore)
+    panel.querySelector('.chat-only').classList.toggle('hidden', lore)
+  }))
+})
+
+// GM: New round refills every action pip
+document.getElementById('newRound').addEventListener('click', () => {
+  document.querySelectorAll('.pips i, .gmpips i').forEach((i) => i.classList.remove('off'))
+  document.querySelectorAll('.round b').forEach((b) => b.textContent = '4')
+})
+// GM: select a creature
+document.querySelectorAll('.mon').forEach((m) => m.addEventListener('click', () => {
+  document.querySelectorAll('.mon').forEach((x) => x.classList.remove('mon--sel')); m.classList.add('mon--sel')
+}))
+</script>
+</body>
+</html>

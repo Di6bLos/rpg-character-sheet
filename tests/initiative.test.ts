@@ -4,13 +4,18 @@ import {
   downSummonKeys,
   isSlainSummon,
   buildCopies,
+  clampHp,
   combatantName,
   COMBATANT_NAME_MAX,
   groupLabels,
   hpBand,
   letter,
+  newRoundStart,
+  renamedCombatant,
   sortOrder,
   syncSummonRows,
+  turnAfter,
+  turnTo,
 } from '../utils/initiative'
 
 const npc = (patch: Partial<CampaignNpc> = {}): CampaignNpc => ({
@@ -308,5 +313,99 @@ describe('isSlainSummon', () => {
     expect(isSlainSummon(row('summon', null, null, 'Down'))).toBe(true)
     expect(isSlainSummon(row('summon', 1, 1))).toBe(false)
     expect(isSlainSummon(row('monster', 0, 10))).toBe(false)
+  })
+})
+
+describe('turnAfter', () => {
+  const order = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+  it('starts at the top', () =>
+    expect(turnAfter(order, null, 1)).toEqual({ active: 'a', round: 1, ended: null }))
+  it('moves on and reports who ended', () =>
+    expect(turnAfter(order, 'a', 2)).toEqual({ active: 'b', round: 2, ended: 'a' }))
+  it('wraps into the next round', () =>
+    expect(turnAfter(order, 'c', 2)).toEqual({ active: 'a', round: 3, ended: 'c' }))
+  it('treats an unknown active id like null', () =>
+    expect(turnAfter(order, 'gone', 1)).toEqual({ active: 'a', round: 1, ended: null }))
+  it('is null for an empty order', () => expect(turnAfter([], null, 1)).toBeNull())
+})
+
+describe('newRoundStart', () => {
+  it('jumps to the top of the next round, skipping the rest', () =>
+    expect(newRoundStart([{ id: 'a' }, { id: 'b' }], 3)).toEqual({ active: 'a', round: 4 }))
+  it('is null for an empty order', () => expect(newRoundStart([], 1)).toBeNull())
+})
+
+describe('clampHp', () => {
+  it('clamps to 0..max', () => {
+    expect(clampHp(4, -10, 15)).toBe(0)
+    expect(clampHp(14, 5, 15)).toBe(15)
+    expect(clampHp(null, 3, null)).toBe(0)
+  })
+})
+
+describe('renamedCombatant', () => {
+  it('rejects blank', () => expect(renamedCombatant('   ')).toBeNull())
+  it('trims and caps at 80', () =>
+    expect(renamedCombatant(`  ${'x'.repeat(200)} `)).toBe('x'.repeat(80)))
+  it('keeps a normal name', () => expect(renamedCombatant('Snaggletooth')).toBe('Snaggletooth'))
+})
+
+describe('turnTo', () => {
+  const order = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+
+  it('jumps ahead in the same round, ending the acting turn', () => {
+    expect(turnTo(order, 'a', 2, 'c', 0)).toEqual({ active: 'c', round: 2, ended: 'a' })
+  })
+
+  it('jumps back in the same round', () => {
+    expect(turnTo(order, 'c', 2, 'a', 0)).toEqual({ active: 'a', round: 2, ended: 'c' })
+  })
+
+  it('moves the round by the offset of the copy picked', () => {
+    expect(turnTo(order, 'c', 2, 'b', 1)).toEqual({ active: 'b', round: 3, ended: 'c' })
+    expect(turnTo(order, 'a', 2, 'c', -1)).toEqual({ active: 'c', round: 1, ended: 'a' })
+  })
+
+  it('picking the acting creature in another round moves the round only', () => {
+    expect(turnTo(order, 'b', 2, 'b', 1)).toEqual({ active: 'b', round: 3, ended: 'b' })
+  })
+
+  it('never goes below round 1', () => {
+    expect(turnTo(order, 'a', 1, 'c', -1)).toEqual({ active: 'c', round: 1, ended: 'a' })
+  })
+
+  it('ends no turn when nothing was acting', () => {
+    expect(turnTo(order, null, 1, 'b', 0)).toEqual({ active: 'b', round: 1, ended: null })
+    expect(turnTo(order, 'gone', 1, 'b', 0)).toEqual({ active: 'b', round: 1, ended: null })
+  })
+
+  it('is null for the acting creature itself, or one not in the order', () => {
+    expect(turnTo(order, 'b', 2, 'b', 0)).toBeNull()
+    expect(turnTo(order, 'a', 2, 'x', 0)).toBeNull()
+    expect(turnTo(order, 'b', 1, 'b', -1)).toBeNull()
+  })
+})
+
+describe('sortOrder by initiative mode', () => {
+  const at = '2026-01-01T00:00:00Z'
+  const rows = [
+    { id: 'gob', name: 'Goblin', kind: 'monster' as const, initiative: 19, created_at: at },
+    { id: 'ann', name: 'Ann', kind: 'pc' as const, initiative: 8, created_at: at },
+    { id: 'bob', name: 'Bob', kind: 'pc' as const, initiative: 14, created_at: at },
+    { id: 'npc', name: 'Guard', kind: 'npc' as const, initiative: 11, created_at: at },
+  ]
+
+  it('classic orders everyone by the roll', () => {
+    expect(sortOrder(rows, 'classic').map((r) => r.id)).toEqual(['gob', 'bob', 'npc', 'ann'])
+  })
+
+  it('nimble puts every hero first, each group by the roll', () => {
+    expect(sortOrder(rows, 'nimble').map((r) => r.id)).toEqual(['bob', 'ann', 'gob', 'npc'])
+  })
+
+  it('heroes waiting for their Initiative sit at the top in both modes', () => {
+    const waiting = rows.map((r) => (r.id === 'ann' ? { ...r, initiative_rolled: false } : r))
+    expect(sortOrder(waiting, 'classic').map((r) => r.id)).toEqual(['ann', 'gob', 'bob', 'npc'])
+    expect(sortOrder(waiting, 'nimble').map((r) => r.id)).toEqual(['ann', 'bob', 'gob', 'npc'])
   })
 })

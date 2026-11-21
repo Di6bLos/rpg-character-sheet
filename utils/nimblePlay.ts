@@ -43,10 +43,18 @@ function hasAbility(sheet: NimbleSheet, name: string): boolean {
  * Actions a hero gets each turn: 3, or 1 while Dying. Windborne (Zephyr) adds one,
  * and it and Enduring Rage (Berserker) allow 2 while Dying.
  */
-export function turnActions(sheet: NimbleSheet): number {
-  const windborne = hasAbility(sheet, 'Windborne')
-  if (sheet.dying) return windborne || hasAbility(sheet, 'Enduring Rage') ? 2 : 1
+export function turnActionsFor(abilityNames: string[], dying: boolean): number {
+  const has = (name: string) => abilityNames.some((n) => abilityBaseName(n) === name)
+  const windborne = has('Windborne')
+  if (dying) return windborne || has('Enduring Rage') ? 2 : 1
   return windborne ? 4 : 3
+}
+
+export function turnActions(sheet: NimbleSheet): number {
+  return turnActionsFor(
+    sheet.abilities.map((a) => a.name),
+    !!sheet.dying,
+  )
 }
 
 /** Attacking while Dying calls for a DC 10 STR save, unless Enduring Rage waives it. */
@@ -711,6 +719,11 @@ export interface FieldRestOptions {
   dice: number
   /** Made camp (8 hours with food and sleep): each die gives its maximum instead of a roll. */
   camp: boolean
+  /**
+   * The player's own Hit Die rolls (Catch Breath with Manual dice), one per die, kept to
+   * the die's faces: how many there are is how many dice are spent (up to the dice left).
+   */
+  rolls?: number[]
 }
 
 /**
@@ -733,14 +746,18 @@ export function fieldRestDice(sheet: NimbleSheet, camp: boolean): number {
  */
 export function fieldRest(
   sheet: NimbleSheet,
-  { dice, camp }: FieldRestOptions,
+  { dice, camp, rolls }: FieldRestOptions,
   rng: Rng = Math.random,
 ): string {
-  const count = Math.min(hitDiceLeft(sheet), Math.max(0, Math.floor(dice)))
+  const own =
+    !camp && rolls?.length
+      ? rolls.map((v) => Math.min(sheet.hitDie, Math.max(1, Math.round(v))))
+      : null
+  const count = Math.min(hitDiceLeft(sheet), own ? own.length : Math.max(0, Math.floor(dice)))
   if (count === 0 || sheet.hp >= sheet.hpMax) return ''
-  const values = Array.from({ length: count }, () =>
-    camp ? sheet.hitDie : rollDie(sheet.hitDie, rng),
-  )
+  const values = own
+    ? own.slice(0, count)
+    : Array.from({ length: count }, () => (camp ? sheet.hitDie : rollDie(sheet.hitDie, rng)))
   const total = values.reduce((sum, v) => sum + Math.max(0, v + sheet.stats.STR), 0)
   const before = sheet.hp
   sheet.hitDiceUsed += count
@@ -1040,6 +1057,16 @@ export function counterCost(text: string): CounterCost | undefined {
   if (LEADING_ACTION.test(text)) return { actions: 1 }
   if (/\bfor free\b/i.test(text)) return undefined
   return ACTION_COST.test(text) ? { actions: 1 } : undefined
+}
+
+/**
+ * Whether a use can still be made while you wait for your turn in combat: one that costs
+ * no actions (free), rides on a reaction (Defend, Interpose), or is a reaction itself
+ * ("Reaction:", "Action/Reaction"). Anything else that costs actions waits for your turn.
+ */
+export function usableOffTurn(cost: CounterCost | undefined, text: string): boolean {
+  if (!cost || cost.actions <= 0 || cost.reaction) return true
+  return REACTION_COST.test(text) || /\bAction\/Reaction\b/.test(text)
 }
 
 export function costLabel(cost: CounterCost | undefined): string {
@@ -1492,7 +1519,8 @@ export function initiativeRoll(
       odds: advantage ? -1 : 0,
     })
   const max = turnActions(sheet)
-  const start = initiativeActions(roll, natural, max)
+  // Classic initiative only orders the turns: every hero starts with full actions.
+  const start = sheet.classicInitiative ? max : initiativeActions(roll, natural, max)
   sheet.actionsSpent = max - start
   const extra = [
     cheat ? ` Cheat: ${rolled} raised to 10.` : '',
@@ -1514,7 +1542,7 @@ export function initiativeRoll(
       ? ' Add your Elemental Surge d4s to temporary mana.'
       : ''
   return {
-    message: `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}.${extra}${surgeDice}`,
+    message: `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}${sheet.classicInitiative ? ' (Classic initiative)' : ''}.${extra}${surgeDice}`,
     total: roll,
   }
 }

@@ -12,6 +12,14 @@ const snackbar = useSnackbarStore()
         :role="snackbar.kind === 'error' ? 'alert' : 'status'"
       >
         <span>{{ snackbar.message }}</span>
+        <button
+          v-if="snackbar.action"
+          type="button"
+          class="toast__action"
+          @click="snackbar.runAction()"
+        >
+          {{ snackbar.action.label }}
+        </button>
         <button type="button" aria-label="Dismiss" @click="snackbar.visible = false">×</button>
       </div>
     </Transition>
@@ -64,6 +72,16 @@ const snackbar = useSnackbarStore()
     font-size: 20px;
     line-height: 1;
     border-radius: 6px;
+  }
+
+  .toast__action {
+    width: auto;
+    padding: 0 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 }
 

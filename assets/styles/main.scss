@@ -702,6 +702,10 @@ select.input {
     background: var(--accent);
   }
 
+  &--danger > span {
+    background: var(--danger);
+  }
+
   &--thin {
     height: 6px;
   }
@@ -795,4 +799,20 @@ select.input {
       inset: -6px;
     }
   }
+}
+
+// While a battle board splitter is dragged: keep its cursor everywhere and don't select text.
+.is-resizing,
+.is-resizing * {
+  user-select: none !important;
+}
+
+.is-resizing--vertical,
+.is-resizing--vertical * {
+  cursor: col-resize !important;
+}
+
+.is-resizing--horizontal,
+.is-resizing--horizontal * {
+  cursor: row-resize !important;
 }

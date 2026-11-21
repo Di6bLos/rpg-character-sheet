@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { isHex, onAccent } from '~/utils/contrast'
+import { parseDice, rollDice } from '~/utils/dice'
+import { DICE_SPEED, speedLabel } from '~/composables/useDiceAnimation'
 import { ACCENTS, THEMES, accentName, accentVars, themeMeta, type ThemeId } from '~/utils/themes'
 
 definePageMeta({ middleware: 'auth' })
@@ -8,6 +10,13 @@ useHead({ title: 'Settings · Lantern' })
 const auth = useAuthStore()
 const snackbar = useSnackbarStore()
 const { applySaved } = useTheme()
+const diceAnim = useDiceAnimation()
+
+/** A sample throw so the speed can be felt; it shows in the dice tray like any roll. */
+function tryDice() {
+  const dice = parseDice('2d8+1')
+  if (dice) rollDice(dice)
+}
 
 const theme = ref<ThemeId>(themeMeta(auth.profile?.theme).id)
 // null = follow the theme's default accent
@@ -220,6 +229,54 @@ const toggles = [
               @click="accent = customHex.toUpperCase()"
             >
               {{ isCustom ? 'Using custom' : 'Use custom' }}
+            </button>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="dice-anim-h">
+          <div class="panel-title">
+            <h2 id="dice-anim-h">Dice animation</h2>
+            <span class="small muted">Applies right away, on this device.</span>
+          </div>
+          <UiSwitch
+            :model-value="diceAnim.animate.value"
+            label="Throw 3D dice when the app rolls for you"
+            @update:model-value="diceAnim.setAnimate"
+          />
+          <div class="field dice-speed" :class="{ 'is-off': !diceAnim.animate.value }">
+            <label for="dice-speed">
+              Speed <output for="dice-speed">{{ speedLabel(diceAnim.speed.value) }}</output>
+            </label>
+            <div class="dice-speed__row">
+              <span class="small muted" aria-hidden="true">Slower</span>
+              <input
+                id="dice-speed"
+                type="range"
+                :min="DICE_SPEED.min"
+                :max="DICE_SPEED.max"
+                :step="DICE_SPEED.step"
+                :value="diceAnim.speed.value"
+                :disabled="!diceAnim.animate.value"
+                :aria-valuetext="speedLabel(diceAnim.speed.value)"
+                @input="diceAnim.setSpeed(Number(($event.target as HTMLInputElement).value))"
+              />
+              <span class="small muted" aria-hidden="true">Faster</span>
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm"
+                :disabled="!diceAnim.animate.value || diceAnim.speed.value === DICE_SPEED.initial"
+                @click="diceAnim.setSpeed(DICE_SPEED.initial)"
+              >
+                Reset
+              </button>
+            </div>
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm dice-speed__try"
+              :disabled="!diceAnim.animate.value"
+              @click="tryDice"
+            >
+              Try a roll
             </button>
           </div>
         </section>
@@ -462,6 +519,43 @@ const toggles = [
   display: flex;
   flex-direction: column;
   line-height: 1.25;
+}
+
+.dice-speed {
+  margin-top: 14px;
+
+  label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  output {
+    font-weight: 700;
+    color: var(--page-text);
+  }
+
+  &.is-off {
+    opacity: 0.6;
+  }
+}
+
+.dice-speed__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  input[type='range'] {
+    flex: 1 1 200px;
+    min-width: 0;
+    accent-color: var(--accent);
+  }
+}
+
+.dice-speed__try {
+  align-self: flex-start;
+  margin-top: 8px;
 }
 
 .custom {
