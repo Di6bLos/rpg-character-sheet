@@ -41,7 +41,7 @@ import {
   spellSelfEffects,
 } from '~/utils/nimbleSpellRules'
 import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
-import { parseDice, rollDie } from '~/utils/dice'
+import { parseDice, rollDie, showOutcome } from '~/utils/dice'
 import {
   armorDice,
   armorDiceWhy,
@@ -426,7 +426,10 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     }
     const result = rollSpellDamage(damage, Math.random, rushed)
     if (!result) return ''
-    if (result.miss) return `Miss (first die rolled a 1)${rush} [${result.detail}].`
+    if (result.miss) {
+      showOutcome({ label: s.name, total: 0, detail: 'Miss (first die rolled a 1).' })
+      return `Miss (first die rolled a 1)${rush} [${result.detail}].`
+    }
     const expr = parseDice(damage.dice)
     const maxCrit = !result.crit && critsOnAnyMax(s, target.value, result.dice, expr?.sides ?? 0)
     const isCrit = result.crit || maxCrit
@@ -437,7 +440,10 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     target.value = { ...target.value, ...effects.target }
     const why = maxCrit ? ' (a max die against a Hampered target)' : ''
     const extra = bonus ? `, +${bonus} on the crit` : ''
-    return `${hit.damage}${type} damage${hit.note}${isCrit ? ` · critical${why}` : ''}${rush} [${damage.dice}: ${result.detail}${extra}].${effects.note}${crit.trimEnd()}`
+    const line = `${hit.damage}${type} damage${hit.note}${isCrit ? ` · critical${why}` : ''}${rush} [${damage.dice}: ${result.detail}${extra}].${effects.note}${crit.trimEnd()}`
+    // The tray's total: modifiers, crit damage and armor, not just the dice.
+    showOutcome({ label: s.name, total: hit.damage, detail: line })
+    return line
   }
 
   const spellAttacks = computed(() =>

@@ -4,7 +4,7 @@ import { REACTIONS, weaponByName } from '~/data/nimble/core'
 import { WEAPON_MISHAPS } from '~/data/nimble/effects'
 import { summonBySource } from '~/data/nimble/summons'
 import type { NimbleSheet } from '~/types/sheets'
-import { parseDice, rollNimble } from '~/utils/dice'
+import { parseDice, rollNimble, showOutcome } from '~/utils/dice'
 import { abilityBaseName, malfunctionRisks, sheetResource } from '~/utils/nimbleBuild'
 import {
   abilityRoll,
@@ -487,18 +487,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           const mods = (w.flat ?? expr.mod) + flat + zealDamage
           const hit = armorHit(result.total + extra.extra, mods, armor, result.crit)
           const hints = situational.length ? ` (${situational.join(', ')})` : ''
-          if (result.miss)
-            report(
-              `${w.name}: miss (first die rolled a 1)${hints}.${zealNote}${extra.note}${after}${triggers}${dying}${recoil(result.dice)}`,
-            )
-          else
-            report(
-              `${w.name}: ${hit.damage} damage${hit.note}${riders.note}${result.crit ? ' · critical' : ''}${
+          const message = result.miss
+            ? `${w.name}: miss (first die rolled a 1)${hints}.${zealNote}${extra.note}${after}${triggers}${dying}${recoil(result.dice)}`
+            : `${w.name}: ${hit.damage} damage${hit.note}${riders.note}${result.crit ? ' · critical' : ''}${
                 result.bonus
                   ? ` (incl. ${result.bonus} ${resource.value?.diceName.toLowerCase() || 'bonus'})`
                   : ''
-              }${hints}.${zealNote}${extra.note}${after}${triggers}${dying}${recoil(result.dice)}`,
-            )
+              }${hints}.${zealNote}${extra.note}${after}${triggers}${dying}${recoil(result.dice)}`
+          // The tray's total: every bonus, the crit, armor and vulnerability, not just the dice.
+          showOutcome({ label: w.name, total: result.miss ? 0 : hit.damage, detail: message })
+          report(message)
           spendAttackAction()
           if (onTurn) sheet.value.rushed += 1
         },

@@ -158,6 +158,31 @@ export function showDice(roll: ShownRoll): void {
   for (const watch of diceWatchers) watch(roll)
 }
 
+/**
+ * What a roll came to once the app added everything up (bonuses, armor, crit
+ * damage), shown under the dice: the final number and the app's result line.
+ */
+export interface RollOutcome {
+  /** What was rolled: "Staff", "Ice Lance", "Initiative"; empty for a plain result line. */
+  label: string
+  /** The final number; null when the line says it (minions, a heal) or there is none. */
+  total: number | null
+  /** The app's result line. */
+  detail: string
+}
+
+const outcomeWatchers = new Set<(outcome: RollOutcome) => void>()
+
+/** The dice tray watches what rolls came to; returns the function that stops watching. */
+export function onRollOutcome(watch: (outcome: RollOutcome) => void): () => void {
+  outcomeWatchers.add(watch)
+  return () => outcomeWatchers.delete(watch)
+}
+
+export function showOutcome(outcome: RollOutcome): void {
+  for (const watch of outcomeWatchers) watch(outcome)
+}
+
 export interface NimbleRoll {
   miss: boolean
   crit: boolean
