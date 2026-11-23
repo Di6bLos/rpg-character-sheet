@@ -6,6 +6,7 @@
 // side and the GM's left column (a hero picked on the initiative strip) both show it.
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
 import type { HeroCard, RosterEntry } from '~/types'
+import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
 
@@ -185,7 +186,7 @@ async function adjust(sign: 1 | -1) {
 
     <div class="hc__tiles">
       <div class="hc__tile">
-        <b>{{ card.ac }}</b>
+        <b>{{ heroArmor(card.ac, card.conditions, card.level) }}</b>
         <span>Armor</span>
       </div>
       <div class="hc__tile">

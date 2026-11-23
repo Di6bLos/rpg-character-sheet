@@ -31,6 +31,15 @@ const spellStatuses = computed(() => {
   ].filter((x) => !!x)
 })
 
+/** A known spell (Condemn) gives advantage on the next attack against its target. */
+const canCondemn = computed(
+  () =>
+    (target.value.condemned ?? 0) > 0 ||
+    knownSpells(draft.value.sheet).some((s) =>
+      /\bThe next attack against that enemy is made with advantage\b/.test(s.desc),
+    ),
+)
+
 const canSunder = computed(() =>
   draft.value.sheet.abilities.some((a) =>
     /\bALL melee attacks against that target ignore its armor\b/.test(a.desc),
@@ -70,6 +79,17 @@ function set(patch: Partial<typeof target.value>) {
       <button
         type="button"
         class="chip"
+        :class="{ 'chip--on': !!target.covered }"
+        :aria-pressed="!!target.covered"
+        :disabled="!canEdit"
+        title="Behind cover: your attacks against it take +1 disadvantage"
+        @click="target = { ...target, covered: !target.covered }"
+      >
+        Covered
+      </button>
+      <button
+        type="button"
+        class="chip"
         :class="{ 'chip--on': target.vulnerable }"
         :aria-pressed="target.vulnerable"
         :disabled="!canEdit"
@@ -102,6 +122,18 @@ function set(patch: Partial<typeof target.value>) {
         @click="set({ [st.key]: !target[st.key] })"
       >
         {{ st.label }}
+      </button>
+      <button
+        v-if="canCondemn"
+        type="button"
+        class="chip"
+        :class="{ 'chip--on': !!target.condemned }"
+        :aria-pressed="!!target.condemned"
+        :disabled="!canEdit"
+        title="Condemn: the next attack against it is made with advantage"
+        @click="target = { ...target, condemned: target.condemned ? 0 : 1 }"
+      >
+        Condemned{{ (target.condemned ?? 0) > 1 ? ` (${target.condemned}× advantage)` : '' }}
       </button>
     </div>
   </div>

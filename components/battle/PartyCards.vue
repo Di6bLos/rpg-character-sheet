@@ -4,6 +4,7 @@
 // line, the HP bar and Armor. The GM's cards add action pips and mana. A card opens
 // the hero's stats modal.
 import type { RosterEntry } from '~/types'
+import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { turnActionsFor } from '~/utils/nimblePlay'
 
@@ -77,11 +78,15 @@ function mana(r: RosterEntry): string {
 }
 
 /** The card's accessible name: everything it shows, since aria-label replaces its content. */
+function armorOf(r: RosterEntry) {
+  return heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level)
+}
+
 function label(r: RosterEntry): string {
   const name = r.character_name ?? r.display_name
   const acting = r.character_id === props.actingCharacterId ? 'acting' : ''
   const tempHp = r.summary?.tempHp
-  const guard = tempHp ? `${tempHp} temp HP` : `Armor ${r.summary?.ac ?? 'unknown'}`
+  const guard = tempHp ? `${tempHp} temp HP` : `Armor ${armorOf(r) ?? 'unknown'}`
   const p = pips(r)
   const actions = p ? `${p.total - p.used} of ${p.total} actions left` : ''
   const hp = r.summary?.hp === undefined ? 'HP unknown' : `${hpText(r)} HP`
@@ -160,7 +165,7 @@ function label(r: RosterEntry): string {
           <span class="pc__right">
             <b>{{ hpText(r) }}</b>
             <span v-if="r.summary?.tempHp">+{{ r.summary.tempHp }} temp</span>
-            <span v-else>Armor {{ r.summary?.ac ?? '—' }}</span>
+            <span v-else>Armor {{ armorOf(r) ?? '—' }}</span>
           </span>
         </button>
       </li>

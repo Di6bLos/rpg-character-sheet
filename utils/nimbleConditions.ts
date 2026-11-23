@@ -19,6 +19,14 @@ export const SPELL_STATUSES = [
     desc: 'A flying speed: 12 from Fly or Boisterous Winds, your speed otherwise.',
   },
   {
+    name: 'True Strike',
+    desc: 'From True Strike: advantage on your next attack. Ends at the end of your next turn.',
+  },
+  {
+    name: 'Warded',
+    desc: 'From Warding Bond: you take half damage from attacks and your warder takes the other half. Damage on your HP bar and from the GM is halved while it is on. Ends when combat does.',
+  },
+  {
     name: 'Distracted',
     desc: 'Adjacent to or Taunted by an enemy’s ally, or can’t see them. Ends when combat does.',
   },
@@ -40,6 +48,8 @@ export const CONDITION_ENDS: Partial<Record<string, ConditionEnd>> = {
   Electrocharge: 'encounter',
   Distracted: 'encounter',
   Helped: 'turnEnd',
+  'True Strike': 'turnEnd',
+  Warded: 'encounter',
 }
 
 export const END_LABELS: Record<ConditionEnd | 'manual', string> = {
@@ -93,7 +103,10 @@ export interface StatusStats {
  * one (its effect's source, or the spell of the same name): Electrocharge's armor,
  * max action, speed and DEX saves, Dragonform's LVL Armor and fly speed, Flying.
  */
-export function statusStats(sheet: NimbleSheet, level = 0): StatusStats {
+export function statusStats(
+  sheet: Pick<NimbleSheet, 'conditions' | 'effects'>,
+  level = 0,
+): StatusStats {
   const out: StatusStats = {
     armor: 0,
     actions: 0,
@@ -126,6 +139,20 @@ export function statusStats(sheet: NimbleSheet, level = 0): StatusStats {
   return out
 }
 
+/**
+ * A hero's armor as the party and GM see it (roster, cards, hero stats): the saved
+ * base plus their spell statuses' armor (Electrocharge, Dragonform).
+ */
+export function heroArmor(
+  ac: number | undefined,
+  conditions: string[] = [],
+  level: number | null = 0,
+): number | undefined {
+  return ac === undefined
+    ? undefined
+    : ac + statusStats({ conditions, effects: [] }, level ?? 0).armor
+}
+
 export interface ConditionMods {
   disadvantage: number
   /** Conditions behind `disadvantage`, by name ("Invisible (advantage)" counts against it). */
@@ -137,10 +164,37 @@ export interface ConditionMods {
   speedNote: string
 }
 
-export function conditionMods(sheet: NimbleSheet, applies: string[] = []): ConditionMods {
+/** Odds the attack takes from outside the hero: the GM's calls, the target's cover, Condemn. */
+export interface AttackOdds {
+  /** Disadvantage the GM calls for. */
+  disadvantage?: number
+  /** Advantage the GM calls for. */
+  advantage?: number
+  /** The target is behind cover: +1 disadvantage. */
+  covered?: boolean
+  /** Condemn: advantage on the next attack against the target. */
+  condemned?: number
+}
+
+export function conditionMods(
+  sheet: NimbleSheet,
+  applies: string[] = [],
+  odds: AttackOdds = {},
+): ConditionMods {
+  const called = odds.disadvantage ?? 0
+  const cover = odds.covered ? 1 : 0
+  const granted = odds.advantage ?? 0
+  const targetAdvantage = odds.condemned ?? 0
   const has = (name: string) => sheet.conditions.includes(name)
   const present = SITUATIONAL.filter((s) => has(s.name))
   const helped = has('Helped') ? 1 : 0
+  const strike = has('True Strike') ? 1 : 0
+  const condemned =
+    targetAdvantage > 1
+      ? [`Condemned (${targetAdvantage}× advantage)`]
+      : targetAdvantage
+        ? ['Condemned (advantage)']
+        : []
   const against = [
     ...ATTACK_DISADVANTAGE.filter(has),
     ...present.filter((s) => applies.includes(s.name)).map((s) => s.name),
@@ -149,12 +203,26 @@ export function conditionMods(sheet: NimbleSheet, applies: string[] = []): Condi
     against.length ? `+${against.length} disadvantage: ${against.join(', ')}` : '',
     has('Invisible') ? 'Advantage: Invisible' : '',
     helped ? 'Advantage: Helped' : '',
+    strike ? 'Advantage: True Strike' : '',
   ].filter(Boolean)
-  const disadvantage = against.length - (has('Invisible') ? 1 : 0) - helped
+  const disadvantage =
+    against.length +
+    called +
+    cover -
+    (has('Invisible') ? 1 : 0) -
+    helped -
+    strike -
+    targetAdvantage -
+    granted
   const reasons = [
     ...against,
     ...(has('Invisible') ? ['Invisible (advantage)'] : []),
     ...(helped ? ['Helped (advantage)'] : []),
+    ...(strike ? ['True Strike (advantage)'] : []),
+    ...condemned,
+    ...(cover ? ['Covered'] : []),
+    ...(called ? [called > 1 ? `Disadvantage (${called})` : 'Disadvantage'] : []),
+    ...(granted ? [granted > 1 ? `Advantage (${granted})` : 'Advantage'] : []),
   ]
   const hints = present.filter((s) => !applies.includes(s.name)).map((s) => `${s.name}: ${s.hint}`)
   const stats = statusStats(sheet)
@@ -222,10 +290,18 @@ export function clearConditionsAt(sheet: NimbleSheet, when: ConditionEnd): strin
 }
 
 /** An attack spends an ally's Help (its advantage covers one roll). */
+/** Warding Bond: a Warded hero takes half of an attack's damage; the warder takes the rest. */
+export function wardedDamage(sheet: NimbleSheet, amount: number): { taken: number; note: string } {
+  if (!sheet.conditions.includes('Warded')) return { taken: amount, note: '' }
+  const taken = Math.floor(amount / 2)
+  return { taken, note: ` Warded: you take ${taken}, your warder ${amount - taken}.` }
+}
+
+/** An attack spends Helped and True Strike, the advantage they gave it. */
 export function spendHelp(sheet: NimbleSheet): string {
-  if (!sheet.conditions.includes('Helped')) return ''
-  removeCondition(sheet, 'Helped')
-  return ' Help used.'
+  const spent = ['Helped', 'True Strike'].filter((c) => sheet.conditions.includes(c))
+  for (const c of spent) removeCondition(sheet, c)
+  return spent.map((c) => (c === 'Helped' ? ' Help used.' : ' True Strike used.')).join('')
 }
 
 export function dazedAtTurnStart(sheet: NimbleSheet): string {

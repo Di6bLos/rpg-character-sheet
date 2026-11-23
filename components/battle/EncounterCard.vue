@@ -5,6 +5,7 @@
 // pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one refunds). Slain creatures
 // grey out with Remove and Revive. Heroes take HP through their own sheet (a pickup).
 import type { CampaignNpc, RosterEntry } from '~/types'
+import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
 import { turnActionsFor } from '~/utils/nimblePlay'
@@ -33,7 +34,15 @@ const hp = computed(() => {
 const slain = computed(() => !isPc.value && hp.value.max > 0 && hp.value.now <= 0)
 const armor = computed(() =>
   isPc.value
-    ? String(props.hero?.summary?.ac ?? props.c.ac ?? '—')
+    ? String(
+        heroArmor(
+          props.hero?.summary?.ac,
+          props.hero?.summary?.conditions,
+          props.hero?.character_level,
+        ) ??
+          props.c.ac ??
+          '—',
+      )
     : statTop(props.npc, 'Armor') || String(props.c.ac ?? '—'),
 )
 const conditions = computed(() =>

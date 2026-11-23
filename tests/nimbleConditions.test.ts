@@ -7,8 +7,10 @@ import {
   oddsReasons,
   removeCondition,
   spendHelp,
+  heroArmor,
   statusFromSpell,
   statusStats,
+  wardedDamage,
 } from '../utils/nimbleConditions'
 import {
   actionsLeft,
@@ -156,5 +158,34 @@ describe('spell statuses that change the hero’s numbers', () => {
     expect(statusFromSpell('Electrocharge')).toBe('Electrocharge')
     expect(statusFromSpell('Fly')).toBe('Flying')
     expect(statusFromSpell('Ignite')).toBe('')
+  })
+})
+
+describe('True Strike, Condemn, Warding Bond and armor others see', () => {
+  it('True Strike and a Condemned target give advantage; an attack spends True Strike', () => {
+    const sheet = hero({ conditions: ['True Strike'] })
+    expect(conditionMods(sheet, [], { condemned: 2 })).toMatchObject({
+      disadvantage: -3,
+      reasons: ['True Strike (advantage)', 'Condemned (2× advantage)'],
+    })
+    expect(
+      conditionMods(hero(), [], { covered: true, disadvantage: 2, advantage: 1 }),
+    ).toMatchObject({
+      disadvantage: 2,
+      reasons: ['Covered', 'Disadvantage (2)', 'Advantage'],
+    })
+    expect(spendHelp(sheet)).toBe(' True Strike used.')
+    expect(sheet.conditions).toEqual([])
+  })
+
+  it('halves damage while Warded, and shows status armor to the party', () => {
+    expect(wardedDamage(hero({ conditions: ['Warded'] }), 9)).toEqual({
+      taken: 4,
+      note: ' Warded: you take 4, your warder 5.',
+    })
+    expect(wardedDamage(hero(), 9)).toEqual({ taken: 9, note: '' })
+    expect(heroArmor(2, ['Electrocharge'], 5)).toBe(7)
+    expect(heroArmor(2, ['Dragonform'], 12)).toBe(14)
+    expect(heroArmor(undefined, ['Electrocharge'], 5)).toBeUndefined()
   })
 })

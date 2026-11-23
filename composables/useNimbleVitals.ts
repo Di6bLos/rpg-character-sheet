@@ -1,5 +1,5 @@
 import type { NimbleSheet } from '~/types/sheets'
-import { conditionMods } from '~/utils/nimbleConditions'
+import { conditionMods, wardedDamage } from '~/utils/nimbleConditions'
 import {
   armorNow,
   dyingAttackSave,
@@ -80,11 +80,12 @@ export function useNimbleVitals() {
 
   function damage(amount = 1) {
     if (!canEdit.value) return
-    const message = takeDamage(sheet.value, amount, draft.value.level, crit.value)
+    const ward = wardedDamage(sheet.value, amount)
+    const message = takeDamage(sheet.value, ward.taken, draft.value.level, crit.value)
     const was = crit.value ? ' (crit)' : ''
     crit.value = false
     say(
-      `Took ${amount} damage${was}: ${sheet.value.hp}/${sheet.value.hpMax} HP.${message ? ` ${message}` : ''}`,
+      `Took ${ward.taken} damage${was}: ${sheet.value.hp}/${sheet.value.hpMax} HP.${ward.note}${message ? ` ${message}` : ''}`,
     )
   }
 

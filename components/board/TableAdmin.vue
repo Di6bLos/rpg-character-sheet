@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // GM console: invites, the players table, next session date and deleting the campaign.
 import type { RosterEntry } from '~/types'
+import { heroArmor } from '~/utils/nimbleConditions'
 import { plural, toLocalInput } from '~/utils/format'
 
 const auth = useAuthStore()
@@ -174,7 +175,9 @@ async function confirmDeleteCampaign() {
             <td>
               {{ r.character_id ? `${r.summary?.hp ?? '—'} / ${r.summary?.hpMax ?? '—'}` : '—' }}
             </td>
-            <td>{{ r.summary?.ac ?? '—' }}</td>
+            <td>
+              {{ heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level) ?? '—' }}
+            </td>
             <td style="padding-right: 20px">
               <div class="row" style="justify-content: flex-end; gap: 8px; flex-wrap: nowrap">
                 <NuxtLink

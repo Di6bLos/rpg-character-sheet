@@ -10,6 +10,21 @@ export function useAttackSituation() {
   return useState<string[]>(`nimble-situation-${draft.value.id}`, () => [])
 }
 
+/**
+ * Disadvantage and Advantage the player adds to their attacks for the GM's call,
+ * shared like the situation and cleared when the turn changes.
+ */
+export function useAttackOdds() {
+  const { draft } = useSheet<NimbleSheet>()
+  return useState<{ disadvantage: number; advantage: number }>(
+    `nimble-odds-${draft.value.id}`,
+    () => ({
+      disadvantage: 0,
+      advantage: 0,
+    }),
+  )
+}
+
 export interface AttackTarget {
   armor: TargetArmor
   /** The target is vulnerable to this attack's damage: armor ignored, or double if unarmored. */
@@ -22,6 +37,10 @@ export interface AttackTarget {
   hampered: boolean
   /** Hampered only by a spell's Slowed: it ends at the start of your next turn. */
   hamperedUntilTurn?: boolean
+  /** Condemn: advantage on the next attack against it (+1 per upcast tier). */
+  condemned?: number
+  /** Behind cover: attacks against it take +1 disadvantage. */
+  covered?: boolean
 }
 
 /** The creature the hero is attacking, shared like the situation. */

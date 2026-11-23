@@ -17,6 +17,8 @@ export interface SpellTarget {
   hampered: boolean
   /** Hampered only by a spell's Slowed: it ends at the start of your next turn. */
   hamperedUntilTurn?: boolean
+  /** Condemn: advantage on the next attack against it. */
+  condemned?: number
 }
 
 const NEEDS_CHARGED = /\bCastable only if you are Charged\b/
@@ -28,6 +30,8 @@ const ON_HIT = /\bOn hit: ([^.]+)\./
 const ON_CRIT = /\bOn crit: ([^.]+)\./
 const CRIT_BONUS = /\bOn crit: \+(\d+) damage\b/
 const UPCAST_CRIT_BONUS = /\+(\d+) damage on crit\b/
+const CONDEMNS = /\bThe next attack against that enemy is made with advantage\b/
+const UPCAST_ADVANTAGE = /\bUpcast:[^.]*\+1 advantage\b/
 const DIE_BUMP = /\bUpcast: Increase the result of ANY die by (\d+)\b/
 const MAX_CRITS_HAMPERED =
   /\bIf any die rolls the max against a Hampered target, this counts as a crit\b/
@@ -39,6 +43,83 @@ const ENCHANT_UPCAST = /\bUpcast: \+KEY damage\b/
 const ENCHANT_SMOLDERS = /\binflicts Smoldering on crit\b/
 
 const charged = (sheet: NimbleSheet) => sheet.conditions.includes('Charged')
+
+const DEFENDS_FREE = /\bDefend for free\b/
+const UPCAST_ARMOR = /\bUpcast:[^.]*\+(\d+) [Aa]rmor\b/
+const UPCAST_RETALIATION = /\bUpcast:[^.]*\+(\d+) damage\b/
+const RETALIATION = /\bsuffer (\d+d\d+) damage\b/
+const DYING_DISCOUNT = /\bCosts (\d+) mana less while Dying\b/
+
+/**
+ * A reaction spell that Defends for free (Barrier of Wind, Shield of Justice, Dread
+ * Visage, Frost Shield): what the block takes off, with the upcast's armor, and Dread
+ * Visage's damage to melee attackers with its upcast.
+ */
+export function freeDefend(spell: SpellDef, at: number, armor: number): string {
+  if (!DEFENDS_FREE.test(spell.desc)) return ''
+  const tiers = Math.max(0, at - spell.tier)
+  const extra = Number(UPCAST_ARMOR.exec(spell.desc)?.[1] ?? 0) * tiers
+  const block = ` Defend for free: block ${armor + extra} damage${extra ? ` (Armor ${armor} +${extra} upcast)` : ''}.`
+  const dice = RETALIATION.exec(spell.desc)?.[1]
+  const more = Number(UPCAST_RETALIATION.exec(spell.desc)?.[1] ?? 0) * tiers
+  return dice && more ? `${block} Melee attackers who attack you suffer ${dice}+${more}.` : block
+}
+
+/** Dread Visage: mana off while Dying. */
+export function dyingDiscount(sheet: NimbleSheet, spell: SpellDef): number {
+  return sheet.dying ? Number(DYING_DISCOUNT.exec(spell.desc)?.[1] ?? 0) : 0
+}
+
+const HEAL_DICE = /\bHeal a creature (\d+)d(\d+)\+KEY HP\b/
+const HEAL_UPCAST = /\bUpcast:[^.]*\+1d\d+ healing\b/
+const HEAL_CONDITION = /\bIf (\d+)\+ mana is spent, you may also heal 1 negative condition\b/
+const DRAIN =
+  /\bGain (\d+) Wounds?\. Deal (\d+)d(\d+) to all adjacent creatures and heal HP equal to the damage done\b/
+const WARDS = /\bDesignate a willing creature as your ward\b/
+
+/**
+ * Heal's dice: 1d6+KEY, +1d6 per upcast tier (taking the +1d6 healing upcast), and
+ * whether the mana spent also heals a condition or Wound.
+ */
+export function healDice(
+  sheet: NimbleSheet,
+  spell: SpellDef,
+  at: number,
+  mana: number,
+): { count: number; sides: number; mod: number; cleanse: boolean } | null {
+  const m = HEAL_DICE.exec(spell.desc)
+  if (!m) return null
+  const tiers = HEAL_UPCAST.test(spell.desc) ? Math.max(0, at - spell.tier) : 0
+  const min = Number(HEAL_CONDITION.exec(spell.desc)?.[1] ?? Infinity)
+  return {
+    count: Number(m[1]) + tiers,
+    sides: Number(m[2]),
+    mod: keyStatValue(sheet)?.value ?? 0,
+    cleanse: mana >= min,
+  }
+}
+
+/** Vampiric Greed: the Wounds it costs and the damage it deals and heals. */
+export function lifeDrain(
+  spell: SpellDef,
+): { wounds: number; count: number; sides: number } | null {
+  const m = DRAIN.exec(spell.desc)
+  return m ? { wounds: Number(m[1]), count: Number(m[2]), sides: Number(m[3]) } : null
+}
+
+/** Warding Bond, cast: what the caster and the ward do with damage from now on. */
+export function wardNote(spell: SpellDef): string {
+  return WARDS.test(spell.desc)
+    ? ' Your ward turns on Warded: they take half damage from attacks, and you take the other half when they are hit.'
+    : ''
+}
+
+const MISS_HITS_YOU = /\bOn miss: [^.]*\bstrikes you instead\b/
+
+/** Zap, Arc Lightning: a miss strikes the caster instead. */
+export function missHitsCaster(spell: SpellDef): boolean {
+  return MISS_HITS_YOU.test(spell.desc)
+}
 
 /** Why the spell can't be cast right now, or '' when nothing stops it. */
 export function spellNeeds(sheet: NimbleSheet, spell: SpellDef, target: SpellTarget): string {
@@ -116,6 +197,7 @@ export function spellOnHit(
   spell: SpellDef,
   out: { miss: boolean; crit: boolean },
   target: SpellTarget,
+  at = spell.tier,
 ): { note: string; target: SpellTarget; chips: string[] } {
   if (out.miss) return { note: '', target, chips: [] }
   let next = { ...target }
@@ -136,6 +218,12 @@ export function spellOnHit(
     next = crit.target
     if (crit.note) notes.push(crit.note.trim())
     chips.push(...crit.chips)
+  }
+  if (CONDEMNS.test(spell.desc)) {
+    const n = 1 + (UPCAST_ADVANTAGE.test(spell.desc) ? Math.max(0, at - spell.tier) : 0)
+    next.condemned = n
+    notes.push(`The next attack against it has ${n > 1 ? `${n}× ` : ''}advantage.`)
+    chips.push('turn on Condemned')
   }
   if (ENDS_SMOLDERING.test(spell.desc) && target.smoldering) {
     next.smoldering = false
