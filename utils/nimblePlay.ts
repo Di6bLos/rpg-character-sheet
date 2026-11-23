@@ -1,7 +1,7 @@
 // Table-side rules for a Nimble sheet: damage and dying, rests, mana, the turn
 // tracker and inventory slots. Pure functions that change the sheet in place and
 // return the line to show in the roll log.
-import { weaponByName } from '~/data/nimble/core'
+import { MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
 import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet, NimbleStat } from '~/types/sheets'
 import {
@@ -21,7 +21,12 @@ import {
   type SheetResource,
 } from '~/utils/nimbleBuild'
 import { INVENTIONS } from '~/data/nimble/effects'
-import { clearConditionsAt, dazedAtTurnStart } from '~/utils/nimbleConditions'
+import {
+  INCAPACITATED,
+  clearConditionsAt,
+  dazedAtTurnStart,
+  spendHelp,
+} from '~/utils/nimbleConditions'
 import { armorHit, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
 import {
   applyCastEffect,
@@ -1930,4 +1935,76 @@ export function inventorySlots(sheet: NimbleSheet): { used: number; max: number 
   if (small) used += 1
   used += Math.floor(Math.max(0, sheet.coins.gp) / COINS_PER_SLOT)
   return { used, max: BASE_SLOTS + sheet.stats.STR }
+}
+
+/**
+ * A skill check (Core p. 8): d20 plus the skill, at most +12. A 1 always fails and
+ * a 20 always succeeds. `odds` is the player's own disadvantage steps for this check
+ * (negative: advantage, as the GM calls it); Poisoned and a nearby source of fear
+ * add disadvantage ("disadvantage on rolls"), and a Helped status gives advantage
+ * and is spent. Players who roll their own dice are told what to roll.
+ */
+export function skillCheck(
+  sheet: NimbleSheet,
+  name: string,
+  opts: { odds?: number; frightened?: boolean } = {},
+  rng: Rng = Math.random,
+): { message: string; total: number | null } {
+  const skill = sheet.skills.find((s) => s.name === name)
+  if (!skill) return { message: '', total: null }
+  const out = INCAPACITATED.find((c) => sheet.conditions.includes(c))
+  if (out) return { message: `${name} check: you are ${out} and can’t act.`, total: null }
+  const bonus = Math.min(MAX_SKILL_BONUS, sheet.stats[skill.stat] + skill.points)
+  const reasons: string[] = []
+  let odds = opts.odds ?? 0
+  if (sheet.conditions.includes('Poisoned')) {
+    odds += 1
+    reasons.push('Poisoned')
+  }
+  if (opts.frightened && sheet.conditions.includes('Frightened')) {
+    odds += 1
+    reasons.push('Frightened')
+  }
+  const helped = sheet.conditions.includes('Helped')
+  if (helped) {
+    odds -= 1
+    reasons.push('Helped')
+  }
+  const help = helped ? spendHelp(sheet) : ''
+  const steps = Math.abs(odds)
+  const how = odds
+    ? ` with ${steps > 1 ? `${steps}× ` : ''}${odds > 0 ? 'disadvantage' : 'advantage'}${reasons.length ? ` (${reasons.join(', ')})` : ''}`
+    : ''
+  if (sheet.ownDice)
+    return {
+      message: `${name} check: roll a d20 ${sign(bonus)}${how} yourself. A 1 always fails, a 20 always succeeds.${help}`,
+      total: null,
+    }
+  const d20s = quietly(() => Array.from({ length: 1 + steps }, () => rollDie(20, rng)))
+  const natural = odds > 0 ? Math.min(...d20s) : Math.max(...d20s)
+  const keptAt = d20s.indexOf(natural)
+  const total = natural + bonus
+  const always =
+    natural === 20
+      ? ' A natural 20 always succeeds.'
+      : natural === 1
+        ? ' A natural 1 always fails.'
+        : ''
+  const dice = steps ? `d20s ${d20s.join(', ')}, kept ${natural}` : `d20 ${natural}`
+  const message = `${name} check: ${total} (${dice} ${sign(bonus)})${how}.${always}${help}`
+  showDice({
+    sides: 20,
+    dice: d20s,
+    dropped: d20s.map((_, i) => i).filter((i) => i !== keptAt),
+    primary: -1,
+    explosions: [],
+    extra: null,
+    mod: bonus,
+    total,
+    miss: false,
+    crit: false,
+    odds,
+  })
+  showOutcome({ label: `${name} check`, total, detail: message })
+  return { message, total }
 }

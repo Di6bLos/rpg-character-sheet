@@ -40,7 +40,7 @@ export const END_LABELS: Record<ConditionEnd | 'manual', string> = {
   manual: 'when you remove it',
 }
 
-const INCAPACITATED = ['Incapacitated', 'Petrified', 'Stunned', 'Paralyzed', 'Unconscious']
+export const INCAPACITATED = ['Incapacitated', 'Petrified', 'Stunned', 'Paralyzed', 'Unconscious']
 const ATTACK_DISADVANTAGE = ['Blinded', 'Prone', 'Poisoned']
 
 /** Conditions whose attack disadvantage depends on the target; the player says when they apply. */
