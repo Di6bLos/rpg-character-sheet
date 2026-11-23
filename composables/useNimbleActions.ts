@@ -18,6 +18,7 @@ import {
   setMalfunction,
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
+import { weaponEnchantment } from '~/utils/nimbleSpellRules'
 import { addCondition, conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
 import {
   armorDice,
@@ -150,6 +151,14 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
   const situation = useAttackSituation()
   const target = useAttackTarget()
+
+  /** A crit with an enchanted weapon sets the target Smoldering (Enchant Weapon). */
+  function enchantCrit(): string {
+    const e = weaponEnchantment(sheet.value)
+    if (!e?.smoldering || target.value.smoldering) return ''
+    target.value = { ...target.value, smoldering: true }
+    return ` ${e.spell}: the target is Smoldering.`
+  }
   const critReady = useCritReady()
   /** Weapons whose optional extra dice the player turned on for their next attack. */
   const extraDice = useState<Record<string, boolean>>(
@@ -297,6 +306,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               : ''
       const sneak = r?.kind === 'crit' && res.count === 0 ? note : ''
       const bonus = attackBonus(sheet.value, draft.value.level, w, held.value)
+      const enchant = weaponEnchantment(sheet.value)
       const zealous = w.melee && zealMax.value > 0
       const zealDamage = zealous ? zealot.value * 5 : 0
       const quarryFlat = hasMark.value && quarry.value === 'damage' ? draft.value.level : 0
@@ -339,7 +349,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
                 miss,
                 crit,
                 quarry: hasMark.value && !!quarry.value,
-              })
+              }) +
+              (crit && !miss ? enchantCrit() : '')
       }
       return {
         name: w.name,
@@ -360,6 +371,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           r?.kind === 'crit' && res.count === 0 ? r.name : '',
           w.onCrit?.length ? `${w.name} on-crit damage` : '',
           w.name === 'Sting' ? 'Sting' : '',
+          enchant?.smoldering ? enchant.spell : '',
         ].filter(Boolean),
         critReady: !!critReady.value[`w:${w.name}`],
         optionalDice: optional ? `+${optional[1]}d${optional[2]}` : '',
@@ -383,6 +395,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             notes.push(`${r.name}: add ${r.roll}d${r.die} (used this turn).`)
           }
           if (w.onCrit?.length) notes.push(`Add ${w.onCrit.join(' + ')}.`)
+          notes.push(enchantCrit().trim())
           notes.push(
             afterEffectAttack(sheet.value, draft.value.level, w.name, {
               miss: false,
@@ -457,6 +470,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             }
             if (w.onHit?.length) notes.push(`on a hit, add ${w.onHit.join(' + ')}`)
             if (w.onCrit?.length) notes.push(`on a crit, add ${w.onCrit.join(' + ')}`)
+            if (enchant?.smoldering)
+              notes.push(`on a crit, press It crit: the target is Smoldering (${enchant.spell})`)
             if (sneak)
               notes.push(`on a crit, add ${r?.roll}d${r?.die} Sneak Attack and mark it used`)
             const ended = endEffects(sheet.value, 'attack')

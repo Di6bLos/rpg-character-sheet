@@ -4,6 +4,8 @@ import type { NimbleSheet } from '../types/sheets'
 import {
   chargedActions,
   critBonus,
+  targetNeed,
+  weaponEnchantment,
   spellNeeds,
   spellOnCrit,
   spellOnHit,
@@ -17,6 +19,16 @@ function faces(sides: number, ...values: number[]) {
   return () => ((values[i++ % values.length] ?? 1) - 1) / sides + 0.0001
 }
 import { defaultSheet } from '../utils/sheetDefaults'
+import {
+  attackBonus,
+  castSpell,
+  endTurn,
+  initiativeCastReady,
+  initiativeCasts,
+  rollInitiative,
+} from '../utils/nimblePlay'
+import { endEffects } from '../utils/nimbleEffects'
+import { spellDamage } from '../utils/nimbleSpellDamage'
 
 const spell = (name: string) => spellByName(name)!
 const target = (patch = {}) => ({ smoldering: false, hampered: false, ...patch })
@@ -100,5 +112,49 @@ describe('spell effects', () => {
       bump: 2,
     })
     expect(plain).toMatchObject({ crit: false, total: 2 + 4 + 3 + 2 })
+  })
+})
+
+describe('Spellblade: Firebrand and Enchant Weapon', () => {
+  const FIREBRAND =
+    'When you roll Initiative you may cast Enchant Weapon for free (can be upcast as normal by spending additional mana).'
+  const blade = (): NimbleSheet => ({
+    ...defaultSheet('nimble'),
+    classSlug: 'commander',
+    stats: { STR: 3, DEX: 1, INT: 2, WIL: 0 },
+    abilities: [{ name: 'Firebrand', src: 'Spellblade', desc: FIREBRAND }],
+  })
+
+  it('opens a free Enchant Weapon when Initiative is rolled, until your first turn ends', () => {
+    const sheet = blade()
+    expect(initiativeCasts(sheet)).toEqual([{ spell: 'Enchant Weapon', ability: 'Firebrand' }])
+    expect(initiativeCastReady(sheet, 'Enchant Weapon')).toBe(false)
+    rollInitiative(sheet, 3, faces(20, 12))
+    expect(initiativeCastReady(sheet, 'Enchant Weapon')).toBe(true)
+    endTurn(sheet, 3)
+    expect(initiativeCastReady(sheet, 'Enchant Weapon')).toBe(false)
+  })
+
+  it('adds +KEY weapon damage per tier while concentrating, Smoldering on crit', () => {
+    const sheet = blade()
+    expect(spellDamage(sheet, 3, spell('Enchant Weapon'), 3)).toBeNull()
+    castSpell(sheet, 'Enchant Weapon', 0, 3, 3)
+    expect(weaponEnchantment(sheet)).toMatchObject({
+      spell: 'Enchant Weapon',
+      damage: 6,
+      smoldering: true,
+    })
+    expect(attackBonus(sheet, 3, { melee: true }, 0)).toEqual({
+      flat: 6,
+      notes: ['Enchant Weapon +6'],
+    })
+    endEffects(sheet, 'concentration')
+    expect(weaponEnchantment(sheet)).toBeNull()
+    expect(attackBonus(sheet, 3, { melee: true }, 0).flat).toBe(0)
+  })
+
+  it('puts a Smoldering checkbox on spells that need a Smoldering target', () => {
+    expect(targetNeed(spell('Ignite'))).toEqual({ key: 'smoldering', label: 'Smoldering' })
+    expect(targetNeed(spell('Flame Dart'))).toBeNull()
   })
 })

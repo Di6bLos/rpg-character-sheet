@@ -23,6 +23,7 @@ import {
 import { INVENTIONS } from '~/data/nimble/effects'
 import { clearConditionsAt, dazedAtTurnStart } from '~/utils/nimbleConditions'
 import { armorHit, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
+import { weaponEnchantment } from '~/utils/nimbleSpellRules'
 import {
   applyCastEffect,
   applyMishapEffect,
@@ -390,6 +391,11 @@ export function attackBonus(
       flat += stat(kinetic) * misses
       notes.push(`${name} +${stat(kinetic) * misses}`)
     }
+  }
+  const enchanted = weaponEnchantment(sheet)
+  if (enchanted?.damage) {
+    flat += enchanted.damage
+    notes.push(`${enchanted.spell} +${enchanted.damage}`)
   }
   return { flat, notes }
 }
@@ -912,6 +918,7 @@ export function endTurn(sheet: NimbleSheet, level: number): string {
   sheet.rushed = 0
   sheet.reactionsUsed = []
   const stolen = settleStolen(sheet)
+  for (const c of initiativeCasts(sheet)) sheet.uses[`${c.spell}~ready`] = { used: 0 }
   const n = turnActions(sheet)
   const recharged = refillResource(sheet, level, 'turnEnd')
   const ended = endEffects(sheet, 'turnEnd') + clearConditionsAt(sheet, 'turnEnd')
@@ -1385,6 +1392,21 @@ function expireGrants(sheet: NimbleSheet): string {
   return lost.length ? ` Unspent Initiative uses lost: ${lost.join(', ')}.` : ''
 }
 
+const INITIATIVE_CAST = /\bWhen you roll Initiative you may cast ([A-Z][\w ]+?) for free\b/
+
+/** Spells an ability casts for free when Initiative is rolled (Firebrand: Enchant Weapon). */
+export function initiativeCasts(sheet: NimbleSheet): { spell: string; ability: string }[] {
+  return sheet.abilities.flatMap((a) => {
+    const spell = INITIATIVE_CAST.exec(a.desc)?.[1]
+    return spell ? [{ spell, ability: abilityBaseName(a.name) }] : []
+  })
+}
+
+/** Whether that free cast is still open: from rolling Initiative to the end of your first turn. */
+export function initiativeCastReady(sheet: NimbleSheet, spell: string): boolean {
+  return !!sheet.uses[`${spell}~ready`]?.used
+}
+
 const REMINDER =
   /\bWhen you roll Initiative(?: or [^,]+)?,? (?:you may )?(?!regain\b|gain (?:STR|DEX|INT|WIL)\b|give yourself and an ally advantage)([^.]+)\./
 
@@ -1530,6 +1552,7 @@ export function initiativeRoll(
   // Classic initiative only orders the turns: every hero starts with full actions.
   const start = sheet.classicInitiative ? max : initiativeActions(roll, natural, max)
   sheet.actionsSpent = max - start
+  for (const c of initiativeCasts(sheet)) sheet.uses[`${c.spell}~ready`] = { used: 1 }
   const extra = [
     cheat ? ` Cheat: ${rolled} raised to 10.` : '',
     grantSoulDice(sheet, start),

@@ -6,7 +6,9 @@
 // track enemies.
 import type { SpellDef } from '~/data/nimble/types'
 import type { NimbleSheet } from '~/types/sheets'
+import { spellByName } from '~/data/nimble/spells'
 import type { NimbleRollRules } from '~/utils/dice'
+import { keyStatValue } from '~/utils/nimbleBuild'
 import { addCondition, removeCondition } from '~/utils/nimbleConditions'
 
 /** The parts of the attack target a spell can need or change. */
@@ -32,6 +34,10 @@ const MAX_CRITS_HAMPERED =
 /** Conditions that make a creature Hampered (Core p. 47 sidebar). */
 const HAMPERING = /\b(Slowed|Dazed|Grappled|Restrained|Prone)\b/
 
+const ENCHANTED = /\bA weapon you touch is enchanted\b[^.]*\. It deals \+KEY damage\b/
+const ENCHANT_UPCAST = /\bUpcast: \+KEY damage\b/
+const ENCHANT_SMOLDERS = /\binflicts Smoldering on crit\b/
+
 const charged = (sheet: NimbleSheet) => sheet.conditions.includes('Charged')
 
 /** Why the spell can't be cast right now, or '' when nothing stops it. */
@@ -39,6 +45,11 @@ export function spellNeeds(sheet: NimbleSheet, spell: SpellDef, target: SpellTar
   if (NEEDS_CHARGED.test(spell.desc) && !charged(sheet)) return 'Needs you Charged'
   if (SMOLDERING_TARGET.test(spell.desc) && !target.smoldering) return 'Target isn’t Smoldering'
   return ''
+}
+
+/** The target status a spell needs, for a checkbox on its card (Ignite: Smoldering). */
+export function targetNeed(spell: SpellDef): { key: 'smoldering'; label: string } | null {
+  return SMOLDERING_TARGET.test(spell.desc) ? { key: 'smoldering', label: 'Smoldering' } : null
 }
 
 /** Electrickery's action cost while Charged, or null when the spell's own cost stands. */
@@ -132,4 +143,26 @@ export function spellOnHit(
     chips.push('turn off Smoldering')
   }
   return { note: notes.length ? ` ${notes.join(' ')}` : '', target: next, chips }
+}
+
+/**
+ * The hero's weapon while a spell they cast enchants it (Enchant Weapon): +KEY damage,
+ * +KEY more per upcast tier, and whether a crit sets the target Smoldering.
+ */
+export function weaponEnchantment(
+  sheet: NimbleSheet,
+): { spell: string; damage: number; smoldering: boolean; text: string } | null {
+  for (const e of sheet.effects) {
+    const spell = spellByName(e.source)
+    if (!spell || !ENCHANTED.test(spell.desc)) continue
+    const key = keyStatValue(sheet)?.value ?? 0
+    const tiers = 1 + (ENCHANT_UPCAST.test(spell.desc) ? (e.upcast ?? 0) : 0)
+    return {
+      spell: spell.name,
+      damage: key * tiers,
+      smoldering: ENCHANT_SMOLDERS.test(spell.desc),
+      text: spell.desc,
+    }
+  }
+  return null
 }

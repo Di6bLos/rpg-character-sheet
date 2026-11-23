@@ -305,6 +305,7 @@ const hasAttacks = computed(
                 :disabled="!canEdit"
                 @set="setUpcast(a.spell, $event)"
               />
+              <NimbleTargetNeed :spell="a.spell" />
               <button
                 type="button"
                 class="btn btn--wrap"

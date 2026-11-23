@@ -690,6 +690,7 @@ const effectRows = computed(() =>
                         :disabled="!canEdit"
                         @set="setUpcast(a.spell, $event)"
                       />
+                      <NimbleTargetNeed :spell="a.spell" />
                       <button
                         type="button"
                         class="btn btn--sm btn--wrap"
@@ -1144,6 +1145,7 @@ const effectRows = computed(() =>
                 <small>{{ s.cast }}</small>
                 <p>{{ s.desc }}</p>
                 <NimbleModifiers :target="s.name" />
+                <NimbleTargetNeed :spell="s" />
                 <NimbleUpcast
                   v-if="s.canUpcast"
                   :name="s.name"
@@ -1179,8 +1181,10 @@ const effectRows = computed(() =>
                     :key="a.key"
                     type="button"
                     class="btn btn--ghost btn--sm btn--wrap"
-                    :disabled="!canEdit || s.busy || s.noActions || !!s.notNow || !!a.why"
-                    :title="s.notNow || a.why || undefined"
+                    :disabled="
+                      !canEdit || (!a.free && (s.busy || s.noActions || !!s.notNow)) || !!a.why
+                    "
+                    :title="(!a.free && s.notNow) || a.why || undefined"
                     @click="cast(s, false, a.key)"
                   >
                     {{ a.why || a.label }}

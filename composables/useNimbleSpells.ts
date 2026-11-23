@@ -21,6 +21,8 @@ import {
   critTriggerSources,
   critTriggers,
   gainWounds,
+  initiativeCastReady,
+  initiativeCasts,
   isHollowOne,
   manaPool,
   payBloodCast,
@@ -115,11 +117,13 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     has(/\bWhenever you cast a spell, you can choose to spend 1 less mana\b/),
   )
 
-  type AltKey = 'chaos' | 'self' | 'temp' | 'hp' | 'free' | 'wounds'
+  type AltKey = 'chaos' | 'self' | 'temp' | 'hp' | 'free' | 'wounds' | 'initiative'
   interface SpellAlt {
     key: AltKey
     label: string
     why: string
+    /** Cast without actions, so neither the turn nor a spell in progress holds it back. */
+    free?: boolean
   }
 
   function spellAlts(s: SpellDef, mana: number, plain: boolean): SpellAlt[] {
@@ -164,6 +168,16 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         key: 'free',
         label: `Cast · 0 mana (${free.name})`,
         why: !counter || counter.used >= counter.max ? 'Used this Safe Rest' : '',
+      })
+    }
+    const initiative = initiativeCasts(sheet.value).find((c) => c.spell === s.name)
+    if (initiative && initiativeCastReady(sheet.value, s.name)) {
+      const extra = castTier(s) - s.tier
+      alts.push({
+        key: 'initiative',
+        label: `Cast · ${extra ? `${extra} mana` : 'free'} (${initiative.ability})`,
+        why: extra > pool ? 'Not enough mana' : '',
+        free: true,
       })
     }
     const wounds = abilityMatch(/\bGain 1d4 Wounds to cast ([A-Z][\w ]+)\b/)
@@ -313,13 +327,14 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
   }
 
   function cast(s: CastableSpell, withWound = false, alt?: AltKey, roll = false) {
-    if (!canEdit.value || s.busy) return
+    const free = !!s.alts.find((a) => a.key === alt)?.free
+    if (!canEdit.value || (s.busy && !free)) return
     const incapacitated = conditionMods(sheet.value, situation.value).incapacitated
     if (incapacitated) return say(`${s.name}: you are ${incapacitated} and can’t cast.`)
-    if (s.notNow) return say(`${s.name}: not your turn.`)
+    if (s.notNow && !free) return say(`${s.name}: not your turn.`)
     if (s.used) return say(`${s.name}: already cast this turn (1/turn).`)
     if (s.needs) return say(`${s.name}: ${s.needs.toLowerCase()}.`)
-    if (s.noActions) {
+    if (s.noActions && !free) {
       const message = 'No actions left: they come back when your turn ends.'
       say(message)
       return
@@ -361,7 +376,13 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     }
     notes.push(spellSelfEffects(sheet.value, s).trim())
     // Actions the turn can't cover carry over; Concentration starts once it is cast.
-    const progress = castSpell(sheet.value, s.name, s.actions, draft.value.level, s.at).trim()
+    const progress = castSpell(
+      sheet.value,
+      s.name,
+      free ? 0 : s.actions,
+      draft.value.level,
+      s.at,
+    ).trim()
     if (progress) notes.push(progress)
     if (ONCE_PER_TURN.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
     if (roll) notes.push(damageNote(s))
@@ -408,6 +429,13 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       const counter = freeCounter(owner)
       if (counter) v.uses[counter.id] = { ...v.uses[counter.id], used: counter.used + 1 }
       return `0 mana (${owner}).`
+    }
+    if (alt === 'initiative') {
+      const extra = s.at - s.tier
+      if (extra && !spendMana(v, extra)) return ''
+      v.uses[`${s.name}~ready`] = { used: 0 }
+      const owner = initiativeCasts(v).find((c) => c.spell === s.name)?.ability ?? ''
+      return `${extra ? `${extra} mana for the upcast` : 'free'}, no actions (${owner}).`
     }
     if (v.ownDice) return 'roll 1d4 and mark that many Wounds.'
     const n = rollDie(4)
