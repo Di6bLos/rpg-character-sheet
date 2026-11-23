@@ -16,7 +16,7 @@ useHeroEffects()
 useHeroHpChanges()
 useHeroConditionChanges()
 const sheet = computed(() => draft.value.sheet)
-const { diceLeft, speed } = useNimbleVitals()
+const { diceLeft, speed, armor } = useNimbleVitals()
 
 const dead = computed(() => isDead(sheet.value))
 const identity = computed(() =>
@@ -30,7 +30,12 @@ const identity = computed(() =>
 )
 
 const tiles = computed(() => [
-  { label: 'Armor', value: String(sheet.value.ac), title: 'Defend reduces a hit by your Armor' },
+  {
+    label: 'Armor',
+    value: String(armor.value.value),
+    title: armor.value.title,
+    changed: armor.value.changed,
+  },
   {
     label: 'Speed',
     value: String(speed.value.value),

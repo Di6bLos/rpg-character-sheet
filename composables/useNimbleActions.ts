@@ -47,6 +47,7 @@ import {
   freeMove,
   afterAttack,
   critTriggerNames,
+  armorNow,
   attackBonus,
   isBloodied,
   manaCost,
@@ -641,7 +642,10 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const free = freeReaction(r.name)
       return {
         ...r,
-        desc: r.name === 'Defend' ? `${r.desc} Your Armor is ${sheet.value.ac}.` : r.desc,
+        desc:
+          r.name === 'Defend'
+            ? `${r.desc} Your Armor is ${armorNow(sheet.value, draft.value.level).value}.`
+            : r.desc,
         used,
         free,
         costText: `${free ? 'Free' : 'Costs 1 action'}${max > 1 ? ` · ${max - count} of ${max} left` : ''}`,
@@ -861,7 +865,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     )
     const notes = [
       armor.length
-        ? `+${sheet.value.ac} (${armor.map((a) => abilityBaseName(a.name)).join(', ')})`
+        ? `+${armorNow(sheet.value, draft.value.level).value} (${armor.map((a) => abilityBaseName(a.name)).join(', ')})`
         : '',
       clean.length
         ? `no disadvantage (${clean.map((a) => abilityBaseName(a.name)).join(', ')})`
@@ -869,7 +873,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     ].filter(Boolean)
     nextAttack.value = {
       ...NO_NEXT,
-      flat: armor.length ? sheet.value.ac : 0,
+      flat: armor.length ? armorNow(sheet.value, draft.value.level).value : 0,
       clean: clean.length > 0,
       note: notes.join(', '),
     }

@@ -1,6 +1,7 @@
 import type { NimbleSheet } from '~/types/sheets'
 import { conditionMods } from '~/utils/nimbleConditions'
 import {
+  armorNow,
   dyingAttackSave,
   fieldRest,
   fieldRestDice,
@@ -56,6 +57,17 @@ export function useNimbleVitals() {
       value: cond.speed ?? sheet.value.speed,
       note: cond.speedNote,
       changed: cond.speed !== null,
+    }
+  })
+
+  /** Armor with spell statuses (Electrocharge, Dragonform); the tooltip says what adds to it. */
+  const armor = computed(() => {
+    const now = armorNow(sheet.value, draft.value.level)
+    const extra = now.notes.length ? `: ${sheet.value.ac} + ${now.notes.join(' + ')}` : ''
+    return {
+      value: now.value,
+      title: `Defend reduces a hit by your Armor (${now.value}${extra})`,
+      changed: now.notes.length > 0,
     }
   })
 
@@ -156,6 +168,7 @@ export function useNimbleVitals() {
     hpTone,
     diceLeft,
     speed,
+    armor,
     crit,
     revive,
     damage,

@@ -21,7 +21,7 @@ import {
   type SheetResource,
 } from '~/utils/nimbleBuild'
 import { INVENTIONS } from '~/data/nimble/effects'
-import { clearConditionsAt, dazedAtTurnStart } from '~/utils/nimbleConditions'
+import { clearConditionsAt, dazedAtTurnStart, statusStats } from '~/utils/nimbleConditions'
 import { armorHit, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
 import { weaponEnchantment } from '~/utils/nimbleSpellRules'
 import {
@@ -60,10 +60,18 @@ export function turnActionsFor(abilityNames: string[], dying: boolean): number {
 }
 
 export function turnActions(sheet: NimbleSheet): number {
-  return turnActionsFor(
-    sheet.abilities.map((a) => a.name),
-    !!sheet.dying,
+  return (
+    turnActionsFor(
+      sheet.abilities.map((a) => a.name),
+      !!sheet.dying,
+    ) + statusStats(sheet).actions
   )
+}
+
+/** Armor with spell statuses that add to it (Electrocharge +5, Dragonform LVL Armor). */
+export function armorNow(sheet: NimbleSheet, level: number): { value: number; notes: string[] } {
+  const stats = statusStats(sheet, level)
+  return { value: sheet.ac + stats.armor, notes: stats.armorNotes }
 }
 
 /** Attacking while Dying calls for a DC 10 STR save, unless Enduring Rage waives it. */

@@ -8,6 +8,7 @@ import { sign } from '~/utils/dice'
 import { knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
 import { hasTransforms } from '~/utils/nimbleEffects'
 import { isDead } from '~/utils/nimblePlay'
+import { statusStats } from '~/utils/nimbleConditions'
 import { DEAD_PORTRAIT } from '~/utils/deadPortrait'
 import { availableSummons } from '~/utils/nimbleSummons'
 
@@ -35,7 +36,9 @@ const hasSpells = computed(
 
 const stats = computed(() =>
   STATS.map((k) => {
-    const mode = sheet.value.saveAdv === k ? 'adv' : sheet.value.saveDis === k ? 'dis' : ''
+    const adv = sheet.value.saveAdv === k || statusStats(sheet.value).saveAdvantage.includes(k)
+    const dis = sheet.value.saveDis === k
+    const mode = adv && !dis ? 'adv' : dis && !adv ? 'dis' : ''
     return {
       k,
       v: sign(sheet.value.stats[k]),

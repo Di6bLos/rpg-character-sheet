@@ -1,4 +1,5 @@
-import type { ConditionEnd, NimbleSheet } from '~/types/sheets'
+import { spellByName } from '~/data/nimble/spells'
+import type { ConditionEnd, NimbleSheet, NimbleStat } from '~/types/sheets'
 
 export const SPELL_STATUSES = [
   {
@@ -8,6 +9,14 @@ export const SPELL_STATUSES = [
   {
     name: 'Charged',
     desc: 'From taking lightning damage, for 1 minute; some spells (Overload) need it. Ends when combat does.',
+  },
+  {
+    name: 'Electrocharge',
+    desc: 'From the Electrocharge spell: Charged, +1 max action, +5 armor, 2× speed and advantage on DEX saves while its caster concentrates. Ends when combat does.',
+  },
+  {
+    name: 'Flying',
+    desc: 'A flying speed: 12 from Fly or Boisterous Winds, your speed otherwise.',
   },
   {
     name: 'Distracted',
@@ -28,6 +37,7 @@ export const CONDITION_ENDS: Partial<Record<string, ConditionEnd>> = {
   Taunted: 'turnEnd',
   Smoldering: 'encounter',
   Charged: 'encounter',
+  Electrocharge: 'encounter',
   Distracted: 'encounter',
   Helped: 'turnEnd',
 }
@@ -48,6 +58,73 @@ export const SITUATIONAL = [
   { name: 'Taunted', when: 'not your taunter', hint: 'disadvantage except vs. your taunter' },
   { name: 'Frightened', when: 'source nearby', hint: 'disadvantage near its source' },
 ]
+
+/** A status whose numbers come from another spell's text (Flying set by hand: Fly). */
+const STATUS_SPELL: Partial<Record<string, string>> = { Flying: 'Fly' }
+const ARMOR_PLUS = /\+(\d+) armor\b/
+const LVL_ARMOR = /\bLVL Armor\b/
+const MAX_ACTIONS = /\+(\d+) max actions?\b/
+const SPEED_TIMES = /\b(\d+)× speed\b/
+const FLY_SPEED = /\bfly(?:ing)? speed of (\d+)\b/
+const CAN_FLY = /\byou can fly\b/
+const SAVE_ADVANTAGE = /\badvantage on (STR|DEX|INT|WIL) saves\b/
+
+/** The status a spell gives the creature it touches (Electrocharge, Fly → Flying), or ''. */
+export function statusFromSpell(spell: string): string {
+  if (SPELL_STATUSES.some((s) => s.name === spell)) return spell
+  return Object.entries(STATUS_SPELL).find(([, from]) => from === spell)?.[0] ?? ''
+}
+
+export interface StatusStats {
+  armor: number
+  actions: number
+  speedTimes: number
+  /** Fly speed: spaces, 'speed' (equal to your speed) or null. */
+  fly: number | 'speed' | null
+  saveAdvantage: NimbleStat[]
+  /** "Electrocharge +5", for the tiles' tooltips. */
+  armorNotes: string[]
+  /** "2× (Electrocharge)". */
+  speedNotes: string[]
+}
+
+/**
+ * What the hero's active spell statuses change, read from the spell that caused each
+ * one (its effect's source, or the spell of the same name): Electrocharge's armor,
+ * max action, speed and DEX saves, Dragonform's LVL Armor and fly speed, Flying.
+ */
+export function statusStats(sheet: NimbleSheet, level = 0): StatusStats {
+  const out: StatusStats = {
+    armor: 0,
+    actions: 0,
+    speedTimes: 1,
+    fly: null,
+    saveAdvantage: [],
+    armorNotes: [],
+    speedNotes: [],
+  }
+  for (const c of sheet.conditions) {
+    const source = sheet.effects.find((e) => e.condition === c)?.source ?? STATUS_SPELL[c] ?? c
+    const text = spellByName(source)?.desc.split(/\bUpcast:/)[0] ?? ''
+    const armor = LVL_ARMOR.test(text) ? level : Number(ARMOR_PLUS.exec(text)?.[1] ?? 0)
+    if (armor) {
+      out.armor += armor
+      out.armorNotes.push(`${source} +${armor}`)
+    }
+    out.actions += Number(MAX_ACTIONS.exec(text)?.[1] ?? 0)
+    const times = Number(SPEED_TIMES.exec(text)?.[1] ?? 1)
+    if (times !== 1) {
+      out.speedTimes *= times
+      out.speedNotes.push(`${times}× (${source})`)
+    }
+    const fly = FLY_SPEED.exec(text)?.[1]
+    if (fly) out.fly = Math.max(typeof out.fly === 'number' ? out.fly : 0, Number(fly))
+    else if ((c === 'Flying' || CAN_FLY.test(text)) && out.fly === null) out.fly = 'speed'
+    const save = SAVE_ADVANTAGE.exec(text)?.[1] as NimbleStat | undefined
+    if (save && !out.saveAdvantage.includes(save)) out.saveAdvantage.push(save)
+  }
+  return out
+}
 
 export interface ConditionMods {
   disadvantage: number
@@ -80,16 +157,22 @@ export function conditionMods(sheet: NimbleSheet, applies: string[] = []): Condi
     ...(helped ? ['Helped (advantage)'] : []),
   ]
   const hints = present.filter((s) => !applies.includes(s.name)).map((s) => `${s.name}: ${s.hint}`)
-  const base = Number.parseInt(sheet.speed, 10)
-  let speed: number | null = null
-  let speedNote = ''
+  const stats = statusStats(sheet)
+  const walk = Number.parseInt(sheet.speed, 10)
+  const base = Number.isFinite(walk) ? walk * stats.speedTimes : walk
+  let speed: number | null = stats.speedTimes !== 1 && Number.isFinite(base) ? base : null
+  let speedNote = stats.speedNotes.join(' · ')
   if (has('Grappled') || has('Restrained')) {
     speed = 0
     speedNote = has('Grappled') ? 'Grappled: can’t move' : 'Restrained: can’t move'
   } else if (has('Slowed') && Number.isFinite(base)) {
     speed = Math.floor(base / 2)
-    speedNote = 'Slowed: halved'
+    speedNote = [speedNote, 'Slowed: halved'].filter(Boolean).join(' · ')
   }
+  if (stats.fly !== null)
+    speedNote = [speedNote, `Fly ${stats.fly === 'speed' ? 'at your speed' : stats.fly}`]
+      .filter(Boolean)
+      .join(' · ')
   if (has('Prone'))
     speedNote = [speedNote, 'Prone: moving costs double; standing costs 3']
       .filter(Boolean)

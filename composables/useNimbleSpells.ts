@@ -43,7 +43,7 @@ import {
   spellOnHit,
   spellSelfEffects,
 } from '~/utils/nimbleSpellRules'
-import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
+import { conditionMods, oddsReasons, spendHelp, statusFromSpell } from '~/utils/nimbleConditions'
 import { parseDice, rollDie, showOutcome } from '~/utils/dice'
 import {
   armorDice,
@@ -375,6 +375,9 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       notes.push(primordial(s, s.mana))
     }
     notes.push(spellSelfEffects(sheet.value, s).trim())
+    const status = statusFromSpell(s.name)
+    if (status && !sheet.value.conditions.includes(status))
+      notes.push(`On yourself? Turn on ${status} in Conditions.`)
     // Actions the turn can't cover carry over; Concentration starts once it is cast.
     const progress = castSpell(
       sheet.value,

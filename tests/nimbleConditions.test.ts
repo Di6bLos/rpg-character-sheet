@@ -7,9 +7,13 @@ import {
   oddsReasons,
   removeCondition,
   spendHelp,
+  statusFromSpell,
+  statusStats,
 } from '../utils/nimbleConditions'
 import {
   actionsLeft,
+  armorNow,
+  turnActions,
   endEncounter,
   endTurn,
   isDead,
@@ -117,5 +121,40 @@ describe('conditions', () => {
     expect(resurrect(sheet)).toMatch(/Resurrected: back at 1 HP with 5 Wounds/)
     expect(sheet).toMatchObject({ hp: 1, wounds: 5, dying: false })
     expect(resurrect(sheet)).toBe('')
+  })
+})
+
+describe('spell statuses that change the hero’s numbers', () => {
+  it('Electrocharge: +5 armor, +1 max action, double speed, advantage on DEX saves', () => {
+    const sheet = hero({ ac: 3, conditions: ['Electrocharge'] })
+    expect(armorNow(sheet, 5)).toEqual({ value: 8, notes: ['Electrocharge +5'] })
+    expect(turnActions(sheet)).toBe(4)
+    expect(conditionMods(sheet)).toMatchObject({ speed: 12, speedNote: '2× (Electrocharge)' })
+    expect(statusStats(sheet).saveAdvantage).toEqual(['DEX'])
+    addCondition(sheet, 'Slowed')
+    expect(conditionMods(sheet).speed).toBe(6)
+  })
+
+  it('Dragonform adds LVL Armor and fly 12; Flying by hand flies 12 (Fly), from boots at your speed', () => {
+    const dragon = hero({
+      ac: 2,
+      conditions: ['Dragonform'],
+      effects: [{ condition: 'Dragonform', source: 'Dragonform', ends: ['rest'] }],
+    })
+    expect(armorNow(dragon, 17).value).toBe(19)
+    expect(conditionMods(dragon).speedNote).toBe('Fly 12')
+    expect(conditionMods(hero({ conditions: ['Flying'] })).speedNote).toBe('Fly 12')
+    const boots = hero({
+      conditions: ['Flying'],
+      effects: [{ condition: 'Flying', source: 'Propulsive Boots', ends: ['turnEnd'] }],
+    })
+    expect(conditionMods(boots).speedNote).toBe('Fly at your speed')
+    expect(armorNow(hero({ ac: 2 }), 5)).toEqual({ value: 2, notes: [] })
+  })
+
+  it('names the status a touch spell gives, for the caster to turn on', () => {
+    expect(statusFromSpell('Electrocharge')).toBe('Electrocharge')
+    expect(statusFromSpell('Fly')).toBe('Flying')
+    expect(statusFromSpell('Ignite')).toBe('')
   })
 })
