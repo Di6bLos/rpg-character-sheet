@@ -273,3 +273,13 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - GM only backstory section
 - Fix the the delete campaign section text. its not wrapping, getting cut off my container an button
 - Lets update the carousel tracker again. I dont want to be able to scroll to the next rown. I want the
+
+## Usage analytics (playtest: Battle vs Party vs Sheet)
+
+- [x] `analytics_events` table, `track_events` RPC, staff report RPCs, 180-day prune
+- [x] "Usage analytics" switch in Site features (`site_settings.analytics_enabled`)
+- [x] Client: page views, active time, auto-captured clicks with `data-track` / `data-track-area`
+- [x] `/admin/analytics`: per-page tiles, active time per day, who plays where, top buttons
+- [x] Reset analytics (admin only, confirmed, logged)
+- [ ] Apply the migration to the hosted project
+- [ ] ui-ux-reviewer pass on `/admin/analytics`

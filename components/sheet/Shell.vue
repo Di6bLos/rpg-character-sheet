@@ -87,7 +87,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
 
 <template>
   <div class="sheet" :class="`sheet--${draft.system}`">
-    <div class="sheet__bar">
+    <div class="sheet__bar" data-track-area="Sheet action bar">
       <nav class="sheet__back" aria-label="Go back">
         <NuxtLink to="/characters" class="back">
           <svg

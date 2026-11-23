@@ -52,7 +52,7 @@ async function endEncounter() {
 </script>
 
 <template>
-  <header v-if="campaign" class="bar" :class="{ 'bar--gm': gmControls }">
+  <header v-if="campaign" class="bar" data-track-area="Top bar" :class="{ 'bar--gm': gmControls }">
     <div ref="menuEl" class="bar__camp" @keydown.esc="closeMenu(true)">
       <!-- GM: the name opens Table (invites, session, players). -->
       <button

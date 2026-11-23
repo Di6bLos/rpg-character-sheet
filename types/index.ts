@@ -427,6 +427,8 @@ export interface SiteSettings {
   ai_enabled: boolean
   /** Users without their own key get the Lore Master on the site's Gemini key. */
   free_ai_enabled: boolean
+  /** Page visits, active time and button clicks are recorded for the admin Analytics page. */
+  analytics_enabled: boolean
   /** Free Lore Master questions per user per UTC day. */
   free_ai_daily_limit: number
 }

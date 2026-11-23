@@ -12,6 +12,7 @@ export const useSiteStore = defineStore('site', () => {
     npc_pool_library: true,
     ai_enabled: true,
     free_ai_enabled: false,
+    analytics_enabled: true,
     free_ai_daily_limit: 25,
   })
   const loaded = ref(false)
@@ -24,7 +25,7 @@ export const useSiteStore = defineStore('site', () => {
     const { data, error } = await supabase
       .from('site_settings')
       .select(
-        'npc_pool_campaign, npc_pool_library, ai_enabled, free_ai_enabled, free_ai_daily_limit',
+        'npc_pool_campaign, npc_pool_library, ai_enabled, free_ai_enabled, analytics_enabled, free_ai_daily_limit',
       )
       .maybeSingle()
     if (error) {

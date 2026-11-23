@@ -27,7 +27,12 @@ const { el, wide, drawerOpen, folded, setCollapsed, onClose, onBackdrop, dismiss
 </script>
 
 <template>
-  <div v-if="character" class="ap-slot" :class="{ 'ap-slot--folded': folded }">
+  <div
+    v-if="character"
+    class="ap-slot"
+    data-track-area="Quick actions"
+    :class="{ 'ap-slot--folded': folded }"
+  >
     <Teleport to=".edge-tabs" defer>
       <button
         v-if="!wide"

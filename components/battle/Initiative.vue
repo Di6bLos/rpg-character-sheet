@@ -358,6 +358,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
     v-if="init.order.value.length"
     ref="viewport"
     class="strip"
+    data-track-area="Initiative"
     role="group"
     aria-label="Turn order"
     :class="{ 'is-dragging': dragging }"
