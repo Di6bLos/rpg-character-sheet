@@ -1,5 +1,5 @@
 // Usage analytics: pure helpers that turn a route and a clicked element into an event.
-// The plugin (`plugins/analytics.client.ts`) and `composables/useAnalytics.ts` send them.
+// The plugin (`plugins/usage-analytics.client.ts`) and `composables/useAnalytics.ts` send them.
 
 export type Surface = 'sheet' | 'party' | 'battle' | 'journal' | 'maps' | 'npcs' | 'other'
 export type PageSeat = 'gm' | 'player'
@@ -33,7 +33,12 @@ export const SURFACE_LABELS: Record<Surface, string> = {
 /** Routes that are never tracked (staff tools, sign in). */
 export function untracked(path: string): boolean {
   return (
-    path.startsWith('/admin') || path === '/' || path === '/signup' || path.startsWith('/join/')
+    path.startsWith('/admin') ||
+    path === '/' ||
+    path === '/signup' ||
+    path.startsWith('/join/') ||
+    // `board/index.vue` and `gm/index.vue` only redirect to Battle or Party.
+    /^\/campaigns\/[^/]+\/(?:board|gm)\/?$/.test(path)
   )
 }
 
@@ -121,7 +126,7 @@ export function trackTarget(start: EventTarget | null): Element | null {
   return el
 }
 
-/** Visible text with block boundaries kept as spaces ("Iriel" + "Human Mage" → "Iriel Human Mage"). */
+/** Visible text with block boundaries kept as spaces ("Lvl 5" + "Human Mage" → "Lvl 5 Human Mage"). */
 function textOf(el: Element | null | undefined): string {
   if (!el) return ''
   return el instanceof HTMLElement ? el.innerText || (el.textContent ?? '') : (el.textContent ?? '')
@@ -136,27 +141,70 @@ function labelledBy(el: Element): string {
     .join(' ')
 }
 
-/** The label of a tracked control. Reads text and attributes only, never what was typed. */
-export function labelFor(el: Element): string {
+const ID_SEGMENT = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d+)$/i
+
+/** A link's route with ids swapped out: "/campaigns/<uuid>/board/party" → "/campaigns/:id/board/party". */
+export function hrefPattern(href: string): string {
+  let path = href
+  try {
+    path = new URL(href, 'http://x').pathname
+  } catch {
+    // Keep the raw value.
+  }
+  const parts = path.split('/').map((p) => (ID_SEGMENT.test(p) ? ':id' : p))
+  // A sheet link always names one character.
+  if (parts[1] === 'character' && parts[2]) parts[2] = ':id'
+  return parts.join('/') || '/'
+}
+
+/**
+ * Replaces any of `names` (heroes, campaigns, players, combatants: things people typed)
+ * in `text` with "‹name›", longest first so "Iriel the Bold" goes before "Iriel".
+ */
+export function scrubNames(text: string, names: Iterable<string>): string {
+  const list = [...new Set([...names].map((n) => n.trim()).filter((n) => n.length >= 2))].sort(
+    (a, b) => b.length - a.length,
+  )
+  if (!text || list.length === 0) return text
+  const escaped = list.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  return text.replace(
+    new RegExp(`(?<![\\p{L}\\p{N}])(?:${escaped.join('|')})(?![\\p{L}\\p{N}])`, 'giu'),
+    '‹name›',
+  )
+}
+
+/**
+ * The label of a tracked control. Reads text and attributes only, never what was typed
+ * into a field. Links are named by their route, never their text (cards and lists show
+ * hero, campaign and NPC names); any of `names` left in other labels becomes "‹name›".
+ */
+export function labelFor(el: Element, names: Iterable<string> = []): string {
+  const track = el.getAttribute('data-track')
+  const href = el.getAttribute('href')
+  if (!track && href && el.tagName === 'A') return normalizeLabel(`Link ${hrefPattern(href)}`)
   const input = el instanceof HTMLInputElement || el instanceof HTMLSelectElement
   // A checkbox's text is its <label>, not its own (empty) content.
   const text = input ? textOf(el.closest('label')) : textOf(el)
+  const scrub = (v: string | null) => (v ? scrubNames(v, names) : v)
   return pickLabel({
-    track: el.getAttribute('data-track'),
-    aria: el.getAttribute('aria-label') || labelledBy(el),
-    text,
-    title: el.getAttribute('title'),
+    track,
+    aria: scrub(el.getAttribute('aria-label') || labelledBy(el)),
+    text: scrub(text),
+    title: scrub(el.getAttribute('title')),
   })
 }
 
 const AREA_SELECTOR = '[data-track-area], dialog, section, aside, nav, .panel, [role="region"]'
 
 /** A region's name: its `aria-label`, the element it is labelled by, or its first heading. */
-function regionName(region: Element): string {
+function regionName(region: Element, names: Iterable<string>): string {
   return normalizeLabel(
-    region.getAttribute('aria-label') ||
-      labelledBy(region) ||
-      textOf(region.querySelector('h1, h2, h3')),
+    scrubNames(
+      region.getAttribute('aria-label') ||
+        labelledBy(region) ||
+        textOf(region.querySelector('h1, h2, h3')),
+      names,
+    ),
     60,
   )
 }
@@ -166,12 +214,12 @@ function regionName(region: Element): string {
  * `data-track-area` wins outright; sections, dialogs, navs and panels give their
  * aria-label or heading; "page" when nothing around it has a name.
  */
-export function areaFor(el: Element): string {
+export function areaFor(el: Element, names: Iterable<string> = []): string {
   let region = el.closest(AREA_SELECTOR)
   while (region) {
     const explicit = region.getAttribute('data-track-area')
     if (explicit) return normalizeLabel(explicit, 60)
-    const name = regionName(region)
+    const name = regionName(region, names)
     if (name) return name
     region = region.parentElement?.closest(AREA_SELECTOR) ?? null
   }

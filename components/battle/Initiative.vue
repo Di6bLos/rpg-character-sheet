@@ -412,6 +412,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
               <button
                 type="button"
                 class="tok__main"
+                data-track="Initiative token"
                 :tabindex="slot.primary ? undefined : -1"
                 :aria-label="`${c.name}, ${c.initiative_rolled ? `initiative ${c.initiative}` : 'waiting for Initiative'}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
                 @click="onToken(c)"
@@ -464,6 +465,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
                 :key="s.id"
                 type="button"
                 class="tok__summon"
+                data-track="Initiative summon"
                 :tabindex="slot.primary ? undefined : -1"
                 :title="summonName(s)"
                 :aria-label="`${summonName(s)}, summon of ${c.name}`"

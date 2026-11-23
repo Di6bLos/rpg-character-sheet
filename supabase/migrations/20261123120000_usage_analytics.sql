@@ -20,7 +20,8 @@ create table public.analytics_events (
 );
 create index analytics_events_created_idx on public.analytics_events (created_at);
 create index analytics_events_surface_idx on public.analytics_events (surface, kind, created_at);
-create index analytics_events_user_idx on public.analytics_events (user_id);
+-- Also serves the per-user rate check in track_events.
+create index analytics_events_user_idx on public.analytics_events (user_id, created_at);
 
 -- RLS on with no policies: only the security definer functions below touch it.
 alter table public.analytics_events enable row level security;
@@ -84,6 +85,14 @@ begin
     return;
   end if;
   if not coalesce((select s.analytics_enabled from public.site_settings s where s.id), false) then
+    return;
+  end if;
+  -- Real play sends a few batches a minute; a script looping this would skew the
+  -- playtest, so anything past 300 events per user per minute is dropped.
+  if (
+    select count(*) from public.analytics_events e
+    where e.user_id = uid and e.created_at > now() - interval '1 minute'
+  ) >= 300 then
     return;
   end if;
   insert into public.analytics_events

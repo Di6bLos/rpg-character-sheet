@@ -167,7 +167,10 @@ export const useCampaignStore = defineStore('campaign', () => {
   async function roster(campaignId: string): Promise<RosterEntry[]> {
     const { data, error } = await supabase.rpc('campaign_roster', { p_campaign: campaignId })
     if (error) throw error
-    return (data ?? []) as RosterEntry[]
+    const rows = (data ?? []) as RosterEntry[]
+    // Kept out of usage-analytics click labels.
+    rememberNames(rows.flatMap((r) => [r.display_name, r.handle, r.character_name]))
+    return rows
   }
 
   async function heroCard(campaignId: string, characterId: string): Promise<HeroCard> {

@@ -80,7 +80,13 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     await supabase.rpc('staff_analytics_prune')
   }
 
+  // Filters can change faster than the reports come back: only the latest request's
+  // answer is kept, so a slow 90-day reply can't land after "7 days" was picked.
+  let loadSeq = 0
+  let buttonsSeq = 0
+
   async function load(f: AnalyticsFilter) {
+    const seq = ++loadSeq
     loading.value = true
     const r = range(f.days)
     const scope = { ...r, p_include_staff: f.includeStaff }
@@ -90,28 +96,33 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         call<SplitStat>('staff_analytics_splits', scope),
         call<DailyStat>('staff_analytics_daily', { ...scope, p_seat: f.seat }),
       ])
+      if (seq !== loadSeq) return
       surfaces.value = s
       splits.value = sp
       daily.value = d
     } finally {
-      loading.value = false
+      if (seq === loadSeq) loading.value = false
     }
   }
 
   async function loadButtons(f: AnalyticsFilter, surface: Surface | null) {
-    buttons.value = await call<ButtonStat>('staff_analytics_buttons', {
+    const seq = ++buttonsSeq
+    const rows = await call<ButtonStat>('staff_analytics_buttons', {
       ...range(f.days),
       p_include_staff: f.includeStaff,
       p_seat: f.seat,
       p_surface: surface,
       p_limit: 50,
     })
+    if (seq === buttonsSeq) buttons.value = rows
   }
 
   /** Admin only: deletes every event (logged in moderation history). Returns how many. */
   async function reset(): Promise<number> {
     const { data, error } = await supabase.rpc('admin_reset_analytics')
     if (error) throw error
+    loadSeq++
+    buttonsSeq++
     surfaces.value = []
     splits.value = []
     daily.value = []

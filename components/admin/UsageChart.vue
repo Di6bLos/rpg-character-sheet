@@ -176,19 +176,11 @@ const showTable = ref(false)
 
 <style scoped lang="scss">
 .usage {
-  --series-battle: #3987e5;
-  --series-party: #d95926;
-  --series-sheet: #199e70;
+  // --series-battle / --series-party / --series-sheet come from pages/admin/analytics.vue,
+  // so the bars and the page's per-page dots share one palette (with its Cursed variant).
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-// Cursed's parchment panel is light: the light steps of the same hues.
-:global([data-theme='cursed']) .usage {
-  --series-battle: #2a78d6;
-  --series-party: #eb6834;
-  --series-sheet: #1baf7a;
 }
 
 .usage__legend {

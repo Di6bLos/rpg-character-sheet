@@ -118,6 +118,7 @@ function label(r: RosterEntry): string {
         <button
           type="button"
           class="pc"
+          data-track="Open hero card"
           :class="{ 'is-acting': r.character_id === actingCharacterId, 'is-dead': isDead(r) }"
           :aria-label="label(r)"
           @click="emit('open', r.character_id)"

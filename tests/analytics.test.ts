@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  hrefPattern,
   normalizeLabel,
+  scrubNames,
   pickLabel,
   seatFor,
   surfaceFor,
@@ -44,6 +46,12 @@ describe('untracked', () => {
     expect(untracked('/join/tok')).toBe(true)
     expect(untracked('/dashboard')).toBe(false)
   })
+
+  it('skips the board and console index routes, which only redirect', () => {
+    expect(untracked('/campaigns/c1/board')).toBe(true)
+    expect(untracked('/campaigns/c1/gm/')).toBe(true)
+    expect(untracked('/campaigns/c1/board/battle')).toBe(false)
+  })
 })
 
 describe('viewportFor', () => {
@@ -76,5 +84,33 @@ describe('pickLabel', () => {
     expect(pickLabel({ aria: ' ', text: 'Cast', title: 't' })).toBe('Cast')
     expect(pickLabel({ text: '', title: 'Fold' })).toBe('Fold')
     expect(pickLabel({})).toBe('')
+  })
+})
+
+describe('hrefPattern', () => {
+  it('swaps ids out of links', () => {
+    const id = '0b970d4c-7645-4ea7-83a2-b2e4fa407480'
+    expect(hrefPattern(`/campaigns/${id}/board/party`)).toBe('/campaigns/:id/board/party')
+    expect(hrefPattern('/character/abc?campaign=x')).toBe('/character/:id')
+    expect(hrefPattern('/campaigns/c1/gm/npcs/42')).toBe('/campaigns/c1/gm/npcs/:id')
+    expect(hrefPattern('/library')).toBe('/library')
+  })
+})
+
+describe('scrubNames', () => {
+  const names = ['Iriel', 'Iriel the Bold', 'Test Table', 'Goblin C']
+
+  it('replaces names people typed, longest first, any case', () => {
+    expect(scrubNames('Iriel the Bold attacks', names)).toBe('‹name› attacks')
+    expect(scrubNames('Nimble Lvl 5 iriel Human Mage Test Table', names)).toBe(
+      'Nimble Lvl 5 ‹name› Human Mage ‹name›',
+    )
+    expect(scrubNames('Goblin C, initiative 12', names)).toBe('‹name›, initiative 12')
+  })
+
+  it('leaves names inside other words and short names alone', () => {
+    expect(scrubNames('Irielle', names)).toBe('Irielle')
+    expect(scrubNames('A button', ['A'])).toBe('A button')
+    expect(scrubNames('', names)).toBe('')
   })
 })

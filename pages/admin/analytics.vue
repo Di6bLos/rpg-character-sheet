@@ -246,7 +246,7 @@ const hasData = computed(() => store.surfaces.length > 0)
                   <strong>{{ SURFACE_LABELS[s] }}</strong>
                 </td>
                 <td>{{ minutes(split(s, 'player')) }}</td>
-                <td>{{ s === 'sheet' ? '—' : minutes(split(s, 'gm')) }}</td>
+                <td>{{ minutes(split(s, 'gm')) }}</td>
                 <td v-for="v in VIEWPORTS" :key="v.key">{{ minutes(split(s, null, v.key)) }}</td>
               </tr>
             </tbody>
@@ -358,6 +358,21 @@ const hasData = computed(() => store.surfaces.length > 0)
 </template>
 
 <style scoped lang="scss">
+// One colour per play page (validated categorical slots 1–3), read by the dots here and
+// by AdminUsageChart's bars and legend.
+.analytics {
+  --series-battle: #3987e5;
+  --series-party: #d95926;
+  --series-sheet: #199e70;
+}
+
+// Cursed's parchment panels are light: the light steps of the same hues.
+[data-theme='cursed'] .analytics {
+  --series-battle: #2a78d6;
+  --series-party: #eb6834;
+  --series-sheet: #1baf7a;
+}
+
 .analytics__filters {
   display: flex;
   flex-wrap: wrap;
@@ -395,20 +410,19 @@ const hasData = computed(() => store.surfaces.length > 0)
   }
 }
 
-// Same per-page colours as AdminUsageChart.
 .analytics__dot {
   width: 12px;
   height: 12px;
   border-radius: 4px;
 
   &.is-battle {
-    background: #3987e5;
+    background: var(--series-battle);
   }
   &.is-party {
-    background: #d95926;
+    background: var(--series-party);
   }
   &.is-sheet {
-    background: #199e70;
+    background: var(--series-sheet);
   }
 }
 

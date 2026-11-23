@@ -1,13 +1,47 @@
-import { supabase } from '~/lib/supabase'
-import type { AnalyticsEvent } from '~/utils/analytics'
+import { supabase, supabaseEnv } from '~/lib/supabase'
+import type { AnalyticsEvent, PageSeat } from '~/utils/analytics'
 
 const BATCH = 50
 const MAX_QUEUE = 500
 
-// One queue per tab; `plugins/analytics.client.ts` decides what goes in and when it flushes.
+// One queue per tab; `plugins/usage-analytics.client.ts` decides what goes in and when it flushes.
 const queue: AnalyticsEvent[] = []
 let sending = false
 let session = ''
+
+/** Names people typed (heroes, campaigns, players, combatants), scrubbed out of click labels. */
+const names = new Set<string>()
+/** Seats pages report once they know them (the sheet: owner or the GM's read-only view). */
+const pageSeats = new Map<string, PageSeat>()
+let onPageSeat: ((path: string) => void) | null = null
+
+/** Adds names to scrub from labels. Called where rosters, combatants and stores load. */
+export function rememberNames(list: Iterable<string | null | undefined>) {
+  for (const n of list) if (n && n.trim().length >= 2) names.add(n.trim())
+}
+
+export function analyticsNames(): ReadonlySet<string> {
+  return names
+}
+
+/** The seat a page reported for `path`, if any. */
+export function pageSeat(path: string): PageSeat | null {
+  return pageSeats.get(path) ?? null
+}
+
+/** The plugin's hook: the sheet's visit is held until its seat is known. */
+export function onAnalyticsSeat(cb: (path: string) => void) {
+  onPageSeat = cb
+}
+
+/**
+ * A page whose seat the path can't tell (the character sheet) reports it once loaded:
+ * `player` for the owner, `gm` for the campaign GM's read-only view.
+ */
+export function setPageSeat(path: string, seat: PageSeat) {
+  pageSeats.set(path, seat)
+  onPageSeat?.(path)
+}
 
 function sessionId(): string {
   if (session) return session
@@ -68,17 +102,14 @@ export function useAnalytics() {
   function flushOnUnload() {
     const token = auth.session?.access_token
     if (queue.length === 0 || !token || !enabled()) return
-    const config = useRuntimeConfig().public
-    const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || config.supabaseUrl
-    const key =
-      (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || config.supabaseAnonKey
+    const { url, anonKey: key } = supabaseEnv()
     if (!url || !key) return
     const batch = queue.splice(0, BATCH)
     void fetch(`${url}/rest/v1/rpc/track_events`, {
       method: 'POST',
       keepalive: true,
       headers: {
-        apikey: String(key),
+        apikey: key,
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
