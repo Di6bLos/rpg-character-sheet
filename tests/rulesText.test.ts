@@ -13,6 +13,7 @@ const SOURCES = [
   '../utils/nimbleSpellDamage.ts',
   '../utils/nimbleSummons.ts',
   '../utils/nimbleConditions.ts',
+  '../utils/nimbleSpellRules.ts',
 ]
 
 const texts = [

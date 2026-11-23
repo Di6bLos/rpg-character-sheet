@@ -44,11 +44,14 @@ export function castReason(
     short?: boolean
     usesMinions?: boolean
     cost?: string
+    /** What the spell needs that isn't there (you Charged, a Smoldering target). */
+    needs?: string
   },
   ctx: { turnActive: boolean; incapacitated: string },
 ): string {
   if (ctx.incapacitated) return ctx.incapacitated
   if (!ctx.turnActive) return 'Not your turn'
+  if (s.needs) return s.needs
   if (s.used) return 'Used this turn'
   if (s.busy) return 'Finish casting first'
   if (s.noActions) return 'No actions left'

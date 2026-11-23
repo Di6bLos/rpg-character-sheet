@@ -9,7 +9,7 @@
 // still takes clicks (a popover outside a modal dialog would be inert).
 import type DiceBox from '@3d-dice/dice-box-threejs'
 import { isHex, onAccent } from '~/utils/contrast'
-import { onDiceShown, type ShownRoll } from '~/utils/dice'
+import { onDiceShown, onRollOutcome, type RollOutcome, type ShownRoll } from '~/utils/dice'
 
 type Role = 'primary' | 'kept' | 'dropped' | 'crit' | 'extra'
 interface Die {
@@ -25,12 +25,29 @@ const auth = useAuthStore()
 const tray = ref<HTMLDialogElement | null>(null)
 const stage = ref<HTMLElement | null>(null)
 const rolls = ref<ShownRoll[]>([])
+/** What the dice came to with every bonus (the headline total) and the app's result line. */
+const outcome = ref<RollOutcome | null>(null)
 const settled = ref(false)
 const tags = ref<{ x: number; y: number; text: string; role: Role }[]>([])
 const prefs = useDiceAnimation()
 
 let box: DiceBox | null = null
 let pending: ShownRoll[] = []
+let pendingOutcome: RollOutcome | null = null
+let stopOutcome: (() => void) | undefined
+
+/**
+ * A plain result line keeps the total an attack or spell already sent, but takes
+ * its fuller text. This relies on order: a roll's dice wait a microtask before being
+ * thrown (`queueMicrotask` above), and the attack's `showOutcome` and its `say` both
+ * happen synchronously in the same click, so both land in `pendingOutcome` before
+ * the throw. An outcome with no dice waiting and the tray closed is ignored, which
+ * is what keeps ordinary messages (5e and PF2e included) from opening it.
+ */
+function merge(old: RollOutcome | null, next: RollOutcome): RollOutcome {
+  if (!old || next.total !== null) return next
+  return { ...old, detail: next.detail || old.detail }
+}
 let queued = false
 let throwId = 0
 let stop: (() => void) | undefined
@@ -46,10 +63,16 @@ onMounted(() => {
       queueMicrotask(() => void throwPending())
     }
   })
+  // Outcomes only count with dice to show: one being thrown now, or the tray still open.
+  stopOutcome = onRollOutcome((next) => {
+    if (pending.length) pendingOutcome = merge(pendingOutcome, next)
+    else if (rolls.value.length) outcome.value = merge(outcome.value, next)
+  })
 })
 
 onBeforeUnmount(() => {
   stop?.()
+  stopOutcome?.()
 })
 
 function setSkip(on: boolean) {
@@ -215,6 +238,8 @@ async function throwPending() {
   if (!list.length) return
   const id = ++throwId
   rolls.value = list
+  outcome.value = pendingOutcome
+  pendingOutcome = null
   settled.value = false
   tags.value = []
   if (tray.value && !tray.value.open) {
@@ -248,6 +273,7 @@ async function throwPending() {
 function close() {
   throwId += 1
   rolls.value = []
+  outcome.value = null
   tags.value = []
   box?.clearDice()
   if (tray.value?.open) tray.value.close()
@@ -290,8 +316,21 @@ function close() {
             >
             <span v-if="r.mod" class="tray__mod">{{ r.mod > 0 ? `+${r.mod}` : r.mod }}</span>
           </div>
-          <span v-if="!r.bare" class="tray__total">{{ r.total }}</span>
+          <span
+            v-if="!r.bare"
+            class="tray__total"
+            :class="{ 'tray__total--dice': outcome?.total != null }"
+            :title="outcome?.total != null ? 'The dice and their modifier' : undefined"
+            >{{ outcome?.total != null ? `= ${r.total}` : r.total }}</span
+          >
           <small v-if="r.odds" class="tray__odds">{{ oddsText(r.odds) }}</small>
+        </div>
+        <div v-if="outcome" class="tray__outcome">
+          <div v-if="outcome.total != null" class="tray__final">
+            <span>{{ outcome.label || 'Total' }}</span>
+            <strong>{{ outcome.total }}</strong>
+          </div>
+          <p class="tray__detail">{{ outcome.detail }}</p>
         </div>
       </template>
       <small v-if="settled" class="tray__hint">Click anywhere or press Esc to close</small>
@@ -444,6 +483,48 @@ function close() {
   font-family: var(--font-heading);
   font-size: 28px;
   font-weight: 700;
+}
+
+.tray__total--dice {
+  font-size: 15px;
+  color: color-mix(in srgb, #f3ead6 65%, transparent);
+}
+
+.tray__outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, #f3ead6 18%, transparent);
+}
+
+.tray__final {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+
+  span {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, #f3ead6 75%, transparent);
+  }
+
+  strong {
+    font-family: var(--font-heading);
+    font-size: 40px;
+    line-height: 1;
+    color: var(--die);
+  }
+}
+
+.tray__detail {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, #f3ead6 80%, transparent);
 }
 
 .tray__odds {

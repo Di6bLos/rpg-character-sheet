@@ -16,6 +16,12 @@ export interface AttackTarget {
   vulnerable: boolean
   /** Sunder Armor: melee attacks ignore its armor until the start of your next turn. */
   sundered: boolean
+  /** Ignite needs it; Flame Dart's crit sets it, Ignite's hit ends it. */
+  smoldering: boolean
+  /** Slowed, Dazed, Grappled, Restrained or Prone: Shatter's max dice crit against it. */
+  hampered: boolean
+  /** Hampered only by a spell's Slowed: it ends at the start of your next turn. */
+  hamperedUntilTurn?: boolean
 }
 
 /** The creature the hero is attacking, shared like the situation. */
@@ -25,6 +31,8 @@ export function useAttackTarget() {
     armor: 'none',
     vulnerable: false,
     sundered: false,
+    smoldering: false,
+    hampered: false,
   }))
 }
 

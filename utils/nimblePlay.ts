@@ -4,7 +4,15 @@
 import { weaponByName } from '~/data/nimble/core'
 import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet, NimbleStat } from '~/types/sheets'
-import { quietly, rollDie, showDice, sign, type NimbleRoll, type Rng } from '~/utils/dice'
+import {
+  quietly,
+  rollDie,
+  showDice,
+  showOutcome,
+  sign,
+  type NimbleRoll,
+  type Rng,
+} from '~/utils/dice'
 import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
 import {
   abilityBaseName,
@@ -1541,10 +1549,9 @@ export function initiativeRoll(
     )
       ? ' Add your Elemental Surge d4s to temporary mana.'
       : ''
-  return {
-    message: `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}${sheet.classicInitiative ? ' (Classic initiative)' : ''}.${extra}${surgeDice}`,
-    total: roll,
-  }
+  const message = `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}${sheet.classicInitiative ? ' (Classic initiative)' : ''}.${extra}${surgeDice}`
+  if (d20s.length) showOutcome({ label: 'Initiative', total: roll, detail: message })
+  return { message, total: roll }
 }
 
 /** New encounter and Initiative in one step. */

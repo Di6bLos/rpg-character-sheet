@@ -2,6 +2,7 @@ import type { InjectionKey, Ref } from 'vue'
 import type { Character } from '~/types'
 import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
+import { showOutcome } from '~/utils/dice'
 import { beginEncounter, endEncounter, initiativeRoll } from '~/utils/nimblePlay'
 import { seatChange, type Seat } from '~/utils/turnSteps'
 
@@ -276,7 +277,12 @@ export function provideSheetEditor(
       return `${xp.toLocaleString()} / ${xpNext.toLocaleString()} XP`
     }),
     adjustHp,
-    say: (message: string) => (lastRoll.value = message),
+    say: (message: string) => {
+      lastRoll.value = message
+      // Every result line goes to the dice tray (all systems). It only shows a line while
+      // it has dice from the same click to throw, or is still open (see DiceTray's merge).
+      showOutcome({ label: '', total: null, detail: message })
+    },
     save,
     saveNow,
     onPortrait,

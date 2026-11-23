@@ -235,13 +235,15 @@ const spellGroups = computed(() =>
       ...s,
       blocked: s.notNow
         ? s.notNow
-        : s.busy
-          ? 'Finish casting first'
-          : s.noActions
-            ? 'No actions left'
-            : s.short
-              ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
-              : '',
+        : s.needs
+          ? s.needs
+          : s.busy
+            ? 'Finish casting first'
+            : s.noActions
+              ? 'No actions left'
+              : s.short
+                ? `Needs ${s.usesMinions ? s.cost : `${s.mana} mana`}`
+                : '',
     })),
   })),
 )

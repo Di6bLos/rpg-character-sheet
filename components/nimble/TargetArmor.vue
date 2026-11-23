@@ -1,12 +1,35 @@
 <script setup lang="ts">
 // The creature being attacked: its armor, whether it is vulnerable to this
-// attack's damage, and Sunder Armor. Damage on the cards and in results counts
+// attack's damage, Sunder Armor, and the statuses the hero's spells need or set
+// (Smoldering, Hampered). Damage on the cards and in results counts
 // them (Core p. 14).
 import type { NimbleSheet } from '~/types/sheets'
+import { knownSpells } from '~/utils/nimbleBuild'
 import { TARGET_ARMORS } from '~/utils/nimbleTargetArmor'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const target = useAttackTarget()
+
+/** Statuses on the target that one of the hero's spells needs or changes. */
+const spellStatuses = computed(() => {
+  const text = knownSpells(draft.value.sheet)
+    .map((s) => s.desc)
+    .join(' ')
+  return [
+    /\bSmoldering\b/.test(text) && {
+      key: 'smoldering' as const,
+      label: 'Smoldering',
+      title:
+        'Some of your spells need a Smoldering target, set it or end it; spells change it as they land',
+    },
+    /\bHampered\b|On hit: Slowed/.test(text) && {
+      key: 'hampered' as const,
+      label: 'Hampered',
+      title:
+        'Slowed, Dazed, Grappled, Restrained or Prone; some of your spells do more against it or cause it',
+    },
+  ].filter((x) => !!x)
+})
 
 const canSunder = computed(() =>
   draft.value.sheet.abilities.some((a) =>
@@ -15,7 +38,9 @@ const canSunder = computed(() =>
 )
 
 function set(patch: Partial<typeof target.value>) {
-  target.value = { ...target.value, ...patch }
+  // Set by hand, Hampered stays until it's turned off (not just until your next turn).
+  const byHand = 'hampered' in patch ? { hamperedUntilTurn: false } : {}
+  target.value = { ...target.value, ...patch, ...byHand }
 }
 </script>
 
@@ -64,6 +89,19 @@ function set(patch: Partial<typeof target.value>) {
         @click="set({ sundered: !target.sundered })"
       >
         Sundered (melee ignores armor)
+      </button>
+      <button
+        v-for="st in spellStatuses"
+        :key="st.key"
+        type="button"
+        class="chip"
+        :class="{ 'chip--on': target[st.key] }"
+        :aria-pressed="target[st.key]"
+        :disabled="!canEdit"
+        :title="st.title"
+        @click="set({ [st.key]: !target[st.key] })"
+      >
+        {{ st.label }}
       </button>
     </div>
   </div>
