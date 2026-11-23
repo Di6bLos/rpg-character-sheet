@@ -76,6 +76,7 @@ Rules work goes through these so it stays consistent and cites its sources:
 - `homebrew-designer` agent — original monsters, spells, items, NPCs balanced to the system's math → `homebrew/<system>/*.md`
 - `system-converter` skill — convert content between Nimble, 5e and PF2e, listing the judgement calls
 - `add-game-system` skill — checklist for making 5e or PF2e data-driven like Nimble
+- `review-dev-pr` skill — review another developer's PR (tests and oxlint on a throwaway worktree, repo checklist), post it as a GitHub review with inline comments, then @mention the author
 
 ## Routes
 
