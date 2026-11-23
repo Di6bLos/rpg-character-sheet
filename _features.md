@@ -281,5 +281,5 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [x] Client: page views, active time, auto-captured clicks with `data-track` / `data-track-area`
 - [x] `/admin/analytics`: per-page tiles, active time per day, who plays where, top buttons
 - [x] Reset analytics (admin only, confirmed, logged)
-- [ ] Apply the migration to the hosted project
+- [x] Apply the migration to the hosted project
 - [ ] ui-ux-reviewer pass on `/admin/analytics`
