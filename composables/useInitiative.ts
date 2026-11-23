@@ -57,6 +57,8 @@ export function useInitiative(
 ) {
   const snackbar = useSnackbarStore()
   const rows = ref<TurnRow[]>([])
+  // Combatant names (heroes, NPCs, summons) stay out of usage-analytics click labels.
+  watch(rows, (list) => rememberNames(list.flatMap((r) => [r.name, r.group_label])))
   const encounter = ref<Encounter | null>(null)
   const loading = ref(true)
   let channel: RealtimeChannel | null = null

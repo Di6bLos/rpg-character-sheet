@@ -9,6 +9,7 @@ const links = computed(() => [
   { to: '/admin/documents', label: 'Documents' },
   { to: '/admin/npcs', label: 'NPCs' },
   { to: '/admin/npcs/suggestions', label: 'NPC suggestions' },
+  { to: '/admin/analytics', label: 'Analytics' },
 ])
 
 /** Sections with sub-pages (NPCs → generator) stay highlighted on them; the most specific link wins. */

@@ -151,7 +151,12 @@ const tipKeys = computed(() =>
           @blur="saveRename"
         />
         <template v-else>
-          <button type="button" class="ec__name" :aria-pressed="selected">
+          <button
+            type="button"
+            class="ec__name"
+            data-track="Select creature"
+            :aria-pressed="selected"
+          >
             {{ c.name }}
           </button>
           <button
@@ -159,6 +164,7 @@ const tipKeys = computed(() =>
             ref="pen"
             type="button"
             class="ec__pen"
+            data-track="Rename creature"
             :aria-label="`Rename ${c.name}`"
             title="Rename"
             @click.stop="startRename"

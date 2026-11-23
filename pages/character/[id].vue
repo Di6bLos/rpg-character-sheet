@@ -29,6 +29,8 @@ async function load() {
     if (from) seatQuery = seatQuery.eq('campaign_id', from)
     const [found, seat] = await Promise.all([store.fetchOne(id), seatQuery.limit(1)])
     character.value = found
+    // Usage analytics: the owner plays on their sheet; anyone else here is the GM reading it.
+    if (found) setPageSeat(route.path, found.user_id === auth.userId ? 'player' : 'gm')
     const row = seat.data?.[0] as
       | { campaign_id: string; campaigns: { name: string } | null }
       | undefined

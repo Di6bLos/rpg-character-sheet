@@ -19,6 +19,16 @@ interface Feature {
 
 const GROUPS: { title: string; features: Feature[] }[] = [
   {
+    title: 'Playtest',
+    features: [
+      {
+        key: 'analytics_enabled',
+        label: 'Usage analytics',
+        help: 'Records page visits, active time and button clicks so staff can compare Battle, Party and the character sheet on the Analytics page. Off: nothing new is recorded.',
+      },
+    ],
+  },
+  {
     title: 'Shared NPC pool',
     features: [
       {
