@@ -279,6 +279,8 @@ export function provideSheetEditor(
     adjustHp,
     say: (message: string) => {
       lastRoll.value = message
+      // Every result line goes to the dice tray (all systems). It only shows a line while
+      // it has dice from the same click to throw, or is still open (see DiceTray's merge).
       showOutcome({ label: '', total: null, detail: message })
     },
     save,

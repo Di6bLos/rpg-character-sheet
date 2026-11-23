@@ -143,11 +143,12 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       .filter((s) => !attackNames.has(s.name) && !reactionNames.has(s.name))
       .map((s) => {
         // Summoning spells: exactly the Summons panel's card (its `blocked`, then At the max).
-        // Others: exactly SpellCard's cast button (notNow, busy, no actions, short).
+        // Others: exactly SpellCard's cast button (notNow, needs, busy, no actions, short).
         const summon = summonOf.get(s.name)
         const unavailable = summon
           ? summon.blocked || (full(summon.summon) ? 'At the max' : '')
           : s.notNow ||
+            s.needs ||
             (s.busy
               ? 'Finish casting first'
               : s.noActions

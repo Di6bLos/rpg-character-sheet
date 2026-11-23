@@ -203,8 +203,20 @@ export function rollNimble(
   bonusDice: { count: number; sides: number } | null = null,
   rng: Rng = Math.random,
   disadvantage = 0,
+  rules: NimbleRollRules = {},
 ): NimbleRoll {
-  return quietly(() => nimbleRoll(expr, bonusDice, rng, disadvantage))
+  return quietly(() => nimbleRoll(expr, bonusDice, rng, disadvantage, rules))
+}
+
+/** A spell's own crit rules (Shatter against a Hampered target). */
+export interface NimbleRollRules {
+  /** Any kept die at its max counts as a crit, so the Primary Die rolls again and explodes. */
+  critOnAnyMax?: boolean
+  /**
+   * Points to raise dice by ("Increase the result of ANY die by 1" per upcast tier): with
+   * `critOnAnyMax` they first lift one die to its max for the crit; the rest add damage.
+   */
+  bump?: number
 }
 
 function nimbleRoll(
@@ -212,6 +224,7 @@ function nimbleRoll(
   bonusDice: { count: number; sides: number } | null,
   rng: Rng,
   disadvantage: number,
+  rules: NimbleRollRules,
 ): NimbleRoll {
   const extra = Math.abs(Math.floor(disadvantage))
   const rolled = Array.from({ length: Math.max(1, expr.count) + extra }, () =>
@@ -224,7 +237,19 @@ function nimbleRoll(
       .slice(0, extra)
       .map((d) => d.index),
   )
-  const kept = rolled.filter((_, i) => !dropped.has(i))
+  const keptAt = rolled.map((_, i) => i).filter((i) => !dropped.has(i))
+  let bump = Math.max(0, Math.floor(rules.bump ?? 0))
+  // A bump can lift the die nearest its max to it, if that's in reach and not a miss already.
+  if (rules.critOnAnyMax && bump && rolled[keptAt[0]!] !== 1) {
+    const reach = keptAt
+      .filter((i) => rolled[i]! < expr.sides && expr.sides - rolled[i]! <= bump)
+      .sort((a, b) => rolled[b]! - rolled[a]!)[0]
+    if (reach !== undefined && !keptAt.some((i) => rolled[i] === expr.sides)) {
+      bump -= expr.sides - rolled[reach]!
+      rolled[reach] = expr.sides
+    }
+  }
+  const kept = keptAt.map((i) => rolled[i]!)
   const first = kept[0] ?? 1
   const shown = {
     sides: expr.sides,
@@ -238,9 +263,11 @@ function nimbleRoll(
     showDice({ ...shown, explosions: [], extra: null, total: 0, miss: true, crit: false })
     return { miss: true, crit: false, total: 0, bonus: 0, dice: kept }
   }
-  let total = kept.reduce((sum, v) => sum + v, 0)
+  let total = kept.reduce((sum, v) => sum + v, 0) + bump
   const explosions: number[] = []
-  let last = first
+  // "When you crit, roll the Primary Die again" (Core p. 13), however the crit came.
+  const anyMax = !!rules.critOnAnyMax && kept.some((v) => v === expr.sides)
+  let last = anyMax ? expr.sides : first
   while (last === expr.sides) {
     last = rollDie(expr.sides, rng)
     explosions.push(last)

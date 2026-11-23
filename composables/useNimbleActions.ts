@@ -167,7 +167,31 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         nextAttack.value = { ...NO_NEXT }
         critReady.value = {}
       }
-      if (on && !was) target.value = { ...target.value, sundered: false }
+      // Sunder Armor lasts until your next turn; so does a Hampered set by a spell's Slowed.
+      if (on && !was) {
+        const t = target.value
+        target.value = {
+          ...t,
+          sundered: false,
+          hampered: t.hamperedUntilTurn ? false : t.hampered,
+          hamperedUntilTurn: false,
+        }
+      }
+    },
+  )
+
+  // A fight's statuses on the target don't carry into the next one.
+  watch(
+    () => sheet.value.inEncounter,
+    (now, before) => {
+      if (now !== before)
+        target.value = {
+          ...target.value,
+          sundered: false,
+          smoldering: false,
+          hampered: false,
+          hamperedUntilTurn: false,
+        }
     },
   )
 

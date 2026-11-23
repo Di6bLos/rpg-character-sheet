@@ -1,6 +1,15 @@
 import type { SpellDef } from '~/data/nimble/types'
 import type { NimbleSheet, NimbleStat } from '~/types/sheets'
-import { parseDice, quietly, rollDie, rollNimble, showDice, sign, type Rng } from '~/utils/dice'
+import {
+  parseDice,
+  quietly,
+  rollDie,
+  rollNimble,
+  showDice,
+  sign,
+  type NimbleRollRules,
+  type Rng,
+} from '~/utils/dice'
 import { keyStatValue } from '~/utils/nimbleBuild'
 
 export interface SpellDamage {
@@ -84,11 +93,12 @@ export function rollSpellDamage(
   damage: SpellDamage,
   rng: Rng = Math.random,
   disadvantage = 0,
+  rules: NimbleRollRules = {},
 ): { total: number; miss: boolean; crit: boolean; detail: string; dice: number[] } | null {
   const expr = parseDice(damage.dice)
   if (!expr) return null
   if (damage.single) {
-    const roll = rollNimble(expr, null, rng, disadvantage)
+    const roll = rollNimble(expr, null, rng, disadvantage, rules)
     return {
       total: roll.total,
       miss: roll.miss,
@@ -105,7 +115,7 @@ export function rollSpellDamage(
     .map((value, index) => ({ value, index }))
     .sort((a, b) => (disadvantage >= 0 ? a.value - b.value : b.value - a.value))
   const kept = order.slice(0, expr.count).map((d) => d.value)
-  const total = kept.reduce((a, b) => a + b, 0) + expr.mod
+  const total = kept.reduce((a, b) => a + b, 0) + expr.mod + Math.max(0, rules.bump ?? 0)
   showDice({
     sides: expr.sides,
     dice: rolls,

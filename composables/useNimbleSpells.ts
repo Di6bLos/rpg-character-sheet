@@ -35,7 +35,8 @@ import { rollSpellDamage, spellDamage } from '~/utils/nimbleSpellDamage'
 import {
   chargedActions,
   critBonus,
-  critsOnAnyMax,
+  spellOnCrit,
+  spellRollRules,
   spellNeeds,
   spellOnHit,
   spellSelfEffects,
@@ -420,26 +421,34 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const rushed = sheet.value.rushed + conditionMods(sheet.value, situation.value).disadvantage
     const rush =
       rushed > 0 ? ` with ${rushed}× disadvantage` : rushed < 0 ? ` with ${-rushed}× advantage` : ''
+    const rules = spellRollRules(s, s.at, target.value)
     if (sheet.value.ownDice || !damage.rollable) {
-      const reminder = spellOnHit(s, { miss: false, crit: false }, target.value).note
-      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.${armorRule(armorOf(s))}${reminder}`
+      const onHit = spellOnHit(s, { miss: false, crit: false }, target.value)
+      const chips = onHit.chips.length
+        ? ` If it hits, ${onHit.chips.join(' and ')} on the Target row.`
+        : ''
+      const bump = rules.bump ? ` Upcast: raise any die by ${rules.bump}.` : ''
+      const anyMax = rules.critOnAnyMax
+        ? ' Any die at its max counts as a crit (the target is Hampered).'
+        : ''
+      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.${armorRule(armorOf(s))}${anyMax}${bump}${onHit.note}${chips}`
     }
-    const result = rollSpellDamage(damage, Math.random, rushed)
+    const result = rollSpellDamage(damage, Math.random, rushed, rules)
     if (!result) return ''
     if (result.miss) {
       showOutcome({ label: s.name, total: 0, detail: 'Miss (first die rolled a 1).' })
       return `Miss (first die rolled a 1)${rush} [${result.detail}].`
     }
     const expr = parseDice(damage.dice)
-    const maxCrit = !result.crit && critsOnAnyMax(s, target.value, result.dice, expr?.sides ?? 0)
-    const isCrit = result.crit || maxCrit
+    const isCrit = result.crit
+    const maxCrit = isCrit && !!rules.critOnAnyMax && result.dice[0] !== expr?.sides
     const bonus = isCrit ? critBonus(s, s.at) : 0
     const crit = isCrit ? ` ${critTriggers(sheet.value, draft.value.level, s.name)}` : ''
     const hit = armorHit(result.total + bonus, expr?.mod ?? 0, armorOf(s), isCrit)
     const effects = spellOnHit(s, { miss: false, crit: isCrit }, target.value)
     target.value = { ...target.value, ...effects.target }
     const why = maxCrit ? ' (a max die against a Hampered target)' : ''
-    const extra = bonus ? `, +${bonus} on the crit` : ''
+    const extra = `${rules.bump ? `, upcast +${rules.bump} to the dice` : ''}${bonus ? `, +${bonus} on the crit` : ''}`
     const line = `${hit.damage}${type} damage${hit.note}${isCrit ? ` · critical${why}` : ''}${rush} [${damage.dice}: ${result.detail}${extra}].${effects.note}${crit.trimEnd()}`
     // The tray's total: modifiers, crit damage and armor, not just the dice.
     showOutcome({ label: s.name, total: hit.damage, detail: line })
@@ -465,14 +474,22 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
             name: s.name,
             dmg: damage.text,
             armorDmg: armorDice(damage.text, armorOf(s)),
-            critBy: critTriggerSources(sheet.value, s.name),
+            critBy: [
+              ...critTriggerSources(sheet.value, s.name),
+              spellOnCrit(s, target.value).note ? `${s.name}’s crit` : '',
+            ].filter(Boolean),
             critReady: !!critReady.value[`spell:${s.name}`],
-            /** The player rolled a crit themselves: set off "whenever they would crit", once. */
+            /**
+             * The player rolled a crit themselves: the spell's own crit effect on the
+             * target (Flame Dart: Smoldering) and "whenever they would crit", once.
+             */
             crit: () => {
               if (!canEdit.value || !spendCrit(critReady, `spell:${s.name}`)) return
-              const message = `${s.name} crit! ${critTriggers(sheet.value, draft.value.level, s.name)}`
-              say(message)
-              options.onResult?.(message)
+              const own = spellOnCrit(s, target.value)
+              target.value = { ...target.value, ...own.target }
+              const message = `${s.name} crit!${own.note} ${critTriggers(sheet.value, draft.value.level, s.name)}`
+              say(message.trim())
+              options.onResult?.(message.trim())
             },
             armorWhy: armorDiceWhy(damage.text, armorOf(s)),
             props: [

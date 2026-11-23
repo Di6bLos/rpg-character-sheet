@@ -4,26 +4,29 @@
 // (Smoldering, Hampered). Damage on the cards and in results counts
 // them (Core p. 14).
 import type { NimbleSheet } from '~/types/sheets'
+import { knownSpells } from '~/utils/nimbleBuild'
 import { TARGET_ARMORS } from '~/utils/nimbleTargetArmor'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const target = useAttackTarget()
 
-const { known } = useNimbleSpells()
 /** Statuses on the target that one of the hero's spells needs or changes. */
 const spellStatuses = computed(() => {
-  const text = known.value.map((s) => s.desc).join(' ')
+  const text = knownSpells(draft.value.sheet)
+    .map((s) => s.desc)
+    .join(' ')
   return [
     /\bSmoldering\b/.test(text) && {
       key: 'smoldering' as const,
       label: 'Smoldering',
-      title: 'Ignite needs it; Flame Dart’s crit sets it and Ignite’s hit ends it',
+      title:
+        'Some of your spells need a Smoldering target, set it or end it; spells change it as they land',
     },
     /\bHampered\b|On hit: Slowed/.test(text) && {
       key: 'hampered' as const,
       label: 'Hampered',
       title:
-        'Slowed, Dazed, Grappled, Restrained or Prone; Shatter crits on any max die against it',
+        'Slowed, Dazed, Grappled, Restrained or Prone; some of your spells do more against it or cause it',
     },
   ].filter((x) => !!x)
 })
@@ -35,7 +38,9 @@ const canSunder = computed(() =>
 )
 
 function set(patch: Partial<typeof target.value>) {
-  target.value = { ...target.value, ...patch }
+  // Set by hand, Hampered stays until it's turned off (not just until your next turn).
+  const byHand = 'hampered' in patch ? { hamperedUntilTurn: false } : {}
+  target.value = { ...target.value, ...patch, ...byHand }
 }
 </script>
 

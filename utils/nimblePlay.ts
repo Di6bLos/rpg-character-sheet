@@ -4,7 +4,15 @@
 import { weaponByName } from '~/data/nimble/core'
 import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet, NimbleStat } from '~/types/sheets'
-import { quietly, rollDie, showDice, showOutcome, sign, type NimbleRoll, type Rng } from '~/utils/dice'
+import {
+  quietly,
+  rollDie,
+  showDice,
+  showOutcome,
+  sign,
+  type NimbleRoll,
+  type Rng,
+} from '~/utils/dice'
 import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
 import {
   abilityBaseName,

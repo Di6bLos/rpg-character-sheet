@@ -36,7 +36,14 @@ let pending: ShownRoll[] = []
 let pendingOutcome: RollOutcome | null = null
 let stopOutcome: (() => void) | undefined
 
-/** A plain result line keeps the total an attack or spell already sent, but takes its fuller text. */
+/**
+ * A plain result line keeps the total an attack or spell already sent, but takes
+ * its fuller text. This relies on order: a roll's dice wait a microtask before being
+ * thrown (`queueMicrotask` above), and the attack's `showOutcome` and its `say` both
+ * happen synchronously in the same click, so both land in `pendingOutcome` before
+ * the throw. An outcome with no dice waiting and the tray closed is ignored, which
+ * is what keeps ordinary messages (5e and PF2e included) from opening it.
+ */
 function merge(old: RollOutcome | null, next: RollOutcome): RollOutcome {
   if (!old || next.total !== null) return next
   return { ...old, detail: next.detail || old.detail }
