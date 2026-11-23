@@ -1,4 +1,12 @@
-import type { CampaignNpc, Combatant, HpBand, InitiativeRow, NpcKind, RosterEntry } from '~/types'
+import type {
+  CampaignNpc,
+  Combatant,
+  HpBand,
+  InitiativeMode,
+  InitiativeRow,
+  NpcKind,
+  RosterEntry,
+} from '~/types'
 import { summonById } from '~/data/nimble/summons'
 import { rollDie, type Rng } from './dice'
 
@@ -53,16 +61,25 @@ export function hpBand(hp: number, hpMax: number): HpBand | null {
 
 const byteOrder = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
+type SortRow = Pick<Combatant, 'initiative' | 'created_at' | 'name' | 'id'> &
+  Partial<Pick<Combatant, 'kind' | 'initiative_rolled'>>
+
+/** Sort group: heroes still waiting for their Initiative, then (Nimble) heroes, then the rest. */
+function sortGroup(r: SortRow, mode: InitiativeMode): number {
+  if (r.kind === 'pc' && r.initiative_rolled === false) return 0
+  return mode === 'nimble' && r.kind !== 'pc' ? 2 : 1
+}
+
 /**
- * Highest initiative first; ties keep the order they were added in, then go
- * by name and id (copies added together share a timestamp). Mirrors the
- * ORDER BY of `campaign_initiative()` so the GM and players see one order.
+ * Turn order. Heroes waiting for their Initiative come first; in Nimble mode every hero
+ * acts before the creatures. Then highest initiative first; ties keep the order they were
+ * added in, then go by name and id (copies added together share a timestamp), like the
+ * ORDER BY of `campaign_initiative()`, so the GM and players see one order.
  */
-export function sortOrder<T extends Pick<Combatant, 'initiative' | 'created_at' | 'name' | 'id'>>(
-  rows: T[],
-): T[] {
+export function sortOrder<T extends SortRow>(rows: T[], mode: InitiativeMode = 'classic'): T[] {
   return [...rows].sort(
     (a, b) =>
+      sortGroup(a, mode) - sortGroup(b, mode) ||
       b.initiative - a.initiative ||
       byteOrder(a.created_at, b.created_at) ||
       byteOrder(a.name, b.name) ||
@@ -111,7 +128,8 @@ export function buildCopies(npc: CampaignNpc, opts: AddCopiesOptions): NewCombat
   const rawHp = Math.max(0, npc.stat_block.hp ?? 0)
   const hp = npc.system === 'nimble' && rawHp === 0 ? 1 : rawHp
   const ac = npc.stat_block.ac ?? 10
-  const shared = rollDie(20, rng) + mod
+  // Roll only the dice used: each one shows in the dice tray.
+  const shared = opts.sharedRoll ? rollDie(20, rng) + mod : 0
   return labels.map((label) => ({
     campaign_id: npc.campaign_id,
     name: combatantName(npc.name, label),
@@ -212,4 +230,67 @@ export function downSummonKeys(
         (c.hp_band === 'Down' || ((c.hp_max ?? 0) > 0 && c.hp !== null && c.hp <= 0)),
     )
     .map((c) => c.summon_key as string)
+}
+
+/**
+ * Whose turn comes after `activeId` in the initiative order. Starts at the top
+ * when nothing is active (or the active id is not in the order). Passing the
+ * last creature wraps into the next round. Null when the order is empty.
+ */
+export function turnAfter(
+  order: { id: string }[],
+  activeId: string | null,
+  round: number,
+): { active: string; round: number; ended: string | null } | null {
+  if (order.length === 0) return null
+  const index = activeId === null ? -1 : order.findIndex((c) => c.id === activeId)
+  if (index < 0) return { active: order[0]!.id, round, ended: null }
+  const ended = activeId
+  const next = index + 1
+  if (next >= order.length) return { active: order[0]!.id, round: round + 1, ended }
+  return { active: order[next]!.id, round, ended }
+}
+
+/**
+ * The GM picks whose turn it is: `targetId`, `roundOffset` rounds from the current one
+ * (the strip keeps past rounds, so the token picked says which round). The
+ * acting creature's turn ends unless nothing was acting. Never below round 1. Null when
+ * nothing would change or the target isn't in the order.
+ */
+export function turnTo(
+  order: { id: string }[],
+  activeId: string | null,
+  round: number,
+  targetId: string,
+  roundOffset: number,
+): { active: string; round: number; ended: string | null } | null {
+  if (!order.some((c) => c.id === targetId)) return null
+  const next = Math.max(1, round + Math.trunc(roundOffset))
+  if (targetId === activeId && next === round) return null
+  const acting = activeId !== null && order.some((c) => c.id === activeId)
+  return { active: targetId, round: next, ended: acting ? activeId : null }
+}
+
+/** Start of the next round: the top of the order, whoever was left unacted. Null when empty. */
+export function newRoundStart(
+  order: { id: string }[],
+  round: number,
+): { active: string; round: number } | null {
+  if (order.length === 0) return null
+  return { active: order[0]!.id, round: round + 1 }
+}
+
+/**
+ * HP after a change, held between 0 and `max`. A null `max` means the creature
+ * has no HP to track (summons with no HP), so it stays at 0.
+ */
+export function clampHp(hp: number | null, delta: number, max: number | null): number {
+  if (max === null) return 0
+  return Math.min(max, Math.max(0, (hp ?? 0) + delta))
+}
+
+/** A new display name for a combatant, trimmed and capped; null when blank. */
+export function renamedCombatant(raw: string): string | null {
+  const name = raw.trim().slice(0, COMBATANT_NAME_MAX).trimEnd()
+  return name ? name : null
 }

@@ -4,7 +4,15 @@
 import { weaponByName } from '~/data/nimble/core'
 import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet, NimbleStat } from '~/types/sheets'
-import { rollDie, sign, type NimbleRoll, type Rng } from '~/utils/dice'
+import {
+  quietly,
+  rollDie,
+  showDice,
+  showOutcome,
+  sign,
+  type NimbleRoll,
+  type Rng,
+} from '~/utils/dice'
 import { classBySlug, subclassBySlug } from '~/data/nimble/classes'
 import {
   abilityBaseName,
@@ -14,6 +22,7 @@ import {
 } from '~/utils/nimbleBuild'
 import { INVENTIONS } from '~/data/nimble/effects'
 import { clearConditionsAt, dazedAtTurnStart } from '~/utils/nimbleConditions'
+import { armorHit, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
 import {
   applyCastEffect,
   applyMishapEffect,
@@ -42,10 +51,18 @@ function hasAbility(sheet: NimbleSheet, name: string): boolean {
  * Actions a hero gets each turn: 3, or 1 while Dying. Windborne (Zephyr) adds one,
  * and it and Enduring Rage (Berserker) allow 2 while Dying.
  */
-export function turnActions(sheet: NimbleSheet): number {
-  const windborne = hasAbility(sheet, 'Windborne')
-  if (sheet.dying) return windborne || hasAbility(sheet, 'Enduring Rage') ? 2 : 1
+export function turnActionsFor(abilityNames: string[], dying: boolean): number {
+  const has = (name: string) => abilityNames.some((n) => abilityBaseName(n) === name)
+  const windborne = has('Windborne')
+  if (dying) return windborne || has('Enduring Rage') ? 2 : 1
   return windborne ? 4 : 3
+}
+
+export function turnActions(sheet: NimbleSheet): number {
+  return turnActionsFor(
+    sheet.abilities.map((a) => a.name),
+    !!sheet.dying,
+  )
 }
 
 /** Attacking while Dying calls for a DC 10 STR save, unless Enduring Rage waives it. */
@@ -67,6 +84,8 @@ export function endEncounter(sheet: NimbleSheet, level: number): string {
   sheet.inEncounter = false
   sheet.turnActive = false
   sheet.turnDone = false
+  sheet.awaitingInitiative = false
+  sheet.initiative = null
   sheet.actionsSpent = 0
   sheet.rushed = 0
   sheet.reactionsUsed = []
@@ -394,6 +413,31 @@ function bump(sheet: NimbleSheet, id: string): number {
   return used
 }
 
+const FURY_ON_CRIT = /\bwhenever you crit or kill an enemy, change 1 Fury Die to the maximum\b/
+const SECOND_CRIT = /\bWhen you land a critical hit for the second time on a turn\b/
+const CRIT_FIRE = /^\(1\/turn\) When you crit, deal fire damage equal to your STR\+Wounds\b/
+const THRILL =
+  /\bwhenever: your quarry dies, or you hit your quarry in melee or crit your quarry at range\b/
+
+/**
+ * Abilities a crit with this attack sets off, by name: what the Crit button
+ * applies for a player who rolls their own dice (the app's own rolls do it in
+ * `afterAttack`).
+ */
+export function critTriggerNames(
+  sheet: NimbleSheet,
+  out: { melee: boolean; quarry: boolean },
+): string[] {
+  const named = (pattern: RegExp) =>
+    sheet.abilities.filter((a) => pattern.test(a.desc)).map((a) => abilityBaseName(a.name))
+  return [
+    ...(sheet.resource.active ? named(FURY_ON_CRIT) : []),
+    ...named(SECOND_CRIT),
+    ...named(CRIT_FIRE),
+    ...(out.quarry && !out.melee && sheet.inEncounter ? named(THRILL) : []),
+  ]
+}
+
 export function afterAttack(sheet: NimbleSheet, level: number, out: AttackOutcome): string {
   const notes: string[] = []
   const named = (pattern: RegExp) => sheet.abilities.find((a) => pattern.test(a.desc))
@@ -414,13 +458,7 @@ export function afterAttack(sheet: NimbleSheet, level: number, out: AttackOutcom
       )
   }
   if (out.crit) {
-    const frenzy = sheet.resource.active
-      ? counterLeft(
-          sheet,
-          level,
-          /\bwhenever you crit or kill an enemy, change 1 Fury Die to the maximum\b/,
-        )
-      : null
+    const frenzy = sheet.resource.active ? counterLeft(sheet, level, FURY_ON_CRIT) : null
     const die = sheetResource(sheet, level)?.die
     const rolls = sheet.resource.rolls
     if (frenzy && die && rolls.length && Math.min(...rolls) < die) {
@@ -434,14 +472,10 @@ export function afterAttack(sheet: NimbleSheet, level: number, out: AttackOutcom
         `${abilityBaseName(frenzy.entry!.ability.name)}: a Fury Die set to ${die} (Fury ${total(sheet.resource.rolls)}).`,
       )
     }
-    const tempo = named(/\bWhen you land a critical hit for the second time on a turn\b/)
+    const tempo = named(SECOND_CRIT)
     if (tempo && bump(sheet, 'Steal Tempo@turn') === 2)
       notes.push(`${abilityBaseName(tempo.name)}: the target loses 1 action. ${gainAction(sheet)}`)
-    const chain = counterLeft(
-      sheet,
-      level,
-      /^\(1\/turn\) When you crit, deal fire damage equal to your STR\+Wounds\b/,
-    )
+    const chain = counterLeft(sheet, level, CRIT_FIRE)
     if (chain) {
       const burning = hasText(sheet, /\bDouble any fire damage you deal\b/) ? 2 : 1
       notes.push(
@@ -449,9 +483,7 @@ export function afterAttack(sheet: NimbleSheet, level: number, out: AttackOutcom
       )
     }
   }
-  const thrill = named(
-    /\bwhenever: your quarry dies, or you hit your quarry in melee or crit your quarry at range\b/,
-  )
+  const thrill = named(THRILL)
   if (thrill && out.quarry && !out.miss && (out.melee || out.crit) && sheet.inEncounter) {
     sheet.resource.count += 1
     const ground = named(
@@ -547,7 +579,9 @@ const TRIGGERS: {
   {
     pattern: /\b[Gg]ain (?:a|1) (Thrill of the Hunt charge|Burst of Speed)\b/,
     label: (m) => `Gain a ${m[1]}`,
-    fire: (m, sheet) => {
+    fire: (m, sheet, level) => {
+      const max = sheetResource(sheet, level)?.max || Infinity
+      if (sheet.resource.count >= max) return `${m[1]}: already at the max (${max}).`
       sheet.resource.count += 1
       return `+1 ${m[1]} (${sheet.resource.count}).`
     },
@@ -569,6 +603,12 @@ export function abilityTrigger(
     if (m) return { label: t.label(m, sheet, level), fire: () => t.fire(m, sheet, level) }
   }
   return null
+}
+
+/** Abilities "Your <spell> … whenever they would crit" names, for the Crit button. */
+export function critTriggerSources(sheet: NimbleSheet, source: string): string[] {
+  const about = new RegExp(`\\bYour ${source}\\b[^.]*\\bwhenever they would crit\\b`)
+  return sheet.abilities.filter((a) => about.test(a.desc)).map((a) => abilityBaseName(a.name))
 }
 
 export function critTriggers(sheet: NimbleSheet, level: number, source: string): string {
@@ -687,6 +727,11 @@ export interface FieldRestOptions {
   dice: number
   /** Made camp (8 hours with food and sleep): each die gives its maximum instead of a roll. */
   camp: boolean
+  /**
+   * The player's own Hit Die rolls (Catch Breath with Manual dice), one per die, kept to
+   * the die's faces: how many there are is how many dice are spent (up to the dice left).
+   */
+  rolls?: number[]
 }
 
 /**
@@ -709,14 +754,18 @@ export function fieldRestDice(sheet: NimbleSheet, camp: boolean): number {
  */
 export function fieldRest(
   sheet: NimbleSheet,
-  { dice, camp }: FieldRestOptions,
+  { dice, camp, rolls }: FieldRestOptions,
   rng: Rng = Math.random,
 ): string {
-  const count = Math.min(hitDiceLeft(sheet), Math.max(0, Math.floor(dice)))
+  const own =
+    !camp && rolls?.length
+      ? rolls.map((v) => Math.min(sheet.hitDie, Math.max(1, Math.round(v))))
+      : null
+  const count = Math.min(hitDiceLeft(sheet), own ? own.length : Math.max(0, Math.floor(dice)))
   if (count === 0 || sheet.hp >= sheet.hpMax) return ''
-  const values = Array.from({ length: count }, () =>
-    camp ? sheet.hitDie : rollDie(sheet.hitDie, rng),
-  )
+  const values = own
+    ? own.slice(0, count)
+    : Array.from({ length: count }, () => (camp ? sheet.hitDie : rollDie(sheet.hitDie, rng)))
   const total = values.reduce((sum, v) => sum + Math.max(0, v + sheet.stats.STR), 0)
   const before = sheet.hp
   sheet.hitDiceUsed += count
@@ -1016,6 +1065,16 @@ export function counterCost(text: string): CounterCost | undefined {
   if (LEADING_ACTION.test(text)) return { actions: 1 }
   if (/\bfor free\b/i.test(text)) return undefined
   return ACTION_COST.test(text) ? { actions: 1 } : undefined
+}
+
+/**
+ * Whether a use can still be made while you wait for your turn in combat: one that costs
+ * no actions (free), rides on a reaction (Defend, Interpose), or is a reaction itself
+ * ("Reaction:", "Action/Reaction"). Anything else that costs actions waits for your turn.
+ */
+export function usableOffTurn(cost: CounterCost | undefined, text: string): boolean {
+  if (!cost || cost.actions <= 0 || cost.reaction) return true
+  return REACTION_COST.test(text) || /\bAction\/Reaction\b/.test(text)
 }
 
 export function costLabel(cost: CounterCost | undefined): string {
@@ -1366,24 +1425,51 @@ export function encounterMana(sheet: NimbleSheet): number {
 }
 
 /**
- * Initiative is rolled: per-encounter and per-turn uses come back, abilities that
- * recharge on Initiative get one use back, encounter mana is gained, and the turn
- * starts fresh.
+ * Combat starts: per-encounter and per-turn uses come back and the turn starts
+ * fresh. Initiative is rolled next (`rollInitiative`).
  */
-export function newEncounter(
+export function beginEncounter(sheet: NimbleSheet): string {
+  endRage(sheet)
+  sheet.turnActive = false
+  sheet.inEncounter = true
+  sheet.turnDone = false
+  sheet.awaitingInitiative = true
+  sheet.initiative = null
+  refill(sheet, ['turn', 'encounter'])
+  expireGrants(sheet)
+  sheet.casting = { ...NOT_CASTING }
+  sheet.rushed = 0
+  sheet.reactionsUsed = []
+  const extra = [summonsGone(endSummons(sheet, 'encounter')), endEffects(sheet, 'encounter')].join(
+    '',
+  )
+  return `New encounter: per-encounter abilities and reactions ready. Roll Initiative.${extra}`
+}
+
+/**
+ * Initiative is rolled (or entered, when the player rolls their own dice):
+ * abilities that recharge on Initiative get one use back, encounter mana is
+ * gained, and the hero starts with actions by the roll.
+ */
+export function rollInitiative(
   sheet: NimbleSheet,
   level: number,
   rng: Rng = Math.random,
   initiative?: number,
 ): string {
-  endRage(sheet)
-  sheet.turnActive = false
-  sheet.inEncounter = true
-  sheet.turnDone = false
-  refill(sheet, ['turn', 'encounter'])
+  return initiativeRoll(sheet, level, rng, initiative).message
+}
+
+/** `rollInitiative` with the total, for the GM's initiative tracker. */
+export function initiativeRoll(
+  sheet: NimbleSheet,
+  level: number,
+  rng: Rng = Math.random,
+  initiative?: number,
+): { message: string; total: number } {
+  sheet.awaitingInitiative = false
   const recharged: string[] = []
   const pilfered = sheetResource(sheet, level)
-  expireGrants(sheet)
   for (const { name, count, expires } of initiativeRecharges(sheet)) {
     if (pilfered?.kind === 'uses' && name === pilfered.name) {
       if (sheet.resource.count > 0) {
@@ -1408,9 +1494,6 @@ export function newEncounter(
   const surge = elementalSurge(sheet, rng)
   const mana = encounterMana(sheet) + surge
   sheet.mana.temp = mana
-  sheet.casting = { ...NOT_CASTING }
-  sheet.rushed = 0
-  sheet.reactionsUsed = []
   const advantage = sheet.abilities.some(
     (a) =>
       /advantage on Initiative/i.test(a.desc) ||
@@ -1419,19 +1502,33 @@ export function newEncounter(
       ),
   )
   const entered = initiative !== undefined && Number.isFinite(initiative)
-  const first = entered ? 0 : rollDie(20, rng)
-  const natural = entered
-    ? Math.floor(initiative) - sheet.initMod
-    : advantage
-      ? Math.max(first, rollDie(20, rng))
-      : first
+  const d20s = entered
+    ? []
+    : quietly(() => (advantage ? [rollDie(20, rng), rollDie(20, rng)] : [rollDie(20, rng)]))
+  const natural = entered ? Math.floor(initiative) - sheet.initMod : Math.max(...d20s)
   const rolled = natural + sheet.initMod
   const cheat =
     rolled < 10 &&
     hasText(sheet, /\bIf you roll less than 10 on Initiative, you may change it to 10\b/)
   const roll = cheat ? 10 : rolled
+  sheet.initiative = roll
+  if (d20s.length)
+    showDice({
+      sides: 20,
+      dice: d20s,
+      dropped: d20s.length > 1 ? [d20s[0]! >= d20s[1]! ? 1 : 0] : [],
+      primary: -1,
+      explosions: [],
+      extra: null,
+      mod: sheet.initMod,
+      total: roll,
+      miss: false,
+      crit: false,
+      odds: advantage ? -1 : 0,
+    })
   const max = turnActions(sheet)
-  const start = initiativeActions(roll, natural, max)
+  // Classic initiative only orders the turns: every hero starts with full actions.
+  const start = sheet.classicInitiative ? max : initiativeActions(roll, natural, max)
   sheet.actionsSpent = max - start
   const extra = [
     cheat ? ` Cheat: ${rolled} raised to 10.` : '',
@@ -1439,9 +1536,7 @@ export function newEncounter(
     recharged.length ? ` ${recharged.join(', ')} recharged.` : '',
     mana > 0 ? ` ${mana} encounter mana gained.` : '',
     refillResource(sheet, level, 'initiative'),
-    summonsGone(endSummons(sheet, 'encounter')),
     initiativeSummons(sheet, level),
-    endEffects(sheet, 'encounter'),
     initiativeReminders(sheet),
   ].join('')
   const how = entered
@@ -1454,7 +1549,20 @@ export function newEncounter(
     )
       ? ' Add your Elemental Surge d4s to temporary mana.'
       : ''
-  return `New encounter: Initiative ${roll} (${how}), you start with ${start} action${start === 1 ? '' : 's'}. Per-encounter abilities and reactions ready.${extra}${surgeDice}`
+  const message = `Initiative ${roll} (${how}): you start with ${start} action${start === 1 ? '' : 's'}${sheet.classicInitiative ? ' (Classic initiative)' : ''}.${extra}${surgeDice}`
+  if (d20s.length) showOutcome({ label: 'Initiative', total: roll, detail: message })
+  return { message, total: roll }
+}
+
+/** New encounter and Initiative in one step. */
+export function newEncounter(
+  sheet: NimbleSheet,
+  level: number,
+  rng: Rng = Math.random,
+  initiative?: number,
+): string {
+  const begun = beginEncounter(sheet).replace(' Roll Initiative.', '')
+  return `${begun} ${rollInitiative(sheet, level, rng, initiative)}`
 }
 
 const diceWord = (n: number) => (n === 1 ? 'Die' : 'Dice')
@@ -1556,6 +1664,7 @@ export function operateInvention(
   rng: Rng = Math.random,
   mode: 'tether' | 'coil' = 'tether',
   disadvantage = 0,
+  armor: ArmorContext = { armor: 'none' },
 ): string {
   const r = sheetResource(sheet, level)
   const invention = INVENTIONS.find((i) => i.name === name)
@@ -1567,7 +1676,13 @@ export function operateInvention(
   if (sheet.ownDice) {
     res.count -= n
     const extra = invention.use === 'cannon' ? ' and the d12' : ''
-    return `${name}: spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die}${extra} yourself. Mishap if any die rolls ${n} or less: flip its Malfunction switch or set the condition. ${res.count} left.`
+    const against =
+      invention.use === 'blade'
+        ? armorRule({ ...armor, lighter: true })
+        : invention.use === 'cannon'
+          ? armorRule(armor)
+          : ''
+    return `${name}: spent ${n} ${r.diceName} ${diceWord(n)}; roll ${n}d${r.die}${extra} yourself. Mishap if any die rolls ${n} or less: flip its Malfunction switch or set the condition.${against} ${res.count} left.`
   }
   const has = (upgrade: string) => sheet.abilities.some((a) => a.name === `${name}: ${upgrade}`)
   const attack = invention.use === 'blade' || invention.use === 'cannon'
@@ -1589,16 +1704,23 @@ export function operateInvention(
     const crit = primary === 12 ? explodeDie(12, rng) : []
     const perDie = sheet.stats.INT + (has('Amplified Conduit') ? 2 : 0)
     const extra = sum + n * perDie
+    const hit = armorHit(primary + total(crit) + extra, n * perDie, armor, !!crit.length)
     line =
       primary === 1
         ? `miss (the d12 rolled a 1); ${dice}`
-        : `${primary + total(crit) + extra} damage to the target and ${extra} to ALL creatures between${crit.length ? ' · critical' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
+        : `${hit.damage} damage to the target${hit.note} and ${extra} to ALL creatures between${crit.length ? ' · critical' : ''} [d12 ${[primary, ...crit].join('+')}, ${dice} + ${perDie} each]`
   } else if (invention.use === 'blade') {
     const crit = rolls[0] === r.die ? explodeDie(r.die, rng) : []
+    const hit = armorHit(
+      2 * (sum + total(crit) + sheet.stats.STR),
+      2 * sheet.stats.STR,
+      { ...armor, lighter: true },
+      !!crit.length,
+    )
     line =
       rolls[0] === 1
         ? `miss (the first Mana Die rolled a 1); ${dice}`
-        : `${2 * (sum + total(crit) + sheet.stats.STR)} damage${crit.length ? ' · critical' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
+        : `${hit.damage} damage${hit.note}${crit.length ? ' · critical' : ''} [2 × (${dice}${crit.length ? ` + ${crit.join('+')}` : ''} + STR)]`
   } else if (invention.use === 'plate') {
     line = `Defend with +${2 * Math.max(0, sheet.stats.STR) * n} Armor [${dice}]`
   } else if (invention.use === 'jerkin') {

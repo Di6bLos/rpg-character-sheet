@@ -1,64 +1,28 @@
 <script setup lang="ts">
 // The turn tracker: actions left this turn, and the Start turn / End turn / New encounter steps.
 import type { NimbleSheet } from '~/types/sheets'
-import {
-  actionPips,
-  actionsLeft,
-  endEncounter,
-  gainAction,
-  newRound,
-  toggleActionPip,
-  endTurn,
-  newEncounter,
-  startTurn,
-  stopCasting,
-  turnActions,
-} from '~/utils/nimblePlay'
 
-const { draft, canEdit, say, campaignId } = useSheet<NimbleSheet>()
-const sheet = computed(() => draft.value.sheet)
-
-const perTurn = computed(() => turnActions(sheet.value))
-const left = computed(() => actionsLeft(sheet.value))
-const rushedNote = computed(() =>
-  sheet.value.rushed
-    ? `Next attack: ${sheet.value.rushed}× disadvantage (Rushed)`
-    : 'No attacks yet this turn',
-)
-
-const pips = computed(() => actionPips(sheet.value))
-
-function toggleAction(n: number) {
-  if (canEdit.value) toggleActionPip(sheet.value, n)
-}
-
-function extraAction() {
-  if (canEdit.value) say(gainAction(sheet.value))
-}
-
-function cancelCasting() {
-  if (canEdit.value) say(stopCasting(sheet.value))
-}
-
-function beginTurn() {
-  if (canEdit.value) say(startTurn(sheet.value, draft.value.level))
-}
-
-function finishEncounter() {
-  if (canEdit.value) say(endEncounter(sheet.value, draft.value.level))
-}
-
-function nextRound() {
-  if (canEdit.value) say(newRound(sheet.value, draft.value.level))
-}
-
-function finishTurn() {
-  if (canEdit.value) say(endTurn(sheet.value, draft.value.level))
-}
-
-function startEncounter(values?: number[]) {
-  if (canEdit.value) say(newEncounter(sheet.value, draft.value.level, Math.random, values?.[0]))
-}
+const { draft, canEdit, campaignId } = useSheet<NimbleSheet>()
+const {
+  sheet,
+  perTurn,
+  left,
+  pips,
+  steps,
+  typed,
+  unsent,
+  resendInitiative,
+  rushedNote,
+  toggleAction,
+  extraAction,
+  cancelCasting,
+  beginTurn,
+  finishTurn,
+  nextRound,
+  startEncounter,
+  finishEncounter,
+  initiative,
+} = useTurnSteps()
 </script>
 
 <template>
@@ -69,7 +33,7 @@ function startEncounter(values?: number[]) {
         <h2 id="turn-h">Turn</h2>
         <UiHelp
           label="About the turn tracker"
-          text="Attacks, spells and reactions spend actions for you; tap a circle to spend or restore one. Your actions come back at the END of your turn, so reactions you take on others’ turns come out of your next one. Start turn refills once-per-turn abilities and pays spells still being cast; New encounter rolls Initiative (9 or less: 1 action, 10–19: 2, 20+: all) and refills once-per-encounter abilities. On the board, Start and End turn happen by themselves as initiative reaches and leaves you."
+          text="Attacks, spells and reactions spend actions for you; tap a circle to spend or restore one. Your actions come back at the END of your turn, so reactions you take on others’ turns come out of your next one. Start turn refills once-per-turn abilities and pays spells still being cast; New encounter refills once-per-encounter abilities; then Roll Initiative (or type your total if you roll your own dice): 9 or less starts you with 1 action, 10–19 with 2, 20+ with all. On the board, Start and End turn happen by themselves as initiative reaches and leaves you."
         />
       </div>
       <span v-if="sheet.turnActive" class="turn-now">Your turn</span>
@@ -83,6 +47,12 @@ function startEncounter(values?: number[]) {
       <span v-else class="turn-who">{{
         sheet.inEncounter ? 'Waiting for your turn' : 'Not in combat'
       }}</span>
+      <span
+        v-if="sheet.inEncounter && sheet.initiative != null"
+        class="turn-init"
+        title="Your Initiative this encounter"
+        >Initiative {{ sheet.initiative }}</span
+      >
     </div>
     <div class="tile turn">
       <div
@@ -140,16 +110,35 @@ function startEncounter(values?: number[]) {
       </div>
       <div class="row" style="gap: 6px; margin-left: auto; flex-wrap: wrap">
         <button
-          v-if="!sheet.ownDice && !sheet.inEncounter"
+          v-if="steps.includes('encounter')"
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit"
-          @click="startEncounter()"
+          @click="startEncounter"
         >
           New encounter
         </button>
         <button
-          v-if="sheet.inEncounter && !sheet.turnActive"
+          v-if="steps.includes('initiative')"
+          type="button"
+          class="btn btn--sm"
+          :disabled="!canEdit"
+          @click="initiative()"
+        >
+          Roll Initiative
+        </button>
+        <button
+          v-if="unsent !== null"
+          type="button"
+          class="btn btn--sm"
+          :disabled="!canEdit"
+          title="The initiative tracker didn't get your total: sends the same one again"
+          @click="resendInitiative"
+        >
+          Resend Initiative
+        </button>
+        <button
+          v-if="steps.includes('endEncounter')"
           type="button"
           class="btn btn--quiet btn--sm"
           :disabled="!canEdit"
@@ -159,7 +148,7 @@ function startEncounter(values?: number[]) {
           End encounter
         </button>
         <button
-          v-if="!sheet.turnActive && sheet.inEncounter && !sheet.turnDone"
+          v-if="steps.includes('start')"
           type="button"
           class="btn btn--sm"
           :disabled="!canEdit"
@@ -168,7 +157,7 @@ function startEncounter(values?: number[]) {
           Start turn
         </button>
         <button
-          v-else-if="sheet.inEncounter && sheet.turnDone && !sheet.turnActive"
+          v-else-if="steps.includes('round')"
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit"
@@ -178,7 +167,7 @@ function startEncounter(values?: number[]) {
           New round
         </button>
         <button
-          v-if="sheet.turnActive"
+          v-if="steps.includes('end')"
           type="button"
           class="btn btn--sm"
           :disabled="!canEdit"
@@ -189,12 +178,12 @@ function startEncounter(values?: number[]) {
       </div>
     </div>
     <NimbleDiceEntry
-      v-if="sheet.ownDice && !sheet.inEncounter"
+      v-if="typed"
       label="Your Initiative total"
-      action="New encounter"
+      action="Set Initiative"
       signed
       :disabled="!canEdit"
-      @submit="startEncounter"
+      @submit="initiative"
     />
   </section>
 </template>
@@ -215,6 +204,15 @@ function startEncounter(values?: number[]) {
   font-weight: 700;
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent-text);
+}
+
+.turn-init {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--page-soft);
 }
 
 .turn-who {

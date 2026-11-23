@@ -11,6 +11,7 @@ import type {
 } from '~/types/sheets'
 import { parseDice, rollDie, rollNimble, type Rng } from '~/utils/dice'
 import { letter } from '~/utils/initiative'
+import { armorHit, armorLabel, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
 import {
   abilityBaseName,
   abilityModifiers,
@@ -419,6 +420,7 @@ export function customSummonAttack(
   sheet: NimbleSheet,
   members: NimbleSummon[],
   rng: Rng = Math.random,
+  armor: ArmorContext = { armor: 'none' },
 ): string {
   const attack = members[0]?.custom?.attack
   const expr = attack && parseDice(attack.dice)
@@ -429,20 +431,22 @@ export function customSummonAttack(
       : members[0]!.name
   const type = attack.type ? ` ${attack.type.toLowerCase()}` : ''
   if (sheet.ownDice)
-    return `${label} — ${attack.name}: roll ${attack.dice}${members.length > 1 ? ` for each of ${members.length}` : ''}${type} yourself; a 1 misses.`
+    return `${label} — ${attack.name}: roll ${attack.dice}${members.length > 1 ? ` for each of ${members.length}` : ''}${type} yourself; a 1 misses.${armorRule(armor)}`
   const minion = members[0]!.custom?.kind === 'minion'
   const parts = members.map(() => {
     if (minion) {
       const dice = Array.from({ length: expr.count }, () => rollDie(expr.sides, rng))
-      return dice[0] === 1 ? 0 : dice.reduce((a, b) => a + b, 0) + expr.mod
+      return dice[0] === 1
+        ? 0
+        : armorHit(dice.reduce((a, b) => a + b, 0) + expr.mod, expr.mod, armor).damage
     }
     const roll = rollNimble(expr, null, rng, 0)
-    return roll.miss ? 0 : roll.total
+    return roll.miss ? 0 : armorHit(roll.total, expr.mod, armor, roll.crit).damage
   })
   const total = parts.reduce((a, b) => a + b, 0)
   if (!total) return `${label} — ${attack.name}: miss (a 1 on the first die).`
   const shown = parts.length > 1 ? ` (${parts.map((p) => (p ? `${p}` : 'miss')).join(', ')})` : ''
-  return `${label} — ${attack.name}: ${total}${type} damage${shown}.`
+  return `${label} — ${attack.name}: ${total}${type} damage${armorLabel(armor)}${shown}.`
 }
 
 export function summonFromSpell(
@@ -557,7 +561,51 @@ function rollMinion(sides: number, rng: Rng): { value: number; miss: boolean; ma
   return { value, miss: value === 1, max: value === sides }
 }
 
-export function commandMinions(sheet: NimbleSheet, level: number, rng: Rng = Math.random): string {
+/**
+ * What `crits` minion crits set off: Swarming Shadows summons more, the class
+ * options' on-crit lines, Master of Nightfrost's temp HP. Used by
+ * `commandMinions` and by the Crit button for players who roll their own dice.
+ */
+export function minionCrits(sheet: NimbleSheet, level: number, crits = 1): string[] {
+  const def = summonById('shadow-minion')!
+  const stats = summonStats(sheet, level, def)
+  const after: string[] = []
+  if (stats.swarm) {
+    const before = minionCount(sheet)
+    for (let i = 0; i < crits; i++) addSummon(sheet, level, def.id, { ignoreCap: true })
+    const gained = minionCount(sheet) - before
+    after.push(
+      gained
+        ? `Swarming Shadows: +${gained} shadow minion${gained === 1 ? '' : 's'}.`
+        : 'Swarming Shadows: already at max minions.',
+    )
+  }
+  after.push(...stats.onCrit)
+  if (stats.critTempHp) {
+    const [a = '', b = ''] = stats.critTempHp.split('+')
+    const gain = Math.max(0, sheet.stats.INT * Number(a === 'INT') + level * Number(b === 'LVL'))
+    sheet.tempHp = Math.max(sheet.tempHp, gain)
+    after.push(`Master of Nightfrost: ${gain} temp HP.`)
+  }
+  return after
+}
+
+/** Names of what a minion crit sets off, for the Crit button's tooltip. */
+export function minionCritTriggers(sheet: NimbleSheet, level: number): string[] {
+  const stats = summonStats(sheet, level, summonById('shadow-minion')!)
+  return [
+    stats.swarm ? 'Swarming Shadows' : '',
+    ...stats.onCrit,
+    stats.critTempHp ? 'Master of Nightfrost' : '',
+  ].filter(Boolean)
+}
+
+export function commandMinions(
+  sheet: NimbleSheet,
+  level: number,
+  rng: Rng = Math.random,
+  armor: ArmorContext = { armor: 'none' },
+): string {
   const def = summonById('shadow-minion')!
   const stats = summonStats(sheet, level, def)
   const minions = sheet.summons.filter((s) => COMMANDED.includes(s.def))
@@ -570,7 +618,7 @@ export function commandMinions(sheet: NimbleSheet, level: number, rng: Rng = Mat
     const big = greater
       ? ` and ${5 + Math.max(0, (greater.tier ?? 4) - 4)}d${stats.die} for the ${greater.name}`
       : ''
-    return `Minions attack (Reach ${stats.reach}): roll 1d${stats.die} for each of ${minions.length} minion${minions.length === 1 ? '' : 's'}${big} yourself; a 1 misses, a max roll would crit (add any minions it summons by hand).`
+    return `Minions attack (Reach ${stats.reach}): roll 1d${stats.die} for each of ${minions.length} minion${minions.length === 1 ? '' : 's'}${big} yourself; a 1 misses.${minionCritTriggers(sheet, level).length ? ' Tap It crit for each max roll.' : ''}${armorRule(armor)}`
   }
   const parts: string[] = []
   let total = 0
@@ -578,37 +626,25 @@ export function commandMinions(sheet: NimbleSheet, level: number, rng: Rng = Mat
   for (let i = 0; i < minions.length; i++) {
     const r = rollMinion(stats.die, rng)
     if (r.max) crits += 1
-    if (!r.miss) total += r.value
-    parts.push(r.miss ? 'miss' : `${r.value}`)
+    const dealt = armorHit(r.value, 0, armor).damage
+    if (!r.miss) total += dealt
+    parts.push(r.miss ? 'miss' : `${dealt}`)
   }
   if (greater) {
     const dice = 5 + Math.max(0, (greater.tier ?? 4) - 4)
     const rolls = Array.from({ length: dice }, () => rollDie(stats.die, rng))
-    const sum = rolls.reduce((a, b) => a + b, 0)
+    const sum = armorHit(
+      rolls.reduce((a, b) => a + b, 0),
+      0,
+      armor,
+    ).damage
     if (rolls[0] === stats.die) crits += 1
     if (rolls[0] !== 1) total += sum
     parts.push(rolls[0] === 1 ? `${greater.name} miss` : `${greater.name} ${sum}`)
   }
-  const after: string[] = []
-  if (crits && stats.swarm) {
-    const before = minionCount(sheet)
-    for (let i = 0; i < crits; i++) addSummon(sheet, level, def.id, { ignoreCap: true })
-    const gained = minionCount(sheet) - before
-    after.push(
-      gained
-        ? `Swarming Shadows: +${gained} shadow minion${gained === 1 ? '' : 's'}.`
-        : 'Swarming Shadows: already at max minions.',
-    )
-  }
-  if (crits) after.push(...stats.onCrit)
-  if (crits && stats.critTempHp) {
-    const [a = '', b = ''] = stats.critTempHp.split('+')
-    const gain = Math.max(0, sheet.stats.INT * Number(a === 'INT') + level * Number(b === 'LVL'))
-    sheet.tempHp = Math.max(sheet.tempHp, gain)
-    after.push(`Master of Nightfrost: ${gain} temp HP.`)
-  }
+  const after = crits ? minionCrits(sheet, level, crits) : []
   const reach = `Reach ${stats.reach}, d${stats.die}`
-  return `Minions attack (${reach}): ${parts.join(', ')} = ${total} damage.${after.length ? ` ${after.join(' ')}` : ''}`
+  return `Minions attack (${reach}): ${parts.join(', ')} = ${total} damage${armorLabel(armor)}.${after.length ? ` ${after.join(' ')}` : ''}`
 }
 
 export function spiritDie(sheet: NimbleSheet, level: number, tier: number | undefined): number {

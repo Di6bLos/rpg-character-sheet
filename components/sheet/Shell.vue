@@ -20,11 +20,23 @@ const store = useCharacterStore()
 const snackbar = useSnackbarStore()
 const { theme } = useTheme()
 
-const { draft, dirty, saving, save, canEdit } = provideSheetEditor(props.character, {
+const editor = provideSheetEditor(props.character, {
   canEdit: props.canEdit,
   campaignName: props.campaignName,
   campaignId: props.campaignId,
 })
+const { draft, dirty, saving, save } = editor
+// The editor's live flag (it drops while a dialog takes over), not the `canEdit` prop.
+const editable = editor.canEdit
+
+// Seated in the GM's encounter, the full sheet follows the tracker as the board does:
+// End turn, Start turn and New round as initiative moves.
+if (props.character.system === 'nimble')
+  useTrackerTurnSteps(editor, {
+    characterId: props.character.id,
+    turnCharacterId: computed(() => (editor.gmEncounter.value ? editor.trackerTurnId.value : null)),
+    round: computed(() => (editor.gmEncounter.value ? editor.trackerRound.value : null)),
+  })
 
 const editing = ref(false)
 const levelUpOpen = ref(false)
@@ -57,12 +69,12 @@ const saveLabel = computed(() =>
 async function confirmDelete() {
   deleting.value = true
   try {
-    canEdit.value = false
+    editable.value = false
     await store.remove(draft.value.id)
     snackbar.show(`${draft.value.name} was deleted`)
     emit('deleted')
   } catch (err) {
-    canEdit.value = props.canEdit
+    editable.value = props.canEdit
     snackbar.error(err, 'Could not delete the character')
   } finally {
     deleting.value = false
@@ -110,7 +122,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
           <span class="back__label">{{ campaignName }} board</span>
         </NuxtLink>
       </nav>
-      <div v-if="canEdit" class="row" style="gap: 10px">
+      <div v-if="editable" class="row" style="gap: 10px">
         <button
           type="button"
           class="btn btn--ghost"

@@ -1,7 +1,10 @@
 import type { InjectionKey, Ref } from 'vue'
 import type { Character } from '~/types'
-import type { AnySheet } from '~/types/sheets'
+import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
+import { showOutcome } from '~/utils/dice'
+import { beginEncounter, endEncounter, initiativeRoll } from '~/utils/nimblePlay'
+import { seatChange, type Seat } from '~/utils/turnSteps'
 
 export interface SheetEditor<T extends AnySheet = AnySheet> {
   /** Working copy; mutate freely, it autosaves for the owner. */
@@ -12,6 +15,12 @@ export interface SheetEditor<T extends AnySheet = AnySheet> {
   lastRoll: Ref<string>
   campaignName: Ref<string>
   campaignId: Ref<string | null>
+  /** The hero is seated in the GM's encounter: the tracker runs it, not the player. */
+  gmEncounter: Ref<boolean>
+  /** Whose turn the GM's tracker is on (a character id; null between turns or for a creature). */
+  trackerTurnId: Ref<string | null>
+  /** The tracker's round while a turn is running, else null. */
+  trackerRound: Ref<number | null>
   portrait: Ref<string | null>
   uploadingPortrait: Ref<boolean>
   hpPct: Ref<number>
@@ -55,12 +64,19 @@ export function provideSheetEditor(
 
   let pendingSave: Promise<void> | null = null
 
-  /** Saves the draft. A call made while a save is in flight runs after it. */
-  async function save(): Promise<void> {
+  /**
+   * Saves the draft. A call made while a save is in flight runs after it. Each save is
+   * tracked per character, so a load elsewhere (the board after a layout swap) waits for it.
+   */
+  function save(): Promise<void> {
+    return sheetSaves.track(draft.value.id, saveInOrder())
+  }
+
+  async function saveInOrder(): Promise<void> {
     clearTimeout(timer)
     if (pendingSave) {
       await pendingSave
-      return save()
+      return saveInOrder()
     }
     if (!canEdit.value || !dirty.value) return
     pendingSave = persist()
@@ -118,6 +134,80 @@ export function provideSheetEditor(
 
   onBeforeUnmount(saveQuietly)
 
+  // "Manual dice" is the player's (account menu, `profiles.own_dice`); copy it
+  // onto the Nimble sheet they edit, where the rules read `sheet.ownDice`.
+  const auth = useAuthStore()
+  watch(
+    () => auth.profile?.own_dice,
+    (on) => {
+      if (on === undefined || !canEdit.value || draft.value.system !== 'nimble') return
+      const sheet = draft.value.sheet as NimbleSheet
+      if (sheet.ownDice !== on) sheet.ownDice = on
+    },
+    { immediate: true },
+  )
+
+  // The GM's encounter, for a Nimble hero the player edits in a campaign: its initiative
+  // rules (Classic starts heroes with full actions, read as `sheet.classicInitiative`),
+  // and whether the hero is seated on the tracker. Being seated joins the encounter
+  // (New encounter, then Roll Initiative); leaving the tracker ends it, and while seated
+  // the turn steps are only Roll Initiative, Start turn and End turn (`gmEncounter`).
+  const tracked = computed(() => canEdit.value && draft.value.system === 'nimble')
+  const encounter = useCampaignEncounter(
+    computed(() => (tracked.value ? campaignId.value : null)),
+    computed(() => (tracked.value ? draft.value.id : null)),
+  )
+  watch(
+    [encounter.mode, campaignId],
+    ([mode, campaign]) => {
+      if (!tracked.value) return
+      const sheet = draft.value.sheet as NimbleSheet
+      // No campaign: the default Nimble rule. Unknown yet (loading, or a failed load):
+      // keep what the sheet has.
+      if (!campaign) {
+        if (sheet.classicInitiative) sheet.classicInitiative = false
+        return
+      }
+      if (mode === null) return
+      const classic = mode === 'classic'
+      if ((sheet.classicInitiative ?? false) !== classic) sheet.classicInitiative = classic
+    },
+    { immediate: true },
+  )
+  // The seat (combatant id) is saved on the sheet as `gmCombatant`, so a later load can
+  // tell the same fight from a new one, or from one the GM ended while the player was away.
+  const seat = computed<Seat>(() => {
+    const seated = encounter.seated.value
+    if (seated === null) return null
+    return seated ? (encounter.hero.value?.combatantId ?? null) : false
+  })
+  watch(
+    seat,
+    (now, before) => {
+      if (!tracked.value) return
+      const sheet = draft.value.sheet as NimbleSheet
+      const change = seatChange(before, now, sheet)
+      if (change === 'begin') lastRoll.value = beginEncounter(sheet)
+      else if (change === 'end') lastRoll.value = endEncounter(sheet, draft.value.level)
+      if (now === null) return
+      const joined = now || undefined
+      if (sheet.gmCombatant !== joined) sheet.gmCombatant = joined
+    },
+    { immediate: true },
+  )
+  const gmEncounter = computed(() => tracked.value && encounter.seated.value === true)
+  // The GM typed this hero's Initiative while the sheet waits for it: take that score
+  // (starting actions and "when you roll Initiative" effects) instead of asking for a
+  // roll that would overwrite it. Only on the change seen here, so an old score on the
+  // tracker is never applied to a new encounter.
+  watch(encounter.hero, (now, before) => {
+    if (!tracked.value || !now?.rolled || before?.rolled !== false) return
+    const sheet = draft.value.sheet as NimbleSheet
+    if (!sheet.awaitingInitiative) return
+    const { message } = initiativeRoll(sheet, draft.value.level, Math.random, now.initiative)
+    lastRoll.value = `GM set your Initiative. ${message}`
+  })
+
   function adjustHp(delta: number) {
     if (!canEdit.value) return
     const sheet = draft.value.sheet
@@ -166,6 +256,9 @@ export function provideSheetEditor(
     lastRoll,
     campaignName,
     campaignId,
+    gmEncounter,
+    trackerTurnId: encounter.turnCharacterId,
+    trackerRound: encounter.round,
     uploadingPortrait,
     portrait: computed(() => {
       const override = (draft.value.sheet as { portraitOverride?: string }).portraitOverride
@@ -184,7 +277,12 @@ export function provideSheetEditor(
       return `${xp.toLocaleString()} / ${xpNext.toLocaleString()} XP`
     }),
     adjustHp,
-    say: (message: string) => (lastRoll.value = message),
+    say: (message: string) => {
+      lastRoll.value = message
+      // Every result line goes to the dice tray (all systems). It only shows a line while
+      // it has dice from the same click to throw, or is still open (see DiceTray's merge).
+      showOutcome({ label: '', total: null, detail: message })
+    },
     save,
     saveNow,
     onPortrait,

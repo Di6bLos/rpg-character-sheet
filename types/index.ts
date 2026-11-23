@@ -19,6 +19,10 @@ export interface Profile {
   role: UserRole
   theme: ThemeId
   accent: string | null
+  /** 3D dice colour in the dice tray; null follows the accent. */
+  dice_color: string | null
+  /** "I roll my own dice": the app checks things off but rolls nothing, for all their heroes. */
+  own_dice: boolean
   notify_secret: boolean
   notify_journal: boolean
   notify_board: boolean
@@ -124,6 +128,7 @@ export interface RosterEntry {
     /** Nimble mana pool. */
     mana?: { current: number; max: number; temp: number }
     summons?: NimbleSummon[]
+    abilityNames?: string[]
     portraitOverride?: string
     backstory?: string
   } | null
@@ -198,10 +203,17 @@ export interface Message {
 
 export type MessageKind = 'chat' | 'action'
 
+/**
+ * nimble: heroes act first and the Initiative roll sets their starting actions;
+ * classic: the roll sets the turn order and heroes start with full actions.
+ */
+export type InitiativeMode = 'nimble' | 'classic'
+
 export interface Encounter {
   campaign_id: string
   round: number
   active_combatant: string | null
+  initiative_mode: InitiativeMode
 }
 
 export interface Combatant {
@@ -219,6 +231,11 @@ export interface Combatant {
   portrait_path: string | null
   group_label: string | null
   summon_key: string | null
+  conditions: string[]
+  actions_max: number
+  actions_used: number
+  /** False while a seated hero waits for their Initiative (they sit at the top). */
+  initiative_rolled: boolean
   created_at: string
 }
 
@@ -237,6 +254,61 @@ export interface InitiativeRow {
   ac: number | null
   hp_band: HpBand | null
   summon_key: string | null
+  conditions: string[]
+  /** GM only; null for players. */
+  actions_max: number | null
+  actions_used: number | null
+  initiative_rolled: boolean
+}
+
+/** What `campaign_hero_card()` returns: the public part of a seated hero. */
+export interface HeroCard {
+  name: string
+  level: number
+  portrait_path: string | null
+  class: string
+  subclass: string
+  lineage: string
+  hp: number
+  hpMax: number
+  tempHp: number
+  wounds: number
+  woundsMax: number
+  ac: number
+  speed: string
+  initMod: number
+  stats: Record<'STR' | 'DEX' | 'INT' | 'WIL', number>
+  saveAdv: string
+  saveDis: string
+  skills: { name: string; stat: string; points: number }[]
+  mana: { current: number; max: number } | null
+  resource: { name: string; count: number; dice: number; die: number } | null
+  conditions: string[]
+  summons: { name: string; hp: number; hpMax: number }[]
+  abilities: { name: string; desc: string; src: string }[]
+}
+
+/** An HP change the GM sent to a seated hero, waiting for the hero's own sheet (`hero_hp_changes`). */
+export interface HeroHpChange {
+  id: string
+  campaign_id: string
+  character_id: string
+  /** Negative is damage, positive is healing. */
+  amount: number
+  crit: boolean
+  created_by: string | null
+  created_at: string
+}
+
+export interface HeroConditionChange {
+  id: string
+  campaign_id: string
+  character_id: string
+  condition: string
+  /** True adds the condition, false removes it. */
+  add: boolean
+  created_by: string | null
+  created_at: string
 }
 
 export type HpBand = 'Unhurt' | 'Hurt' | 'Bloodied' | 'Down'

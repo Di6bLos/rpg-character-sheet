@@ -322,12 +322,26 @@ export interface NimbleSheet extends SheetCommon {
   formPortraits: Record<string, string>
   portraitOverride: string
   ownDice: boolean
+  /**
+   * The seated campaign plays Classic initiative (copied from the board by the sheet
+   * editor): the roll only orders turns, so Initiative starts the hero with full actions.
+   */
+  classicInitiative?: boolean
   /** Between Start turn and End turn. */
   turnActive: boolean
   /** From New encounter until a Safe Rest. */
   inEncounter: boolean
   /** Your turn is over for this round. */
   turnDone: boolean
+  /** New encounter was tapped and Initiative not rolled yet. */
+  awaitingInitiative?: boolean
+  /** This encounter's Initiative total, once rolled. */
+  initiative?: number | null
+  /**
+   * The GM's tracker seat (combatant id) this sheet joined; unset outside the GM's fight.
+   * A load compares it with the tracker to tell a new fight, or one that ended, from the same.
+   */
+  gmCombatant?: string
   effects: { condition: string; source: string; ends: string[]; skip?: number; tempHp?: number }[]
   attacks: NimbleAttack[]
   skills: NimbleSkill[]

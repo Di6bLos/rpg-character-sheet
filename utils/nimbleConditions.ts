@@ -16,6 +16,10 @@ export const SPELL_STATUSES = [
   { name: 'Stunned', desc: 'Incapacitated: can’t do anything.' },
   { name: 'Paralyzed', desc: 'Incapacitated: can’t do anything.' },
   { name: 'Unconscious', desc: 'Incapacitated: can’t do anything.' },
+  {
+    name: 'Helped',
+    desc: 'An ally used Help: advantage on your next roll. Your next attack uses it; clear it by hand after a check. Ends at the end of your next turn.',
+  },
 ]
 
 export const CONDITION_ENDS: Partial<Record<string, ConditionEnd>> = {
@@ -25,6 +29,7 @@ export const CONDITION_ENDS: Partial<Record<string, ConditionEnd>> = {
   Smoldering: 'encounter',
   Charged: 'encounter',
   Distracted: 'encounter',
+  Helped: 'turnEnd',
 }
 
 export const END_LABELS: Record<ConditionEnd | 'manual', string> = {
@@ -58,6 +63,7 @@ export interface ConditionMods {
 export function conditionMods(sheet: NimbleSheet, applies: string[] = []): ConditionMods {
   const has = (name: string) => sheet.conditions.includes(name)
   const present = SITUATIONAL.filter((s) => has(s.name))
+  const helped = has('Helped') ? 1 : 0
   const against = [
     ...ATTACK_DISADVANTAGE.filter(has),
     ...present.filter((s) => applies.includes(s.name)).map((s) => s.name),
@@ -65,9 +71,14 @@ export function conditionMods(sheet: NimbleSheet, applies: string[] = []): Condi
   const notes = [
     against.length ? `+${against.length} disadvantage: ${against.join(', ')}` : '',
     has('Invisible') ? 'Advantage: Invisible' : '',
+    helped ? 'Advantage: Helped' : '',
   ].filter(Boolean)
-  const disadvantage = against.length - (has('Invisible') ? 1 : 0)
-  const reasons = [...against, ...(has('Invisible') ? ['Invisible (advantage)'] : [])]
+  const disadvantage = against.length - (has('Invisible') ? 1 : 0) - helped
+  const reasons = [
+    ...against,
+    ...(has('Invisible') ? ['Invisible (advantage)'] : []),
+    ...(helped ? ['Helped (advantage)'] : []),
+  ]
   const hints = present.filter((s) => !applies.includes(s.name)).map((s) => `${s.name}: ${s.hint}`)
   const base = Number.parseInt(sheet.speed, 10)
   let speed: number | null = null
@@ -125,6 +136,13 @@ export function clearConditionsAt(sheet: NimbleSheet, when: ConditionEnd): strin
     .map(([name]) => name)
   for (const name of ending) removeCondition(sheet, name)
   return ending.length ? ` No longer ${ending.join(' or ')}.` : ''
+}
+
+/** An attack spends an ally's Help (its advantage covers one roll). */
+export function spendHelp(sheet: NimbleSheet): string {
+  if (!sheet.conditions.includes('Helped')) return ''
+  removeCondition(sheet, 'Helped')
+  return ' Help used.'
 }
 
 export function dazedAtTurnStart(sheet: NimbleSheet): string {

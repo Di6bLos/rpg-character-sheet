@@ -97,8 +97,8 @@ function resetMax(id: string, rule: number) {
             <button
               type="button"
               class="btn btn--ghost btn--sm"
-              :disabled="!canEdit || c.left === 0 || c.short"
-              :title="c.short ? 'Not enough actions left' : undefined"
+              :disabled="!canEdit || c.left === 0 || c.short || !!c.notNow"
+              :title="c.notNow || (c.short ? 'Not enough actions left' : undefined)"
               :aria-label="`Use ${c.name || a.name} (${c.label})`"
               @click="spend(c, a.name, c.pips ? 1 : amounts[c.id] || 1)"
             >

@@ -4,4 +4,5 @@
   </NuxtLayout>
   <UiToast />
   <UiNotifications />
+  <NimbleDiceTray />
 </template>

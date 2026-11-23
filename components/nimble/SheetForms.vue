@@ -29,6 +29,7 @@ const transforms = computed(() => {
       shift: false,
       on: sheet.value.effects.some((x) => x.source === e.source),
       cost: undefined,
+      notNow: '',
     })),
   ].map((e) => ({ ...e, image: portraitUrl(sheet.value.formPortraits[e.source]) }))
 })
@@ -99,7 +100,8 @@ async function removeImage(source: string) {
                 v-if="!t.on"
                 type="button"
                 class="btn btn--sm"
-                :disabled="!canEdit || (!!t.cost && t.cost.left < 1)"
+                :disabled="!canEdit || (!!t.cost && t.cost.left < 1) || !!t.notNow"
+                :title="t.notNow || undefined"
                 @click="useEffect(t.source)"
               >
                 Shift{{ t.cost ? ` · ${t.cost.left} left` : '' }}

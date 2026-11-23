@@ -4,15 +4,12 @@ import { BACKGROUNDS } from '../data/nimble/backgrounds'
 import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import type { NimbleSheet } from '../types/sheets'
 import { rollNimble } from '../utils/dice'
-import {
-  abilityArmor,
-  abilityBaseName,
-  abilityModifiers,
-  sheetResource,
-} from '../utils/nimbleBuild'
+import { abilityBaseName, abilityModifiers, sheetResource } from '../utils/nimbleBuild'
+import { abilityArmor } from '../utils/nimbleArmor'
 import {
   abilityCounters,
   actionsLeft,
+  turnActionsFor,
   actionPips,
   endEncounter,
   gainAction,
@@ -48,7 +45,11 @@ import {
   expendJudgment,
   isMishap,
   newEncounter,
+  beginEncounter,
+  rollInitiative,
   usedUpLabel,
+  critTriggerNames,
+  critTriggerSources,
   startTurn,
   resourceOnAttack,
   rollJudgment,
@@ -83,6 +84,35 @@ function faces(sides: number, ...values: number[]) {
 function hero(patch: Partial<NimbleSheet> = {}): NimbleSheet {
   return { ...defaultSheet('nimble'), hp: 20, hpMax: 20, hitDice: 3, hitDie: 8, ...patch }
 }
+
+describe('crit triggers for players who roll their own dice', () => {
+  it('names what a weapon crit sets off', () => {
+    const sheet = hero({
+      abilities: [
+        {
+          name: 'Steal Tempo',
+          src: 'Cheat',
+          desc: 'When you land a critical hit for the second time on a turn, your target loses 1 action and you gain 1 action.',
+        },
+      ],
+    })
+    expect(critTriggerNames(sheet, { melee: true, quarry: false })).toEqual(['Steal Tempo'])
+  })
+
+  it('names abilities that fire when a spell would crit', () => {
+    const sheet = hero({
+      abilities: [
+        {
+          name: 'Master of Nightfrost',
+          src: 'Shadowmancer',
+          desc: 'Your Shadow Blast and minions can deal necrotic or cold damage, and whenever they would crit, you gain INT+LVL temp HP.',
+        },
+      ],
+    })
+    expect(critTriggerSources(sheet, 'Shadow Blast')).toEqual(['Master of Nightfrost'])
+    expect(critTriggerSources(sheet, 'Ice Lance')).toEqual([])
+  })
+})
 
 describe('spent limits', () => {
   it('say when they come back', () => {
@@ -173,6 +203,18 @@ describe('nimble rests', () => {
     const sheet = hero({ hp: 5, stats: { STR: -3, DEX: 0, INT: 0, WIL: 0 } })
     fieldRest(sheet, { dice: 1, camp: false }, faces(8, 1))
     expect(sheet.hp).toBe(5)
+  })
+
+  it("Catch Breath takes the player's own Hit Die rolls (Manual dice)", () => {
+    const sheet = hero({ hp: 10, hpMax: 40, stats: { STR: 1, DEX: 0, INT: 0, WIL: 0 } })
+    // Two entered: two dice spent; a 12 on a d8 counts as 8.
+    const message = fieldRest(sheet, { dice: 1, camp: false, rolls: [3, 12] })
+    expect(hitDiceLeft(sheet)).toBe(1)
+    expect(sheet.hp).toBe(10 + (3 + 1) + (8 + 1))
+    expect(message).toContain('rolled 3, 8')
+    // Making camp ignores entered rolls.
+    fieldRest(sheet, { dice: 1, camp: true, rolls: [1] })
+    expect(sheet.hp).toBe(23 + 9)
   })
 
   it('reports healing lost over max HP', () => {
@@ -307,11 +349,34 @@ describe('nimble turn tracker', () => {
     expect(actionsLeft(sheet)).toBe(2)
   })
 
+  it('waits for Initiative after New encounter, then rolls it or takes the entered total', () => {
+    const sheet = hero({ initMod: 2 })
+    expect(beginEncounter(sheet)).toMatch(/^New encounter: .*Roll Initiative\./)
+    expect(sheet.awaitingInitiative).toBe(true)
+    expect(rollInitiative(sheet, 1, () => 0.5, 21)).toMatch(
+      /^Initiative 21 \(as you rolled it\): you start with 3 actions/,
+    )
+    expect(sheet.awaitingInitiative).toBe(false)
+    expect(sheet.initiative).toBe(21)
+    expect(actionsLeft(sheet)).toBe(3)
+    beginEncounter(sheet)
+    expect(sheet.initiative).toBeNull()
+  })
+
+  it('Classic initiative starts every hero with full actions, whatever the roll', () => {
+    const sheet = hero({ initMod: 0, classicInitiative: true })
+    beginEncounter(sheet)
+    expect(rollInitiative(sheet, 1, () => 0.5, 3)).toMatch(
+      /^Initiative 3 \(as you rolled it\): you start with 3 actions \(Classic initiative\)\./,
+    )
+    expect(actionsLeft(sheet)).toBe(3)
+  })
+
   it('starts combat with 1, 2 or all actions by the Initiative roll', () => {
     const roll = (value: number) => () => (value - 0.5) / 20
     const sheet = hero({ initMod: 2 })
     expect(newEncounter(sheet, 1, roll(5))).toMatch(
-      /Initiative 7 \(d20 5 \+2\), you start with 1 action\./,
+      /Initiative 7 \(d20 5 \+2\): you start with 1 action\./,
     )
     expect(actionsLeft(sheet)).toBe(1)
     newEncounter(sheet, 1, roll(12))
@@ -1573,5 +1638,21 @@ describe('class wiring', () => {
     expect(
       abilityTrigger(sheet, 7, 'Your allies within 12 spaces who can hear you gain WIL temp HP.'),
     ).toBeNull()
+  })
+})
+
+describe('turnActionsFor', () => {
+  it('gives 3, 4 with Windborne, 1 or 2 while dying', () => {
+    expect(turnActionsFor([], false)).toBe(3)
+    expect(turnActionsFor(['Windborne'], false)).toBe(4)
+    expect(turnActionsFor([], true)).toBe(1)
+    expect(turnActionsFor(['Enduring Rage'], true)).toBe(2)
+    expect(turnActionsFor(['Windborne'], true)).toBe(2)
+    expect(turnActionsFor(['Enduring Rage'], false)).toBe(3)
+  })
+  it('reads the base name of an upgraded ability', () => {
+    const upgraded = 'Windborne: (Upgrade)'
+    const base = abilityBaseName(upgraded)
+    expect(turnActionsFor([upgraded], false)).toBe(base === 'Windborne' ? 4 : 3)
   })
 })

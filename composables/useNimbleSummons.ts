@@ -13,6 +13,8 @@ import {
   companionBlocked,
   dismissSummon,
   minionCount,
+  minionCritTriggers,
+  minionCrits,
   sacrificeSummon,
   slaySummon,
   spiritAct,
@@ -22,6 +24,7 @@ import {
   summonStats,
 } from '~/utils/nimbleSummons'
 import type { NimbleResultOptions } from './useNimbleActions'
+import { armorDice, armorDiceWhy, ignoresArmor } from '~/utils/nimbleTargetArmor'
 
 /** "minion" → "minions", "fox" → "foxes", "harpy" → "harpies". */
 function plural(name: string): string {
@@ -36,6 +39,13 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
   const { draft, canEdit, say } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
   const level = computed(() => draft.value.level)
+  const target = useAttackTarget()
+  const critReady = useCritReady()
+  const armorOf = (props: string) => ({
+    armor: target.value.armor,
+    vulnerable: target.value.vulnerable,
+    ignore: ignoresArmor(props) ? 'ignores armor' : '',
+  })
 
   function report(message: string) {
     if (!message) return
@@ -95,6 +105,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
   )
 
   const left = computed(() => actionsLeft(sheet.value))
+  const offTurn = computed(() => sheet.value.inEncounter && !sheet.value.turnActive)
 
   function act(message: string, actions = 0) {
     if (!message) return
@@ -117,7 +128,9 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
   const command = run(() => {
     if (commandUsed.value) return report('You already commanded your minions this turn.')
     if (left.value < 1) return report(NO_ACTIONS)
-    act(commandMinions(sheet.value, level.value), 1)
+    const commanded = minions.value
+    act(commandMinions(sheet.value, level.value, Math.random, armorOf('')), 1)
+    if (sheet.value.ownDice) critReady.value = { ...critReady.value, minions: commanded }
   })
 
   const spiritAttack = run(() => {
@@ -139,6 +152,10 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
       cost: string
       why: string
       run: () => void
+      /** What a crit sets off, and the button that does it when the player rolls their own dice. */
+      critBy?: string[]
+      critReady?: boolean
+      crit?: () => void
     }[] = []
     if (minions.value) {
       const stats = summonStats(sheet.value, level.value, summonById('shadow-minion')!)
@@ -151,7 +168,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         dmg: `${minions.value}× 1d${stats.die}`,
         props: `${stats.damageType} · each moves 6 then attacks · Reach ${stats.reach} · a 1 misses, no crits`,
         cost: '1 action · 1/turn',
-        why: !sheet.value.turnActive
+        why: offTurn.value
           ? 'Not your turn'
           : commandUsed.value
             ? 'Used this turn'
@@ -159,6 +176,13 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
               ? 'No actions left'
               : '',
         run: command,
+        critBy: minionCritTriggers(sheet.value, level.value),
+        critReady: (critReady.value.minions ?? 0) > 0,
+        /** Once per minion commanded this turn that rolled its max. */
+        crit: run(() => {
+          if (!spendCrit(critReady, 'minions')) return
+          report(`A minion crit! ${minionCrits(sheet.value, level.value).join(' ')}`)
+        }),
       })
     }
     if (spirit.value) {
@@ -171,11 +195,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         dmg: `${stats.diceMult}d${spiritDie(sheet.value, level.value, spirit.value.tier)}+WIL`,
         props: `${stats.damageType}, Reach ${stats.reach}, ignoring armor`,
         cost: spiritCost() ? '1 action' : 'free',
-        why: !sheet.value.turnActive
-          ? 'Not your turn'
-          : left.value < spiritCost()
-            ? 'No actions left'
-            : '',
+        why: offTurn.value ? 'Not your turn' : left.value < spiritCost() ? 'No actions left' : '',
         run: spiritAttack,
       })
     }
@@ -198,7 +218,7 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         ]
           .filter(Boolean)
           .join(' · '),
-        why: sheet.value.turnActive ? companionBlocked(sheet.value, level.value) : 'Not your turn',
+        why: offTurn.value ? 'Not your turn' : companionBlocked(sheet.value, level.value),
         run: companionStrike,
       })
     }
@@ -231,15 +251,20 @@ export function useNimbleSummons(options: NimbleResultOptions = {}) {
         cost: attack.actions
           ? `${attack.actions} action${attack.actions === 1 ? '' : 's'}`
           : 'free',
-        why: !sheet.value.turnActive
-          ? 'Not your turn'
-          : left.value < attack.actions
-            ? 'No actions left'
-            : '',
-        run: run(() => act(customSummonAttack(sheet.value, members), attack.actions)),
+        why: offTurn.value ? 'Not your turn' : left.value < attack.actions ? 'No actions left' : '',
+        run: run(() =>
+          act(
+            customSummonAttack(sheet.value, members, Math.random, armorOf(attack.type ?? '')),
+            attack.actions,
+          ),
+        ),
       })
     }
-    return out
+    return out.map((a) => ({
+      ...a,
+      armorDmg: armorDice(a.dmg, armorOf(a.props)),
+      armorWhy: armorDiceWhy(a.dmg, armorOf(a.props)),
+    }))
   })
 
   const sacrificeable = computed(

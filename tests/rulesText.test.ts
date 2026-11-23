@@ -10,6 +10,10 @@ const SOURCES = [
   '../utils/nimbleArmor.ts',
   '../composables/useNimbleActions.ts',
   '../composables/useNimbleSpells.ts',
+  '../utils/nimbleSpellDamage.ts',
+  '../utils/nimbleSummons.ts',
+  '../utils/nimbleConditions.ts',
+  '../utils/nimbleSpellRules.ts',
 ]
 
 const texts = [
