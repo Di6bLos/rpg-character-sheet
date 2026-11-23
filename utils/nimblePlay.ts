@@ -1949,11 +1949,17 @@ export function skillCheck(
   name: string,
   opts: { odds?: number; frightened?: boolean } = {},
   rng: Rng = Math.random,
-): { message: string; total: number | null } {
+): { message: string; total: number | null; blocked?: true } {
   const skill = sheet.skills.find((s) => s.name === name)
-  if (!skill) return { message: '', total: null }
+  if (!skill) return { message: '', total: null, blocked: true }
+  if (isDead(sheet)) return { message: `${name} check: you are dead.`, total: null, blocked: true }
   const out = INCAPACITATED.find((c) => sheet.conditions.includes(c))
-  if (out) return { message: `${name} check: you are ${out} and can’t act.`, total: null }
+  if (out)
+    return {
+      message: `${name} check: you are ${out} and can’t act.`,
+      total: null,
+      blocked: true,
+    }
   const bonus = Math.min(MAX_SKILL_BONUS, sheet.stats[skill.stat] + skill.points)
   const reasons: string[] = []
   let odds = opts.odds ?? 0

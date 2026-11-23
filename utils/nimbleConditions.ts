@@ -18,7 +18,7 @@ export const SPELL_STATUSES = [
   { name: 'Unconscious', desc: 'Incapacitated: can’t do anything.' },
   {
     name: 'Helped',
-    desc: 'An ally used Help: advantage on your next roll. Your next attack uses it; clear it by hand after a check. Ends at the end of your next turn.',
+    desc: 'An ally used Help: advantage on your next roll. Your next attack or skill check uses it. Ends at the end of your next turn.',
   },
 ]
 

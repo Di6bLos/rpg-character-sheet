@@ -144,11 +144,22 @@ describe('skill checks (Core p. 8)', () => {
     expect(helped.conditions).not.toContain('Helped')
   })
 
-  it('tells own-dice players what to roll, and stops the Incapacitated', () => {
+  it('tells own-dice players what to roll, and stops the Incapacitated and the dead', () => {
     expect(skillCheck(perception({ ownDice: true }), 'Perception').message).toBe(
       'Perception check: roll a d20 +3 yourself. A 1 always fails, a 20 always succeeds.',
     )
-    expect(skillCheck(perception({ conditions: ['Stunned'] }), 'Perception').total).toBeNull()
+    expect(skillCheck(perception({ conditions: ['Stunned'] }), 'Perception').blocked).toBe(true)
+    expect(skillCheck(perception({ wounds: 6, woundsMax: 6 }), 'Perception')).toEqual({
+      message: 'Perception check: you are dead.',
+      total: null,
+      blocked: true,
+    })
+  })
+
+  it('adds Frightened’s disadvantage only when its source is nearby', () => {
+    const scared = () => perception({ conditions: ['Frightened'] })
+    expect(skillCheck(scared(), 'Perception', { frightened: true }, faces(20, 15, 4)).total).toBe(7)
+    expect(skillCheck(scared(), 'Perception', {}, faces(20, 15, 4)).total).toBe(18)
   })
 })
 

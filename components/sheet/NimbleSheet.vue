@@ -70,16 +70,24 @@ const ODDS = [
   { value: 1, label: 'Disadvantage' },
 ]
 
+const frightened = computed(() => sheet.value.conditions.includes('Frightened'))
+
+function toggleFear() {
+  situation.value = situation.value.includes('Frightened')
+    ? situation.value.filter((n) => n !== 'Frightened')
+    : [...situation.value, 'Frightened']
+}
+
 function rollSkill(name: string) {
   if (!canEdit.value) return
   claim(`skill:${name}`, () => {
-    const { message } = skillCheck(sheet.value, name, {
+    const { message, blocked } = skillCheck(sheet.value, name, {
       odds: checkOdds.value,
       frightened: situation.value.includes('Frightened'),
     })
     if (message) say(message)
+    if (!blocked) checkOdds.value = 0
   })
-  checkOdds.value = 0
 }
 
 const skills = computed(() =>
@@ -170,20 +178,31 @@ const skills = computed(() =>
             :text="`A skill’s bonus is its stat plus the skill points you put in it, up to +${MAX_SKILL_BONUS}.`"
           />
         </div>
-        <div class="check-odds" role="radiogroup" aria-label="Next skill check">
+        <div class="check-odds" role="group" aria-label="Next skill check">
           <span class="caps">Next check</span>
           <button
             v-for="o in ODDS"
             :key="o.value"
             type="button"
-            role="radio"
             class="chip"
             :class="{ 'chip--on': checkOdds === o.value }"
-            :aria-checked="checkOdds === o.value"
+            :aria-pressed="checkOdds === o.value"
             :disabled="!canEdit"
             @click="checkOdds = o.value"
           >
             {{ o.label }}
+          </button>
+          <button
+            v-if="frightened"
+            type="button"
+            class="chip"
+            :class="{ 'chip--on': situation.includes('Frightened') }"
+            :aria-pressed="situation.includes('Frightened')"
+            :disabled="!canEdit"
+            title="Same chip as above the attacks; cleared each turn"
+            @click="toggleFear"
+          >
+            Frightened: source nearby · +1 disadvantage
           </button>
         </div>
         <div v-for="s in skills" :key="s.name" class="skill">
