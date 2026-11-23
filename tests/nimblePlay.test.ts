@@ -48,6 +48,7 @@ import {
   beginEncounter,
   rollInitiative,
   usedUpLabel,
+  skillCheck,
   critTriggerNames,
   critTriggerSources,
   startTurn,
@@ -111,6 +112,54 @@ describe('crit triggers for players who roll their own dice', () => {
     })
     expect(critTriggerSources(sheet, 'Shadow Blast')).toEqual(['Master of Nightfrost'])
     expect(critTriggerSources(sheet, 'Ice Lance')).toEqual([])
+  })
+})
+
+describe('skill checks (Core p. 8)', () => {
+  const perception = (patch: Partial<NimbleSheet> = {}) =>
+    hero({
+      stats: { STR: 0, DEX: 0, INT: 0, WIL: 2 },
+      skills: [{ name: 'Perception', stat: 'WIL', points: 1 }],
+      ...patch,
+    })
+
+  it('rolls a d20 plus the skill and says when a natural 20 or 1 decides it', () => {
+    expect(skillCheck(perception(), 'Perception', {}, faces(20, 11))).toEqual({
+      message: 'Perception check: 14 (d20 11 +3).',
+      total: 14,
+    })
+    expect(skillCheck(perception(), 'Perception', {}, faces(20, 20)).message).toMatch(
+      /A natural 20 always succeeds\./,
+    )
+  })
+
+  it('takes the GM’s advantage, Poisoned’s disadvantage, and spends Helped', () => {
+    expect(skillCheck(perception(), 'Perception', { odds: -1 }, faces(20, 4, 15)).total).toBe(18)
+    const poisoned = perception({ conditions: ['Poisoned'] })
+    expect(skillCheck(poisoned, 'Perception', {}, faces(20, 4, 15)).message).toMatch(
+      /^Perception check: 7 .*with disadvantage \(Poisoned\)/,
+    )
+    const helped = perception({ conditions: ['Helped'] })
+    expect(skillCheck(helped, 'Perception', {}, faces(20, 4, 15)).total).toBe(18)
+    expect(helped.conditions).not.toContain('Helped')
+  })
+
+  it('tells own-dice players what to roll, and stops the Incapacitated and the dead', () => {
+    expect(skillCheck(perception({ ownDice: true }), 'Perception').message).toBe(
+      'Perception check: roll a d20 +3 yourself. A 1 always fails, a 20 always succeeds.',
+    )
+    expect(skillCheck(perception({ conditions: ['Stunned'] }), 'Perception').blocked).toBe(true)
+    expect(skillCheck(perception({ wounds: 6, woundsMax: 6 }), 'Perception')).toEqual({
+      message: 'Perception check: you are dead.',
+      total: null,
+      blocked: true,
+    })
+  })
+
+  it('adds Frightened’s disadvantage only when its source is nearby', () => {
+    const scared = () => perception({ conditions: ['Frightened'] })
+    expect(skillCheck(scared(), 'Perception', { frightened: true }, faces(20, 15, 4)).total).toBe(7)
+    expect(skillCheck(scared(), 'Perception', {}, faces(20, 15, 4)).total).toBe(18)
   })
 })
 
