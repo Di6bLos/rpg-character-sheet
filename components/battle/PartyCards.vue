@@ -2,7 +2,8 @@
 // The battle board's party: one compact card per hero (the other heroes for a player,
 // all of them for the GM) with portrait, name, Acting tag, class and level, one status
 // line, the HP bar and Armor. The GM's cards add action pips and mana. A card opens
-// the hero's stats modal.
+// the hero's stats modal. Compact (phone): full-width touch-sized cards in the tab's
+// own scroll, free of the right column's Party / Chat split.
 import type { RosterEntry } from '~/types'
 import { plural } from '~/utils/format'
 import { turnActionsFor } from '~/utils/nimblePlay'
@@ -12,6 +13,7 @@ const props = defineProps<{
   gm: boolean
   /** The hero whose turn it is (a character id), for the Acting tag. */
   actingCharacterId?: string | null
+  compact?: boolean
 }>()
 const emit = defineEmits<{ open: [characterId: string] }>()
 
@@ -94,12 +96,16 @@ function label(r: RosterEntry): string {
 <template>
   <section
     class="panel party-cards"
-    :class="{
-      'party-cards--empty': !heroes.length,
-      'party-cards--folded': right.partyClosed.value,
-      'party-cards--fill': right.chatClosed.value,
-    }"
-    :style="{ '--party-split': right.state.value.split }"
+    :class="
+      compact
+        ? { 'party-cards--compact': true, 'party-cards--empty': !heroes.length }
+        : {
+            'party-cards--empty': !heroes.length,
+            'party-cards--folded': right.partyClosed.value,
+            'party-cards--fill': right.chatClosed.value,
+          }
+    "
+    :style="compact ? undefined : { '--party-split': right.state.value.split }"
     aria-labelledby="party-h"
   >
     <header class="party__head">
@@ -113,7 +119,7 @@ function label(r: RosterEntry): string {
       }}</span>
     </header>
     <!-- Closed (dragged to the top): just the header line. -->
-    <ul v-if="heroes.length" v-show="!right.partyClosed.value" class="party__list">
+    <ul v-if="heroes.length" v-show="compact || !right.partyClosed.value" class="party__list">
       <li v-for="r in heroes" :key="r.character_id">
         <button
           type="button"
@@ -129,7 +135,7 @@ function label(r: RosterEntry): string {
             :class-slug="r.summary?.classSlug ?? null"
             :dead="isDead(r)"
             :faded="(r.summary?.hp ?? 1) <= 0"
-            :size="34"
+            :size="compact ? 42 : 34"
           />
           <span class="pc__main">
             <span class="pc__name">
@@ -394,6 +400,52 @@ function label(r: RosterEntry): string {
     font-size: 12px;
     color: var(--page-text);
     font-variant-numeric: tabular-nums;
+  }
+}
+
+// --- Compact (phone) -------------------------------------------------------------------
+// Natural height in the tab's scroll; bigger cards for a thumb.
+.party-cards--compact {
+  flex: none;
+  gap: 8px;
+  padding: 12px;
+
+  .party__list {
+    overflow: visible;
+    gap: 8px;
+  }
+
+  .pc {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: 60px;
+    padding: 8px 12px;
+  }
+
+  .pc__name {
+    font-size: 15px;
+    line-height: 20px;
+  }
+
+  .pc__sub {
+    font-size: 12px;
+  }
+
+  .pc__bar {
+    height: 6px;
+  }
+
+  .pc__cond {
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .pc__right {
+    font-size: 12px;
+
+    b {
+      font-size: 14px;
+    }
   }
 }
 </style>

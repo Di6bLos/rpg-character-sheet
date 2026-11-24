@@ -3,11 +3,13 @@
 // the action pips (click to spend or restore), reactions used this round, the Rushed
 // note and the sheet's turn steps (useTurnSteps, the same as the sheet's Turn panel).
 // The automatic steps as initiative moves run in HeroScope's editor, not here.
+// Compact (phone): one row above the tab bar: the headline with the actions left and
+// reactions as its sub line, touch-sized pips and the step button.
 import type { useInitiative } from '~/composables/useInitiative'
 import type { NimbleSheet } from '~/types/sheets'
 import { turnHeadline } from '~/utils/turnSteps'
 
-const props = defineProps<{ init: ReturnType<typeof useInitiative> }>()
+const props = defineProps<{ init: ReturnType<typeof useInitiative>; compact?: boolean }>()
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const announce = useAnnounce()
@@ -87,20 +89,29 @@ const reactions = computed(() => {
   const used = [...new Set(sheet.value.reactionsUsed)]
   return used.length ? `Reactions: ${used.join(', ')} used` : 'Reactions ready'
 })
+
+/** Compact: the sub line also carries what the status column shows on wider bars. */
+const subRest = computed(() =>
+  props.compact
+    ? [leftText.value, reactions.value, sub.value].filter(Boolean).join(' · ')
+    : sub.value,
+)
+const subLine = computed(() => [headTail.value, subRest.value].filter(Boolean).join(' · '))
 </script>
 
 <template>
-  <section class="panel turn" :class="{ 'turn--now': sheet.turnActive }" aria-label="Your turn">
+  <section
+    class="panel turn"
+    :class="{ 'turn--now': sheet.turnActive, 'turn--compact': compact }"
+    aria-label="Your turn"
+  >
     <div class="turn__who">
       <strong class="turn__title" role="status" :title="headline"
         >{{ headMain }}<span v-if="headTail" class="sr-only"> · {{ headTail }}</span></strong
       >
-      <span
-        v-if="headTail || sub"
-        class="turn__sub"
-        :title="[headTail, sub].filter(Boolean).join(' · ')"
-        ><span aria-hidden="true">{{ headTail }}{{ headTail && sub ? ' · ' : '' }}</span
-        >{{ sub }}</span
+      <span v-if="subLine" class="turn__sub" :title="subLine"
+        ><span aria-hidden="true">{{ headTail }}{{ headTail && subRest ? ' · ' : '' }}</span
+        >{{ subRest }}</span
       >
     </div>
 
@@ -117,6 +128,7 @@ const reactions = computed(() => {
           @click="toggleAction(n)"
         />
         <UiTooltip
+          v-if="!compact"
           title="Extra action"
           text="An ally or ability gave you an extra action (Stim Pack, Chorus of Champions…); it lasts until your turn ends."
         >
@@ -131,7 +143,7 @@ const reactions = computed(() => {
           </button>
         </UiTooltip>
       </span>
-      <span class="turn__status">
+      <span v-if="!compact" class="turn__status">
         <span class="turn__left">{{ leftText }}</span>
         <span class="turn__react" :title="reactions">{{ reactions }}</span>
       </span>
@@ -385,5 +397,80 @@ const reactions = computed(() => {
   gap: 8px;
   font-size: 12px;
   color: var(--page-muted);
+}
+
+// --- Compact (phone) -------------------------------------------------------------------
+// A bar across the frame above the tabs, on one row: the headline takes what the pips
+// and the step button leave. Pips are 44px targets 8px apart, drawn as 18px dots. Only
+// the typed Initiative entry and the casting note take a row of their own.
+.turn--compact {
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding: 6px 12px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+
+  .turn__who {
+    min-width: 0;
+  }
+
+  .turn__pipline {
+    gap: 8px;
+  }
+
+  .turn__pip {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 13px;
+      box-sizing: border-box;
+      border-radius: 50%;
+      border: 2px dashed var(--line-strong);
+    }
+
+    &.on,
+    &.extra.on {
+      border: 0;
+      background: none;
+    }
+
+    &.on::after {
+      border: 2px solid var(--secondary);
+      background: var(--secondary);
+    }
+
+    &.extra.on::after {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+  }
+
+  .turn__steps {
+    flex-wrap: nowrap;
+    gap: 8px;
+
+    .btn {
+      min-height: 44px;
+      padding-inline: 16px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+  }
+
+  .turn__entry {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .turn__steps:has(.turn__entry) {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
 }
 </style>

@@ -1,20 +1,18 @@
 <script setup lang="ts">
 // Desktop battle board frame (Nimble, 1200px+): the one-line bar, the initiative
 // strip and three columns that fill the viewport under the app nav. Only the
-// columns scroll; the page itself never does. For players the left and centre
-// columns share the seated hero's sheet editor (HeroScope).
+// columns scroll; the page itself never does. For players the whole board sits inside
+// the seated hero's sheet editor (HeroScope, in View, above the frame switch).
 import type { useInitiative } from '~/composables/useInitiative'
 import { LEFT_WIDTH } from '~/composables/useBattleLeft'
 import { RIGHT_WIDTH } from '~/composables/useBattleRight'
 
 defineProps<{
   init: ReturnType<typeof useInitiative>
-  /** Whose turn it is (a hero's character id), for the player's automatic turn steps. */
-  turnCharacterId: string | null
-  round: number | null
-  downSummons: string[]
+  /** The board is inside the player's sheet editor (HeroScope). */
+  hero: boolean
 }>()
-/** `hero`: the left and centre slots are inside the player's sheet editor (HeroScope). */
+/** `hero`: the left and centre slots may use the player's sheet editor (HeroScope). */
 defineSlots<{
   strip?: () => unknown
   left?: (props: { hero: boolean }) => unknown
@@ -103,41 +101,30 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
       <slot name="strip" />
     </div>
     <div ref="cols" class="battle__cols">
-      <BattleHeroScope
-        v-slot="{ hero }"
-        :turn-character-id="turnCharacterId"
-        :round="round"
-        :down-summons="downSummons"
-      >
-        <!-- Kept mounted while closed, like the right column. -->
-        <div
-          ref="leftEl"
-          class="battle__side battle__side--left"
-          :class="{ 'is-closed': !leftOpen }"
-        >
-          <BattleSplitter
-            v-if="!touch"
-            class="battle__split"
-            orientation="vertical"
-            :label="
-              leftOpen
-                ? `Resize the ${gmControls ? 'stat block' : 'hero'} column: drag, or click to close`
-                : `The ${gmControls ? 'stat block' : 'hero'} column is closed: click or drag right to open`
-            "
-            :value="leftOpen ? leftWidth : 0"
-            :min="0"
-            :max="LEFT_WIDTH.max"
-            @move="leftHandle.onMove"
-            @key="leftHandle.onKey"
-            @drop="leftHandle.onDrop"
-            @tap="leftHandle.onTap"
-          />
-          <div v-show="leftOpen" class="battle__col battle__col--left">
-            <slot name="left" :hero="hero" />
-          </div>
+      <!-- Kept mounted while closed, like the right column. -->
+      <div ref="leftEl" class="battle__side battle__side--left" :class="{ 'is-closed': !leftOpen }">
+        <BattleSplitter
+          v-if="!touch"
+          class="battle__split"
+          orientation="vertical"
+          :label="
+            leftOpen
+              ? `Resize the ${gmControls ? 'stat block' : 'hero'} column: drag, or click to close`
+              : `The ${gmControls ? 'stat block' : 'hero'} column is closed: click or drag right to open`
+          "
+          :value="leftOpen ? leftWidth : 0"
+          :min="0"
+          :max="LEFT_WIDTH.max"
+          @move="leftHandle.onMove"
+          @key="leftHandle.onKey"
+          @drop="leftHandle.onDrop"
+          @tap="leftHandle.onTap"
+        />
+        <div v-show="leftOpen" class="battle__col battle__col--left">
+          <slot name="left" :hero="hero" />
         </div>
-        <div class="battle__col battle__col--centre"><slot name="centre" :hero="hero" /></div>
-      </BattleHeroScope>
+      </div>
+      <div class="battle__col battle__col--centre"><slot name="centre" :hero="hero" /></div>
       <!-- One element open or closed: the chat keeps its draft and live updates, and the
            handle keeps the pointer through a drag that opens or closes the column. -->
       <div ref="rightEl" class="battle__side battle__side--right" :class="{ 'is-closed': !open }">

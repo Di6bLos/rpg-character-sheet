@@ -6,12 +6,11 @@
 // switcher and "Playing as".
 import type { useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'
-import { systemLabel } from '~/utils/systems'
 
 const props = defineProps<{ init: ReturnType<typeof useInitiative> }>()
 
-const { campaign, isGm, gmControls, base } = useCampaignBoard()
-const { meta, tabs, isCurrent, switchable, switchTo, myOptions, seat } = useBoardNav()
+const { campaign, gmControls, base } = useCampaignBoard()
+const { tabs, isCurrent } = useBoardNav()
 
 const hasOrder = computed(() => props.init.order.value.length > 0)
 const acting = computed(
@@ -80,33 +79,7 @@ async function endEncounter() {
         <span class="bar__caret" aria-hidden="true">▾</span>
       </button>
       <div v-if="menuOpen && !gmControls" :id="menuId" class="bar__menu panel">
-        <div class="bar__meta">
-          <span class="bar__eyebrow">{{ gmControls ? 'GM console' : 'Campaign board' }}</span>
-          <span class="small muted">{{ meta }}</span>
-        </div>
-        <nav v-if="switchable.length > 1" aria-label="Campaign" class="bar__switch">
-          <NuxtLink
-            v-for="c in switchable"
-            :key="c.id"
-            :to="switchTo(c.id)"
-            :aria-current="c.id === campaign.id ? 'page' : undefined"
-            @click="closeMenu()"
-            >{{ c.name }}</NuxtLink
-          >
-        </nav>
-        <label v-if="!isGm" class="field">
-          <span>Playing as</span>
-          <select class="input" :value="campaign.myCharacterId ?? ''" @change="seat">
-            <option value="">No character yet</option>
-            <option v-for="c in myOptions" :key="c.id" :value="c.id">
-              {{ c.name }} · level {{ c.level }}
-            </option>
-          </select>
-        </label>
-        <p v-if="!isGm && !myOptions.length" class="small muted">
-          You have no {{ systemLabel(campaign.system) }} character yet.
-          <NuxtLink to="/characters">Create one</NuxtLink> to seat it here.
-        </p>
+        <BattleCampaignMenu @navigate="closeMenu()" />
       </div>
     </div>
 
@@ -251,48 +224,6 @@ async function endEncounter() {
   gap: 12px;
   white-space: normal;
   box-shadow: var(--shadow-pop);
-}
-
-.bar__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.bar__eyebrow {
-  font-family: var(--font-heading);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--page-muted);
-}
-
-.bar__switch {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  border-top: 1px solid var(--line);
-  padding-top: 10px;
-
-  a {
-    display: flex;
-    align-items: center;
-    min-height: 38px;
-    padding: 0 10px;
-    border-radius: min(var(--radius-control), 8px);
-    color: var(--page-text);
-    text-decoration: none;
-
-    &:hover {
-      background: var(--accent-tint);
-    }
-
-    &[aria-current='page'] {
-      font-weight: 700;
-      box-shadow: inset 3px 0 0 var(--accent);
-    }
-  }
 }
 
 .bar__tabs {

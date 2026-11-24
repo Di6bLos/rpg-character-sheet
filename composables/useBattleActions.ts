@@ -50,9 +50,8 @@ const RANGE = /^(Range|Reach|Line|Cone)[^.]*/
 export function useBattleActions(options: NimbleResultOptions = {}) {
   const { draft } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
-  const lastResult = ref('')
-  /** The full text behind a shortened result (own dice), for its tooltip. */
-  const lastDetail = ref('')
+  // Shared with the phone's result bar (one per hero editor, see useBattleResult).
+  const result = useBattleResult()
   /** The tile being used, while its click runs. */
   let using = ''
   const onResult = (message: string) => {
@@ -60,13 +59,11 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
     // (the dice are on the tile; the full text stays in the tooltip). The party sees
     // the same short line in chat.
     if (using && sheet.value.ownDice && /\byourself\b/.test(message)) {
-      lastResult.value = `${draft.value.name}: use ${using}`
-      lastDetail.value = message
+      result.set(`${draft.value.name}: use ${using}`, message)
       options.onResult?.(`uses ${using}`)
       return
     }
-    lastResult.value = message
-    lastDetail.value = ''
+    result.set(message)
     options.onResult?.(message)
   }
   function named(name: string, use: () => void): () => void {
@@ -324,7 +321,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
     onTurn,
     actionsLeft: computed(() => nimble.left.value),
     mana,
-    lastResult,
-    lastDetail,
+    lastResult: result.text,
+    lastDetail: result.detail,
   }
 }

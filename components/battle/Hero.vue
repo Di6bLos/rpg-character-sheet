@@ -3,18 +3,16 @@
 // HP and Wounds, Armor / Speed / Init / Hit dice, mana or the class resource,
 // conditions, summons, stats with save marks, and rests. Runs inside HeroScope's
 // sheet editor and uses the sheet's own rules (composables and utils); read-only
-// when the player can't edit.
+// when the player can't edit. On touch every one-tap control here and in its parts is a
+// 44px target with 8px between neighbours (the phone's Hero tab, tablets).
 import type { NimbleSheet, NimbleStat } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { sheetResource } from '~/utils/nimbleBuild'
 import { encounterMana, isDead, isHollowOne } from '~/utils/nimblePlay'
 
 const { draft, canEdit, portrait } = useSheet<NimbleSheet>()
-// Statuses other heroes give this one (Helped) and HP changes from the GM; the
-// quick-action panel does this below 1200px.
-useHeroEffects()
-useHeroHpChanges()
-useHeroConditionChanges()
+const { touch } = useBoardLayout()
+// Statuses other heroes give and the GM's changes are applied by HeroEditor (HeroLive).
 const sheet = computed(() => draft.value.sheet)
 const { diceLeft, speed } = useNimbleVitals()
 
@@ -92,7 +90,7 @@ const stats = computed(() =>
 </script>
 
 <template>
-  <section class="panel hero" aria-label="Your hero">
+  <section class="panel hero" :class="{ 'hero--touch': touch }" aria-label="Your hero">
     <header class="hero__id">
       <UiAvatar
         :name="draft.name"
@@ -322,5 +320,75 @@ const stats = computed(() =>
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--page-muted);
+}
+
+// --- Touch ------------------------------------------------------------------------------
+// 44px targets, 8px apart. The parts (HeroHp, HeroConditions, HeroRest) are styled from
+// here so the desktop column keeps its compact sizes. The amount field is 16px so phones
+// don't zoom in when it takes focus.
+.hero--touch {
+  gap: 10px;
+  padding: 12px 14px;
+
+  .hero__mana {
+    gap: 8px;
+  }
+
+  .hero__mini,
+  :deep(.hp__mini),
+  :deep(.hp__ctl .step) {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  :deep(.hp__ctl),
+  :deep(.hp__tempctl),
+  :deep(.cond__chips),
+  :deep(.rest__btns) {
+    gap: 8px;
+  }
+
+  :deep(.hp__amt) {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  :deep(.hp__crit),
+  :deep(.hp__notice .btn),
+  :deep(.cond__add),
+  :deep(.cond__chip),
+  :deep(.rest__btns .btn) {
+    min-height: 44px;
+  }
+
+  :deep(.cond__add) {
+    padding: 0 14px;
+  }
+
+  :deep(.cond__chip) {
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  // Wounds: bigger diamonds, each with a 32px square to tap (they sit 32px apart).
+  :deep(.hp__wounds) {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  :deep(.wound) {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    margin: 4px;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+    }
+  }
 }
 </style>

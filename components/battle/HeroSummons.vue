@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The hero column's summons, one compact row each: name, HP and Slain (the sheet's
-// slay, with its on-death effects; the result also goes to party chat).
+// slay, with its on-death effects; the result also goes to party chat). On touch the
+// rows and Slain buttons grow to 44px targets, 8px apart.
 import type { NimbleSheet } from '~/types/sheets'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
@@ -9,10 +10,11 @@ const { slay } = useNimbleSummons({
   onResult: (message) => void chat.send(`${draft.value.name} · ${message}`, 'party', 'action'),
 })
 const summons = computed(() => draft.value.sheet.summons ?? [])
+const { touch } = useBoardLayout()
 </script>
 
 <template>
-  <div v-if="summons.length" class="sum">
+  <div v-if="summons.length" class="sum" :class="{ 'sum--touch': touch }">
     <span class="sect">Summons</span>
     <ul class="sum__list">
       <li v-for="s in summons" :key="s.id" class="sum__row">
@@ -72,5 +74,20 @@ const summons = computed(() => draft.value.sheet.summons ?? [])
   min-height: 24px;
   padding: 0 8px;
   font-size: 12px;
+}
+
+.sum--touch {
+  .sum__row {
+    min-height: 52px;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+
+  .sum__slay {
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
 }
 </style>

@@ -16,3 +16,23 @@ export function useKeyboardOpen(): Ref<boolean> {
   onBeforeUnmount(() => viewport.removeEventListener('resize', update))
   return open
 }
+
+/**
+ * The visual viewport's height (what the on-screen keyboard leaves), or null without one.
+ * The phone board fits itself to it while the keyboard is open, so the focused input
+ * stays above the keyboard and the page never scrolls.
+ */
+export function useViewportHeight(): Ref<number | null> {
+  const height = ref<number | null>(null)
+  const viewport = typeof window === 'undefined' ? undefined : window.visualViewport
+  if (!viewport) return height
+  const update = () => {
+    height.value = viewport.height
+  }
+  onMounted(() => {
+    update()
+    viewport.addEventListener('resize', update)
+  })
+  onBeforeUnmount(() => viewport.removeEventListener('resize', update))
+  return height
+}

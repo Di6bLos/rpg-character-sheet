@@ -7,7 +7,11 @@ import type { NimbleSheet } from '~/types/sheets'
 import { readyNote, sectionsFor, type ActionFilter } from '~/utils/battleActions'
 
 defineProps<{
-  /** Phone layout: action details open as a bottom sheet (passed on to the tiles). */
+  /**
+   * Phone layout: two tiles per row, touch-sized filter chips that scroll sideways, the
+   * list scrolling with the page's tab instead of on its own, and action details as a
+   * bottom sheet (passed on to the tiles).
+   */
   compact?: boolean
 }>()
 
@@ -64,7 +68,11 @@ const empty = computed(() =>
 </script>
 
 <template>
-  <section class="panel actions" aria-labelledby="battle-actions-h">
+  <section
+    class="panel actions"
+    :class="{ 'actions--compact': compact }"
+    aria-labelledby="battle-actions-h"
+  >
     <h2 id="battle-actions-h" class="sr-only">Actions</h2>
     <BattleActionFilters v-model:filter="filter" v-model:query="query" :ready-count="readyCount" />
     <p v-if="filter === 'ready'" class="actions__note">{{ note }}</p>
@@ -174,5 +182,42 @@ const empty = computed(() =>
   margin-left: auto;
   font-size: 11px;
   opacity: 0.85;
+}
+
+// --- Compact (phone) -------------------------------------------------------------------
+// The phone's tab scrolls, so the panel takes its natural height.
+.actions--compact {
+  flex: none;
+  min-height: 0;
+  padding: 12px;
+
+  .actions__list {
+    flex: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .actions__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  // One row of chips that scrolls sideways, the search after them; both touch-sized.
+  // The search is 16px so phones don't zoom in when it takes focus.
+  :deep(.filters__chip) {
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  :deep(.filters__search) {
+    min-height: 44px;
+    flex-basis: 96px;
+    font-size: 16px;
+
+    &:focus,
+    &:not(:placeholder-shown) {
+      flex-basis: 150px;
+    }
+  }
 }
 </style>
