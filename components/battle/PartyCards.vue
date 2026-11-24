@@ -206,7 +206,6 @@ function label(r: RosterEntry): string {
 </template>
 
 <style scoped lang="scss">
-// Not `.party`: PartyView's scoped `.party` (the narrow layout) would also style this root.
 .party-cards {
   // Its dragged share of the column (half by default; RightSplit moves it), and
   // Chat takes the rest; more heroes scroll inside. The 14px is the gap between them.

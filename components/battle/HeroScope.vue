@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// The player's seated hero on the battle board: loads it (as the quick-action panel
-// does) and gives the whole board (either frame) one sheet editor, so the hero column,
+// The player's seated hero on the battle board: loads it and gives the whole board (either frame) one sheet editor, so the hero column,
 // turn bar and actions share one autosaving working copy and the board's automatic turn
 // steps run once. The editor lives in HeroEditor, beside the slot, so the board itself
 // stays mounted while the hero loads, changes (Playing as) or the frame switches

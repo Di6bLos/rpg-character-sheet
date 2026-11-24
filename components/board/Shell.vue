@@ -3,15 +3,10 @@
 // campaign title, campaign switcher, preview / console links and the routed tabs.
 // On the battle board (Battle tab, every system) the header and tabs hide and
 // the battle bar shows them instead, reading the same state through `useBoardNav()`.
-import { plural } from '~/utils/format'
 import { systemLabel } from '~/utils/systems'
 
-const props = defineProps<{ unread?: number }>()
-
 const { mode, campaign, isGm, base } = useCampaignBoard()
-const { meta, tabs, isCurrent, switchable, switchTo, myOptions, seat } = provideBoardNav(
-  () => props.unread ?? 0,
-)
+const { meta, tabs, isCurrent, switchable, switchTo, myOptions, seat } = provideBoardNav()
 
 const battle = computed(() => isCurrent('battle'))
 </script>
@@ -66,9 +61,6 @@ const battle = computed(() => isCurrent('battle'))
         :aria-current="isCurrent(t.id) ? 'page' : undefined"
       >
         {{ t.label }}
-        <span v-if="t.badge" class="shell__badge" :aria-label="plural(t.badge, 'unread message')">{{
-          t.badge
-        }}</span>
       </NuxtLink>
     </nav>
 
@@ -203,22 +195,6 @@ const battle = computed(() => isCurrent('battle'))
       box-shadow: inset 0 -3px 0 var(--accent);
     }
   }
-}
-
-.shell__badge {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  box-sizing: border-box;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 @media (max-width: 560px) {

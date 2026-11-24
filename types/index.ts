@@ -196,7 +196,7 @@ export interface Message {
   sender_id: string
   body: string
   recipient_ids: string[] | null
-  /** 'action': a game-generated line (a roll or cast from the quick-action panel). */
+  /** 'action': a game-generated line (a roll or cast from the battle board). */
   kind: MessageKind
   created_at: string
 }

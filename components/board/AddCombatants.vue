@@ -3,7 +3,7 @@
 // or add custom combatants (one, or a lettered group continuing after any of the same
 // name), or find a creature in the campaign's index or the shared library and add it
 // with its stat block (AddFromIndex).
-// Opened from the Party tab's Initiative panel and the battle board's GM turn bar.
+// Opened from the battle board's GM turn bar (the Encounter panel on compact frames).
 import type { Combatant, RosterEntry } from '~/types'
 import type { useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'

@@ -4,8 +4,8 @@
 // round, End encounter). For the GM the campaign name opens
 // Table (invites, session, players); for players it opens a menu with the campaign
 // switcher and "Playing as".
-// The tablet variant (768–1279px) has no right column to show: the tabs drop
-// Party (classic), which moves into the campaign menu (for the GM too, with Table), and
+// The tablet variant (768–1279px) has no right column to show: the GM's campaign name
+// opens a menu (Table, then the campaign switcher), and
 // after the round come buttons that open the drawer on Party, Chat (with its unread
 // badge) and Scribe; then "Sheet ↗" for players, or the GM's ⋯ menu (GmPhoneMenu:
 // Previous turn, the encounter tools, the initiative rules and End encounter). Next turn
@@ -30,12 +30,12 @@ const { tabs, isCurrent } = useBoardNav()
 const tablet = computed(() => props.variant === 'tablet')
 const { touch } = useBoardLayout()
 
-/** The tabs on the bar: the tablet's leave Party (classic) to the campaign menu. */
-const barTabs = computed(() => {
-  const shown = tablet.value ? tabs.value.filter((t) => t.id !== 'party') : tabs.value
-  return tablet.value ? shown.map((t) => (t.id === 'maps' ? { ...t, label: 'Maps' } : t)) : shown
-})
-const partyTab = computed(() => tabs.value.find((t) => t.id === 'party'))
+/** The tabs on the bar: the tablet's say "Maps" for room. */
+const barTabs = computed(() =>
+  tablet.value
+    ? tabs.value.map((t) => (t.id === 'maps' ? { ...t, label: 'Maps' } : t))
+    : tabs.value,
+)
 
 // --- Tablet: the drawer's buttons ----------------------------------------------------------
 const right = useBattleRight()
@@ -110,30 +110,11 @@ const endOpen = ref(false)
         <span class="bar__caret" aria-hidden="true">▾</span>
       </button>
       <div v-if="menuOpen && (tablet || !gmControls)" :id="menuId" class="bar__menu panel">
-        <nav v-if="tablet" aria-label="More board sections" class="bar__links">
-          <NuxtLink
-            v-if="partyTab"
-            :to="`${base}/party`"
-            :aria-current="isCurrent('party') ? 'page' : undefined"
-            @click="closeMenu()"
-          >
-            {{ partyTab.label }}
-            <span
-              v-if="partyTab.badge"
-              class="bar__badge"
-              :aria-label="plural(partyTab.badge, 'unread message')"
-              >{{ partyTab.badge }}</span
-            >
-          </NuxtLink>
-          <button
-            v-if="gmControls"
-            type="button"
-            aria-haspopup="dialog"
-            @click="(closeMenu(), (tableOpen = true))"
-          >
+        <div v-if="tablet && gmControls" class="bar__links">
+          <button type="button" aria-haspopup="dialog" @click="(closeMenu(), (tableOpen = true))">
             Table
           </button>
-        </nav>
+        </div>
         <BattleCampaignMenu @navigate="closeMenu()" />
       </div>
     </div>
@@ -146,9 +127,6 @@ const endOpen = ref(false)
         :aria-current="isCurrent(t.id) ? 'page' : undefined"
       >
         {{ t.label }}
-        <span v-if="t.badge" class="bar__badge" :aria-label="plural(t.badge, 'unread message')">{{
-          t.badge
-        }}</span>
       </NuxtLink>
     </nav>
 
@@ -440,7 +418,7 @@ const endOpen = ref(false)
   }
 }
 
-// The campaign menu's extra sections (Party (classic), Table) above CampaignMenu's rows.
+// The tablet GM's Table button above CampaignMenu's rows.
 .bar__links {
   display: flex;
   flex-direction: column;
@@ -448,7 +426,6 @@ const endOpen = ref(false)
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
 
-  a,
   button {
     display: flex;
     align-items: center;
@@ -461,15 +438,9 @@ const endOpen = ref(false)
     color: var(--page-text);
     font: inherit;
     text-align: left;
-    text-decoration: none;
 
     &:hover {
       background: var(--accent-tint);
-    }
-
-    &[aria-current='page'] {
-      font-weight: 700;
-      box-shadow: inset 3px 0 0 var(--accent);
     }
   }
 }

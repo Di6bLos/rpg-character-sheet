@@ -130,14 +130,15 @@ export const useNotificationsStore = defineStore('notifications', () => {
   async function onMessage(row: Message) {
     const auth = useAuthStore()
     if (row.sender_id === auth.userId) return
-    // Rolls and casts from the quick-action panel are a game log, not news.
+    // Rolls and casts from the battle board are a game log, not news.
     if (row.kind === 'action') return
     const secret = Boolean(row.recipient_ids)
     if (secret ? !auth.profile?.notify_secret : !auth.profile?.notify_journal) return
-    const to = `/campaigns/${row.campaign_id}/board/party`
-    // The board's chat shows it as it arrives (board or GM console).
-    const here = currentPath()
-    if (here === to || here === `/campaigns/${row.campaign_id}/gm/party`) return
+    // The board sends the GM on to the console's Battle tab.
+    const to = `/campaigns/${row.campaign_id}/board/battle`
+    // The battle board's chat shows it as it arrives (board or GM console).
+    const here = currentPath().replace(/\/$/, '')
+    if (here === to || here === `/campaigns/${row.campaign_id}/gm/battle`) return
     // The dashboard lists party messages as they arrive; a secret is still called out.
     if (!secret && here === '/dashboard') return
     const started = session

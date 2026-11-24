@@ -3,7 +3,7 @@
 // who is next, "+ Add creatures" (the add dialog), a menu with Add the party, Sync
 // summons and Reroll NPC initiative, and Add party while out of an encounter with
 // heroes not seated (Next turn is in the board's top bar). It also drops summons that left
-// their hero's sheet as the roster refreshes (as the Party tab's Initiative panel does).
+// their hero's sheet as the roster refreshes.
 // The menu's tools are useGmEncounterTools, shared with the phone bar's ⋯ menu. Compact
 // (phone, the bottom of the frame): one row with who is acting, up next, New round and
 // Next ▶, the same handlers as the desktop top bar's buttons; "+ Add" is on the

@@ -4,8 +4,7 @@ import type { Character } from '~/types'
 import type { AnySheet } from '~/types/sheets'
 
 /**
- * The sheet editor a board panel gives the player's seated hero (the quick-action
- * panel, the battle board's hero scope): an autosaving working copy that follows
+ * The sheet editor the battle board's hero scope gives the player's seated hero: an autosaving working copy that follows
  * `canEdit`, and a roster refresh once a save lands so the party sees the change.
  */
 export function provideBoardSheetEditor(

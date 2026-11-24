@@ -7,7 +7,6 @@ import { systemLabel } from '~/utils/systems'
 export interface BoardTab {
   id: string
   label: string
-  badge: number
 }
 
 export interface BoardNav {
@@ -32,7 +31,7 @@ const KEY: InjectionKey<BoardNav> = Symbol('board-nav')
  * `components/board/Shell.vue` and read by the battle board's bar (`useBoardNav()`),
  * which shows them in place of the Shell header on the desktop battle board.
  */
-export function provideBoardNav(unread: () => number): BoardNav {
+export function provideBoardNav(): BoardNav {
   const route = useRoute()
   const store = useCampaignStore()
   const characters = useCharacterStore()
@@ -57,15 +56,12 @@ export function provideBoardNav(unread: () => number): BoardNav {
   )
 
   const tabs = computed(() => {
-    const list: BoardTab[] = []
-    // The battle board (every system); beside it Party is the classic view.
-    list.push(
-      { id: 'battle', label: 'Battle', badge: 0 },
-      { id: 'party', label: 'Party (classic)', badge: unread() },
-      { id: 'journal', label: 'Journal', badge: 0 },
-      { id: 'maps', label: 'Maps & images', badge: 0 },
-    )
-    if (mode === 'console') list.push({ id: 'npcs', label: 'NPCs', badge: 0 })
+    const list: BoardTab[] = [
+      { id: 'battle', label: 'Battle' },
+      { id: 'journal', label: 'Journal' },
+      { id: 'maps', label: 'Maps & images' },
+    ]
+    if (mode === 'console') list.push({ id: 'npcs', label: 'NPCs' })
     return list
   })
 
@@ -75,10 +71,10 @@ export function provideBoardNav(unread: () => number): BoardNav {
 
   /** Same tab in another campaign: its console if you run it, its board if you play in it. */
   function switchTo(id: string) {
-    const current = tabs.value.find((t) => isCurrent(t.id))?.id ?? 'party'
+    const current = tabs.value.find((t) => isCurrent(t.id))?.id ?? 'battle'
     const target = store.byId(id)
     const gm = target?.myRole === 'gm'
-    const tab = !gm && current === 'npcs' ? 'party' : current
+    const tab = !gm && current === 'npcs' ? 'battle' : current
     return `/campaigns/${id}/${gm ? 'gm' : 'board'}/${tab}`
   }
 
