@@ -2,8 +2,9 @@
 // One creature on the GM's encounter grid: portrait or initials, name (a pencil on hover
 // renames it in place: Enter saves, Escape cancels), initiative, the HP bar with numbers,
 // −5 / −1 / amount / +1 / +5 (EncounterHp), Armor (in the name row), conditions and action
-// pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one refunds). Slain creatures
-// grey out with Remove and Revive. Heroes take HP through their own sheet (a pickup).
+// pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one
+// refunds). Slain creatures grey out with Remove and Revive. Heroes take HP through their
+// own sheet (a pickup).
 // Off Nimble (`useBattleFeatures`): no pips, and a hero's HP shows without the buttons
 // (only Nimble sheets apply the board's changes).
 // Compact (phone Encounter tab, one column): 44px targets 8px apart, and no tooltip (a
@@ -13,6 +14,7 @@ import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
 import { heroTurnActions } from '~/utils/nimblePlay'
+import { heroDown } from '~/utils/roster'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -43,8 +45,7 @@ const down = computed(
   () =>
     isPc.value &&
     !features.value.nimbleHero &&
-    props.hero?.summary?.hp !== undefined &&
-    hp.value.now <= 0,
+    heroDown(props.hero?.summary?.hp, props.hero?.summary?.hpMax),
 )
 const armor = computed(() =>
   isPc.value

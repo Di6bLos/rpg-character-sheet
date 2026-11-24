@@ -4,11 +4,14 @@
 // line, the HP bar and Armor. The GM's cards add action pips and mana. A card opens
 // the hero's stats modal. Compact (phone): full-width touch-sized cards in the tab's
 // own scroll, free of the right column's Party / Chat split. Off Nimble
-// (`useBattleFeatures`) the GM's cards have no pips or mana.
+// (`useBattleFeatures`) the GM's cards have no pips or mana; a hero at 0 HP reads "Down"
+// with a "Death saves 1✓ 2✗" row (5e) or "Dying 2" (PF2e), concentration is a chip, and
+// the GM's cards show Passive Perception.
 import type { RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { heroTurnActions } from '~/utils/nimblePlay'
+import { deathSavesLine, downStatus, heroDown } from '~/utils/roster'
 
 const props = defineProps<{
   roster: RosterEntry[]
@@ -44,22 +47,40 @@ function status(r: RosterEntry): string {
   const s = r.summary
   if (!s) return ''
   if (isDead(r)) return 'Dead'
+  // 5e and PF2e: down at 0 HP ("Dying 2" with PF2e's Dying value).
+  if (basicDown(r)) return downStatus(s)
   if (s.dying) return 'Dying'
-  // 5e and PF2e have no Dying here: at 0 HP the hero is down, as the initiative strip says.
-  if (!features.value.nimbleHero && s.hp !== undefined && s.hp <= 0) return 'Down'
   const summons = (s.summons ?? []).filter((m) => !m.hpMax || m.hp > 0).length
   if (summons) return plural(summons, 'summon')
   return s.wounds ? `Wounds ${s.wounds}` : ''
 }
 
+/** A 5e / PF2e hero at 0 HP. */
+function basicDown(r: RosterEntry): boolean {
+  return !features.value.nimbleHero && heroDown(r.summary?.hp, r.summary?.hpMax)
+}
+
+/** A downed 5e hero's death saves, on a row of their own so they never truncate. */
+function saves(r: RosterEntry, spoken = false): string {
+  return basicDown(r) ? deathSavesLine(r.summary, spoken) : ''
+}
+
 function conditions(r: RosterEntry): string[] {
-  return r.summary?.conditions ?? []
+  const list = r.summary?.conditions ?? []
+  const conc = r.summary?.concentration
+  return !features.value.nimbleHero && conc ? [...list, `Concentrating · ${conc}`] : list
 }
 
 function sub(r: RosterEntry): string {
   const s = r.summary
   const who = [s?.class, r.character_level].filter((x) => x !== undefined && x !== null && x !== '')
   return [who.join(' '), status(r)].filter(Boolean).join(' · ')
+}
+
+/** The GM's 5e / PF2e cards: Passive Perception under the armor. */
+function passive(r: RosterEntry): number | null {
+  const p = r.summary?.passivePerception
+  return props.gm && !features.value.nimbleHero && typeof p === 'number' ? p : null
 }
 
 function hpFill(r: RosterEntry): number {
@@ -103,7 +124,10 @@ function label(r: RosterEntry): string {
   const actions = p ? `${p.total - p.used} of ${p.total} actions left` : ''
   const hp = r.summary?.hp === undefined ? 'HP unknown' : `${hpText(r)} HP`
   const conds = conditions(r).join(', ')
-  const parts = [name, acting, sub(r), hp, guard, mana(r), actions, conds]
+  const pp = passive(r)
+  const passiveText = pp === null ? '' : `Passive Perception ${pp}`
+  const parts = [name, acting, sub(r), saves(r, true), hp, guard, passiveText, mana(r)]
+  parts.push(actions, conds)
   return `${parts.filter(Boolean).join(', ')}. Open stats`
 }
 </script>
@@ -184,6 +208,7 @@ function label(r: RosterEntry): string {
                 />
               </span>
             </span>
+            <span v-if="saves(r)" class="pc__saves">{{ saves(r) }}</span>
             <span class="pc__bar" aria-hidden="true">
               <span
                 :class="{ 'is-low': hpFill(r) <= 0.5 }"
@@ -198,6 +223,7 @@ function label(r: RosterEntry): string {
             <b>{{ hpText(r) }}</b>
             <span v-if="r.summary?.tempHp">+{{ r.summary.tempHp }} temp</span>
             <span v-else>Armor {{ armorOf(r) ?? '—' }}</span>
+            <span v-if="passive(r) !== null">Passive {{ passive(r) }}</span>
           </span>
         </button>
       </li>
@@ -404,6 +430,13 @@ function label(r: RosterEntry): string {
   }
 }
 
+.pc__saves {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--page-soft);
+  white-space: nowrap;
+}
+
 .pc__bar {
   display: block;
   height: 5px;
@@ -486,6 +519,10 @@ function label(r: RosterEntry): string {
 
   .pc__bar {
     height: 6px;
+  }
+
+  .pc__saves {
+    font-size: 12px;
   }
 
   .pc__cond {

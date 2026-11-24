@@ -4,6 +4,7 @@
 import type { GameSystem, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
+import { dyingLine } from '~/utils/roster'
 
 const props = defineProps<{
   roster: RosterEntry[]
@@ -49,11 +50,9 @@ function down(r: RosterEntry) {
   return !!r.character_id && (r.summary?.hp ?? 1) <= 0
 }
 
-function dyingLine(r: RosterEntry) {
-  const ds = r.summary?.deathSaves
-  if (ds) return `Death saves · ${ds.successes} success, ${ds.failures} fail`
-  if (typeof r.summary?.dying === 'number') return `Dying ${r.summary.dying}`
-  return 'Dying'
+/** Death saves (5e) or Dying N (PF2e) beside Down; the party cards use the same line. */
+function dying(r: RosterEntry) {
+  return dyingLine(r.summary) || 'Dying'
 }
 
 function dead(r: RosterEntry) {
@@ -137,7 +136,7 @@ function actions(r: RosterEntry) {
             </div>
           </div>
           <div v-if="down(r)" class="dying">
-            <b>Down</b><span>{{ dyingLine(r) }}</span>
+            <b>Down</b><span>{{ dying(r) }}</span>
           </div>
           <div class="stats">
             <div>

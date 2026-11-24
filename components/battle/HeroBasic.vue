@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // The player's hero on the battle board for systems without the sheet-editor hero column
 // (D&D 5e, Pathfinder 2e): a read-only card from the campaign roster: portrait, name,
-// class and level, HP with temp HP ("Down" at 0), AC and Init, conditions, and a link to
-// the full sheet, where everything is changed. Compact (the phone's Hero tab): 44px link.
+// class and level, HP with temp HP ("Down" at 0, with the death saves or PF2e's Dying
+// value), AC, Init and Passive Perception, conditions and concentration, and a link to the
+// full sheet, where everything is changed. Compact (the phone's Hero tab): 44px link.
 import type { RosterEntry } from '~/types'
 import { sign } from '~/utils/dice'
+import { dyingLine, heroDown } from '~/utils/roster'
 
 const props = defineProps<{ entry: RosterEntry; compact?: boolean }>()
 
@@ -24,8 +26,14 @@ const identity = computed(() =>
 const hp = computed(() => s.value.hp ?? 0)
 const hpMax = computed(() => s.value.hpMax ?? 0)
 const temp = computed(() => s.value.tempHp ?? 0)
-const down = computed(() => hpMax.value > 0 && hp.value <= 0)
-const conditions = computed(() => s.value.conditions ?? [])
+const down = computed(() => heroDown(s.value.hp, s.value.hpMax))
+/** "Death saves 1✓ 2✗" or "Dying 2" beside Down. */
+const dying = computed(() => (down.value ? dyingLine(s.value) : ''))
+const conditions = computed(() => {
+  const list = s.value.conditions ?? []
+  const conc = s.value.concentration
+  return conc ? [...list, `Concentrating · ${conc}`] : list
+})
 
 function pct(n: number, max: number): number {
   return max > 0 ? Math.min(100, Math.max(0, (n / max) * 100)) : 0
@@ -37,6 +45,11 @@ const tiles = computed(() => [
     label: 'Init',
     value: s.value.initMod != null ? sign(s.value.initMod) : '—',
     title: 'Added to your Initiative roll',
+  },
+  {
+    label: 'Passive',
+    value: s.value.passivePerception != null ? String(s.value.passivePerception) : '—',
+    title: 'Passive Perception',
   },
 ])
 </script>
@@ -77,6 +90,7 @@ const tiles = computed(() => [
         <span :style="{ width: `${pct(hp, hpMax)}%` }" />
         <i v-if="temp" class="hb__temp-fill" :style="{ width: `${pct(temp, hpMax)}%` }" />
       </div>
+      <p v-if="dying" class="hb__dying">{{ dying }}</p>
     </div>
 
     <div class="hb__tiles">
@@ -193,9 +207,16 @@ const tiles = computed(() => [
   opacity: 0.75;
 }
 
+.hb__dying {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--page-soft);
+}
+
 .hb__tiles {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 
