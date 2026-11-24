@@ -38,6 +38,14 @@ const hp = computed(() => {
   return { now: props.c.hp ?? 0, max: props.c.hp_max ?? 0, temp: 0 }
 })
 const slain = computed(() => !isPc.value && hp.value.max > 0 && hp.value.now <= 0)
+/** A 5e / PF2e hero at 0 HP is down, as the strip and party card say (Nimble shows HP). */
+const down = computed(
+  () =>
+    isPc.value &&
+    !features.value.nimbleHero &&
+    props.hero?.summary?.hp !== undefined &&
+    hp.value.now <= 0,
+)
 const armor = computed(() =>
   isPc.value
     ? String(
@@ -243,6 +251,7 @@ const tipKeys = computed(() =>
         :slain="slain"
         :compact="compact"
         :readonly="isPc && !features.gmHeroControls"
+        :down="down"
         @change="change"
       >
         <BattleEncounterPips

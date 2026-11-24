@@ -3,6 +3,7 @@
 // is the amount typed (1 when empty). Emits the change; the card decides where it goes.
 // The default slot lands at the end of the bar's row (the card's action pips).
 // Compact (phone): 44px buttons and field, 8px apart. Readonly: the bar and numbers only.
+// Down (a 5e / PF2e hero at 0 HP): "Down" in place of the numbers.
 const props = defineProps<{
   name: string
   now: number
@@ -11,6 +12,7 @@ const props = defineProps<{
   slain: boolean
   compact?: boolean
   readonly?: boolean
+  down?: boolean
 }>()
 const emit = defineEmits<{ change: [delta: number] }>()
 
@@ -33,7 +35,8 @@ function stepTyped(sign: 1 | -1) {
       <i :class="{ 'is-low': fill <= 0.5 }" :style="{ width: `${fill * 100}%` }" />
     </span>
     <span class="eh__num"
-      >{{ slain ? 'Slain' : `${now}/${max}` }}<small v-if="temp"> +{{ temp }}</small></span
+      >{{ slain ? 'Slain' : down ? 'Down' : `${now}/${max}`
+      }}<small v-if="temp"> +{{ temp }}</small></span
     >
     <!-- The card's action pips sit on this row. -->
     <slot />
