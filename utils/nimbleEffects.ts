@@ -81,6 +81,7 @@ function apply(sheet: NimbleSheet, level: number, effect: SelfEffectDef, upcast 
       ends: [...effect.ends],
       ...(effect.ends.includes('nextTurnEnd') && sheet.turnActive ? { skip: 1 } : {}),
       ...(temp ? { tempHp: temp } : {}),
+      ...(upcast ? { upcast } : {}),
     },
   ]
   const label =

@@ -16,6 +16,7 @@ const {
   crit,
   revive,
   changeHp,
+  warded,
   adjustTemp,
   setWounds,
 } = useNimbleVitals()
@@ -56,6 +57,7 @@ function apply(sign: 1 | -1) {
       :temp="sheet.tempHp"
       :tone="hpTone"
       :disabled="!canEdit"
+      :warded="warded"
       @change="changeHp"
     />
     <div class="hp__ctl">

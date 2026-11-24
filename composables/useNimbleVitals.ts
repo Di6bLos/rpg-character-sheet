@@ -1,7 +1,8 @@
 import type { NimbleSheet } from '~/types/sheets'
 import { sheetResource } from '~/utils/nimbleBuild'
-import { conditionMods } from '~/utils/nimbleConditions'
+import { conditionMods, wardedDamage } from '~/utils/nimbleConditions'
 import {
+  armorNow,
   dyingAttackSave,
   encounterMana,
   fieldRest,
@@ -62,6 +63,20 @@ export function useNimbleVitals() {
     }
   })
 
+  /** Armor with spell statuses (Electrocharge, Dragonform); the tooltip says what adds to it. */
+  const armor = computed(() => {
+    const now = armorNow(sheet.value, draft.value.level)
+    const extra = now.notes.length ? `: ${sheet.value.ac} + ${now.notes.join(' + ')}` : ''
+    return {
+      value: now.value,
+      title: `Defend reduces a hit by your Armor (${now.value}${extra})`,
+      changed: now.notes.length > 0,
+    }
+  })
+
+  /** Warding Bond: the HP bar previews and takes half of a hit. */
+  const warded = computed(() => sheet.value.conditions.includes('Warded'))
+
   /** The next damage is from a critical hit. */
   const crit = ref(false)
 
@@ -69,19 +84,21 @@ export function useNimbleVitals() {
     if (canEdit.value) say(resurrect(sheet.value))
   }
 
-  function damage(amount = 1) {
+  /** `whole`: a hit's full damage, which Warded halves; the one-point buttons are exact. */
+  function damage(amount = 1, whole = false) {
     if (!canEdit.value) return
-    const message = takeDamage(sheet.value, amount, draft.value.level, crit.value)
+    const ward = whole ? wardedDamage(sheet.value, amount) : { taken: amount, note: '' }
+    const message = takeDamage(sheet.value, ward.taken, draft.value.level, crit.value)
     const was = crit.value ? ' (crit)' : ''
     crit.value = false
     say(
-      `Took ${amount} damage${was}: ${sheet.value.hp}/${sheet.value.hpMax} HP.${message ? ` ${message}` : ''}`,
+      `Took ${ward.taken} damage${was}: ${sheet.value.hp}/${sheet.value.hpMax} HP.${ward.note}${message ? ` ${message}` : ''}`,
     )
   }
 
   function changeHp(delta: number) {
     if (!canEdit.value) return
-    if (delta < 0) return damage(-delta)
+    if (delta < 0) return damage(-delta, true)
     heal(sheet.value, delta)
     say(`Healed ${delta}: ${sheet.value.hp}/${sheet.value.hpMax} HP.`)
   }
@@ -159,6 +176,8 @@ export function useNimbleVitals() {
     hpTone,
     diceLeft,
     speed,
+    armor,
+    warded,
     crit,
     revive,
     damage,

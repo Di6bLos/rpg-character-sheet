@@ -198,6 +198,14 @@ export const SELF_EFFECTS: SelfEffectDef[] = [
     trigger: 'cast',
   },
   {
+    source: 'Enchant Weapon',
+    condition: 'Enchant Weapon',
+    ends: ['concentration'],
+    until:
+      'while you concentrate: your weapon deals +KEY damage (+KEY per upcast tier) and inflicts Smoldering on crit',
+    trigger: 'cast',
+  },
+  {
     source: 'Boisterous Winds',
     condition: 'Flying',
     ends: ['concentration'],

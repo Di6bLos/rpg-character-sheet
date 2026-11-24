@@ -7,9 +7,17 @@ import {
   oddsReasons,
   removeCondition,
   spendHelp,
+  heroArmor,
+  statusFromSpell,
+  statusStats,
+  wardedDamage,
 } from '../utils/nimbleConditions'
 import {
   actionsLeft,
+  armorNow,
+  endConcentration,
+  heroTurnActions,
+  turnActions,
   endEncounter,
   endTurn,
   isDead,
@@ -117,5 +125,102 @@ describe('conditions', () => {
     expect(resurrect(sheet)).toMatch(/Resurrected: back at 1 HP with 5 Wounds/)
     expect(sheet).toMatchObject({ hp: 1, wounds: 5, dying: false })
     expect(resurrect(sheet)).toBe('')
+  })
+})
+
+describe('spell statuses that change the hero’s numbers', () => {
+  it('Electrocharge: +5 armor, +1 max action, double speed, advantage on DEX saves', () => {
+    const sheet = hero({ ac: 3, conditions: ['Electrocharge'] })
+    expect(armorNow(sheet, 5)).toEqual({ value: 8, notes: ['Electrocharge +5'] })
+    expect(turnActions(sheet)).toBe(4)
+    expect(conditionMods(sheet)).toMatchObject({ speed: 12, speedNote: '2× (Electrocharge)' })
+    expect(statusStats(sheet).saveAdvantage).toEqual(['DEX'])
+    addCondition(sheet, 'Slowed')
+    expect(conditionMods(sheet).speed).toBe(6)
+  })
+
+  it('Dragonform adds LVL Armor and fly 12; Flying by hand flies 12 (Fly), from boots at your speed', () => {
+    const dragon = hero({
+      ac: 2,
+      conditions: ['Dragonform'],
+      effects: [{ condition: 'Dragonform', source: 'Dragonform', ends: ['rest'] }],
+    })
+    expect(armorNow(dragon, 17).value).toBe(19)
+    expect(conditionMods(dragon).speedNote).toBe('Fly 12')
+    expect(conditionMods(hero({ conditions: ['Flying'] })).speedNote).toBe('Fly 12')
+    const boots = hero({
+      conditions: ['Flying'],
+      effects: [{ condition: 'Flying', source: 'Propulsive Boots', ends: ['turnEnd'] }],
+    })
+    expect(conditionMods(boots).speedNote).toBe('Fly at your speed')
+    expect(armorNow(hero({ ac: 2 }), 5)).toEqual({ value: 2, notes: [] })
+  })
+
+  it('names the status a touch spell gives, for the caster to turn on', () => {
+    expect(statusFromSpell('Electrocharge')).toBe('Electrocharge')
+    expect(statusFromSpell('Fly')).toBe('Flying')
+    expect(statusFromSpell('Ignite')).toBe('')
+  })
+})
+
+describe('True Strike, Condemn, Warding Bond and armor others see', () => {
+  it('True Strike and a Condemned target give advantage; an attack spends True Strike', () => {
+    const sheet = hero({ conditions: ['True Strike'] })
+    expect(conditionMods(sheet, [], { condemned: 2 })).toMatchObject({
+      disadvantage: -3,
+      reasons: ['True Strike (advantage)', 'Condemned (2× advantage)'],
+    })
+    expect(
+      conditionMods(hero(), [], { covered: true, disadvantage: 2, advantage: 1 }),
+    ).toMatchObject({
+      disadvantage: 2,
+      reasons: ['Covered', 'Disadvantage (2)', 'Advantage'],
+    })
+    expect(spendHelp(sheet)).toBe(' True Strike used.')
+    expect(sheet.conditions).toEqual([])
+  })
+
+  it('halves damage while Warded, and shows status armor to the party', () => {
+    expect(wardedDamage(hero({ conditions: ['Warded'] }), 9)).toEqual({
+      taken: 4,
+      note: ' Warded: you take 4, your warder 5.',
+    })
+    expect(wardedDamage(hero(), 9)).toEqual({ taken: 9, note: '' })
+    expect(heroArmor(2, ['Electrocharge'], 5)).toBe(7)
+    expect(heroArmor(2, ['Dragonform'], 12)).toBe(14)
+    expect(heroArmor(undefined, ['Electrocharge'], 5)).toBeUndefined()
+  })
+})
+
+describe('review follow-ups on #54', () => {
+  it('Electrocharge brings Charged, which Overload can spend without ending the rest', () => {
+    const sheet = hero({ ac: 2 })
+    addCondition(sheet, 'Electrocharge')
+    expect(sheet.conditions).toEqual(['Electrocharge', 'Charged'])
+    removeCondition(sheet, 'Charged')
+    expect(armorNow(sheet, 5).value).toBe(7)
+  })
+
+  it('ends a status the hero gave themselves when that Concentration ends', () => {
+    const sheet = hero({ concentration: 'Electrocharge' })
+    addCondition(sheet, 'Electrocharge')
+    expect(endConcentration(sheet)).toBe(' Electrocharge ends with your Concentration.')
+    expect(sheet.conditions).toEqual(['Charged'])
+    expect(sheet.concentration).toBe('')
+  })
+
+  it('keeps True Strike turned on during your own turn until the end of your next turn', () => {
+    const sheet = hero({ inEncounter: true, turnActive: true })
+    addCondition(sheet, 'True Strike')
+    endTurn(sheet, 1)
+    expect(sheet.conditions).toContain('True Strike')
+    startTurn(sheet, 1)
+    endTurn(sheet, 1)
+    expect(sheet.conditions).not.toContain('True Strike')
+  })
+
+  it('counts a status’s max action on other heroes’ cards', () => {
+    expect(heroTurnActions([], false, ['Electrocharge'])).toBe(4)
+    expect(heroTurnActions([], false)).toBe(3)
   })
 })

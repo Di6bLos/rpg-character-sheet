@@ -5,6 +5,8 @@ const props = defineProps<{
   temp?: number
   tone: '' | 'accent' | 'danger'
   disabled?: boolean
+  /** Warding Bond: a hit takes half; the preview shows what lands. */
+  warded?: boolean
 }>()
 const emit = defineEmits<{ change: [delta: number] }>()
 
@@ -19,13 +21,14 @@ let startX = 0
 const shown = computed(() => preview.value ?? props.hp)
 const delta = computed(() => shown.value - props.hp)
 const damage = computed(() => Math.max(0, -delta.value))
-const absorbed = computed(() => Math.min(Math.max(0, props.temp ?? 0), damage.value))
+const taken = computed(() => (props.warded ? Math.floor(damage.value / 2) : damage.value))
+const absorbed = computed(() => Math.min(Math.max(0, props.temp ?? 0), taken.value))
 const result = computed(() =>
-  delta.value < 0 ? props.hp - (damage.value - absorbed.value) : shown.value,
+  delta.value < 0 ? props.hp - (taken.value - absorbed.value) : shown.value,
 )
 const label = computed(() =>
   delta.value < 0
-    ? `−${damage.value} damage → ${result.value} HP${absorbed.value ? ` (${absorbed.value} temp absorbed)` : ''}`
+    ? `−${damage.value} damage${props.warded ? ` (Warded: you take ${taken.value})` : ''} → ${result.value} HP${absorbed.value ? ` (${absorbed.value} temp absorbed)` : ''}`
     : `+${delta.value} healing → ${result.value} HP`,
 )
 const pct = (n: number) => (props.max > 0 ? Math.round((n / props.max) * 100) : 0)

@@ -139,9 +139,9 @@ describe('skill checks (Core p. 8)', () => {
     expect(skillCheck(poisoned, 'Perception', {}, faces(20, 4, 15)).message).toMatch(
       /^Perception check: 7 .*with disadvantage \(Poisoned\)/,
     )
-    const helped = perception({ conditions: ['Helped'] })
+    const helped = perception({ conditions: ['Helped', 'True Strike'] })
     expect(skillCheck(helped, 'Perception', {}, faces(20, 4, 15)).total).toBe(18)
-    expect(helped.conditions).not.toContain('Helped')
+    expect(helped.conditions).toEqual(['True Strike'])
   })
 
   it('tells own-dice players what to roll, and stops the Incapacitated and the dead', () => {

@@ -5,7 +5,7 @@ const { draft, canEdit } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const { reactions, toggleReaction, abilities, abilityActions, inventions, opportunityOptions } =
   useNimbleActions()
-const { reactionSpells, cast } = useNimbleSpells()
+const { reactionSpells, cast, maxTier, setUpcast } = useNimbleSpells()
 const { allies, help } = useHelpAlly()
 const { claim, resultIn, unclaimed } = useResultOwner()
 const noActionsPanel = computed(
@@ -123,21 +123,31 @@ const message = computed(
           </button>
           <NimbleModifiers :target="r.name" />
         </div>
-        <button
-          v-for="s in reactionSpells"
-          :key="s.name"
-          type="button"
-          class="tile card reaction"
-          :disabled="!canEdit || !!s.blocked"
-          :title="s.blocked || `${s.cast}. ${s.desc}`"
-          @click="claim(`reaction:${s.name}`, () => cast(s))"
-        >
-          <span class="reaction__head">
-            <strong>{{ s.name }}</strong>
-            <em>{{ s.blocked || `Spell · ${s.cost}` }}</em>
-          </span>
-          <span>{{ s.trigger }}</span>
-        </button>
+        <div v-for="s in reactionSpells" :key="s.name" class="stack" style="gap: 4px">
+          <button
+            type="button"
+            class="tile card reaction"
+            :disabled="!canEdit || !!s.blocked"
+            :title="s.blocked || `${s.cast}. ${s.desc}`"
+            @click="claim(`reaction:${s.name}`, () => cast(s))"
+          >
+            <span class="reaction__head">
+              <strong>{{ s.name }}</strong>
+              <em>{{ s.blocked || `Spell · ${s.cost}` }}</em>
+            </span>
+            <span>{{ s.trigger }}</span>
+          </button>
+          <NimbleUpcast
+            v-if="s.canUpcast"
+            :name="s.name"
+            :tier="s.tier"
+            :at="s.at"
+            :max="maxTier"
+            :price="s.cost"
+            :disabled="!canEdit"
+            @set="setUpcast(s, $event)"
+          />
+        </div>
       </div>
     </div>
 

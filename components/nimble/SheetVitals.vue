@@ -16,10 +16,12 @@ const {
   hpTone,
   diceLeft,
   speed,
+  armor,
   crit,
   revive,
   damage,
   changeHp,
+  warded,
   healOne,
   adjustTemp,
   setWounds,
@@ -113,6 +115,7 @@ function confirmRest() {
           :temp="sheet.tempHp"
           :tone="hpTone"
           :disabled="!canEdit"
+          :warded="warded"
           @change="changeHp"
         />
         <div class="vit-row">
@@ -141,12 +144,14 @@ function confirmRest() {
           </div>
         </div>
       </div>
-      <div class="tile armor" :title="`Defend reduces a hit by your Armor (${sheet.ac})`">
+      <div class="tile armor" :title="armor.title">
         <span class="armor__badge">
           <svg class="armor__shield" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 2.5 4 5.5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10v-6Z" />
           </svg>
-          <span class="armor__value">{{ sheet.ac }}</span>
+          <span class="armor__value" :class="{ 'is-changed': armor.changed }">{{
+            armor.value
+          }}</span>
         </span>
         <span class="armor__label">Armor</span>
       </div>

@@ -3,6 +3,7 @@
 // dead portrait once dead), name, an HP bar with temp HP, the first two conditions,
 // and Armor and mana (or the class resource). A tap goes to the Hero tab.
 import type { NimbleSheet } from '~/types/sheets'
+import { armorNow } from '~/utils/nimblePlay'
 
 const emit = defineEmits<{ 'go-hero': [] }>()
 
@@ -28,6 +29,9 @@ const more = computed(
   () => active.value.filter((c) => !c.fromEffect).length + statuses.value.length - 2,
 )
 
+/** Armor with spell statuses (Electrocharge, Dragonform), as the hero column shows it. */
+const armor = computed(() => armorNow(sheet.value, draft.value.level).value)
+
 /** Mana when the hero has any, else the class resource's count (Fury Dice, charges…). */
 const { hasMana, resource, resourceShort } = useNimbleResource()
 const tile = computed<{ label: string; value: string; mana: boolean } | null>(() => {
@@ -44,7 +48,7 @@ const label = computed(
       draft.value.name,
       dead.value ? 'dead' : `${sheet.value.hp} of ${sheet.value.hpMax} HP`,
       sheet.value.tempHp ? `${sheet.value.tempHp} temp HP` : '',
-      `Armor ${sheet.value.ac}`,
+      `Armor ${armor.value}`,
       tile.value ? `${tile.value.label} ${tile.value.value}` : '',
       chips.value.map((c) => c.name).join(', '),
     ]
@@ -94,7 +98,7 @@ const label = computed(
     </span>
     <span class="hs__stats" aria-hidden="true">
       <span class="hs__mini">
-        <b>{{ sheet.ac }}</b>
+        <b>{{ armor }}</b>
         <span>Armor</span>
       </span>
       <span v-if="tile" class="hs__mini" :class="{ 'hs__mini--mana': tile.mana }">

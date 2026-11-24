@@ -7,9 +7,10 @@
 // Compact (phone Encounter tab, one column): 44px targets 8px apart, and no tooltip (a
 // tap selects; the Creature tab shows the whole stat block).
 import type { CampaignNpc, RosterEntry } from '~/types'
+import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
-import { turnActionsFor } from '~/utils/nimblePlay'
+import { heroTurnActions } from '~/utils/nimblePlay'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -36,7 +37,15 @@ const hp = computed(() => {
 const slain = computed(() => !isPc.value && hp.value.max > 0 && hp.value.now <= 0)
 const armor = computed(() =>
   isPc.value
-    ? String(props.hero?.summary?.ac ?? props.c.ac ?? '—')
+    ? String(
+        heroArmor(
+          props.hero?.summary?.ac,
+          props.hero?.summary?.conditions,
+          props.hero?.character_level,
+        ) ??
+          props.c.ac ??
+          '—',
+      )
     : statTop(props.npc, 'Armor') || String(props.c.ac ?? '—'),
 )
 const conditions = computed(() =>
@@ -49,7 +58,7 @@ const pips = computed(() => {
   if (isPc.value) {
     const s = props.hero?.summary
     if (!s) return null
-    const max = turnActionsFor(s.abilityNames ?? [], !!s.dying)
+    const max = heroTurnActions(s.abilityNames ?? [], !!s.dying, s.conditions)
     return { total: max, used: Math.min(Math.max(0, s.actionsSpent ?? 0), max) }
   }
   const total = props.c.actions_max ?? 0

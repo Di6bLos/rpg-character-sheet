@@ -16,11 +16,15 @@ import {
 import {
   abilityCounters,
   actionsLeft,
+  armorNow,
   castingBlocks,
   castSpell,
   critTriggerSources,
   critTriggers,
   gainWounds,
+  heal,
+  initiativeCastReady,
+  initiativeCasts,
   isHollowOne,
   manaPool,
   payBloodCast,
@@ -40,9 +44,15 @@ import {
   spellNeeds,
   spellOnHit,
   spellSelfEffects,
+  missHitsCaster,
+  freeDefend,
+  dyingDiscount,
+  healDice,
+  lifeDrain,
+  wardNote,
 } from '~/utils/nimbleSpellRules'
-import { conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
-import { parseDice, rollDie, showOutcome } from '~/utils/dice'
+import { conditionMods, oddsReasons, spendHelp, statusFromSpell } from '~/utils/nimbleConditions'
+import { parseDice, rollDice, rollDie, showOutcome, sign } from '~/utils/dice'
 import {
   armorDice,
   armorDiceWhy,
@@ -62,6 +72,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
   const sheet = computed(() => draft.value.sheet)
   const situation = useAttackSituation()
   const target = useAttackTarget()
+  const attackOdds = useAttackOdds()
   const critReady = useCritReady()
   const armorOf = (s: { desc: string }) => ({
     armor: target.value.armor,
@@ -115,11 +126,13 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     has(/\bWhenever you cast a spell, you can choose to spend 1 less mana\b/),
   )
 
-  type AltKey = 'chaos' | 'self' | 'temp' | 'hp' | 'free' | 'wounds'
+  type AltKey = 'chaos' | 'self' | 'temp' | 'hp' | 'free' | 'wounds' | 'initiative'
   interface SpellAlt {
     key: AltKey
     label: string
     why: string
+    /** Cast without actions, so neither the turn nor a spell in progress holds it back. */
+    free?: boolean
   }
 
   function spellAlts(s: SpellDef, mana: number, plain: boolean): SpellAlt[] {
@@ -164,6 +177,16 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         key: 'free',
         label: `Cast · 0 mana (${free.name})`,
         why: !counter || counter.used >= counter.max ? 'Used this Safe Rest' : '',
+      })
+    }
+    const initiative = initiativeCasts(sheet.value).find((c) => c.spell === s.name)
+    if (initiative && initiativeCastReady(sheet.value, s.name)) {
+      const extra = castTier(s) - s.tier
+      alts.push({
+        key: 'initiative',
+        label: `Cast · ${extra ? `${extra} mana` : 'free'} (${initiative.ability})`,
+        why: extra > pool ? 'Not enough mana' : '',
+        free: true,
       })
     }
     const wounds = abilityMatch(/\bGain 1d4 Wounds to cast ([A-Z][\w ]+)\b/)
@@ -237,7 +260,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const discount = !!archmage.value && s.tier > 0 && !usesPact && !usesMinions
         const actions =
           chargedActions(sheet.value, s) ?? Math.max(0, spellActions(s.cast) - (discount ? 1 : 0))
-        const mana = discount ? Math.max(0, at - 5) : at
+        const mana = Math.max(0, (discount ? at - 5 : at) - dyingDiscount(sheet.value, s))
         const left = actionsLeft(sheet.value)
         const spread = actions > left && left > 0
         const acts = spread ? ` · ${left} of ${actions} act` : actions ? ` · ${actions} act` : ''
@@ -313,13 +336,14 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
   }
 
   function cast(s: CastableSpell, withWound = false, alt?: AltKey, roll = false) {
-    if (!canEdit.value || s.busy) return
+    const free = !!s.alts.find((a) => a.key === alt)?.free
+    if (!canEdit.value || (s.busy && !free)) return
     const incapacitated = conditionMods(sheet.value, situation.value).incapacitated
     if (incapacitated) return say(`${s.name}: you are ${incapacitated} and can’t cast.`)
-    if (s.notNow) return say(`${s.name}: not your turn.`)
+    if (s.notNow && !free) return say(`${s.name}: not your turn.`)
     if (s.used) return say(`${s.name}: already cast this turn (1/turn).`)
     if (s.needs) return say(`${s.name}: ${s.needs.toLowerCase()}.`)
-    if (s.noActions) {
+    if (s.noActions && !free) {
       const message = 'No actions left: they come back when your turn ends.'
       say(message)
       return
@@ -360,8 +384,19 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       notes.push(primordial(s, s.mana))
     }
     notes.push(spellSelfEffects(sheet.value, s).trim())
+    notes.push(freeDefend(s, s.at, armorNow(sheet.value, draft.value.level).value).trim())
+    notes.push(healing(s).trim(), wardNote(s).trim())
+    const status = statusFromSpell(s.name)
+    if (status && !sheet.value.conditions.includes(status))
+      notes.push(`On yourself? Turn on ${status} in Conditions.`)
     // Actions the turn can't cover carry over; Concentration starts once it is cast.
-    const progress = castSpell(sheet.value, s.name, s.actions, draft.value.level, s.at).trim()
+    const progress = castSpell(
+      sheet.value,
+      s.name,
+      free ? 0 : s.actions,
+      draft.value.level,
+      s.at,
+    ).trim()
     if (progress) notes.push(progress)
     if (ONCE_PER_TURN.test(s.desc)) sheet.value.uses[`${s.name}@turn`] = { used: 1 }
     if (roll) notes.push(damageNote(s))
@@ -409,35 +444,85 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
       if (counter) v.uses[counter.id] = { ...v.uses[counter.id], used: counter.used + 1 }
       return `0 mana (${owner}).`
     }
+    if (alt === 'initiative') {
+      const extra = s.at - s.tier
+      if (extra && !spendMana(v, extra)) return ''
+      v.uses[`${s.name}~ready`] = { used: 0 }
+      const owner = initiativeCasts(v).find((c) => c.spell === s.name)?.ability ?? ''
+      return `${extra ? `${extra} mana for the upcast` : 'free'}, no actions (${owner}).`
+    }
     if (v.ownDice) return 'roll 1d4 and mark that many Wounds.'
     const n = rollDie(4)
     return `${n} Wound${n === 1 ? '' : 's'} (1d4).${gainWounds(v, n, draft.value.level)}`
+  }
+
+  /** Heal's roll, and Vampiric Greed's Wound, damage and healing. */
+  function healing(s: CastableSpell): string {
+    const h = healDice(sheet.value, s, s.at, s.mana)
+    if (h) {
+      const cleanse = h.cleanse ? ' You may also heal 1 negative condition or 1 Wound.' : ''
+      if (sheet.value.ownDice)
+        return `Roll ${h.count}d${h.sides}+${h.mod} healing yourself.${cleanse}`
+      const r = rollDice({ count: h.count, sides: h.sides, mod: h.mod })
+      const line = `Heals ${r.total} HP (${h.count}d${h.sides}: ${r.rolls.join(', ')} ${sign(h.mod)}).${cleanse}`
+      showOutcome({ label: s.name, total: r.total, detail: line })
+      return line
+    }
+    const d = lifeDrain(s)
+    if (!d) return ''
+    const wound = gainWounds(sheet.value, d.wounds, draft.value.level)
+    const cost = `You gain ${d.wounds} Wound${d.wounds === 1 ? '' : 's'}.${wound}`
+    const saves = ' Gain 1 more Wound for each creature that makes its STR save.'
+    if (sheet.value.ownDice)
+      return `${cost} Roll ${d.count}d${d.sides} against each adjacent creature and heal the damage done.${saves}`
+    const r = rollDice({ count: d.count, sides: d.sides, mod: 0 })
+    heal(sheet.value, r.total)
+    const line = `${cost} ${r.total} damage to each adjacent creature (${d.count}d${d.sides}: ${r.rolls.join(', ')}); healed ${r.total} HP, ${r.total} more for each other creature hit.${saves}`
+    showOutcome({ label: s.name, total: r.total, detail: line })
+    return line
   }
 
   function damageNote(s: CastableSpell): string {
     const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
     if (!damage) return ''
     const type = damage.type ? ` ${damage.type}` : ''
-    const rushed = sheet.value.rushed + conditionMods(sheet.value, situation.value).disadvantage
+    const rushed =
+      sheet.value.rushed +
+      conditionMods(sheet.value, situation.value, {
+        ...attackOdds.value,
+        condemned: target.value.condemned ?? 0,
+        covered: !!target.value.covered,
+      }).disadvantage
     const rush =
       rushed > 0 ? ` with ${rushed}× disadvantage` : rushed < 0 ? ` with ${-rushed}× advantage` : ''
     const rules = spellRollRules(s, s.at, target.value)
+    // This attack takes the target's Condemn advantage, and outside combat the
+    // Disadvantage and Advantage steppers set for it.
+    if (target.value.condemned) target.value = { ...target.value, condemned: 0 }
+    if (!sheet.value.inEncounter) attackOdds.value = { disadvantage: 0, advantage: 0 }
+    const backfire = missHitsCaster(s)
     if (sheet.value.ownDice || !damage.rollable) {
-      const onHit = spellOnHit(s, { miss: false, crit: false }, target.value)
+      const onHit = spellOnHit(s, { miss: false, crit: false }, target.value, s.at)
       const chips = onHit.chips.length
         ? ` If it hits, ${onHit.chips.join(' and ')} on the Target row.`
         : ''
+      const strikesYou = backfire ? ' On a miss it strikes you instead: take that damage.' : ''
       const bump = rules.bump ? ` Upcast: raise any die by ${rules.bump}.` : ''
       const anyMax = rules.critOnAnyMax
         ? ' Any die at its max counts as a crit (the target is Hampered).'
         : ''
-      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.${armorRule(armorOf(s))}${anyMax}${bump}${onHit.note}${chips}`
+      return `Roll ${damage.text}${type}${rush} yourself${damage.single ? ' (a 1 on the first die misses)' : ''}.${armorRule(armorOf(s))}${anyMax}${bump}${onHit.note}${chips}${strikesYou}`
     }
     const result = rollSpellDamage(damage, Math.random, rushed, rules)
     if (!result) return ''
     if (result.miss) {
-      showOutcome({ label: s.name, total: 0, detail: 'Miss (first die rolled a 1).' })
-      return `Miss (first die rolled a 1)${rush} [${result.detail}].`
+      let back = ''
+      if (backfire) {
+        const hurt = takeDamage(sheet.value, result.total, draft.value.level).trim()
+        back = ` It strikes you instead: ${result.total}${type} damage.${hurt ? ` ${hurt}` : ''}`
+      }
+      showOutcome({ label: s.name, total: 0, detail: `Miss (first die rolled a 1).${back}` })
+      return `Miss (first die rolled a 1)${rush} [${result.detail}].${back}`
     }
     const expr = parseDice(damage.dice)
     const isCrit = result.crit
@@ -445,7 +530,7 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const bonus = isCrit ? critBonus(s, s.at) : 0
     const crit = isCrit ? ` ${critTriggers(sheet.value, draft.value.level, s.name)}` : ''
     const hit = armorHit(result.total + bonus, expr?.mod ?? 0, armorOf(s), isCrit)
-    const effects = spellOnHit(s, { miss: false, crit: isCrit }, target.value)
+    const effects = spellOnHit(s, { miss: false, crit: isCrit }, target.value, s.at)
     target.value = { ...target.value, ...effects.target }
     const why = maxCrit ? ' (a max die against a Hampered target)' : ''
     const extra = `${rules.bump ? `, upcast +${rules.bump} to the dice` : ''}${bonus ? `, +${bonus} on the crit` : ''}`
@@ -462,7 +547,11 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
         const damage = spellDamage(sheet.value, draft.value.level, s, s.at)
         if (!damage || REACTION.test(s.desc)) return []
         const range = /^(Range|Reach|Line|Cone)[^.]*/.exec(s.desc)?.[0] ?? ''
-        const cond = conditionMods(sheet.value, situation.value)
+        const cond = conditionMods(sheet.value, situation.value, {
+          ...attackOdds.value,
+          condemned: target.value.condemned ?? 0,
+          covered: !!target.value.covered,
+        })
         const odds = sheet.value.rushed + cond.disadvantage
         const why = castReason(s, {
           turnActive: !sheet.value.inEncounter || sheet.value.turnActive,

@@ -30,6 +30,7 @@ const { maxTier, cast } = useNimbleSpells()
     <div class="spell__body">
       <p><NimbleRulesText :text="spell.desc" :key-value="keyValue" /></p>
       <NimbleModifiers :target="spell.name" />
+      <NimbleTargetNeed :spell="spell" />
       <div class="row" style="gap: 8px">
         <div v-if="spell.canUpcast" class="row" style="gap: 4px">
           <button
@@ -98,7 +99,10 @@ const { maxTier, cast } = useNimbleSpells()
           type="button"
           class="btn btn--ghost btn--sm btn--wrap"
           :disabled="
-            !canEdit || !!(blocked || spell.notNow) || spell.busy || spell.noActions || !!a.why
+            !canEdit ||
+            !!blocked ||
+            (!a.free && (!!spell.notNow || spell.busy || spell.noActions)) ||
+            !!a.why
           "
           :title="a.why || undefined"
           @click="cast(spell, false, a.key)"
