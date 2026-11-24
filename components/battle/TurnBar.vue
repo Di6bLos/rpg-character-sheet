@@ -263,13 +263,14 @@ const subLine = computed(() => [headTail.value, subRest.value].filter(Boolean).j
   gap: 6px 10px;
   padding: 8px 12px;
 
+  // The accent wash is laid over the panel background rather than mixed into it: Cursed's
+  // panel background is a gradient, which color-mix() can't take (the whole background was
+  // dropped, leaving dark panel text on the dark page).
   &--now {
     border-color: var(--accent);
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accent) 16%, var(--panel-bg)),
-      var(--panel-bg)
-    );
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent),
+      var(--panel-bg);
   }
 }
 
