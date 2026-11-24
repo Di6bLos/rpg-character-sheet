@@ -56,19 +56,19 @@ onMounted(() => chat.setVisible(chatInView.value))
 // On the Chat tab's badge; a closed Chat shows its own missed count instead.
 const unread = useChatBadge(() => chatInView.value || !open.value)
 
-// In the right column (while the Party / Chat handle shows), a click on the header, or on
-// the tab already showing, opens Chat fully or closes it.
+// In the right column (while the Party / Chat handle shows), a click on the header opens
+// the panel fully or closes it; a click on Chat or Scribe opens it fully on that tab.
 const toggles = computed(() => !props.compact && hasHeroes.value)
 function onHead() {
   if (toggles.value) right.toggle('chat')
 }
 
-/** A click on the other tab switches to it (unfolding the panel) without resizing it. */
+/** A tab click shows that tab, with the panel at full height in the right column. */
 function pick(t: 'chat' | 'lore', event: MouseEvent) {
-  if (t === current.value) return
   event.stopPropagation()
   tab.value = t
-  if (!open.value) right.showChat()
+  if (toggles.value) right.setSplit(0)
+  else if (!open.value) right.showChat()
 }
 
 function onKey(event: KeyboardEvent) {
@@ -220,11 +220,26 @@ function onKey(event: KeyboardEvent) {
       color: var(--page-text);
     }
 
+    &:hover {
+      cursor: pointer;
+      color: var(--page-text);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    &[aria-selected='true']:hover {
+      background: color-mix(in srgb, var(--accent) 36%, transparent);
+    }
+
     &:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 1px;
     }
   }
+}
+
+// Hovering the clickable header lifts the tab that's showing.
+.comms__head--toggle:hover .comms__tabs button[aria-selected='true'] {
+  background: color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .comms__missed {

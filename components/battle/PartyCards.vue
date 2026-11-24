@@ -235,6 +235,14 @@ function label(r: RosterEntry): string {
 
   &--toggle {
     cursor: pointer;
+
+    h2 {
+      transition: color 0.15s;
+    }
+
+    &:hover h2 {
+      color: var(--accent);
+    }
   }
 }
 
