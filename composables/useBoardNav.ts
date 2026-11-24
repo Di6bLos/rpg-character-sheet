@@ -58,11 +58,10 @@ export function provideBoardNav(unread: () => number): BoardNav {
 
   const tabs = computed(() => {
     const list: BoardTab[] = []
-    // The battle board is Nimble only; beside it Party is the classic view.
-    const battle = campaign.value?.system === 'nimble'
-    if (battle) list.push({ id: 'battle', label: 'Battle', badge: 0 })
+    // The battle board (every system); beside it Party is the classic view.
     list.push(
-      { id: 'party', label: battle ? 'Party (classic)' : 'Party', badge: unread() },
+      { id: 'battle', label: 'Battle', badge: 0 },
+      { id: 'party', label: 'Party (classic)', badge: unread() },
       { id: 'journal', label: 'Journal', badge: 0 },
       { id: 'maps', label: 'Maps & images', badge: 0 },
     )
@@ -79,10 +78,7 @@ export function provideBoardNav(unread: () => number): BoardNav {
     const current = tabs.value.find((t) => isCurrent(t.id))?.id ?? 'party'
     const target = store.byId(id)
     const gm = target?.myRole === 'gm'
-    const tab =
-      (!gm && current === 'npcs') || (current === 'battle' && target?.system !== 'nimble')
-        ? 'party'
-        : current
+    const tab = !gm && current === 'npcs' ? 'party' : current
     return `/campaigns/${id}/${gm ? 'gm' : 'board'}/${tab}`
   }
 

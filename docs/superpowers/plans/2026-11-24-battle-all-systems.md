@@ -111,14 +111,14 @@ it('a player without actions gets Hero first and no Actions tab', () => {
   - `sendInitiative(campaignId: string, characterId: string, total: number): Promise<{ note: string; failed: boolean }>` exported from `composables/useSendInitiative.ts`; `useSendInitiative()` becomes a thin wrapper over it (same notes as today).
   - View for a non-Nimble seated player (`!gmControls && !features.nimbleHero && campaign.myCharacterId`): left `HeroBasic`; centre `TurnBasic` above `BoardRoster`; phone Hero tab `HeroBasic compact`, no `HeroStrip`, no `ResultBar`. GM and watcher slots unchanged. The "battle board is for Nimble campaigns" note and its CSS go.
 
-- [ ] **Step 1:** Before any change, on `npm run dev:local` take 1440×860 mouse screenshots of Test Table's Battle as GM and as Player into the SDD workspace (baseline for the Nimble regression check).
-- [ ] **Step 2:** Implement `sendInitiative` and refit `useSendInitiative` on it; `npx vitest run` and `npm run type-check` pass.
-- [ ] **Step 3:** Add `enabled` to HeroScope; View drops the `v-if="campaign?.system === 'nimble'"` gate and passes `:enabled="features.nimbleHero"`.
-- [ ] **Step 4:** Build `HeroBasic` and `TurnBasic` and place them per the Interfaces block in the desktop, tablet and phone templates of View.
-- [ ] **Step 5:** Smoke, Test Table 5e as Player at 1440×860, 1024×768 and 390×844 (touch): hero card values match Corin's sheet; Hero is the phone's first tab; no console errors.
-- [ ] **Step 6:** Smoke the Roll initiative cases: as GM click Add party (Corin unrolled, "–"); as Player the button shows, a click puts a number on the strip and the button goes; reload — no button. Remove Corin from the tracker as GM; the button is gone (no row).
-- [ ] **Step 7:** Nimble check: Test Table at 1440×860 as GM and Player matches the Step 1 screenshots.
-- [ ] **Step 8:** Update CLAUDE.md's `components/battle/` bullet (every system; HeroBasic, TurnBasic, `enabled`). **Commit** — `FEAT: battle board for D&D 5e and Pathfinder 2e players`
+- [x] **Step 1:** Before any change, on `npm run dev:local` take 1440×860 mouse screenshots of Test Table's Battle as GM and as Player into the SDD workspace (baseline for the Nimble regression check).
+- [x] **Step 2:** Implement `sendInitiative` and refit `useSendInitiative` on it; `npx vitest run` and `npm run type-check` pass.
+- [x] **Step 3:** Add `enabled` to HeroScope; View drops the `v-if="campaign?.system === 'nimble'"` gate and passes `:enabled="features.nimbleHero"`.
+- [x] **Step 4:** Build `HeroBasic` and `TurnBasic` and place them per the Interfaces block in the desktop, tablet and phone templates of View.
+- [x] **Step 5:** Smoke, Test Table 5e as Player at 1440×860, 1024×768 and 390×844 (touch): hero card values match Corin's sheet; Hero is the phone's first tab; no console errors.
+- [x] **Step 6:** Smoke the Roll initiative cases: as GM click Add party (Corin unrolled, "–"); as Player the button shows, a click puts a number on the strip and the button goes; reload — no button. Remove Corin from the tracker as GM; the button is gone (no row).
+- [x] **Step 7:** Nimble check: Test Table at 1440×860 as GM and Player matches the Step 1 screenshots.
+- [x] **Step 8:** Update CLAUDE.md's `components/battle/` bullet (every system; HeroBasic, TurnBasic, `enabled`). **Commit** — `FEAT: battle board for D&D 5e and Pathfinder 2e players`
 
 ### Task 4: Hide the Nimble-only parts for other systems (GM side and shared cards)
 

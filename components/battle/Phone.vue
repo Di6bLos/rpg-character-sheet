@@ -1,10 +1,12 @@
 <script setup lang="ts">
-// Phone battle board frame (Nimble, below 768px): the whole screen (100dvh, the app nav
+// Phone battle board frame (below 768px): the whole screen (100dvh, the app nav
 // steps aside), top to bottom: the bar, the initiative strip, the player's hero strip
 // (every tab but Hero), the active tab's content (the only part that scrolls), the last
 // result, the turn bar and the bottom tabs. Watchers (no seated hero, or a GM on the
 // player board) get no hero strip, result bar or turn bar; the GM gets the turn bar (their
-// own, from the `turn` slot) but no hero strip or result bar. The turn bar steps aside
+// own, from the `turn` slot) but no hero strip or result bar. A seated player in a system
+// without the hero editor (5e, PF2e: `hero` false) is still a player, with the turn bar
+// but no hero strip or result bar (both read the editor). The turn bar steps aside
 // while the on-screen keyboard is open and on Chat and Scribe. With the keyboard open
 // the frame shrinks to what the keyboard leaves and keeps only the bar, the content and
 // the result, so the focused input stays in view with room to read (a 360×640 phone has
@@ -28,10 +30,16 @@ defineSlots<{
   tools?: () => unknown
 }>()
 
-const { gmControls } = useCampaignBoard()
+const { gmControls, campaign } = useCampaignBoard()
 const scribe = useLoreAvailable()
-const role = computed(() => phoneRole({ gmControls: gmControls.value, hero: props.hero }))
 const features = useBattleFeatures()
+/** A seated player whose system has no hero editor (the read-only hero card). */
+const basicPlayer = computed(
+  () => !gmControls.value && !features.value.nimbleHero && !!campaign.value?.myCharacterId,
+)
+const role = computed(() =>
+  phoneRole({ gmControls: gmControls.value, hero: props.hero || basicPlayer.value }),
+)
 const actions = computed(() => features.value.nimbleHero)
 const tab = usePhoneTab(role, scribe, actions)
 const tabs = computed(() => phoneTabs(role.value, scribe.value, actions.value))
@@ -73,7 +81,7 @@ watch(tab, () => {
       <slot name="strip" />
     </div>
     <BattleHeroStrip
-      v-if="role === 'player' && tab !== 'hero'"
+      v-if="hero && role === 'player' && tab !== 'hero'"
       v-show="!keyboard"
       @go-hero="go('hero')"
     />
@@ -88,8 +96,8 @@ watch(tab, () => {
     >
       <slot name="tab" :tab="tab" :hero="hero" :go="go" />
     </div>
-    <BattleResultBar v-if="role === 'player'" :init="init" />
-    <div v-if="(hero || role === 'gm') && $slots.turn" v-show="showTurn" class="phone__turn">
+    <BattleResultBar v-if="hero && role === 'player'" :init="init" />
+    <div v-if="role !== 'watcher' && $slots.turn" v-show="showTurn" class="phone__turn">
       <slot name="turn" :hero="hero" />
     </div>
     <BattlePhoneTabs v-show="!keyboard" v-model="tab" :tabs="tabs" panel-id="battle-content" />
