@@ -129,6 +129,16 @@ function onGridHero(characterId: string) {
         <BattleActions v-else-if="tab === 'actions' && hero" compact sheet />
         <BattleHero v-else-if="tab === 'hero' && hero" compact />
         <template v-else-if="tab === 'party'">
+          <!-- A watcher gets the same hint as on the tablet and desktop boards. -->
+          <template v-if="!hero && !gmControls">
+            <p v-if="isGm" class="panel battle-empty">
+              <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run
+              the encounter.
+            </p>
+            <p v-else class="panel battle-empty">
+              Seat a hero (Playing as, in the campaign menu) to play from the battle board.
+            </p>
+          </template>
           <BattlePartyCards
             compact
             :roster="roster"
@@ -138,8 +148,6 @@ function onGridHero(characterId: string) {
           />
           <BattleEnemies :init="init" :gm="gmControls" />
         </template>
-        <!-- The GM's Chat keeps its own Chat / Scribe tabs (no Scribe tab at the bottom). -->
-        <BattleComms v-else-if="tab === 'chat' && gmControls" compact :roster="roster" />
         <BattleComms
           v-else-if="tab === 'chat' || tab === 'scribe'"
           compact

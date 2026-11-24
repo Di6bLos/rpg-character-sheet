@@ -41,6 +41,11 @@ function go(next: PhoneTab) {
 /** The open tab and `go`, for the GM's selection toast (View). */
 defineExpose({ tab, go })
 
+// The app layout hides its nav while this frame is mounted.
+const mounted = usePhoneFrameMounted()
+onMounted(() => (mounted.value = true))
+onBeforeUnmount(() => (mounted.value = false))
+
 const keyboard = useKeyboardOpen()
 const viewport = useViewportHeight()
 const talking = computed(() => tab.value === 'chat' || tab.value === 'scribe')

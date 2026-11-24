@@ -41,7 +41,13 @@ export function provideBoardHero(): ShallowRef<SheetEditor | null> {
   provide(
     SHEET_EDITOR,
     new Proxy({} as SheetEditor, {
-      get: (_target, key) => (current.value ? Reflect.get(current.value, key) : undefined),
+      get: (_target, key) => {
+        if (current.value) return Reflect.get(current.value, key)
+        // Vue and devtools probe objects for their own markers; let those read undefined.
+        if (typeof key !== 'string' || key.startsWith('__v') || key === 'then') return undefined
+        // A part that reads the sheet must sit behind HeroScope's `hero` slot prop.
+        throw new Error(`useSheet(): no hero editor yet (read "${key}" outside \`v-if="hero"\`)`)
+      },
     }),
   )
   return current

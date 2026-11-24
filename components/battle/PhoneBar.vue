@@ -72,7 +72,6 @@ async function onSignOut() {
         ref="btn"
         type="button"
         class="pbar__title"
-        aria-haspopup="true"
         :aria-expanded="open"
         :aria-controls="menuId"
         @click="open = !open"

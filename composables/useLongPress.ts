@@ -36,8 +36,8 @@ export function useLongPress(
   function arm() {
     if (armed) return
     armed = true
-    window.addEventListener('contextmenu', stopMenu, true)
-    window.addEventListener('click', stopClick, true)
+    window.addEventListener('contextmenu', stopMenu, { capture: true })
+    window.addEventListener('click', stopClick, { capture: true })
   }
 
   function disarm() {
@@ -46,8 +46,8 @@ export function useLongPress(
     fired = false
     if (!armed) return
     armed = false
-    window.removeEventListener('contextmenu', stopMenu, true)
-    window.removeEventListener('click', stopClick, true)
+    window.removeEventListener('contextmenu', stopMenu, { capture: true })
+    window.removeEventListener('click', stopClick, { capture: true })
   }
 
   function cancel() {

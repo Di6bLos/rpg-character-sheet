@@ -7,7 +7,7 @@ export function useKeyboardOpen(): Ref<boolean> {
   const viewport = typeof window === 'undefined' ? undefined : window.visualViewport
   if (!viewport) return open
   const update = () => {
-    open.value = keyboardOpen(window.innerHeight, viewport.height)
+    open.value = keyboardOpen(window.innerHeight, viewport.height, viewport.scale)
   }
   onMounted(() => {
     update()

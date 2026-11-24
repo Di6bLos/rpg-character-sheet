@@ -19,6 +19,8 @@ const props = defineProps<{
   /** Phone layout: the details open as a bottom sheet instead of a popover. */
   sheet?: boolean
 }>()
+/** Its details opened or closed (touch). */
+const emit = defineEmits<{ details: [open: boolean] }>()
 
 const { touch } = useBoardLayout()
 
@@ -53,6 +55,8 @@ const upBtn = ref<HTMLButtonElement | null>(null)
 const picking = ref(false)
 const upcasting = ref(false)
 const details = ref(false)
+// Actions keeps a tile with open details in Ready now while it is unusable.
+watch(details, (on) => emit('details', on))
 
 /** Stands in for the tooltip on touch: renders the tile button alone. */
 const Bare: FunctionalComponent = (_, { slots }) => slots.default?.()

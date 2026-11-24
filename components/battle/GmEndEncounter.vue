@@ -12,8 +12,8 @@ const ending = ref(false)
 async function endEncounter() {
   ending.value = true
   try {
-    await props.init.endEncounter()
-    open.value = false
+    // On failure endEncounter shows its error; the confirm stays open to try again.
+    if (await props.init.endEncounter()) open.value = false
   } finally {
     ending.value = false
   }

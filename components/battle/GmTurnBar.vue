@@ -65,6 +65,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
 const { busy, partyMissing, offerParty, addParty, syncSummons, reroll, setMode } =
   useGmEncounterTools(props.init, toRef(props, 'roster'), () => closeMenu())
+const newRound = useNewRound(props.init)
 
 // --- Compact (phone): one row with Next turn and New round, the same handlers as the
 // desktop top bar's buttons. ------------------------------------------------------------
@@ -78,12 +79,24 @@ const hasOrder = computed(() => order.value.length > 0)
       <span class="gtb__sub" :title="upNext">{{ upNext }}</span>
     </div>
     <div v-if="compact" class="gtb__tools">
+      <!-- Before the encounter, Add party takes New round's place (disabled without a turn). -->
       <button
+        v-if="offerParty"
+        type="button"
+        class="btn btn--ghost btn--sm gtb__step"
+        :disabled="busy"
+        :title="`${plural(partyMissing, 'hero')} not seated`"
+        @click="addParty"
+      >
+        Add party
+      </button>
+      <button
+        v-else
         type="button"
         class="btn btn--ghost btn--sm gtb__step"
         :title="`Start round ${init.round.value + 1} from the top of the order`"
         :disabled="!init.turnId.value"
-        @click="init.newRound"
+        @click="newRound"
       >
         New round
       </button>

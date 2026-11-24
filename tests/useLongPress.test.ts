@@ -63,6 +63,20 @@ describe('useLongPress', () => {
     expect(onPress).not.toHaveBeenCalled()
   })
 
+  it('a pointercancel (the browser took a scroll) cancels and drops the guards at once', () => {
+    const onPress = vi.fn()
+    const p = useLongPress(onPress)
+    p.onPointerdown(down())
+    vi.advanceTimersByTime(200)
+    p.onPointercancel()
+    vi.advanceTimersByTime(600)
+    expect(onPress).not.toHaveBeenCalled()
+    const e = new Event('contextmenu', { cancelable: true })
+    target.dispatchEvent(e)
+    expect(e.defaultPrevented).toBe(false)
+    expect(click()).toBe(false)
+  })
+
   it('when disabled it does nothing and blocks nothing', () => {
     const onPress = vi.fn()
     const p = useLongPress(onPress, () => false)

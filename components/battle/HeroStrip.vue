@@ -18,11 +18,17 @@ const tempPct = computed(() =>
   Math.min(100 - hpPct.value, Math.max(0, (sheet.value.tempHp / hpMax.value) * 100)),
 )
 
-/** The first two of the hero's conditions and statuses, as on the Hero tab. */
+/**
+ * The first two of the hero's conditions and statuses, in the Hero tab's tones
+ * (HeroConditions): automatic ones plain, set conditions `set`, spell and ability statuses
+ * `status`.
+ */
 const chips = computed(() =>
   [
-    ...active.value.filter((c) => !c.fromEffect).map((c) => ({ name: c.name, bad: !c.automatic })),
-    ...statuses.value.map((s) => ({ name: s.label, bad: false })),
+    ...active.value
+      .filter((c) => !c.fromEffect)
+      .map((c) => ({ name: c.name, tone: c.automatic ? '' : 'set' })),
+    ...statuses.value.map((s) => ({ name: s.label, tone: 'status' })),
   ].slice(0, 2),
 )
 const more = computed(
@@ -90,9 +96,13 @@ const label = computed(
         <em v-if="tempPct" :style="{ left: `${hpPct}%`, width: `${tempPct}%` }" />
       </span>
       <span v-if="chips.length" class="hs__chips">
-        <span v-for="c in chips" :key="c.name" class="hs__chip" :class="{ 'is-bad': c.bad }">{{
-          c.name
-        }}</span>
+        <span
+          v-for="c in chips"
+          :key="c.name"
+          class="hs__chip"
+          :class="c.tone && `hs__chip--${c.tone}`"
+          >{{ c.name }}</span
+        >
         <span v-if="more > 0" class="hs__more">+{{ more }}</span>
       </span>
     </span>
@@ -221,10 +231,16 @@ const label = computed(
   white-space: nowrap;
 }
 
-.hs__chip.is-bad {
-  border-color: var(--danger);
-  background: var(--danger-bg);
-  color: var(--danger-text);
+.hs__chip--set {
+  border-color: var(--accent);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.hs__chip--status {
+  border-color: var(--secondary);
+  background: color-mix(in srgb, var(--secondary) 16%, transparent);
+  color: var(--page-text);
 }
 
 .hs__stats {

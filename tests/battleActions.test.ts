@@ -85,6 +85,30 @@ describe('sectionsFor', () => {
     expect(s.flatMap((x) => x.actions).every((a) => a.unavailable === '')).toBe(true)
   })
 
+  it('keeps the tile with open details in Ready now after it becomes unusable', () => {
+    const upcast = [
+      act({
+        key: 'bolt',
+        name: 'Bolt',
+        kind: 'spell',
+        group: 'attack',
+        unavailable: 'Not enough mana',
+      }),
+      act({
+        key: 'aid',
+        name: 'Aid',
+        kind: 'spell',
+        group: 'support',
+        unavailable: 'Not enough mana',
+      }),
+    ]
+    expect(sectionsFor(upcast, 'ready', '', true)).toEqual([])
+    const on = sectionsFor(upcast, 'ready', '', true, 'bolt').flatMap((x) => x.actions)
+    expect(on.map((a) => a.name)).toEqual(['Bolt'])
+    const off = sectionsFor(upcast, 'ready', '', false, 'aid').flatMap((x) => x.actions)
+    expect(off.map((a) => a.name)).toEqual(['Aid'])
+  })
+
   it('ready off turn shows only off-turn support', () => {
     const s = sectionsFor(list, 'ready', '', false)
     const support = s.find((x) => x.title === 'Off-turn')

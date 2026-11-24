@@ -35,9 +35,9 @@ async function signOut() {
 }
 
 // The phone battle board takes the whole screen and carries these links in its
-// campaign menu, so the nav (which wraps to two rows on a phone) steps aside there.
-const { layout } = useBoardLayout()
-const phoneBattle = computed(() => layout.value === 'phone' && route.path.endsWith('/battle'))
+// campaign menu, so the nav (which wraps to two rows on a phone) steps aside while that
+// frame is mounted (it says so itself).
+const phoneBattle = usePhoneFrameMounted()
 
 function onDocClick(event: MouseEvent) {
   if (menuEl.value && !menuEl.value.contains(event.target as Node)) menuOpen.value = false

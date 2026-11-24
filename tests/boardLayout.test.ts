@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  classifyLayout,
-  keyboardOpen,
-  longPress,
-  phoneRole,
-  phoneTabs,
-  pickTab,
-} from '~/utils/boardLayout'
+import { classifyLayout, keyboardOpen, phoneRole, phoneTabs, pickTab } from '~/utils/boardLayout'
 
 describe('classifyLayout', () => {
   it.each([
@@ -19,27 +12,20 @@ describe('classifyLayout', () => {
     [1280, 'desktop'],
     [1920, 'desktop'],
   ])('%i → %s', (w, expected) => expect(classifyLayout(w)).toBe(expected))
+
+  it('a short touch screen (a phone turned sideways) is a phone at any width', () => {
+    expect(classifyLayout(844, true)).toBe('phone')
+    expect(classifyLayout(932, true)).toBe('phone')
+    expect(classifyLayout(1366, true)).toBe('phone')
+    expect(classifyLayout(844, false)).toBe('tablet')
+  })
 })
 
 describe('keyboardOpen', () => {
   it('150px is not open', () => expect(keyboardOpen(800, 650)).toBe(false))
   it('151px is open', () => expect(keyboardOpen(800, 649)).toBe(true))
-})
-
-describe('longPress', () => {
-  const down = { type: 'down', x: 10, y: 10, t: 0 } as const
-  it('held 500ms fires', () => expect(longPress([down, { type: 'up', t: 500 }])).toBe(true))
-  it('released at 499ms does not', () =>
-    expect(longPress([down, { type: 'up', t: 499 }])).toBe(false))
-  it('moving 8px still fires', () =>
-    expect(longPress([down, { type: 'move', x: 18, y: 10, t: 100 }, { type: 'up', t: 600 }])).toBe(
-      true,
-    ))
-  it('a sideways scroll (9px) cancels', () =>
-    expect(longPress([down, { type: 'move', x: 19, y: 10, t: 100 }, { type: 'up', t: 600 }])).toBe(
-      false,
-    ))
-  it('cancel cancels', () => expect(longPress([down, { type: 'cancel', t: 600 }])).toBe(false))
+  it('pinch-zoomed to 2x is not open', () => expect(keyboardOpen(800, 400, 2)).toBe(false))
+  it('the keyboard while zoomed is still open', () => expect(keyboardOpen(800, 250, 2)).toBe(true))
 })
 
 describe('phone tabs', () => {
@@ -47,8 +33,10 @@ describe('phone tabs', () => {
     expect(phoneTabs('player', true)).toEqual(['actions', 'hero', 'party', 'chat', 'scribe']))
   it('player without Scribe', () =>
     expect(phoneTabs('player', false)).toEqual(['actions', 'hero', 'party', 'chat']))
-  it('gm never gets a Scribe tab', () =>
-    expect(phoneTabs('gm', true)).toEqual(['encounter', 'creature', 'party', 'chat']))
+  it('gm gets a Scribe tab when it is available', () => {
+    expect(phoneTabs('gm', true)).toEqual(['encounter', 'creature', 'party', 'chat', 'scribe'])
+    expect(phoneTabs('gm', false)).toEqual(['encounter', 'creature', 'party', 'chat'])
+  })
   it('watcher', () => expect(phoneTabs('watcher', true)).toEqual(['party', 'chat', 'scribe']))
   it('watcher with a stale Actions tab falls back to Party', () =>
     expect(pickTab('watcher', true, 'actions')).toBe('party'))

@@ -49,7 +49,15 @@ watch(filter, (f) => {
 })
 const query = ref('')
 
-const sections = computed(() => sectionsFor(actions.value, filter.value, query.value, onTurn.value))
+/** The tile whose details are open (touch); it stays in Ready now while they are. */
+const openKey = ref<string | null>(null)
+function onDetails(key: string, open: boolean) {
+  if (open) openKey.value = key
+  else if (openKey.value === key) openKey.value = null
+}
+const sections = computed(() =>
+  sectionsFor(actions.value, filter.value, query.value, onTurn.value, openKey.value),
+)
 const readyCount = computed(() =>
   sectionsFor(actions.value, 'ready', query.value, onTurn.value).reduce(
     (n, s) => n + s.actions.length,
@@ -97,13 +105,15 @@ const empty = computed(() =>
               :show-reason="filter !== 'ready'"
               :readonly="!canEdit"
               :sheet="sheet"
+              @details="(open: boolean) => onDetails(t.key, open)"
             />
           </template>
         </div>
       </section>
       <p v-if="!sections.length" class="actions__empty">{{ empty }}</p>
     </div>
-    <p v-if="lastResult" class="actions__result" role="status">
+    <!-- The phone shows it in its own result bar under the tab. -->
+    <p v-if="lastResult && !sheet" class="actions__result" role="status">
       <span class="actions__last" :title="lastDetail || undefined">{{ lastResult }}</span>
       <span class="actions__posted">Posted to party chat</span>
     </p>
@@ -214,6 +224,15 @@ const empty = computed(() =>
 // The search is 16px so phones don't zoom in when it takes focus.
 .actions--compact,
 .actions--touch {
+  // Tiles are 44px touch targets, 8px apart.
+  .actions__tiles {
+    gap: 8px;
+  }
+
+  :deep(.act__btn) {
+    min-height: 44px;
+  }
+
   :deep(.filters__chip) {
     min-height: 44px;
     padding: 0 14px;

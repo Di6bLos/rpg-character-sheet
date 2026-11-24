@@ -1,5 +1,6 @@
 // Usage analytics: pure helpers that turn a route and a clicked element into an event.
 // The plugin (`plugins/usage-analytics.client.ts`) and `composables/useAnalytics.ts` send them.
+import { classifyLayout } from '~/utils/boardLayout'
 
 export type Surface = 'sheet' | 'party' | 'battle' | 'journal' | 'maps' | 'npcs' | 'other'
 export type PageSeat = 'gm' | 'player'
@@ -69,11 +70,9 @@ export function seatFor(path: string): PageSeat | null {
   return m[1] === 'gm' ? 'gm' : 'player'
 }
 
-/** Width buckets for analytics (1200px, apart from the battle board's 1280px desktop class). */
+/** Width buckets for analytics: the battle board's frames (`classifyLayout`). */
 export function viewportFor(width: number): Viewport {
-  if (width < 700) return 'phone'
-  if (width < 1200) return 'tablet'
-  return 'desktop'
+  return classifyLayout(width)
 }
 
 /**

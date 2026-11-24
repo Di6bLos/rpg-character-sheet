@@ -45,6 +45,7 @@ function toggleDrawer(tab: DrawerTab) {
 }
 
 const hasOrder = computed(() => props.init.order.value.length > 0)
+const newRound = useNewRound(props.init)
 const acting = computed(
   () => props.init.order.value.find((c) => c.id === props.init.turnId.value)?.name ?? '',
 )
@@ -207,7 +208,7 @@ const endOpen = ref(false)
       </button>
     </div>
 
-    <BattleGmPhoneMenu v-if="tablet && gmControls" :init="init" />
+    <BattleGmPhoneMenu v-if="tablet && gmControls" tablet :init="init" />
     <div v-else-if="gmControls" class="bar__tools">
       <button
         type="button"
@@ -226,7 +227,7 @@ const endOpen = ref(false)
         class="btn btn--ghost btn--sm"
         :title="`Start round ${init.round.value + 1} from the top of the order`"
         :disabled="!init.turnId.value"
-        @click="init.newRound"
+        @click="newRound"
       >
         New round ⟳
       </button>

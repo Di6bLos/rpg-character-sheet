@@ -21,6 +21,7 @@ const {
   gmEncounter,
   perTurn,
   left,
+  leftText,
   pips,
   steps,
   typed,
@@ -81,11 +82,6 @@ const sub = computed(() =>
   ]
     .filter(Boolean)
     .join(' · '),
-)
-
-const leftText = computed(
-  () =>
-    `${left.value > perTurn.value ? `${left.value} left (${left.value - perTurn.value} extra)` : `${left.value} of ${perTurn.value} left`}${sheet.value.dying ? ' (Dying)' : ''}`,
 )
 
 const reactions = computed(() => {

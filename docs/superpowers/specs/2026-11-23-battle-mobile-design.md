@@ -85,6 +85,7 @@ To avoid two things called "Party", the old board section is labelled **"Party (
     - the GM's stat-block Roll buttons.
 
     On touch, these get 44px targets with at least 8px between them. Rests already ask for confirmation.
+
 - **Results on phones:**
   - After a use, the result shows as a bar pinned just above the turn bar, so it isn't lost below the scroll.
   - A normal roll's bar fades after 6 seconds and can be tapped to dismiss.
@@ -119,19 +120,22 @@ The frame then holds these rows:
    - Armor and mana (or the class resource) tiles.
 
    A tap goes to the Hero tab.
+
 4. **Content (scrolls inside):** the active tab.
 5. **Turn bar:** the existing `TurnBar` (players) or `GmTurnBar` (GM), in a one-row variant:
    - Players: title ("Your turn", or "Bram is acting · you're next"), a subtitle, action pips, and the one step button.
    - GM: the acting creature, Up next, New round, and Next ▶.
 
    It hides while the on-screen keyboard is open (`visualViewport` height shrinks by more than 150px) and on the Chat and Scribe tabs.
+
 6. **Tab bar (62px plus the bottom safe area):**
    - Players: Actions, Hero, Party, Chat (with an unread badge), Scribe. Scribe shows only when it's available; otherwise there are four tabs.
-   - GM: Encounter, Creature, Party, Chat. Scribe is a segment inside Chat for the GM, since space is short.
+   - GM: Encounter, Creature, Party, Chat, Scribe. As for players, Scribe shows only when it's available.
 
    The current tab is remembered per browser (try/catch around localStorage). The default is Actions for players and Encounter for the GM.
 
 **Tabs:**
+
 - **Actions:**
   - `Actions` with two tiles per row;
   - filter chips that scroll sideways;
@@ -158,6 +162,7 @@ The frame then holds these rows:
 ### Tablet landscape (1024–1199px)
 
 The desktop board, tighter:
+
 - three columns: left 270px, centre flexible, right 290px;
 - three tiles per row;
 - the right column shows Party above Chat and Scribe, as on desktop.
@@ -181,7 +186,7 @@ Unchanged, except that a touch desktop or large tablet (e.g. an iPad Pro in land
 
 - Touch behaviours depend on the touch media query, not width.
 - Breakpoints: 768, 1024 and 1200.
-- Players' phone tabs: Actions, Hero, Party, Chat, Scribe. The GM's: Encounter, Creature, Party, Chat (Scribe inside Chat).
+- Players' phone tabs: Actions, Hero, Party, Chat, Scribe. The GM's: Encounter, Creature, Party, Chat, Scribe.
 - The hero strip shows on every player tab except Hero.
 - The turn bar hides while typing and on the Chat and Scribe tabs.
 - Battle is the landing tab for Nimble campaigns at every size, and the 1200px note goes away.

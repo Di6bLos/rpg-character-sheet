@@ -30,6 +30,11 @@ export function useTurnSteps(
 
   const perTurn = computed(() => turnActions(sheet.value))
   const left = computed(() => actionsLeft(sheet.value))
+  /** "2 of 3 left", "4 left (1 extra)", with "(Dying)" while dying: the turn bar and Hero tab. */
+  const leftText = computed(
+    () =>
+      `${left.value > perTurn.value ? `${left.value} left (${left.value - perTurn.value} extra)` : `${left.value} of ${perTurn.value} left`}${sheet.value.dying ? ' (Dying)' : ''}`,
+  )
   const pips = computed(() => actionPips(sheet.value))
   /** Seated in the GM's encounter: the tracker is on this hero. */
   const myTurn = computed(() => trackerTurnId.value === draft.value.id)
@@ -125,6 +130,7 @@ export function useTurnSteps(
     gmEncounter,
     perTurn,
     left,
+    leftText,
     pips,
     steps,
     typed,

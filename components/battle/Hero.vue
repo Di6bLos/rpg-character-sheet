@@ -15,7 +15,7 @@ defineProps<{ compact?: boolean }>()
 
 const { draft, canEdit, portrait } = useSheet<NimbleSheet>()
 const { touch } = useBoardLayout()
-// Statuses other heroes give and the GM's changes are applied by HeroEditor (HeroLive).
+// Statuses other heroes give and the GM's changes are applied by HeroScope (HeroLive).
 const sheet = computed(() => draft.value.sheet)
 const { diceLeft, speed, armor } = useNimbleVitals()
 
@@ -61,12 +61,7 @@ function setMana(value: number) {
 }
 
 // --- Actions (compact): the turn bar's +1, from the same turn steps ------------------
-const { left, perTurn, extraAction } = useTurnSteps({ onResult: useAnnounce() })
-const actionsText = computed(() =>
-  left.value > perTurn.value
-    ? `${left.value} left (${left.value - perTurn.value} extra)`
-    : `${left.value} of ${perTurn.value} left`,
-)
+const { leftText: actionsText, extraAction } = useTurnSteps({ onResult: useAnnounce() })
 
 // --- Stats --------------------------------------------------------------------------
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']

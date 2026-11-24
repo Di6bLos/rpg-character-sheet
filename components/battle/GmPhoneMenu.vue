@@ -7,7 +7,11 @@
 import type { useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'
 
-const props = defineProps<{ init: ReturnType<typeof useInitiative> }>()
+const props = defineProps<{
+  init: ReturnType<typeof useInitiative>
+  /** Tablet bar: a 320px menu under the ⋯ button, not the phone's full-width sheet. */
+  tablet?: boolean
+}>()
 
 const { roster } = useCampaignBoard()
 
@@ -48,12 +52,11 @@ function askEnd() {
 </script>
 
 <template>
-  <div ref="menuEl" class="gpm" @keydown.esc="close(true)">
+  <div ref="menuEl" class="gpm" :class="{ 'gpm--tablet': tablet }" @keydown.esc="close(true)">
     <button
       ref="btn"
       type="button"
       class="gpm__btn"
-      aria-haspopup="true"
       :aria-expanded="open"
       :aria-controls="menuId"
       aria-label="More encounter tools"
@@ -97,6 +100,19 @@ function askEnd() {
 <style scoped lang="scss">
 .gpm {
   flex: none;
+}
+
+// On a tablet the app nav stays, so the menu hangs from the ⋯ button instead.
+.gpm--tablet {
+  position: relative;
+
+  .gpm__menu {
+    left: auto;
+    right: 0;
+    top: calc(100% + 6px);
+    width: 320px;
+    max-height: min(560px, 70dvh);
+  }
 }
 
 .gpm__btn {

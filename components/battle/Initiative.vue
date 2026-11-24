@@ -285,6 +285,9 @@ function onPointerMove(e: PointerEvent) {
     // Capture only once it is a drag: capturing on press would steal plain clicks.
     dragged = true
     dragging.value = true
+    // The capture sends the rest of the gesture here, never to the token: end its long
+    // press now, or the GM's menu would open mid-drag and swallow the next tap.
+    press.onPointercancel()
     viewport.value?.setPointerCapture(e.pointerId)
   }
   let d = offset.value + dx
@@ -303,6 +306,7 @@ async function onPointerUp(e: PointerEvent) {
   if (e.pointerId !== pointer) return
   pointer = null
   if (!dragging.value) return
+  press.onPointercancel()
   // Snap to the nearest token: past half a step counts as the next one.
   const STEP = step.value
   if (Math.abs(offset.value) > STEP / 2 && !atEdge(offset.value)) {
@@ -371,6 +375,10 @@ function onPressMove(e: PointerEvent) {
 function onPressEnd() {
   if (touch.value) press.onPointerup()
 }
+/** A cancelled touch (the browser took it for a scroll) drops the guards at once. */
+function onPressCancel() {
+  if (touch.value) press.onPointercancel()
+}
 
 // The row moving (a turn change, browsing, a new order) leaves the menu's token behind.
 watch(
@@ -399,6 +407,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
+    @lostpointercapture="onPointerUp"
     @click.capture="onClickCapture"
     @dragstart.prevent
   >
@@ -452,7 +461,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
                 @pointerdown="onPressDown(slot, $event)"
                 @pointermove="onPressMove"
                 @pointerup="onPressEnd"
-                @pointercancel="onPressEnd"
+                @pointercancel="onPressCancel"
                 @keydown="onTokenKey(slot, $event)"
               >
                 <span

@@ -87,3 +87,16 @@ export function useGmEncounterTools(
 
   return { busy, partyMissing, offerParty, addParty, syncSummons, reroll, setMode }
 }
+
+/**
+ * New round from the GM's turn bars, with an Undo on the toast: a mis-tap beside Next would
+ * otherwise skip the rest of the round, and Previous turn can't bring that turn back.
+ */
+export function useNewRound(init: ReturnType<typeof useInitiative>) {
+  const snackbar = useSnackbarStore()
+  return async () => {
+    const undo = await init.newRound()
+    if (!undo) return
+    snackbar.show(`Round ${init.round.value}`, 'success', 6000, { label: 'Undo', run: undo })
+  }
+}

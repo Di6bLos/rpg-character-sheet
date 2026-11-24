@@ -117,12 +117,17 @@ function matches(filter: ActionFilter, a: BattleAction): boolean {
   }
 }
 
-/** Group the actions into the board's sections; empty sections are left out. */
+/**
+ * Group the actions into the board's sections; empty sections are left out. `keep` is the
+ * tile whose details are open: it stays in Ready now even when it stops being usable (an
+ * upcast past the hero's mana), so its details don't vanish under the finger.
+ */
 export function sectionsFor(
   list: BattleAction[],
   filter: ActionFilter,
   query: string,
   onTurn: boolean,
+  keep: string | null = null,
 ): ActionSection[] {
   const q = query.trim().toLowerCase()
   const found = q
@@ -131,7 +136,8 @@ export function sectionsFor(
 
   let sections: ActionSection[]
   if (filter === 'ready') {
-    const open = found.filter((a) => a.unavailable === '')
+    const kept = (a: BattleAction) => a.key === keep
+    const open = found.filter((a) => a.unavailable === '' || kept(a))
     sections = onTurn
       ? [
           section(
@@ -154,7 +160,7 @@ export function sectionsFor(
           ),
           section(
             'Off-turn',
-            open.filter((a) => a.group === 'support' && a.offTurn),
+            open.filter((a) => a.group === 'support' && (a.offTurn || kept(a))),
           ),
           section(
             'Reactions',

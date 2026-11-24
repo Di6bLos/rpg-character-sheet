@@ -9,8 +9,10 @@ const props = defineProps<{ text?: string; title?: string; sub?: string; keys?: 
 const MARGIN = 8
 const GAP = 6
 
-// On touch there is no hover: a tap on the trigger toggles the tooltip and a pointerdown
-// anywhere else closes it. With a mouse everything below behaves as before.
+// On touch there is no hover: a tap on a trigger that does nothing else (a label, a chip)
+// toggles the tooltip, and a pointerdown anywhere else closes it. A tap on a control
+// (a button, a link) just does its job. Keyboard focus (an iPad's keyboard) still shows it.
+// With a mouse everything below behaves as before.
 const { touch } = useBoardLayout()
 
 const id = useId()
@@ -57,12 +59,28 @@ function hide() {
   unlisten()
 }
 
-function onHide() {
-  if (!touch.value) hide()
+/** Controls a tap acts on; on touch their tooltip shows only for keyboard focus. */
+const ACTS = 'button, a[href], input, select, textarea, label, [role="button"], [role="tab"]'
+/** Opened by keyboard focus on touch, so blur closes it. */
+let byFocus = false
+
+function onFocus(event: FocusEvent) {
+  if (!touch.value) return show()
+  if ((event.target as Element | null)?.matches?.(':focus-visible')) {
+    byFocus = true
+    showNow()
+  }
 }
 
-function onClick() {
+function onHide() {
+  if (!touch.value || byFocus) hide()
+  byFocus = false
+}
+
+function onClick(event: MouseEvent) {
   if (!touch.value) return hide()
+  const control = (event.target as Element | null)?.closest(ACTS)
+  if (control && root.value?.contains(control)) return
   if (open.value) hide()
   else showNow()
 }
@@ -120,7 +138,7 @@ onBeforeUnmount(() => {
     class="tooltip"
     @mouseover="show"
     @mouseout="onOut"
-    @focusin="show"
+    @focusin="onFocus"
     @focusout="onHide"
     @keydown="onKey"
     @click="onClick"
