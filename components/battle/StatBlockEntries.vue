@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The linked stat block's sections (traits, actions, bloodied, last stand…) and GM notes.
 // An entry with dice in its text gets a Roll button: the first dice expression rolls
-// (thrown in the dice tray), posts to party chat as an action line under the
-// creature's name, and shows in a result bar pinned to the bottom of the panel, like
+// (thrown in the dice tray), posts its total (no dice) to party chat as an action line
+// under the creature's name, and shows the dice and total in a result bar pinned to the bottom of the panel, like
 // the player's result bar under their actions.
 import type { CampaignNpc, StatEntry } from '~/types'
 import { findDice, rollDice } from '~/utils/dice'
@@ -33,7 +33,8 @@ async function roll(it: StatEntry, key: string) {
   const detail = rolls.length > 1 || mod ? `${rolls.join(' + ')}${mod} = ` : ''
   const text = `${found.text}: ${detail}${total}`
   last.value = { key, text: `${props.name} · ${it.n || 'Roll'}: ${text}` }
-  await chat.send(`${props.name} · ${it.n || 'Roll'} ${text}`, 'party', 'action')
+  // The party sees only what it came to; the dice stay in the GM's bar.
+  await chat.send(`${props.name} · ${it.n || 'Roll'}: ${total}`, 'party', 'action')
 }
 </script>
 

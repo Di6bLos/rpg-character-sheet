@@ -5,15 +5,13 @@ import { classifyLayout, type BoardLayout } from '~/utils/boardLayout'
 // ask), added with the first caller and removed when the last one's scope is disposed.
 const QUERIES = {
   tablet: '(min-width: 768px)',
-  wide: '(min-width: 1024px)',
-  desktop: '(min-width: 1200px)',
+  desktop: '(min-width: 1280px)',
   touch: '(hover: none) and (pointer: coarse)',
 } as const
 type Key = keyof typeof QUERIES
 
 const state = {
   tablet: ref(false),
-  wide: ref(false),
   desktop: ref(true),
   touch: ref(false),
 }
@@ -24,7 +22,6 @@ let users = 0
 function start() {
   const first = classifyLayout(window.innerWidth)
   state.tablet.value = first !== 'phone'
-  state.wide.value = first === 'tablet-wide' || first === 'desktop'
   state.desktop.value = first === 'desktop'
   for (const key of Object.keys(QUERIES) as Key[]) {
     const list = window.matchMedia(QUERIES[key])
@@ -65,13 +62,7 @@ export function useBoardLayout(): {
   }
   return {
     layout: computed(() =>
-      state.desktop.value
-        ? 'desktop'
-        : state.wide.value
-          ? 'tablet-wide'
-          : state.tablet.value
-            ? 'tablet'
-            : 'phone',
+      state.desktop.value ? 'desktop' : state.tablet.value ? 'tablet' : 'phone',
     ),
     touch: computed(() => state.touch.value),
     battle: computed(() => board?.campaign.value?.system === 'nimble'),

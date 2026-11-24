@@ -375,7 +375,7 @@ const stats = computed(() =>
     gap: 8px;
   }
 
-  // The 16px value would clip the placeholder in a narrow column (tablet-wide).
+  // The 16px value would clip the placeholder in a narrow column (240px, its minimum).
   :deep(.hp__amt) {
     min-height: 44px;
     padding-inline: 4px;

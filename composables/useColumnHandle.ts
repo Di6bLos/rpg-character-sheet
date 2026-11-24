@@ -9,7 +9,7 @@ import type { MaybeRefOrGetter } from 'vue'
 
 export interface ColumnHandleOptions {
   side: 'left' | 'right'
-  /** Read on every move: tablet-wide has lower bounds than desktop. */
+  /** Read on every move. */
   bounds: MaybeRefOrGetter<{ min: number; max: number; close: number }>
   open: () => boolean
   /** The open column's saved width. */

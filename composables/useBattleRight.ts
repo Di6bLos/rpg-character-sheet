@@ -3,20 +3,15 @@
  * snaps to closed (a thin rail) when dragged narrow enough, and how it is shared
  * between Party (top) and Chat (bottom). `split` is the Party's share: 0 closes the
  * Party to its header line, 1 closes Chat to a strip with the missed messages.
- * Remembered per browser. On a tablet in portrait there is no right column: Party, Chat and
- * Scribe open one at a time in a drawer (`drawer`, not remembered). On tablet-wide
- * (1024–1199px) the column has its own default and dragged width (`wide`), so the desktop's
- * stays as it was; with touch there it is fixed at the default.
+ * Remembered per browser. On a tablet (768–1279px) there is no right column: Party, Chat and
+ * Scribe open one at a time in a drawer (`drawer`, not remembered).
  */
-import { WIDE_COLUMNS, clampWidth, columnWidth } from '~/utils/battleColumns'
 
 interface RightState {
   /** False: the column is closed to the rail. */
   column: boolean
-  /** The open column's width in px on desktop. */
+  /** The open column's width in px. */
   width: number
-  /** The open column's width in px on tablet-wide with a mouse; null: the default. */
-  wide: number | null
   split: number
 }
 
@@ -32,7 +27,6 @@ const KEY = 'lantern:battle-right'
 const OPEN: RightState = {
   column: true,
   width: RIGHT_WIDTH.initial,
-  wide: null,
   split: RIGHT_SPLIT.initial,
 }
 
@@ -44,7 +38,6 @@ function load(): RightState {
     return {
       column: saved?.column ?? OPEN.column,
       width: typeof saved?.width === 'number' ? saved.width : OPEN.width,
-      wide: typeof saved?.wide === 'number' ? clampWidth(saved.wide, WIDE_COLUMNS.right) : null,
       split: typeof saved?.split === 'number' ? clamp(saved.split, 0, 1) : OPEN.split,
     }
   } catch {
@@ -55,8 +48,7 @@ function load(): RightState {
 export function useBattleRight() {
   const state = useState<RightState>('battle-right', load)
   const drawer = useState<DrawerTab | null>('battle-drawer', () => null)
-  const { layout, touch } = useBoardLayout()
-  const wide = computed(() => layout.value === 'tablet-wide')
+  const { layout } = useBoardLayout()
 
   function set(patch: Partial<RightState>, save = true) {
     state.value = { ...state.value, ...patch }
@@ -68,27 +60,16 @@ export function useBattleRight() {
     }
   }
 
-  /** The width patch for `px` in the current layout's own field. */
-  const sized = (px: number): Partial<RightState> =>
-    wide.value
-      ? { wide: clampWidth(px, WIDE_COLUMNS.right) }
-      : { width: Math.round(clamp(px, RIGHT_WIDTH.min, RIGHT_WIDTH.max)) }
+  const sized = (px: number): Partial<RightState> => ({
+    width: Math.round(clamp(px, RIGHT_WIDTH.min, RIGHT_WIDTH.max)),
+  })
 
   return {
     state: readonly(state),
-    /** The drag bounds for the current layout. */
-    bounds: computed(() => (wide.value ? WIDE_COLUMNS.right : RIGHT_WIDTH)),
-    /** The open column's width in the current layout. */
-    width: computed(() =>
-      columnWidth({
-        wide: wide.value,
-        touch: touch.value,
-        desktop: state.value.width,
-        tabletWide: state.value.wide,
-        desktopDefault: RIGHT_WIDTH.initial,
-        wideDefault: WIDE_COLUMNS.right.width,
-      }),
-    ),
+    /** The drag bounds. */
+    bounds: computed(() => RIGHT_WIDTH),
+    /** The open column's width. */
+    width: computed(() => state.value.width),
     partyClosed: computed(() => state.value.split <= 0),
     chatClosed: computed(() => state.value.split >= 1),
     /** The tablet drawer's open tab; null while it is closed. */
@@ -98,8 +79,8 @@ export function useBattleRight() {
       drawer.value = tab
     },
     /**
-     * Opens the column with Chat showing (Whisper, a click on a closed Chat); on a tablet
-     * in portrait, the drawer on Chat.
+     * Opens the column with Chat showing (Whisper, a click on a closed Chat); on a tablet,
+     * the drawer on Chat.
      */
     showChat: () => {
       if (layout.value === 'tablet') {
@@ -117,6 +98,14 @@ export function useBattleRight() {
     closeAt: (width: number) => set({ column: false, ...sized(width) }),
     setWidth: (px: number, save = true) => set({ column: true, ...sized(px) }, save),
     setSplit: (share: number, save = true) => set({ split: clamp(share, 0, 1) }, save),
+    /**
+     * A click on a panel's header: that panel takes the column's full height (the other
+     * closes), or, if it already has it, the two share the column half and half.
+     */
+    fill: (panel: 'party' | 'chat') => {
+      const full = panel === 'party' ? 1 : 0
+      set({ split: state.value.split === full ? RIGHT_SPLIT.initial : full })
+    },
     save: () => set({}),
   }
 }

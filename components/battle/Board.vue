@@ -1,12 +1,9 @@
 <script setup lang="ts">
-// Desktop battle board frame (Nimble, 1024px+): the one-line bar, the initiative
-// strip and three columns that fill the viewport under the app nav. On tablet-wide
-// (1024–1199px) it is tighter: side columns 270px and 290px by default, lower drag
-// minimums and a 400px centre (useBattleLeft / useBattleRight, utils/battleColumns). Only the
+// Desktop battle board frame (Nimble, 1280px+): the one-line bar, the initiative
+// strip and three columns that fill the viewport under the app nav. Only the
 // columns scroll; the page itself never does. For players the whole board sits inside
 // the seated hero's sheet editor (HeroScope, in View, above the frame switch).
 import type { useInitiative } from '~/composables/useInitiative'
-import { CENTRE_MIN } from '~/utils/battleColumns'
 
 defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -22,19 +19,16 @@ defineSlots<{
 }>()
 
 const { gmControls } = useCampaignBoard()
-// On touch the columns have no splitters or rail: both stay open, at their saved widths on
-// a desktop and at the fixed 270px / 290px on tablet-wide.
-const { layout, touch } = useBoardLayout()
-const wide = computed(() => layout.value === 'tablet-wide')
+// On touch the columns have no splitters or rail: both stay open, at their saved widths.
+const { touch } = useBoardLayout()
 const left = useBattleLeft()
 const right = useBattleRight()
 
 // Both side columns are dragged on their inner edge, all the way to closed (a rail) and
-// back (`useColumnHandle`). Neither squeezes the centre column below its minimum (460px,
-// 400px on tablet-wide); the CSS caps them the same way when the window shrinks. Each
-// handle stays one element while its column opens and closes, so a drag carries on
-// through the snap.
-const centreMin = computed(() => (wide.value ? CENTRE_MIN.wide : CENTRE_MIN.desktop))
+// back (`useColumnHandle`). Neither squeezes the centre column below CENTRE_MIN; the
+// CSS caps them the same way when the window shrinks. Each handle stays one element
+// while its column opens and closes, so a drag carries on through the snap.
+const CENTRE_MIN = 460
 const cols = ref<HTMLElement | null>(null)
 const leftEl = ref<HTMLElement | null>(null)
 const rightEl = ref<HTMLElement | null>(null)
@@ -45,9 +39,9 @@ const leftWidth = computed(() => left.widthFor(gmControls.value))
 /** How wide `el` may grow now: its width plus what the centre has beyond its minimum. */
 function growLimit(el: HTMLElement | null, max: number) {
   const centre = cols.value?.querySelector<HTMLElement>('.battle__col--centre')
-  const centreNow = centre?.getBoundingClientRect().width ?? centreMin.value
+  const centreNow = centre?.getBoundingClientRect().width ?? CENTRE_MIN
   const now = el?.getBoundingClientRect().width ?? 0
-  return Math.min(max, now + centreNow - centreMin.value)
+  return Math.min(max, now + centreNow - CENTRE_MIN)
 }
 
 const leftHandle = useColumnHandle({
@@ -98,16 +92,9 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
       ...(top ? { '--battle-top': `${top}px` } : {}),
       '--battle-left': leftOpen ? `${leftWidth}px` : 'var(--battle-rail)',
       '--battle-right': open ? `${right.width.value}px` : 'var(--battle-rail)',
-      ...(wide
-        ? {
-            '--battle-left-min': `${left.bounds.value.min}px`,
-            '--battle-right-min': `${right.bounds.value.min}px`,
-            '--battle-centre-min': `${centreMin}px`,
-          }
-        : {}),
     }"
   >
-    <BattleBar :init="init" :compact="wide" />
+    <BattleBar :init="init" />
     <div v-if="$slots.strip" class="battle__strip">
       <slot name="strip" />
     </div>
@@ -188,23 +175,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
   flex: 1 1 0;
   display: grid;
   // Each side column is as wide as dragged (or the rail), but never leaves the centre
-  // under 460px (tablet-wide: 400px and lower minimums, set inline): 28px is the two gaps.
+  // under 460px: 28px is the two gaps.
   grid-template-columns:
-    min(
-      var(--battle-left),
-      max(
-        var(--battle-left-min, 240px),
-        calc(100% - var(--battle-right) - 28px - var(--battle-centre-min, 460px))
-      )
-    )
+    min(var(--battle-left), max(240px, calc(100% - var(--battle-right) - 28px - 460px)))
     minmax(0, 1fr)
-    min(
-      var(--battle-right),
-      max(
-        var(--battle-right-min, 260px),
-        calc(100% - var(--battle-left) - 28px - var(--battle-centre-min, 460px))
-      )
-    );
+    min(var(--battle-right), max(260px, calc(100% - var(--battle-left) - 28px - 460px)));
   grid-template-rows: minmax(0, 1fr);
   gap: 14px;
   padding: 14px 20px 20px;

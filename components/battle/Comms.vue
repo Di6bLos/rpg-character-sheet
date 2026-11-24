@@ -28,7 +28,7 @@ const uid = useId()
 const right = useBattleRight()
 const { gmControls } = useCampaignBoard()
 const auth = useAuthStore()
-// On touch (the desktop board's right column: tablet-wide, touch desktops) 44px targets.
+// On touch (the desktop board's right column on a touch desktop) 44px targets.
 const { touch } = useBoardLayout()
 // Chat closes when the Party / Chat handle is dragged to the bottom (only while the
 // Party has heroes to list, since that handle shows only then).
@@ -56,8 +56,17 @@ onMounted(() => chat.setVisible(chatInView.value))
 // On the Chat tab's badge; a closed Chat shows its own missed count instead.
 const unread = useChatBadge(() => chatInView.value || !open.value)
 
-/** A tab click also unfolds the panel. */
-function pick(t: 'chat' | 'lore') {
+// In the right column (while the Party / Chat handle shows), a click on the header, or on
+// the tab already showing, gives Chat the full height (again: half and half).
+const toggles = computed(() => !props.compact && hasHeroes.value)
+function onHead() {
+  if (toggles.value) right.fill('chat')
+}
+
+/** A click on the other tab switches to it (unfolding the panel) without resizing it. */
+function pick(t: 'chat' | 'lore', event: MouseEvent) {
+  if (t === current.value) return
+  event.stopPropagation()
   tab.value = t
   if (!open.value) right.showChat()
 }
@@ -82,7 +91,7 @@ function onKey(event: KeyboardEvent) {
     }"
     :aria-label="only ? (current === 'lore' ? 'Scribe' : 'Chat') : 'Chat and Scribe'"
   >
-    <div class="comms__head">
+    <div class="comms__head" :class="{ 'comms__head--toggle': toggles }" @click="onHead">
       <span v-if="only && !bare" class="comms__label" aria-hidden="true">
         <template v-if="current === 'lore'">✦ Scribe</template>
         <template v-else>Chat</template>
@@ -102,7 +111,7 @@ function onKey(event: KeyboardEvent) {
           :aria-controls="`${uid}-chat`"
           :tabindex="current === 'chat' ? 0 : -1"
           :aria-label="unread ? `Chat, ${plural(unread, 'unread message')}` : undefined"
-          @click="pick('chat')"
+          @click="pick('chat', $event)"
         >
           Chat
           <span v-if="unread" class="comms__count" aria-hidden="true">{{ unread }}</span>
@@ -115,7 +124,7 @@ function onKey(event: KeyboardEvent) {
           :aria-selected="current === 'lore'"
           :aria-controls="`${uid}-lore`"
           :tabindex="current === 'lore' ? 0 : -1"
-          @click="pick('lore')"
+          @click="pick('lore', $event)"
         >
           <span aria-hidden="true">✦</span> Scribe
         </button>
@@ -177,6 +186,10 @@ function onKey(event: KeyboardEvent) {
   gap: 8px;
   min-height: 32px;
   padding: 5px 14px 0;
+
+  &--toggle {
+    cursor: pointer;
+  }
 }
 
 .comms__tabs {

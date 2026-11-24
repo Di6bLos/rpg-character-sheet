@@ -2,8 +2,8 @@
 // The GM's encounter grid (battle board centre): a card per enemy (monsters and NPCs),
 // or with the chip, per ally and summon (heroes included). Clicking a creature selects
 // it into the stat block; a hero shows their vitals there instead (GmHero). Remove asks first.
-// Compact (phone Encounter tab): one column of compact cards at their natural height (the
-// tab scrolls), 44px chips, and a "+ Add" chip for the add dialog (the desktop has it on
+// Compact (phone Encounter tab, tablet): one column of compact cards (two on a tablet 1024px
+// or wider) at their natural height (the tab scrolls), 44px chips, and a "+ Add" chip for the add dialog (the desktop has it on
 // the turn bar).
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
@@ -253,6 +253,13 @@ async function confirmRemove() {
 
   .enc__grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// A tablet 1024px or wider (landscape) has room for two cards per row.
+@media (min-width: 1024px) {
+  .enc--compact .enc__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

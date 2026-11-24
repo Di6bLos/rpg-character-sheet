@@ -2,7 +2,7 @@
 // Battle tab: the battle board (Nimble). The initiative strip, the
 // player's hero column and actions or the GM's stat block and encounter grid, and the
 // party and chat on the right. On a phone the same parts go in the phone frame, one tab
-// at a time (the GM's tabs: Encounter, Creature, Party, Chat). On a tablet in portrait
+// at a time (the GM's tabs: Encounter, Creature, Party, Chat). On a tablet (768–1279px)
 // the tablet frame has the left and centre columns, with Party, Chat and Scribe in a
 // drawer. Every frame sits inside one HeroScope, so switching frames (a rotation) keeps
 // the hero's sheet editor and its automatic turn steps. Other systems get a note pointing to the Party tab.
@@ -13,8 +13,6 @@ const { campaign, campaignId, isGm, gmControls, roster, base } = useCampaignBoar
 const { layout } = useBoardLayout()
 const phone = computed(() => layout.value === 'phone')
 const tablet = computed(() => layout.value === 'tablet')
-/** Tablet landscape (1024–1199px): the desktop board, tighter (three tiles per row). */
-const wide = computed(() => layout.value === 'tablet-wide')
 /** The phone frame's open tab and tab switch (its exposed `tab` and `go`). */
 const phoneFrame = ref<{ tab: PhoneTab; go: (tab: PhoneTab) => void } | null>(null)
 const snackbar = useSnackbarStore()
@@ -165,7 +163,7 @@ function onGridHero(characterId: string) {
         </BattleHeroCardDialog>
       </template>
     </BattlePhone>
-    <!-- Tablet portrait: hero column or stat block (left), turn bar and actions or the
+    <!-- Tablet: hero column or stat block (left), turn bar and actions or the
          encounter (centre), Party / Chat / Scribe in the drawer. -->
     <BattleTablet v-else-if="tablet" :init="init" :hero="hero">
       <template #strip>
@@ -266,7 +264,7 @@ function onGridHero(characterId: string) {
       <template #centre>
         <template v-if="hero">
           <BattleTurnBar :init="init" />
-          <BattleActions :cols="wide ? 3 : undefined" />
+          <BattleActions />
         </template>
         <template v-else-if="gmControls">
           <BattleGmTurnBar :init="init" :roster="roster" />

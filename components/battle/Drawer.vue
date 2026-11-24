@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The tablet board's drawer (portrait, 768–1023px): Party, Chat or Scribe, 360px wide from
+// The tablet board's drawer (768–1279px): Party, Chat or Scribe, 360px wide from
 // the right edge over the actions, on a dimmed backdrop. A modal <dialog>, as UiDialog:
 // Escape, a tap on the backdrop and the ✕ close it, and closing hands focus back to what
 // opened it. Its tabs switch between the panes without closing; only the open pane is

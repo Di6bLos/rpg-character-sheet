@@ -27,6 +27,10 @@ const heroes = computed(() =>
   ),
 )
 
+/** In the right column with heroes to list (the Party / Chat handle shows then). */
+const toggles = computed(() => !props.compact && heroes.value.length > 0)
+const partyFull = computed(() => right.state.value.split >= 1)
+
 function isDead(r: RosterEntry) {
   const s = r.summary
   return !!s && (s.woundsMax ?? 0) > 0 && (s.wounds ?? 0) >= (s.woundsMax ?? 0)
@@ -108,8 +112,24 @@ function label(r: RosterEntry): string {
     :style="compact ? undefined : { '--party-split': right.state.value.split }"
     aria-labelledby="party-h"
   >
-    <header class="party__head">
-      <h2 id="party-h">Party</h2>
+    <!-- In the right column, a click on the header gives the Party the full height (again: half). -->
+    <header
+      class="party__head"
+      :class="{ 'party__head--toggle': toggles }"
+      @click="toggles && right.fill('party')"
+    >
+      <h2 id="party-h">
+        <button
+          v-if="toggles"
+          type="button"
+          class="party__toggle"
+          :aria-label="partyFull ? 'Party: share the column with chat' : 'Party: full height'"
+          :title="partyFull ? 'Share the column with chat' : 'Full height'"
+        >
+          Party
+        </button>
+        <template v-else>Party</template>
+      </h2>
       <!-- No one to show: the card is one line, so Chat below gets the room. -->
       <p v-if="!heroes.length" class="party__empty">
         {{ gm ? 'No heroes seated yet.' : 'No other heroes at this table yet.' }}
@@ -211,6 +231,21 @@ function label(r: RosterEntry): string {
     margin: 0;
     font-family: var(--font-heading);
     font-size: 16px;
+  }
+
+  &--toggle {
+    cursor: pointer;
+  }
+}
+
+.party__toggle {
+  all: unset;
+  cursor: pointer;
+  border-radius: 4px;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 }
 

@@ -7,22 +7,23 @@ import type { NimbleSheet } from '~/types/sheets'
 import { readyNote, sectionsFor, type ActionFilter } from '~/utils/battleActions'
 
 defineProps<{
-  /** Phone and tablet layouts: two tiles per row, touch-sized filter chips that scroll sideways. */
+  /**
+   * Phone and tablet layouts: two tiles per row (three on a tablet 1024px or wider),
+   * touch-sized filter chips that scroll sideways.
+   */
   compact?: boolean
   /**
    * Phone frame: the panel takes its natural height (the phone's tab scrolls, not the list)
    * and the tiles open their details as a bottom sheet instead of a popover.
    */
   sheet?: boolean
-  /** Tablet-wide (1024–1199px, desktop board): three tiles per row. */
-  cols?: 3
 }>()
 
 const FILTER_KEY = 'lantern-battle-filter'
 const FILTERS: ActionFilter[] = ['ready', 'all', 'attack', 'spell', 'react', 'ability']
 
 const { canEdit } = useSheet<NimbleSheet>()
-// On touch (tablet-wide, touch desktops) the filter chips and search are touch-sized too.
+// On touch (touch desktops too) the filter chips and search are touch-sized too.
 const { touch } = useBoardLayout()
 const announce = useAnnounce()
 const { actions, onTurn, actionsLeft, mana, lastResult, lastDetail } = useBattleActions({
@@ -78,7 +79,6 @@ const empty = computed(() =>
     :class="{
       'actions--compact': compact,
       'actions--sheet': sheet,
-      'actions--three': cols === 3,
       'actions--touch': touch,
     }"
     aria-labelledby="battle-actions-h"
@@ -194,17 +194,19 @@ const empty = computed(() =>
   opacity: 0.85;
 }
 
-// --- Three per row (tablet-wide) ------------------------------------------------------------
-.actions--three .actions__tiles {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 // --- Compact (phone, tablet) -------------------------------------------------------------
 .actions--compact {
   padding: 12px;
 
   .actions__tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// A tablet 1024px or wider (landscape) has room for three per row.
+@media (min-width: 1024px) {
+  .actions--compact:not(.actions--sheet) .actions__tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

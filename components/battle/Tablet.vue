@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Tablet battle board frame (Nimble, portrait, 768–1023px): the bar (tablet variant, with
+// Tablet battle board frame (Nimble, 768–1279px): the bar (tablet variant, with
 // buttons for Party, Chat and Scribe), the full-size initiative strip and two columns
 // under the app nav: the hero column for players or the GM's stat block on the left
 // (290px), and the turn bar above the actions or the encounter grid in the centre. Party,
