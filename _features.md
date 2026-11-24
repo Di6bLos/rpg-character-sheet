@@ -272,12 +272,11 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [ ] Ignore the keys while typing in an input, textarea or the chat, and while a dialog is open
 - [ ] List the shortcuts somewhere the GM can find them (tooltip on Next turn or a "?" help)
 
-##
+## Future updates
 
 - conditions review https://nimble.nexus/rules/conditions
 - GM only backstory section
 - Fix the the delete campaign section text. its not wrapping, getting cut off my container an button
-- Lets update the carousel tracker again. I dont want to be able to scroll to the next rown. I want the
 
 ## Usage analytics (playtest: Battle vs Party vs Sheet)
 
