@@ -42,10 +42,10 @@
 
 - Produces: two campaigns in the local stack, run by `gm@test.local`, each with `player@test.local`'s hero seated: **"Test Table 5e"** (`system: 'dnd5e'`, level 3 Fighter "Corin", `defaultSheet('dnd5e')` with `class: 'Fighter'`, `hp: 28`, `hpMax: 28`, `ac: 16`, `initMod: 2`) and **"Test Table PF2e"** (`system: 'pf2e'`, level 3 Rogue "Mira", `defaultSheet('pf2e')` with `class: 'Rogue'`, `hp: 38`, `hpMax: 38`, `ac: 19`, `initMod: 3`). Each has one campaign NPC (Goblin, `stat_block: { hp: 7, ac: 15, initMod: 2 }`) so the GM can add it from the add dialog. Use the system ids exactly as `GameSystem` spells them.
 
-- [ ] **Step 1:** Add both campaigns to `seedLocal`, re-runnable like "Test Table" (look the campaign up by name and system before inserting; `--reset` rebuilds the two sheets).
-- [ ] **Step 2:** Run `npm run dev:seed` twice. Expected: no error, no duplicate campaigns (check `select name, system from campaigns` on the local DB).
-- [ ] **Step 3:** Print the two campaign URLs in `dev-local.ts`'s banner beside the Nimble one; update CLAUDE.md's Environment paragraph.
-- [ ] **Step 4: Commit** — `CHORE: 5e and PF2e test campaigns in the local seed`
+- [x] **Step 1:** Add both campaigns to `seedLocal`, re-runnable like "Test Table" (look the campaign up by name and system before inserting; `--reset` rebuilds the two sheets).
+- [x] **Step 2:** Run `npm run dev:seed` twice. Expected: no error, no duplicate campaigns (check `select name, system from campaigns` on the local DB).
+- [x] **Step 3:** Print the two campaign URLs in `dev-local.ts`'s banner beside the Nimble one; update CLAUDE.md's Environment paragraph.
+- [x] **Step 4: Commit** — `CHORE: 5e and PF2e test campaigns in the local seed`
 
 ### Task 2: Battle features per system, condition lists, phone tabs
 
