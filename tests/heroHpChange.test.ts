@@ -23,6 +23,13 @@ describe('GM hero HP changes', () => {
     expect(message).toMatch(/^GM: took 9 damage \(crit\): 0\/20 HP\./)
   })
 
+  it('halves a hit while Warded, naming the warder’s share', () => {
+    const sheet = hero({ conditions: ['Warded'] })
+    expect(applyHpChange(sheet, 3, { id: 'a', amount: -9, crit: false })).toBe(
+      'GM: took 4 damage: 16/20 HP. Warded: you take 4, your warder 5.',
+    )
+  })
+
   it('heals up to max', () => {
     const sheet = hero({ hp: 15 })
     expect(applyHpChange(sheet, 3, { id: 'a', amount: 8, crit: false })).toBe(

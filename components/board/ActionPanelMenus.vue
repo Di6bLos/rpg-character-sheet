@@ -6,6 +6,7 @@ import type { NimbleSheet } from '~/types/sheets'
 import {
   actionPips,
   actionsLeft,
+  armorNow,
   freeMove,
   gainAction,
   heal,
@@ -22,6 +23,7 @@ defineProps<{ drawer: boolean }>()
 const emit = defineEmits<{ dismiss: [] }>()
 
 const { draft, canEdit, lastRoll, say } = useSheet<NimbleSheet>()
+const armor = computed(() => armorNow(draft.value.sheet, draft.value.level).value)
 const { campaignId } = useCampaignBoard()
 const post = useAnnounce()
 const sheet = computed(() => draft.value.sheet)
@@ -336,13 +338,13 @@ const effectRows = computed(() =>
     </div>
 
     <dl class="apm__vitals">
-      <div class="apm__armor" :title="`Defend reduces a hit by your Armor (${sheet.ac})`">
+      <div class="apm__armor" :title="`Defend reduces a hit by your Armor (${armor})`">
         <dt class="sr-only">Armor</dt>
         <dd>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 2.5 4 5.5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10v-6Z" />
           </svg>
-          <span>{{ sheet.ac }}</span>
+          <span>{{ armor }}</span>
         </dd>
       </div>
       <div class="apm__hp" :class="{ 'is-low': sheet.hp * 2 <= sheet.hpMax }">
@@ -690,6 +692,7 @@ const effectRows = computed(() =>
                         :disabled="!canEdit"
                         @set="setUpcast(a.spell, $event)"
                       />
+                      <NimbleTargetNeed :spell="a.spell" />
                       <button
                         type="button"
                         class="btn btn--sm btn--wrap"
@@ -1144,6 +1147,7 @@ const effectRows = computed(() =>
                 <small>{{ s.cast }}</small>
                 <p>{{ s.desc }}</p>
                 <NimbleModifiers :target="s.name" />
+                <NimbleTargetNeed :spell="s" />
                 <NimbleUpcast
                   v-if="s.canUpcast"
                   :name="s.name"
@@ -1179,8 +1183,10 @@ const effectRows = computed(() =>
                     :key="a.key"
                     type="button"
                     class="btn btn--ghost btn--sm btn--wrap"
-                    :disabled="!canEdit || s.busy || s.noActions || !!s.notNow || !!a.why"
-                    :title="s.notNow || a.why || undefined"
+                    :disabled="
+                      !canEdit || (!a.free && (s.busy || s.noActions || !!s.notNow)) || !!a.why
+                    "
+                    :title="(!a.free && s.notNow) || a.why || undefined"
                     @click="cast(s, false, a.key)"
                   >
                     {{ a.why || a.label }}

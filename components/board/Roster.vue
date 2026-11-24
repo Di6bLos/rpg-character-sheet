@@ -2,6 +2,7 @@
 // Party roster cards: HP, temp HP, conditions; Nimble gets single-column long
 // cards with wounds, mana, armor, actions and concentration.
 import type { GameSystem, RosterEntry } from '~/types'
+import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 
 const props = defineProps<{
@@ -140,7 +141,7 @@ function actions(r: RosterEntry) {
           </div>
           <div class="stats">
             <div>
-              <b>{{ r.summary?.ac ?? '—' }}</b
+              <b>{{ heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level) ?? '—' }}</b
               ><span>AC</span>
             </div>
             <div>
@@ -253,7 +254,7 @@ function actions(r: RosterEntry) {
               >
                 <path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z" />
               </svg>
-              <b>{{ r.summary?.ac ?? '—' }}</b>
+              <b>{{ heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level) ?? '—' }}</b>
               <span class="caps">Armor</span>
             </div>
             <div

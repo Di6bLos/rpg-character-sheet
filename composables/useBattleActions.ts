@@ -145,19 +145,23 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
         // Summoning spells: exactly the Summons panel's card (its `blocked`, then At the max).
         // Others: exactly SpellCard's cast button (notNow, needs, busy, no actions, short).
         const summon = summonOf.get(s.name)
+        // A free cast (Firebrand after rolling Initiative) skips the turn and action checks.
+        const free = s.alts.find((a) => a.free && !a.why)
         const unavailable = summon
           ? summon.blocked || (full(summon.summon) ? 'At the max' : '')
-          : s.notNow ||
-            s.needs ||
-            (s.busy
-              ? 'Finish casting first'
-              : s.noActions
-                ? 'No actions left'
-                : s.short
-                  ? s.usesMinions
-                    ? `Needs ${s.cost}`
-                    : 'Not enough mana'
-                  : '')
+          : free
+            ? s.needs
+            : s.notNow ||
+              s.needs ||
+              (s.busy
+                ? 'Finish casting first'
+                : s.noActions
+                  ? 'No actions left'
+                  : s.short
+                    ? s.usesMinions
+                      ? `Needs ${s.cost}`
+                      : 'Not enough mana'
+                    : '')
         return {
           ...base,
           ...fields(s),
@@ -168,7 +172,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
           detail: RANGE.exec(s.desc)?.[0] ?? '',
           offTurn: waiting.value && unavailable === '',
           unavailable,
-          use: () => spells.cast(s),
+          use: free ? () => spells.cast(s, false, free.key) : () => spells.cast(s),
         }
       })
     const reacts = spells.reactionSpells.value.map((s) => ({

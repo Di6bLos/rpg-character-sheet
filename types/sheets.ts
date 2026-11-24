@@ -342,7 +342,15 @@ export interface NimbleSheet extends SheetCommon {
    * A load compares it with the tracker to tell a new fight, or one that ended, from the same.
    */
   gmCombatant?: string
-  effects: { condition: string; source: string; ends: string[]; skip?: number; tempHp?: number }[]
+  effects: {
+    condition: string
+    source: string
+    ends: string[]
+    skip?: number
+    tempHp?: number
+    /** Tiers the spell was upcast by, for effects that grow with it (Enchant Weapon). */
+    upcast?: number
+  }[]
   attacks: NimbleAttack[]
   skills: NimbleSkill[]
   abilities: NimbleAbility[]

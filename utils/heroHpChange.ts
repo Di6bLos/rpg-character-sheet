@@ -1,6 +1,7 @@
 import type { HeroHpChange } from '~/types'
 import type { NimbleSheet } from '~/types/sheets'
 import { heal, takeDamage } from '~/utils/nimblePlay'
+import { wardedDamage } from '~/utils/nimbleConditions'
 
 type Change = Pick<HeroHpChange, 'id' | 'amount' | 'crit'>
 
@@ -27,9 +28,10 @@ export function applyHpChange(sheet: NimbleSheet, level: number, change: Change)
   const n = Math.abs(Math.floor(change.amount))
   if (!n) return ''
   if (change.amount < 0) {
-    const notes = takeDamage(sheet, n, level, change.crit)
+    const ward = wardedDamage(sheet, n)
+    const notes = takeDamage(sheet, ward.taken, level, change.crit)
     const crit = change.crit ? ' (crit)' : ''
-    return `GM: took ${n} damage${crit}: ${sheet.hp}/${sheet.hpMax} HP.${notes ? ` ${notes}` : ''}`
+    return `GM: took ${ward.taken} damage${crit}: ${sheet.hp}/${sheet.hpMax} HP.${ward.note}${notes ? ` ${notes}` : ''}`
   }
   heal(sheet, n)
   return `GM: healed ${n}: ${sheet.hp}/${sheet.hpMax} HP.`

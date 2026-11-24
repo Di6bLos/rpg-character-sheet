@@ -6,6 +6,7 @@ import { spellByName } from '~/data/nimble/spells'
 import type { InventoryItem, NimbleAbility, NimbleSheet, NimbleStat } from '~/types/sheets'
 import {
   quietly,
+  rollDice,
   rollDie,
   showDice,
   showOutcome,
@@ -25,9 +26,12 @@ import {
   INCAPACITATED,
   clearConditionsAt,
   dazedAtTurnStart,
-  spendHelp,
+  removeCondition,
+  statusFromSpell,
+  statusStats,
 } from '~/utils/nimbleConditions'
 import { armorHit, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
+import { weaponEnchantment } from '~/utils/nimbleSpellRules'
 import {
   applyCastEffect,
   applyMishapEffect,
@@ -63,11 +67,28 @@ export function turnActionsFor(abilityNames: string[], dying: boolean): number {
   return windborne ? 4 : 3
 }
 
+/** Another hero's actions per turn from their roster summary, with their spell statuses'. */
+export function heroTurnActions(
+  abilityNames: string[],
+  dying: boolean,
+  conditions: string[] = [],
+): number {
+  return turnActionsFor(abilityNames, dying) + statusStats({ conditions, effects: [] }).actions
+}
+
 export function turnActions(sheet: NimbleSheet): number {
-  return turnActionsFor(
-    sheet.abilities.map((a) => a.name),
-    !!sheet.dying,
+  return (
+    turnActionsFor(
+      sheet.abilities.map((a) => a.name),
+      !!sheet.dying,
+    ) + statusStats(sheet).actions
   )
+}
+
+/** Armor with spell statuses that add to it (Electrocharge +5, Dragonform LVL Armor). */
+export function armorNow(sheet: NimbleSheet, level: number): { value: number; notes: string[] } {
+  const stats = statusStats(sheet, level)
+  return { value: sheet.ac + stats.armor, notes: stats.armorNotes }
 }
 
 /** Attacking while Dying calls for a DC 10 STR save, unless Enduring Rage waives it. */
@@ -335,13 +356,30 @@ function critTaken(sheet: NimbleSheet, level: number): string {
   return notes.length ? ` ${notes.join(' ')}` : ''
 }
 
+/**
+ * Concentration ends: the effects it held end, and so does a status the hero gave
+ * themselves with that spell (Electrocharge, Fly → Flying).
+ */
+export function endConcentration(sheet: NimbleSheet): string {
+  const spell = sheet.concentration.trim()
+  sheet.concentration = ''
+  if (!spell) return ''
+  let notes = endEffects(sheet, 'concentration')
+  const status = statusFromSpell(spell)
+  if (status && sheet.conditions.includes(status)) {
+    removeCondition(sheet, status)
+    notes += ` ${status} ends with your Concentration.`
+  }
+  return notes
+}
+
 /** What dropping to 0 HP ends: concentration, Rage and 0-HP effects. */
 function downed(sheet: NimbleSheet): string {
   const hadFocus = sheet.concentration.trim() !== ''
-  sheet.concentration = ''
+  const focus = endConcentration(sheet)
   const rageEnds = sheet.resource.active && !hasAbility(sheet, 'Deep Rage')
   if (rageEnds) endRage(sheet)
-  const lost = endEffects(sheet, 'zeroHp') + (hadFocus ? endEffects(sheet, 'concentration') : '')
+  const lost = endEffects(sheet, 'zeroHp') + focus
   return `${hadFocus ? ' Concentration broken.' : ''}${rageEnds ? ' Your Rage ends.' : ''}${lost}`
 }
 
@@ -395,6 +433,11 @@ export function attackBonus(
       flat += stat(kinetic) * misses
       notes.push(`${name} +${stat(kinetic) * misses}`)
     }
+  }
+  const enchanted = weaponEnchantment(sheet)
+  if (enchanted?.damage) {
+    flat += enchanted.damage
+    notes.push(`${enchanted.spell} +${enchanted.damage}`)
   }
   return { flat, notes }
 }
@@ -813,16 +856,20 @@ function summonsGone(names: string[]): string {
 }
 
 const NOT_CASTING = { spell: '', actions: 0 }
+/** Dragonform: "Gain 3 actions" once the form takes hold. */
+const SPELL_GAINS_ACTIONS = /\bGain (\d+) actions\b/
 
 /** Concentration starts once the spell is fully cast. */
 function finishCasting(sheet: NimbleSheet, spell: string, level: number, at?: number): string {
   if (sheet.casting.spell === spell) sheet.casting = { ...NOT_CASTING }
   const def = spellByName(spell)
   const concentrates = /\bConcentration\b/.test(def?.desc ?? '')
-  const dropped = concentrates && sheet.concentration ? endEffects(sheet, 'concentration') : ''
+  const dropped = concentrates && sheet.concentration ? endConcentration(sheet) : ''
   const summoned = summonFromSpell(sheet, level, spell, at)
   const status = applyCastEffect(sheet, level, spell, Math.max(0, (at ?? 0) - (def?.tier ?? 0)))
-  const summon = `${summoned ? ` ${summoned}` : ''}${status}`
+  const gain = Number(SPELL_GAINS_ACTIONS.exec(def?.desc ?? '')?.[1] ?? 0)
+  const actions = gain ? ` ${gainAction(sheet, gain)}` : ''
+  const summon = `${summoned ? ` ${summoned}` : ''}${status}${actions}`
   if (!concentrates) return summon
   sheet.concentration = spell
   return `${dropped} Concentrating.${summon}`
@@ -917,6 +964,7 @@ export function endTurn(sheet: NimbleSheet, level: number): string {
   sheet.rushed = 0
   sheet.reactionsUsed = []
   const stolen = settleStolen(sheet)
+  for (const c of initiativeCasts(sheet)) sheet.uses[`${c.spell}~ready`] = { used: 0 }
   const n = turnActions(sheet)
   const recharged = refillResource(sheet, level, 'turnEnd')
   const ended = endEffects(sheet, 'turnEnd') + clearConditionsAt(sheet, 'turnEnd')
@@ -1390,6 +1438,112 @@ function expireGrants(sheet: NimbleSheet): string {
   return lost.length ? ` Unspent Initiative uses lost: ${lost.join(', ')}.` : ''
 }
 
+/**
+ * An order's upgrade from another ability's "Order (Upgrade): text." line, as the
+ * Spellblade's Empowered Orders lists them ("Face Me! (Glimmering Decree): …").
+ */
+export function orderUpgrade(
+  sheet: NimbleSheet,
+  order: string,
+): { name: string; text: string } | null {
+  const name = order.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const line = new RegExp(`(?:^|\\. )${name} \\(([^)]+)\\): ([^.]+)\\.`)
+  for (const a of sheet.abilities) {
+    const m = line.exec(a.desc)
+    if (m) return { name: m[1]!, text: m[2]! }
+  }
+  return null
+}
+
+const FOE_DAMAGE =
+  /\bthe enemy also takes (STR|DEX|INT|WIL) d(\d+) (\w+) damage( \(ignoring armor\))?/
+const THAT_MUCH = /\bthat (?:much|many)\b/
+const COMBAT_DIE_MAX = /\bequal to the max value of your Combat Die\b/
+
+/**
+ * What an order's upgrade adds when the order is used, with its numbers filled in:
+ * Glimmering Decree's damage rolled, "that many" temp HP (Crystalline Armor) or "that
+ * much" fire (Rising Phoenix) as `amount`, Withering Strike's Combat Die max as `die`.
+ */
+export function orderUpgradeNote(
+  sheet: NimbleSheet,
+  order: string,
+  opts: { amount?: number; die?: number } = {},
+  rng: Rng = Math.random,
+): string {
+  const up = orderUpgrade(sheet, order)
+  if (!up) return ''
+  let text = up.text
+  const foe = FOE_DAMAGE.exec(text)
+  if (foe) {
+    const count = Math.max(0, sheet.stats[foe[1] as NimbleStat])
+    const sides = Number(foe[2])
+    const ignoring = foe[4] ? ', ignoring armor' : ''
+    if (sheet.ownDice) {
+      text = text.replace(
+        FOE_DAMAGE,
+        `the enemy also takes ${count}d${sides} ${foe[3]} damage (roll it yourself${ignoring})`,
+      )
+    } else {
+      const r = rollDice({ count, sides, mod: 0 }, rng)
+      text = text.replace(
+        FOE_DAMAGE,
+        `the enemy also takes ${r.total} ${foe[3]} damage (${count}d${sides}: ${r.rolls.join(', ')}${ignoring})`,
+      )
+      showOutcome({ label: up.name, total: r.total, detail: `${up.name}: ${text}.` })
+    }
+  }
+  if (opts.amount !== undefined) text = text.replace(THAT_MUCH, String(opts.amount))
+  if (opts.die) text = text.replace(COMBAT_DIE_MAX, `of ${opts.die} (your Combat Die's max)`)
+  return ` ${up.name}: ${text}.`
+}
+
+/**
+ * "Expend any number of Hit Dice and set your HP to the sum rolled" (I Can Do This
+ * ALL DAY!): rolls them one at a time until the sum reaches max HP or none are left.
+ */
+export function hitDiceToHp(
+  sheet: NimbleSheet,
+  rng: Rng = Math.random,
+): { total: number; message: string } {
+  if (sheet.ownDice)
+    return {
+      total: 0,
+      message: ` Expend Hit Dice (d${sheet.hitDie}, ${hitDiceLeft(sheet)} left), roll them, and set your HP to the sum (no STR).`,
+    }
+  const dice: number[] = []
+  let total = 0
+  while (hitDiceLeft(sheet) > 0 && total < sheet.hpMax) {
+    const d = rollDie(sheet.hitDie, rng)
+    dice.push(d)
+    total += d
+    sheet.hitDiceUsed += 1
+  }
+  if (!dice.length) return { total: 0, message: ' No Hit Dice left.' }
+  sheet.hp = Math.min(sheet.hpMax, total)
+  if (sheet.hp > 0) sheet.dying = false
+  showOutcome({ label: 'Hit Dice', total: sheet.hp, detail: `HP set to ${sheet.hp}.` })
+  return {
+    total,
+    message: ` Expended ${dice.length} Hit ${dice.length === 1 ? 'Die' : 'Dice'} (${dice.join(', ')}): HP set to ${sheet.hp}.`,
+  }
+}
+
+const INITIATIVE_CAST = /\bWhen you roll Initiative you may cast ([A-Z][\w ]+?) for free\b/
+
+/** Spells an ability casts for free when Initiative is rolled (Firebrand: Enchant Weapon). */
+export function initiativeCasts(sheet: NimbleSheet): { spell: string; ability: string }[] {
+  return sheet.abilities.flatMap((a) => {
+    const spell = INITIATIVE_CAST.exec(a.desc)?.[1]
+    return spell ? [{ spell, ability: abilityBaseName(a.name) }] : []
+  })
+}
+
+/** Whether that free cast is still open: from rolling Initiative to the end of your first turn. */
+export function initiativeCastReady(sheet: NimbleSheet, spell: string): boolean {
+  return !!sheet.uses[`${spell}~ready`]?.used
+}
+
 const REMINDER =
   /\bWhen you roll Initiative(?: or [^,]+)?,? (?:you may )?(?!regain\b|gain (?:STR|DEX|INT|WIL)\b|give yourself and an ally advantage)([^.]+)\./
 
@@ -1401,8 +1555,13 @@ function initiativeReminders(sheet: NimbleSheet): string {
   const moveIt = sheet.abilities.find((a) =>
     /\bgive yourself and an ally advantage on the roll and \+3 speed\b/.test(a.desc),
   )
-  if (moveIt)
-    lines.push(`${abilityBaseName(moveIt.name)}: you and an ally get +3 speed for 1 round`)
+  if (moveIt) {
+    const name = abilityBaseName(moveIt.name)
+    const up = orderUpgrade(sheet, name)
+    lines.push(
+      `${name}: you and an ally get +3 speed for 1 round${up ? ` (${up.name}: ${up.text})` : ''}`,
+    )
+  }
   return lines.length ? ` You may: ${lines.join('; ')}.` : ''
 }
 
@@ -1535,6 +1694,7 @@ export function initiativeRoll(
   // Classic initiative only orders the turns: every hero starts with full actions.
   const start = sheet.classicInitiative ? max : initiativeActions(roll, natural, max)
   sheet.actionsSpent = max - start
+  for (const c of initiativeCasts(sheet)) sheet.uses[`${c.spell}~ready`] = { used: 1 }
   const extra = [
     cheat ? ` Cheat: ${rolled} raised to 10.` : '',
     grantSoulDice(sheet, start),
@@ -1976,7 +2136,9 @@ export function skillCheck(
     odds -= 1
     reasons.push('Helped')
   }
-  const help = helped ? spendHelp(sheet) : ''
+  // Only Helped: True Strike's advantage is for an attack.
+  if (helped) removeCondition(sheet, 'Helped')
+  const help = helped ? ' Help used.' : ''
   const steps = Math.abs(odds)
   const how = odds
     ? ` with ${steps > 1 ? `${steps}× ` : ''}${odds > 0 ? 'disadvantage' : 'advantage'}${reasons.length ? ` (${reasons.join(', ')})` : ''}`
