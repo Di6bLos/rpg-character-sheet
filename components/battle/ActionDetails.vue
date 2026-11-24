@@ -23,7 +23,9 @@ const odds = computed(() => oddsLine(a.value.odds))
 const facts = computed(() =>
   [
     a.value.dice ? { value: a.value.dice, label: 'Damage' } : null,
-    { value: String(a.value.actions), label: a.value.actions === 1 ? 'Action' : 'Actions' },
+    a.value.actions === 0
+      ? { value: 'No action', label: 'Cost' }
+      : { value: String(a.value.actions), label: a.value.actions === 1 ? 'Action' : 'Actions' },
     a.value.mana ? { value: String(a.value.mana), label: 'Mana' } : null,
   ].filter((f) => f !== null),
 )
@@ -39,7 +41,7 @@ function use() {
 }
 
 function pick(choice: BattleChoice) {
-  if (props.readonly || choice.unavailable !== '') return
+  if (props.readonly || a.value.unavailable !== '' || choice.unavailable !== '') return
   choice.use()
   close()
 }
@@ -96,11 +98,11 @@ const swipe = computed(() =>
           :key="c.key"
           type="button"
           class="det__pick"
-          :aria-disabled="readonly || c.unavailable !== '' || undefined"
+          :aria-disabled="readonly || a.unavailable !== '' || c.unavailable !== '' || undefined"
           @click="pick(c)"
         >
           <span>{{ c.label }}</span>
-          <small v-if="c.unavailable">{{ c.unavailable }}</small>
+          <small v-if="a.unavailable || c.unavailable">{{ a.unavailable || c.unavailable }}</small>
         </button>
       </div>
       <template v-else>

@@ -44,7 +44,8 @@ async function whisper() {
   if (!to) return
   chat.open(to)
   commsTab.value = 'chat'
-  right.showChat()
+  // The phone has no right column (its frame shows Chat on `whisper`): keep the saved one.
+  if (!props.sheet) right.showChat()
   characterId.value = null
   emit('whisper')
   // After the dialog closes (and hands focus back), put the cursor in the message box.

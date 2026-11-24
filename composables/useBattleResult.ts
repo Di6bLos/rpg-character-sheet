@@ -30,7 +30,7 @@ function create(): BattleResult {
 }
 
 /**
- * Created once per hero sheet editor on the battle board (HeroEditor), so the result
+ * Created once by HeroScope (reset when the hero changes), so the result
  * outlives a tab switch or a frame change (rotation) and every panel reads the same one.
  */
 export function provideBattleResult(): BattleResult {

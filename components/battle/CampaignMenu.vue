@@ -9,6 +9,7 @@ const emit = defineEmits<{ navigate: [] }>()
 
 const { campaign, isGm, gmControls } = useCampaignBoard()
 const { meta, switchable, switchTo, myOptions, seat } = useBoardNav()
+const { touch } = useBoardLayout()
 </script>
 
 <template>
@@ -16,7 +17,12 @@ const { meta, switchable, switchTo, myOptions, seat } = useBoardNav()
     <span class="bar__eyebrow">{{ gmControls ? 'GM console' : 'Campaign board' }}</span>
     <span class="small muted">{{ meta }}</span>
   </div>
-  <nav v-if="campaign && switchable.length > 1" aria-label="Campaign" class="bar__switch">
+  <nav
+    v-if="campaign && switchable.length > 1"
+    aria-label="Campaign"
+    class="bar__switch"
+    :class="{ 'bar__switch--touch': touch }"
+  >
     <NuxtLink
       v-for="c in switchable"
       :key="c.id"
@@ -82,5 +88,9 @@ const { meta, switchable, switchTo, myOptions, seat } = useBoardNav()
       box-shadow: inset 3px 0 0 var(--accent);
     }
   }
+}
+
+.bar__switch--touch a {
+  min-height: 44px;
 }
 </style>

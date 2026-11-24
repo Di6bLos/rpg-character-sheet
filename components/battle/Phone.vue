@@ -57,7 +57,7 @@ watch(tab, () => {
   <div
     class="phone"
     data-track-area="Phone board"
-    :style="keyboard && viewport ? { height: `${viewport}px` } : undefined"
+    :style="keyboard && viewport ? { height: `${viewport}px`, flex: 'none' } : undefined"
   >
     <BattlePhoneBar :init="init" :role="role">
       <template v-if="$slots.tools" #tools><slot name="tools" /></template>
@@ -93,7 +93,10 @@ watch(tab, () => {
 <style scoped lang="scss">
 .phone {
   position: relative;
-  height: 100dvh;
+  // Fills what the layout leaves (a suspended banner takes its height off the top); the
+  // open keyboard sets an exact height inline instead.
+  flex: 1 1 0;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;

@@ -134,6 +134,19 @@ watch(
   min-height: 0;
   height: 100dvh;
   overflow: hidden;
+
+  // Whatever sits above the board (the suspended banner) takes its height from it.
+  .shell__main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    // The board's frame (board/Shell) fills it, and the phone frame fills that.
+    > :deep(.page) {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+  }
 }
 
 .skip {
