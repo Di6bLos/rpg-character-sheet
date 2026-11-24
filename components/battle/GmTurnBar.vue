@@ -224,6 +224,11 @@ const hasOrder = computed(() => order.value.length > 0)
   padding: 0 10px;
   font-size: 18px;
   line-height: 1;
+
+  // Touch (useBoardLayout's query): a 44px target, as tall as main.scss makes it.
+  @media (hover: none) and (pointer: coarse) {
+    min-width: 44px;
+  }
 }
 
 .gtb__menu {

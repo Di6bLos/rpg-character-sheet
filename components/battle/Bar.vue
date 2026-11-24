@@ -10,6 +10,10 @@
 // badge) and Scribe; then "Sheet ↗" for players, or the GM's ⋯ menu (GmPhoneMenu:
 // Previous turn, the encounter tools, the initiative rules and End encounter). Next turn
 // and New round are on the GM's turn bar there.
+// On tablet-wide (`compact`, 1024–1199px) the desktop bar is tighter: Maps for Maps &
+// images, the GM's Prev, New round and End encounter as short buttons (named in full for
+// screen readers and in their tooltips). On touch (tablet-wide and touch desktops) its
+// controls grow to 44px targets.
 import type { useInitiative } from '~/composables/useInitiative'
 import type { DrawerTab } from '~/composables/useBattleRight'
 import { plural } from '~/utils/format'
@@ -20,6 +24,8 @@ const props = withDefaults(
     variant?: 'desktop' | 'tablet'
     /** Tablet: the Scribe is open to this user (the frame checks, useLoreAvailable). */
     scribe?: boolean
+    /** Desktop variant on tablet-wide (1024–1199px): tighter, with shorter labels. */
+    compact?: boolean
   }>(),
   { variant: 'desktop' },
 )
@@ -27,15 +33,15 @@ const props = withDefaults(
 const { campaign, gmControls, base } = useCampaignBoard()
 const { tabs, isCurrent } = useBoardNav()
 const tablet = computed(() => props.variant === 'tablet')
+const { touch } = useBoardLayout()
 
 /** The tabs on the bar: the tablet's leave Party (classic) to the campaign menu. */
-const barTabs = computed(() =>
-  tablet.value
-    ? tabs.value
-        .filter((t) => t.id !== 'party')
-        .map((t) => (t.id === 'maps' ? { ...t, label: 'Maps' } : t))
-    : tabs.value,
-)
+const barTabs = computed(() => {
+  const shown = tablet.value ? tabs.value.filter((t) => t.id !== 'party') : tabs.value
+  return tablet.value || props.compact
+    ? shown.map((t) => (t.id === 'maps' ? { ...t, label: 'Maps' } : t))
+    : shown
+})
 const partyTab = computed(() => tabs.value.find((t) => t.id === 'party'))
 
 // --- Tablet: the drawer's buttons ----------------------------------------------------------
@@ -77,7 +83,12 @@ const endOpen = ref(false)
     v-if="campaign"
     class="bar"
     data-track-area="Top bar"
-    :class="{ 'bar--gm': gmControls, 'bar--tablet': tablet }"
+    :class="{
+      'bar--gm': gmControls,
+      'bar--tablet': tablet,
+      'bar--compact': compact && !tablet,
+      'bar--touch': touch && !tablet,
+    }"
   >
     <div ref="menuEl" class="bar__camp" @keydown.esc="closeMenu(true)">
       <!-- GM: the name opens Table (invites, session, players); on a tablet, the menu. -->
@@ -210,10 +221,11 @@ const endOpen = ref(false)
         type="button"
         class="btn btn--ghost btn--sm"
         title="Previous turn"
+        :aria-label="compact ? 'Previous turn' : undefined"
         :disabled="!init.turnId.value"
         @click="init.prevTurn"
       >
-        ◀ Prev
+        {{ compact ? '◀' : '◀ Prev' }}
       </button>
       <button type="button" class="btn btn--sm" :disabled="!hasOrder" @click="init.nextTurn">
         Next turn ▶
@@ -222,18 +234,21 @@ const endOpen = ref(false)
         type="button"
         class="btn btn--ghost btn--sm"
         :title="`Start round ${init.round.value + 1} from the top of the order`"
+        :aria-label="compact ? 'New round' : undefined"
         :disabled="!init.turnId.value"
         @click="init.newRound"
       >
-        New round ⟳
+        {{ compact ? '⟳' : 'New round ⟳' }}
       </button>
       <button
         type="button"
         class="btn btn--danger btn--sm"
+        :title="compact ? 'End encounter' : undefined"
+        :aria-label="compact ? 'End encounter' : undefined"
         :disabled="!hasOrder"
         @click="endOpen = true"
       >
-        End encounter
+        {{ compact ? 'End' : 'End encounter' }}
       </button>
     </div>
     <NuxtLink
@@ -417,6 +432,42 @@ const endOpen = ref(false)
   .bar__round {
     flex: 0 1 auto;
     padding: 0 10px;
+  }
+}
+
+// --- Compact (desktop bar on tablet-wide) ---------------------------------------------------
+.bar--compact {
+  gap: 10px;
+  padding: 4px 16px;
+
+  // The name shrinks with its box (ellipsis) rather than running under the tabs.
+  .bar__title {
+    max-width: min(220px, 100%);
+  }
+
+  .bar__tabs a {
+    padding: 0 10px;
+  }
+
+  .bar__round {
+    flex: 0 1 auto;
+    padding: 0 10px;
+  }
+}
+
+// --- Touch (desktop bar) -------------------------------------------------------------------
+// 44px targets for the title, tabs, the GM's turn buttons and Open full sheet.
+.bar--touch {
+  gap: 12px;
+
+  .bar__title,
+  .bar__tabs a,
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn {
+    min-width: 44px;
   }
 }
 

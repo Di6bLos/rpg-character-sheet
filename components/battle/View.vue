@@ -13,6 +13,8 @@ const { campaign, campaignId, isGm, gmControls, roster, base } = useCampaignBoar
 const { layout } = useBoardLayout()
 const phone = computed(() => layout.value === 'phone')
 const tablet = computed(() => layout.value === 'tablet')
+/** Tablet landscape (1024–1199px): the desktop board, tighter (three tiles per row). */
+const wide = computed(() => layout.value === 'tablet-wide')
 /** The phone frame's open tab and tab switch (its exposed `tab` and `go`). */
 const phoneFrame = ref<{ tab: PhoneTab; go: (tab: PhoneTab) => void } | null>(null)
 const snackbar = useSnackbarStore()
@@ -264,7 +266,7 @@ function onGridHero(characterId: string) {
       <template #centre>
         <template v-if="hero">
           <BattleTurnBar :init="init" />
-          <BattleActions />
+          <BattleActions :cols="wide ? 3 : undefined" />
         </template>
         <template v-else-if="gmControls">
           <BattleGmTurnBar :init="init" :roster="roster" />

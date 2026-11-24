@@ -1,11 +1,12 @@
 <script setup lang="ts">
-// Desktop battle board frame (Nimble, 1200px+): the one-line bar, the initiative
-// strip and three columns that fill the viewport under the app nav. Only the
+// Desktop battle board frame (Nimble, 1024px+): the one-line bar, the initiative
+// strip and three columns that fill the viewport under the app nav. On tablet-wide
+// (1024–1199px) it is tighter: side columns 270px and 290px by default, lower drag
+// minimums and a 400px centre (useBattleLeft / useBattleRight, utils/battleColumns). Only the
 // columns scroll; the page itself never does. For players the whole board sits inside
 // the seated hero's sheet editor (HeroScope, in View, above the frame switch).
 import type { useInitiative } from '~/composables/useInitiative'
-import { LEFT_WIDTH } from '~/composables/useBattleLeft'
-import { RIGHT_WIDTH } from '~/composables/useBattleRight'
+import { CENTRE_MIN } from '~/utils/battleColumns'
 
 defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -21,16 +22,19 @@ defineSlots<{
 }>()
 
 const { gmControls } = useCampaignBoard()
-// On touch the columns have no splitters or rail: both stay open at their saved widths.
-const { touch } = useBoardLayout()
+// On touch the columns have no splitters or rail: both stay open, at their saved widths on
+// a desktop and at the fixed 270px / 290px on tablet-wide.
+const { layout, touch } = useBoardLayout()
+const wide = computed(() => layout.value === 'tablet-wide')
 const left = useBattleLeft()
 const right = useBattleRight()
 
 // Both side columns are dragged on their inner edge, all the way to closed (a rail) and
-// back (`useColumnHandle`). Neither squeezes the centre column below CENTRE_MIN; the
-// CSS caps them the same way when the window shrinks. Each handle stays one element
-// while its column opens and closes, so a drag carries on through the snap.
-const CENTRE_MIN = 460
+// back (`useColumnHandle`). Neither squeezes the centre column below its minimum (460px,
+// 400px on tablet-wide); the CSS caps them the same way when the window shrinks. Each
+// handle stays one element while its column opens and closes, so a drag carries on
+// through the snap.
+const centreMin = computed(() => (wide.value ? CENTRE_MIN.wide : CENTRE_MIN.desktop))
 const cols = ref<HTMLElement | null>(null)
 const leftEl = ref<HTMLElement | null>(null)
 const rightEl = ref<HTMLElement | null>(null)
@@ -41,18 +45,18 @@ const leftWidth = computed(() => left.widthFor(gmControls.value))
 /** How wide `el` may grow now: its width plus what the centre has beyond its minimum. */
 function growLimit(el: HTMLElement | null, max: number) {
   const centre = cols.value?.querySelector<HTMLElement>('.battle__col--centre')
-  const centreNow = centre?.getBoundingClientRect().width ?? CENTRE_MIN
+  const centreNow = centre?.getBoundingClientRect().width ?? centreMin.value
   const now = el?.getBoundingClientRect().width ?? 0
-  return Math.min(max, now + centreNow - CENTRE_MIN)
+  return Math.min(max, now + centreNow - centreMin.value)
 }
 
 const leftHandle = useColumnHandle({
   side: 'left',
-  bounds: LEFT_WIDTH,
+  bounds: left.bounds,
   open: () => leftOpen.value,
   width: () => leftWidth.value,
   measure: () => leftEl.value?.getBoundingClientRect().width ?? leftWidth.value,
-  limit: () => growLimit(leftEl.value, LEFT_WIDTH.max),
+  limit: () => growLimit(leftEl.value, left.bounds.value.max),
   setOpen: left.setColumn,
   setWidth: left.setWidth,
   closeAt: left.closeAt,
@@ -61,11 +65,11 @@ const leftHandle = useColumnHandle({
 
 const rightHandle = useColumnHandle({
   side: 'right',
-  bounds: RIGHT_WIDTH,
+  bounds: right.bounds,
   open: () => open.value,
-  width: () => right.state.value.width,
-  measure: () => rightEl.value?.getBoundingClientRect().width ?? right.state.value.width,
-  limit: () => growLimit(rightEl.value, RIGHT_WIDTH.max),
+  width: () => right.width.value,
+  measure: () => rightEl.value?.getBoundingClientRect().width ?? right.width.value,
+  limit: () => growLimit(rightEl.value, right.bounds.value.max),
   setOpen: right.setColumn,
   setWidth: right.setWidth,
   closeAt: right.closeAt,
@@ -93,10 +97,17 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
     :style="{
       ...(top ? { '--battle-top': `${top}px` } : {}),
       '--battle-left': leftOpen ? `${leftWidth}px` : 'var(--battle-rail)',
-      '--battle-right': open ? `${right.state.value.width}px` : 'var(--battle-rail)',
+      '--battle-right': open ? `${right.width.value}px` : 'var(--battle-rail)',
+      ...(wide
+        ? {
+            '--battle-left-min': `${left.bounds.value.min}px`,
+            '--battle-right-min': `${right.bounds.value.min}px`,
+            '--battle-centre-min': `${centreMin}px`,
+          }
+        : {}),
     }"
   >
-    <BattleBar :init="init" />
+    <BattleBar :init="init" :compact="wide" />
     <div v-if="$slots.strip" class="battle__strip">
       <slot name="strip" />
     </div>
@@ -114,7 +125,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
           "
           :value="leftOpen ? leftWidth : 0"
           :min="0"
-          :max="LEFT_WIDTH.max"
+          :max="left.bounds.value.max"
           @move="leftHandle.onMove"
           @key="leftHandle.onKey"
           @drop="leftHandle.onDrop"
@@ -137,9 +148,9 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
               ? 'Resize party and chat: drag, or click to close'
               : 'Party and chat are closed: click or drag left to open'
           "
-          :value="open ? right.state.value.width : 0"
+          :value="open ? right.width.value : 0"
           :min="0"
-          :max="RIGHT_WIDTH.max"
+          :max="right.bounds.value.max"
           @move="rightHandle.onMove"
           @key="rightHandle.onKey"
           @drop="rightHandle.onDrop"
@@ -177,11 +188,23 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
   flex: 1 1 0;
   display: grid;
   // Each side column is as wide as dragged (or the rail), but never leaves the centre
-  // under 460px: 28px is the two gaps.
+  // under 460px (tablet-wide: 400px and lower minimums, set inline): 28px is the two gaps.
   grid-template-columns:
-    min(var(--battle-left), max(240px, calc(100% - var(--battle-right) - 28px - 460px)))
+    min(
+      var(--battle-left),
+      max(
+        var(--battle-left-min, 240px),
+        calc(100% - var(--battle-right) - 28px - var(--battle-centre-min, 460px))
+      )
+    )
     minmax(0, 1fr)
-    min(var(--battle-right), max(260px, calc(100% - var(--battle-left) - 28px - 460px)));
+    min(
+      var(--battle-right),
+      max(
+        var(--battle-right-min, 260px),
+        calc(100% - var(--battle-left) - 28px - var(--battle-centre-min, 460px))
+      )
+    );
   grid-template-rows: minmax(0, 1fr);
   gap: 14px;
   padding: 14px 20px 20px;

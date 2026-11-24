@@ -14,12 +14,16 @@ defineProps<{
    * and the tiles open their details as a bottom sheet instead of a popover.
    */
   sheet?: boolean
+  /** Tablet-wide (1024–1199px, desktop board): three tiles per row. */
+  cols?: 3
 }>()
 
 const FILTER_KEY = 'lantern-battle-filter'
 const FILTERS: ActionFilter[] = ['ready', 'all', 'attack', 'spell', 'react', 'ability']
 
 const { canEdit } = useSheet<NimbleSheet>()
+// On touch (tablet-wide, touch desktops) the filter chips and search are touch-sized too.
+const { touch } = useBoardLayout()
 const announce = useAnnounce()
 const { actions, onTurn, actionsLeft, mana, lastResult, lastDetail } = useBattleActions({
   onResult: announce,
@@ -71,7 +75,12 @@ const empty = computed(() =>
 <template>
   <section
     class="panel actions"
-    :class="{ 'actions--compact': compact, 'actions--sheet': sheet }"
+    :class="{
+      'actions--compact': compact,
+      'actions--sheet': sheet,
+      'actions--three': cols === 3,
+      'actions--touch': touch,
+    }"
     aria-labelledby="battle-actions-h"
   >
     <h2 id="battle-actions-h" class="sr-only">Actions</h2>
@@ -185,6 +194,11 @@ const empty = computed(() =>
   opacity: 0.85;
 }
 
+// --- Three per row (tablet-wide) ------------------------------------------------------------
+.actions--three .actions__tiles {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 // --- Compact (phone, tablet) -------------------------------------------------------------
 .actions--compact {
   padding: 12px;
@@ -192,9 +206,12 @@ const empty = computed(() =>
   .actions__tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  // One row of chips that scrolls sideways, the search after them; both touch-sized.
-  // The search is 16px so phones don't zoom in when it takes focus.
+// One row of chips that scrolls sideways, the search after them; both touch-sized.
+// The search is 16px so phones don't zoom in when it takes focus.
+.actions--compact,
+.actions--touch {
   :deep(.filters__chip) {
     min-height: 44px;
     padding: 0 14px;

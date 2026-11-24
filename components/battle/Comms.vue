@@ -28,6 +28,8 @@ const uid = useId()
 const right = useBattleRight()
 const { gmControls } = useCampaignBoard()
 const auth = useAuthStore()
+// On touch (the desktop board's right column: tablet-wide, touch desktops) 44px targets.
+const { touch } = useBoardLayout()
 // Chat closes when the Party / Chat handle is dragged to the bottom (only while the
 // Party has heroes to list, since that handle shows only then).
 const hasHeroes = computed(() =>
@@ -70,7 +72,11 @@ function onKey(event: KeyboardEvent) {
 <template>
   <section
     class="panel comms"
-    :class="{ 'comms--folded': !open, 'comms--compact': compact }"
+    :class="{
+      'comms--folded': !open,
+      'comms--compact': compact,
+      'comms--touch': touch && !compact,
+    }"
     :aria-label="only ? (current === 'lore' ? 'Scribe' : 'Chat') : 'Chat and Scribe'"
   >
     <div class="comms__head">
@@ -494,6 +500,36 @@ function onKey(event: KeyboardEvent) {
   .comms__pane--lore {
     padding: 8px 12px 10px;
 
+    :deep(textarea),
+    :deep(.lore__ask .btn) {
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
+}
+
+// --- Touch (desktop board) -------------------------------------------------------------
+// 44px targets in the right column; the message box is 16px so tablets don't zoom in.
+.comms--touch {
+  .comms__tabs button {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .comms__pane--chat {
+    :deep(.chat__tabs button),
+    :deep(.chat__toggle) {
+      min-height: 44px;
+    }
+
+    :deep(.chat__form .input),
+    :deep(.chat__form .btn) {
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
+
+  .comms__pane--lore {
     :deep(textarea),
     :deep(.lore__ask .btn) {
       min-height: 44px;

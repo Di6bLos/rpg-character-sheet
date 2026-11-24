@@ -4,13 +4,19 @@
  * between Party (top) and Chat (bottom). `split` is the Party's share: 0 closes the
  * Party to its header line, 1 closes Chat to a strip with the missed messages.
  * Remembered per browser. On a tablet in portrait there is no right column: Party, Chat and
- * Scribe open one at a time in a drawer (`drawer`, not remembered).
+ * Scribe open one at a time in a drawer (`drawer`, not remembered). On tablet-wide
+ * (1024–1199px) the column has its own default and dragged width (`wide`), so the desktop's
+ * stays as it was; with touch there it is fixed at the default.
  */
+import { WIDE_COLUMNS, clampWidth, columnWidth } from '~/utils/battleColumns'
+
 interface RightState {
   /** False: the column is closed to the rail. */
   column: boolean
-  /** The open column's width in px. */
+  /** The open column's width in px on desktop. */
   width: number
+  /** The open column's width in px on tablet-wide with a mouse; null: the default. */
+  wide: number | null
   split: number
 }
 
@@ -23,7 +29,12 @@ export const RIGHT_CLOSE_PX = 72
 export type DrawerTab = 'party' | 'chat' | 'scribe'
 
 const KEY = 'lantern:battle-right'
-const OPEN: RightState = { column: true, width: RIGHT_WIDTH.initial, split: RIGHT_SPLIT.initial }
+const OPEN: RightState = {
+  column: true,
+  width: RIGHT_WIDTH.initial,
+  wide: null,
+  split: RIGHT_SPLIT.initial,
+}
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
@@ -33,6 +44,7 @@ function load(): RightState {
     return {
       column: saved?.column ?? OPEN.column,
       width: typeof saved?.width === 'number' ? saved.width : OPEN.width,
+      wide: typeof saved?.wide === 'number' ? clampWidth(saved.wide, WIDE_COLUMNS.right) : null,
       split: typeof saved?.split === 'number' ? clamp(saved.split, 0, 1) : OPEN.split,
     }
   } catch {
@@ -43,7 +55,8 @@ function load(): RightState {
 export function useBattleRight() {
   const state = useState<RightState>('battle-right', load)
   const drawer = useState<DrawerTab | null>('battle-drawer', () => null)
-  const { layout } = useBoardLayout()
+  const { layout, touch } = useBoardLayout()
+  const wide = computed(() => layout.value === 'tablet-wide')
 
   function set(patch: Partial<RightState>, save = true) {
     state.value = { ...state.value, ...patch }
@@ -55,8 +68,27 @@ export function useBattleRight() {
     }
   }
 
+  /** The width patch for `px` in the current layout's own field. */
+  const sized = (px: number): Partial<RightState> =>
+    wide.value
+      ? { wide: clampWidth(px, WIDE_COLUMNS.right) }
+      : { width: Math.round(clamp(px, RIGHT_WIDTH.min, RIGHT_WIDTH.max)) }
+
   return {
     state: readonly(state),
+    /** The drag bounds for the current layout. */
+    bounds: computed(() => (wide.value ? WIDE_COLUMNS.right : RIGHT_WIDTH)),
+    /** The open column's width in the current layout. */
+    width: computed(() =>
+      columnWidth({
+        wide: wide.value,
+        touch: touch.value,
+        desktop: state.value.width,
+        tabletWide: state.value.wide,
+        desktopDefault: RIGHT_WIDTH.initial,
+        wideDefault: WIDE_COLUMNS.right.width,
+      }),
+    ),
     partyClosed: computed(() => state.value.split <= 0),
     chatClosed: computed(() => state.value.split >= 1),
     /** The tablet drawer's open tab; null while it is closed. */
@@ -82,10 +114,8 @@ export function useBattleRight() {
     /** `save: false` while dragging; the drop saves. */
     setColumn: (open: boolean, save = true) => set({ column: open }, save),
     /** Closes the column, remembering `width` for when it opens again. */
-    closeAt: (width: number) =>
-      set({ column: false, width: Math.round(clamp(width, RIGHT_WIDTH.min, RIGHT_WIDTH.max)) }),
-    setWidth: (px: number, save = true) =>
-      set({ column: true, width: Math.round(clamp(px, RIGHT_WIDTH.min, RIGHT_WIDTH.max)) }, save),
+    closeAt: (width: number) => set({ column: false, ...sized(width) }),
+    setWidth: (px: number, save = true) => set({ column: true, ...sized(px) }, save),
     setSplit: (share: number, save = true) => set({ split: clamp(share, 0, 1) }, save),
     save: () => set({}),
   }
