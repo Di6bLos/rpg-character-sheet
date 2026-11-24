@@ -3,7 +3,7 @@
 // right column between them, all the way to closing either one (a panel dragged
 // smaller than RIGHT_CLOSE_PX snaps closed: the Party to its header line, Chat to a
 // strip with the missed messages). A click shares the column half and half; a click on
-// either panel's header gives that panel the full height. Shown while the Party has heroes.
+// either panel's header opens that panel fully or closes it. Shown while the Party has heroes.
 import type { RosterEntry } from '~/types'
 import { RIGHT_CLOSE_PX, RIGHT_SPLIT } from '~/composables/useBattleRight'
 

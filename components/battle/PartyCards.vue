@@ -29,7 +29,7 @@ const heroes = computed(() =>
 
 /** In the right column with heroes to list (the Party / Chat handle shows then). */
 const toggles = computed(() => !props.compact && heroes.value.length > 0)
-const partyFull = computed(() => right.state.value.split >= 1)
+const partyClosed = computed(() => right.state.value.split <= 0)
 
 function isDead(r: RosterEntry) {
   const s = r.summary
@@ -112,19 +112,19 @@ function label(r: RosterEntry): string {
     :style="compact ? undefined : { '--party-split': right.state.value.split }"
     aria-labelledby="party-h"
   >
-    <!-- In the right column, a click on the header gives the Party the full height (again: half). -->
+    <!-- In the right column, a click on the header opens the Party fully or closes it. -->
     <header
       class="party__head"
       :class="{ 'party__head--toggle': toggles }"
-      @click="toggles && right.fill('party')"
+      @click="toggles && right.toggle('party')"
     >
       <h2 id="party-h">
         <button
           v-if="toggles"
           type="button"
           class="party__toggle"
-          :aria-label="partyFull ? 'Party: share the column with chat' : 'Party: full height'"
-          :title="partyFull ? 'Share the column with chat' : 'Full height'"
+          :aria-label="partyClosed ? 'Party: open' : 'Party: close'"
+          :title="partyClosed ? 'Open the party' : 'Close the party'"
         >
           Party
         </button>

@@ -99,12 +99,13 @@ export function useBattleRight() {
     setWidth: (px: number, save = true) => set({ column: true, ...sized(px) }, save),
     setSplit: (share: number, save = true) => set({ split: clamp(share, 0, 1) }, save),
     /**
-     * A click on a panel's header: that panel takes the column's full height (the other
-     * closes), or, if it already has it, the two share the column half and half.
+     * A click on a panel's header: a closed panel opens to the column's full height (the
+     * other closes); an open one closes (the other takes the column).
      */
-    fill: (panel: 'party' | 'chat') => {
-      const full = panel === 'party' ? 1 : 0
-      set({ split: state.value.split === full ? RIGHT_SPLIT.initial : full })
+    toggle: (panel: 'party' | 'chat') => {
+      const closed = panel === 'party' ? state.value.split <= 0 : state.value.split >= 1
+      const partyFull = panel === 'party' ? closed : !closed
+      set({ split: partyFull ? 1 : 0 })
     },
     save: () => set({}),
   }

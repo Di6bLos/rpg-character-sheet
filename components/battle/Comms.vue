@@ -57,10 +57,10 @@ onMounted(() => chat.setVisible(chatInView.value))
 const unread = useChatBadge(() => chatInView.value || !open.value)
 
 // In the right column (while the Party / Chat handle shows), a click on the header, or on
-// the tab already showing, gives Chat the full height (again: half and half).
+// the tab already showing, opens Chat fully or closes it.
 const toggles = computed(() => !props.compact && hasHeroes.value)
 function onHead() {
-  if (toggles.value) right.fill('chat')
+  if (toggles.value) right.toggle('chat')
 }
 
 /** A click on the other tab switches to it (unfolding the panel) without resizing it. */
