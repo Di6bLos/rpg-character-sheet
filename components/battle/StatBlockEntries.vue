@@ -10,6 +10,8 @@ import { findDice, rollDice } from '~/utils/dice'
 const props = defineProps<{ npc: CampaignNpc; name: string }>()
 
 const chat = useBoardChat()
+// On touch the Roll buttons are 44px targets, 8px apart.
+const { touch } = useBoardLayout()
 const last = ref<{ key: string; text: string } | null>(null)
 // A new creature starts with no result showing.
 watch(
@@ -36,7 +38,7 @@ async function roll(it: StatEntry, key: string) {
 </script>
 
 <template>
-  <div class="sbe">
+  <div class="sbe" :class="{ 'sbe--touch': touch }">
     <section v-for="(sec, si) in sections" :key="`${sec.title}-${si}`" class="sbe__sec">
       <h3 class="sbe__title">{{ sec.title }}</h3>
       <p v-for="(it, i) in sec.items" :key="`${it.n}-${i}`" class="sbe__entry">
@@ -140,5 +142,19 @@ async function roll(it: StatEntry, key: string) {
 
 .sbe__notes {
   white-space: pre-line;
+}
+
+// --- Touch -----------------------------------------------------------------------------
+.sbe--touch {
+  .sbe__sec {
+    gap: 8px;
+  }
+
+  .sbe__roll {
+    min-height: 44px;
+    margin: 4px 0 4px 8px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
 }
 </style>

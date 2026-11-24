@@ -35,6 +35,8 @@ function toggle(name: string) {
 }
 
 const addOpen = ref(false)
+// On touch "+ Add" and the chips are 44px targets, 8px apart.
+const { touch } = useBoardLayout()
 // The picker is for one creature: close it when another is shown.
 watch(
   () => props.subject,
@@ -43,7 +45,7 @@ watch(
 </script>
 
 <template>
-  <div class="cond">
+  <div class="cond" :class="{ 'cond--touch': touch }">
     <div class="cond__head">
       <span class="cond__label">Conditions</span>
       <button
@@ -224,5 +226,19 @@ watch(
   margin: 0;
   font-size: 12px;
   color: var(--page-muted);
+}
+
+// --- Touch -----------------------------------------------------------------------------
+.cond--touch {
+  .cond__head,
+  .cond__chips {
+    gap: 8px;
+  }
+
+  .cond__add,
+  .cond__chip {
+    min-height: 44px;
+    padding: 0 14px;
+  }
 }
 </style>

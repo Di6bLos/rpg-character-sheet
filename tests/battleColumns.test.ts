@@ -40,6 +40,7 @@ describe('clampWidth', () => {
     expect(clampWidth(100.4, WIDE_COLUMNS.left)).toBe(WIDE_COLUMNS.left.min)
     expect(clampWidth(900, WIDE_COLUMNS.right)).toBe(WIDE_COLUMNS.right.max)
     expect(clampWidth(250.6, WIDE_COLUMNS.left)).toBe(251)
+    expect(clampWidth(230, WIDE_COLUMNS.left)).toBe(240)
   })
 })
 
@@ -54,6 +55,8 @@ describe('tablet-wide bounds', () => {
   })
 
   it('uses 270px and 290px as defaults, a 400px centre and keeps 460px for desktop', () => {
+    expect(WIDE_COLUMNS.left.min).toBe(240)
+    expect(WIDE_COLUMNS.right.min).toBe(270)
     expect(WIDE_COLUMNS.left.width).toBe(270)
     expect(WIDE_COLUMNS.right.width).toBe(290)
     expect(CENTRE_MIN).toEqual({ desktop: 460, wide: 400 })

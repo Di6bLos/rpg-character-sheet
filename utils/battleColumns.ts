@@ -10,11 +10,12 @@ export const CENTRE_MIN = { desktop: 460, wide: 400 }
 
 /**
  * Tablet-wide bounds and default widths (px); the close points match the desktop's. The left
- * column may go narrower than on desktop (220 against 240); the right one stops at 270, the
- * narrowest where the Chat / Scribe tabs and the Battle log switch still fit side by side.
+ * column stops at 240, as on desktop (narrower squeezes the hero's HP controls); the right
+ * one at 270, the narrowest where the Chat / Scribe tabs and the Battle log switch still fit
+ * side by side. Only the centre's minimum drops (400 against 460).
  */
 export const WIDE_COLUMNS = {
-  left: { min: 220, max: 520, close: 140, width: 270 },
+  left: { min: 240, max: 520, close: 140, width: 270 },
   right: { min: 270, max: 600, close: 160, width: 290 },
 }
 

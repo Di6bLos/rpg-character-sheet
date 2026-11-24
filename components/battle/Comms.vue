@@ -44,7 +44,10 @@ const current = computed(() =>
 // The chat counts messages as read only while it is in view: its tab open, the
 // panel unfolded and the column not collapsed.
 const chatInView = computed(
-  () => current.value === 'chat' && open.value && (props.compact || right.state.value.column),
+  () =>
+    current.value === 'chat' &&
+    open.value &&
+    (props.compact || touch.value || right.state.value.column),
 )
 watch(chatInView, (on) => chat.setVisible(on), { flush: 'post' })
 // BoardChat marks itself visible as it mounts; correct that if it is out of view.

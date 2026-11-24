@@ -397,23 +397,45 @@ const stats = computed(() =>
     font-size: 13px;
   }
 
-  // Wounds: bigger diamonds, each with a 32px square to tap (they sit 32px apart).
+  // Wounds: each button is an upright 44px square to tap, 8px apart; the 20px diamond is
+  // drawn inside it (::before), so the target stays square while the mark stays small.
   :deep(.hp__wounds) {
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 4px;
+    gap: 8px;
   }
 
   :deep(.wound) {
     position: relative;
-    width: 20px;
-    height: 20px;
-    margin: 4px;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    transform: none;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 
-    &::after {
+    &::before {
       content: '';
       position: absolute;
-      inset: -6px;
+      inset: 12px;
+      transform: rotate(45deg);
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+    }
+
+    &[aria-pressed='true'] {
+      background: transparent;
+
+      &::before {
+        background: var(--danger);
+        border-color: var(--danger);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -4px;
     }
   }
 }
