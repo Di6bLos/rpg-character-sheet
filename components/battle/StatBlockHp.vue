@@ -6,6 +6,8 @@ import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 
 const props = defineProps<{ init: ReturnType<typeof useInitiative>; c: TurnRow }>()
 const c = computed(() => props.c)
+// On touch the steppers, amount and Set are 44px targets, 8px apart.
+const { touch } = useBoardLayout()
 
 const hpMax = computed(() => c.value.hp_max ?? 0)
 const hp = computed(() => c.value.hp ?? 0)
@@ -33,7 +35,7 @@ function setHp() {
 </script>
 
 <template>
-  <div v-if="hpMax > 0" class="sbk__hp">
+  <div v-if="hpMax > 0" class="sbk__hp" :class="{ 'sbk__hp--touch': touch }">
     <div class="sbk__head">
       <span class="sbk__label">Hit points</span>
       <span class="sbk__value" aria-live="polite">{{
@@ -135,5 +137,27 @@ function setHp() {
   margin: 0;
   font-size: 12.5px;
   color: var(--page-muted);
+}
+
+// --- Touch -----------------------------------------------------------------------------
+.sbk__hp--touch {
+  .sbk__ctl {
+    gap: 8px;
+  }
+
+  .sbk__amount,
+  .sbk__set {
+    min-height: 44px;
+  }
+
+  // The 16px value would clip the placeholder in a narrow column (240px, its minimum).
+  .sbk__amount {
+    padding-inline: 4px;
+    font-size: 16px;
+
+    &::placeholder {
+      font-size: 13px;
+    }
+  }
 }
 </style>

@@ -9,6 +9,12 @@ const props = defineProps<{ text?: string; title?: string; sub?: string; keys?: 
 const MARGIN = 8
 const GAP = 6
 
+// On touch there is no hover: a tap on a trigger that does nothing else (a label, a chip)
+// toggles the tooltip, and a pointerdown anywhere else closes it. A tap on a control
+// (a button, a link) just does its job. Keyboard focus (an iPad's keyboard) still shows it.
+// With a mouse everything below behaves as before.
+const { touch } = useBoardLayout()
+
 const id = useId()
 const root = ref<HTMLElement>()
 const tip = ref<HTMLElement>()
@@ -37,6 +43,11 @@ async function place() {
 }
 
 function show() {
+  if (touch.value) return
+  showNow()
+}
+
+function showNow() {
   if (!has.value) return
   if (!open.value) listen()
   open.value = true
@@ -46,6 +57,36 @@ function show() {
 function hide() {
   open.value = false
   unlisten()
+}
+
+/** Controls a tap acts on; on touch their tooltip shows only for keyboard focus. */
+const ACTS = 'button, a[href], input, select, textarea, label, [role="button"], [role="tab"]'
+/** Opened by keyboard focus on touch, so blur closes it. */
+let byFocus = false
+
+function onFocus(event: FocusEvent) {
+  if (!touch.value) return show()
+  if ((event.target as Element | null)?.matches?.(':focus-visible')) {
+    byFocus = true
+    showNow()
+  }
+}
+
+function onHide() {
+  if (!touch.value || byFocus) hide()
+  byFocus = false
+}
+
+function onClick(event: MouseEvent) {
+  if (!touch.value) return hide()
+  const control = (event.target as Element | null)?.closest(ACTS)
+  if (control && root.value?.contains(control)) return
+  if (open.value) hide()
+  else showNow()
+}
+
+function onOutside(event: PointerEvent) {
+  if (touch.value && open.value && !root.value?.contains(event.target as Node | null)) hide()
 }
 
 // Scrolling or resizing hides an open tooltip; the listeners exist only while it shows.
@@ -60,6 +101,7 @@ function unlisten() {
 }
 
 function onOut(event: MouseEvent) {
+  if (touch.value) return
   if (!root.value?.contains(event.relatedTarget as Node | null)) hide()
 }
 
@@ -78,10 +120,16 @@ function describe() {
   else el.removeAttribute('aria-describedby')
 }
 
-onMounted(describe)
+onMounted(() => {
+  describe()
+  document.addEventListener('pointerdown', onOutside, true)
+})
 onUpdated(describe)
 watch(has, describe)
-onBeforeUnmount(unlisten)
+onBeforeUnmount(() => {
+  unlisten()
+  document.removeEventListener('pointerdown', onOutside, true)
+})
 </script>
 
 <template>
@@ -90,10 +138,10 @@ onBeforeUnmount(unlisten)
     class="tooltip"
     @mouseover="show"
     @mouseout="onOut"
-    @focusin="show"
-    @focusout="hide"
+    @focusin="onFocus"
+    @focusout="onHide"
     @keydown="onKey"
-    @click="hide"
+    @click="onClick"
   >
     <slot />
     <Teleport to="body">

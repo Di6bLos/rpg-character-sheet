@@ -9,6 +9,8 @@
 // see only that one is down). Summons sit under their summoner.
 // The GM right-clicks a token (or uses the context-menu key) for its menu: make it the
 // acting turn, change its initiative, remove it (`BattleTokenMenu`).
+// Compact (phone): 38px portraits with the acting one at 48px, the name under the
+// portrait, in a shorter strip.
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
@@ -18,6 +20,7 @@ const props = defineProps<{
   init: ReturnType<typeof useInitiative>
   roster: RosterEntry[]
   gm: boolean
+  compact?: boolean
 }>()
 const emit = defineEmits<{
   hero: [characterId: string]
@@ -25,6 +28,7 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
+const { touch } = useBoardLayout()
 
 function rosterFor(c: TurnRow) {
   return c.character_id ? props.roster.find((r) => r.character_id === c.character_id) : undefined
@@ -125,8 +129,8 @@ function onToken(c: TurnRow) {
   emit('select', c.id)
 }
 
-/** Token width plus the gap between tokens; keep in step with the styles. */
-const STEP = 106
+/** Token width plus the gap between tokens; keep in step with the styles (96 + 10, compact 52 + 8). */
+const step = computed(() => (props.compact ? 60 : 106))
 /** Wheel travel per token step. */
 const WHEEL_STEP = 60
 
@@ -194,7 +198,7 @@ const slots = computed<Slot[]>(() => {
   const n = order.length
   if (!n) return []
   // One spare slot per side, so a drag never shows an empty edge.
-  const half = Math.ceil(Math.max(1, Math.ceil(width.value / STEP)) / 2) + 1
+  const half = Math.ceil(Math.max(1, Math.ceil(width.value / step.value)) / 2) + 1
   const center = cursor.value + browse.value
   const round = props.init.round.value
   const active = activeIndex.value
@@ -281,11 +285,15 @@ function onPointerMove(e: PointerEvent) {
     // Capture only once it is a drag: capturing on press would steal plain clicks.
     dragged = true
     dragging.value = true
+    // The capture sends the rest of the gesture here, never to the token: end its long
+    // press now, or the GM's menu would open mid-drag and swallow the next tap.
+    press.onPointercancel()
     viewport.value?.setPointerCapture(e.pointerId)
   }
   let d = offset.value + dx
   startX = e.clientX
   // Dragging right brings earlier tokens in: browse back one per step crossed.
+  const STEP = step.value
   while (Math.abs(d) >= STEP && !atEdge(d)) {
     setBrowse(browse.value - Math.sign(d))
     d -= Math.sign(d) * STEP
@@ -298,7 +306,9 @@ async function onPointerUp(e: PointerEvent) {
   if (e.pointerId !== pointer) return
   pointer = null
   if (!dragging.value) return
+  press.onPointercancel()
   // Snap to the nearest token: past half a step counts as the next one.
+  const STEP = step.value
   if (Math.abs(offset.value) > STEP / 2 && !atEdge(offset.value)) {
     setBrowse(browse.value - Math.sign(offset.value))
     offset.value -= Math.sign(offset.value) * STEP
@@ -334,10 +344,40 @@ async function onContextMenu(slot: Slot, e: MouseEvent | KeyboardEvent) {
   // Players keep the browser's own menu.
   if (!props.gm || !slot.c) return
   e.preventDefault()
+  await openMenu(slot, e.currentTarget as HTMLElement)
+}
+
+async function openMenu(slot: Slot, anchor: HTMLElement) {
+  if (!props.gm || !slot.c) return
   menuOpen.value = false
-  menu.value = { c: slot.c, round: slot.round, anchor: e.currentTarget as HTMLElement }
+  menu.value = { c: slot.c, round: slot.round, anchor }
   await nextTick()
   menuOpen.value = true
+}
+
+// On touch, a long press on a token does what the right-click does (the GM's menu).
+const press = useLongPress(
+  (el) => {
+    if (pressSlot) void openMenu(pressSlot, el)
+  },
+  // Players' long-press does nothing, so the browser's own behaviour stays.
+  () => props.gm && !!pressSlot?.c,
+)
+let pressSlot: Slot | null = null
+function onPressDown(slot: Slot, e: PointerEvent) {
+  if (!touch.value) return
+  pressSlot = slot
+  press.onPointerdown(e)
+}
+function onPressMove(e: PointerEvent) {
+  if (touch.value) press.onPointermove(e)
+}
+function onPressEnd() {
+  if (touch.value) press.onPointerup()
+}
+/** A cancelled touch (the browser took it for a scroll) drops the guards at once. */
+function onPressCancel() {
+  if (touch.value) press.onPointercancel()
 }
 
 // The row moving (a turn change, browsing, a new order) leaves the menu's token behind.
@@ -361,12 +401,13 @@ function onFocus(slot: Slot, e: FocusEvent) {
     data-track-area="Initiative"
     role="group"
     aria-label="Turn order"
-    :class="{ 'is-dragging': dragging }"
+    :class="{ 'is-dragging': dragging, 'strip--compact': compact }"
     @wheel="onWheel"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
+    @lostpointercapture="onPointerUp"
     @click.capture="onClickCapture"
     @dragstart.prevent
   >
@@ -417,6 +458,10 @@ function onFocus(slot: Slot, e: FocusEvent) {
                 :aria-label="`${c.name}, ${c.initiative_rolled ? `initiative ${c.initiative}` : 'waiting for Initiative'}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
                 @click="onToken(c)"
                 @contextmenu="onContextMenu(slot, $event)"
+                @pointerdown="onPressDown(slot, $event)"
+                @pointermove="onPressMove"
+                @pointerup="onPressEnd"
+                @pointercancel="onPressCancel"
                 @keydown="onTokenKey(slot, $event)"
               >
                 <span
@@ -436,7 +481,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
                   :square="c.kind === 'monster'"
                   :faded="isDown(c)"
                   :dead="isDead(c)"
-                  :size="64"
+                  :size="compact ? 38 : 64"
                 />
                 <span class="tok__plate">
                   <span class="tok__name"
@@ -475,7 +520,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
                   :name="summonName(s)"
                   :portrait-path="summonMember(s)?.portrait ?? null"
                   :beast="summonMember(s)?.beast ?? null"
-                  :size="20"
+                  :size="compact ? 16 : 20"
                 />
               </button>
             </div>
@@ -492,7 +537,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
       :round-offset="menuRoundOffset"
     />
   </div>
-  <p v-else class="strip__empty small muted">
+  <p v-else class="strip__empty small muted" :class="{ 'strip__empty--compact': compact }">
     No encounter running. Tokens appear here when the GM rolls initiative.
   </p>
 </template>
@@ -851,5 +896,104 @@ function onFocus(slot: Slot, e: FocusEvent) {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
+}
+
+// --- Compact (phone) -------------------------------------------------------------------
+// Every step is 60px (52px slots, 8px gaps). The acting token is scaled so its portrait
+// is 48px; the gaps leave it room.
+.strip--compact {
+  // Room above and below for the acting token, scaled up, and its badge.
+  padding: 16px 0 10px;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent
+  );
+
+  .strip__row {
+    gap: 8px;
+  }
+
+  .mark,
+  .tok {
+    width: 52px;
+  }
+
+  .mark__label {
+    font-size: 0.5rem;
+    letter-spacing: 0.04em;
+  }
+
+  .mark__num {
+    font-size: 1.125rem;
+  }
+
+  .mark__end {
+    font-size: 0.75rem;
+  }
+
+  .mark__coin {
+    width: 30px;
+    height: 30px;
+  }
+
+  .tok.is-now {
+    transform: scale(1.2632);
+  }
+
+  .tok__main {
+    gap: 2px;
+    padding: 4px 3px 3px;
+  }
+
+  .tok__score {
+    top: 2px;
+    left: 2px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    font-size: 0.5625rem;
+  }
+
+  .tok__badge {
+    top: -6px;
+    right: 50%;
+    transform: translateX(50%);
+    font-size: 0.5rem;
+    line-height: 11px;
+    padding: 0 4px;
+  }
+
+  .tok__avatar {
+    margin-top: 0;
+  }
+
+  // The name and bar under the portrait, not over it.
+  .tok__plate {
+    margin-top: 0;
+    gap: 2px;
+    padding: 0 1px;
+    background: none;
+    box-shadow: none;
+  }
+
+  .tok__name {
+    font-size: 0.625rem;
+  }
+
+  .tok__bar {
+    height: 3px;
+  }
+
+  .tok__summons {
+    gap: 2px;
+    padding: 2px 2px 3px;
+  }
+}
+
+.strip__empty--compact {
+  padding: 8px 12px;
 }
 </style>

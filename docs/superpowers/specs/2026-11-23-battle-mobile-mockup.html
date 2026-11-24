@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Battle Board Mobile</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cinzel+Decorative:wght@700&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --page: #0a0812; --text: #e6e0f5; --soft: #c7bee3; --muted: #a69dc4;
+  --line: #2e2745; --line-strong: #4a3f6e; --nav: #07060d;
+  --panel: rgba(22,18,34,.92); --inset: #1a1530; --track: #1e1830; --field: #120e1e;
+  --accent: #6fcf8e; --on-accent: #0b1a10; --tint: rgba(111,207,142,.15);
+  --secondary: #8a6fd1; --danger: #e2735f; --danger-bg: #3a1d27; --warn-bg: #2f2a1a; --warn-text: #f0cb7e;
+  --frost: #79a7d3; --ember: #d9822b; --gold: #e8d36b; --mana: #9b7be0;
+  --rp: 22px; --rc: 999px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #050409; color: var(--text); font: 14px/1.35 'Alegreya Sans', system-ui, sans-serif; padding: 64px 24px 40px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.cz { font-family: Cinzel, serif; letter-spacing: .05em; }
+
+/* mockup chrome */
+.switch { position: fixed; top: 12px; left: 50%; translate: -50% 0; z-index: 99; display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: #000d; border: 1px solid var(--line-strong); }
+.switch button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; font-size: 13px; white-space: nowrap; }
+.switch button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.stage { display: flex; gap: 28px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.cap { text-align: center; color: var(--muted); font-size: 13px; margin-top: 10px; max-width: 390px; }
+.view { display: none; } .view.on { display: block; }
+
+/* device */
+.phone { width: 390px; height: 844px; border-radius: 44px; border: 10px solid #1b1726; overflow: hidden; position: relative;
+  background: radial-gradient(500px 400px at 50% 0%, #241a3d 0%, #0a0812 70%); display: flex; flex-direction: column; box-shadow: 0 30px 60px #000a; }
+.tab-wrap { overflow: hidden; border-radius: 30px; border: 10px solid #1b1726; box-shadow: 0 30px 60px #000a; }
+.tablet { transform-origin: 0 0; position: relative; display: flex; flex-direction: column; background: radial-gradient(900px 600px at 50% 0%, #241a3d 0%, #0a0812 65%); }
+
+/* shared bits */
+.top { flex: none; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); background: #07060dcc; }
+.top__name { font-family: 'Cinzel Decorative', Cinzel, serif; font-weight: 700; font-size: 16px; letter-spacing: .04em; display: flex; align-items: center; gap: 6px; }
+.top__name small { font-family: 'Alegreya Sans'; color: var(--muted); font-size: 12px; }
+.sp { flex: 1; }
+.chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--soft); white-space: nowrap; background: transparent; }
+.chip b { color: var(--accent); font-family: Cinzel, serif; }
+.chip--on { background: var(--tint); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.chip--bad { background: var(--danger-bg); border-color: var(--danger); color: #f7c9bc; }
+.iconbtn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--inset); display: grid; place-items: center; font-size: 16px; }
+.btn { border: 0; background: var(--accent); color: var(--on-accent); font-weight: 700; border-radius: var(--rc); padding: 10px 18px; font-size: 14px; }
+.btn--ghost { background: transparent; color: var(--text); border: 1px solid var(--line-strong); }
+.btn--sm { padding: 6px 12px; font-size: 13px; }
+
+/* initiative strip */
+.init { flex: none; display: flex; gap: 8px; padding: 8px 12px; overflow: hidden; align-items: center; border-bottom: 1px solid var(--line); }
+.tk { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 46px; position: relative; }
+.tk__face { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-family: Cinzel, serif; font-weight: 700; font-size: 12px;
+  background: var(--track); border: 2px solid var(--line-strong); }
+.tk--mon .tk__face { border-color: #6a3a4c; background: #2a1622; color: #f3c6d2; }
+.tk--done { opacity: .45; }
+.tk--act .tk__face { width: 48px; height: 48px; border-color: var(--accent); box-shadow: 0 0 14px rgba(111,207,142,.45); font-size: 14px; }
+.tk--act { width: 56px; }
+.tk--me .tk__face { outline: 2px dashed var(--secondary); outline-offset: 2px; }
+.tk__name { font-size: 10px; color: var(--soft); max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk__bar { width: 34px; height: 3px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.tk__bar i { display: block; height: 100%; background: var(--accent); }
+.tk__flag { position: absolute; top: -6px; font-size: 8.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--accent); color: var(--on-accent); padding: 0 5px; border-radius: 999px; }
+.tk__flag--next { background: var(--secondary); color: #fff; }
+.roundcap { flex: none; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); writing-mode: vertical-rl; rotate: 180deg; padding: 0 2px; border-left: 1px solid var(--line); }
+
+/* hero strip */
+.hs { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: #110d1c; }
+.hs__face { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg,#3b2c5a,#1e1a2a); display: grid; place-items: center; font-family: Cinzel; font-weight: 700; border: 1px solid var(--line-strong); }
+.hs__mid { flex: 1; min-width: 0; }
+.hs__row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.hs__row b { color: var(--text); font-family: Cinzel; }
+.hp { position: relative; height: 10px; border-radius: 5px; background: var(--track); overflow: hidden; margin-top: 3px; }
+.hp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg,#4f9c6b,var(--accent)); }
+.hp em { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(45deg,var(--frost) 0 3px,#5f8bb5 3px 6px); }
+.hs__stats { display: flex; gap: 6px; }
+.mini { text-align: center; min-width: 38px; padding: 3px 4px; border-radius: 10px; background: var(--inset); border: 1px solid var(--line); }
+.mini b { display: block; font-family: Cinzel; font-size: 13px; }
+.mini span { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.mini--mana b { color: var(--mana); }
+.dots { display: flex; gap: 3px; margin-top: 3px; }
+
+/* content */
+.body { flex: 1; min-height: 0; overflow: hidden; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.filters { display: flex; gap: 6px; overflow: hidden; flex: none; }
+.note { font-size: 12px; color: var(--muted); }
+.sec { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.sec::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.sec i { font-style: normal; color: var(--mana); text-transform: none; letter-spacing: 0; }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.tile { text-align: left; border: 1px solid var(--line); background: var(--inset); border-radius: 16px; padding: 9px 11px; min-height: 52px; display: flex; flex-direction: column; gap: 3px; }
+.tile--react { border-style: dashed; }
+.tile--sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tile__top { display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+.tile__name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile__meta { font-size: 12px; color: var(--muted); display: flex; gap: 8px; }
+.tile__meta b { color: var(--text); }
+.el { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.el--fire { background: var(--ember); } .el--ice { background: var(--frost); } .el--light { background: var(--gold); } .el--wpn { background: var(--soft); }
+.ap { display: inline-flex; gap: 2px; } .ap i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.mn { color: var(--mana); font-weight: 700; font-size: 12px; }
+.tag { font-size: 10px; padding: 0 6px; border-radius: 6px; background: var(--warn-bg); color: var(--warn-text); }
+
+/* turn bar + bottom nav */
+.turn { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid rgba(111,207,142,.5);
+  background: linear-gradient(90deg, rgba(111,207,142,.18), rgba(111,207,142,.05)); }
+.turn--wait { background: #110d1c; border-top-color: var(--line); }
+.turn__t { font-family: Cinzel; font-weight: 700; font-size: 15px; }
+.turn__s { font-size: 11.5px; color: var(--muted); }
+.pips { display: flex; gap: 5px; } .pips i { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--accent); }
+.pips i.off { background: transparent; border-color: var(--line-strong); }
+.nav { flex: none; height: 62px; display: flex; border-top: 1px solid var(--line); background: var(--nav); padding-bottom: 6px; }
+.nav button { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--muted); position: relative; }
+.nav button span.ic { font-size: 18px; line-height: 1; }
+.nav button.on { color: var(--accent); font-weight: 700; }
+.nav button.on::before { content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 2px; background: var(--accent); border-radius: 2px; }
+.badge { position: absolute; top: 8px; right: calc(50% - 18px); min-width: 16px; height: 16px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
+
+/* bottom sheet */
+.dim { position: absolute; inset: 0; background: rgba(4,3,8,.6); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: #15112a; border-top: 1px solid var(--line-strong); border-radius: 24px 24px 0 0; padding: 10px 18px 22px; box-shadow: 0 -12px 40px #000c; }
+.grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 12px; }
+.sheet h3 { margin: 0; font-family: Cinzel; font-size: 20px; }
+.sheet .sub { color: var(--muted); font-size: 13px; margin: 2px 0 10px; }
+.sheet p { margin: 0 0 12px; color: var(--soft); font-size: 14.5px; line-height: 1.45; }
+.facts { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 12px; }
+.fact { background: var(--inset); border: 1px solid var(--line); border-radius: 14px; padding: 7px 8px; text-align: center; }
+.fact b { display: block; font-family: Cinzel; font-size: 15px; } .fact span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.stepper { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--inset); border: 1px solid var(--line); border-radius: 999px; margin-bottom: 14px; font-size: 13px; }
+.stepper .iconbtn { width: 32px; height: 32px; }
+.big { width: 100%; padding: 14px; font-size: 16px; }
+
+/* hero tab */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--rp); padding: 12px 14px; }
+.bighp { position: relative; height: 26px; border-radius: 13px; background: var(--track); overflow: hidden; border: 1px solid var(--line); }
+.bighp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg,#4f9c6b,var(--accent)); }
+.bighp em { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(45deg,var(--frost) 0 4px,#5f8bb5 4px 8px); }
+.bighp span { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; text-shadow: 0 1px 2px #000; }
+.hpctl { display: grid; grid-template-columns: 44px 1fr 44px auto; gap: 6px; margin-top: 8px; }
+.hpctl input { background: var(--field); border: 1px solid var(--line-strong); border-radius: 999px; color: var(--text); text-align: center; font: inherit; padding: 8px; }
+.sq { height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--inset); font-size: 18px; font-weight: 700; }
+.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+.lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 12px 0 6px; display: flex; justify-content: space-between; }
+.gems { display: flex; gap: 3px; } .gems i { flex: 1; height: 8px; border-radius: 3px; background: var(--mana); } .gems i.off { background: var(--track); }
+.wd { width: 12px; height: 12px; transform: rotate(45deg); border: 1px solid var(--line-strong); display: inline-block; margin-right: 4px; }
+
+/* party / chat */
+.pc { display: grid; grid-template-columns: 42px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 18px; background: var(--inset); border: 1px solid var(--line); }
+.pc__face { width: 42px; height: 42px; border-radius: 12px; background: var(--track); display: grid; place-items: center; font-family: Cinzel; font-weight: 700; border: 1px solid var(--line-strong); }
+.pc__n { font-weight: 700; display: flex; gap: 6px; align-items: center; }
+.pc__s { font-size: 12px; color: var(--muted); }
+.pc__r { text-align: right; font-size: 12px; color: var(--muted); } .pc__r b { color: var(--text); font-size: 14px; }
+.seg { display: flex; padding: 3px; border-radius: 999px; background: var(--inset); border: 1px solid var(--line); }
+.seg button { flex: 1; border: 0; background: none; border-radius: 999px; padding: 6px; font-family: Cinzel; font-weight: 700; font-size: 13px; color: var(--muted); }
+.seg button.on { background: var(--tint); color: var(--accent); }
+.msg { font-size: 14px; } .msg b { font-weight: 700; } .msg time { font-size: 11px; color: var(--muted); margin-left: 4px; } .msg p { margin: 2px 0 0; color: var(--soft); }
+.msg--roll { font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 8px; }
+.msg--me { align-self: flex-end; background: #1f3a2a; color: #d6f5e0; padding: 7px 12px; border-radius: 16px 16px 4px 16px; max-width: 80%; }
+.chatin { flex: none; display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); }
+.chatin input { flex: 1; background: var(--field); border: 1px solid var(--line-strong); border-radius: 999px; color: var(--text); padding: 9px 14px; font: inherit; }
+
+/* GM */
+.mon { border: 1px solid #4a2e3e; background: #1c1220; border-radius: 18px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+.mon--act { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.mon__top { display: flex; align-items: center; gap: 8px; } .mon__top b { flex: 1; }
+.mbar { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; } .mbar i { display: block; height: 100%; background: var(--danger); }
+.quick { display: grid; grid-template-columns: repeat(5,1fr); gap: 5px; }
+.quick button, .quick input { height: 34px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--inset); font-weight: 700; font-size: 13px; text-align: center; color: var(--text); font-family: inherit; }
+
+/* tablet specific */
+.tcols { flex: 1; min-height: 0; display: grid; gap: 12px; padding: 12px 16px; }
+.col { min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.tabs3 { display: flex; gap: 4px; }
+.tabs3 a { padding: 6px 12px; border-radius: 999px; color: var(--muted); font-family: Cinzel; font-weight: 700; font-size: 13px; text-decoration: none; }
+.tabs3 a.on { background: var(--tint); color: var(--accent); }
+.pop { position: absolute; z-index: 6; width: 320px; background: #15112a; border: 1px solid var(--line-strong); border-radius: 20px; padding: 14px; box-shadow: 0 18px 40px #000c; }
+.pop h3 { margin: 0; font-family: Cinzel; font-size: 17px; } .pop p { margin: 6px 0 10px; color: var(--soft); font-size: 13.5px; }
+.drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 360px; z-index: 6; background: #120e22; border-left: 1px solid var(--line-strong); box-shadow: -18px 0 40px #000b; display: flex; flex-direction: column; }
+</style>
+</head>
+<body>
+<div class="switch" role="group" aria-label="Mockup view">
+  <button aria-pressed="true" data-v="p1">Phone · your turn</button>
+  <button aria-pressed="false" data-v="p2">Phone · hero, party, chat</button>
+  <button aria-pressed="false" data-v="p3">Phone · waiting &amp; GM</button>
+  <button aria-pressed="false" data-v="t1">Tablet</button>
+</div>
+
+<div class="view on" id="p1"><div class="stage" id="p1s"></div></div>
+<div class="view" id="p2"><div class="stage" id="p2s"></div></div>
+<div class="view" id="p3"><div class="stage" id="p3s"></div></div>
+<div class="view" id="t1"><div class="stage" id="t1s"></div></div>
+
+<script>
+;(() => {
+// ---------- data ----------
+const ACTS = [
+  { n: 'Staff', el: 'wpn', a: 1, d: '1d8', m: 'melee', g: 'attack' },
+  { n: 'Flame Dart', el: 'fire', a: 1, d: '1d10', m: 'R8', g: 'attack' },
+  { n: 'Ice Lance', el: 'ice', a: 1, d: '1d6', m: 'R12 · Slowed', g: 'attack' },
+  { n: 'Zap', el: 'light', a: 1, d: '2d8', m: 'R12', g: 'attack' },
+  { n: 'Snowblind', el: 'ice', a: 1, d: '1d6', m: 'Reach 1', g: 'attack' },
+  { n: 'Arc Lightning', el: 'light', a: 2, mana: 1, d: '3d8', m: 'chains', g: 'attack' },
+  { n: "Heart's Fire", el: 'fire', a: 1, m: 'ally +1 action', g: 'support', off: true },
+  { n: 'Enchant Weapon', el: 'fire', a: 1, mana: 2, m: '+3 dmg · conc.', g: 'support' },
+  { n: 'Force of Will', tag: '1/round', m: 'free', g: 'support' },
+  { n: 'Spellshaper', tag: '1/turn', m: '+1 mana', g: 'support' },
+  { n: 'Frost Shield', el: 'ice', mana: 1, m: '+6 temp, Defend', g: 'react' },
+  { n: 'Alacrity', el: 'light', mana: 2, m: 'Defend, teleport 4', g: 'react' },
+  { n: 'Defend', m: '−2 damage', g: 'react' },
+  { n: 'Interpose', m: 'take a hit', g: 'react' },
+  { n: 'Opportunity', d: '1d8', m: '+1 dis', g: 'react' },
+  { n: 'Help', m: 'ally advantage', g: 'react' },
+]
+const pip = (n) => n ? `<span class="ap">${'<i></i>'.repeat(n)}</span>` : ''
+function tile(x, sel) {
+  const cost = x.mana ? `<span class="mn">${x.mana} mana</span>` : x.tag ? `<span class="tag">${x.tag}</span>` : pip(x.a)
+  return `<button class="tile ${x.g === 'react' ? 'tile--react' : ''} ${sel === x.n ? 'tile--sel' : ''}"><div class="tile__top"><span class="tile__name">${x.el ? `<span class="el el--${x.el}"></span>` : ''}${x.n}</span>${cost}</div><div class="tile__meta">${x.d ? `<b>${x.d}</b>` : ''}<span>${x.m}</span></div></button>`
+}
+function sections(list, sel, offTurn) {
+  const g = (t, f, extra = '') => { const l = list.filter(f); return l.length ? `<div class="sec">${t} ${extra}</div><div class="tiles">${l.map((x) => tile(x, sel)).join('')}</div>` : '' }
+  return offTurn
+    ? g('Off-turn', (x) => x.off) + g('Reactions', (x) => x.g === 'react', '<i>· cost actions from your next turn</i>')
+    : g('Attack', (x) => x.g === 'attack') + g('Boost &amp; support', (x) => x.g === 'support') + g('Reactions', (x) => x.g === 'react')
+}
+const TOKENS = [
+  ['GA', 'Goblin A', 'mon done', 100], ['GC', 'Goblin C', 'mon done', 40], ['B', 'Bram', 'done', 100],
+  ['I', 'Iriel', 'act me', 66], ['GD', 'Goblin D', 'mon', 100], ['L', 'Lark', '', 100], ['S', 'Sable', '', 100], ['T', 'Thorne', '', 100], ['GB', 'Goblin B', 'mon', 100],
+]
+function init(activeIdx = 3, meIdx = 3, gm = false, big = false) {
+  return `<div class="init" ${big ? 'style="padding:10px 16px;gap:12px"' : ''}><span class="roundcap">Round 3</span>${TOKENS.map(([f, n, c, hp], i) => {
+    const cls = c.split(' ').filter((x) => x && x !== 'act' && x !== 'me' && x !== 'done').map((x) => 'tk--' + x).join(' ')
+    const done = i < activeIdx ? 'tk--done' : ''
+    return `<div class="tk ${cls} ${done} ${i === activeIdx ? 'tk--act' : ''} ${i === meIdx ? 'tk--me' : ''}">${i === activeIdx ? '<span class="tk__flag">Acting</span>' : i === meIdx && meIdx === activeIdx + 1 ? '<span class="tk__flag tk__flag--next">Next</span>' : ''}<span class="tk__face">${f}</span><span class="tk__name">${n}</span>${(gm || !c.includes('mon')) ? `<span class="tk__bar"><i style="width:${hp}%;${c.includes('mon') ? 'background:var(--danger)' : ''}"></i></span>` : ''}</div>`
+  }).join('')}</div>`
+}
+const top = (gm) => `<div class="top"><div class="top__name">Test Table <small>▾</small></div><span class="sp"></span><span class="chip">Round <b>3</b></span>${gm ? '<button class="iconbtn" title="More">⋯</button>' : '<button class="iconbtn" title="Open full sheet">↗</button>'}</div>`
+const heroStrip = () => `<div class="hs"><div class="hs__face">I</div><div class="hs__mid"><div class="hs__row"><span><b>Iriel</b> · Mage 5</span><span><b>20</b>/30 +4</span></div><div class="hp"><i style="width:66%"></i><em style="width:13%;left:66%"></em></div><div class="dots"><span class="chip chip--on" style="font-size:10px;padding:0 6px">Invisible</span><span class="chip chip--bad" style="font-size:10px;padding:0 6px">Prone</span></div></div><div class="hs__stats"><div class="mini"><b>2</b><span>Armor</span></div><div class="mini mini--mana"><b>3</b><span>Mana</span></div></div></div>`
+function nav(items, on, badges = {}) {
+  return `<div class="nav">${items.map(([ic, l]) => `<button class="${l === on ? 'on' : ''}"><span class="ic">${ic}</span>${l}${badges[l] ? `<span class="badge">${badges[l]}</span>` : ''}</button>`).join('')}</div>`
+}
+const PNAV = [['⚔', 'Actions'], ['♥', 'Hero'], ['⛨', 'Party'], ['✉', 'Chat'], ['✦', 'Scribe']]
+const GNAV = [['☰', 'Encounter'], ['◈', 'Creature'], ['⛨', 'Party'], ['✉', 'Chat']]
+const turnYour = `<div class="turn"><div style="flex:1"><div class="turn__t">Your turn</div><div class="turn__s">2 of 3 actions left · reaction ready</div></div><div class="pips"><i></i><i></i><i class="off"></i></div><button class="btn">End turn</button></div>`
+const turnWait = `<div class="turn turn--wait"><div style="flex:1"><div class="turn__t">Bram is acting</div><div class="turn__s">You're next · reactions stay ready</div></div><div class="pips"><i></i><i></i><i></i></div></div>`
+const filters = (on = 'Ready now') => `<div class="filters">${['Ready now 13', 'All', 'Attacks', 'Spells', 'Reactions'].map((f) => `<span class="chip ${f.startsWith(on) ? 'chip--on' : ''}">${f}</span>`).join('')}</div>`
+const phone = (inner, cap) => `<div><div class="phone">${inner}</div><div class="cap">${cap}</div></div>`
+
+// ---------- phone: actions ----------
+const actionsBody = (sel, offTurn) => `<div class="body">${filters()}<div class="note">${offTurn ? 'Not your turn · only reactions and off-turn options' : '2 actions left · 3 mana · hiding 4 you can\'t use now'}</div><div style="overflow:hidden;display:flex;flex-direction:column;gap:8px">${sections(ACTS, sel, offTurn)}</div></div>`
+const sheet = `<div class="dim"></div><div class="sheet"><div class="grab"></div>
+  <h3><span class="el el--light"></span>Arc Lightning</h3><div class="sub">Lightning · Tier 1 · Single target</div>
+  <div class="facts"><div class="fact"><b>3d8</b><span>Damage</span></div><div class="fact"><b>2</b><span>Actions</span></div><div class="fact"><b>1</b><span>Mana</span></div></div>
+  <p>Range 12. The bolt also hits the next closest creature, an ally if they're closest! On a miss the lightning strikes you instead.</p>
+  <div class="stepper"><button class="iconbtn">−</button><span>Cast at <b>tier 1</b> · upcast +4 damage per tier</span><button class="iconbtn">+</button></div>
+  <button class="btn big">Cast Arc Lightning · 3d8</button>
+  <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted)">+1 disadvantage (Rushed) · result posts to party chat</div></div>`
+
+document.getElementById('p1s').innerHTML =
+  phone(top() + init() + heroStrip() + actionsBody() + turnYour + nav(PNAV, 'Actions', { Chat: 2 }),
+    '<b>Actions tab (default).</b> Initiative on top, your vitals always visible, Ready now in two columns. The turn bar and tabs sit in thumb reach.') +
+  phone(top() + init() + heroStrip() + actionsBody('Arc Lightning') + turnYour + nav(PNAV, 'Actions', { Chat: 2 }) + sheet,
+    '<b>Tap a tile</b> to open its details as a bottom sheet (no hover on touch). The big button uses it; upcast lives here. Swipe down to dismiss.')
+
+// ---------- phone: hero / party / chat ----------
+const heroTab = `<div class="body" style="gap:10px">
+  <div class="panel"><div style="display:flex;gap:10px;align-items:center"><div class="hs__face" style="width:48px;height:48px;font-size:18px">I</div><div><div class="cz" style="font-weight:700;font-size:17px">Iriel</div><div style="font-size:12px;color:var(--muted)">Human Mage · Invoker of Control · Lvl 5</div></div></div>
+    <div class="lbl"><span>Hit points</span><span>drag or type</span></div>
+    <div class="bighp"><i style="width:66%"></i><em style="width:13%;left:66%"></em><span>20 / 30 · +4 temp</span></div>
+    <div class="hpctl"><button class="sq">−</button><input placeholder="amount"><button class="sq">+</button><button class="btn btn--ghost btn--sm">Crit</button></div>
+    <div class="lbl"><span>Wounds</span><span>0 / 6</span></div><div><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span></div></div>
+  <div class="grid4"><div class="mini" style="padding:8px"><b>2</b><span>Armor</span></div><div class="mini" style="padding:8px"><b>6</b><span>Speed</span></div><div class="mini" style="padding:8px"><b>+1</b><span>Init</span></div><div class="mini" style="padding:8px"><b>3/6</b><span>Hit dice</span></div></div>
+  <div class="panel"><div class="lbl" style="margin-top:0"><span>Mana</span><span style="color:var(--mana)">3 / 14 +2</span></div><div class="gems">${'<i></i>'.repeat(3)}${'<i class="off"></i>'.repeat(11)}</div>
+    <div class="lbl"><span>Conditions</span><span style="color:var(--accent)">+ Add</span></div><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip chip--on">Invisible · ends next turn</span><span class="chip chip--bad">Prone</span></div>
+    <div class="lbl"><span>Stats &amp; saves</span></div><div class="grid4"><div class="mini"><b>+0</b><span style="color:var(--danger)">STR ▼</span></div><div class="mini"><b>+0</b><span>DEX</span></div><div class="mini"><b>+3</b><span style="color:var(--accent)">INT ▲</span></div><div class="mini"><b>+2</b><span>WIL</span></div></div></div>
+  <div style="display:flex;gap:8px"><button class="btn btn--ghost" style="flex:1">Field rest</button><button class="btn btn--ghost" style="flex:1">Safe rest</button></div></div>`
+const partyTab = `<div class="body" style="gap:8px"><div class="sec">Party · tap for stats</div>
+  ${[['B', 'Bram', 'Berserker 5 · Raging', '40/40', 'Armor 2', 100], ['L', 'Lark', 'Songweaver 5', '33/33', 'Armor 2', 100], ['S', 'Sable', 'Shadowmancer 5 · 2 minions', '33/33', 'Armor 3', 100], ['T', 'Thorne', 'Oathsworn 5', '37/37', 'Armor 5', 100], ['W', 'Wren', 'Hunter 5 · Wounds 1', '18/35', 'Armor 3', 51]].map(([f, n, s, hp, ar, pct]) =>
+    `<div class="pc"><div class="pc__face">${f}</div><div><div class="pc__n">${n}${n === 'Bram' ? ' <span class="tag" style="background:var(--accent);color:var(--on-accent)">Acting</span>' : ''}</div><div class="pc__s">${s}</div><div class="hp" style="height:6px"><i style="width:${pct}%;${pct < 60 ? 'background:var(--ember)' : ''}"></i></div></div><div class="pc__r"><b>${hp}</b><br>${ar}</div></div>`).join('')}
+  <div class="sec">Enemies</div><div class="pc" style="background:#1c1220;border-color:#4a2e3e"><div class="pc__face" style="background:#2a1622;color:#f3c6d2">GD</div><div><div class="pc__n">Goblin D</div><div class="pc__s">Smoldering</div></div><div class="pc__r">Up next</div></div></div>`
+const chatTab = (scribe) => `<div class="body" style="gap:10px"><div class="seg"><button class="${scribe ? '' : 'on'}">Chat</button><button class="${scribe ? 'on' : ''}">✦ Scribe</button></div>
+  ${scribe ? `<div style="display:flex;flex-direction:column;gap:6px"><span class="chip" style="align-self:flex-start">What can I do with 2 actions left?</span><span class="chip" style="align-self:flex-start">Does Arc Lightning hit an ally?</span></div>
+  <div class="msg msg--me">Can I cast Frost Shield off my turn?</div><div class="panel" style="font-size:14px;color:var(--soft)"><b style="color:var(--text)">Scribe</b><br>Yes. Frost Shield is a reaction: when you're attacked, spend 1 mana and an action from your next turn to gain 6 temp HP and Defend for free.</div>`
+  : `<div style="display:flex;gap:6px"><span class="chip chip--on">Party</span><span class="chip">gm</span><span class="chip">Bram</span><span class="chip">Lark</span></div>
+  <div class="msg"><b>gm</b><time>20:41</time><p>Two more goblins scramble over the barricade.</p></div><div class="msg msg--roll">Bram · Cleave → 14 damage to Goblin A</div>
+  <div class="msg msg--me">I'll keep the frost going.</div><div class="msg"><b>Lark</b><time>20:44</time><p>This dude is killing us</p></div><div class="msg msg--roll">Iriel · Zap → 11 damage to Goblin C</div>`}</div>
+  <div class="chatin"><input placeholder="${scribe ? 'Ask about rules or your hero…' : 'Message the party…'}"><button class="btn btn--sm">${scribe ? 'Ask' : 'Send'}</button></div>`
+document.getElementById('p2s').innerHTML =
+  phone(top() + init() + heroTab + turnYour + nav(PNAV, 'Hero', { Chat: 2 }),
+    '<b>Hero tab:</b> every control from the desktop hero column, with big touch targets. The strip on top is dropped here since this <i>is</i> the hero.') +
+  phone(top() + init() + heroStrip() + partyTab + turnYour + nav(PNAV, 'Party', { Chat: 2 }),
+    '<b>Party tab:</b> a card per hero (tap opens their stats as a sheet), plus enemies with only what players may see.') +
+  phone(top() + init() + chatTab(false) + nav(PNAV, 'Chat'),
+    '<b>Chat tab:</b> the turn bar hides while typing so the keyboard has room. Scribe is its own tab, as below, or a segment here.')
+
+// ---------- phone: waiting + GM ----------
+const gmEnc = `<div class="body" style="gap:8px"><div class="filters"><span class="chip chip--on">Enemies 5</span><span class="chip">Allies &amp; summons</span><span class="chip">+ Add</span></div>
+  ${[['GD', 'Goblin D', '15/15', 100, 'act', '●●'], ['GA', 'Goblin A', '4/15', 27, '', '○○'], ['GC', 'Goblin C', '6/15', 40, '', '●○'], ['GT', 'Taskmaster', '22/30', 73, '', '●●']].map(([f, n, hp, pct, a, p]) =>
+    `<div class="mon ${a ? 'mon--act' : ''}"><div class="mon__top"><span class="tk__face" style="width:32px;height:32px;border-color:#6a3a4c;background:#2a1622;color:#f3c6d2">${f}</span><b>${n} <span style="color:var(--muted);font-weight:400">✎</span></b><span style="color:var(--accent);letter-spacing:2px">${p}</span><b style="flex:none;font-family:Cinzel">${hp}</b></div><div class="mbar"><i style="width:${pct}%"></i></div><div class="quick"><button>−5</button><button>−1</button><input placeholder="±"><button>+1</button><button>+5</button></div></div>`).join('')}</div>`
+const gmTurn = `<div class="turn"><div style="flex:1"><div class="turn__t">Goblin D is acting</div><div class="turn__s">Up next: Lark · round 3</div></div><button class="btn btn--ghost btn--sm">New round</button><button class="btn">Next ▶</button></div>`
+document.getElementById('p3s').innerHTML =
+  phone(top() + init(2, 3) + heroStrip() + actionsBody(null, true) + turnWait + nav(PNAV, 'Actions', { Chat: 2 }),
+    '<b>Waiting for your turn:</b> Ready now shrinks to reactions and off-turn options, and the turn bar says who is acting.') +
+  phone(top() + init() + chatTab(true) + nav(PNAV, 'Scribe'),
+    '<b>Scribe tab:</b> suggested questions and the conversation, as on desktop.') +
+  phone(top(true) + init(4, -1, true) + gmEnc + gmTurn + nav(GNAV, 'Encounter'),
+    '<b>GM on a phone:</b> Encounter cards with quick HP, rename and pips; Creature shows the selected stat block. Next turn sits where the player\'s End turn is.')
+
+// ---------- tablet ----------
+const tabTop = (land) => `<div class="top" style="height:56px;padding:0 18px"><div class="top__name" style="font-size:18px">Test Table <small>▾</small></div><nav class="tabs3"><a class="on">Battle</a><a>Journal</a><a>Maps</a></nav><span class="sp"></span><span class="chip">Round <b>3</b> · Iriel is acting</span>${land ? '' : '<button class="iconbtn" title="Party">⛨</button><button class="iconbtn" title="Chat" style="position:relative">✉<span class="badge" style="top:-4px;right:-4px">2</span></button><button class="iconbtn" title="Scribe">✦</button>'}<button class="btn btn--ghost btn--sm">Sheet ↗</button></div>`
+const heroCol = `<div class="col"><div class="panel">${heroTab.replace('<div class="body" style="gap:10px">', '').replace(/<div class="panel">/, '<div>').slice(0, 0)}
+  <div style="display:flex;gap:10px;align-items:center"><div class="hs__face" style="width:44px;height:44px">I</div><div><div class="cz" style="font-weight:700;font-size:16px">Iriel</div><div style="font-size:12px;color:var(--muted)">Mage · Lvl 5</div></div></div>
+  <div class="lbl"><span>Hit points</span></div><div class="bighp"><i style="width:66%"></i><em style="width:13%;left:66%"></em><span>20 / 30 · +4</span></div>
+  <div class="hpctl"><button class="sq">−</button><input placeholder="±"><button class="sq">+</button><button class="btn btn--ghost btn--sm">Crit</button></div>
+  <div class="lbl"><span>Wounds</span></div><div><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span></div>
+  <div class="grid4" style="margin-top:10px"><div class="mini"><b>2</b><span>Armor</span></div><div class="mini"><b>6</b><span>Speed</span></div><div class="mini"><b>+1</b><span>Init</span></div><div class="mini"><b>3/6</b><span>HD</span></div></div>
+  <div class="lbl"><span>Mana</span><span style="color:var(--mana)">3 / 14</span></div><div class="gems">${'<i></i>'.repeat(3)}${'<i class="off"></i>'.repeat(11)}</div>
+  <div class="lbl"><span>Conditions</span><span style="color:var(--accent)">+ Add</span></div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="chip chip--on">Invisible</span><span class="chip chip--bad">Prone</span></div>
+  <div class="lbl"><span>Stats</span></div><div class="grid4"><div class="mini"><b>+0</b><span>STR▼</span></div><div class="mini"><b>+0</b><span>DEX</span></div><div class="mini"><b>+3</b><span>INT▲</span></div><div class="mini"><b>+2</b><span>WIL</span></div></div>
+  <div style="display:flex;gap:6px;margin-top:12px"><button class="btn btn--ghost btn--sm" style="flex:1">Field rest</button><button class="btn btn--ghost btn--sm" style="flex:1">Safe rest</button></div></div></div>`
+const actCol = (cols, sel) => `<div class="col"><div class="turn" style="border:1px solid rgba(111,207,142,.5);border-radius:20px"><div style="flex:1"><div class="turn__t">Your turn</div><div class="turn__s">2 of 3 actions left · reaction ready</div></div><div class="pips"><i></i><i></i><i class="off"></i></div><button class="btn">End turn</button></div>
+  <div class="panel" style="flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;overflow:hidden;position:relative">${filters()}<div class="note">2 actions left · 3 mana · hiding 4 you can't use now</div>
+  <div style="--c:${cols}">${sections(ACTS, sel).replaceAll('class="tiles"', `class="tiles" style="grid-template-columns:repeat(${cols},1fr)"`)}</div></div></div>`
+const rightCol = `<div class="col"><div class="panel"><div class="sec" style="margin:0 0 8px">Party</div><div style="display:flex;flex-direction:column;gap:6px">
+  ${[['B', 'Bram', '40/40'], ['L', 'Lark', '33/33'], ['S', 'Sable', '33/33'], ['T', 'Thorne', '37/37']].map(([f, n, hp]) => `<div class="pc" style="padding:7px 10px;grid-template-columns:34px 1fr auto"><div class="pc__face" style="width:34px;height:34px">${f}</div><div><div class="pc__n">${n}</div><div class="hp" style="height:5px"><i style="width:100%"></i></div></div><div class="pc__r"><b>${hp}</b></div></div>`).join('')}</div></div>
+  <div class="panel" style="flex:1;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:hidden"><div class="seg"><button class="on">Chat <span class="badge" style="position:static;display:inline-grid">2</span></button><button>✦ Scribe</button></div>
+  <div class="msg"><b>gm</b><time>20:41</time><p>Two more goblins scramble over.</p></div><div class="msg msg--roll">Bram · Cleave → 14 to Goblin A</div><div class="msg msg--me">I'll keep the frost going.</div><div class="msg"><b>Lark</b><p>This dude is killing us</p></div>
+  <span class="sp"></span><div class="chatin" style="padding:0;border:0"><input placeholder="Message the party…"><button class="btn btn--sm">Send</button></div></div></div>`
+const pop = `<div class="pop" style="left:560px;top:330px"><h3><span class="el el--light"></span>Arc Lightning</h3><div style="font-size:12px;color:var(--muted)">Lightning · Tier 1 · 2 actions · 1 mana</div><p>Range 12. Damage 3d8. Also hits the next closest creature. On a miss it strikes you.</p><div class="stepper" style="margin-bottom:10px"><button class="iconbtn">−</button><span>Tier <b>1</b></span><button class="iconbtn">+</button></div><button class="btn" style="width:100%">Cast · 3d8</button></div>`
+const portrait = `<div class="tablet" style="width:820px;height:1180px">${tabTop(false)}${init(3, 3, false, true)}<div class="tcols" style="grid-template-columns:290px minmax(0,1fr)">${heroCol}${actCol(2, 'Arc Lightning')}</div>${pop.replace('left:560px;top:330px', 'left:430px;top:400px')}</div>`
+const portraitDrawer = `<div class="tablet" style="width:820px;height:1180px">${tabTop(false)}${init(3, 3, false, true)}<div class="tcols" style="grid-template-columns:290px minmax(0,1fr)">${heroCol}${actCol(2)}</div><div class="dim"></div><div class="drawer"><div class="top"><b class="cz">Party &amp; chat</b><span class="sp"></span><button class="iconbtn">✕</button></div><div style="padding:12px;display:flex;flex-direction:column;gap:10px;flex:1;min-height:0">${rightCol.replace('<div class="col">', '<div class="col" style="flex:1">')}</div></div></div>`
+const landscape = `<div class="tablet" style="width:1180px;height:820px">${tabTop(true)}${init(3, 3, false, true)}<div class="tcols" style="grid-template-columns:270px minmax(0,1fr) 290px">${heroCol}${actCol(3, 'Arc Lightning')}${rightCol}</div>${pop.replace('left:560px;top:330px', 'left:520px;top:300px')}</div>`
+const scaled = (html, w, h, s, cap) => `<div><div class="tab-wrap" style="width:${w * s + 20}px;height:${h * s + 20}px"><div style="transform:scale(${s});transform-origin:0 0;width:${w}px;height:${h}px">${html}</div></div><div class="cap" style="max-width:${w * s}px">${cap}</div></div>`
+document.getElementById('t1s').innerHTML =
+  scaled(portrait, 820, 1180, .62, '<b>Tablet portrait (768–1023px):</b> hero column + actions. Party, Chat and Scribe open from the top bar as a side drawer. Tapping a tile opens a popover with Use.') +
+  scaled(portraitDrawer, 820, 1180, .62, '<b>Tablet portrait, drawer open:</b> party cards and chat slide over the actions, so the actions keep the width.') +
+  scaled(landscape, 1180, 820, .62, '<b>Tablet landscape (1024–1199px):</b> the desktop board, tighter: three columns, Chat and Scribe as tabs, three tiles per row. No drag handles; touch opens popovers.')
+
+// switcher
+document.querySelectorAll('.switch button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.switch button').forEach((x) => x.setAttribute('aria-pressed', x === b))
+  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === b.dataset.v))
+}))
+})()
+</script>
+</body>
+</html>

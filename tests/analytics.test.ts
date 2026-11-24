@@ -57,9 +57,10 @@ describe('untracked', () => {
 describe('viewportFor', () => {
   it('buckets by width, with desktop starting where the battle board does', () => {
     expect(viewportFor(390)).toBe('phone')
-    expect(viewportFor(700)).toBe('tablet')
-    expect(viewportFor(1199)).toBe('tablet')
-    expect(viewportFor(1200)).toBe('desktop')
+    expect(viewportFor(767)).toBe('phone')
+    expect(viewportFor(768)).toBe('tablet')
+    expect(viewportFor(1279)).toBe('tablet')
+    expect(viewportFor(1280)).toBe('desktop')
   })
 })
 

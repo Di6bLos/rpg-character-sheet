@@ -58,10 +58,11 @@ export function provideBoardNav(unread: () => number): BoardNav {
 
   const tabs = computed(() => {
     const list: BoardTab[] = []
-    // The battle board is Nimble only.
-    if (campaign.value?.system === 'nimble') list.push({ id: 'battle', label: 'Battle', badge: 0 })
+    // The battle board is Nimble only; beside it Party is the classic view.
+    const battle = campaign.value?.system === 'nimble'
+    if (battle) list.push({ id: 'battle', label: 'Battle', badge: 0 })
     list.push(
-      { id: 'party', label: 'Party', badge: unread() },
+      { id: 'party', label: battle ? 'Party (classic)' : 'Party', badge: unread() },
       { id: 'journal', label: 'Journal', badge: 0 },
       { id: 'maps', label: 'Maps & images', badge: 0 },
     )

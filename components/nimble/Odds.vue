@@ -1,14 +1,10 @@
 <script setup lang="ts">
 // "+3 disadvantage" on an attack card; what adds up to it shows on hover.
+import { oddsLabel } from '~/utils/nimbleConditions'
+
 const props = defineProps<{ rushed: number; advantage: number; why: string }>()
 
-const text = computed(() =>
-  props.rushed
-    ? `+${props.rushed} disadvantage`
-    : props.advantage
-      ? `+${props.advantage} advantage`
-      : '',
-)
+const text = computed(() => oddsLabel(props.rushed, props.advantage))
 </script>
 
 <template>

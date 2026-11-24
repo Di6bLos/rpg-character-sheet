@@ -2,11 +2,24 @@
 // The battle board's Chat / Scribe panel: one panel, two tabs. Chat is the
 // party chat as it is today (threads, Battle log, unread badges); the Scribe tab
 // shows only when it is available to this user (the same check as LorePanel). Fills
-// the rest of the right column; only the message lists scroll.
+// the rest of the right column; only the message lists scroll. Compact (phone): fills
+// its tab with larger controls, never folds, and `only` fixes it to Chat or Scribe
+// (the phone has a bottom tab for each) in place of its own tabs.
 import type { RosterEntry } from '~/types'
+import type { CommsTab } from '~/composables/useCommsTab'
 import { plural } from '~/utils/format'
 
-const props = defineProps<{ roster: RosterEntry[] }>()
+const props = defineProps<{
+  roster: RosterEntry[]
+  compact?: boolean
+  /** Show only this pane, without the Chat / Scribe tabs. */
+  only?: CommsTab
+  /**
+   * With `only`: no label either (the tablet drawer's own tabs name the pane). The head row
+   * stays, since the chat's Battle log switch sits in it.
+   */
+  bare?: boolean
+}>()
 
 const chat = useBoardChat()
 const tab = useCommsTab()
@@ -15,31 +28,47 @@ const uid = useId()
 const right = useBattleRight()
 const { gmControls } = useCampaignBoard()
 const auth = useAuthStore()
+// On touch (the desktop board's right column on a touch desktop) 44px targets.
+const { touch } = useBoardLayout()
 // Chat closes when the Party / Chat handle is dragged to the bottom (only while the
 // Party has heroes to list, since that handle shows only then).
 const hasHeroes = computed(() =>
   props.roster.some((r) => !!r.character_id && (gmControls.value || r.user_id !== auth.userId)),
 )
-const open = computed(() => !(hasHeroes.value && right.chatClosed.value))
+const open = computed(() => props.compact || !(hasHeroes.value && right.chatClosed.value))
 
-const current = computed(() => (tab.value === 'lore' && loreAvailable.value ? 'lore' : 'chat'))
+const current = computed(() =>
+  (props.only ?? tab.value) === 'lore' && loreAvailable.value ? 'lore' : 'chat',
+)
 
 // The chat counts messages as read only while it is in view: its tab open, the
 // panel unfolded and the column not collapsed.
 const chatInView = computed(
-  () => current.value === 'chat' && open.value && right.state.value.column,
+  () =>
+    current.value === 'chat' &&
+    open.value &&
+    (props.compact || touch.value || right.state.value.column),
 )
 watch(chatInView, (on) => chat.setVisible(on), { flush: 'post' })
 // BoardChat marks itself visible as it mounts; correct that if it is out of view.
 onMounted(() => chat.setVisible(chatInView.value))
 
 // On the Chat tab's badge; a closed Chat shows its own missed count instead.
-const unread = computed(() => (chatInView.value || !open.value ? 0 : chat.totalUnread.value))
+const unread = useChatBadge(() => chatInView.value || !open.value)
 
-/** A tab click also unfolds the panel. */
-function pick(t: 'chat' | 'lore') {
+// In the right column (while the Party / Chat handle shows), a click on the header opens
+// the panel fully or closes it; a click on Chat or Scribe opens it fully on that tab.
+const toggles = computed(() => !props.compact && hasHeroes.value)
+function onHead() {
+  if (toggles.value) right.toggle('chat')
+}
+
+/** A tab click shows that tab, with the panel at full height in the right column. */
+function pick(t: 'chat' | 'lore', event: MouseEvent) {
+  event.stopPropagation()
   tab.value = t
-  if (!open.value) right.showChat()
+  if (toggles.value) right.setSplit(0)
+  else if (!open.value) right.showChat()
 }
 
 function onKey(event: KeyboardEvent) {
@@ -53,9 +82,27 @@ function onKey(event: KeyboardEvent) {
 </script>
 
 <template>
-  <section class="panel comms" :class="{ 'comms--folded': !open }" aria-label="Chat and Scribe">
-    <div class="comms__head">
-      <div role="tablist" aria-label="Chat or Scribe" class="comms__tabs" @keydown="onKey">
+  <section
+    class="panel comms"
+    :class="{
+      'comms--folded': !open,
+      'comms--compact': compact,
+      'comms--touch': touch && !compact,
+    }"
+    :aria-label="only ? (current === 'lore' ? 'Scribe' : 'Chat') : 'Chat and Scribe'"
+  >
+    <div class="comms__head" :class="{ 'comms__head--toggle': toggles }" @click="onHead">
+      <span v-if="only && !bare" class="comms__label" aria-hidden="true">
+        <template v-if="current === 'lore'">✦ Scribe</template>
+        <template v-else>Chat</template>
+      </span>
+      <div
+        v-else-if="!only"
+        role="tablist"
+        aria-label="Chat or Scribe"
+        class="comms__tabs"
+        @keydown="onKey"
+      >
         <button
           :id="`${uid}-chat-tab`"
           type="button"
@@ -64,7 +111,7 @@ function onKey(event: KeyboardEvent) {
           :aria-controls="`${uid}-chat`"
           :tabindex="current === 'chat' ? 0 : -1"
           :aria-label="unread ? `Chat, ${plural(unread, 'unread message')}` : undefined"
-          @click="pick('chat')"
+          @click="pick('chat', $event)"
         >
           Chat
           <span v-if="unread" class="comms__count" aria-hidden="true">{{ unread }}</span>
@@ -77,7 +124,7 @@ function onKey(event: KeyboardEvent) {
           :aria-selected="current === 'lore'"
           :aria-controls="`${uid}-lore`"
           :tabindex="current === 'lore' ? 0 : -1"
-          @click="pick('lore')"
+          @click="pick('lore', $event)"
         >
           <span aria-hidden="true">✦</span> Scribe
         </button>
@@ -95,8 +142,8 @@ function onKey(event: KeyboardEvent) {
     <div
       v-show="open && current === 'chat'"
       :id="`${uid}-chat`"
-      role="tabpanel"
-      :aria-labelledby="`${uid}-chat-tab`"
+      :role="only ? undefined : 'tabpanel'"
+      :aria-labelledby="only ? undefined : `${uid}-chat-tab`"
       class="comms__pane comms__pane--chat"
     >
       <BoardChat :roster="roster" />
@@ -105,8 +152,8 @@ function onKey(event: KeyboardEvent) {
       v-if="loreAvailable"
       v-show="open && current === 'lore'"
       :id="`${uid}-lore`"
-      role="tabpanel"
-      :aria-labelledby="`${uid}-lore-tab`"
+      :role="only ? undefined : 'tabpanel'"
+      :aria-labelledby="only ? undefined : `${uid}-lore-tab`"
       class="comms__pane comms__pane--lore"
     >
       <BoardLorePanelChat :drawer="false" />
@@ -139,6 +186,10 @@ function onKey(event: KeyboardEvent) {
   gap: 8px;
   min-height: 32px;
   padding: 5px 14px 0;
+
+  &--toggle {
+    cursor: pointer;
+  }
 }
 
 .comms__tabs {
@@ -169,11 +220,26 @@ function onKey(event: KeyboardEvent) {
       color: var(--page-text);
     }
 
+    &:hover {
+      cursor: pointer;
+      color: var(--page-text);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    &[aria-selected='true']:hover {
+      background: color-mix(in srgb, var(--accent) 36%, transparent);
+    }
+
     &:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 1px;
     }
   }
+}
+
+// Hovering the clickable header lifts the tab that's showing.
+.comms__head--toggle:hover .comms__tabs button[aria-selected='true'] {
+  background: color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .comms__missed {
@@ -404,6 +470,102 @@ function onKey(event: KeyboardEvent) {
   :deep(.lore__head:not(:has(> .btn--sm))) {
     padding: 0;
     border: 0;
+  }
+}
+
+// --- Compact (phone) -------------------------------------------------------------------
+// The tab's own label in place of the Chat / Scribe tabs.
+.comms__label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--page-muted);
+}
+
+// Fills the phone's tab; touch-sized controls. The message box is 16px so phones don't
+// zoom in when it takes focus.
+.comms--compact {
+  .comms__head {
+    min-height: 40px;
+    padding-top: 6px;
+  }
+
+  .comms__tabs button {
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  .comms__pane--chat {
+    :deep(.chat__tabs button) {
+      min-height: 40px;
+      padding: 0 12px 0 6px;
+      font-size: 13px;
+    }
+
+    :deep(.chat__toggle) {
+      min-height: 32px;
+      font-size: 12px;
+    }
+
+    :deep(.chat__bubble) {
+      font-size: 14px;
+    }
+
+    :deep(.chat__form) {
+      gap: 8px;
+      padding: 8px 12px 10px;
+    }
+
+    :deep(.chat__form .input),
+    :deep(.chat__form .btn) {
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
+
+  .comms__pane--lore {
+    padding: 8px 12px 10px;
+
+    :deep(textarea),
+    :deep(.lore__ask .btn) {
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
+}
+
+// --- Touch (desktop board) -------------------------------------------------------------
+// 44px targets in the right column; the message box is 16px so tablets don't zoom in.
+.comms--touch {
+  .comms__tabs button {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .comms__pane--chat {
+    :deep(.chat__tabs button),
+    :deep(.chat__toggle) {
+      min-height: 44px;
+    }
+
+    :deep(.chat__form .input),
+    :deep(.chat__form .btn) {
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
+
+  .comms__pane--lore {
+    :deep(textarea),
+    :deep(.lore__ask .btn) {
+      min-height: 44px;
+      font-size: 16px;
+    }
   }
 }
 </style>

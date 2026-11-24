@@ -1,13 +1,23 @@
 <script setup lang="ts">
-// Battle tab: the desktop battle board (Nimble, 1200px+). The initiative strip, the
+// Battle tab: the battle board (Nimble). The initiative strip, the
 // player's hero column and actions or the GM's stat block and encounter grid, and the
-// party and chat on the right. Narrower windows get a note pointing to the Party tab.
+// party and chat on the right. On a phone the same parts go in the phone frame, one tab
+// at a time (the GM's tabs: Encounter, Creature, Party, Chat). On a tablet (768–1279px)
+// the tablet frame has the left and centre columns, with Party, Chat and Scribe in a
+// drawer. Every frame sits inside one HeroScope, so switching frames (a rotation) keeps
+// the hero's sheet editor and its automatic turn steps. Other systems get a note pointing to the Party tab.
 import { downSummonKeys } from '~/utils/initiative'
+import type { PhoneTab } from '~/utils/boardLayout'
 
 const { campaign, campaignId, isGm, gmControls, roster, base } = useCampaignBoard()
+const { layout } = useBoardLayout()
+const phone = computed(() => layout.value === 'phone')
+const tablet = computed(() => layout.value === 'tablet')
+/** The phone frame's open tab and tab switch (its exposed `tab` and `go`). */
+const phoneFrame = ref<{ tab: PhoneTab; go: (tab: PhoneTab) => void } | null>(null)
+const snackbar = useSnackbarStore()
 
 const init = useInitiative(campaignId, isGm)
-const wide = useWideBoard()
 useRosterRefresh(init.activeId)
 
 const downSummons = computed(() => downSummonKeys(init.rows.value))
@@ -47,10 +57,25 @@ const gmSelected = computed(() => {
   return init.order.value.find((c) => c.kind === 'monster' || c.kind === 'npc')?.id ?? null
 })
 const gmHeroId = computed(() => seatedHero(gmSelected.value))
-/** Picks what the GM's left column shows, opening the column if it was closed. */
+/**
+ * Picks what the GM's left column shows, opening the column if it was closed. The phone
+ * has no left column: the pick shows on the Creature tab, and from another tab a toast
+ * names it with a button that opens Creature (the GM stays where they were).
+ */
 function gmShow(id: string) {
   gmPick.value = id
-  if (!left.state.value.column) left.setColumn(true)
+  if (phone.value) {
+    const frame = phoneFrame.value
+    if (frame && frame.tab !== 'creature') {
+      snackbar.show(`Selected: ${rowOf(id)?.name ?? 'creature'}`, 'info', 5000, {
+        label: 'Show',
+        run: () => phoneFrame.value?.go('creature'),
+      })
+    }
+    return
+  }
+  // The tablet's left column is always open (and the desktop's saved state stays as it is).
+  if (!tablet.value && !left.state.value.column) left.setColumn(true)
 }
 function onToken(id: string) {
   if (gmControls.value && (isCreature(id) || seatedHero(id))) gmShow(id)
@@ -67,42 +92,29 @@ function onGridHero(characterId: string) {
 </script>
 
 <template>
-  <!-- GM: stat block (left), turn bar and encounter grid (centre). -->
-  <BattleBoard
-    v-if="wide"
-    :init="init"
+  <BattleHeroScope
+    v-if="campaign?.system === 'nimble'"
+    v-slot="{ hero }"
     :turn-character-id="actingCharacterId"
     :round="encounterRound"
     :down-summons="downSummons"
   >
-    <template #strip>
-      <BattleInitiative
-        :init="init"
-        :roster="roster"
-        :gm="gmControls"
-        @hero="onHeroToken"
-        @select="onToken"
-      />
-    </template>
-    <template #left="{ hero }">
-      <BattleHero v-if="hero" />
-      <BattleGmHero v-else-if="gmControls && gmHeroId" :character-id="gmHeroId" :roster="roster" />
-      <BattleStatBlock v-else-if="gmControls" :init="init" :combatant-id="gmSelected" />
-      <BoardRoster
-        v-else-if="campaign"
-        :roster="roster"
-        :system="campaign.system"
-        :turn-character-id="turnCharacterId"
-      />
-    </template>
-    <template #centre="{ hero }">
-      <template v-if="hero">
-        <BattleTurnBar :init="init" />
-        <BattleActions />
+    <BattlePhone v-if="phone" ref="phoneFrame" :init="init" :hero="hero">
+      <template #strip>
+        <BattleInitiative
+          compact
+          :init="init"
+          :roster="roster"
+          :gm="gmControls"
+          @hero="onHeroToken"
+          @select="onToken"
+        />
       </template>
-      <template v-else-if="gmControls">
-        <BattleGmTurnBar :init="init" :roster="roster" />
+      <template #tab="{ tab }">
+        <!-- GM: the encounter cards and the selected creature's stat block (or hero). -->
         <BattleEncounter
+          v-if="tab === 'encounter' && gmControls"
+          compact
           :init="init"
           :roster="roster"
           :selected="gmSelected"
@@ -110,34 +122,196 @@ function onGridHero(characterId: string) {
           @update:selected="(id: string | null) => (id ? gmShow(id) : (gmPick = null))"
           @hero="onGridHero"
         />
+        <template v-else-if="tab === 'creature' && gmControls">
+          <BattleGmHero v-if="gmHeroId" :character-id="gmHeroId" :roster="roster" />
+          <BattleStatBlock v-else :init="init" :combatant-id="gmSelected" />
+        </template>
+        <BattleActions v-else-if="tab === 'actions' && hero" compact sheet />
+        <BattleHero v-else-if="tab === 'hero' && hero" compact />
+        <template v-else-if="tab === 'party'">
+          <!-- A watcher gets the same hint as on the tablet and desktop boards. -->
+          <template v-if="!hero && !gmControls">
+            <p v-if="isGm" class="panel battle-empty">
+              <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run
+              the encounter.
+            </p>
+            <p v-else class="panel battle-empty">
+              Seat a hero (Playing as, in the campaign menu) to play from the battle board.
+            </p>
+          </template>
+          <BattlePartyCards
+            compact
+            :roster="roster"
+            :gm="gmControls"
+            :acting-character-id="turnCharacterId"
+            @open="(id: string) => (cardId = id)"
+          />
+          <BattleEnemies :init="init" :gm="gmControls" />
+        </template>
+        <BattleComms
+          v-else-if="tab === 'chat' || tab === 'scribe'"
+          compact
+          :only="tab === 'scribe' ? 'lore' : 'chat'"
+          :roster="roster"
+        />
       </template>
-      <p v-else-if="isGm" class="panel battle-empty">
-        <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
-        encounter.
-      </p>
-      <p v-else class="panel battle-empty">
-        Seat a hero (Playing as, in the campaign menu) to play from the battle board.
-      </p>
-      <!-- In the centre (inside the hero's sheet editor, so the viewer's own hero gets the
-           hero column's HP) and not the left column, which may be closed (hidden). -->
-      <BattleHeroCardDialog v-model:character-id="cardId" :roster="roster" :gm="gmControls">
-        <template v-if="hero" #own-hp><BattleHeroHp /></template>
-      </BattleHeroCardDialog>
-    </template>
-    <template #right>
-      <BattlePartyCards
-        :roster="roster"
-        :gm="gmControls"
-        :acting-character-id="turnCharacterId"
-        @open="(id: string) => (cardId = id)"
-      />
-      <BattleRightSplit :roster="roster" :gm="gmControls" />
-      <BattleComms :roster="roster" />
-    </template>
-  </BattleBoard>
+      <template #turn>
+        <BattleGmTurnBar v-if="gmControls" compact :init="init" :roster="roster" />
+        <BattleTurnBar v-else compact :init="init" />
+      </template>
+      <template #dialogs="{ go }">
+        <BattleHeroCardDialog
+          v-model:character-id="cardId"
+          sheet
+          :roster="roster"
+          :gm="gmControls"
+          @whisper="go('chat')"
+        >
+          <template v-if="hero" #own-hp><BattleHeroHp /></template>
+        </BattleHeroCardDialog>
+      </template>
+    </BattlePhone>
+    <!-- Tablet: hero column or stat block (left), turn bar and actions or the
+         encounter (centre), Party / Chat / Scribe in the drawer. -->
+    <BattleTablet v-else-if="tablet" :init="init" :hero="hero">
+      <template #strip>
+        <BattleInitiative
+          :init="init"
+          :roster="roster"
+          :gm="gmControls"
+          @hero="onHeroToken"
+          @select="onToken"
+        />
+      </template>
+      <template #left>
+        <BattleHero v-if="hero" />
+        <BattleGmHero
+          v-else-if="gmControls && gmHeroId"
+          :character-id="gmHeroId"
+          :roster="roster"
+        />
+        <BattleStatBlock v-else-if="gmControls" :init="init" :combatant-id="gmSelected" />
+        <BoardRoster
+          v-else-if="campaign"
+          :roster="roster"
+          :system="campaign.system"
+          :turn-character-id="turnCharacterId"
+        />
+      </template>
+      <template #turn>
+        <BattleTurnBar v-if="hero" :init="init" />
+        <BattleGmTurnBar v-else-if="gmControls" compact :init="init" :roster="roster" />
+      </template>
+      <template #centre>
+        <BattleActions v-if="hero" compact />
+        <BattleEncounter
+          v-else-if="gmControls"
+          compact
+          :init="init"
+          :roster="roster"
+          :selected="gmSelected"
+          :picked="gmPick"
+          @update:selected="(id: string | null) => (id ? gmShow(id) : (gmPick = null))"
+          @hero="onGridHero"
+        />
+        <p v-else-if="isGm" class="panel battle-empty">
+          <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
+          encounter.
+        </p>
+        <p v-else class="panel battle-empty">
+          Seat a hero (Playing as, in the campaign menu) to play from the battle board.
+        </p>
+        <BattleHeroCardDialog v-model:character-id="cardId" :roster="roster" :gm="gmControls">
+          <template v-if="hero" #own-hp><BattleHeroHp /></template>
+        </BattleHeroCardDialog>
+      </template>
+      <template #drawer="{ tab }">
+        <BattlePartyCards
+          v-if="tab === 'party'"
+          compact
+          :roster="roster"
+          :gm="gmControls"
+          :acting-character-id="turnCharacterId"
+          @open="(id: string) => (cardId = id)"
+        />
+        <BattleComms
+          v-else
+          compact
+          bare
+          :only="tab === 'scribe' ? 'lore' : 'chat'"
+          :roster="roster"
+        />
+      </template>
+    </BattleTablet>
+    <!-- GM: stat block (left), turn bar and encounter grid (centre). -->
+    <BattleBoard v-else :init="init" :hero="hero">
+      <template #strip>
+        <BattleInitiative
+          :init="init"
+          :roster="roster"
+          :gm="gmControls"
+          @hero="onHeroToken"
+          @select="onToken"
+        />
+      </template>
+      <template #left>
+        <BattleHero v-if="hero" />
+        <BattleGmHero
+          v-else-if="gmControls && gmHeroId"
+          :character-id="gmHeroId"
+          :roster="roster"
+        />
+        <BattleStatBlock v-else-if="gmControls" :init="init" :combatant-id="gmSelected" />
+        <BoardRoster
+          v-else-if="campaign"
+          :roster="roster"
+          :system="campaign.system"
+          :turn-character-id="turnCharacterId"
+        />
+      </template>
+      <template #centre>
+        <template v-if="hero">
+          <BattleTurnBar :init="init" />
+          <BattleActions />
+        </template>
+        <template v-else-if="gmControls">
+          <BattleGmTurnBar :init="init" :roster="roster" />
+          <BattleEncounter
+            :init="init"
+            :roster="roster"
+            :selected="gmSelected"
+            :picked="gmPick"
+            @update:selected="(id: string | null) => (id ? gmShow(id) : (gmPick = null))"
+            @hero="onGridHero"
+          />
+        </template>
+        <p v-else-if="isGm" class="panel battle-empty">
+          <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
+          encounter.
+        </p>
+        <p v-else class="panel battle-empty">
+          Seat a hero (Playing as, in the campaign menu) to play from the battle board.
+        </p>
+        <!-- In the centre (inside the hero's sheet editor, so the viewer's own hero gets the
+             hero column's HP) and not the left column, which may be closed (hidden). -->
+        <BattleHeroCardDialog v-model:character-id="cardId" :roster="roster" :gm="gmControls">
+          <template v-if="hero" #own-hp><BattleHeroHp /></template>
+        </BattleHeroCardDialog>
+      </template>
+      <template #right>
+        <BattlePartyCards
+          :roster="roster"
+          :gm="gmControls"
+          :acting-character-id="turnCharacterId"
+          @open="(id: string) => (cardId = id)"
+        />
+        <BattleRightSplit :roster="roster" :gm="gmControls" />
+        <BattleComms :roster="roster" />
+      </template>
+    </BattleBoard>
+  </BattleHeroScope>
   <div v-else class="panel battle-narrow">
-    <p v-if="campaign?.system !== 'nimble'">The battle board is for Nimble campaigns.</p>
-    <p v-else>The battle board needs a window at least 1200px wide.</p>
+    <p>The battle board is for Nimble campaigns.</p>
     <NuxtLink :to="`${base}/party`" class="btn">Go to Party</NuxtLink>
   </div>
 </template>

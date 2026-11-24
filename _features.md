@@ -221,7 +221,7 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 
 ## Desktop battle board (Nimble, ≥1200px)
 
-- [x] `useWideBoard` picks the battle board in `PartyView`; below 1200px the old Party tab stays
+- [x] The battle board has its own Battle tab, which Nimble campaigns open on; `useBoardLayout` picks its frame by width (phone, tablet, desktop) and touch, and the old Party tab stays as "Party (classic)"
 - [x] Frame and bar with shared tab state (`useBoardNav`); one-row initiative strip
 - [x] Hero column (HP, conditions, rest, summons) and one shared sheet editor with the turn steps firing from initiative
 - [x] Player turn bar and a "Ready now" action panel (tiles, details, pickers, filters) using the same availability rule as the sheet
@@ -272,12 +272,11 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [ ] Ignore the keys while typing in an input, textarea or the chat, and while a dialog is open
 - [ ] List the shortcuts somewhere the GM can find them (tooltip on Next turn or a "?" help)
 
-##
+## Future updates
 
 - conditions review https://nimble.nexus/rules/conditions
 - GM only backstory section
 - Fix the the delete campaign section text. its not wrapping, getting cut off my container an button
-- Lets update the carousel tracker again. I dont want to be able to scroll to the next rown. I want the
 
 ## Usage analytics (playtest: Battle vs Party vs Sheet)
 

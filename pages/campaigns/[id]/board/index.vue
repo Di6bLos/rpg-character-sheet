@@ -1,11 +1,11 @@
 <script setup lang="ts">
-// /campaigns/:id/board opens the Battle tab for a Nimble campaign in a wide window,
+// /campaigns/:id/board opens the Battle tab for a Nimble campaign,
 // the Party tab otherwise. (The frame renders this only once the campaign has loaded.)
 const route = useRoute()
-const wide = useWideBoard()
+const { battle } = useBoardLayout()
 await navigateTo(
   {
-    path: `/campaigns/${String(route.params.id)}/board/${wide.value ? 'battle' : 'party'}`,
+    path: `/campaigns/${String(route.params.id)}/board/${battle.value ? 'battle' : 'party'}`,
     query: route.query,
     hash: route.hash,
   },
