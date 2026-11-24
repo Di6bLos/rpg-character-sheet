@@ -226,7 +226,13 @@ function onGridHero(characterId: string) {
           :acting-character-id="turnCharacterId"
           @open="(id: string) => (cardId = id)"
         />
-        <BattleComms v-else compact :only="tab === 'scribe' ? 'lore' : 'chat'" :roster="roster" />
+        <BattleComms
+          v-else
+          compact
+          bare
+          :only="tab === 'scribe' ? 'lore' : 'chat'"
+          :roster="roster"
+        />
       </template>
     </BattleTablet>
     <!-- GM: stat block (left), turn bar and encounter grid (centre). -->

@@ -5,6 +5,8 @@
 // The automatic steps as initiative moves run in HeroScope's editor, not here.
 // Compact (phone): one row above the tab bar: the headline with the actions left and
 // reactions as its sub line, touch-sized pips and the step button.
+// On touch (any width: tablets, touch desktops) the full bar keeps all it shows, with the
+// pips, "+1" and the step buttons as 44px targets 8px apart.
 import type { useInitiative } from '~/composables/useInitiative'
 import type { NimbleSheet } from '~/types/sheets'
 import { turnHeadline } from '~/utils/turnSteps'
@@ -12,6 +14,7 @@ import { turnHeadline } from '~/utils/turnSteps'
 const props = defineProps<{ init: ReturnType<typeof useInitiative>; compact?: boolean }>()
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
+const { touch } = useBoardLayout()
 const announce = useAnnounce()
 const {
   sheet,
@@ -102,7 +105,11 @@ const subLine = computed(() => [headTail.value, subRest.value].filter(Boolean).j
 <template>
   <section
     class="panel turn"
-    :class="{ 'turn--now': sheet.turnActive, 'turn--compact': compact }"
+    :class="{
+      'turn--now': sheet.turnActive,
+      'turn--compact': compact,
+      'turn--touch': touch && !compact,
+    }"
     aria-label="Your turn"
   >
     <div class="turn__who">
@@ -471,6 +478,64 @@ const subLine = computed(() => [headTail.value, subRest.value].filter(Boolean).j
   .turn__steps:has(.turn__entry) {
     flex: 1 1 100%;
     flex-wrap: wrap;
+  }
+}
+
+// --- Touch (the full bar) ---------------------------------------------------------------
+// Every one-tap control is a 44px target, 8px from the next; the pips keep their 22px dots,
+// drawn inside the target.
+.turn--touch {
+  .turn__pips,
+  .turn__pipline,
+  .turn__steps,
+  .turn__casting {
+    gap: 8px;
+  }
+
+  .turn__pip {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 11px;
+      box-sizing: border-box;
+      border-radius: 50%;
+      border: 2px dashed var(--line-strong);
+    }
+
+    &.on,
+    &.extra.on {
+      border: 0;
+      background: none;
+    }
+
+    &.on::after {
+      border: 2px solid var(--secondary);
+      background: var(--secondary);
+    }
+
+    &.extra.on::after {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+  }
+
+  .turn__add {
+    min-width: 44px;
+    height: 44px;
+    font-size: 13px;
+  }
+
+  .turn__steps .btn,
+  .turn__casting .btn {
+    min-height: 44px;
+    padding-inline: 16px;
+    font-size: 14px;
   }
 }
 </style>

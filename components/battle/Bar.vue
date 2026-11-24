@@ -406,10 +406,11 @@ const endOpen = ref(false)
 
   .bar__title {
     max-width: 180px;
+    min-height: 44px;
   }
 
   .bar__tabs a {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 10px;
   }
 

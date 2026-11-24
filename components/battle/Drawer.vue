@@ -19,8 +19,12 @@ watch(
   [tab, el],
   ([open, dialog]) => {
     if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    else if (!open && dialog.open) dialog.close()
+    if (open && !dialog.open) {
+      dialog.showModal()
+      // Focus the tab it opened on (Chat, Scribe), not the first one in the list. Whisper
+      // then moves focus on into the message box.
+      nextTick(() => document.getElementById(`${uid}-${open}`)?.focus())
+    } else if (!open && dialog.open) dialog.close()
   },
   { immediate: true },
 )
@@ -154,7 +158,7 @@ function onKey(event: KeyboardEvent) {
   button {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 10px;
     border: 0;
     border-radius: 999px;

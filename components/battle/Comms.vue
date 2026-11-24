@@ -14,6 +14,11 @@ const props = defineProps<{
   compact?: boolean
   /** Show only this pane, without the Chat / Scribe tabs. */
   only?: CommsTab
+  /**
+   * With `only`: no label either (the tablet drawer's own tabs name the pane). The head row
+   * stays, since the chat's Battle log switch sits in it.
+   */
+  bare?: boolean
 }>()
 
 const chat = useBoardChat()
@@ -69,11 +74,17 @@ function onKey(event: KeyboardEvent) {
     :aria-label="only ? (current === 'lore' ? 'Scribe' : 'Chat') : 'Chat and Scribe'"
   >
     <div class="comms__head">
-      <span v-if="only" class="comms__label" aria-hidden="true">
+      <span v-if="only && !bare" class="comms__label" aria-hidden="true">
         <template v-if="current === 'lore'">✦ Scribe</template>
         <template v-else>Chat</template>
       </span>
-      <div v-else role="tablist" aria-label="Chat or Scribe" class="comms__tabs" @keydown="onKey">
+      <div
+        v-else-if="!only"
+        role="tablist"
+        aria-label="Chat or Scribe"
+        class="comms__tabs"
+        @keydown="onKey"
+      >
         <button
           :id="`${uid}-chat-tab`"
           type="button"
