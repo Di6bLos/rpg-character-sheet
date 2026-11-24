@@ -150,8 +150,14 @@ function setHp() {
     min-height: 44px;
   }
 
+  // The 16px value would clip the placeholder in a narrow column (tablet-wide).
   .sbk__amount {
+    padding-inline: 4px;
     font-size: 16px;
+
+    &::placeholder {
+      font-size: 13px;
+    }
   }
 }
 </style>
