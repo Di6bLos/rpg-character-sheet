@@ -126,6 +126,9 @@ const endOpen = ref(false)
         :aria-current="isCurrent(t.id) ? 'page' : undefined"
       >
         {{ t.label }}
+        <span v-if="t.badge" class="bar__badge" :aria-label="plural(t.badge, 'unread message')">{{
+          t.badge
+        }}</span>
       </NuxtLink>
     </nav>
 

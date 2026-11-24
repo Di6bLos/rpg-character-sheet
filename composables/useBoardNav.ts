@@ -7,6 +7,8 @@ import { systemLabel } from '~/utils/systems'
 export interface BoardTab {
   id: string
   label: string
+  /** Unread party-chat messages (on the Battle tab, where the chat lives); 0 hides the badge. */
+  badge: number
 }
 
 export interface BoardNav {
@@ -37,6 +39,7 @@ export function provideBoardNav(): BoardNav {
   const characters = useCharacterStore()
   const snackbar = useSnackbarStore()
   const { mode, campaign, campaignId, base, reloadRoster } = useCampaignBoard()
+  const chat = useBoardChat()
 
   const meta = computed(() => {
     const c = campaign.value
@@ -57,11 +60,11 @@ export function provideBoardNav(): BoardNav {
 
   const tabs = computed(() => {
     const list: BoardTab[] = [
-      { id: 'battle', label: 'Battle' },
-      { id: 'journal', label: 'Journal' },
-      { id: 'maps', label: 'Maps & images' },
+      { id: 'battle', label: 'Battle', badge: chat.totalUnread.value },
+      { id: 'journal', label: 'Journal', badge: 0 },
+      { id: 'maps', label: 'Maps & images', badge: 0 },
     ]
-    if (mode === 'console') list.push({ id: 'npcs', label: 'NPCs' })
+    if (mode === 'console') list.push({ id: 'npcs', label: 'NPCs', badge: 0 })
     return list
   })
 
