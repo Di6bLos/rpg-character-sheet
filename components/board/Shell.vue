@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The campaign board and GM console share this frame (design/screens/BoardShell.dc.html):
 // campaign title, campaign switcher, preview / console links and the routed tabs.
-// On the desktop battle board (Battle tab, Nimble, 1200px+) the header and tabs hide and
+// On the battle board (Battle tab, Nimble) the header and tabs hide and
 // the battle bar shows them instead, reading the same state through `useBoardNav()`.
 import { plural } from '~/utils/format'
 import { systemLabel } from '~/utils/systems'
@@ -13,8 +13,8 @@ const { meta, tabs, isCurrent, switchable, switchTo, myOptions, seat } = provide
   () => props.unread ?? 0,
 )
 
-const wide = useWideBoard()
-const battle = computed(() => wide.value && isCurrent('battle'))
+const { battle: nimble } = useBoardLayout()
+const battle = computed(() => nimble.value && isCurrent('battle'))
 </script>
 
 <template>

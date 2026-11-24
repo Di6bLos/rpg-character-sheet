@@ -69,7 +69,7 @@ export function seatFor(path: string): PageSeat | null {
   return m[1] === 'gm' ? 'gm' : 'player'
 }
 
-/** 1200px matches `useWideBoard`, where the battle board turns on. */
+/** 1200px matches `useBoardLayout`'s desktop class. */
 export function viewportFor(width: number): Viewport {
   if (width < 700) return 'phone'
   if (width < 1200) return 'tablet'

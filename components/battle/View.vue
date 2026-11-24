@@ -1,13 +1,12 @@
 <script setup lang="ts">
-// Battle tab: the desktop battle board (Nimble, 1200px+). The initiative strip, the
+// Battle tab: the battle board (Nimble). The initiative strip, the
 // player's hero column and actions or the GM's stat block and encounter grid, and the
-// party and chat on the right. Narrower windows get a note pointing to the Party tab.
+// party and chat on the right. Other systems get a note pointing to the Party tab.
 import { downSummonKeys } from '~/utils/initiative'
 
 const { campaign, campaignId, isGm, gmControls, roster, base } = useCampaignBoard()
 
 const init = useInitiative(campaignId, isGm)
-const wide = useWideBoard()
 useRosterRefresh(init.activeId)
 
 const downSummons = computed(() => downSummonKeys(init.rows.value))
@@ -69,7 +68,7 @@ function onGridHero(characterId: string) {
 <template>
   <!-- GM: stat block (left), turn bar and encounter grid (centre). -->
   <BattleBoard
-    v-if="wide"
+    v-if="campaign?.system === 'nimble'"
     :init="init"
     :turn-character-id="actingCharacterId"
     :round="encounterRound"
@@ -136,8 +135,7 @@ function onGridHero(characterId: string) {
     </template>
   </BattleBoard>
   <div v-else class="panel battle-narrow">
-    <p v-if="campaign?.system !== 'nimble'">The battle board is for Nimble campaigns.</p>
-    <p v-else>The battle board needs a window at least 1200px wide.</p>
+    <p>The battle board is for Nimble campaigns.</p>
     <NuxtLink :to="`${base}/party`" class="btn">Go to Party</NuxtLink>
   </div>
 </template>
