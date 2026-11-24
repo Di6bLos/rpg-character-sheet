@@ -23,6 +23,8 @@ defineSlots<{
 }>()
 
 const { gmControls } = useCampaignBoard()
+// On touch the columns have no splitters or rail: both stay open at their saved widths.
+const { touch } = useBoardLayout()
 const left = useBattleLeft()
 const right = useBattleRight()
 
@@ -34,8 +36,8 @@ const CENTRE_MIN = 460
 const cols = ref<HTMLElement | null>(null)
 const leftEl = ref<HTMLElement | null>(null)
 const rightEl = ref<HTMLElement | null>(null)
-const leftOpen = computed(() => left.state.value.column)
-const open = computed(() => right.state.value.column)
+const leftOpen = computed(() => touch.value || left.state.value.column)
+const open = computed(() => touch.value || right.state.value.column)
 const leftWidth = computed(() => left.widthFor(gmControls.value))
 
 /** How wide `el` may grow now: its width plus what the centre has beyond its minimum. */
@@ -114,6 +116,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
           :class="{ 'is-closed': !leftOpen }"
         >
           <BattleSplitter
+            v-if="!touch"
             class="battle__split"
             orientation="vertical"
             :label="
@@ -139,6 +142,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
            handle keeps the pointer through a drag that opens or closes the column. -->
       <div ref="rightEl" class="battle__side battle__side--right" :class="{ 'is-closed': !open }">
         <BattleSplitter
+          v-if="!touch"
           class="battle__split"
           orientation="vertical"
           :label="
@@ -154,7 +158,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
           @drop="rightHandle.onDrop"
           @tap="rightHandle.onTap"
         />
-        <BattleRightRail v-if="!open" />
+        <BattleRightRail v-if="!open && !touch" />
         <div v-show="open" class="battle__col battle__col--right">
           <slot name="right" />
         </div>

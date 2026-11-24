@@ -73,3 +73,8 @@ export function useCampaignBoard(): CampaignBoardContext {
   if (!ctx) throw new Error('useCampaignBoard() must be used inside a campaign board page')
   return ctx
 }
+
+/** Like `useCampaignBoard()`, but null outside a campaign board page (shared components). */
+export function useCampaignBoardOptional(): CampaignBoardContext | null {
+  return inject(KEY, null)
+}

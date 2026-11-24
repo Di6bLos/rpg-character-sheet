@@ -56,7 +56,7 @@ export function useBoardLayout(): {
   touch: ComputedRef<boolean>
   battle: ComputedRef<boolean>
 } {
-  const { campaign } = useCampaignBoard()
+  const board = useCampaignBoardOptional()
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     if (users++ === 0) start()
     onScopeDispose(() => {
@@ -74,6 +74,6 @@ export function useBoardLayout(): {
             : 'phone',
     ),
     touch: computed(() => state.touch.value),
-    battle: computed(() => campaign.value?.system === 'nimble'),
+    battle: computed(() => board?.campaign.value?.system === 'nimble'),
   }
 }

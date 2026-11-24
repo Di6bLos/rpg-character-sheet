@@ -25,6 +25,7 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
+const { touch } = useBoardLayout()
 
 function rosterFor(c: TurnRow) {
   return c.character_id ? props.roster.find((r) => r.character_id === c.character_id) : undefined
@@ -334,10 +335,33 @@ async function onContextMenu(slot: Slot, e: MouseEvent | KeyboardEvent) {
   // Players keep the browser's own menu.
   if (!props.gm || !slot.c) return
   e.preventDefault()
+  await openMenu(slot, e.currentTarget as HTMLElement)
+}
+
+async function openMenu(slot: Slot, anchor: HTMLElement) {
+  if (!props.gm || !slot.c) return
   menuOpen.value = false
-  menu.value = { c: slot.c, round: slot.round, anchor: e.currentTarget as HTMLElement }
+  menu.value = { c: slot.c, round: slot.round, anchor }
   await nextTick()
   menuOpen.value = true
+}
+
+// On touch, a long press on a token does what the right-click does (the GM's menu).
+const press = useLongPress((el) => {
+  const slot = pressSlot
+  if (slot) void openMenu(slot, el)
+})
+let pressSlot: Slot | null = null
+function onPressDown(slot: Slot, e: PointerEvent) {
+  if (!touch.value) return
+  pressSlot = slot
+  press.onPointerdown(e)
+}
+function onPressMove(e: PointerEvent) {
+  if (touch.value) press.onPointermove(e)
+}
+function onPressEnd() {
+  if (touch.value) press.onPointerup()
 }
 
 // The row moving (a turn change, browsing, a new order) leaves the menu's token behind.
@@ -417,6 +441,10 @@ function onFocus(slot: Slot, e: FocusEvent) {
                 :aria-label="`${c.name}, ${c.initiative_rolled ? `initiative ${c.initiative}` : 'waiting for Initiative'}${hpLabel(c) ? `, ${hpLabel(c)}` : ''}`"
                 @click="onToken(c)"
                 @contextmenu="onContextMenu(slot, $event)"
+                @pointerdown="onPressDown(slot, $event)"
+                @pointermove="onPressMove"
+                @pointerup="onPressEnd"
+                @pointercancel="onPressEnd"
                 @keydown="onTokenKey(slot, $event)"
               >
                 <span

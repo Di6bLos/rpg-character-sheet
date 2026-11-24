@@ -9,6 +9,10 @@ const props = defineProps<{ text?: string; title?: string; sub?: string; keys?: 
 const MARGIN = 8
 const GAP = 6
 
+// On touch there is no hover: a tap on the trigger toggles the tooltip and a pointerdown
+// anywhere else closes it. With a mouse everything below behaves as before.
+const { touch } = useBoardLayout()
+
 const id = useId()
 const root = ref<HTMLElement>()
 const tip = ref<HTMLElement>()
@@ -37,6 +41,11 @@ async function place() {
 }
 
 function show() {
+  if (touch.value) return
+  showNow()
+}
+
+function showNow() {
   if (!has.value) return
   if (!open.value) listen()
   open.value = true
@@ -46,6 +55,20 @@ function show() {
 function hide() {
   open.value = false
   unlisten()
+}
+
+function onHide() {
+  if (!touch.value) hide()
+}
+
+function onClick() {
+  if (!touch.value) return hide()
+  if (open.value) hide()
+  else showNow()
+}
+
+function onOutside(event: PointerEvent) {
+  if (touch.value && open.value && !root.value?.contains(event.target as Node | null)) hide()
 }
 
 // Scrolling or resizing hides an open tooltip; the listeners exist only while it shows.
@@ -60,6 +83,7 @@ function unlisten() {
 }
 
 function onOut(event: MouseEvent) {
+  if (touch.value) return
   if (!root.value?.contains(event.relatedTarget as Node | null)) hide()
 }
 
@@ -78,10 +102,16 @@ function describe() {
   else el.removeAttribute('aria-describedby')
 }
 
-onMounted(describe)
+onMounted(() => {
+  describe()
+  document.addEventListener('pointerdown', onOutside, true)
+})
 onUpdated(describe)
 watch(has, describe)
-onBeforeUnmount(unlisten)
+onBeforeUnmount(() => {
+  unlisten()
+  document.removeEventListener('pointerdown', onOutside, true)
+})
 </script>
 
 <template>
@@ -91,9 +121,9 @@ onBeforeUnmount(unlisten)
     @mouseover="show"
     @mouseout="onOut"
     @focusin="show"
-    @focusout="hide"
+    @focusout="onHide"
     @keydown="onKey"
-    @click="hide"
+    @click="onClick"
   >
     <slot />
     <Teleport to="body">
