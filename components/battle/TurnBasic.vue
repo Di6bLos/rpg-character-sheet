@@ -4,7 +4,8 @@
 // for your turn" while seated before the GM starts), with the round while the encounter
 // runs. While the GM has seated the hero without an Initiative ("–" on the strip) a Roll
 // initiative button rolls d20 + the hero's Init and sends it to the tracker
-// (`sendInitiative`); the button goes once the row has a number.
+// (`sendInitiative`); the button goes once the row has a number. A failed write keeps the
+// rolled total and offers to resend it, as the Nimble turn bar does.
 import type { useInitiative } from '~/composables/useInitiative'
 import { sendInitiative } from '~/composables/useSendInitiative'
 import { rollDie } from '~/utils/dice'
@@ -34,24 +35,50 @@ const canRoll = computed(() => !!row.value && row.value.initiative_rolled === fa
 const busy = ref(false)
 /** "Initiative 17. Sent to the GM's initiative tracker." after a roll. */
 const result = ref('')
-// A new hero (Playing as) starts with no result.
-watch(
-  () => props.characterId,
-  () => (result.value = ''),
-)
+/** A total the tracker didn't get; Resend sends it again instead of rolling anew. */
+const unsent = ref<number | null>(null)
+function clear() {
+  result.value = ''
+  unsent.value = null
+}
+// A new hero (Playing as), a new or removed tracker row (the GM removed and re-added the
+// hero), or a fresh wait for Initiative starts with no result.
+watch([() => props.characterId, () => row.value?.id], () => clear())
+watch(canRoll, (now, before) => {
+  if (now && !before) clear()
+})
 
-async function roll() {
+/**
+ * The turn line takes focus for a roll, so focus doesn't drop to the page when the button
+ * goes: the dice tray (a modal dialog) hands focus back to what had it when it opened.
+ */
+const who = ref<HTMLElement | null>(null)
+
+async function send(total: number) {
   if (busy.value) return
   busy.value = true
   try {
-    const mod = roster.value.find((r) => r.character_id === props.characterId)?.summary?.initMod
-    const total = rollDie(20) + (mod ?? 0)
-    const { note } = await sendInitiative(campaignId.value, props.characterId, total)
+    const { note, failed } = await sendInitiative(campaignId.value, props.characterId, total)
     result.value = `Initiative ${total}.${note}`
-    await props.init.reload()
+    unsent.value = failed ? total : null
+    if (!failed) await props.init.reload()
+  } catch {
+    result.value = `Initiative ${total}. Could not update the initiative tracker.`
+    unsent.value = total
   } finally {
     busy.value = false
   }
+  await nextTick()
+  // No tray (animation off, own dice): the button may have gone with focus on it.
+  if (!canRoll.value && (!document.activeElement || document.activeElement === document.body))
+    who.value?.focus()
+}
+
+function roll() {
+  if (unsent.value !== null) return send(unsent.value)
+  who.value?.focus()
+  const mod = roster.value.find((r) => r.character_id === props.characterId)?.summary?.initMod
+  return send(rollDie(20) + (mod ?? 0))
 }
 
 const sub = computed(() => [round.value, result.value].filter(Boolean).join(' · '))
@@ -64,12 +91,23 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
     aria-label="Your turn"
     data-track-area="Turn"
   >
-    <div class="tb__who">
-      <strong class="tb__title" role="status">{{ headline }}</strong>
+    <div ref="who" class="tb__who" role="status" tabindex="-1">
+      <strong class="tb__title">{{ headline }}</strong>
       <span v-if="sub" class="tb__sub">{{ sub }}</span>
     </div>
-    <button v-if="canRoll" type="button" class="btn btn--sm" :disabled="busy" @click="roll">
-      Roll initiative
+    <button
+      v-if="canRoll"
+      type="button"
+      class="btn btn--sm"
+      :disabled="busy"
+      :title="
+        unsent !== null
+          ? 'The initiative tracker didn\'t get your total: sends the same one again'
+          : undefined
+      "
+      @click="roll"
+    >
+      {{ unsent !== null ? 'Resend initiative' : 'Roll initiative' }}
     </button>
   </section>
 </template>
@@ -98,6 +136,10 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
   gap: 1px;
   flex: 1 1 0;
   min-width: 80px;
+
+  &:focus {
+    outline: none;
+  }
 }
 
 .tb__title {

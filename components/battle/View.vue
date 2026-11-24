@@ -141,7 +141,10 @@ function onGridHero(characterId: string) {
         </template>
         <BattleActions v-else-if="tab === 'actions' && hero" compact sheet />
         <BattleHero v-else-if="tab === 'hero' && hero" compact />
-        <BattleHeroBasic v-else-if="tab === 'hero' && basicEntry" compact :entry="basicEntry" />
+        <template v-else-if="tab === 'hero' && basicHeroId">
+          <BattleHeroBasic v-if="basicEntry" compact :entry="basicEntry" />
+          <p v-else class="panel battle-empty" role="status">Loading your hero…</p>
+        </template>
         <template v-else-if="tab === 'party'">
           <!-- A watcher gets the same hint as on the tablet and desktop boards. -->
           <template v-if="!hero && !gmControls && !basicHeroId">
@@ -201,6 +204,7 @@ function onGridHero(characterId: string) {
       <template #left>
         <BattleHero v-if="hero" />
         <BattleHeroBasic v-else-if="basicEntry" :entry="basicEntry" />
+        <p v-else-if="basicHeroId" class="panel battle-empty" role="status">Loading your hero…</p>
         <BattleGmHero
           v-else-if="gmControls && gmHeroId"
           :character-id="gmHeroId"
@@ -235,7 +239,7 @@ function onGridHero(characterId: string) {
           v-else-if="basicHeroId && campaign"
           :roster="roster"
           :system="campaign.system"
-          :turn-character-id="turnCharacterId"
+          :turn-character-id="actingCharacterId"
         />
         <p v-else-if="isGm" class="panel battle-empty">
           <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
@@ -280,6 +284,7 @@ function onGridHero(characterId: string) {
       <template #left>
         <BattleHero v-if="hero" />
         <BattleHeroBasic v-else-if="basicEntry" :entry="basicEntry" />
+        <p v-else-if="basicHeroId" class="panel battle-empty" role="status">Loading your hero…</p>
         <BattleGmHero
           v-else-if="gmControls && gmHeroId"
           :character-id="gmHeroId"
@@ -311,10 +316,11 @@ function onGridHero(characterId: string) {
         </template>
         <template v-else-if="basicHeroId && campaign">
           <BattleTurnBasic :init="init" :character-id="basicHeroId" />
+          <!-- Whose turn by the encounter (as TurnBasic), not the first row before it starts. -->
           <BoardRoster
             :roster="roster"
             :system="campaign.system"
-            :turn-character-id="turnCharacterId"
+            :turn-character-id="actingCharacterId"
           />
         </template>
         <p v-else-if="isGm" class="panel battle-empty">
