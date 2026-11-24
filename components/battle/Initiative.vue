@@ -347,10 +347,13 @@ async function openMenu(slot: Slot, anchor: HTMLElement) {
 }
 
 // On touch, a long press on a token does what the right-click does (the GM's menu).
-const press = useLongPress((el) => {
-  const slot = pressSlot
-  if (slot) void openMenu(slot, el)
-})
+const press = useLongPress(
+  (el) => {
+    if (pressSlot) void openMenu(pressSlot, el)
+  },
+  // Players' long-press does nothing, so the browser's own behaviour stays.
+  () => props.gm && !!pressSlot?.c,
+)
 let pressSlot: Slot | null = null
 function onPressDown(slot: Slot, e: PointerEvent) {
   if (!touch.value) return
