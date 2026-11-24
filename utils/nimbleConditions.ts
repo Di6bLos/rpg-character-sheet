@@ -267,11 +267,18 @@ export function setConditionEnd(sheet: NimbleSheet, name: string, end: Condition
   sheet.conditionHold = held
 }
 
+const GAINS_CONDITION = /\bgains the (\w+) condition\b/g
+
 export function addCondition(sheet: NimbleSheet, name: string) {
   if (sheet.conditions.includes(name)) return
   sheet.conditions = [...sheet.conditions, name]
   const end = CONDITION_ENDS[name]
   if (end) setConditionEnd(sheet, name, end)
+  // A spell status brings the conditions its spell gives (Electrocharge: Charged), which
+  // end on their own (Overload spends Charged; the armor and action stay).
+  if (!statusFromSpell(STATUS_SPELL[name] ?? name)) return
+  const text = spellByName(STATUS_SPELL[name] ?? name)?.desc ?? ''
+  for (const m of text.matchAll(GAINS_CONDITION)) if (m[1] !== name) addCondition(sheet, m[1]!)
 }
 
 export function removeCondition(sheet: NimbleSheet, name: string) {
@@ -289,7 +296,6 @@ export function clearConditionsAt(sheet: NimbleSheet, when: ConditionEnd): strin
   return ending.length ? ` No longer ${ending.join(' or ')}.` : ''
 }
 
-/** An attack spends an ally's Help (its advantage covers one roll). */
 /** Warding Bond: a Warded hero takes half of an attack's damage; the warder takes the rest. */
 export function wardedDamage(sheet: NimbleSheet, amount: number): { taken: number; note: string } {
   if (!sheet.conditions.includes('Warded')) return { taken: amount, note: '' }

@@ -496,8 +496,10 @@ export function useNimbleSpells(options: NimbleResultOptions = {}) {
     const rush =
       rushed > 0 ? ` with ${rushed}× disadvantage` : rushed < 0 ? ` with ${-rushed}× advantage` : ''
     const rules = spellRollRules(s, s.at, target.value)
-    // This attack takes the target's Condemn advantage.
+    // This attack takes the target's Condemn advantage, and outside combat the
+    // Disadvantage and Advantage steppers set for it.
     if (target.value.condemned) target.value = { ...target.value, condemned: 0 }
+    if (!sheet.value.inEncounter) attackOdds.value = { disadvantage: 0, advantage: 0 }
     const backfire = missHitsCaster(s)
     if (sheet.value.ownDice || !damage.rollable) {
       const onHit = spellOnHit(s, { miss: false, crit: false }, target.value, s.at)

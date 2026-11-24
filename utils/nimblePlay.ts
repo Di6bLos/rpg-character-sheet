@@ -27,6 +27,7 @@ import {
   clearConditionsAt,
   dazedAtTurnStart,
   removeCondition,
+  statusFromSpell,
   statusStats,
 } from '~/utils/nimbleConditions'
 import { armorHit, armorRule, type ArmorContext } from '~/utils/nimbleTargetArmor'
@@ -64,6 +65,15 @@ export function turnActionsFor(abilityNames: string[], dying: boolean): number {
   const windborne = has('Windborne')
   if (dying) return windborne || has('Enduring Rage') ? 2 : 1
   return windborne ? 4 : 3
+}
+
+/** Another hero's actions per turn from their roster summary, with their spell statuses'. */
+export function heroTurnActions(
+  abilityNames: string[],
+  dying: boolean,
+  conditions: string[] = [],
+): number {
+  return turnActionsFor(abilityNames, dying) + statusStats({ conditions, effects: [] }).actions
 }
 
 export function turnActions(sheet: NimbleSheet): number {
@@ -346,13 +356,30 @@ function critTaken(sheet: NimbleSheet, level: number): string {
   return notes.length ? ` ${notes.join(' ')}` : ''
 }
 
+/**
+ * Concentration ends: the effects it held end, and so does a status the hero gave
+ * themselves with that spell (Electrocharge, Fly → Flying).
+ */
+export function endConcentration(sheet: NimbleSheet): string {
+  const spell = sheet.concentration.trim()
+  sheet.concentration = ''
+  if (!spell) return ''
+  let notes = endEffects(sheet, 'concentration')
+  const status = statusFromSpell(spell)
+  if (status && sheet.conditions.includes(status)) {
+    removeCondition(sheet, status)
+    notes += ` ${status} ends with your Concentration.`
+  }
+  return notes
+}
+
 /** What dropping to 0 HP ends: concentration, Rage and 0-HP effects. */
 function downed(sheet: NimbleSheet): string {
   const hadFocus = sheet.concentration.trim() !== ''
-  sheet.concentration = ''
+  const focus = endConcentration(sheet)
   const rageEnds = sheet.resource.active && !hasAbility(sheet, 'Deep Rage')
   if (rageEnds) endRage(sheet)
-  const lost = endEffects(sheet, 'zeroHp') + (hadFocus ? endEffects(sheet, 'concentration') : '')
+  const lost = endEffects(sheet, 'zeroHp') + focus
   return `${hadFocus ? ' Concentration broken.' : ''}${rageEnds ? ' Your Rage ends.' : ''}${lost}`
 }
 
@@ -837,7 +864,7 @@ function finishCasting(sheet: NimbleSheet, spell: string, level: number, at?: nu
   if (sheet.casting.spell === spell) sheet.casting = { ...NOT_CASTING }
   const def = spellByName(spell)
   const concentrates = /\bConcentration\b/.test(def?.desc ?? '')
-  const dropped = concentrates && sheet.concentration ? endEffects(sheet, 'concentration') : ''
+  const dropped = concentrates && sheet.concentration ? endConcentration(sheet) : ''
   const summoned = summonFromSpell(sheet, level, spell, at)
   const status = applyCastEffect(sheet, level, spell, Math.max(0, (at ?? 0) - (def?.tier ?? 0)))
   const gain = Number(SPELL_GAINS_ACTIONS.exec(def?.desc ?? '')?.[1] ?? 0)

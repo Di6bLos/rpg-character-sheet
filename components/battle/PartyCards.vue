@@ -6,7 +6,7 @@
 import type { RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
-import { turnActionsFor } from '~/utils/nimblePlay'
+import { heroTurnActions } from '~/utils/nimblePlay'
 
 const props = defineProps<{
   roster: RosterEntry[]
@@ -67,7 +67,7 @@ function hpText(r: RosterEntry): string {
 function pips(r: RosterEntry): { total: number; used: number } | null {
   const s = r.summary
   if (!props.gm || !s) return null
-  const max = turnActionsFor(s.abilityNames ?? [], !!s.dying)
+  const max = heroTurnActions(s.abilityNames ?? [], !!s.dying, s.conditions)
   const spent = s.actionsSpent ?? 0
   return { total: Math.max(max, max - spent), used: Math.min(Math.max(0, spent), max) }
 }

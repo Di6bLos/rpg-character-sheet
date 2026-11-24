@@ -21,6 +21,7 @@ const {
   revive,
   damage,
   changeHp,
+  warded,
   healOne,
   adjustTemp,
   setWounds,
@@ -114,6 +115,7 @@ function confirmRest() {
           :temp="sheet.tempHp"
           :tone="hpTone"
           :disabled="!canEdit"
+          :warded="warded"
           @change="changeHp"
         />
         <div class="vit-row">

@@ -8,7 +8,7 @@ import type { CampaignNpc, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
-import { turnActionsFor } from '~/utils/nimblePlay'
+import { heroTurnActions } from '~/utils/nimblePlay'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -55,7 +55,7 @@ const pips = computed(() => {
   if (isPc.value) {
     const s = props.hero?.summary
     if (!s) return null
-    const max = turnActionsFor(s.abilityNames ?? [], !!s.dying)
+    const max = heroTurnActions(s.abilityNames ?? [], !!s.dying, s.conditions)
     return { total: max, used: Math.min(Math.max(0, s.actionsSpent ?? 0), max) }
   }
   const total = props.c.actions_max ?? 0

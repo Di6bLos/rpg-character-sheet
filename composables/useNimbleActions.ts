@@ -162,12 +162,16 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const target = useAttackTarget()
   const attackOdds = useAttackOdds()
 
-  /** A crit with an enchanted weapon sets the target Smoldering (Enchant Weapon). */
-  /** An attack takes the target's Condemn advantage. */
+  /**
+   * An attack takes the target's Condemn advantage; outside combat the Disadvantage
+   * and Advantage steppers were for that one roll, so they go back to 0.
+   */
   function spendTargetAdvantage() {
     if (target.value.condemned) target.value = { ...target.value, condemned: 0 }
+    if (!sheet.value.inEncounter) attackOdds.value = { disadvantage: 0, advantage: 0 }
   }
 
+  /** A crit with an enchanted weapon sets the target Smoldering (Enchant Weapon). */
   function enchantCrit(): string {
     const e = weaponEnchantment(sheet.value)
     if (!e?.smoldering || target.value.smoldering) return ''
@@ -205,20 +209,21 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     },
   )
 
-  // A fight's statuses on the target don't carry into the next one.
+  // A fight's statuses on the target, and the odds steppers, don't carry into the next one.
   watch(
     () => sheet.value.inEncounter,
     (now, before) => {
-      if (now !== before)
-        target.value = {
-          ...target.value,
-          sundered: false,
-          smoldering: false,
-          hampered: false,
-          hamperedUntilTurn: false,
-          condemned: 0,
-          covered: false,
-        }
+      if (now === before) return
+      target.value = {
+        ...target.value,
+        sundered: false,
+        smoldering: false,
+        hampered: false,
+        hamperedUntilTurn: false,
+        condemned: 0,
+        covered: false,
+      }
+      attackOdds.value = { disadvantage: 0, advantage: 0 }
     },
   )
 

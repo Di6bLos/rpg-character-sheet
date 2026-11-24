@@ -71,6 +71,9 @@ export function useNimbleVitals() {
     }
   })
 
+  /** Warding Bond: the HP bar previews and takes half of a hit. */
+  const warded = computed(() => sheet.value.conditions.includes('Warded'))
+
   /** The next damage is from a critical hit. */
   const crit = ref(false)
 
@@ -78,9 +81,10 @@ export function useNimbleVitals() {
     if (canEdit.value) say(resurrect(sheet.value))
   }
 
-  function damage(amount = 1) {
+  /** `whole`: a hit's full damage, which Warded halves; the one-point buttons are exact. */
+  function damage(amount = 1, whole = false) {
     if (!canEdit.value) return
-    const ward = wardedDamage(sheet.value, amount)
+    const ward = whole ? wardedDamage(sheet.value, amount) : { taken: amount, note: '' }
     const message = takeDamage(sheet.value, ward.taken, draft.value.level, crit.value)
     const was = crit.value ? ' (crit)' : ''
     crit.value = false
@@ -91,7 +95,7 @@ export function useNimbleVitals() {
 
   function changeHp(delta: number) {
     if (!canEdit.value) return
-    if (delta < 0) return damage(-delta)
+    if (delta < 0) return damage(-delta, true)
     heal(sheet.value, delta)
     say(`Healed ${delta}: ${sheet.value.hp}/${sheet.value.hpMax} HP.`)
   }
@@ -170,6 +174,7 @@ export function useNimbleVitals() {
     diceLeft,
     speed,
     armor,
+    warded,
     crit,
     revive,
     damage,

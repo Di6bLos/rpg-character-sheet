@@ -15,6 +15,8 @@ import {
 import {
   actionsLeft,
   armorNow,
+  endConcentration,
+  heroTurnActions,
   turnActions,
   endEncounter,
   endTurn,
@@ -187,5 +189,38 @@ describe('True Strike, Condemn, Warding Bond and armor others see', () => {
     expect(heroArmor(2, ['Electrocharge'], 5)).toBe(7)
     expect(heroArmor(2, ['Dragonform'], 12)).toBe(14)
     expect(heroArmor(undefined, ['Electrocharge'], 5)).toBeUndefined()
+  })
+})
+
+describe('review follow-ups on #54', () => {
+  it('Electrocharge brings Charged, which Overload can spend without ending the rest', () => {
+    const sheet = hero({ ac: 2 })
+    addCondition(sheet, 'Electrocharge')
+    expect(sheet.conditions).toEqual(['Electrocharge', 'Charged'])
+    removeCondition(sheet, 'Charged')
+    expect(armorNow(sheet, 5).value).toBe(7)
+  })
+
+  it('ends a status the hero gave themselves when that Concentration ends', () => {
+    const sheet = hero({ concentration: 'Electrocharge' })
+    addCondition(sheet, 'Electrocharge')
+    expect(endConcentration(sheet)).toBe(' Electrocharge ends with your Concentration.')
+    expect(sheet.conditions).toEqual(['Charged'])
+    expect(sheet.concentration).toBe('')
+  })
+
+  it('keeps True Strike turned on during your own turn until the end of your next turn', () => {
+    const sheet = hero({ inEncounter: true, turnActive: true })
+    addCondition(sheet, 'True Strike')
+    endTurn(sheet, 1)
+    expect(sheet.conditions).toContain('True Strike')
+    startTurn(sheet, 1)
+    endTurn(sheet, 1)
+    expect(sheet.conditions).not.toContain('True Strike')
+  })
+
+  it('counts a status’s max action on other heroes’ cards', () => {
+    expect(heroTurnActions([], false, ['Electrocharge'])).toBe(4)
+    expect(heroTurnActions([], false)).toBe(3)
   })
 })
