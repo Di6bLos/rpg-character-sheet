@@ -6,6 +6,8 @@ import {
   readyNote,
   sectionsFor,
   spellNotNow,
+  tileButton,
+  tileSub,
   weaponReason,
   type BattleAction,
 } from '../utils/battleActions'
@@ -28,6 +30,11 @@ function act(patch: Partial<BattleAction> = {}): BattleAction {
     unavailable: '',
     ...patch,
   }
+}
+
+/** A tile as the board builds it: an action plus its click. */
+function tile(patch: Partial<BattleAction> = {}) {
+  return { ...act(patch), use: () => {} }
 }
 
 const ok = { turnActive: true, incapacitated: '' }
@@ -207,5 +214,39 @@ describe('spellNotNow', () => {
     const big = { reaction: false, actions: 2, damaging: true }
     expect(spellNotNow(big, { inEncounter: true, turnActive: true })).toBe('')
     expect(spellNotNow(big, { inEncounter: false, turnActive: false })).toBe('')
+  })
+})
+
+describe('tileButton', () => {
+  it('names a spell cast with its dice', () =>
+    expect(tileButton(tile({ kind: 'spell', name: 'Arc Lightning', dice: '3d8' })).label).toBe(
+      'Cast Arc Lightning · 3d8',
+    ))
+  it('weapon', () =>
+    expect(tileButton(tile({ kind: 'weapon', name: 'Staff', dice: '1d6' })).label).toBe(
+      'Attack with Staff · 1d6',
+    ))
+  it('reaction and summon verbs', () => {
+    expect(tileButton(tile({ kind: 'reaction', name: 'Defend' })).label).toBe('React: Defend')
+    expect(tileButton(tile({ kind: 'summon', name: 'Minions' })).label).toBe('Command Minions')
+  })
+  it('no dice, no dot', () =>
+    expect(tileButton(tile({ kind: 'ability', name: 'Dash', dice: '' })).label).toBe('Use Dash'))
+  it('unavailable disables with the reason', () =>
+    expect(
+      tileButton(tile({ kind: 'spell', name: 'Fire', unavailable: 'Not your turn' })),
+    ).toMatchObject({ disabled: true, reason: 'Not your turn' }))
+  it('available is enabled with no reason', () =>
+    expect(tileButton(tile())).toMatchObject({ disabled: false, reason: '' }))
+})
+
+describe('tileSub', () => {
+  it('a spell shows its tier, school and detail', () =>
+    expect(tileSub(act({ kind: 'spell', tier: 1, school: 'lightning', detail: 'Range 12' }))).toBe(
+      'Tier 1 · lightning · Range 12',
+    ))
+  it('a cantrip and other kinds', () => {
+    expect(tileSub(act({ kind: 'spell', tier: 0 }))).toBe('Cantrip')
+    expect(tileSub(act({ kind: 'reaction', detail: '1 reaction' }))).toBe('Reaction · 1 reaction')
   })
 })

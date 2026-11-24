@@ -200,3 +200,39 @@ export function readyNote(
   if (hidden > 0) parts.push(`hiding ${hidden} you can't use now`)
   return parts.join(' · ')
 }
+
+const VERB: Record<ActionKind, string> = {
+  spell: 'Cast',
+  weapon: 'Attack with',
+  reaction: 'React:',
+  summon: 'Command',
+  ability: 'Use',
+}
+
+/**
+ * The big button in an action's details (touch): what it does, e.g. "Cast Arc Lightning · 3d8",
+ * disabled with the reason while the action is unavailable.
+ */
+export function tileButton(tile: BattleAction): {
+  label: string
+  disabled: boolean
+  reason: string
+} {
+  const label = `${VERB[tile.kind]} ${tile.name}${tile.dice ? ` · ${tile.dice}` : ''}`
+  return { label, disabled: tile.unavailable !== '', reason: tile.unavailable }
+}
+
+const KIND: Record<ActionKind, string> = {
+  weapon: 'Weapon',
+  spell: 'Spell',
+  ability: 'Ability',
+  reaction: 'Reaction',
+  summon: 'Summon',
+}
+
+/** A tile's second line: the kind (or a spell's tier), school and one detail. */
+export function tileSub(a: BattleAction): string {
+  const t = a.tier
+  const spell = t === null ? '' : t === 0 ? 'Cantrip' : `Tier ${t}`
+  return [a.kind === 'spell' ? spell : KIND[a.kind], a.school, a.detail].filter(Boolean).join(' · ')
+}

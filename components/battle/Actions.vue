@@ -6,6 +6,11 @@
 import type { NimbleSheet } from '~/types/sheets'
 import { readyNote, sectionsFor, type ActionFilter } from '~/utils/battleActions'
 
+defineProps<{
+  /** Phone layout: action details open as a bottom sheet (passed on to the tiles). */
+  compact?: boolean
+}>()
+
 const FILTER_KEY = 'lantern-battle-filter'
 const FILTERS: ActionFilter[] = ['ready', 'all', 'attack', 'spell', 'react', 'ability']
 
@@ -73,6 +78,7 @@ const empty = computed(() =>
               :action="byKey.get(t.key)!"
               :show-reason="filter !== 'ready'"
               :readonly="!canEdit"
+              :compact="compact"
             />
           </template>
         </div>
