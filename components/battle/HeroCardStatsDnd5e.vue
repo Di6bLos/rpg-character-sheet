@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // The stats modal's main area for a D&D 5e hero: the six abilities with modifier, score
 // and saving throw (proficient saves marked), Passive Perception, proficiency, Hit Die and
-// speed, and the death saves (live from the roster). Shows only what campaign_hero_card
-// returned.
+// speed, the death saves (live from the roster) and the features as Key abilities. Shows
+// only what campaign_hero_card returned.
 import type { Dnd5eHeroCard } from '~/types'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
-import { dnd5eAbilityRows } from '~/utils/heroCardStats'
+import { deathSaveState, dnd5eAbilityRows, oneLine } from '~/utils/heroCardStats'
 import { deathSavesLine, heroDown } from '~/utils/roster'
 
 const props = defineProps<{ card: Dnd5eHeroCard; live: HeroLive }>()
@@ -28,6 +28,9 @@ const facts = computed(() => [
 const saves = computed(() => props.live.deathSaves ?? props.card.deathSaves)
 const down = computed(() => heroDown(props.live.hp, props.live.hpMax))
 const savesLabel = computed(() => deathSavesLine({ deathSaves: saves.value }, true))
+const state = computed(() => deathSaveState(down.value, saves.value))
+
+const features = computed(() => (props.card.features ?? []).filter((f) => f.name))
 </script>
 
 <template>
@@ -78,7 +81,17 @@ const savesLabel = computed(() => deathSavesLine({ deathSaves: saves.value }, tr
           </span>
         </span>
       </div>
-      <p class="hcs__none">{{ down ? 'Down: rolling death saves.' : 'Not dying.' }}</p>
+      <p class="hcs__none">{{ state }}</p>
+    </div>
+
+    <div class="hcs__full">
+      <span class="hcs__sect">Key abilities</span>
+      <ul v-if="features.length" class="hcs__abil">
+        <li v-for="(f, i) in features" :key="i" :title="f.desc || undefined">
+          <b>{{ f.name }}.</b> {{ oneLine(f.desc) }}
+        </li>
+      </ul>
+      <p v-else class="hcs__none">None</p>
     </div>
   </div>
 </template>

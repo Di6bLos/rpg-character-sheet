@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  deathSaveState,
   dnd5eAbilityRows,
+  featSource,
+  oneLine,
   pf2ePointsLine,
   pf2eRankName,
   pf2eSkillRows,
@@ -58,5 +61,23 @@ describe('pf2ePointsLine', () => {
     )
     expect(pf2ePointsLine({})).toBe('')
     expect(pf2ePointsLine(null)).toBe('')
+  })
+})
+
+describe('deathSaveState', () => {
+  it('reads not dying, rolling, stable at 3 successes and dead at 3 failures', () => {
+    expect(deathSaveState(false, { successes: 0, failures: 0 })).toBe('Not dying.')
+    expect(deathSaveState(true, { successes: 2, failures: 1 })).toBe('Down: rolling death saves.')
+    expect(deathSaveState(true, { successes: 3, failures: 1 })).toBe('Down: stable.')
+    expect(deathSaveState(true, { successes: 1, failures: 3 })).toBe('Dead.')
+  })
+})
+
+describe('Key abilities text', () => {
+  it('keeps the first sentence and names a feat by type and level', () => {
+    expect(oneLine('Regain HP.  Once per\nrest.')).toBe('Regain HP.')
+    expect(oneLine('No full stop')).toBe('No full stop')
+    expect(featSource({ type: 'Class', level: '2' })).toBe('Class 2')
+    expect(featSource({ type: 'Skill', level: '' })).toBe('Skill')
   })
 })

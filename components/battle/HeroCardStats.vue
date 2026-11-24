@@ -4,6 +4,7 @@
 // returned (the public subset of a hero).
 import type { NimbleHeroCard } from '~/types'
 import { sign } from '~/utils/dice'
+import { oneLine } from '~/utils/heroCardStats'
 
 const props = defineProps<{ card: NimbleHeroCard }>()
 
@@ -50,13 +51,6 @@ const resources = computed(() => {
   }
   return rows
 })
-
-/** The first sentence, for the one-line summary (the whole text is on hover). */
-function oneLine(text: string): string {
-  const flat = text.replace(/\s+/g, ' ').trim()
-  const end = flat.search(/[.!?](\s|$)/)
-  return end > 0 ? flat.slice(0, end + 1) : flat
-}
 
 const abilities = computed(() => props.card.abilities.filter((a) => a.name))
 </script>
@@ -129,24 +123,5 @@ const abilities = computed(() => props.card.abilities.filter((a) => a.name))
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
-}
-
-.hcs__abil {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-
-  li {
-    font-size: 13px;
-    line-height: 1.4;
-    color: var(--page-soft);
-  }
-
-  b {
-    color: var(--page-text);
-  }
 }
 </style>

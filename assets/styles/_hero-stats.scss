@@ -1,5 +1,5 @@
 // The battle board's hero stats dialog (HeroCardStats, HeroCardStatsDnd5e, HeroCardStatsPf2e):
-// its grid, section labels, stat tiles, name / value pairs and "None". Each of those
+// its grid, section labels, stat tiles, name / value pairs, "None" and the Key abilities list. Each of those
 // components `@use`s this in its scoped style.
 
 .hcs {
@@ -102,4 +102,29 @@
   &--good i.is-on {
     background: var(--accent);
   }
+}
+
+// Key abilities: one line each, the whole text on hover.
+.hcs__abil {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  li {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--page-soft);
+  }
+
+  b {
+    color: var(--page-text);
+  }
+}
+
+.hcs__src {
+  font-size: 11px;
+  color: var(--page-muted);
 }

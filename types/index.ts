@@ -135,7 +135,7 @@ export interface RosterEntry {
     mana?: { current: number; max: number; temp: number }
     /** PF2e hero points and focus pool. */
     heroPoints?: number
-    focus?: { current: number; max: number; note?: string }
+    focus?: { current: number; max: number }
     /** PF2e Wounded value. */
     wounded?: number
     summons?: NimbleSummon[]
@@ -317,6 +317,8 @@ export interface Dnd5eHeroCard extends HeroCardBase {
   passivePerception: number
   hitDie: number
   deathSaves: { successes: number; failures: number }
+  /** Class and other features, the dialog's Key abilities. */
+  features: { name: string; desc: string }[]
 }
 
 export interface Pf2eHeroCard extends HeroCardBase {
@@ -340,6 +342,8 @@ export interface Pf2eHeroCard extends HeroCardBase {
     bt: number
     raised: boolean
   } | null
+  /** Feats, the dialog's Key abilities (`type` and `level` make the source line). */
+  feats: { name: string; desc: string; type: string; level: string }[]
 }
 
 export type HeroCard = NimbleHeroCard | Dnd5eHeroCard | Pf2eHeroCard

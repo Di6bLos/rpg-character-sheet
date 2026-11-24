@@ -61,3 +61,26 @@ export function pf2ePointsLine(s: RosterEntry['summary']): string {
   if (f && f.max > 0) parts.push(`focus ${f.current}/${f.max}`)
   return parts.join(' · ')
 }
+
+/** A text's first sentence, for the one-line Key abilities (the whole text is on hover). */
+export function oneLine(text: string): string {
+  const flat = text.replace(/\s+/g, ' ').trim()
+  const end = flat.search(/[.!?](\s|$)/)
+  return end > 0 ? flat.slice(0, end + 1) : flat
+}
+
+/** A PF2e feat's source line: "Class 2", "Skill", "Ancestry 1". */
+export function featSource(f: { type: string; level: string }): string {
+  return [f.type.trim(), f.level.trim()].filter(Boolean).join(' ')
+}
+
+/** A downed 5e hero's death-save state: dead at 3 failures, stable at 3 successes. */
+export function deathSaveState(
+  down: boolean,
+  saves: { successes: number; failures: number },
+): string {
+  if (!down) return 'Not dying.'
+  if (saves.failures >= 3) return 'Dead.'
+  if (saves.successes >= 3) return 'Down: stable.'
+  return 'Down: rolling death saves.'
+}

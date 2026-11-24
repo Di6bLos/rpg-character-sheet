@@ -1,13 +1,14 @@
 <script setup lang="ts">
 // The stats modal's main area for a Pathfinder 2e hero: attribute modifiers, saves and
 // Perception and Class DC with their ranks, hero and focus points, Dying and Wounded
-// (live from the roster), the shield, and every skill with its rank (trained first).
+// (live from the roster), the shield, every skill with its rank (trained first) and the
+// feats as Key abilities (type and level as the source line).
 // Shows only what campaign_hero_card returned.
 import type { Pf2eAttr } from '~/types/sheets'
 import type { Pf2eHeroCard } from '~/types'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
-import { pf2eRankName, pf2eSkillRows } from '~/utils/heroCardStats'
+import { featSource, oneLine, pf2eRankName, pf2eSkillRows } from '~/utils/heroCardStats'
 
 const props = defineProps<{ card: Pf2eHeroCard; live: HeroLive }>()
 
@@ -37,6 +38,10 @@ const points = computed(
       dying: props.card.dying,
       wounded: props.card.wounded,
     },
+)
+
+const feats = computed(() =>
+  (props.card.feats ?? []).filter((f) => f.name).map((f) => ({ ...f, src: featSource(f) })),
 )
 
 const shield = computed(() => {
@@ -139,6 +144,17 @@ const shield = computed(() => {
       </ul>
       <p v-else class="hcs__none">None</p>
       <p class="hcs__legend">U untrained · T trained · E expert · M master · L legendary</p>
+    </div>
+
+    <div class="hcs__full">
+      <span class="hcs__sect">Key abilities</span>
+      <ul v-if="feats.length" class="hcs__abil">
+        <li v-for="(f, i) in feats" :key="i" :title="f.desc || undefined">
+          <b>{{ f.name }}.</b> <span v-if="f.src" class="hcs__src">{{ f.src }}</span>
+          {{ oneLine(f.desc) }}
+        </li>
+      </ul>
+      <p v-else class="hcs__none">None</p>
     </div>
   </div>
 </template>

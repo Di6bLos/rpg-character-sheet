@@ -4,7 +4,16 @@
 -- death saves; PF2e attribute modifiers, saves and skills with ranks (in place of Nimble's
 -- skills), hero and focus points, dying, wounded and the shield. Still members-only.
 -- campaign_roster's summary also carries PF2e hero and focus points and Wounded, for the GM's
--- party cards and the dialog's live numbers.
+-- party cards and the dialog's live numbers. 5e `features` and PF2e `feats` are the
+-- dialog's Key abilities. Numbers are read with private.jnum, so a field a player cleared
+-- (stored as "") falls back to its default instead of failing the cast.
+
+-- A JSON number as numeric, or `d` for anything else (null, "", text).
+create or replace function private.jnum(j jsonb, d numeric)
+returns numeric
+language sql immutable set search_path = '' as $$
+  select case when jsonb_typeof(j) = 'number' then (j #>> '{}')::numeric else d end
+$$;
 
 create or replace function public.campaign_hero_card(p_campaign uuid, p_character uuid)
 returns jsonb
@@ -33,38 +42,38 @@ begin
     'class', coalesce(s ->> 'class', ''),
     'subclass', coalesce(s ->> 'subclass', ''),
     'lineage', coalesce(s ->> 'lineage', ''),
-    'hp', coalesce((s ->> 'hp')::numeric, 0),
-    'hpMax', coalesce((s ->> 'hpMax')::numeric, 0),
-    'tempHp', coalesce((s ->> 'tempHp')::numeric, 0),
-    'wounds', coalesce((s ->> 'wounds')::numeric, 0),
-    'woundsMax', coalesce((s ->> 'woundsMax')::numeric, 0),
-    'ac', coalesce((s ->> 'ac')::numeric, 0),
+    'hp', private.jnum(s -> 'hp', 0),
+    'hpMax', private.jnum(s -> 'hpMax', 0),
+    'tempHp', private.jnum(s -> 'tempHp', 0),
+    'wounds', private.jnum(s -> 'wounds', 0),
+    'woundsMax', private.jnum(s -> 'woundsMax', 0),
+    'ac', private.jnum(s -> 'ac', 0),
     'speed', coalesce(s ->> 'speed', ''),
-    'initMod', coalesce((s ->> 'initMod')::numeric, 0),
+    'initMod', private.jnum(s -> 'initMod', 0),
     'stats', jsonb_build_object(
-      'STR', coalesce((s -> 'stats' ->> 'STR')::numeric, 0),
-      'DEX', coalesce((s -> 'stats' ->> 'DEX')::numeric, 0),
-      'INT', coalesce((s -> 'stats' ->> 'INT')::numeric, 0),
-      'WIL', coalesce((s -> 'stats' ->> 'WIL')::numeric, 0)
+      'STR', private.jnum(s -> 'stats' -> 'STR', 0),
+      'DEX', private.jnum(s -> 'stats' -> 'DEX', 0),
+      'INT', private.jnum(s -> 'stats' -> 'INT', 0),
+      'WIL', private.jnum(s -> 'stats' -> 'WIL', 0)
     ),
     'saveAdv', coalesce(s ->> 'saveAdv', ''),
     'saveDis', coalesce(s ->> 'saveDis', ''),
     'skills', coalesce((
       select jsonb_agg(jsonb_build_object(
         'name', k ->> 'name', 'stat', k ->> 'stat',
-        'points', coalesce((k ->> 'points')::numeric, 0)))
+        'points', private.jnum(k -> 'points', 0)))
       from jsonb_array_elements(
         case when jsonb_typeof(s -> 'skills') = 'array' then s -> 'skills' else '[]'::jsonb end
       ) k
     ), '[]'::jsonb),
     'mana', case when jsonb_typeof(s -> 'mana') = 'object' then jsonb_build_object(
-      'current', coalesce((s -> 'mana' ->> 'current')::numeric, 0),
-      'max', coalesce((s -> 'mana' ->> 'max')::numeric, 0)) end,
+      'current', private.jnum(s -> 'mana' -> 'current', 0),
+      'max', private.jnum(s -> 'mana' -> 'max', 0)) end,
     'resource', case when jsonb_typeof(s -> 'resource') = 'object' then jsonb_build_object(
       'name', coalesce(s -> 'resource' ->> 'name', ''),
-      'count', coalesce((s -> 'resource' ->> 'count')::numeric, 0),
-      'dice', coalesce((s -> 'resource' ->> 'dice')::numeric, 0),
-      'die', coalesce((s -> 'resource' ->> 'die')::numeric, 0)) end,
+      'count', private.jnum(s -> 'resource' -> 'count', 0),
+      'dice', private.jnum(s -> 'resource' -> 'dice', 0),
+      'die', private.jnum(s -> 'resource' -> 'die', 0)) end,
     'conditions', coalesce((
       select jsonb_agg(distinct x) from (
         select jsonb_array_elements_text(
@@ -79,8 +88,8 @@ begin
     'summons', coalesce((
       select jsonb_agg(jsonb_build_object(
         'name', m ->> 'name',
-        'hp', coalesce((m ->> 'hp')::numeric, 0),
-        'hpMax', coalesce((m ->> 'hpMax')::numeric, 0)))
+        'hp', private.jnum(m -> 'hp', 0),
+        'hpMax', private.jnum(m -> 'hpMax', 0)))
       from jsonb_array_elements(
         case when jsonb_typeof(s -> 'summons') = 'array' then s -> 'summons' else '[]'::jsonb end
       ) m
@@ -100,40 +109,48 @@ begin
   if c.system = 'dnd5e' then
     card := card || jsonb_build_object(
       'abilities', jsonb_build_object(
-        'STR', coalesce((s -> 'abilities' ->> 'STR')::numeric, 10),
-        'DEX', coalesce((s -> 'abilities' ->> 'DEX')::numeric, 10),
-        'CON', coalesce((s -> 'abilities' ->> 'CON')::numeric, 10),
-        'INT', coalesce((s -> 'abilities' ->> 'INT')::numeric, 10),
-        'WIS', coalesce((s -> 'abilities' ->> 'WIS')::numeric, 10),
-        'CHA', coalesce((s -> 'abilities' ->> 'CHA')::numeric, 10)
+        'STR', private.jnum(s -> 'abilities' -> 'STR', 10),
+        'DEX', private.jnum(s -> 'abilities' -> 'DEX', 10),
+        'CON', private.jnum(s -> 'abilities' -> 'CON', 10),
+        'INT', private.jnum(s -> 'abilities' -> 'INT', 10),
+        'WIS', private.jnum(s -> 'abilities' -> 'WIS', 10),
+        'CHA', private.jnum(s -> 'abilities' -> 'CHA', 10)
       ),
       'saveProfs', case when jsonb_typeof(s -> 'saveProfs') = 'array'
         then s -> 'saveProfs' else '[]'::jsonb end,
-      'profBonus', coalesce((s ->> 'profBonus')::numeric, 2),
-      'passivePerception', coalesce((s ->> 'passivePerception')::numeric, 10),
-      'hitDie', coalesce((s ->> 'hitDie')::numeric, 0),
+      'profBonus', private.jnum(s -> 'profBonus', 2),
+      'passivePerception', private.jnum(s -> 'passivePerception', 10),
+      'hitDie', private.jnum(s -> 'hitDie', 0),
       'deathSaves', jsonb_build_object(
-        'successes', coalesce((s -> 'deathSaves' ->> 'successes')::numeric, 0),
-        'failures', coalesce((s -> 'deathSaves' ->> 'failures')::numeric, 0)
-      )
+        'successes', private.jnum(s -> 'deathSaves' -> 'successes', 0),
+        'failures', private.jnum(s -> 'deathSaves' -> 'failures', 0)
+      ),
+      'features', coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'name', coalesce(f ->> 'name', ''),
+          'desc', coalesce(f ->> 'desc', '')))
+        from jsonb_array_elements(
+          case when jsonb_typeof(s -> 'features') = 'array' then s -> 'features' else '[]'::jsonb end
+        ) f
+      ), '[]'::jsonb)
     );
   -- Pathfinder 2e: attribute modifiers, saves and skills with ranks (replacing Nimble's
   -- skills), hero and focus points, dying, wounded and the shield.
   elsif c.system = 'pf2e' then
     card := card || jsonb_build_object(
       'attrs', jsonb_build_object(
-        'STR', coalesce((s -> 'attrs' ->> 'STR')::numeric, 0),
-        'DEX', coalesce((s -> 'attrs' ->> 'DEX')::numeric, 0),
-        'CON', coalesce((s -> 'attrs' ->> 'CON')::numeric, 0),
-        'INT', coalesce((s -> 'attrs' ->> 'INT')::numeric, 0),
-        'WIS', coalesce((s -> 'attrs' ->> 'WIS')::numeric, 0),
-        'CHA', coalesce((s -> 'attrs' ->> 'CHA')::numeric, 0)
+        'STR', private.jnum(s -> 'attrs' -> 'STR', 0),
+        'DEX', private.jnum(s -> 'attrs' -> 'DEX', 0),
+        'CON', private.jnum(s -> 'attrs' -> 'CON', 0),
+        'INT', private.jnum(s -> 'attrs' -> 'INT', 0),
+        'WIS', private.jnum(s -> 'attrs' -> 'WIS', 0),
+        'CHA', private.jnum(s -> 'attrs' -> 'CHA', 0)
       ),
       'saves', coalesce((
         select jsonb_agg(jsonb_build_object(
           'label', coalesce(v ->> 'label', ''),
           'rank', coalesce(v ->> 'rank', 'U'),
-          'value', coalesce((v ->> 'value')::numeric, 0)))
+          'value', private.jnum(v -> 'value', 0)))
         from jsonb_array_elements(
           case when jsonb_typeof(s -> 'saves') = 'array' then s -> 'saves' else '[]'::jsonb end
         ) v
@@ -143,25 +160,36 @@ begin
           'name', coalesce(k ->> 'name', ''),
           'attr', coalesce(k ->> 'attr', ''),
           'rank', coalesce(k ->> 'rank', 'U'),
-          'value', coalesce((k ->> 'value')::numeric, 0)))
+          'value', private.jnum(k -> 'value', 0)))
         from jsonb_array_elements(
           case when jsonb_typeof(s -> 'skills') = 'array' then s -> 'skills' else '[]'::jsonb end
         ) k
       ), '[]'::jsonb),
-      'heroPoints', coalesce((s ->> 'heroPoints')::numeric, 0),
+      'heroPoints', private.jnum(s -> 'heroPoints', 0),
       'focus', jsonb_build_object(
-        'current', coalesce((s -> 'focus' ->> 'current')::numeric, 0),
-        'max', coalesce((s -> 'focus' ->> 'max')::numeric, 0)
+        'current', private.jnum(s -> 'focus' -> 'current', 0),
+        'max', private.jnum(s -> 'focus' -> 'max', 0)
       ),
-      'dying', coalesce((s ->> 'dying')::numeric, 0),
-      'wounded', coalesce((s ->> 'wounded')::numeric, 0),
+      'dying', private.jnum(s -> 'dying', 0),
+      'wounded', private.jnum(s -> 'wounded', 0),
       'shield', case when jsonb_typeof(s -> 'shield') = 'object' then jsonb_build_object(
         'name', coalesce(s -> 'shield' ->> 'name', ''),
-        'hardness', coalesce((s -> 'shield' ->> 'hardness')::numeric, 0),
-        'hp', coalesce((s -> 'shield' ->> 'hp')::numeric, 0),
-        'hpMax', coalesce((s -> 'shield' ->> 'hpMax')::numeric, 0),
-        'bt', coalesce((s -> 'shield' ->> 'bt')::numeric, 0),
-        'raised', coalesce((s -> 'shield' ->> 'raised')::boolean, false)) end
+        'hardness', private.jnum(s -> 'shield' -> 'hardness', 0),
+        'hp', private.jnum(s -> 'shield' -> 'hp', 0),
+        'hpMax', private.jnum(s -> 'shield' -> 'hpMax', 0),
+        'bt', private.jnum(s -> 'shield' -> 'bt', 0),
+        'raised', case when jsonb_typeof(s -> 'shield' -> 'raised') = 'boolean'
+          then (s -> 'shield' ->> 'raised')::boolean else false end) end,
+      'feats', coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'name', coalesce(f ->> 'name', ''),
+          'desc', coalesce(f ->> 'desc', ''),
+          'type', coalesce(f ->> 'type', ''),
+          'level', coalesce(f ->> 'level', '')))
+        from jsonb_array_elements(
+          case when jsonb_typeof(s -> 'feats') = 'array' then s -> 'feats' else '[]'::jsonb end
+        ) f
+      ), '[]'::jsonb)
     );
   end if;
   return card;
@@ -205,9 +233,13 @@ language sql stable security definer set search_path = '' as $$
       'concentration', c.sheet -> 'concentration',
       'actionsSpent', c.sheet -> 'actionsSpent',
       'mana', c.sheet -> 'mana',
-      'heroPoints', c.sheet -> 'heroPoints',
-      'focus', c.sheet -> 'focus',
-      'wounded', c.sheet -> 'wounded',
+      'heroPoints', case when jsonb_typeof(c.sheet -> 'heroPoints') = 'number'
+        then c.sheet -> 'heroPoints' end,
+      'focus', case when jsonb_typeof(c.sheet -> 'focus') = 'object' then jsonb_build_object(
+        'current', private.jnum(c.sheet -> 'focus' -> 'current', 0),
+        'max', private.jnum(c.sheet -> 'focus' -> 'max', 0)) end,
+      'wounded', case when jsonb_typeof(c.sheet -> 'wounded') = 'number'
+        then c.sheet -> 'wounded' end,
       'summons', c.sheet -> 'summons',
       'abilityNames', case when jsonb_typeof(c.sheet -> 'abilities') = 'array'
         then (select coalesce(jsonb_agg(a ->> 'name'), '[]'::jsonb)
