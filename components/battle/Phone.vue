@@ -33,7 +33,10 @@ defineSlots<{
 const { gmControls, campaign } = useCampaignBoard()
 const scribe = useLoreAvailable()
 const features = useBattleFeatures()
-/** A seated player whose system has no hero editor (the read-only hero card). */
+/**
+ * A seated player whose system has no hero editor (the read-only hero card); keep in step
+ * with View.vue's `basicHeroId`.
+ */
 const basicPlayer = computed(
   () => !gmControls.value && !features.value.nimbleHero && !!campaign.value?.myCharacterId,
 )

@@ -48,7 +48,8 @@ function stop() {
 }
 
 /**
- * The battle board's size class and input type. Without a window (or matchMedia) it reports desktop and no touch.
+ * The battle board's size class and input type. Without a window (or matchMedia) it reports
+ * desktop and no touch.
  */
 export function useBoardLayout(): {
   layout: ComputedRef<BoardLayout>

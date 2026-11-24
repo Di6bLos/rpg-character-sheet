@@ -1,13 +1,12 @@
 <script setup lang="ts">
 // The battle board's one-line bar: campaign name, the board tabs, the round, and on the
 // right "Open full sheet" for players or the GM's turn controls (Prev, Next turn, New
-// round, End encounter). For the GM the campaign name opens
-// Table (invites, session, players); for players it opens a menu with the campaign
-// switcher and "Playing as".
-// The tablet variant (768–1279px) has no right column to show: the GM's campaign name
-// opens a menu (Table, then the campaign switcher), and
-// after the round come buttons that open the drawer on Party, Chat (with its unread
-// badge) and Scribe; then "Sheet ↗" for players, or the GM's ⋯ menu (GmPhoneMenu:
+// round, End encounter). For the GM the campaign name opens Table (invites, session,
+// players); for players it opens a menu with the campaign switcher and "Playing as".
+// The tablet variant (768–1279px) has no right column to show. The campaign name opens a
+// menu for everyone: the GM's starts with Table, then the campaign switcher (and "Playing
+// as" for players). After the round come buttons that open the drawer on Party, Chat (with
+// its unread badge) and Scribe; then "Sheet ↗" for players, or the GM's ⋯ menu (GmPhoneMenu:
 // Previous turn, the encounter tools, the initiative rules and End encounter). Next turn
 // and New round are on the GM's turn bar there.
 // On touch desktops the desktop bar's controls grow to 44px targets.

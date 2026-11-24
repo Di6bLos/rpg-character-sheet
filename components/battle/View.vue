@@ -29,7 +29,10 @@ const turnCharacterId = computed(
   () => init.order.value.find((c) => c.id === init.activeId.value)?.character_id ?? null,
 )
 const encounterRound = computed(() => (init.turnId.value ? init.round.value : null))
-/** A seated player's hero in a system without the hero editor (5e, PF2e); else null. */
+/**
+ * A seated player's hero in a system without the hero editor (5e, PF2e); else null. Phone.vue's
+ * `basicPlayer` is the same rule: keep them in step.
+ */
 const basicHeroId = computed(() =>
   !gmControls.value && !features.value.nimbleHero ? (campaign.value?.myCharacterId ?? null) : null,
 )

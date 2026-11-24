@@ -1,6 +1,6 @@
 # Battle board for every system, Party (classic) retired — design
 
-Status: planned for a future update (not started). Plan:
+Status: implemented on `feat/battle-all-systems`. Plan:
 `docs/superpowers/plans/2026-11-24-battle-all-systems.md`.
 
 ## Why
