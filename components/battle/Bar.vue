@@ -4,13 +4,46 @@
 // round, End encounter). For the GM the campaign name opens
 // Table (invites, session, players); for players it opens a menu with the campaign
 // switcher and "Playing as".
+// The tablet variant (portrait, 768–1023px) has no right column to show: the tabs drop
+// Party (classic), which moves into the campaign menu (for the GM too, with Table), and
+// after the round come buttons that open the drawer on Party, Chat (with its unread
+// badge) and Scribe; then "Sheet ↗" for players, or the GM's ⋯ menu (GmPhoneMenu:
+// Previous turn, the encounter tools, the initiative rules and End encounter). Next turn
+// and New round are on the GM's turn bar there.
 import type { useInitiative } from '~/composables/useInitiative'
+import type { DrawerTab } from '~/composables/useBattleRight'
 import { plural } from '~/utils/format'
 
-const props = defineProps<{ init: ReturnType<typeof useInitiative> }>()
+const props = withDefaults(
+  defineProps<{
+    init: ReturnType<typeof useInitiative>
+    variant?: 'desktop' | 'tablet'
+    /** Tablet: the Scribe is open to this user (the frame checks, useLoreAvailable). */
+    scribe?: boolean
+  }>(),
+  { variant: 'desktop' },
+)
 
 const { campaign, gmControls, base } = useCampaignBoard()
 const { tabs, isCurrent } = useBoardNav()
+const tablet = computed(() => props.variant === 'tablet')
+
+/** The tabs on the bar: the tablet's leave Party (classic) to the campaign menu. */
+const barTabs = computed(() =>
+  tablet.value
+    ? tabs.value
+        .filter((t) => t.id !== 'party')
+        .map((t) => (t.id === 'maps' ? { ...t, label: 'Maps' } : t))
+    : tabs.value,
+)
+const partyTab = computed(() => tabs.value.find((t) => t.id === 'party'))
+
+// --- Tablet: the drawer's buttons ----------------------------------------------------------
+const right = useBattleRight()
+const chatBadge = useChatBadge(() => right.drawer.value === 'chat')
+function toggleDrawer(tab: DrawerTab) {
+  right.openDrawer(right.drawer.value === tab ? null : tab)
+}
 
 const hasOrder = computed(() => props.init.order.value.length > 0)
 const acting = computed(
@@ -40,11 +73,16 @@ const endOpen = ref(false)
 </script>
 
 <template>
-  <header v-if="campaign" class="bar" data-track-area="Top bar" :class="{ 'bar--gm': gmControls }">
+  <header
+    v-if="campaign"
+    class="bar"
+    data-track-area="Top bar"
+    :class="{ 'bar--gm': gmControls, 'bar--tablet': tablet }"
+  >
     <div ref="menuEl" class="bar__camp" @keydown.esc="closeMenu(true)">
-      <!-- GM: the name opens Table (invites, session, players). -->
+      <!-- GM: the name opens Table (invites, session, players); on a tablet, the menu. -->
       <button
-        v-if="gmControls"
+        v-if="gmControls && !tablet"
         type="button"
         class="bar__title"
         aria-haspopup="dialog"
@@ -67,14 +105,38 @@ const endOpen = ref(false)
         <span class="bar__name">{{ campaign.name }}</span>
         <span class="bar__caret" aria-hidden="true">▾</span>
       </button>
-      <div v-if="menuOpen && !gmControls" :id="menuId" class="bar__menu panel">
+      <div v-if="menuOpen && (tablet || !gmControls)" :id="menuId" class="bar__menu panel">
+        <nav v-if="tablet" aria-label="More board sections" class="bar__links">
+          <NuxtLink
+            v-if="partyTab"
+            :to="`${base}/party`"
+            :aria-current="isCurrent('party') ? 'page' : undefined"
+            @click="closeMenu()"
+          >
+            Party (classic)
+            <span
+              v-if="partyTab.badge"
+              class="bar__badge"
+              :aria-label="plural(partyTab.badge, 'unread message')"
+              >{{ partyTab.badge }}</span
+            >
+          </NuxtLink>
+          <button
+            v-if="gmControls"
+            type="button"
+            aria-haspopup="dialog"
+            @click="(closeMenu(), (tableOpen = true))"
+          >
+            Table
+          </button>
+        </nav>
         <BattleCampaignMenu @navigate="closeMenu()" />
       </div>
     </div>
 
     <nav aria-label="Board sections" class="bar__tabs">
       <NuxtLink
-        v-for="t in tabs"
+        v-for="t in barTabs"
         :key="t.id"
         :to="`${base}/${t.id}`"
         :aria-current="isCurrent(t.id) ? 'page' : undefined"
@@ -94,7 +156,56 @@ const endOpen = ref(false)
       <span v-if="acting" class="bar__acting small muted">· {{ acting }} is acting</span>
     </div>
 
-    <div v-if="gmControls" class="bar__tools">
+    <div v-if="tablet" class="bar__drawer" role="group" aria-label="Party and chat">
+      <button
+        type="button"
+        class="bar__icon"
+        aria-label="Party"
+        title="Party"
+        aria-haspopup="dialog"
+        :aria-expanded="right.drawer.value === 'party'"
+        @click="toggleDrawer('party')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2"
+          />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="bar__icon"
+        :aria-label="chatBadge ? `Chat, ${plural(chatBadge, 'unread message')}` : 'Chat'"
+        title="Chat"
+        aria-haspopup="dialog"
+        :aria-expanded="right.drawer.value === 'chat'"
+        @click="toggleDrawer('chat')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5h16v11H9l-5 4V5Z" />
+        </svg>
+        <span v-if="chatBadge" class="bar__badge bar__badge--dot" aria-hidden="true">{{
+          chatBadge
+        }}</span>
+      </button>
+      <button
+        v-if="props.scribe"
+        type="button"
+        class="bar__icon"
+        aria-label="Scribe"
+        title="Scribe"
+        aria-haspopup="dialog"
+        :aria-expanded="right.drawer.value === 'scribe'"
+        @click="toggleDrawer('scribe')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2L12 3Z" />
+        </svg>
+      </button>
+    </div>
+
+    <BattleGmPhoneMenu v-if="tablet && gmControls" :init="init" />
+    <div v-else-if="gmControls" class="bar__tools">
       <button
         type="button"
         class="btn btn--ghost btn--sm"
@@ -129,7 +240,8 @@ const endOpen = ref(false)
       v-else-if="campaign.myCharacterId"
       :to="`/character/${campaign.myCharacterId}?campaign=${campaign.id}`"
       class="btn btn--ghost btn--sm"
-      >Open full sheet ↗</NuxtLink
+      :class="{ bar__sheet: tablet }"
+      >{{ tablet ? 'Sheet ↗' : 'Open full sheet ↗' }}</NuxtLink
     >
 
     <template v-if="gmControls">
@@ -284,5 +396,116 @@ const endOpen = ref(false)
   .bar--gm .bar__acting {
     display: none;
   }
+}
+
+// --- Tablet ------------------------------------------------------------------------------
+.bar--tablet {
+  gap: 8px;
+  padding: 4px 12px 4px 16px;
+  min-height: 56px;
+
+  .bar__title {
+    max-width: 180px;
+  }
+
+  .bar__tabs a {
+    min-height: 40px;
+    padding: 0 10px;
+  }
+
+  .bar__round {
+    flex: 0 1 auto;
+    padding: 0 10px;
+  }
+}
+
+// The campaign menu's extra sections (Party (classic), Table) above CampaignMenu's rows.
+.bar__links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+
+  a,
+  button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: min(var(--radius-control), 8px);
+    background: none;
+    color: var(--page-text);
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+
+    &:hover {
+      background: var(--accent-tint);
+    }
+
+    &[aria-current='page'] {
+      font-weight: 700;
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+  }
+}
+
+.bar__drawer {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.bar__icon {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--page-text);
+
+  svg {
+    width: 36px;
+    height: 36px;
+    padding: 8px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--inset);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &[aria-expanded='true'] svg {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+.bar__badge--dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.bar__sheet {
+  flex: none;
+  min-height: 44px;
 }
 </style>

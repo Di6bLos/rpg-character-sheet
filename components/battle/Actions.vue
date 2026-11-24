@@ -7,12 +7,13 @@ import type { NimbleSheet } from '~/types/sheets'
 import { readyNote, sectionsFor, type ActionFilter } from '~/utils/battleActions'
 
 defineProps<{
-  /**
-   * Phone layout: two tiles per row, touch-sized filter chips that scroll sideways, the
-   * list scrolling with the page's tab instead of on its own, and action details as a
-   * bottom sheet (passed on to the tiles).
-   */
+  /** Phone and tablet layouts: two tiles per row, touch-sized filter chips that scroll sideways. */
   compact?: boolean
+  /**
+   * Phone frame: the panel takes its natural height (the phone's tab scrolls, not the list)
+   * and the tiles open their details as a bottom sheet instead of a popover.
+   */
+  sheet?: boolean
 }>()
 
 const FILTER_KEY = 'lantern-battle-filter'
@@ -70,7 +71,7 @@ const empty = computed(() =>
 <template>
   <section
     class="panel actions"
-    :class="{ 'actions--compact': compact }"
+    :class="{ 'actions--compact': compact, 'actions--sheet': sheet }"
     aria-labelledby="battle-actions-h"
   >
     <h2 id="battle-actions-h" class="sr-only">Actions</h2>
@@ -86,7 +87,7 @@ const empty = computed(() =>
               :action="byKey.get(t.key)!"
               :show-reason="filter !== 'ready'"
               :readonly="!canEdit"
-              :compact="compact"
+              :sheet="sheet"
             />
           </template>
         </div>
@@ -184,18 +185,9 @@ const empty = computed(() =>
   opacity: 0.85;
 }
 
-// --- Compact (phone) -------------------------------------------------------------------
-// The phone's tab scrolls, so the panel takes its natural height.
+// --- Compact (phone, tablet) -------------------------------------------------------------
 .actions--compact {
-  flex: none;
-  min-height: 0;
   padding: 12px;
-
-  .actions__list {
-    flex: none;
-    overflow: visible;
-    padding-right: 0;
-  }
 
   .actions__tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -218,6 +210,19 @@ const empty = computed(() =>
     &:not(:placeholder-shown) {
       flex-basis: 150px;
     }
+  }
+}
+
+// --- Sheet (phone) ---------------------------------------------------------------------
+// The phone's tab scrolls, so the panel takes its natural height.
+.actions--sheet {
+  flex: none;
+  min-height: 0;
+
+  .actions__list {
+    flex: none;
+    overflow: visible;
+    padding-right: 0;
   }
 }
 </style>

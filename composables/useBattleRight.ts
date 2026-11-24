@@ -3,7 +3,8 @@
  * snaps to closed (a thin rail) when dragged narrow enough, and how it is shared
  * between Party (top) and Chat (bottom). `split` is the Party's share: 0 closes the
  * Party to its header line, 1 closes Chat to a strip with the missed messages.
- * Remembered per browser.
+ * Remembered per browser. On a tablet in portrait there is no right column: Party, Chat and
+ * Scribe open one at a time in a drawer (`drawer`, not remembered).
  */
 interface RightState {
   /** False: the column is closed to the rail. */
@@ -17,6 +18,9 @@ export const RIGHT_WIDTH = { min: 260, max: 600, initial: 340, close: 160 }
 export const RIGHT_SPLIT = { initial: 0.5 }
 /** A panel dragged smaller than this closes. */
 export const RIGHT_CLOSE_PX = 72
+
+/** The tablet drawer's tabs. */
+export type DrawerTab = 'party' | 'chat' | 'scribe'
 
 const KEY = 'lantern:battle-right'
 const OPEN: RightState = { column: true, width: RIGHT_WIDTH.initial, split: RIGHT_SPLIT.initial }
@@ -38,6 +42,8 @@ function load(): RightState {
 
 export function useBattleRight() {
   const state = useState<RightState>('battle-right', load)
+  const drawer = useState<DrawerTab | null>('battle-drawer', () => null)
+  const { layout } = useBoardLayout()
 
   function set(patch: Partial<RightState>, save = true) {
     state.value = { ...state.value, ...patch }
@@ -53,12 +59,26 @@ export function useBattleRight() {
     state: readonly(state),
     partyClosed: computed(() => state.value.split <= 0),
     chatClosed: computed(() => state.value.split >= 1),
-    /** Opens the column with Chat showing (Whisper, a click on a closed Chat). */
-    showChat: () =>
+    /** The tablet drawer's open tab; null while it is closed. */
+    drawer: readonly(drawer),
+    /** Opens the tablet drawer on `tab`, or closes it (null). */
+    openDrawer: (tab: DrawerTab | null) => {
+      drawer.value = tab
+    },
+    /**
+     * Opens the column with Chat showing (Whisper, a click on a closed Chat); on a tablet
+     * in portrait, the drawer on Chat.
+     */
+    showChat: () => {
+      if (layout.value === 'tablet') {
+        drawer.value = 'chat'
+        return
+      }
       set({
         column: true,
         split: state.value.split >= 1 ? RIGHT_SPLIT.initial : state.value.split,
-      }),
+      })
+    },
     /** `save: false` while dragging; the drop saves. */
     setColumn: (open: boolean, save = true) => set({ column: open }, save),
     /** Closes the column, remembering `width` for when it opens again. */

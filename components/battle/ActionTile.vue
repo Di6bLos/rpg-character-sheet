@@ -17,7 +17,7 @@ const props = defineProps<{
   showReason?: boolean
   readonly?: boolean
   /** Phone layout: the details open as a bottom sheet instead of a popover. */
-  compact?: boolean
+  sheet?: boolean
 }>()
 
 const { touch } = useBoardLayout()
@@ -124,7 +124,7 @@ function onClick() {
       v-model="details"
       :action="a"
       :anchor="btn"
-      :mode="compact ? 'sheet' : 'popover'"
+      :mode="sheet ? 'sheet' : 'popover'"
       :readonly="readonly"
     />
     <BattleActionPicker

@@ -25,7 +25,9 @@ export function usePhoneTab(role: Ref<PhoneRole>, scribe: Ref<boolean>): Ref<Pho
 
   watch([role, scribe], () => {
     auto = true
-    tab.value = pickTab(role.value, scribe.value, wanted ?? tab.value)
+    // Nothing picked yet: the new role's default (a player opens on Actions, not on the
+    // watcher's Party they had while the sheet loaded).
+    tab.value = pickTab(role.value, scribe.value, wanted)
     auto = false
   })
 
