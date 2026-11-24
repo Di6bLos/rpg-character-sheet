@@ -3,7 +3,8 @@
 // steps aside), top to bottom: the bar, the initiative strip, the player's hero strip
 // (every tab but Hero), the active tab's content (the only part that scrolls), the last
 // result, the turn bar and the bottom tabs. Watchers (no seated hero, or a GM on the
-// player board) get no hero strip, result bar or turn bar. The turn bar steps aside
+// player board) get no hero strip, result bar or turn bar; the GM gets the turn bar (their
+// own, from the `turn` slot) but no hero strip or result bar. The turn bar steps aside
 // while the on-screen keyboard is open and on Chat and Scribe. With the keyboard open
 // the frame shrinks to what the keyboard leaves and keeps only the bar, the content and
 // the result, so the focused input stays in view with room to read (a 360×640 phone has
@@ -36,6 +37,9 @@ const tabs = computed(() => phoneTabs(role.value, scribe.value))
 function go(next: PhoneTab) {
   if (tabs.value.includes(next)) tab.value = next
 }
+
+/** The open tab and `go`, for the GM's selection toast (View). */
+defineExpose({ tab, go })
 
 const keyboard = useKeyboardOpen()
 const viewport = useViewportHeight()
@@ -78,7 +82,7 @@ watch(tab, () => {
       <slot name="tab" :tab="tab" :hero="hero" :go="go" />
     </div>
     <BattleResultBar v-if="role === 'player'" :init="init" />
-    <div v-if="hero && $slots.turn" v-show="showTurn" class="phone__turn">
+    <div v-if="(hero || role === 'gm') && $slots.turn" v-show="showTurn" class="phone__turn">
       <slot name="turn" :hero="hero" />
     </div>
     <BattlePhoneTabs v-show="!keyboard" v-model="tab" :tabs="tabs" panel-id="battle-content" />

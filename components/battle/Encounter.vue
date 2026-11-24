@@ -2,6 +2,9 @@
 // The GM's encounter grid (battle board centre): a card per enemy (monsters and NPCs),
 // or with the chip, per ally and summon (heroes included). Clicking a creature selects
 // it into the stat block; a hero shows their vitals there instead (GmHero). Remove asks first.
+// Compact (phone Encounter tab): one column of compact cards at their natural height (the
+// tab scrolls), 44px chips, and a "+ Add" chip for the add dialog (the desktop has it on
+// the turn bar).
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { sortOrder } from '~/utils/initiative'
@@ -11,6 +14,7 @@ const props = defineProps<{
   roster: RosterEntry[]
   /** The GM's explicit pick (a card or token click), without the acting-creature fallback. */
   picked?: string | null
+  compact?: boolean
 }>()
 const selected = defineModel<string | null>('selected', { required: true })
 const emit = defineEmits<{ hero: [characterId: string] }>()
@@ -28,6 +32,7 @@ const allies = computed(() =>
   ),
 )
 const filter = ref<'enemies' | 'allies'>('enemies')
+const addOpen = ref(false)
 const shown = computed(() => (filter.value === 'enemies' ? enemies.value : allies.value))
 
 function heroFor(c: TurnRow) {
@@ -78,7 +83,7 @@ async function confirmRemove() {
 </script>
 
 <template>
-  <section class="panel enc" aria-labelledby="enc-h">
+  <section class="panel enc" :class="{ 'enc--compact': compact }" aria-labelledby="enc-h">
     <header class="enc__head">
       <h2 id="enc-h">Encounter</h2>
       <div class="enc__chips" role="group" aria-label="Show">
@@ -98,14 +103,24 @@ async function confirmRemove() {
         >
           Allies &amp; summons ({{ allies.length }})
         </button>
+        <button
+          v-if="compact"
+          type="button"
+          class="enc__chip"
+          aria-haspopup="dialog"
+          aria-label="Add creatures"
+          @click="addOpen = true"
+        >
+          + Add
+        </button>
       </div>
-      <span class="enc__legend">Type a number, then press − or +</span>
+      <span v-if="!compact" class="enc__legend">Type a number, then press − or +</span>
     </header>
     <div class="enc__scroll">
       <p v-if="!shown.length" class="enc__empty">
         {{
           filter === 'enemies'
-            ? 'No enemies in the encounter. Add creatures from the turn bar or the NPCs page.'
+            ? `No enemies in the encounter. Add creatures from ${compact ? '+ Add' : 'the turn bar'} or the NPCs page.`
             : 'No heroes or summons in the encounter yet.'
         }}
       </p>
@@ -119,11 +134,13 @@ async function confirmRemove() {
           :hero="heroFor(c)"
           :selected="c.id === selected"
           :acting="c.id === init.turnId.value"
+          :compact="compact"
           @select="onSelect(c)"
           @remove="removing = c"
         />
       </div>
     </div>
+    <BoardAddCombatants v-if="compact" v-model="addOpen" :init="init" :roster="roster" />
     <UiDialog v-model="removeOpen" title="Remove from the encounter?" width="420px" alert>
       <p>{{ removing?.name }} leaves the turn order. Its index entry and journal page stay.</p>
       <div class="row" style="justify-content: flex-end">
@@ -210,5 +227,32 @@ async function confirmRemove() {
   margin: 0;
   font-size: 13px;
   color: var(--page-muted);
+}
+
+// Phone: the tab scrolls, so the panel takes its natural height; the chips are 44px and
+// wrap under the heading when they need to.
+.enc--compact {
+  flex: none;
+  padding: 12px;
+
+  .enc__chips {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .enc__chip {
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  .enc__scroll {
+    flex: none;
+    overflow: visible;
+  }
+
+  .enc__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>

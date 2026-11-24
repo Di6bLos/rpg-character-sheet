@@ -2,12 +2,14 @@
 // An encounter card's HP: the bar with numbers, then −5 / −N / amount / +N / +5, where N
 // is the amount typed (1 when empty). Emits the change; the card decides where it goes.
 // The default slot lands at the end of the bar's row (the card's action pips).
+// Compact (phone): 44px buttons and field, 8px apart.
 const props = defineProps<{
   name: string
   now: number
   max: number
   temp?: number
   slain: boolean
+  compact?: boolean
 }>()
 const emit = defineEmits<{ change: [delta: number] }>()
 
@@ -35,7 +37,14 @@ function stepTyped(sign: 1 | -1) {
     <!-- The card's action pips sit on this row. -->
     <slot />
   </div>
-  <div v-if="!slain" class="eh__quick" role="group" :aria-label="`${name} hit points`" @click.stop>
+  <div
+    v-if="!slain"
+    class="eh__quick"
+    :class="{ 'eh__quick--compact': compact }"
+    role="group"
+    :aria-label="`${name} hit points`"
+    @click.stop
+  >
     <button type="button" :aria-label="`${name}: lose 5 HP`" @click="emit('change', -5)">−5</button>
     <button type="button" :aria-label="`${name}: lose ${typed || 1} HP`" @click="stepTyped(-1)">
       −{{ typed || 1 }}
@@ -133,6 +142,23 @@ function stepTyped(sign: 1 | -1) {
       appearance: none;
       margin: 0;
     }
+  }
+}
+
+.eh__quick--compact {
+  gap: 8px;
+
+  button,
+  input {
+    height: 44px;
+    font-size: 14px;
+  }
+
+  input {
+    flex-basis: 56px;
+    width: 56px;
+    // 16px keeps iOS from zooming in on focus.
+    font-size: 16px;
   }
 }
 </style>

@@ -1,7 +1,14 @@
 <script setup lang="ts">
 // An encounter card's action pips. A monster's are buttons (a click spends the next pip,
 // a spent one refunds down to it); a hero's come from their sheet and only show.
-const props = defineProps<{ name: string; total: number; used: number; readonly?: boolean }>()
+// Compact (phone): each button is a 44px target, 8px apart, around a larger pip.
+const props = defineProps<{
+  name: string
+  total: number
+  used: number
+  readonly?: boolean
+  compact?: boolean
+}>()
 const emit = defineEmits<{ set: [used: number] }>()
 
 function onPip(n: number) {
@@ -10,7 +17,7 @@ function onPip(n: number) {
 </script>
 
 <template>
-  <span class="ep" role="group" :aria-label="`${name} actions`">
+  <span class="ep" :class="{ 'ep--compact': compact }" role="group" :aria-label="`${name} actions`">
     <template v-if="readonly">
       <i v-for="n in total" :key="n" :class="{ 'is-used': n <= used }" aria-hidden="true" />
       <span class="sr-only">{{ total - used }} of {{ total }} actions left</span>
@@ -61,6 +68,44 @@ function onPip(n: number) {
     &:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 2px;
+    }
+  }
+}
+
+// The pip is drawn inside the 44px button, so the target is big and the look stays.
+.ep--compact {
+  gap: 8px;
+
+  i {
+    width: 14px;
+    height: 14px;
+  }
+
+  button {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    background: transparent;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 13px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    &.is-used {
+      box-shadow: none;
+
+      &::after {
+        background: transparent;
+        box-shadow: inset 0 0 0 1.5px var(--page-muted);
+      }
+    }
+
+    &:focus-visible {
+      outline-offset: -4px;
     }
   }
 }

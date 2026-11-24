@@ -4,7 +4,9 @@
 // the campaign switcher and Playing as (CampaignMenu), the
 // app nav's links (Dashboard, Characters, Campaigns, Library) and the account items
 // (Settings, Manual dice, Sign out); a GM on the player board also gets
-// "Open GM console". Then the round chip and, for players, a link to the full sheet.
+// "Open GM console", and the GM console gets Table (invites, session, players). Then the
+// round chip and, for players, a link to the full sheet; for the GM, a ⋯ menu with the
+// encounter tools, End encounter and the initiative rules (GmPhoneMenu).
 // The `tools` slot holds the frame's own buttons at the right end.
 import type { useInitiative } from '~/composables/useInitiative'
 import type { PhoneRole } from '~/utils/boardLayout'
@@ -50,6 +52,13 @@ watch(
   () => close(),
 )
 
+// GM: Table (invites, session, players), as the desktop bar's campaign name opens.
+const tableOpen = ref(false)
+function openTable() {
+  open.value = false
+  tableOpen.value = true
+}
+
 async function onSignOut() {
   open.value = false
   await signOut()
@@ -84,6 +93,9 @@ async function onSignOut() {
           <NuxtLink v-if="isGm && !gmControls" :to="`/campaigns/${campaignId}/gm/battle`">
             Open GM console
           </NuxtLink>
+          <button v-if="gmControls" type="button" aria-haspopup="dialog" @click="openTable">
+            Table
+          </button>
         </nav>
         <BattleCampaignMenu @navigate="close()" />
         <nav aria-label="Primary" class="pbar__links">
@@ -141,7 +153,11 @@ async function onSignOut() {
         <path d="M7 3h8l4 4v14H7V3ZM15 3v4h4M10 12h6M10 16h6" />
       </svg>
     </NuxtLink>
+    <BattleGmPhoneMenu v-if="role === 'gm'" :init="init" />
     <slot name="tools" />
+    <UiDialog v-if="gmControls" v-model="tableOpen" title="Table" width="960px">
+      <BoardTableAdmin />
+    </UiDialog>
   </header>
 </template>
 

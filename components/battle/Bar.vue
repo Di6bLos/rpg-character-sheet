@@ -34,20 +34,9 @@ function onDocClick(event: MouseEvent) {
 onMounted(() => document.addEventListener('click', onDocClick))
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
-// --- GM: Table and End encounter -------------------------------------------------
+// --- GM: Table and End encounter (its confirm is GmEndEncounter) -----------------
 const tableOpen = ref(false)
 const endOpen = ref(false)
-const ending = ref(false)
-
-async function endEncounter() {
-  ending.value = true
-  try {
-    await props.init.endEncounter()
-    endOpen.value = false
-  } finally {
-    ending.value = false
-  }
-}
 </script>
 
 <template>
@@ -147,17 +136,7 @@ async function endEncounter() {
       <UiDialog v-model="tableOpen" title="Table" width="960px">
         <BoardTableAdmin />
       </UiDialog>
-      <UiDialog v-model="endOpen" title="End the encounter?" width="420px" alert>
-        <div class="stack">
-          <p>Every combatant leaves initiative and the round goes back to 1.</p>
-          <div class="row" style="justify-content: flex-end">
-            <button type="button" class="btn btn--ghost" @click="endOpen = false">Cancel</button>
-            <button type="button" class="btn btn--danger" :disabled="ending" @click="endEncounter">
-              End encounter
-            </button>
-          </div>
-        </div>
-      </UiDialog>
+      <BattleGmEndEncounter v-model="endOpen" :init="init" />
     </template>
   </header>
 </template>

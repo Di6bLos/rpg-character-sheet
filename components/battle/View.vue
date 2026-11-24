@@ -2,14 +2,18 @@
 // Battle tab: the battle board (Nimble). The initiative strip, the
 // player's hero column and actions or the GM's stat block and encounter grid, and the
 // party and chat on the right. On a phone the same parts go in the phone frame, one tab
-// at a time (the GM keeps the desktop frame for now). Both frames sit inside one
+// at a time (the GM's tabs: Encounter, Creature, Party, Chat). Both frames sit inside one
 // HeroScope, so switching frames (a rotation) keeps the hero's sheet editor and its
 // automatic turn steps. Other systems get a note pointing to the Party tab.
 import { downSummonKeys } from '~/utils/initiative'
+import type { PhoneTab } from '~/utils/boardLayout'
 
 const { campaign, campaignId, isGm, gmControls, roster, base } = useCampaignBoard()
 const { layout } = useBoardLayout()
-const phone = computed(() => layout.value === 'phone' && !gmControls.value)
+const phone = computed(() => layout.value === 'phone')
+/** The phone frame's open tab and tab switch (its exposed `tab` and `go`). */
+const phoneFrame = ref<{ tab: PhoneTab; go: (tab: PhoneTab) => void } | null>(null)
+const snackbar = useSnackbarStore()
 
 const init = useInitiative(campaignId, isGm)
 useRosterRefresh(init.activeId)
@@ -51,9 +55,23 @@ const gmSelected = computed(() => {
   return init.order.value.find((c) => c.kind === 'monster' || c.kind === 'npc')?.id ?? null
 })
 const gmHeroId = computed(() => seatedHero(gmSelected.value))
-/** Picks what the GM's left column shows, opening the column if it was closed. */
+/**
+ * Picks what the GM's left column shows, opening the column if it was closed. The phone
+ * has no left column: the pick shows on the Creature tab, and from another tab a toast
+ * names it with a button that opens Creature (the GM stays where they were).
+ */
 function gmShow(id: string) {
   gmPick.value = id
+  if (phone.value) {
+    const frame = phoneFrame.value
+    if (frame && frame.tab !== 'creature') {
+      snackbar.show(`Selected: ${rowOf(id)?.name ?? 'creature'}`, 'info', 5000, {
+        label: 'Show',
+        run: () => phoneFrame.value?.go('creature'),
+      })
+    }
+    return
+  }
   if (!left.state.value.column) left.setColumn(true)
 }
 function onToken(id: string) {
@@ -78,7 +96,7 @@ function onGridHero(characterId: string) {
     :round="encounterRound"
     :down-summons="downSummons"
   >
-    <BattlePhone v-if="phone" :init="init" :hero="hero">
+    <BattlePhone v-if="phone" ref="phoneFrame" :init="init" :hero="hero">
       <template #strip>
         <BattleInitiative
           compact
@@ -90,7 +108,22 @@ function onGridHero(characterId: string) {
         />
       </template>
       <template #tab="{ tab }">
-        <BattleActions v-if="tab === 'actions' && hero" compact />
+        <!-- GM: the encounter cards and the selected creature's stat block (or hero). -->
+        <BattleEncounter
+          v-if="tab === 'encounter' && gmControls"
+          compact
+          :init="init"
+          :roster="roster"
+          :selected="gmSelected"
+          :picked="gmPick"
+          @update:selected="(id: string | null) => (id ? gmShow(id) : (gmPick = null))"
+          @hero="onGridHero"
+        />
+        <template v-else-if="tab === 'creature' && gmControls">
+          <BattleGmHero v-if="gmHeroId" :character-id="gmHeroId" :roster="roster" />
+          <BattleStatBlock v-else :init="init" :combatant-id="gmSelected" />
+        </template>
+        <BattleActions v-else-if="tab === 'actions' && hero" compact />
         <BattleHero v-else-if="tab === 'hero' && hero" compact />
         <template v-else-if="tab === 'party'">
           <BattlePartyCards
@@ -102,6 +135,8 @@ function onGridHero(characterId: string) {
           />
           <BattleEnemies :init="init" :gm="gmControls" />
         </template>
+        <!-- The GM's Chat keeps its own Chat / Scribe tabs (no Scribe tab at the bottom). -->
+        <BattleComms v-else-if="tab === 'chat' && gmControls" compact :roster="roster" />
         <BattleComms
           v-else-if="tab === 'chat' || tab === 'scribe'"
           compact
@@ -110,7 +145,8 @@ function onGridHero(characterId: string) {
         />
       </template>
       <template #turn>
-        <BattleTurnBar compact :init="init" />
+        <BattleGmTurnBar v-if="gmControls" compact :init="init" :roster="roster" />
+        <BattleTurnBar v-else compact :init="init" />
       </template>
       <template #dialogs="{ go }">
         <BattleHeroCardDialog

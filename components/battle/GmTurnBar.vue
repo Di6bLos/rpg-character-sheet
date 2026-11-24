@@ -4,17 +4,20 @@
 // summons and Reroll NPC initiative, and Add party while out of an encounter with
 // heroes not seated (Next turn is in the board's top bar). It also drops summons that left
 // their hero's sheet as the roster refreshes (as the Party tab's Initiative panel does).
-import type { InitiativeMode, RosterEntry } from '~/types'
+// The menu's tools are useGmEncounterTools, shared with the phone bar's ⋯ menu. Compact
+// (phone, the bottom of the frame): one row with who is acting, up next, New round and
+// Next ▶, the same handlers as the desktop top bar's buttons; "+ Add" is on the
+// Encounter tab and the rest is in the phone bar's ⋯ menu.
+import type { RosterEntry } from '~/types'
 import type { useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
   roster: RosterEntry[]
+  /** Phone: one row (who is acting, up next, New round, Next ▶); the rest is in the bar's ⋯. */
+  compact?: boolean
 }>()
-
-const snackbar = useSnackbarStore()
-const board = useCampaignBoard()
 
 const order = computed(() => props.init.order.value)
 const acting = computed(() => order.value.find((c) => c.id === props.init.turnId.value))
@@ -48,18 +51,6 @@ const menuOpen = ref(false)
 const menuEl = ref<HTMLElement | null>(null)
 const menuBtn = ref<HTMLButtonElement | null>(null)
 const menuId = useId()
-const busy = ref(false)
-
-const partyMissing = computed(
-  () =>
-    props.roster.filter(
-      (r) =>
-        r.character_id && !props.init.rows.value.some((c) => c.character_id === r.character_id),
-    ).length,
-)
-
-/** Out of an encounter (no one acting yet) with heroes not seated: offer Add party. */
-const offerParty = computed(() => !props.init.turnId.value && partyMissing.value > 0)
 
 function closeMenu(refocus = false) {
   if (!menuOpen.value) return
@@ -72,70 +63,40 @@ function onDocClick(event: MouseEvent) {
 onMounted(() => document.addEventListener('click', onDocClick))
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
-async function run(job: () => Promise<void>) {
-  closeMenu()
-  busy.value = true
-  try {
-    await job()
-  } finally {
-    busy.value = false
-  }
-}
+const { busy, partyMissing, offerParty, addParty, syncSummons, reroll, setMode } =
+  useGmEncounterTools(props.init, toRef(props, 'roster'), () => closeMenu())
 
-const addParty = () =>
-  run(async () => {
-    try {
-      const n = await props.init.addParty(props.roster)
-      snackbar.show(n ? `${plural(n, 'character')} added to initiative` : 'The party is seated')
-    } catch (err) {
-      snackbar.error(err, 'Could not add the party')
-    }
-  })
-
-const syncSummons = () =>
-  run(async () => {
-    try {
-      await board.reloadRoster()
-      const result = await props.init.syncSummons(board.roster.value)
-      if (!result) return
-      const parts: string[] = []
-      if (result.added) parts.push(`${plural(result.added, 'summon')} added`)
-      if (result.removed)
-        parts.push(
-          result.added
-            ? `${result.removed} removed`
-            : `${plural(result.removed, 'summon')} removed`,
-        )
-      snackbar.show(parts.length ? parts.join(', ') : 'Summons are up to date')
-    } catch (err) {
-      snackbar.error(err, 'Could not sync the summons')
-    }
-  })
-
-const reroll = () => run(() => props.init.rollForNpcs())
-
-const MODES: { mode: InitiativeMode; label: string; note: string }[] = [
-  {
-    mode: 'nimble',
-    label: 'Nimble',
-    note: 'Heroes go first; the roll sets their starting actions',
-  },
-  {
-    mode: 'classic',
-    label: 'Classic',
-    note: 'The roll sets the turn order; heroes start with full actions',
-  },
-]
-const setMode = (mode: InitiativeMode) => run(() => props.init.setMode(mode))
+// --- Compact (phone): one row with Next turn and New round, the same handlers as the
+// desktop top bar's buttons. ------------------------------------------------------------
+const hasOrder = computed(() => order.value.length > 0)
 </script>
 
 <template>
-  <section class="panel gtb" aria-label="Turn">
+  <section class="panel gtb" :class="{ 'gtb--compact': compact }" aria-label="Turn">
     <div class="gtb__who">
       <strong class="gtb__title" role="status" :title="title">{{ title }}</strong>
       <span class="gtb__sub" :title="upNext">{{ upNext }}</span>
     </div>
-    <div class="gtb__tools">
+    <div v-if="compact" class="gtb__tools">
+      <button
+        type="button"
+        class="btn btn--ghost btn--sm gtb__step"
+        :title="`Start round ${init.round.value + 1} from the top of the order`"
+        :disabled="!init.turnId.value"
+        @click="init.newRound"
+      >
+        New round
+      </button>
+      <button
+        type="button"
+        class="btn btn--sm gtb__step"
+        :disabled="!hasOrder"
+        @click="init.nextTurn"
+      >
+        Next ▶
+      </button>
+    </div>
+    <div v-else class="gtb__tools">
       <button
         type="button"
         class="btn btn--ghost btn--sm"
@@ -182,21 +143,7 @@ const setMode = (mode: InitiativeMode) => run(() => props.init.setMode(mode))
             Reroll NPC initiative
             <small>Every monster and NPC rolls again</small>
           </button>
-          <div class="gtb__modes" role="group" aria-labelledby="gtb-modes-h">
-            <span id="gtb-modes-h" class="gtb__modes-h">Initiative rules</span>
-            <button
-              v-for="m in MODES"
-              :key="m.mode"
-              type="button"
-              class="gtb__item gtb__mode"
-              :aria-pressed="init.mode.value === m.mode"
-              :disabled="busy"
-              @click="setMode(m.mode)"
-            >
-              {{ m.label }}
-              <small>{{ m.note }}</small>
-            </button>
-          </div>
+          <BattleGmModes :mode="init.mode.value" :disabled="busy" @pick="setMode" />
         </div>
       </div>
       <!-- Out of combat with heroes still to seat, offer to seat the party
@@ -212,7 +159,7 @@ const setMode = (mode: InitiativeMode) => run(() => props.init.setMode(mode))
         Add party
       </button>
     </div>
-    <BoardAddCombatants v-model="addOpen" :init="init" :roster="roster" />
+    <BoardAddCombatants v-if="!compact" v-model="addOpen" :init="init" :roster="roster" />
   </section>
 </template>
 
@@ -321,40 +268,30 @@ const setMode = (mode: InitiativeMode) => run(() => props.init.setMode(mode))
   }
 }
 
-.gtb__modes {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 4px;
-  padding-top: 6px;
-  border-top: 1px solid var(--line);
-}
+// Phone: one row at the bottom of the frame, no panel edge; 44px buttons.
+.gtb--compact {
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-width: 1px 0 0;
+  border-radius: 0;
 
-.gtb__modes-h {
-  padding: 0 10px 2px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--page-muted);
-}
-
-// The picked rules: a check before the name and the accent edge.
-.gtb__mode {
-  position: relative;
-  padding-left: 28px;
-
-  &[aria-pressed='true'] {
-    background: var(--accent-tint);
-    box-shadow: inset 2px 0 0 var(--accent);
-
-    &::before {
-      content: '✓';
-      position: absolute;
-      left: 10px;
-      top: 8px;
-      color: var(--accent-text);
-    }
+  .gtb__who {
+    min-width: 0;
   }
+
+  .gtb__title {
+    font-size: 14px;
+  }
+
+  .gtb__tools {
+    gap: 8px;
+  }
+}
+
+.gtb__step {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 14px;
 }
 </style>
