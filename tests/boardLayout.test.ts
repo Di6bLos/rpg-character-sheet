@@ -34,7 +34,13 @@ describe('phone tabs', () => {
   it('player without Scribe', () =>
     expect(phoneTabs('player', false, true)).toEqual(['actions', 'hero', 'party', 'chat']))
   it('gm gets a Scribe tab when it is available', () => {
-    expect(phoneTabs('gm', true, true)).toEqual(['encounter', 'creature', 'party', 'chat', 'scribe'])
+    expect(phoneTabs('gm', true, true)).toEqual([
+      'encounter',
+      'creature',
+      'party',
+      'chat',
+      'scribe',
+    ])
     expect(phoneTabs('gm', false, true)).toEqual(['encounter', 'creature', 'party', 'chat'])
   })
   it('watcher', () => expect(phoneTabs('watcher', true, true)).toEqual(['party', 'chat', 'scribe']))
