@@ -1,18 +1,13 @@
 <script setup lang="ts">
-import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
 import { mapPenalties, parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
 import { PF2E_CONDITIONS } from '~/utils/sheetDefaults'
+import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, adjustHp, lastRoll, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
 
-const RANK_NAME: Record<Pf2eRank, string> = {
-  U: 'Untrained',
-  T: 'Trained',
-  E: 'Expert',
-  M: 'Master',
-  L: 'Legendary',
-}
+const RANK_NAME = PF2E_RANK_NAME
 const ATTR_NAME: Record<Pf2eAttr, string> = {
   STR: 'Strength',
   DEX: 'Dexterity',

@@ -7,6 +7,7 @@
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
 // Off Nimble (`useBattleFeatures().gmHeroControls` false) the GM sees the vitals read-only:
 // no HP controls, mana or condition picker (only Nimble sheets apply the board's changes).
+// Where Nimble shows the GM mana, PF2e (`gmPoints`) shows hero and focus points.
 import type { HeroCard, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
@@ -192,6 +193,34 @@ async function adjust(sign: 1 | -1) {
       :mana="live.mana"
       :name="card.name"
     />
+
+    <!-- PF2e: the GM sees the hero's hero and focus points (read only, like mana). -->
+    <div v-if="gm && features.gmPoints && live.pf2e" class="hc__points">
+      <div class="hc__wounds">
+        <span class="hc__sect">Hero points</span>
+        <span
+          class="hc__pips hc__pips--good"
+          role="img"
+          :aria-label="`${live.pf2e.heroPoints} of 3 hero points`"
+        >
+          <i v-for="n in 3" :key="n" :class="{ 'is-on': n <= live.pf2e.heroPoints }" />
+        </span>
+      </div>
+      <div v-if="live.pf2e.focus.max > 0" class="hc__wounds">
+        <span class="hc__sect">Focus points</span>
+        <span
+          class="hc__pips hc__pips--good"
+          role="img"
+          :aria-label="`${live.pf2e.focus.current} of ${live.pf2e.focus.max} focus points`"
+        >
+          <i
+            v-for="n in live.pf2e.focus.max"
+            :key="n"
+            :class="{ 'is-on': n <= live.pf2e.focus.current }"
+          />
+        </span>
+      </div>
+    </div>
 
     <div v-if="live.woundsMax && !ownHp()" class="hc__wounds">
       <span class="hc__sect">Wounds</span>
@@ -383,6 +412,16 @@ async function adjust(sign: 1 | -1) {
       box-shadow: none;
     }
   }
+
+  &--good i.is-on {
+    background: var(--accent);
+  }
+}
+
+.hc__points {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .hc__tiles {

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-// The stats modal's main area: stats with save marks, top skills, resources, summons
+// The stats modal's main area for a Nimble hero: stats with save marks, top skills, resources, summons
 // and key abilities with one line of text each. Shows only what campaign_hero_card
 // returned (the public subset of a hero).
-import type { HeroCard } from '~/types'
+import type { NimbleHeroCard } from '~/types'
 import { sign } from '~/utils/dice'
 
-const props = defineProps<{ card: HeroCard }>()
+const props = defineProps<{ card: NimbleHeroCard }>()
 
 const STATS = ['STR', 'DEX', 'INT', 'WIL'] as const
 
@@ -123,90 +123,12 @@ const abilities = computed(() => props.card.abilities.filter((a) => a.name))
 </template>
 
 <style scoped lang="scss">
-.hcs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 18px;
-  align-content: start;
-}
-
-.hcs__full {
-  grid-column: 1 / -1;
-}
-
-.hcs__sect {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--page-muted);
-
-  &--gap {
-    margin-top: 12px;
-  }
-}
+@use '../../assets/styles/hero-stats';
 
 .hcs__stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
-}
-
-.hcs__stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 6px 0;
-  border-radius: min(var(--radius-control), 8px);
-  background: var(--inset);
-  font-size: 11px;
-  color: var(--page-soft);
-
-  b {
-    font-family: var(--font-heading);
-    font-size: 16px;
-    color: var(--page-text);
-  }
-
-  &--adv span {
-    color: color-mix(in srgb, var(--secondary) 70%, var(--page-text));
-    font-weight: 700;
-  }
-
-  &--dis span {
-    color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
-    font-weight: 700;
-  }
-}
-
-.hcs__pairs {
-  margin: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 3px 10px;
-  font-size: 13px;
-
-  dt {
-    color: var(--page-soft);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  dd {
-    margin: 0;
-    text-align: right;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.hcs__none {
-  margin: 0;
-  font-size: 13px;
-  color: var(--page-muted);
 }
 
 .hcs__abil {

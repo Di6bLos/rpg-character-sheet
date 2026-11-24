@@ -15,11 +15,11 @@ export interface BattleFeatures {
   initiativeModes: boolean
   /** The GM's HP and condition controls on a hero. */
   gmHeroControls: boolean
-  /** The stats dialog's stats, saves and skills (`HeroCardStats`). */
-  heroStats: boolean
+  /** PF2e hero and focus points on the GM's party cards and hero vitals (Nimble shows mana). */
+  gmPoints: boolean
 }
 
-/** Every feature is Nimble's; 5e and PF2e get the plain board. */
+/** Every feature but `gmPoints` is Nimble's; 5e and PF2e get the plain board. */
 export function battleFeatures(system: GameSystem): BattleFeatures {
   const on = system === 'nimble'
   return {
@@ -28,7 +28,7 @@ export function battleFeatures(system: GameSystem): BattleFeatures {
     summons: on,
     initiativeModes: on,
     gmHeroControls: on,
-    heroStats: on,
+    gmPoints: system === 'pf2e',
   }
 }
 

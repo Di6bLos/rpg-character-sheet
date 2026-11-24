@@ -34,8 +34,8 @@
 - `campaign_hero_card` also returns, by `characters.system`: 5e — `abilities` (six scores), `saveProfs`, `profBonus`, `speed`, `passivePerception`, `deathSaves`, `hitDie`; PF2e — `attrs` (six modifiers), `saves` (Fortitude/Reflex/Will/Perception/Class DC with rank and value), `skills` (name, attr, rank, value), `heroPoints`, `focus` (current/max), `dying`, `wounded`, `shield`. Keep every existing key (Nimble unchanged). Members-only as today.
 - `HeroCardStats` shows the hero's system: 5e ability scores with modifiers, saving throws (prof marked), passive, speed, death saves; PF2e attribute modifiers, saves with rank, skills with rank, hero points, focus points, shield. Same layout language as the Nimble stats.
 - `heroStats` becomes true for every system (or the flag goes if nothing else reads it). The dialog is full width again for 5e/PF2e. Resources the GM sees on Nimble (mana) map to: PF2e focus points and hero points on the GM's party card and vitals; 5e none.
-- [ ] Tests for any pure mapping (e.g. 5e modifier, PF2e rank labels). Smoke 5e/PF2e GM 1440 + 390 touch: open Corin / Mira from a token and a party card; values match their sheets. Nimble dialog unchanged.
-- [ ] CLAUDE.md; **Commit** — `FEAT: GM stats dialog for D&D 5e and Pathfinder 2e heroes`
+- [x] Tests for any pure mapping (e.g. 5e modifier, PF2e rank labels). Smoke 5e/PF2e GM 1440 + 390 touch: open Corin / Mira from a token and a party card; values match their sheets. Nimble dialog unchanged.
+- [x] CLAUDE.md; **Commit** — `FEAT: GM stats dialog for D&D 5e and Pathfinder 2e heroes`
 
 ### Task 3: The GM changes a 5e / PF2e hero's HP and conditions from the board
 

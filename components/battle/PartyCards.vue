@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The battle board's party: one compact card per hero (the other heroes for a player,
 // all of them for the GM) with portrait, name, Acting tag, class and level, one status
-// line, the HP bar and Armor. The GM's cards add action pips and mana. A card opens
+// line, the HP bar and Armor. The GM's cards add action pips and mana (PF2e: hero and
+// focus points, `gmPoints`). A card opens
 // the hero's stats modal. Compact (phone): full-width touch-sized cards in the tab's
 // own scroll, free of the right column's Party / Chat split. Off Nimble
 // (`useBattleFeatures`) the GM's cards have no pips or mana; a hero at 0 HP reads "Down"
@@ -12,6 +13,7 @@ import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { heroTurnActions } from '~/utils/nimblePlay'
 import { deathSavesLine, downStatus, heroDown } from '~/utils/roster'
+import { pf2ePointsLine } from '~/utils/heroCardStats'
 
 const props = defineProps<{
   roster: RosterEntry[]
@@ -103,11 +105,12 @@ function pips(r: RosterEntry): { total: number; used: number } | null {
   return { total: Math.max(max, max - spent), used: Math.min(Math.max(0, spent), max) }
 }
 
+/** The GM's resource line: Nimble mana, PF2e hero and focus points. */
 function mana(r: RosterEntry): string {
+  if (!props.gm) return ''
+  if (features.value.gmPoints) return pf2ePointsLine(r.summary)
   const m = r.summary?.mana
-  return props.gm && features.value.gmHeroControls && m && m.max > 0
-    ? `mana ${m.current}/${m.max}`
-    : ''
+  return features.value.gmHeroControls && m && m.max > 0 ? `mana ${m.current}/${m.max}` : ''
 }
 
 /** The card's accessible name: everything it shows, since aria-label replaces its content. */
