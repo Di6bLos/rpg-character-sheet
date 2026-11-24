@@ -34,3 +34,35 @@ export function longPress(events: PressEvent[]): boolean {
   }
   return false
 }
+
+export type PhoneRole = 'player' | 'gm' | 'watcher'
+export type PhoneTab = 'actions' | 'hero' | 'party' | 'chat' | 'scribe' | 'encounter' | 'creature'
+
+/** The GM controls the board; a member with a seated hero plays; anyone else watches. */
+export function phoneRole(o: { gmControls: boolean; hero: boolean }): PhoneRole {
+  if (o.gmControls) return 'gm'
+  return o.hero ? 'player' : 'watcher'
+}
+
+/** The phone's bottom tabs for a role. The GM's Scribe lives inside Chat, so never a tab. */
+export function phoneTabs(role: PhoneRole, scribe: boolean): PhoneTab[] {
+  if (role === 'gm') return ['encounter', 'creature', 'party', 'chat']
+  if (role === 'player') {
+    return scribe
+      ? ['actions', 'hero', 'party', 'chat', 'scribe']
+      : ['actions', 'hero', 'party', 'chat']
+  }
+  return scribe ? ['party', 'chat', 'scribe'] : ['party', 'chat']
+}
+
+const DEFAULT_TAB: Record<PhoneRole, PhoneTab> = {
+  player: 'actions',
+  gm: 'encounter',
+  watcher: 'party',
+}
+
+/** The saved tab when this role still has it; otherwise the role's default. */
+export function pickTab(role: PhoneRole, scribe: boolean, saved: string | null): PhoneTab {
+  const tabs = phoneTabs(role, scribe)
+  return tabs.find((t) => t === saved) ?? DEFAULT_TAB[role]
+}
