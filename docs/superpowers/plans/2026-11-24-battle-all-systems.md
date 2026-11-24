@@ -65,7 +65,7 @@
   - `useBattleFeatures(): ComputedRef<BattleFeatures>` — from `useCampaignBoard().campaign.value?.system`, Nimble while the campaign loads.
   - `phoneTabs(role: PhoneRole, scribe: boolean, actions: boolean): PhoneTab[]` — a player without actions has no `'actions'` tab; `pickTab(role, scribe, actions, saved)` likewise, and a player's default is `'actions'` with actions, `'hero'` without. `usePhoneTab(role, scribe, actions: Ref<boolean>)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // tests/battleFeatures.test.ts
@@ -89,10 +89,10 @@ it('a player without actions gets Hero first and no Actions tab', () => {
 })
 ```
 
-- [ ] **Step 2:** Run `npx vitest run tests/battleFeatures.test.ts tests/boardLayout.test.ts`. Expected: FAIL (module not found / wrong arity).
-- [ ] **Step 3:** Implement the interfaces above; update the existing `phoneTabs` / `pickTab` / `usePhoneTab` tests to pass `actions: true` (Nimble behaviour unchanged); Phone.vue passes `actions = useBattleFeatures().value.nimbleHero`.
-- [ ] **Step 4:** Run `npx vitest run`. Expected: all pass. `npm run type-check`, `npm run lint` clean.
-- [ ] **Step 5: Commit** — `FEAT: battle features and condition lists per game system`
+- [x] **Step 2:** Run `npx vitest run tests/battleFeatures.test.ts tests/boardLayout.test.ts`. Expected: FAIL (module not found / wrong arity).
+- [x] **Step 3:** Implement the interfaces above; update the existing `phoneTabs` / `pickTab` / `usePhoneTab` tests to pass `actions: true` (Nimble behaviour unchanged); Phone.vue passes `actions = useBattleFeatures().value.nimbleHero`.
+- [x] **Step 4:** Run `npx vitest run`. Expected: all pass. `npm run type-check`, `npm run lint` clean.
+- [x] **Step 5: Commit** — `FEAT: battle features and condition lists per game system`
 
 ### Task 3: Battle opens for 5e and PF2e — frames, player hero card and turn bar
 

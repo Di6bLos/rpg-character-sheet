@@ -17,17 +17,21 @@ function load(): string | null {
  * The fallback never replaces the viewer's pick: a player's board starts as a watcher's
  * until their sheet loads, and then opens on the tab they last picked, not on Party.
  */
-export function usePhoneTab(role: Ref<PhoneRole>, scribe: Ref<boolean>): Ref<PhoneTab> {
+export function usePhoneTab(
+  role: Ref<PhoneRole>,
+  scribe: Ref<boolean>,
+  actions: Ref<boolean>,
+): Ref<PhoneTab> {
   /** The tab the viewer last picked (saved), which a role change goes back to. */
   let wanted = load()
   let auto = false
-  const tab = ref<PhoneTab>(pickTab(role.value, scribe.value, wanted))
+  const tab = ref<PhoneTab>(pickTab(role.value, scribe.value, actions.value, wanted))
 
-  watch([role, scribe], () => {
+  watch([role, scribe, actions], () => {
     auto = true
     // Nothing picked yet: the new role's default (a player opens on Actions, not on the
     // watcher's Party they had while the sheet loaded).
-    tab.value = pickTab(role.value, scribe.value, wanted)
+    tab.value = pickTab(role.value, scribe.value, actions.value, wanted)
     auto = false
   })
 

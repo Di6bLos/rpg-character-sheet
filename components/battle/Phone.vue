@@ -31,8 +31,10 @@ defineSlots<{
 const { gmControls } = useCampaignBoard()
 const scribe = useLoreAvailable()
 const role = computed(() => phoneRole({ gmControls: gmControls.value, hero: props.hero }))
-const tab = usePhoneTab(role, scribe)
-const tabs = computed(() => phoneTabs(role.value, scribe.value))
+const features = useBattleFeatures()
+const actions = computed(() => features.value.nimbleHero)
+const tab = usePhoneTab(role, scribe, actions)
+const tabs = computed(() => phoneTabs(role.value, scribe.value, actions.value))
 
 function go(next: PhoneTab) {
   if (tabs.value.includes(next)) tab.value = next
