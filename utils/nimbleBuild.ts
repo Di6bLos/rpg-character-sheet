@@ -4,7 +4,13 @@ import { abilityArmor } from '~/utils/nimbleArmor'
 import { ancestryBySlug } from '~/data/nimble/ancestries'
 import { backgroundBySlug } from '~/data/nimble/backgrounds'
 import { classBySlug, poolOptionByName, subclassBySlug } from '~/data/nimble/classes'
-import { BASE_SPEED, BASE_WOUNDS, MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
+import {
+  BASE_SPEED,
+  BASE_WOUNDS,
+  MAX_SKILL_BONUS,
+  armorByName,
+  weaponByName,
+} from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
 import { SUMMONS } from '~/data/nimble/summons'
 import type {
@@ -1103,6 +1109,20 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
 
   for (const choice of creationChoices(cls, background, input.picks))
     applyChoice(sheet, cls, choice, input.picks[choice.key] ?? [], 1)
+  // The class's starting Armor (armorCalc) assumes its starting armor and shield are worn;
+  // after the abilities, so an armor invention (Armor Prototype) can be seen.
+  const wearing = new Set<string>()
+  sheet.inventory = sheet.inventory.map((g) => {
+    const kind = armorByName(g.name)?.kind
+    const invention = sheet.abilities.some(
+      (a) => abilityBaseName(a.name) === g.name && a.desc.startsWith('Armor: '),
+    )
+    const slot = kind === 'Shield' ? 'shield' : kind || invention ? 'body' : ''
+    if (!slot || wearing.has(slot)) return g
+    wearing.add(slot)
+    return { ...g, worn: true }
+  })
+
   // After the abilities, so weapon perks (Swift Fists) can be seen.
   sheet.attacks = cls.startingWeapons
     .map((w) => weaponAttack(w, stats, sheet.abilities, classMeleeDamage(cls, 1)))

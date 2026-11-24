@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import { WEAPONS } from '../data/nimble/core'
-import type { NimbleSheet } from '../types/sheets'
+import type { InventoryItem, NimbleSheet } from '../types/sheets'
+import { build } from '../utils/nimbleAutoBuild'
 import {
   SPELL_SCROLL,
+  armorPiece,
   armorValue,
   bookItem,
   catalog,
@@ -11,6 +14,8 @@ import {
   itemStat,
   itemSummary,
   rollRiders,
+  wearItem,
+  wornArmor,
 } from '../utils/nimbleItems'
 import { itemSlots } from '../utils/nimblePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
@@ -137,5 +142,68 @@ describe('armorValue', () => {
     expect(armorValue('INT+DEX', stats)).toBe(6)
     expect(armorValue('18', stats)).toBe(18)
     expect(armorValue('lots', stats)).toBeNull()
+  })
+})
+
+describe('equipping armor', () => {
+  it('starts every class wearing its starting armor, which gives the Armor the builder sets', () => {
+    for (const cls of NIMBLE_CLASSES) {
+      const sheet = build(cls)
+      expect({ cls: cls.slug, ac: wornArmor(sheet, 1).value }).toEqual({
+        cls: cls.slug,
+        ac: sheet.ac,
+      })
+    }
+  })
+
+  it('wears one armor and one shield, and works the Armor out from them', () => {
+    const sheet: NimbleSheet = {
+      ...hero(),
+      classSlug: 'commander',
+      inventory: [
+        { name: 'Rusty Mail', qty: '1' },
+        { name: 'Chain Shirt', qty: '1' },
+        { name: 'Iron Shield', qty: '1' },
+        { name: 'Rope', qty: '1' },
+      ],
+    }
+    const [mail, chain, shield, rope] = sheet.inventory as [
+      InventoryItem,
+      InventoryItem,
+      InventoryItem,
+      InventoryItem,
+    ]
+    expect(armorPiece(sheet, rope)).toBeNull()
+    expect(wearItem(sheet, mail, 1)).toBe('Wearing Rusty Mail: Armor 8 (Rusty Mail 8).')
+    expect(wearItem(sheet, sheet.inventory[2]!, 1)).toBe(
+      'Wearing Iron Shield: Armor 12 (Rusty Mail 8, Iron Shield +4).',
+    )
+    wearItem(sheet, sheet.inventory[1]!, 1)
+    expect(sheet.inventory.map((i) => !!i.worn)).toEqual([false, true, true, false])
+    expect(sheet.ac).toBe(11 + 4)
+    expect(wearItem(sheet, sheet.inventory[1]!, 1)).toBe(
+      'Took off Chain Shirt: Armor 6 (unarmored 2, Iron Shield +4).',
+    )
+    expect([chain.name, shield.name]).toEqual(['Chain Shirt', 'Iron Shield'])
+  })
+
+  it('notes an unmet STR requirement and armor the class is not trained in', () => {
+    const sheet: NimbleSheet = {
+      ...hero(),
+      classSlug: 'mage',
+      stats: { STR: 1, DEX: 2, INT: 3, WIL: 0 },
+      inventory: [{ name: 'Half Plate', qty: '1', worn: true }],
+    }
+    expect(wornArmor(sheet, 1)).toEqual({
+      value: 14,
+      parts: ['Half Plate 14'],
+      notes: ['Half Plate needs 3 STR.', 'Not trained in Half Plate: Defend costs 1 more action.'],
+    })
+  })
+
+  it('uses DEX+STR unarmored for a Zephyr, doubled by Iron Defense', () => {
+    const sheet: NimbleSheet = { ...hero(), classSlug: 'zephyr', inventory: [] }
+    expect(wornArmor(sheet, 1).value).toBe(5)
+    expect(wornArmor(sheet, 13).value).toBe(10)
   })
 })
