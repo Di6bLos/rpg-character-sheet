@@ -91,7 +91,7 @@ function onGridHero(characterId: string) {
       </template>
       <template #tab="{ tab }">
         <BattleActions v-if="tab === 'actions' && hero" compact />
-        <BattleHero v-else-if="tab === 'hero' && hero" />
+        <BattleHero v-else-if="tab === 'hero' && hero" compact />
         <template v-else-if="tab === 'party'">
           <BattlePartyCards
             compact

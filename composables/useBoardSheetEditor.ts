@@ -1,4 +1,5 @@
-import type { Ref } from 'vue'
+import type { InjectionKey, Ref, ShallowRef } from 'vue'
+import { SHEET_EDITOR, type SheetEditor } from '~/composables/useSheetEditor'
 import type { Character } from '~/types'
 import type { AnySheet } from '~/types/sheets'
 
@@ -22,4 +23,26 @@ export function provideBoardSheetEditor(
     if (before && !now && !editor.dirty.value) reloadRoster().catch(() => undefined)
   })
   return editor
+}
+
+/** The battle board's current hero editor, set by HeroEditor and read through HeroScope. */
+export const BOARD_HERO: InjectionKey<ShallowRef<SheetEditor | null>> = Symbol('board-hero')
+
+/**
+ * HeroScope's stable provider: the hero's sheet editor lives in HeroEditor, a sibling of
+ * the board frame, so the frame never remounts when the hero loads or changes. Descendants
+ * read the current editor through one forwarding object; HeroScope mounts them (its
+ * `hero` slot prop) only while an editor is set, and unmounts them across a change of
+ * hero, so each sees one editor for its whole life.
+ */
+export function provideBoardHero(): ShallowRef<SheetEditor | null> {
+  const current = shallowRef<SheetEditor | null>(null)
+  provide(BOARD_HERO, current)
+  provide(
+    SHEET_EDITOR,
+    new Proxy({} as SheetEditor, {
+      get: (_target, key) => (current.value ? Reflect.get(current.value, key) : undefined),
+    }),
+  )
+  return current
 }

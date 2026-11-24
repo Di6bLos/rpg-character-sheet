@@ -1,13 +1,16 @@
 import type { NimbleSheet } from '~/types/sheets'
+import { sheetResource } from '~/utils/nimbleBuild'
 import { conditionMods } from '~/utils/nimbleConditions'
 import {
   dyingAttackSave,
+  encounterMana,
   fieldRest,
   fieldRestDice,
   heal,
   hitDiceLeft,
   isBloodied,
   isDead,
+  isHollowOne,
   resurrect,
   safeRest,
   takeDamage,
@@ -172,4 +175,48 @@ export function useNimbleVitals() {
     rest,
     takeSafeRest,
   }
+}
+
+/**
+ * Mana or the class resource of the Nimble hero in the current sheet editor, as the battle
+ * board shows it: `hasMana`, the resource to show instead (none for info-only ones and a
+ * Hollow One's uses), its full reading for the hero column (`resourceValue`) and a short
+ * one for small tiles (`resourceShort`, the phone's hero strip).
+ */
+export function useNimbleResource() {
+  const { draft } = useSheet<NimbleSheet>()
+  const sheet = computed(() => draft.value.sheet)
+
+  const hasMana = computed(() => sheet.value.mana.max > 0 || encounterMana(sheet.value) > 0)
+
+  const resource = computed(() => {
+    const r = sheetResource(sheet.value, draft.value.level)
+    return !r || r.kind === 'info' || (r.kind === 'uses' && isHollowOne(sheet.value)) ? null : r
+  })
+
+  const resourceValue = computed(() => {
+    const r = resource.value
+    const res = sheet.value.resource
+    if (!r) return ''
+    const total = res.rolls.reduce((a, b) => a + b, 0)
+    if (r.kind === 'uses') return `${r.max - res.count} / ${r.max} left`
+    if (r.kind === 'judgment') return res.rolls.length ? `+${total} held` : 'None held'
+    if (r.kind === 'crit') return res.count ? 'Used this turn' : 'Ready'
+    if (r.kind === 'rage') return res.active ? `Raging · +${total}` : 'Not raging'
+    return r.max ? `${res.count} / ${r.max}` : String(res.count)
+  })
+
+  const resourceShort = computed(() => {
+    const r = resource.value
+    const res = sheet.value.resource
+    if (!r) return ''
+    const total = res.rolls.reduce((a, b) => a + b, 0)
+    if (r.kind === 'uses') return String(r.max - res.count)
+    if (r.kind === 'judgment') return `+${total}`
+    if (r.kind === 'crit') return res.count ? '–' : '✓'
+    if (r.kind === 'rage') return res.active ? `+${total}` : '–'
+    return String(res.count)
+  })
+
+  return { hasMana, resource, resourceValue, resourceShort }
 }

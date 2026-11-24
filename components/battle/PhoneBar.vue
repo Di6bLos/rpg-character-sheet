@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // The phone board's 52px top bar: the campaign name opens a menu that stands in for the
 // app nav (hidden on the phone board) and the desktop bar's tabs: the board sections,
-// the campaign switcher and Playing as (CampaignMenu), Dashboard and Characters, and the
-// account items (Settings, Manual dice, Sign out); a GM on the player board also gets
+// the campaign switcher and Playing as (CampaignMenu), the
+// app nav's links (Dashboard, Characters, Campaigns, Library) and the account items
+// (Settings, Manual dice, Sign out); a GM on the player board also gets
 // "Open GM console". Then the round chip and, for players, a link to the full sheet.
 // The `tools` slot holds the frame's own buttons at the right end.
 import type { useInitiative } from '~/composables/useInitiative'
@@ -88,6 +89,8 @@ async function onSignOut() {
         <nav aria-label="Primary" class="pbar__links">
           <NuxtLink to="/dashboard">Dashboard</NuxtLink>
           <NuxtLink to="/characters">Characters</NuxtLink>
+          <NuxtLink to="/campaigns">Campaigns</NuxtLink>
+          <NuxtLink to="/library">Library</NuxtLink>
         </nav>
         <div
           class="pbar__links"

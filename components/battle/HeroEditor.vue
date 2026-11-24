@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// The battle board's sheet editor for the player's hero (see HeroScope): provides
-// it (and the board's last action result) to everything in the slot, runs the board's
-// automatic turn steps and, through HeroLive, applies changes sent to the hero.
+// The battle board's sheet editor for the player's hero (see HeroScope): creates it, runs
+// the board's automatic turn steps and hands it to HeroScope (BOARD_HERO), which gives it
+// to the board. It renders nothing: it sits beside the board, so the board stays mounted
+// when the hero loads or changes.
 import type { Character } from '~/types'
 import type { AnySheet } from '~/types/sheets'
 
@@ -24,11 +25,16 @@ useBoardTurnSteps(editor, {
   round: toRef(props, 'round'),
   downSummons: toRef(props, 'downSummons'),
 })
-provideBattleResult()
+
+const host = inject(BOARD_HERO, null)
+if (host) {
+  host.value = editor
+  onBeforeUnmount(() => {
+    if (host.value === editor) host.value = null
+  })
+}
 </script>
 
 <template>
-  <BattleHeroLive>
-    <slot />
-  </BattleHeroLive>
+  <slot />
 </template>

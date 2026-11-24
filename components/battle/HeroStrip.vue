@@ -3,8 +3,6 @@
 // dead portrait once dead), name, an HP bar with temp HP, the first two conditions,
 // and Armor and mana (or the class resource). A tap goes to the Hero tab.
 import type { NimbleSheet } from '~/types/sheets'
-import { sheetResource } from '~/utils/nimbleBuild'
-import { encounterMana, isHollowOne } from '~/utils/nimblePlay'
 
 const emit = defineEmits<{ 'go-hero': [] }>()
 
@@ -31,30 +29,13 @@ const more = computed(
 )
 
 /** Mana when the hero has any, else the class resource's count (Fury Dice, charges…). */
+const { hasMana, resource, resourceShort } = useNimbleResource()
 const tile = computed<{ label: string; value: string; mana: boolean } | null>(() => {
   const m = sheet.value.mana
-  if (m.max > 0 || encounterMana(sheet.value) > 0) {
-    return { label: 'Mana', value: String(m.current + (m.temp ?? 0)), mana: true }
-  }
-  const r = sheetResource(sheet.value, draft.value.level)
-  if (!r || r.kind === 'info' || (r.kind === 'uses' && isHollowOne(sheet.value))) return null
-  const res = sheet.value.resource
-  const total = res.rolls.reduce((a, b) => a + b, 0)
-  const value =
-    r.kind === 'uses'
-      ? String(r.max - res.count)
-      : r.kind === 'judgment'
-        ? `+${total}`
-        : r.kind === 'crit'
-          ? res.count
-            ? '–'
-            : '✓'
-          : r.kind === 'rage'
-            ? res.active
-              ? `+${total}`
-              : '–'
-            : String(res.count)
-  return { label: r.name, value, mana: false }
+  if (hasMana.value) return { label: 'Mana', value: String(m.current + m.temp), mana: true }
+  return resource.value
+    ? { label: resource.value.name, value: resourceShort.value, mana: false }
+    : null
 })
 
 const label = computed(

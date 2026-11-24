@@ -4,11 +4,14 @@
 // conditions, summons, stats with save marks, and rests. Runs inside HeroScope's
 // sheet editor and uses the sheet's own rules (composables and utils); read-only
 // when the player can't edit. On touch every one-tap control here and in its parts is a
-// 44px target with 8px between neighbours (the phone's Hero tab, tablets).
+// 44px target with 8px between neighbours (the phone's Hero tab, tablets). Compact
+// (phone): an Actions row with "+1 extra action", which the phone's one-row turn bar
+// has no room for.
 import type { NimbleSheet, NimbleStat } from '~/types/sheets'
 import { sign } from '~/utils/dice'
-import { sheetResource } from '~/utils/nimbleBuild'
-import { encounterMana, isDead, isHollowOne } from '~/utils/nimblePlay'
+import { isDead } from '~/utils/nimblePlay'
+
+defineProps<{ compact?: boolean }>()
 
 const { draft, canEdit, portrait } = useSheet<NimbleSheet>()
 const { touch } = useBoardLayout()
@@ -44,7 +47,7 @@ const tiles = computed(() => [
 ])
 
 // --- Mana or the class resource ---------------------------------------------------
-const hasMana = computed(() => sheet.value.mana.max > 0 || encounterMana(sheet.value) > 0)
+const { hasMana, resource, resourceValue } = useNimbleResource()
 
 function setMana(value: number) {
   if (!canEdit.value) return
@@ -52,21 +55,13 @@ function setMana(value: number) {
   m.current = Math.max(0, Math.min(m.max, value))
 }
 
-const resource = computed(() => {
-  const r = sheetResource(sheet.value, draft.value.level)
-  return !r || r.kind === 'info' || (r.kind === 'uses' && isHollowOne(sheet.value)) ? null : r
-})
-const resourceValue = computed(() => {
-  const r = resource.value
-  const res = sheet.value.resource
-  if (!r) return ''
-  const total = res.rolls.reduce((a, b) => a + b, 0)
-  if (r.kind === 'uses') return `${r.max - res.count} / ${r.max} left`
-  if (r.kind === 'judgment') return res.rolls.length ? `+${total} held` : 'None held'
-  if (r.kind === 'crit') return res.count ? 'Used this turn' : 'Ready'
-  if (r.kind === 'rage') return res.active ? `Raging · +${total}` : 'Not raging'
-  return r.max ? `${res.count} / ${r.max}` : String(res.count)
-})
+// --- Actions (compact): the turn bar's +1, from the same turn steps ------------------
+const { left, perTurn, extraAction } = useTurnSteps({ onResult: useAnnounce() })
+const actionsText = computed(() =>
+  left.value > perTurn.value
+    ? `${left.value} left (${left.value - perTurn.value} extra)`
+    : `${left.value} of ${perTurn.value} left`,
+)
 
 // --- Stats --------------------------------------------------------------------------
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
@@ -143,6 +138,20 @@ const stats = computed(() =>
         <UiHelp v-if="resource.desc" :label="`About ${resource.name}`" :text="resource.desc" />
       </span>
       <b>{{ resourceValue }}</b>
+    </div>
+
+    <div v-if="compact" class="hero__acts">
+      <span class="sect">Actions</span>
+      <span class="hero__acts-left" role="status">{{ actionsText }}</span>
+      <button
+        type="button"
+        class="btn btn--ghost btn--sm hero__extra"
+        title="An ally or ability gave you an extra action (Stim Pack, Chorus of Champions…); it lasts until your turn ends."
+        :disabled="!canEdit"
+        @click="extraAction"
+      >
+        +1 extra action
+      </button>
     </div>
 
     <BattleHeroConditions />
@@ -273,6 +282,23 @@ const stats = computed(() =>
   justify-content: space-between;
   gap: 8px;
   font-size: 13px;
+}
+
+.hero__acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero__acts-left {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero__extra {
+  min-height: 44px;
+  padding: 0 14px;
 }
 
 .hero__block {
