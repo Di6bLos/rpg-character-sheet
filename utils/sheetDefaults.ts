@@ -80,6 +80,7 @@ export const PF2E_CONDITIONS = [
   'Doomed',
   'Drained',
   'Dying',
+  'Encumbered',
   'Enfeebled',
   'Fascinated',
   'Fatigued',
@@ -89,6 +90,7 @@ export const PF2E_CONDITIONS = [
   'Hidden',
   'Immobilized',
   'Invisible',
+  'Observed',
   'Off-guard',
   'Paralyzed',
   'Persistent Damage',
@@ -102,6 +104,7 @@ export const PF2E_CONDITIONS = [
   'Stupefied',
   'Unconscious',
   'Undetected',
+  'Unnoticed',
   'Wounded',
 ]
 

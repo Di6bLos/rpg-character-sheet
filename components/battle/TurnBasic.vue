@@ -5,7 +5,8 @@
 // runs. While the GM has seated the hero without an Initiative ("–" on the strip) a Roll
 // initiative button rolls d20 + the hero's Init and sends it to the tracker
 // (`sendInitiative`); the button goes once the row has a number. A failed write keeps the
-// rolled total and offers to resend it, as the Nimble turn bar does.
+// rolled total and offers to resend it, as the Nimble turn bar does. With Manual dice on
+// (account menu, `profiles.own_dice`) a field takes the player's own total instead.
 import type { useInitiative } from '~/composables/useInitiative'
 import { sendInitiative } from '~/composables/useSendInitiative'
 import { rollDie } from '~/utils/dice'
@@ -17,6 +18,9 @@ const props = defineProps<{
 
 const { campaignId, roster } = useCampaignBoard()
 const { touch } = useBoardLayout()
+const auth = useAuthStore()
+/** Manual dice: the player types the total they rolled. */
+const ownDice = computed(() => auth.profile?.own_dice ?? false)
 
 /** The hero's row on the tracker, if the GM has seated them. */
 const row = computed(() =>
@@ -81,6 +85,14 @@ function roll() {
   return send(rollDie(20) + (mod ?? 0))
 }
 
+/** The total typed with Manual dice on (it already has the hero's Init in it). */
+function typed(values: number[]) {
+  const total = values[0]
+  if (total === undefined) return
+  who.value?.focus()
+  return send(total)
+}
+
 const sub = computed(() => [round.value, result.value].filter(Boolean).join(' · '))
 </script>
 
@@ -95,8 +107,17 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
       <strong class="tb__title">{{ headline }}</strong>
       <span v-if="sub" class="tb__sub">{{ sub }}</span>
     </div>
+    <NimbleDiceEntry
+      v-if="canRoll && ownDice && unsent === null"
+      class="tb__entry"
+      label="Your Initiative total"
+      action="Set"
+      signed
+      :disabled="busy"
+      @submit="typed"
+    />
     <button
-      v-if="canRoll"
+      v-else-if="canRoll"
       type="button"
       class="btn btn--sm"
       :disabled="busy"
@@ -135,7 +156,8 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
   flex-direction: column;
   gap: 1px;
   flex: 1 1 0;
-  min-width: 80px;
+  // Wide enough that the typed-total field wraps under the headline on a phone.
+  min-width: 140px;
 
   &:focus {
     outline: none;
@@ -155,8 +177,18 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
   color: var(--page-muted);
 }
 
-.tb--touch .btn {
+// The typed total takes its own row on a narrow turn line.
+.tb__entry {
+  flex: 1 1 220px;
+}
+
+.tb--touch .btn,
+.tb--touch :deep(.btn) {
   min-height: 44px;
   padding: 0 16px;
+}
+
+.tb--touch :deep(.input) {
+  min-height: 44px;
 }
 </style>
