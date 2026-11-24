@@ -259,6 +259,11 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [x] Start turn waits (disabled) while someone else has the turn on the board
 - [x] Tests: `seatChange` and the GM-encounter steps in `tests/turnSteps.test.ts`
 
+### Skill checks follow-ups (future)
+
+- [ ] Post skill check results to party chat
+- [ ] A skill check roll on the battle board
+
 ### GM keyboard shortcuts (future)
 
 - [ ] `→` / `Space`: Next turn

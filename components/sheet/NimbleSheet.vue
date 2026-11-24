@@ -7,12 +7,12 @@ import type { NimbleSheet, NimbleStat } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
 import { hasTransforms } from '~/utils/nimbleEffects'
-import { isDead } from '~/utils/nimblePlay'
+import { isDead, skillCheck } from '~/utils/nimblePlay'
 import { statusStats } from '~/utils/nimbleConditions'
 import { DEAD_PORTRAIT } from '~/utils/deadPortrait'
 import { availableSummons } from '~/utils/nimbleSummons'
 
-const { draft } = useSheet<NimbleSheet>()
+const { draft, canEdit, say } = useSheet<NimbleSheet>()
 useHeroEffects()
 useHeroHpChanges()
 useHeroConditionChanges()
@@ -62,6 +62,36 @@ const details = computed(() =>
     { label: 'Languages', value: sheet.value.languages },
   ].filter((d) => d.value.trim() !== ''),
 )
+
+const { claim, resultIn } = useResultOwner()
+const situation = useAttackSituation()
+/** Advantage (-1) or disadvantage (+1) the GM called for the next check; back to normal after it. */
+const checkOdds = ref(0)
+const ODDS = [
+  { value: 0, label: 'Normal' },
+  { value: -1, label: 'Advantage' },
+  { value: 1, label: 'Disadvantage' },
+]
+
+const frightened = computed(() => sheet.value.conditions.includes('Frightened'))
+
+function toggleFear() {
+  situation.value = situation.value.includes('Frightened')
+    ? situation.value.filter((n) => n !== 'Frightened')
+    : [...situation.value, 'Frightened']
+}
+
+function rollSkill(name: string) {
+  if (!canEdit.value) return
+  claim(`skill:${name}`, () => {
+    const { message, blocked } = skillCheck(sheet.value, name, {
+      odds: checkOdds.value,
+      frightened: situation.value.includes('Frightened'),
+    })
+    if (message) say(message)
+    if (!blocked) checkOdds.value = 0
+  })
+}
 
 const skills = computed(() =>
   sheet.value.skills.map((s) => ({
@@ -151,6 +181,33 @@ const skills = computed(() =>
             :text="`A skill’s bonus is its stat plus the skill points you put in it, up to +${MAX_SKILL_BONUS}.`"
           />
         </div>
+        <div class="check-odds" role="group" aria-label="Next skill check">
+          <span class="caps">Next check</span>
+          <button
+            v-for="o in ODDS"
+            :key="o.value"
+            type="button"
+            class="chip"
+            :class="{ 'chip--on': checkOdds === o.value }"
+            :aria-pressed="checkOdds === o.value"
+            :disabled="!canEdit"
+            @click="checkOdds = o.value"
+          >
+            {{ o.label }}
+          </button>
+          <button
+            v-if="frightened"
+            type="button"
+            class="chip"
+            :class="{ 'chip--on': situation.includes('Frightened') }"
+            :aria-pressed="situation.includes('Frightened')"
+            :disabled="!canEdit"
+            title="Same chip as above the attacks; cleared each turn"
+            @click="toggleFear"
+          >
+            Frightened: source nearby · +1 disadvantage
+          </button>
+        </div>
         <div v-for="s in skills" :key="s.name" class="skill">
           <span class="grow">
             <UiHelp v-if="s.uses" :label="`About ${s.name}`" :text="s.uses">{{ s.name }}</UiHelp>
@@ -161,7 +218,17 @@ const skills = computed(() =>
             <i v-for="p in Math.max(0, s.points)" :key="p" />
           </span>
           <strong>{{ s.v }}</strong>
+          <button
+            type="button"
+            class="btn btn--ghost btn--sm skill__roll"
+            :disabled="!canEdit"
+            :aria-label="`Roll a ${s.name} check`"
+            @click="rollSkill(s.name)"
+          >
+            Roll
+          </button>
         </div>
+        <p v-if="resultIn('skill:')" class="roll-status" role="status">{{ resultIn('skill:') }}</p>
       </section>
     </div>
   </div>
@@ -341,6 +408,25 @@ const skills = computed(() =>
     gap: 24px;
     min-width: 0;
   }
+}
+
+.check-odds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+
+  .chip--on {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--page-text);
+  }
+}
+
+.skill__roll {
+  min-height: 30px;
+  padding: 2px 10px;
 }
 
 .skill {

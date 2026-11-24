@@ -35,7 +35,7 @@ export const SPELL_STATUSES = [
   { name: 'Unconscious', desc: 'Incapacitated: can’t do anything.' },
   {
     name: 'Helped',
-    desc: 'An ally used Help: advantage on your next roll. Your next attack uses it; clear it by hand after a check. Ends at the end of your next turn.',
+    desc: 'An ally used Help: advantage on your next roll. Your next attack or skill check uses it. Ends at the end of your next turn.',
   },
 ]
 
@@ -60,7 +60,7 @@ export const END_LABELS: Record<ConditionEnd | 'manual', string> = {
   manual: 'when you remove it',
 }
 
-const INCAPACITATED = ['Incapacitated', 'Petrified', 'Stunned', 'Paralyzed', 'Unconscious']
+export const INCAPACITATED = ['Incapacitated', 'Petrified', 'Stunned', 'Paralyzed', 'Unconscious']
 const ATTACK_DISADVANTAGE = ['Blinded', 'Prone', 'Poisoned']
 
 /** Conditions whose attack disadvantage depends on the target; the player says when they apply. */
