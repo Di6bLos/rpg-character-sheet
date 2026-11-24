@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   castReason,
+  oddsLine,
   guarded,
   reactionReason,
   readyNote,
@@ -248,5 +249,20 @@ describe('tileSub', () => {
   it('a cantrip and other kinds', () => {
     expect(tileSub(act({ kind: 'spell', tier: 0 }))).toBe('Cantrip')
     expect(tileSub(act({ kind: 'reaction', detail: '1 reaction' }))).toBe('Reaction · 1 reaction')
+  })
+})
+
+describe('oddsLine', () => {
+  it('disadvantage with its reasons', () =>
+    expect(oddsLine({ rushed: 1, advantage: 0, why: 'Rushed' })).toBe('+1 disadvantage (Rushed)'))
+  it('advantage', () =>
+    expect(oddsLine({ rushed: 0, advantage: 2, why: 'Invisible, Helped' })).toBe(
+      '+2 advantage (Invisible, Helped)',
+    ))
+  it('no reasons, no brackets', () =>
+    expect(oddsLine({ rushed: 2, advantage: 0, why: '' })).toBe('+2 disadvantage'))
+  it('even odds or none say nothing', () => {
+    expect(oddsLine({ rushed: 0, advantage: 0, why: 'Rushed, Invisible' })).toBe('')
+    expect(oddsLine(undefined)).toBe('')
   })
 })

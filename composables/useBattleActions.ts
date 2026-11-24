@@ -3,7 +3,12 @@
 // the sheet panels already read (via utils/battleActions.ts), and each tile's
 // `use` is the exact call the matching sheet button makes.
 import type { NimbleSheet } from '~/types/sheets'
-import { reactionReason, weaponReason, type BattleAction } from '~/utils/battleActions'
+import {
+  reactionReason,
+  weaponReason,
+  type ActionOdds,
+  type BattleAction,
+} from '~/utils/battleActions'
 import { usedUpLabel } from '~/utils/nimblePlay'
 import type { NimbleResultOptions } from './useNimbleActions'
 
@@ -21,6 +26,13 @@ export type BattleTile = BattleAction & {
   choices?: BattleChoice[]
   /** The spell's upcast control, for spells the sheet lets you upcast. */
   upcast?: { at: number; max: number; set: (tier: number) => void }
+  /** The attack's odds as its sheet card shows them (weapons, inventions, attack spells). */
+  odds?: ActionOdds
+}
+
+/** The odds fields of a sheet attack, as the tile's `odds`. */
+function oddsOf(a: { rushed: number; advantage: number; oddsWhy: string }): ActionOdds {
+  return { rushed: a.rushed, advantage: a.advantage, why: a.oddsWhy }
 }
 
 /** "2 actions · 3 mana" → the number before the word; 0 when the text doesn't say. */
@@ -91,6 +103,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       desc: [w.props, w.boost].filter(Boolean).join(' · '),
       offTurn: false,
       unavailable: weaponReason(w),
+      odds: oddsOf(w),
       use: w.roll,
     })),
     ...nimble.inventionAttacks.value.map((inv) => ({
@@ -105,6 +118,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       desc: inv.props,
       offTurn: false,
       unavailable: inv.why,
+      odds: oddsOf(inv),
       use: inv.run,
     })),
   ])
@@ -136,6 +150,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       detail: first(a.props),
       offTurn: false,
       unavailable: a.why,
+      odds: oddsOf(a),
       use: a.run,
     }))
     const support = spells.tiers.value

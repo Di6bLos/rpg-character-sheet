@@ -99,6 +99,11 @@ export function conditionMods(sheet: NimbleSheet, applies: string[] = []): Condi
 }
 
 /** Why an attack rolls with disadvantage or advantage, shown on hover: "Rushed (2), Blinded". */
+/** An attack's net odds as the attack cards show them: "+2 disadvantage", "+1 advantage" or ''. */
+export function oddsLabel(rushed: number, advantage: number): string {
+  return rushed ? `+${rushed} disadvantage` : advantage ? `+${advantage} advantage` : ''
+}
+
 export function oddsReasons(rushed: number, cond: ConditionMods, extra = ''): string {
   return [rushed ? (rushed > 1 ? `Rushed (${rushed})` : 'Rushed') : '', ...cond.reasons, extra]
     .filter(Boolean)

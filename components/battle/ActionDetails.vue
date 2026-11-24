@@ -6,7 +6,7 @@
 // elsewhere a popover under the tile. Using the action closes it. The tile is read live,
 // so an action that becomes unavailable while open disables the button.
 import type { BattleChoice, BattleTile } from '~/composables/useBattleActions'
-import { guarded, tileButton, tileSub } from '~/utils/battleActions'
+import { guarded, oddsLine, tileButton, tileSub } from '~/utils/battleActions'
 
 const props = defineProps<{
   action: BattleTile
@@ -19,6 +19,7 @@ const open = defineModel<boolean>({ required: true })
 const a = computed(() => props.action)
 const button = computed(() => tileButton(a.value))
 const sub = computed(() => tileSub(a.value))
+const odds = computed(() => oddsLine(a.value.odds))
 const facts = computed(() =>
   [
     a.value.dice ? { value: a.value.dice, label: 'Damage' } : null,
@@ -123,6 +124,7 @@ const swipe = computed(() =>
           {{ button.label }}
         </button>
       </template>
+      <p v-if="odds" class="det__odds" :class="{ 'det__odds--adv': !a.odds?.rushed }">{{ odds }}</p>
       <p class="det__note">Posts to party chat</p>
     </div>
   </component>
@@ -244,6 +246,18 @@ const swipe = computed(() =>
   min-height: 48px;
   width: 100%;
   justify-content: center;
+}
+
+.det__odds {
+  margin: 0;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--danger-text);
+
+  &--adv {
+    color: var(--accent-text);
+  }
 }
 
 .det__note {

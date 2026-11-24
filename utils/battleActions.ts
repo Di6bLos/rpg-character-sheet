@@ -3,6 +3,7 @@
  * rolls, costs and triggers stay in the Nimble composables; `unavailable` only explains why
  * something is greyed out, and the sheet and the board share the same rule.
  */
+import { oddsLabel } from './nimbleConditions'
 
 export type ActionGroup = 'attack' | 'support' | 'react'
 export type ActionKind = 'weapon' | 'spell' | 'ability' | 'reaction' | 'summon'
@@ -235,4 +236,17 @@ export function tileSub(a: BattleAction): string {
   const t = a.tier
   const spell = t === null ? '' : t === 0 ? 'Cantrip' : `Tier ${t}`
   return [a.kind === 'spell' ? spell : KIND[a.kind], a.school, a.detail].filter(Boolean).join(' · ')
+}
+
+/** An attack's odds as the sheet computes them (the attack card's Odds: rushed, advantage, why). */
+export interface ActionOdds {
+  rushed: number
+  advantage: number
+  why: string
+}
+
+/** The odds line under the details' Use button: "+1 disadvantage (Rushed)"; '' for even odds. */
+export function oddsLine(odds: ActionOdds | undefined): string {
+  const text = odds ? oddsLabel(odds.rushed, odds.advantage) : ''
+  return text && odds?.why ? `${text} (${odds.why})` : text
 }
