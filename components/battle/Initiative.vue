@@ -6,7 +6,8 @@
 // change slides it, a new round slides on past the caps. Dragging or the wheel browses it
 // (from round 1 to this round's end), and the next turn change centres the acting token.
 // Heroes show their HP from the roster; creatures show theirs to the GM only (players
-// see only that one is down). Summons sit under their summoner.
+// see only that one is down). Summons sit under their summoner (Nimble only:
+// `useBattleFeatures().summons`).
 // The GM right-clicks a token (or uses the context-menu key) for its menu: make it the
 // acting turn, change its initiative, remove it (`BattleTokenMenu`).
 // Compact (phone): 38px portraits with the acting one at 48px, the name under the
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 
 const auth = useAuthStore()
 const { touch } = useBoardLayout()
+const features = useBattleFeatures()
 
 function rosterFor(c: TurnRow) {
   return c.character_id ? props.roster.find((r) => r.character_id === c.character_id) : undefined
@@ -502,7 +504,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
               </button>
             </UiTooltip>
             <div
-              v-if="c.kind === 'pc' && init.summonsOf(c.character_id).length"
+              v-if="features.summons && c.kind === 'pc' && init.summonsOf(c.character_id).length"
               class="tok__summons"
             >
               <button

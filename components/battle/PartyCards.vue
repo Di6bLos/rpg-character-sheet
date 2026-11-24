@@ -3,7 +3,8 @@
 // all of them for the GM) with portrait, name, Acting tag, class and level, one status
 // line, the HP bar and Armor. The GM's cards add action pips and mana. A card opens
 // the hero's stats modal. Compact (phone): full-width touch-sized cards in the tab's
-// own scroll, free of the right column's Party / Chat split.
+// own scroll, free of the right column's Party / Chat split. Off Nimble
+// (`useBattleFeatures`) the GM's cards have no pips or mana.
 import type { RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
@@ -20,6 +21,7 @@ const emit = defineEmits<{ open: [characterId: string] }>()
 
 const auth = useAuthStore()
 const right = useBattleRight()
+const features = useBattleFeatures()
 
 const heroes = computed(() =>
   props.roster.filter(
@@ -37,12 +39,14 @@ function isDead(r: RosterEntry) {
   return !!s && (s.woundsMax ?? 0) > 0 && (s.wounds ?? 0) >= (s.woundsMax ?? 0)
 }
 
-/** One line: dead or dying first, then summons or Wounds. Conditions get their own row. */
+/** One line: dead, dying or down first, then summons or Wounds. Conditions get their own row. */
 function status(r: RosterEntry): string {
   const s = r.summary
   if (!s) return ''
   if (isDead(r)) return 'Dead'
   if (s.dying) return 'Dying'
+  // 5e and PF2e have no Dying here: at 0 HP the hero is down, as the initiative strip says.
+  if (!features.value.nimbleHero && s.hp !== undefined && s.hp <= 0) return 'Down'
   const summons = (s.summons ?? []).filter((m) => !m.hpMax || m.hp > 0).length
   if (summons) return plural(summons, 'summon')
   return s.wounds ? `Wounds ${s.wounds}` : ''
@@ -72,7 +76,7 @@ function hpText(r: RosterEntry): string {
 
 function pips(r: RosterEntry): { total: number; used: number } | null {
   const s = r.summary
-  if (!props.gm || !s) return null
+  if (!props.gm || !s || !features.value.pips) return null
   const max = heroTurnActions(s.abilityNames ?? [], !!s.dying, s.conditions)
   const spent = s.actionsSpent ?? 0
   return { total: Math.max(max, max - spent), used: Math.min(Math.max(0, spent), max) }
@@ -80,7 +84,9 @@ function pips(r: RosterEntry): { total: number; used: number } | null {
 
 function mana(r: RosterEntry): string {
   const m = r.summary?.mana
-  return props.gm && m && m.max > 0 ? `mana ${m.current}/${m.max}` : ''
+  return props.gm && features.value.gmHeroControls && m && m.max > 0
+    ? `mana ${m.current}/${m.max}`
+    : ''
 }
 
 /** The card's accessible name: everything it shows, since aria-label replaces its content. */

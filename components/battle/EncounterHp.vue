@@ -2,7 +2,7 @@
 // An encounter card's HP: the bar with numbers, then −5 / −N / amount / +N / +5, where N
 // is the amount typed (1 when empty). Emits the change; the card decides where it goes.
 // The default slot lands at the end of the bar's row (the card's action pips).
-// Compact (phone): 44px buttons and field, 8px apart.
+// Compact (phone): 44px buttons and field, 8px apart. Readonly: the bar and numbers only.
 const props = defineProps<{
   name: string
   now: number
@@ -10,6 +10,7 @@ const props = defineProps<{
   temp?: number
   slain: boolean
   compact?: boolean
+  readonly?: boolean
 }>()
 const emit = defineEmits<{ change: [delta: number] }>()
 
@@ -38,7 +39,7 @@ function stepTyped(sign: 1 | -1) {
     <slot />
   </div>
   <div
-    v-if="!slain"
+    v-if="!slain && !readonly"
     class="eh__quick"
     :class="{ 'eh__quick--compact': compact }"
     role="group"

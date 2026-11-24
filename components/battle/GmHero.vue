@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The GM's left column when a hero is picked on the initiative strip (or the encounter
-// grid): that hero's vitals, with the GM's HP controls that reach the hero's sheet.
+// grid): that hero's vitals, with the GM's HP controls that reach the hero's sheet
+// (Nimble; HeroVitals shows them read-only where `gmHeroControls` is off).
 // A party card still opens the full stats modal.
 import type { RosterEntry } from '~/types'
 

@@ -7,7 +7,8 @@
 // The menu's tools are useGmEncounterTools, shared with the phone bar's ⋯ menu. Compact
 // (phone, the bottom of the frame): one row with who is acting, up next, New round and
 // Next ▶, the same handlers as the desktop top bar's buttons; "+ Add" is on the
-// Encounter tab and the rest is in the phone bar's ⋯ menu.
+// Encounter tab and the rest is in the phone bar's ⋯ menu. Sync summons and the
+// initiative rules (GmModes) show only where `useBattleFeatures` offers them (Nimble).
 import type { RosterEntry } from '~/types'
 import type { useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'
@@ -66,6 +67,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 const { busy, partyMissing, offerParty, addParty, syncSummons, reroll, setMode } =
   useGmEncounterTools(props.init, toRef(props, 'roster'), () => closeMenu())
 const newRound = useNewRound(props.init)
+const features = useBattleFeatures()
 
 // --- Compact (phone): one row with Next turn and New round, the same handlers as the
 // desktop top bar's buttons. ------------------------------------------------------------
@@ -144,6 +146,7 @@ const hasOrder = computed(() => order.value.length > 0)
             }}</small>
           </button>
           <button
+            v-if="features.summons"
             type="button"
             class="gtb__item"
             :disabled="busy || !order.length"
@@ -156,7 +159,12 @@ const hasOrder = computed(() => order.value.length > 0)
             Reroll NPC initiative
             <small>Every monster and NPC rolls again</small>
           </button>
-          <BattleGmModes :mode="init.mode.value" :disabled="busy" @pick="setMode" />
+          <BattleGmModes
+            v-if="features.initiativeModes"
+            :mode="init.mode.value"
+            :disabled="busy"
+            @pick="setMode"
+          />
         </div>
       </div>
       <!-- Out of combat with heroes still to seat, offer to seat the party

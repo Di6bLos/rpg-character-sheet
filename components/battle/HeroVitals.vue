@@ -5,6 +5,8 @@
 // adds and removes them through hero_condition_changes, applied by useHeroConditionChanges). The stats modal's
 // side and the GM's left column (a hero picked on the initiative strip) both show it.
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
+// Off Nimble (`useBattleFeatures().gmHeroControls` false) the GM sees the vitals read-only:
+// no HP controls, mana or condition picker (only Nimble sheets apply the board's changes).
 import type { HeroCard, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
@@ -20,6 +22,9 @@ const props = defineProps<{
 const slots = defineSlots<{ 'own-hp'?: () => unknown }>()
 
 const auth = useAuthStore()
+const features = useBattleFeatures()
+/** The GM's HP, mana and condition tools; read-only vitals where the sheet can't take them. */
+const controls = computed(() => props.gm && features.value.gmHeroControls)
 
 const own = computed(() => !!props.entry && props.entry.user_id === auth.userId)
 /** The viewer's own hero, with the hero column's HP (it has Wounds too). Slots aren't reactive, so not a computed. */
@@ -128,10 +133,16 @@ async function adjust(sign: 1 | -1) {
           :style="{ width: `${pct(live.tempHp, live.hpMax)}%` }"
         />
       </div>
-      <p v-if="own" class="hc__hint">Change your HP in the hero column on the left.</p>
+      <p v-if="own" class="hc__hint">
+        {{
+          features.nimbleHero
+            ? 'Change your HP in the hero column on the left.'
+            : 'Change your HP on your full sheet.'
+        }}
+      </p>
     </div>
 
-    <div v-if="gm" class="hc__gm">
+    <div v-if="controls" class="hc__gm">
       <span class="hc__sect">Change HP</span>
       <div class="hc__ctl">
         <button
@@ -175,7 +186,12 @@ async function adjust(sign: 1 | -1) {
     </div>
 
     <!-- The GM sees the hero's mana (read only: the player spends it on their sheet). -->
-    <BoardManaGauge v-if="gm && live.mana" class="hc__mana" :mana="live.mana" :name="card.name" />
+    <BoardManaGauge
+      v-if="controls && live.mana"
+      class="hc__mana"
+      :mana="live.mana"
+      :name="card.name"
+    />
 
     <div v-if="live.woundsMax && !ownHp()" class="hc__wounds">
       <span class="hc__sect">Wounds</span>
@@ -200,7 +216,7 @@ async function adjust(sign: 1 | -1) {
     </div>
 
     <BattleConditionPicker
-      v-if="gm"
+      v-if="controls"
       :name="card.name"
       :subject="characterId"
       :conditions="shownConditions"

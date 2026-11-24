@@ -4,6 +4,8 @@
 // −5 / −1 / amount / +1 / +5 (EncounterHp), Armor (in the name row), conditions and action
 // pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one refunds). Slain creatures
 // grey out with Remove and Revive. Heroes take HP through their own sheet (a pickup).
+// Off Nimble (`useBattleFeatures`): no pips, and a hero's HP shows without the buttons
+// (only Nimble sheets apply the board's changes).
 // Compact (phone Encounter tab, one column): 44px targets 8px apart, and no tooltip (a
 // tap selects; the Creature tab shows the whole stat block).
 import type { CampaignNpc, RosterEntry } from '~/types'
@@ -24,6 +26,7 @@ const props = defineProps<{
 const emit = defineEmits<{ select: []; remove: [] }>()
 
 const heroHp = useSendHeroHp()
+const features = useBattleFeatures()
 
 const isPc = computed(() => props.c.kind === 'pc')
 const noHp = computed(() => !isPc.value && (props.c.hp_max ?? 0) <= 0)
@@ -55,6 +58,7 @@ const foot = computed(() => conditions.value.join(' · '))
 
 /** Monsters' pips are the GM's to click; a hero's come from their sheet (read-only). */
 const pips = computed(() => {
+  if (!features.value.pips) return null
   if (isPc.value) {
     const s = props.hero?.summary
     if (!s) return null
@@ -238,6 +242,7 @@ const tipKeys = computed(() =>
         :temp="hp.temp"
         :slain="slain"
         :compact="compact"
+        :readonly="isPc && !features.gmHeroControls"
         @change="change"
       >
         <BattleEncounterPips

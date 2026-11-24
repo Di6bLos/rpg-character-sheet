@@ -5,7 +5,8 @@
 // Armor / Speed / Init, conditions). Main: HeroCardStats. For the viewer's own hero
 // the page passes the hero column's HP (`own-hp`). Footer: Whisper and Open full sheet.
 // `sheet` (phone): a bottom sheet with everything in one column; Whisper then emits
-// `whisper` so the frame can show its Chat tab.
+// `whisper` so the frame can show its Chat tab. Without `heroStats` (5e, PF2e) it shows
+// only the vitals, at the side column's width.
 import type { RosterEntry } from '~/types'
 
 const props = defineProps<{
@@ -22,6 +23,7 @@ const { campaignId } = useCampaignBoard()
 const chat = useBoardChat()
 const commsTab = useCommsTab()
 const right = useBattleRight()
+const features = useBattleFeatures()
 
 const open = computed({
   get: () => characterId.value !== null,
@@ -56,7 +58,12 @@ async function whisper() {
 </script>
 
 <template>
-  <UiDialog v-model="open" :title="title" width="820px" :sheet="sheet">
+  <UiDialog
+    v-model="open"
+    :title="title"
+    :width="features.heroStats ? '820px' : '350px'"
+    :sheet="sheet"
+  >
     <p v-if="loading" class="hc__state" role="status">Loading stats…</p>
     <div v-else-if="error" class="notice notice--error hc__state" role="alert">
       <span>{{ error }}</span>
@@ -68,7 +75,7 @@ async function whisper() {
         Try again
       </button>
     </div>
-    <div v-else-if="card && live" class="hc" :class="{ 'hc--sheet': sheet }">
+    <div v-else-if="card && live" class="hc" :class="{ 'hc--sheet': sheet || !features.heroStats }">
       <BattleHeroVitals
         v-if="characterId"
         :character-id="characterId"
@@ -80,7 +87,7 @@ async function whisper() {
         <template v-if="$slots['own-hp']" #own-hp><slot name="own-hp" /></template>
       </BattleHeroVitals>
 
-      <BattleHeroCardStats :card="card" class="hc__main" />
+      <BattleHeroCardStats v-if="features.heroStats" :card="card" class="hc__main" />
     </div>
 
     <template #actions>

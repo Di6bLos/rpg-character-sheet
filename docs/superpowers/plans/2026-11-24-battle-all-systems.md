@@ -137,14 +137,14 @@ it('a player without actions gets Hero first and no Actions tab', () => {
   - `heroStats` false: `HeroCardDialog` shows only `HeroVitals` (no `HeroCardStats`), at the side panel's width.
   - `ConditionPicker` lists `conditionNames(system)`; descriptions only where Nimble has them.
 
-- [ ] **Step 1:** Gate `EncounterCard` and `PartyCards` pips; Nimble cards unchanged.
-- [ ] **Step 2:** Gate Sync summons, GmModes and summon tokens.
-- [ ] **Step 3:** Gate the GM hero controls and the stats dialog's stats.
-- [ ] **Step 4:** Feed `ConditionPicker` from `conditionNames`.
-- [ ] **Step 5:** Smoke Test Table 5e and PF2e as GM at 1440×860, 768×1024 (touch) and 390×844 (touch): add the Goblin and the party, Next turn round to round 2 (the Goblin's HP and conditions work; 5e picker shows Exhaustion, PF2e shows Off-guard), open Corin from a token and a party card (vitals read-only, no stats grid), no pips, no Sync summons, no initiative switch, no console errors.
-- [ ] **Step 6:** Down at 0 HP: set Corin's HP to 0 on his sheet; the strip token and party card show Down (not Slain/Dead) and the roster shows his death saves.
-- [ ] **Step 7:** Nimble check against Task 3's baselines (GM and Player, 1440×860), plus the GM ⋯ menu still has Sync summons and the initiative switch.
-- [ ] **Step 8:** Update CLAUDE.md. **Commit** — `FEAT: battle board hides Nimble-only tools for other systems`
+- [x] **Step 1:** Gate `EncounterCard` and `PartyCards` pips; Nimble cards unchanged.
+- [x] **Step 2:** Gate Sync summons, GmModes and summon tokens.
+- [x] **Step 3:** Gate the GM hero controls and the stats dialog's stats.
+- [x] **Step 4:** Feed `ConditionPicker` from `conditionNames`.
+- [x] **Step 5:** Smoke Test Table 5e and PF2e as GM at 1440×860, 768×1024 (touch) and 390×844 (touch): add the Goblin and the party, Next turn round to round 2 (the Goblin's HP and conditions work; 5e picker shows Exhaustion, PF2e shows Off-guard), open Corin from a token and a party card (vitals read-only, no stats grid), no pips, no Sync summons, no initiative switch, no console errors.
+- [x] **Step 6:** Down at 0 HP: set Corin's HP to 0 on his sheet; the strip token and party card show Down (not Slain/Dead) and the roster shows his death saves.
+- [x] **Step 7:** Nimble check against Task 3's baselines (GM and Player, 1440×860), plus the GM ⋯ menu still has Sync summons and the initiative switch.
+- [x] **Step 8:** Update CLAUDE.md. **Commit** — `FEAT: battle board hides Nimble-only tools for other systems`
 
 ### Task 5: Retire the Party (classic) page
 
