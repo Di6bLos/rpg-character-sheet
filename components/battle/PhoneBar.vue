@@ -25,8 +25,8 @@ const { ownDice, savingDice, toggleOwnDice, signOut } = useAccountMenu()
 
 const hasOrder = computed(() => props.init.order.value.length > 0)
 
-/** The board's sections, named for the phone (Party here is the classic board). */
-const SECTION_LABELS: Record<string, string> = { party: 'Party (classic)', maps: 'Maps' }
+/** The board's sections, with the shorter Maps label for the phone menu. */
+const SECTION_LABELS: Record<string, string> = { maps: 'Maps' }
 const sections = computed(() =>
   tabs.value.map((t) => ({ ...t, label: SECTION_LABELS[t.id] ?? t.label })),
 )

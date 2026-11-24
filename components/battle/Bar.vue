@@ -124,7 +124,7 @@ const endOpen = ref(false)
             :aria-current="isCurrent('party') ? 'page' : undefined"
             @click="closeMenu()"
           >
-            Party (classic)
+            {{ partyTab.label }}
             <span
               v-if="partyTab.badge"
               class="bar__badge"
