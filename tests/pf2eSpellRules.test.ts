@@ -483,4 +483,13 @@ describe('pf2e spell rules: review fixes', () => {
     expect(attackCount(spell('Hydraulic Push'), { rank: 1, targets: 2 })).toBe(1)
     expect(cast('Slashing Gust', 1, 15, { targets: 2 })).toMatch(/^Target 1: .* Target 2: /)
   })
+
+  it('shows, not rolls, persistent damage that comes with later damage, with its condition', () => {
+    expect(cast('Rust Cloud', 4, null)).toBe(
+      'DC 17 basic Fortitude. Not rolled (see the text): 5d10 slashing, 1d4 persistent slashing (when a metal creature takes damage from the cloud).',
+    )
+    expect(cast('Corrosive Muck', 5, null)).toBe(
+      'DC 17 basic Reflex. Not rolled (see the text): 8d6 acid, 1d6 persistent acid (a creature that critically fails its saving throw).',
+    )
+  })
 })

@@ -42,6 +42,8 @@ export interface Pf2eSpellPart {
   note?: string
   /** Only against these creatures: Heal's vitality damage hurts undead, Harm heals them. */
   vs?: string
+  /** When a later part happens, as its sentence says ("when a metal creature takes damage…"). */
+  when?: string
 }
 
 /** A Strike a battle form grants (its dice aren't the spell's damage). */
@@ -193,6 +195,8 @@ const LATER_SENTENCE =
 /** …unless the sentence says it also happens as the spell is cast (Shadow Army, Astral Rain). */
 const CAST_TOO =
   /\bwhen (?:the spell is cast|it(?:'|’)s created|you cast)\b|\b(?:that(?:'|’)s|is) (?:in|inside) the (?:area|burst)\b/i
+/** The condition a later persistent damage sentence starts with. */
+const PERSISTENT_WHEN = /^((?:When|If) [^,]+|An? [^.]*? that [^.]*?)(?:,| also takes| takes)/
 /** Healing that comes later: each time, at the start of a turn, after the full duration. */
 const HEAL_LATER = /\beach time\b|\bat the start of\b|\bfor the full duration\b/i
 const NOT_DEALT =
@@ -536,6 +540,19 @@ function mainParts(main: string, forms: { start: number; end: number }[]) {
       p.later = true
       if (text) p.note = text
     }
+  }
+  // Persistent damage in its own sentence after damage that comes later goes with it: Rust
+  // Cloud's "When a metal creature takes damage from the cloud…", Corrosive Muck's critical
+  // failure on the pools' save. Shown with its condition, not rolled.
+  for (const p of parts) {
+    if (!p.persistent || p.degree || p.actions || !firstDamage?.later) continue
+    if (p.sentence === firstDamage.sentence) continue
+    const s = sentences[p.sentence]
+    const text = s ? main.slice(s.start, s.end).trim() : ''
+    p.later = true
+    p.note = text
+    const when = PERSISTENT_WHEN.exec(text)?.[1]
+    if (when) p.when = when.replace(/^\w/, (c) => c.toLowerCase())
   }
   return { parts: parts.map(({ sentence: _, ...p }) => p as Pf2eSpellPart), ranges, variants }
 }
@@ -1150,7 +1167,7 @@ const partText = (p: Pf2eSpellPart) =>
     ? `${diceText(p.dice)} healing${p.vs ? ` to ${p.vs}` : ''}`
     : p.role === 'temp'
       ? `${diceText(p.dice)} temp HP`
-      : `${diceText(p.dice)}${label(p) ? ` ${label(p)}` : ''}${p.vs ? ` to ${p.vs}` : ''}`
+      : `${diceText(p.dice)}${label(p) ? ` ${label(p)}` : ''}${p.vs ? ` to ${p.vs}` : ''}${p.when ? ` (${p.when})` : ''}`
 
 const conditionText = (c: { name: string; value?: number }) =>
   c.value === undefined ? c.name : `${c.name} ${c.value}`
@@ -1395,6 +1412,7 @@ export const SPELL_PATTERNS: Record<string, RegExp> = {
   LATER_SENTENCE,
   CAST_TOO,
   HEAL_LATER,
+  PERSISTENT_WHEN,
   SPEND_MORE,
   MIRROR_DAMAGE,
   MIRROR_HEAL,
