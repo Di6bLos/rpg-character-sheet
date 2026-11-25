@@ -43,8 +43,13 @@ export interface Pf2eStrikeRule {
   count: number
   /** Strides before the Strike (Sudden Charge: 2). */
   strides: number
-  /** Attacks it counts as for the multiple attack penalty: 2 (Vicious Swing), 0 (Reactive Strike). */
+  /**
+   * Attacks it counts as for the multiple attack penalty: 2 (Vicious Swing), 3 (Overwhelming
+   * Blow), 0 (Reactive Strike).
+   */
   mapCount: number
+  /** It doesn't count when it gets this degree (Exacting Strike's failure, Player Core p. 140). */
+  mapNoneOn?: Pf2eDegreeName
   /** The multiple attack penalty doesn't apply to it. */
   ignoreMap?: boolean
   /** Extra weapon damage dice on a hit, by level (Vicious Swing: 1, 2 at 10th, 3 at 18th). */
@@ -289,7 +294,7 @@ export const PF2E_RULE_PATTERNS = {
   timeCost:
     /^(?:You )?(?:spend|spending|take|takes) (1 minute|10 minutes|1 hour|(?:\d+|one|two|several) (?:minutes|hours|days))\b/i,
   strike:
-    /\b(?:[Mm]ake|[Aa]ttempt) (a|an|one|two|three) (?:(melee|ranged|unarmed|weapon|slashing|piercing|bludgeoning)(?: or (?:melee|ranged|unarmed|weapon|slashing|piercing|bludgeoning))? )*(?:weapon )?Strikes?\b|\bStrike (twice|two times)\b/,
+    /\b(?:[Mm]ake|[Aa]ttempt) (a|an|one|two|three) (?:single )?(?:(melee|ranged|unarmed|weapon|thrown|dynamo|slashing|piercing|bludgeoning)(?: or (?:melee|ranged|unarmed|weapon|thrown|dynamo|slashing|piercing|bludgeoning))? )*(?:weapon )?Strikes?\b|\bStrike (twice|two times)\b/,
   sameMap: /\beach using your current multiple attack penalty\b/i,
   twoWeapons: /\bone with each of your two (?:melee )?weapons\b/i,
   secondPenalty:
@@ -298,7 +303,8 @@ export const PF2E_RULE_PATTERNS = {
   strideTwice: /\bStride (?:up to )?(twice|two times|three times)\b/,
   strideOnce:
     /\b(?:You |you |then |can )?(Stride|Step)\b(?! (?:up to )?(?:twice|two times|three times))/,
-  mapTwo: /\bcounts? as two attacks when (?:calculating|determining) your multiple attack penalty/i,
+  mapCounted:
+    /\bcounts? as (two|three) attacks (?:when (?:calculating|determining)|for(?: the purposes? of (?:calculating|determining)| calculating)?|toward) your multiple attack penalty/i,
   mapNone: /\b(?:doesn't|does not|don't) count toward your multiple attack penalty/i,
   mapIgnored: /\byour multiple attack penalty doesn't apply to this Strike/i,
   extraDie: /\b(?:deal|deals) an extra die of weapon damage/i,
@@ -845,11 +851,17 @@ function readStrike(text: string): Pf2eStrikeRule | undefined {
   const before = text.slice(0, m.index)
   const twice = P.strideTwice.exec(before)
   const strides = twice ? num(twice[1]!) : P.strideOnce.test(before) ? 1 : 0
+  const counted = P.mapCounted.exec(text)
+  // "**Failure** This attack does not count toward your multiple attack penalty" (Exacting
+  // Strike): only that degree's attack is left out.
+  const none = P.mapNone.exec(text)
+  const noneOn = none ? degreeAt(text, none.index) : undefined
   const rule: Pf2eStrikeRule = {
     count,
     strides,
-    mapCount: P.mapTwo.test(text) ? 2 : P.mapNone.test(text) ? 0 : count,
+    mapCount: counted ? num(counted[1]!) : none && !noneOn ? 0 : count,
   }
+  if (noneOn) rule.mapNoneOn = noneOn
   if (/melee/.test(kinds) && !/ranged/.test(kinds)) rule.melee = true
   if (/ranged/.test(kinds) && !/melee/.test(kinds)) rule.ranged = true
   if (/unarmed/.test(kinds) && !/melee|ranged|weapon/.test(kinds)) rule.unarmed = true

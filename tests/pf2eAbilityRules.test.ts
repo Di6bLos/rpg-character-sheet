@@ -22,7 +22,9 @@ import {
   payFor,
   resolveUse,
   startPf2eTurn,
+  strikeCountAs,
   timePasses,
+  uncounted,
   usesLeft,
 } from '../utils/pf2eActions'
 import {
@@ -596,5 +598,51 @@ describe('pf2e ability rules: every pattern still matches the data', () => {
     const source = flags.includes('m') ? re.source : re.source.replace(/^\^/, '')
     const one = new RegExp(source, flags)
     expect(texts.some((t) => one.test(t)) || cleaned.some((t) => one.test(t))).toBe(true)
+  })
+})
+
+describe('pf2e ability rules: review fixes', () => {
+  const pool = [
+    ...feats,
+    ...actions,
+    ...classes.flatMap((c) => [...c.features, ...c.subclasses]),
+  ] as Ability[]
+  const ability = (name: string) => {
+    const r = readAbility(find(pool, name))
+    return r.strike ? r : (r.embedded.find((e) => e.strike) ?? r)
+  }
+
+  it('counts a Strike as the two or three attacks its text says, however it words it (p. 402)', () => {
+    const two = [
+      'Swipe',
+      'Spellstrike',
+      'Penetrating Shot',
+      'Piston Punch',
+      'Stab and Blast',
+      'Demolish Defenses',
+      'Beast Gunner Dedication',
+      'History of Violence',
+      'Finish Their Story!',
+      'Penetrating Fire',
+      'Swiping Trace',
+      'Vicious Swing',
+    ]
+    for (const name of two) expect([name, ability(name).strike?.mapCount]).toEqual([name, 2])
+    expect(ability('Overwhelming Blow').strike?.mapCount).toBe(3)
+    expect(strikeCountAs(ability('Overwhelming Blow').strike!)).toBe(3)
+    expect(strikeCountAs(ability('Reactive Strike').strike!)).toBe(0)
+  })
+
+  it('Exacting Strike: only a failure is left out of the multiple attack penalty (Player Core p. 140)', () => {
+    const strike = ability('Exacting Strike').strike!
+    expect(strike).toMatchObject({ mapCount: 1, mapNoneOn: 'failure' })
+    const s = hero([])
+    startPf2eTurn(s)
+    s.turn!.attacks = 2
+    expect(uncounted(s, strike, 'success', 1)).toBe(false)
+    expect(s.turn!.attacks).toBe(2)
+    expect(uncounted(s, strike, 'failure', 1)).toBe(true)
+    expect(s.turn!.attacks).toBe(1)
+    expect(uncounted(s, strike, 'critical failure', 1)).toBe(false)
   })
 })

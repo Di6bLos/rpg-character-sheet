@@ -15,6 +15,7 @@ import {
   type Pf2eDegreeName,
   type Pf2eFrequency,
   type Pf2ePeriod,
+  type Pf2eStrikeRule,
   amountAt,
   diceAt,
 } from '~/utils/pf2eAbilityRules'
@@ -159,6 +160,32 @@ export const mapIndex = (s: Pf2eSheet) => (s.turn?.active ? Math.min(2, s.turn.a
 /** Attacks made, for the multiple attack penalty: Vicious Swing counts 2, Reactive Strike 0. */
 export function attacked(s: Pf2eSheet, count = 1) {
   if (s.turn?.active) s.turn.attacks += count
+}
+
+/**
+ * What each of an ability's Strikes counts as for the multiple attack penalty (p. 402): a lone
+ * Strike its `mapCount` (Swipe 2, Overwhelming Blow 3, Reactive Strike 0); several one each, or
+ * none when they're all made at the current penalty and counted after (Double Slice).
+ */
+export function strikeCountAs(strike: Pf2eStrikeRule) {
+  if (strike.sameMap) return 0
+  if (strike.count === 1) return strike.mapCount
+  return strike.mapCount === 0 ? 0 : 1
+}
+
+/**
+ * A Strike that doesn't count at the degree it got (Exacting Strike's failure, Player Core
+ * p. 140) gives its count back; true when it did.
+ */
+export function uncounted(
+  s: Pf2eSheet,
+  strike: Pf2eStrikeRule,
+  degree: Pf2eDegreeName | undefined,
+  counted: number,
+) {
+  if (!strike.mapNoneOn || degree !== strike.mapNoneOn) return false
+  if (s.turn?.active) s.turn.attacks = Math.max(0, s.turn.attacks - counted)
+  return true
 }
 
 export function actionCostLabel(cost: Pf2eCost | undefined): string {
