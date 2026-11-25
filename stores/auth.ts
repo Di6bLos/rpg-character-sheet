@@ -3,12 +3,18 @@ import { defineStore } from 'pinia'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
 import type { PermissionFlag, Profile, UserPermissions } from '~/types'
+import { recoveryStillValid } from '~/utils/authLinks'
+
+// Kept per tab so a reload of /reset-password keeps the form.
+const RECOVERY_KEY = 'lantern-recovering'
 
 export const useAuthStore = defineStore('auth', () => {
   const session = ref<Session | null>(null)
   const profile = ref<Profile | null>(null)
   const permissions = ref<UserPermissions | null>(null)
   const loading = ref(true)
+  /** Signed in by a password reset link and not yet given a new password. */
+  const recovering = ref(false)
 
   const isAuthenticated = computed(() => session.value !== null)
   const userId = computed(() => session.value?.user.id ?? null)
@@ -37,6 +43,28 @@ export const useAuthStore = defineStore('auth', () => {
     permissions.value = (permRes.data as UserPermissions | null) ?? null
   }
 
+  /** Saves the reset mark for this user, or removes it when `userId` is null. */
+  function rememberRecovery(userId: string | null) {
+    try {
+      if (userId) sessionStorage.setItem(RECOVERY_KEY, JSON.stringify({ userId, at: Date.now() }))
+      else sessionStorage.removeItem(RECOVERY_KEY)
+    } catch {
+      // Storage blocked: the in-memory flag still covers this page load.
+    }
+  }
+
+  /** Restores `recovering` from the saved mark when it fits this user and is still fresh. */
+  function syncRecovering(userId: string | null) {
+    let raw: string | null = null
+    try {
+      raw = sessionStorage.getItem(RECOVERY_KEY)
+    } catch {
+      // Storage blocked: nothing saved to restore.
+    }
+    recovering.value = recoveryStillValid(raw, userId, Date.now())
+    if (!recovering.value) rememberRecovery(null)
+  }
+
   /** Clears every store that caches the signed-in player's data. */
   function resetPlayerData() {
     useCharacterStore().reset()
@@ -45,22 +73,35 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function init() {
-    const { data } = await supabase.auth.getSession()
-    session.value = data.session
-    if (session.value) await fetchProfile()
-
+    const router = useRouter()
+    // Subscribed before getSession: PASSWORD_RECOVERY fires once, while the client reads
+    // the link's hash, and would be missed if this waited for the session and profile.
     supabase.auth.onAuthStateChange((event, newSession) => {
       // Covers sign-out or a different account in another tab, not just logout() here.
-      if (newSession?.user.id !== session.value?.user.id) resetPlayerData()
+      if (newSession?.user.id !== session.value?.user.id) {
+        resetPlayerData()
+        syncRecovering(newSession?.user.id ?? null)
+      }
       session.value = newSession
       if (!newSession) {
         profile.value = null
         permissions.value = null
+      } else if (event === 'PASSWORD_RECOVERY') {
+        // The link may land on the Site URL root when /reset-password isn't an allowed
+        // redirect; the guest middleware also sends this session there.
+        recovering.value = true
+        rememberRecovery(newSession.user.id)
+        void router.push('/reset-password')
       } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         // Deferred: Supabase warns against awaiting its own client inside this callback.
         setTimeout(() => void fetchProfile(), 0)
       }
     })
+
+    const { data } = await supabase.auth.getSession()
+    session.value = data.session
+    if (!recovering.value) syncRecovering(session.value?.user.id ?? null)
+    if (session.value) await fetchProfile()
 
     loading.value = false
   }
@@ -92,6 +133,26 @@ export const useAuthStore = defineStore('auth', () => {
     await fetchProfile()
   }
 
+  /** Emails a link that signs the player in on /reset-password to set a new password. */
+  async function requestPasswordReset(email: string) {
+    const siteUrl = useRuntimeConfig().public.siteUrl || window.location.origin
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${siteUrl}/reset-password`,
+    })
+    if (error) throw error
+  }
+
+  /** Returns false when the password changed but other devices could not be signed out. */
+  async function updatePassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+    // A reset often means the account may be compromised: end every other session.
+    const { error: signOutError } = await supabase.auth.signOut({ scope: 'others' })
+    recovering.value = false
+    rememberRecovery(null)
+    return !signOutError
+  }
+
   async function logout() {
     // This browser only: the default ("global") ends the account's sessions in every
     // other tab and device too, which then fail with 401s until they sign in again.
@@ -99,6 +160,8 @@ export const useAuthStore = defineStore('auth', () => {
     session.value = null
     profile.value = null
     permissions.value = null
+    recovering.value = false
+    rememberRecovery(null)
     // Drop the previous player's cached data so the next sign-in starts clean.
     resetPlayerData()
   }
@@ -120,6 +183,7 @@ export const useAuthStore = defineStore('auth', () => {
     profile,
     permissions,
     loading,
+    recovering,
     isAuthenticated,
     userId,
     isAdmin,
@@ -131,6 +195,8 @@ export const useAuthStore = defineStore('auth', () => {
     signUp,
     login,
     logout,
+    requestPasswordReset,
+    updatePassword,
     updateProfile,
   }
 })
