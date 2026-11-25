@@ -327,6 +327,7 @@ const classes: Pf2eClassDef[] = classDocs.map((d) => {
         kind,
         ...opt('level', typeof s.level === 'number' ? s.level : undefined),
         skills: list(s.skill).length ? list(s.skill) : trainedSkills(b.text),
+        traditions: list(s.tradition),
         ...opt('lessonType', stats['Lesson Type']),
         ...opt('tacticType', stats['Tactic Type']),
         ...opt('usage', stats.Usage),
@@ -520,9 +521,10 @@ const spells: Pf2eSpellDef[] = latest(of('spell')).map((d) => {
     ...opt('heightened', heightening(list(d.heighten), rank)),
     ...opt('ampHeightened', heightening(amp, rank)),
     ...links,
-    // A domain, bloodline, mystery or lesson spell is that class's focus spell even when AoN
-    // gives it no class trait (Practice Makes Perfect, Serrate, Arms of Nature).
-    classes: kind === 'focus' ? [...new Set([...classes, ...linked])] : [],
+    // Focus spells and class cantrips (compositions, hexes, psi cantrips) carry their class's
+    // trait; a domain, bloodline, mystery or lesson spell is that class's focus spell even when
+    // AoN gives it no class trait (Practice Makes Perfect, Serrate, Arms of Nature).
+    classes: kind === 'spell' ? [] : [...new Set([...classes, ...linked])],
   }
 })
 

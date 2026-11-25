@@ -4,7 +4,7 @@
 // (`loadPf2e`); `utils/pf2eBuild.ts` checks each step and builds the level 1 sheet.
 import type { Pf2eOption } from '~/components/pf2e/OptionCards.vue'
 import { type Pf2eData, loadPf2e } from '~/data/pf2e'
-import type { Pf2eFeatDef, Pf2eRecord } from '~/data/pf2e/types'
+import type { Pf2eFeatDef, Pf2eRecord, Pf2eSpellDef } from '~/data/pf2e/types'
 import { MAX_CHARACTERS } from '~/stores/character'
 import type { Pf2eAttr, Pf2eCreation } from '~/types/sheets'
 import { sign } from '~/utils/dice'
@@ -26,6 +26,12 @@ import {
   emptyCreation,
   featOptions,
   featSlots,
+  focusChoice,
+  focusSpellOptions,
+  PF2E_TRADITIONS,
+  chosenFocusSpells,
+  spellOptions,
+  spellcastingPlan,
   gearCost,
   gearOptions,
   isAmmunition,
@@ -54,6 +60,7 @@ const STEPS = [
   'Class',
   'Attributes',
   'Skills & feats',
+  'Spells',
   'Gear',
   'Review',
 ] as const
@@ -67,6 +74,7 @@ const SETS = [
   'weapons',
   'armor',
   'shields',
+  'spells',
 ] as const
 const FEAT_LABEL: Record<Pf2eFeatSlot, string> = {
   ancestry: 'Ancestry feat',
@@ -160,7 +168,16 @@ watch(
     c.value.skills = []
     delete c.value.feats.class
     delete c.value.feats.skill
+    c.value.spells = undefined
+    c.value.font = undefined
+    c.value.focus = undefined
+    c.value.tradition = undefined
   },
+)
+// A new bloodline, patron, order… grants other focus spells: the old picks go.
+watch(
+  () => JSON.stringify(c.value.subclasses),
+  () => (c.value.focus = undefined),
 )
 // A subclass can add a key attribute (a ruffian's Strength) or settle it (a psychic's mind).
 const keyOptions = computed(() =>
@@ -489,6 +506,48 @@ const weaponPick = computed({
   set: (v: string[]) => (c.value.weapons = v),
 })
 
+// --- Spells -------------------------------------------------------------------
+const casting = computed(() => (data.value ? spellcastingPlan(c.value, data.value) : null))
+// A new bloodline, patron or eidolon can change the tradition: its spell picks go.
+watch(
+  () => casting.value?.tradition,
+  (now, before) => {
+    if (before !== undefined && now !== before) c.value.spells = undefined
+  },
+)
+const spellMeta = (s: Pf2eSpellDef) =>
+  [ACTION_NAME[actionGlyph(s.actions)] ?? actionGlyph(s.actions), s.traits.join(', ')]
+    .filter(Boolean)
+    .join(' · ')
+const cantripCards = computed(() =>
+  data.value ? spellOptions('cantrip', c.value, data.value).map((s) => opt(s, spellMeta(s))) : [],
+)
+const rank1Cards = computed(() =>
+  data.value ? spellOptions('spell', c.value, data.value).map((s) => opt(s, spellMeta(s))) : [],
+)
+// Focus spells are uncommon by nature: no rarity switch in front of the class's own.
+const focusCards = computed(() =>
+  data.value
+    ? focusSpellOptions(c.value, data.value).map((s) => ({
+        ...opt(s, spellMeta(s)),
+        rarity: undefined,
+      }))
+    : [],
+)
+const devotion = computed(() => (data.value ? focusChoice(c.value, data.value) : null))
+watch(
+  () => casting.value?.traditionChoice,
+  (choose) => {
+    if (!choose) c.value.tradition = undefined
+  },
+)
+const focusPicks = computed(() =>
+  data.value ? chosenFocusSpells(c.value, data.value).map((s) => s.id) : [],
+)
+function setSpells(which: 'cantrips' | 'rank1', ids: string[]) {
+  c.value.spells = { cantrips: [], rank1: [], ...c.value.spells, [which]: ids }
+}
+
 // --- Steps, review and create -----------------------------------------------
 const problems = computed(() => (data.value ? creationProblems(c.value, data.value) : null))
 const stepErrors = computed<string[]>(() => {
@@ -503,6 +562,7 @@ const stepErrors = computed<string[]>(() => {
     p.class[0] ?? '',
     p.attributes[0] ?? '',
     p.skills[0] ?? '',
+    p.spells[0] ?? '',
     p.gear[0] ?? '',
     name.value.trim() ? '' : 'Give your hero a name',
   ].map((e) => e ?? '')
@@ -513,7 +573,7 @@ const selectionSummary = computed(() =>
 )
 
 const built = computed(() => {
-  if (!data.value || stepErrors.value.slice(0, 6).some(Boolean)) return null
+  if (!data.value || stepErrors.value.slice(0, STEPS.length - 1).some(Boolean)) return null
   return buildPf2eSheet(c.value, data.value)
 })
 
@@ -889,8 +949,115 @@ async function create() {
         </template>
       </section>
 
-      <!-- 6 · Gear ------------------------------------------------------ -->
-      <section v-else-if="step === 5" class="section stack" aria-labelledby="gear-h">
+      <!-- 6 · Spells ---------------------------------------------------- -->
+      <section v-else-if="step === 5" class="section stack" aria-labelledby="sp-h">
+        <div class="section-head">
+          <h2 id="sp-h">Spells</h2>
+          <span v-if="casting?.tradition" class="small muted">
+            {{ casting.tradition }} · {{ casting.kind }}
+          </span>
+        </div>
+        <p v-if="!casting && !focusCards.length" class="panel small muted">
+          {{ cls?.name }}s don’t cast spells at 1st level. Next: gear.
+        </p>
+        <div v-else-if="casting?.traditionChoice" class="panel stack">
+          <h3>Tradition</h3>
+          <p class="small muted">
+            Your {{ subclassPicks.map((p) => p.name).join(', ') }} choice leaves the tradition to
+            you (the kind of dragon behind it): pick it here.
+          </p>
+          <div class="row" role="group" aria-label="Tradition" style="gap: 8px; flex-wrap: wrap">
+            <button
+              v-for="t in PF2E_TRADITIONS"
+              :key="t"
+              type="button"
+              class="chip"
+              :class="{ 'chip--on': c.tradition === t }"
+              :aria-pressed="c.tradition === t"
+              @click="c.tradition = t"
+            >
+              {{ t }}
+            </button>
+          </div>
+        </div>
+        <p v-else-if="casting && !casting.tradition" class="panel small muted">
+          Your tradition comes from your class choice (a bloodline, patron or eidolon): pick it in
+          the Class step first.
+        </p>
+        <template v-if="casting?.tradition">
+          <p class="small muted">
+            {{
+              casting.kind === 'spontaneous'
+                ? 'These go in your spell repertoire: you can cast any of them with your slots.'
+                : 'These are the spells you prepare today; you can prepare others on the sheet.'
+            }}
+          </p>
+          <div class="section-head">
+            <h3>
+              Cantrips <span class="small muted">· choose {{ casting.cantrips }}</span>
+            </h3>
+          </div>
+          <Pf2eOptionCards
+            :model-value="c.spells?.cantrips ?? []"
+            :options="cantripCards"
+            label="Cantrips"
+            multiple
+            :max="casting.cantrips"
+            @update:model-value="setSpells('cantrips', $event)"
+          />
+          <div class="section-head">
+            <h3>
+              1st-rank spells <span class="small muted">· choose {{ casting.rank1 }}</span>
+            </h3>
+          </div>
+          <Pf2eOptionCards
+            :model-value="c.spells?.rank1 ?? []"
+            :options="rank1Cards"
+            label="1st-rank spells"
+            multiple
+            :max="casting.rank1"
+            @update:model-value="setSpells('rank1', $event)"
+          />
+          <div v-if="casting.fonts.length > 1" class="panel stack">
+            <h3>Divine font</h3>
+            <div class="row" role="group" aria-label="Divine font" style="gap: 8px">
+              <button
+                v-for="f in casting.fonts"
+                :key="f"
+                type="button"
+                class="chip"
+                :class="{ 'chip--on': c.font === f }"
+                :aria-pressed="c.font === f"
+                @click="c.font = f"
+              >
+                {{ f }}
+              </button>
+            </div>
+          </div>
+        </template>
+        <template v-if="focusCards.length">
+          <div class="section-head">
+            <h3>Focus spells &amp; class cantrips</h3>
+          </div>
+          <p class="small muted">
+            Picked from what your class and choices name; check them against the rules text.
+          </p>
+          <p v-if="devotion" class="small">
+            <strong>Choose one</strong>:
+            {{ devotion.options.map((o) => o.name).join(' or ') }}
+          </p>
+          <Pf2eOptionCards
+            :model-value="focusPicks"
+            :options="focusCards"
+            label="Focus spells"
+            multiple
+            @update:model-value="c.focus = $event"
+          />
+        </template>
+      </section>
+
+      <!-- 7 · Gear ------------------------------------------------------ -->
+      <section v-else-if="step === 6" class="section stack" aria-labelledby="gear-h">
         <div class="section-head">
           <h2 id="gear-h">Gear</h2>
           <span class="small" :class="{ over: spent > STARTING_CP }" aria-live="polite">
@@ -920,7 +1087,7 @@ async function create() {
         />
       </section>
 
-      <!-- 7 · Review ---------------------------------------------------- -->
+      <!-- 8 · Review ---------------------------------------------------- -->
       <section v-else class="section stack" aria-labelledby="rev-h">
         <div class="section-head">
           <h2 id="rev-h">Name &amp; review</h2>
@@ -990,6 +1157,26 @@ async function create() {
                 {{ built.coins.gp }} gp {{ built.coins.sp }} sp {{ built.coins.cp }} cp left
               </p>
               <p v-for="(n, i) in built.notes.split('\n')" :key="i" class="small">{{ n }}</p>
+              <template v-if="built.spellcasting">
+                <h4 class="caps">Spells · {{ built.spellcasting.tradition }}</h4>
+                <p class="small">
+                  Cantrips: {{ built.spellcasting.cantrips.map((x) => x.name).join(', ') }}
+                </p>
+                <p class="small">
+                  1st rank ({{ built.spellcasting.slots[0]?.max }} slots):
+                  {{ built.spellcasting.spells.map((x) => x.name).join(', ') }}
+                </p>
+                <p v-if="built.spellcasting.font" class="small">
+                  Divine font: {{ built.spellcasting.font.max }} ×
+                  {{ built.spellcasting.font.spell }}
+                </p>
+              </template>
+              <template v-if="built.focusSpells?.length">
+                <h4 class="caps">
+                  Focus · {{ built.focus.max }} point{{ built.focus.max === 1 ? '' : 's' }}
+                </h4>
+                <p class="small">{{ built.focusSpells.map((x) => x.name).join(', ') }}</p>
+              </template>
             </div>
             <div class="stack" style="gap: 8px">
               <h4 class="caps">Feats &amp; features</h4>
@@ -1003,9 +1190,7 @@ async function create() {
               </p>
             </div>
           </div>
-          <p class="small muted">
-            Spells, focus spells and extra languages aren’t chosen here yet: add them on the sheet.
-          </p>
+          <p class="small muted">Extra languages aren’t chosen here yet: add them on the sheet.</p>
         </article>
       </section>
 
@@ -1216,12 +1401,12 @@ async function create() {
     margin-right: 6px;
     font-weight: 700;
   }
+}
 
-  .chip--on {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 18%, transparent);
-    color: var(--page-text);
-  }
+.chip--on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--page-text);
 }
 
 .skill-grid {

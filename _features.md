@@ -316,7 +316,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 
 - [x] `utils/pf2eBuild.ts`: level 1 build and its choices (boosts, skills, subclasses, deity, feats, gear)
 - [x] `/characters/new/pf2e` builder
-- [ ] Spells and focus spells at creation (needs spell fields on the sheet, 8.4)
+- [x] Spells and focus spells at creation
 - [ ] Level plan and level-up in `utils/pf2eBuild.ts`
 - [ ] Data-driven level-up in `LevelUpDialog` for PF2e sheets with a `classSlug`
 - [ ] Golden level tables after a `rules-auditor` pass per class
@@ -328,7 +328,8 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Valued conditions (frightened, clumsy, off-guard…) on every number, dying, wounded, doomed, recovery checks, Heroic Recovery
 - [x] Shield Block (Hardness, broken threshold)
 - [ ] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
-- [ ] Spell slots, focus points, heightening, cantrips
+- [x] Spell slots (prepared and spontaneous), heightening, cantrips, divine font, focus spells and Refocus, daily preparations
+- [ ] Spell damage rolls and heightened effects from the spell text
 - [ ] Dice tray, target and odds rows
 
 ### 8.5 Abilities, spells and effects

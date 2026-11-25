@@ -51,6 +51,8 @@ export interface Pf2eSubclassOption extends Pf2eRecord {
   level?: number
   /** Skills the option makes you trained in (a patron's, a rogue's racket…). */
   skills: string[]
+  /** The spell tradition it sets (a sorcerer's bloodline, a witch's patron, an eidolon). */
+  traditions: string[]
   /** Witch lessons: "Basic", "Greater" or "Major". */
   lessonType?: string
   /** Commander tactics: "Mobility", "Offensive"… */
@@ -185,7 +187,8 @@ export interface Pf2eSpellDef extends Pf2eRecord, Pf2eSpellLinks {
   heightened?: Pf2eHeightening
   /** A psychic's amped heightening ("Amp Heightened (+2)"). */
   ampHeightened?: Pf2eHeightening
-  /** Focus spells: the classes whose focus spell it is (a domain spell is the cleric's). */
+  /** Focus spells and class cantrips (compositions, hexes): the classes they belong to (a domain
+   * spell is the cleric's). */
   classes: string[]
 }
 
