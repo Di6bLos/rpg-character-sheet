@@ -10,6 +10,8 @@ import {
   strikeResult,
   takeDamage,
 } from '~/utils/pf2ePlay'
+import { damageConditions, extraDice, speedNow } from '~/utils/pf2eEffects'
+import { dailyPreparations } from '~/utils/pf2eSpells'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, lastRoll, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -91,6 +93,25 @@ function rollCheck(name: string, bonus: number) {
 /** The target's AC, for Strike results; blank rolls without one. */
 const targetAc = ref<number | null>(null)
 
+/** Situations that add damage dice the hero's abilities give (sneak attack, precision). */
+const damageFlags = ref({ offGuard: false, huntedPrey: false })
+const conditionsOffered = computed(() => damageConditions(sheet.value))
+
+const speed = computed(() => speedNow(sheet.value))
+
+/** Use an ability: say what it is; a daily one is spent until daily preparations. */
+function useAbility(i: number) {
+  if (!canEdit.value) return
+  const f = sheet.value.feats[i]
+  if (!f) return
+  const first = f.desc.split(/(?<=\.)\s/)[0] ?? ''
+  const daily = /per day/i.test(f.frequency ?? '')
+  if (daily) sheet.value.used = [...(sheet.value.used ?? []), f.name]
+  say(`${f.name} ${f.action}${f.trigger ? ` (trigger: ${f.trigger})` : ''}: ${first}`.trim())
+}
+const isUsed = (name: string) => sheet.value.used?.includes(name) ?? false
+const hasDaily = computed(() => sheet.value.feats.some((f) => /per day/i.test(f.frequency ?? '')))
+
 const shieldPct = computed(() => {
   const { hp, hpMax } = sheet.value.shield
   return hpMax > 0 ? Math.round((hp / hpMax) * 100) : 0
@@ -119,16 +140,34 @@ const strikes = computed(() =>
     const typeInitial = w.type ? ` ${w.type.charAt(0).toUpperCase()}` : ''
     const attr = w.attr ?? 'STR'
     const attack = adjusted(sheet.value, w.bonus, { kind: 'attack', attr })
-    // Melee damage adds STR, so enfeebled lowers it (p. 443).
-    const dmgMods = w.ranged ? null : adjusted(sheet.value, 0, { kind: 'damage', attr: 'STR' })
-    const dmg = shiftDice(w.dmg, dmgMods?.value ?? 0)
+    // Melee damage adds STR, so enfeebled lowers it (p. 443); effects like Rage and
+    // Courageous Anthem add theirs (Rage only to melee, halved for agile).
+    const dmgMods = adjusted(sheet.value, 0, {
+      kind: 'damage',
+      attr: w.ranged ? undefined : 'STR',
+      melee: !w.ranged,
+      agile: w.agile,
+    })
+    const dmg = shiftDice(w.dmg, dmgMods.value)
+    const extra = extraDice(sheet.value, draft.value.level, w, damageFlags.value)
     const rollDmg = (crit: boolean) => {
       const expr = parseDice(dmg)
       if (!expr) return say(`${w.name}: “${w.dmg}” isn’t a dice expression like 1d8+4`)
-      const total = rollDice(expr).total
-      // A critical hit deals double damage (p. 401); deadly and fatal dice are added by hand.
+      const parts = [rollDice(expr).total]
+      for (const x of extra) {
+        const e = parseDice(x.dice)
+        if (e) parts.push(rollDice(e).total)
+      }
+      const total = parts.reduce((a, b) => a + b, 0)
+      const extras = extra.length
+        ? ` (${extra.map((x) => `+${x.dice} ${x.label}`).join(', ')})`
+        : ''
+      // A critical hit doubles all of it, precision dice included (p. 401); deadly and fatal
+      // dice are added by hand.
       const shown = crit ? `${total * 2} (2 × ${total})` : String(total)
-      say(`${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}`.trim())
+      say(
+        `${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}${extras}`.trim(),
+      )
     }
     return {
       name: w.name,
@@ -136,9 +175,11 @@ const strikes = computed(() =>
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean),
-      dmg: `${dmg}${typeInitial}`,
-      dmgChanged: !!dmgMods?.changed,
-      dmgNote: dmgMods?.note ?? '',
+      dmg: `${dmg}${extra.map((x) => `+${x.dice}`).join('')}${typeInitial}`,
+      dmgChanged: dmgMods.changed || extra.length > 0,
+      dmgNote: [dmgMods.note, ...extra.map((x) => `+${x.dice} ${x.label}`)]
+        .filter(Boolean)
+        .join(', '),
       changed: attack.changed,
       note: attack.note,
       atks: mapPenalties(w.agile).map((penalty, i) => {
@@ -367,7 +408,7 @@ const bulkPct = computed(() =>
             >Temp HP <strong>{{ sheet.tempHp }}</strong></span
           >
           <span
-            >Speed <strong>{{ sheet.speed }}</strong></span
+            >Speed <strong :class="{ 'is-changed': speed.changed }">{{ speed.text }}</strong></span
           >
         </div>
         <Pf2eSheetHealth />
@@ -407,6 +448,8 @@ const bulkPct = computed(() =>
     </section>
   </div>
 
+  <Pf2eSheetEffects />
+
   <section class="panel stack" style="gap: 14px" aria-labelledby="st-h">
     <div class="panel-title" style="margin: 0">
       <h2 id="st-h">Strikes</h2>
@@ -423,6 +466,14 @@ const bulkPct = computed(() =>
           min="0"
           placeholder="—"
         />
+      </label>
+      <label v-if="conditionsOffered.includes('offGuard')" class="target">
+        <input v-model="damageFlags.offGuard" type="checkbox" />
+        Target off-guard
+      </label>
+      <label v-if="conditionsOffered.includes('huntedPrey')" class="target">
+        <input v-model="damageFlags.huntedPrey" type="checkbox" />
+        First hit on your prey this round
       </label>
     </div>
     <div
@@ -531,10 +582,37 @@ const bulkPct = computed(() =>
         </div>
         <div class="feat__body">
           <strong>{{ f.action }} {{ f.name }}</strong>
+          <span v-if="f.frequency || f.trigger" class="small muted">
+            {{
+              [f.frequency && `Frequency ${f.frequency}`, f.trigger && `Trigger ${f.trigger}`]
+                .filter(Boolean)
+                .join(' · ')
+            }}
+          </span>
           <span>{{ f.desc }}</span>
         </div>
+        <button
+          v-if="f.action"
+          type="button"
+          class="btn btn--ghost btn--sm feat__use"
+          :disabled="!canEdit || isUsed(f.name)"
+          :title="isUsed(f.name) ? 'Used: back after daily preparations' : undefined"
+          @click="useAbility(i)"
+        >
+          {{ isUsed(f.name) ? 'Used' : 'Use' }}
+        </button>
       </div>
       <p v-if="!sheet.feats.length" class="empty">No feats recorded yet.</p>
+      <button
+        v-if="hasDaily && !sheet.spellcasting"
+        type="button"
+        class="btn btn--ghost btn--sm"
+        style="align-self: flex-start"
+        :disabled="!canEdit"
+        @click="say(dailyPreparations(sheet))"
+      >
+        Daily preparations
+      </button>
     </section>
 
     <section class="panel stack" style="gap: 12px" aria-labelledby="inv-h">
@@ -975,6 +1053,11 @@ const bulkPct = computed(() =>
   border-bottom: 1px solid var(--track);
 }
 
+.feat__use {
+  flex: none;
+  align-self: flex-start;
+}
+
 .feat__meta {
   flex: 0 0 72px;
   display: flex;
@@ -996,6 +1079,7 @@ const bulkPct = computed(() =>
 }
 
 .feat__body {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 2px;

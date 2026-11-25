@@ -4,6 +4,7 @@
 // doomed steppers; the recovery check and Heroic Recovery while dying. Rules in utils/pf2ePlay.ts.
 import type { Pf2eSheet } from '~/types/sheets'
 import { rollDie } from '~/utils/dice'
+import { baseDeathAt } from '~/utils/pf2eEffects'
 import { deathAt, heal, heroicRecovery, isDead, recoveryCheck, takeDamage } from '~/utils/pf2ePlay'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
@@ -43,15 +44,17 @@ function heroic() {
 }
 
 type Track = 'dying' | 'wounded' | 'doomed'
-const TRACKS: { key: Track; label: string; max: number }[] = [
-  { key: 'dying', label: 'Dying', max: 4 },
+// Diehard lets dying reach 5 (Player Core p. 254).
+const TRACKS = computed<{ key: Track; label: string; max: number }[]>(() => [
+  { key: 'dying', label: 'Dying', max: baseDeathAt(sheet.value) },
   { key: 'wounded', label: 'Wounded', max: 4 },
   { key: 'doomed', label: 'Doomed', max: 4 },
-]
+])
 const value = (k: Track) => sheet.value[k] ?? 0
 function adjust(k: Track, by: number) {
   if (!canEdit.value) return
-  sheet.value[k] = Math.max(0, Math.min(4, value(k) + by))
+  const max = TRACKS.value.find((t) => t.key === k)?.max ?? 4
+  sheet.value[k] = Math.max(0, Math.min(max, value(k) + by))
 }
 </script>
 

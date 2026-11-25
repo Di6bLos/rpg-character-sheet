@@ -124,7 +124,8 @@ export function dailyPreparations(s: Pf2eSheet): string {
     if (sc.font) sc.font.used = 0
   }
   s.focus.current = s.focus.max
-  return 'Daily preparations: spell slots and Focus Points restored.'
+  s.used = []
+  return 'Daily preparations: spell slots, Focus Points and daily abilities restored.'
 }
 
 /** Slots for a level from the class's spells-per-day row; prepared slots start empty. */
