@@ -7,6 +7,7 @@ import armorUrl from './generated/armor.json?url'
 import backgroundsUrl from './generated/backgrounds.json?url'
 import classesUrl from './generated/classes.json?url'
 import conditionsUrl from './generated/conditions.json?url'
+import deitiesUrl from './generated/deities.json?url'
 import featsUrl from './generated/feats.json?url'
 import heritagesUrl from './generated/heritages.json?url'
 import shieldsUrl from './generated/shields.json?url'
@@ -20,6 +21,7 @@ import type {
   Pf2eBackgroundDef,
   Pf2eClassDef,
   Pf2eConditionDef,
+  Pf2eDeityDef,
   Pf2eFeatDef,
   Pf2eHeritageDef,
   Pf2eShieldDef,
@@ -35,6 +37,7 @@ export interface Pf2eData {
   backgrounds: Pf2eBackgroundDef[]
   classes: Pf2eClassDef[]
   conditions: Pf2eConditionDef[]
+  deities: Pf2eDeityDef[]
   feats: Pf2eFeatDef[]
   heritages: Pf2eHeritageDef[]
   shields: Pf2eShieldDef[]
@@ -50,6 +53,7 @@ const URLS: Record<keyof Pf2eData, string> = {
   backgrounds: backgroundsUrl,
   classes: classesUrl,
   conditions: conditionsUrl,
+  deities: deitiesUrl,
   feats: featsUrl,
   heritages: heritagesUrl,
   shields: shieldsUrl,

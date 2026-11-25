@@ -309,7 +309,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Each set a static file fetched on first use (`loadPf2e`), not bundled
 - [x] Data integrity tests (`tests/pf2eData.test.ts`)
 - [ ] Other equipment (gear, consumables, magic items, runes) with their activations
-- [ ] Deities for clerics and champions (Reserved Material: decide what may be stored)
+- [x] Deities for clerics and champions (Reserved Material, under Paizo's Community Use Policy)
 - [ ] Structured effect model for feats and spells (with 8.5, where it is first used)
 
 ### 8.3 Builder and level-up

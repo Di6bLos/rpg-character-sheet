@@ -27,6 +27,7 @@ If you can't tell which class a source belongs to, treat it as own-book and ask.
 
 - Remaster rules (Player Core, GM Core, Monster Core…) are published under the ORC License. Paizo's trademarks and setting-specific Golarion content (deities, nations, named NPCs) are Reserved Material and are **not** open.
 - Attribute the ORC License and the source book in a notice file.
+- **Deities are the one exception the user approved (2026-11-24)**: `data/pf2e/generated/deities.json` is Reserved Material kept under Paizo's **Community Use Policy** (paizo.com/licenses/communityuse). That policy covers free, non-commercial fan tools only and requires its notice (in `data/pf2e/NOTICE.md`, and shown wherever deities are). If Lantern ever charges for access, the deity data has to come out. Don't extend this to other Reserved Material without asking.
 
 ## Art
 

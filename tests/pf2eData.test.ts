@@ -14,6 +14,7 @@ const data = {
   backgrounds: load('backgrounds'),
   classes: load('classes'),
   conditions: load('conditions'),
+  deities: load('deities'),
   feats: load('feats'),
   heritages: load('heritages'),
   shields: load('shields'),
@@ -150,6 +151,24 @@ describe('pf2e data', () => {
       hardness: 5,
       hp: 20,
     })
+  })
+
+  it('gives deities what a cleric needs', () => {
+    const sarenrae = data.deities.find((d) => d.name === 'Sarenrae')
+    expect(sarenrae).toMatchObject({
+      attributes: ['CON', 'WIS'],
+      divineFont: ['Heal'],
+      favoredWeapons: ['Scimitar'],
+      domains: expect.arrayContaining(['Fire', 'Healing', 'Sun', 'Truth']),
+    })
+    // Some remastered deities still list spells only printed in legacy books.
+    const spellNames = new Set(data.spells.map((s) => s.name))
+    const legacyOnly = new Set(
+      data.deities.flatMap((d) => d.clericSpells).filter((s) => !spellNames.has(s)),
+    )
+    expect(legacyOnly.size).toBeLessThan(25)
+    for (const d of data.deities.filter((x) => x.divineFont.length))
+      expect(d.domains.length, d.name).toBeGreaterThan(0)
   })
 
   it('marks the valued conditions', () => {
