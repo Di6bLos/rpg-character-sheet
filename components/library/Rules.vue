@@ -192,7 +192,11 @@ function mark(root: HTMLElement, words: string[]) {
     `(${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
     'gi',
   )
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  // Text already marked is skipped: the results re-mark when another topic loads.
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) =>
+      n.parentElement?.closest('mark') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+  })
   const nodes: Text[] = []
   for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n as Text)
   for (const node of nodes) {
