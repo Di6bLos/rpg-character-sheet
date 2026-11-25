@@ -297,7 +297,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Scrape every book from AoN's search backend in Chrome (46,796 entries in `.local/pf2e/aon/`)
 - [x] Rules bible by topic, `.local/rules/pf2e/` (`scripts/pf2e-bible.ts`): book rules chapters in order, a file per class, ancestry and archetype, then feats, spells, equipment, creatures, GM; Remaster/Legacy tags with page citations
 - [x] `rpg-rules/references/pf2e.md`: core math, DCs, encounter budget, creature-building tables, cited
-- [x] ORC-only bible and library PDFs (`--orc`, `scripts/pf2e-pdf.ts`, `.local/pf2e/pdf/`)
+- [x] ORC-only bible and 16 library PDFs under 50 MB each (`--orc`, `scripts/pf2e-pdf.ts`, `.local/pf2e/pdf/`)
 - [ ] Upload the PDFs to the library
 - [ ] Decide whether legacy (OGL) content may be committed or shared (local-only for now)
 - [ ] Match the 44 heritages AoN lists without an ancestry (`ancestries/_unmatched-heritages.md`)

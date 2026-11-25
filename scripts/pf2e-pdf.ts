@@ -3,15 +3,20 @@
 // under the library's 50 MB limit, with a cover, contents, the ORC notice and PDF bookmarks.
 // Needs Google Chrome (headless print). Output: `.local/pf2e/pdf/`.
 //
-//   node scripts/pf2e-pdf.ts [bibleDir] [outDir]
+//   node scripts/pf2e-pdf.ts [bibleDir] [outDir] [--only=09-equipment-1,…]
 
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const ROOT = join(import.meta.dirname, '..')
-const BIBLE = resolve(process.argv[2] ?? join(ROOT, '.local', 'rules', 'pf2e-orc'))
-const OUT = resolve(process.argv[3] ?? join(ROOT, '.local', 'pf2e', 'pdf'))
+const [bibleArg, outArg] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const ONLY = process.argv
+  .find((a) => a.startsWith('--only='))
+  ?.slice(7)
+  .split(',')
+const BIBLE = resolve(bibleArg ?? join(ROOT, '.local', 'rules', 'pf2e-orc'))
+const OUT = resolve(outArg ?? join(ROOT, '.local', 'pf2e', 'pdf'))
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const MAX_BYTES = 50 * 1024 * 1024
 
@@ -28,6 +33,26 @@ const level = (f: string) => {
 }
 const creatures = (lo: number, hi: number) =>
   files('creatures', (f) => level(f) >= lo && level(f) <= hi)
+
+const titleOf = (p: string) => /^# (.*)$/m.exec(readFileSync(join(BIBLE, p), 'utf8'))?.[1] ?? p
+
+/** `n` volumes of about equal markdown size, the files kept in order. */
+function split(slug: string, title: string, parts: string[], n: number) {
+  const size = (p: string) => statSync(join(BIBLE, p)).size
+  const total = parts.reduce((a, p) => a + size(p), 0)
+  const chunks: string[][] = [[]]
+  let sum = 0
+  for (const p of parts) {
+    if (sum >= (total / n) * chunks.length && chunks.length < n) chunks.push([])
+    chunks[chunks.length - 1]!.push(p)
+    sum += size(p)
+  }
+  return chunks.map((c, i) => ({
+    slug: `${slug}-${i + 1}`,
+    title: `${title}: ${titleOf(c[0]!)} to ${titleOf(c[c.length - 1]!)}`,
+    parts: c,
+  }))
+}
 
 const VOLUMES: { slug: string; title: string; parts: string[] }[] = [
   {
@@ -66,7 +91,7 @@ const VOLUMES: { slug: string; title: string; parts: string[] }[] = [
   { slug: '06-archetypes', title: 'Archetypes', parts: files('archetypes') },
   { slug: '07-feats', title: 'General, Skill and Other Feats', parts: files('feats') },
   { slug: '08-spells', title: 'Spells and Rituals', parts: files('spells') },
-  { slug: '09-equipment', title: 'Equipment', parts: files('equipment') },
+  ...split('09-equipment', 'Equipment', files('equipment'), 3),
   { slug: '10-creatures-1', title: 'Creatures, Levels −1 to 5', parts: creatures(-1, 5) },
   { slug: '11-creatures-2', title: 'Creatures, Levels 6 to 12', parts: creatures(6, 12) },
   { slug: '12-creatures-3', title: 'Creatures, Levels 13 to 25', parts: creatures(13, 25) },
@@ -172,7 +197,7 @@ mkdirSync(join(OUT, '.chrome'), { recursive: true })
 const today = new Date().toISOString().slice(0, 10)
 const report: string[] = []
 
-for (const v of VOLUMES) {
+for (const v of VOLUMES.filter((x) => !ONLY || ONLY.includes(x.slug))) {
   const parts = v.parts.filter((p) => existsSync(join(BIBLE, p)))
   if (!parts.length) continue
   const chapters = parts.map((p) => readFileSync(join(BIBLE, p), 'utf8'))
@@ -216,4 +241,4 @@ ${chapters.map(html).join('\n')}
   report.push(line)
   console.log(line)
 }
-writeFileSync(join(OUT, 'README.txt'), `${report.join('\n')}\n`)
+if (!ONLY) writeFileSync(join(OUT, 'README.txt'), `${report.join('\n')}\n`)
