@@ -69,14 +69,18 @@ async function main() {
     if (!stack) throw new Error('The local Supabase stack did not start.')
   }
 
-  const { campaignId } = await seedLocal(stack)
+  const { campaignId, tables } = await seedLocal(stack)
   console.log(
     `\nLocal test accounts (password ${DEV_PASSWORD}), also one-click on the sign-in page:`,
   )
   for (const a of DEV_ACCOUNTS) console.log(`  ${a.label.padEnd(7)} ${a.email}`)
   console.log('More seated players (sign in with the form):')
   for (const m of DEV_PARTY) console.log(`  ${m.hero.name.padEnd(7)} ${m.email}`)
-  console.log(`Test campaign: http://localhost:${PORT}/campaigns/${campaignId}/board\n`)
+  console.log(`Test campaign: http://localhost:${PORT}/campaigns/${campaignId}/board`)
+  for (const t of tables) {
+    console.log(`${t.name}: http://localhost:${PORT}/campaigns/${t.campaignId}/board`)
+  }
+  console.log('')
 
   // Process env wins over .env.local, so this server talks to the local stack.
   const child = spawn('npx', ['nuxt', 'dev', '--port', String(PORT)], {

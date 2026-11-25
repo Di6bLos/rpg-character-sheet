@@ -142,6 +142,7 @@ const quick = computed(() => [
           </div>
         </div>
       </div>
+      <SheetDnd5eStatus />
     </section>
   </div>
 

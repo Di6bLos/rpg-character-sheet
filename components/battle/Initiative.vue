@@ -6,7 +6,8 @@
 // change slides it, a new round slides on past the caps. Dragging or the wheel browses it
 // (from round 1 to this round's end), and the next turn change centres the acting token.
 // Heroes show their HP from the roster; creatures show theirs to the GM only (players
-// see only that one is down). Summons sit under their summoner.
+// see only that one is down). Summons sit under their summoner (Nimble only:
+// `useBattleFeatures().summons`).
 // The GM right-clicks a token (or uses the context-menu key) for its menu: make it the
 // acting turn, change its initiative, remove it (`BattleTokenMenu`).
 // Compact (phone): 38px portraits with the acting one at 48px, the name under the
@@ -14,6 +15,7 @@
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
+import { conditionLabels, heroDead, hpClass } from '~/utils/roster'
 import { activeKey, browseBounds, slotAt, type StripSlot } from '~/utils/initiativeStrip'
 
 const props = defineProps<{
@@ -29,6 +31,7 @@ const emit = defineEmits<{
 
 const auth = useAuthStore()
 const { touch } = useBoardLayout()
+const features = useBattleFeatures()
 
 function rosterFor(c: TurnRow) {
   return c.character_id ? props.roster.find((r) => r.character_id === c.character_id) : undefined
@@ -38,7 +41,13 @@ function isMine(c: TurnRow) {
   return c.kind === 'pc' && !!c.character_id && rosterFor(c)?.user_id === auth.userId
 }
 
+/** A dead 5e / PF2e hero: three failed death saves or PF2e's death value (off Nimble, as DownStatus). */
+function deadPc(c: TurnRow) {
+  return c.kind === 'pc' && !features.value.nimbleHero && heroDead(rosterFor(c)?.summary)
+}
+
 function isDead(c: TurnRow) {
+  if (deadPc(c)) return true
   const s = c.kind === 'pc' ? rosterFor(c)?.summary : undefined
   const max = s?.woundsMax ?? 0
   return !!s && max > 0 && (s.wounds ?? 0) >= max
@@ -75,14 +84,16 @@ function hpFill(c: TurnRow): number | null {
   return null
 }
 
-function isLow(c: TurnRow): boolean {
+/** The minibar's band (`hpClass`): red when down, amber at half or less. */
+function hpBand(c: TurnRow): string {
+  if (isDown(c)) return 'hp--danger'
   const f = hpFill(c)
-  return isDown(c) || (f !== null && f <= 0.5)
+  return f === null ? '' : hpClass(f, 1)
 }
 
 /** HP as words for the tooltip and screen readers; the token itself only shows the bar. */
 function hpLabel(c: TurnRow): string {
-  if (isDown(c)) return c.kind === 'summon' ? 'Slain' : 'Down'
+  if (isDown(c)) return c.kind === 'summon' ? 'Slain' : deadPc(c) ? 'Dead' : 'Down'
   const t = hpText(c)
   return t ? `HP ${t}` : ''
 }
@@ -92,7 +103,13 @@ function tokenTitle(c: TurnRow): string {
 }
 
 function conditions(c: TurnRow): string[] {
-  return c.kind === 'pc' ? (rosterFor(c)?.summary?.conditions ?? []) : (c.conditions ?? [])
+  if (c.kind !== 'pc') return c.conditions ?? []
+  const r = rosterFor(c)
+  return conditionLabels(
+    r?.summary?.conditions ?? [],
+    r?.character_system,
+    r?.summary?.conditionValues,
+  )
 }
 
 function portraitPath(c: TurnRow): string | null {
@@ -490,7 +507,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
                   <!-- No HP to show (a creature, to players): the bar keeps its room, unseen. -->
                   <span
                     class="tok__bar"
-                    :class="{ 'is-low': isLow(c), 'is-none': hpFill(c) === null }"
+                    :class="[hpBand(c), { 'is-none': hpFill(c) === null }]"
                     aria-hidden="true"
                   >
                     <span
@@ -502,7 +519,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
               </button>
             </UiTooltip>
             <div
-              v-if="c.kind === 'pc' && init.summonsOf(c.character_id).length"
+              v-if="features.summons && c.kind === 'pc' && init.summonsOf(c.character_id).length"
               class="tok__summons"
             >
               <button
@@ -857,11 +874,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
   span {
     display: block;
     height: 100%;
-    background: var(--accent);
-  }
-
-  &.is-low span {
-    background: var(--danger);
+    background: var(--hp-fill, var(--secondary));
   }
 
   &.is-none {
