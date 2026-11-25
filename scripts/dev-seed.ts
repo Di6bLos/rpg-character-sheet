@@ -77,7 +77,7 @@ export async function localStack(): Promise<LocalStack | null> {
 }
 
 const CAMPAIGN = 'Test Table'
-const HERO = { name: 'Iriel', classSlug: 'mage', level: 5 }
+export const HERO = { name: 'Iriel', classSlug: 'mage', level: 5 }
 
 /** Extra campaigns for the battle board on the other systems; the player's hero is seated in each. */
 const OTHER_TABLES = [
@@ -179,7 +179,7 @@ async function upsertUser(db: SupabaseClient, account: SeedAccount) {
   return id
 }
 
-function buildHero(hero: { classSlug: string; level: number }) {
+export function buildHero(hero: { classSlug: string; level: number }) {
   const cls = classBySlug(hero.classSlug)
   if (!cls) throw new Error(`Unknown class ${hero.classSlug}`)
   const sheet = build(cls)
