@@ -257,6 +257,15 @@ export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext) {
   }
 }
 
+/**
+ * The Initiative modifier (p. 436): Perception after conditions and initiative bonuses
+ * (Incredible Initiative), as the sheet's turn tracker and the battle board roll it.
+ */
+export function initiativeCheck(s: Pf2eSheet) {
+  const p = s.saves.find((x) => x.label === 'Perception')
+  return adjusted(s, p?.value ?? 0, { kind: 'perception', attr: 'WIS', initiative: true })
+}
+
 /** The attribute behind a skill, save or the class DC. */
 export const SAVE_ATTR: Record<string, Pf2eAttr> = {
   Fortitude: 'CON',

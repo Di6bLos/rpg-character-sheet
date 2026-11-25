@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The player's hero on the battle board (left column), top to bottom: who they are,
-// HP and Wounds, Armor / Speed / Init / Hit dice, mana or the class resource,
+// HP and Wounds, Armor / Speed / Init / Hit dice, mana or the class resource (with its
+// controls from the sheet's resource panel: Rage, Fury and Judgment dice, Power dice, moves),
 // conditions, summons, stats with save marks, and rests. Runs inside HeroScope's
 // sheet editor and uses the sheet's own rules (composables and utils); read-only
 // when the player can't edit. On touch every one-tap control here and in its parts is a
@@ -139,6 +140,7 @@ const stats = computed(() =>
       </span>
       <b>{{ resourceValue }}</b>
     </div>
+    <NimbleSheetResources v-if="resource" only="resource" />
 
     <div v-if="compact" class="hero__acts">
       <span class="sect">Actions</span>

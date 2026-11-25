@@ -3,17 +3,20 @@ import type { AnySheet } from '~/types/sheets'
 
 /**
  * The player's own hero seated in this Nimble campaign (null for the GM, other
- * systems, or while loading), loaded for the board's sheet editor, and whether
- * they may edit it.
+ * systems unless `anySystem`, or while loading), loaded for the board's sheet editor, and
+ * whether they may edit it. `anySystem` (5e, PF2e boards) loads it for the GM's HP and
+ * condition pickups only.
  */
-export function useSeatedCharacter(failure: string) {
+export function useSeatedCharacter(failure: string, options: { anySystem?: boolean } = {}) {
   const auth = useAuthStore()
   const characters = useCharacterStore()
   const snackbar = useSnackbarStore()
   const { campaign, isGm } = useCampaignBoard()
 
   const characterId = computed(() =>
-    !isGm.value && campaign.value?.system === 'nimble' ? campaign.value.myCharacterId : null,
+    !isGm.value && (options.anySystem || campaign.value?.system === 'nimble')
+      ? (campaign.value?.myCharacterId ?? null)
+      : null,
   )
   const character = ref<Character<AnySheet> | null>(null)
   const canEdit = computed(() => character.value?.user_id === auth.userId && !auth.isSuspended)

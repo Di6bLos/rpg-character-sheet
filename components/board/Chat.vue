@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Party chat with private threads to each member and unread badges. Game lines
-// (kind 'action': rolls and casts from the quick-action panel) show as a compact
+// (kind 'action': rolls and casts from the battle board) show as a compact
 // log row, not a speech bubble.
 import type { Message, RosterEntry } from '~/types'
 import { authorLabel } from '~/utils/roster'
@@ -92,7 +92,7 @@ onBeforeUnmount(() => chat.setVisible(false))
           v-model="showActions"
           class="chat__toggle"
           label="Battle log"
-          title="Show rolls and casts from the quick-action panel"
+          title="Show rolls and casts from the battle board"
         />
       </div>
       <div role="tablist" aria-label="Conversations" class="chat__tabs">
