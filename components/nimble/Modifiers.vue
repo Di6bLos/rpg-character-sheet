@@ -2,6 +2,7 @@
 import type { NimbleSheet } from '~/types/sheets'
 import { abilityModifiers, weaponAliases } from '~/utils/nimbleBuild'
 import { usedUpLabel } from '~/utils/nimblePlay'
+import { weaponEnchantment } from '~/utils/nimbleSpellRules'
 import { summonModifiers } from '~/utils/nimbleSummons'
 
 const props = defineProps<{
@@ -15,15 +16,24 @@ const props = defineProps<{
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const { abilities, spend, inventions } = useNimbleActions()
 
+/** A spell enchanting the hero's weapon while it lasts (Enchant Weapon). */
+const enchantment = computed(() => {
+  const e = props.weapon !== undefined ? weaponEnchantment(draft.value.sheet) : null
+  return e ? [{ name: `${e.spell} (+${e.damage})`, text: e.text, ability: e.spell }] : []
+})
+
 const mods = computed(() =>
   !props.summon && !props.target
     ? []
     : props.summon
       ? summonModifiers(draft.value.sheet, props.summon)
-      : abilityModifiers(draft.value.sheet, props.target ?? '', [
-          ...(props.weapon !== undefined ? weaponAliases(props.weapon) : []),
-          ...(props.aliases ?? []),
-        ]).filter((m) => !props.skip?.includes(m.ability)),
+      : [
+          ...enchantment.value,
+          ...abilityModifiers(draft.value.sheet, props.target ?? '', [
+            ...(props.weapon !== undefined ? weaponAliases(props.weapon) : []),
+            ...(props.aliases ?? []),
+          ]).filter((m) => !props.skip?.includes(m.ability)),
+        ],
 )
 
 const items = computed(() =>

@@ -1,13 +1,18 @@
 import type { NimbleSheet } from '~/types/sheets'
-import { conditionMods } from '~/utils/nimbleConditions'
+import { sheetResource } from '~/utils/nimbleBuild'
+import { hpTone as toneFor } from '~/utils/roster'
+import { conditionMods, wardedDamage } from '~/utils/nimbleConditions'
 import {
+  armorNow,
   dyingAttackSave,
+  encounterMana,
   fieldRest,
   fieldRestDice,
   heal,
   hitDiceLeft,
   isBloodied,
   isDead,
+  isHollowOne,
   resurrect,
   safeRest,
   takeDamage,
@@ -39,13 +44,8 @@ export function useNimbleVitals() {
       ? 'Bloodied: at or below half HP'
       : `Bloodied at ${Math.floor(sheet.value.hpMax / 2)} HP`
   })
-  const hpTone = computed(() =>
-    sheet.value.hp === 0
-      ? ('danger' as const)
-      : bloodied.value
-        ? ('accent' as const)
-        : ('' as const),
-  )
+  /** The HP bar's band, the one scheme every bar uses (`hpTone`; accent when Bloodied). */
+  const hpTone = computed(() => toneFor(sheet.value.hp, sheet.value.hpMax))
 
   const diceLeft = computed(() => hitDiceLeft(sheet.value))
 
@@ -59,6 +59,20 @@ export function useNimbleVitals() {
     }
   })
 
+  /** Armor with spell statuses (Electrocharge, Dragonform); the tooltip says what adds to it. */
+  const armor = computed(() => {
+    const now = armorNow(sheet.value, draft.value.level)
+    const extra = now.notes.length ? `: ${sheet.value.ac} + ${now.notes.join(' + ')}` : ''
+    return {
+      value: now.value,
+      title: `Defend reduces a hit by your Armor (${now.value}${extra})`,
+      changed: now.notes.length > 0,
+    }
+  })
+
+  /** Warding Bond: the HP bar previews and takes half of a hit. */
+  const warded = computed(() => sheet.value.conditions.includes('Warded'))
+
   /** The next damage is from a critical hit. */
   const crit = ref(false)
 
@@ -66,19 +80,21 @@ export function useNimbleVitals() {
     if (canEdit.value) say(resurrect(sheet.value))
   }
 
-  function damage(amount = 1) {
+  /** `whole`: a hit's full damage, which Warded halves; the one-point buttons are exact. */
+  function damage(amount = 1, whole = false) {
     if (!canEdit.value) return
-    const message = takeDamage(sheet.value, amount, draft.value.level, crit.value)
+    const ward = whole ? wardedDamage(sheet.value, amount) : { taken: amount, note: '' }
+    const message = takeDamage(sheet.value, ward.taken, draft.value.level, crit.value)
     const was = crit.value ? ' (crit)' : ''
     crit.value = false
     say(
-      `Took ${amount} damage${was}: ${sheet.value.hp}/${sheet.value.hpMax} HP.${message ? ` ${message}` : ''}`,
+      `Took ${ward.taken} damage${was}: ${sheet.value.hp}/${sheet.value.hpMax} HP.${ward.note}${message ? ` ${message}` : ''}`,
     )
   }
 
   function changeHp(delta: number) {
     if (!canEdit.value) return
-    if (delta < 0) return damage(-delta)
+    if (delta < 0) return damage(-delta, true)
     heal(sheet.value, delta)
     say(`Healed ${delta}: ${sheet.value.hp}/${sheet.value.hpMax} HP.`)
   }
@@ -156,6 +172,8 @@ export function useNimbleVitals() {
     hpTone,
     diceLeft,
     speed,
+    armor,
+    warded,
     crit,
     revive,
     damage,
@@ -172,4 +190,48 @@ export function useNimbleVitals() {
     rest,
     takeSafeRest,
   }
+}
+
+/**
+ * Mana or the class resource of the Nimble hero in the current sheet editor, as the battle
+ * board shows it: `hasMana`, the resource to show instead (none for info-only ones and a
+ * Hollow One's uses), its full reading for the hero column (`resourceValue`) and a short
+ * one for small tiles (`resourceShort`, the phone's hero strip).
+ */
+export function useNimbleResource() {
+  const { draft } = useSheet<NimbleSheet>()
+  const sheet = computed(() => draft.value.sheet)
+
+  const hasMana = computed(() => sheet.value.mana.max > 0 || encounterMana(sheet.value) > 0)
+
+  const resource = computed(() => {
+    const r = sheetResource(sheet.value, draft.value.level)
+    return !r || r.kind === 'info' || (r.kind === 'uses' && isHollowOne(sheet.value)) ? null : r
+  })
+
+  const resourceValue = computed(() => {
+    const r = resource.value
+    const res = sheet.value.resource
+    if (!r) return ''
+    const total = res.rolls.reduce((a, b) => a + b, 0)
+    if (r.kind === 'uses') return `${r.max - res.count} / ${r.max} left`
+    if (r.kind === 'judgment') return res.rolls.length ? `+${total} held` : 'None held'
+    if (r.kind === 'crit') return res.count ? 'Used this turn' : 'Ready'
+    if (r.kind === 'rage') return res.active ? `Raging · +${total}` : 'Not raging'
+    return r.max ? `${res.count} / ${r.max}` : String(res.count)
+  })
+
+  const resourceShort = computed(() => {
+    const r = resource.value
+    const res = sheet.value.resource
+    if (!r) return ''
+    const total = res.rolls.reduce((a, b) => a + b, 0)
+    if (r.kind === 'uses') return String(r.max - res.count)
+    if (r.kind === 'judgment') return `+${total}`
+    if (r.kind === 'crit') return res.count ? '–' : '✓'
+    if (r.kind === 'rage') return res.active ? `+${total}` : '–'
+    return String(res.count)
+  })
+
+  return { hasMana, resource, resourceValue, resourceShort }
 }

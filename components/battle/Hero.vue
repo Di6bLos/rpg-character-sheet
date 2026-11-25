@@ -1,22 +1,24 @@
 <script setup lang="ts">
 // The player's hero on the battle board (left column), top to bottom: who they are,
-// HP and Wounds, Armor / Speed / Init / Hit dice, mana or the class resource,
+// HP and Wounds, Armor / Speed / Init / Hit dice, mana or the class resource (with its
+// controls from the sheet's resource panel: Rage, Fury and Judgment dice, Power dice, moves),
 // conditions, summons, stats with save marks, and rests. Runs inside HeroScope's
 // sheet editor and uses the sheet's own rules (composables and utils); read-only
-// when the player can't edit.
+// when the player can't edit. On touch every one-tap control here and in its parts is a
+// 44px target with 8px between neighbours (the phone's Hero tab, tablets). Compact
+// (phone): an Actions row with "+1 extra action", which the phone's one-row turn bar
+// has no room for.
 import type { NimbleSheet, NimbleStat } from '~/types/sheets'
 import { sign } from '~/utils/dice'
-import { sheetResource } from '~/utils/nimbleBuild'
-import { encounterMana, isDead, isHollowOne } from '~/utils/nimblePlay'
+import { isDead } from '~/utils/nimblePlay'
+
+defineProps<{ compact?: boolean }>()
 
 const { draft, canEdit, portrait } = useSheet<NimbleSheet>()
-// Statuses other heroes give this one (Helped) and HP changes from the GM; the
-// quick-action panel does this below 1200px.
-useHeroEffects()
-useHeroHpChanges()
-useHeroConditionChanges()
+const { touch } = useBoardLayout()
+// Statuses other heroes give and the GM's changes are applied by HeroScope (HeroLive).
 const sheet = computed(() => draft.value.sheet)
-const { diceLeft, speed } = useNimbleVitals()
+const { diceLeft, speed, armor } = useNimbleVitals()
 
 const dead = computed(() => isDead(sheet.value))
 const identity = computed(() =>
@@ -30,7 +32,12 @@ const identity = computed(() =>
 )
 
 const tiles = computed(() => [
-  { label: 'Armor', value: String(sheet.value.ac), title: 'Defend reduces a hit by your Armor' },
+  {
+    label: 'Armor',
+    value: String(armor.value.value),
+    title: armor.value.title,
+    changed: armor.value.changed,
+  },
   {
     label: 'Speed',
     value: String(speed.value.value),
@@ -46,7 +53,7 @@ const tiles = computed(() => [
 ])
 
 // --- Mana or the class resource ---------------------------------------------------
-const hasMana = computed(() => sheet.value.mana.max > 0 || encounterMana(sheet.value) > 0)
+const { hasMana, resource, resourceValue } = useNimbleResource()
 
 function setMana(value: number) {
   if (!canEdit.value) return
@@ -54,21 +61,8 @@ function setMana(value: number) {
   m.current = Math.max(0, Math.min(m.max, value))
 }
 
-const resource = computed(() => {
-  const r = sheetResource(sheet.value, draft.value.level)
-  return !r || r.kind === 'info' || (r.kind === 'uses' && isHollowOne(sheet.value)) ? null : r
-})
-const resourceValue = computed(() => {
-  const r = resource.value
-  const res = sheet.value.resource
-  if (!r) return ''
-  const total = res.rolls.reduce((a, b) => a + b, 0)
-  if (r.kind === 'uses') return `${r.max - res.count} / ${r.max} left`
-  if (r.kind === 'judgment') return res.rolls.length ? `+${total} held` : 'None held'
-  if (r.kind === 'crit') return res.count ? 'Used this turn' : 'Ready'
-  if (r.kind === 'rage') return res.active ? `Raging · +${total}` : 'Not raging'
-  return r.max ? `${res.count} / ${r.max}` : String(res.count)
-})
+// --- Actions (compact): the turn bar's +1, from the same turn steps ------------------
+const { leftText: actionsText, extraAction } = useTurnSteps({ onResult: useAnnounce() })
 
 // --- Stats --------------------------------------------------------------------------
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
@@ -92,7 +86,7 @@ const stats = computed(() =>
 </script>
 
 <template>
-  <section class="panel hero" aria-label="Your hero">
+  <section class="panel hero" :class="{ 'hero--touch': touch }" aria-label="Your hero">
     <header class="hero__id">
       <UiAvatar
         :name="draft.name"
@@ -145,6 +139,21 @@ const stats = computed(() =>
         <UiHelp v-if="resource.desc" :label="`About ${resource.name}`" :text="resource.desc" />
       </span>
       <b>{{ resourceValue }}</b>
+    </div>
+    <NimbleSheetResources v-if="resource" only="resource" />
+
+    <div v-if="compact" class="hero__acts">
+      <span class="sect">Actions</span>
+      <span class="hero__acts-left" role="status">{{ actionsText }}</span>
+      <button
+        type="button"
+        class="btn btn--ghost btn--sm hero__extra"
+        title="An ally or ability gave you an extra action (Stim Pack, Chorus of Champions…); it lasts until your turn ends."
+        :disabled="!canEdit"
+        @click="extraAction"
+      >
+        +1 extra action
+      </button>
     </div>
 
     <BattleHeroConditions />
@@ -277,6 +286,23 @@ const stats = computed(() =>
   font-size: 13px;
 }
 
+.hero__acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero__acts-left {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero__extra {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
 .hero__block {
   display: flex;
   flex-direction: column;
@@ -322,5 +348,103 @@ const stats = computed(() =>
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--page-muted);
+}
+
+// --- Touch ------------------------------------------------------------------------------
+// 44px targets, 8px apart. The parts (HeroHp, HeroConditions, HeroRest) are styled from
+// here so the desktop column keeps its compact sizes. The amount field is 16px so phones
+// don't zoom in when it takes focus.
+.hero--touch {
+  gap: 10px;
+  padding: 12px 14px;
+
+  .hero__mana {
+    gap: 8px;
+  }
+
+  .hero__mini,
+  :deep(.hp__mini),
+  :deep(.hp__ctl .step) {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  :deep(.hp__ctl),
+  :deep(.hp__tempctl),
+  :deep(.cond__chips),
+  :deep(.rest__btns) {
+    gap: 8px;
+  }
+
+  // The 16px value would clip the placeholder in a narrow column (240px, its minimum).
+  :deep(.hp__amt) {
+    min-height: 44px;
+    padding-inline: 4px;
+    font-size: 16px;
+
+    &::placeholder {
+      font-size: 13px;
+    }
+  }
+
+  :deep(.hp__crit),
+  :deep(.hp__notice .btn),
+  :deep(.cond__add),
+  :deep(.cond__chip),
+  :deep(.rest__btns .btn) {
+    min-height: 44px;
+  }
+
+  :deep(.cond__add) {
+    padding: 0 14px;
+  }
+
+  :deep(.cond__chip) {
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  // Wounds: each button is an upright 44px square to tap, 8px apart; the 20px diamond is
+  // drawn inside it (::before), so the target stays square while the mark stays small.
+  :deep(.hp__wounds) {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  :deep(.wound) {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    transform: none;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 12px;
+      transform: rotate(45deg);
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+    }
+
+    &[aria-pressed='true'] {
+      background: transparent;
+
+      &::before {
+        background: var(--danger);
+        border-color: var(--danger);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -4px;
+    }
+  }
 }
 </style>

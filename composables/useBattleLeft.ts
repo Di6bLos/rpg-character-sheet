@@ -4,6 +4,7 @@
  * when dragged narrow enough. Until dragged it keeps the default width for the viewer
  * (the GM's stat block is a little wider). Remembered per browser.
  */
+
 interface LeftState {
   /** False: the column is closed to the rail. */
   column: boolean
@@ -45,6 +46,8 @@ export function useBattleLeft() {
 
   return {
     state: readonly(state),
+    /** The drag bounds. */
+    bounds: computed(() => LEFT_WIDTH),
     /** The open width: the dragged one, else the default for the GM or a player. */
     widthFor: (gm: boolean) => state.value.width ?? (gm ? LEFT_WIDTH.gm : LEFT_WIDTH.player),
     /** `save: false` while dragging; the drop saves. */

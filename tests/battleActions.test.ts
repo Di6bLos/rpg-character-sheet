@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   castReason,
+  oddsLine,
   guarded,
   reactionReason,
   readyNote,
   sectionsFor,
   spellNotNow,
+  tileButton,
+  tileSub,
   weaponReason,
   type BattleAction,
 } from '../utils/battleActions'
@@ -28,6 +31,11 @@ function act(patch: Partial<BattleAction> = {}): BattleAction {
     unavailable: '',
     ...patch,
   }
+}
+
+/** A tile as the board builds it: an action plus its click. */
+function tile(patch: Partial<BattleAction> = {}) {
+  return { ...act(patch), use: () => {} }
 }
 
 const ok = { turnActive: true, incapacitated: '' }
@@ -75,6 +83,30 @@ describe('sectionsFor', () => {
     const s = sectionsFor(list, 'ready', '', true)
     expect(s.map((x) => x.title)).toEqual(['Attack', 'Boost & support', 'Reactions'])
     expect(s.flatMap((x) => x.actions).every((a) => a.unavailable === '')).toBe(true)
+  })
+
+  it('keeps the tile with open details in Ready now after it becomes unusable', () => {
+    const upcast = [
+      act({
+        key: 'bolt',
+        name: 'Bolt',
+        kind: 'spell',
+        group: 'attack',
+        unavailable: 'Not enough mana',
+      }),
+      act({
+        key: 'aid',
+        name: 'Aid',
+        kind: 'spell',
+        group: 'support',
+        unavailable: 'Not enough mana',
+      }),
+    ]
+    expect(sectionsFor(upcast, 'ready', '', true)).toEqual([])
+    const on = sectionsFor(upcast, 'ready', '', true, 'bolt').flatMap((x) => x.actions)
+    expect(on.map((a) => a.name)).toEqual(['Bolt'])
+    const off = sectionsFor(upcast, 'ready', '', false, 'aid').flatMap((x) => x.actions)
+    expect(off.map((a) => a.name)).toEqual(['Aid'])
   })
 
   it('ready off turn shows only off-turn support', () => {
@@ -207,5 +239,54 @@ describe('spellNotNow', () => {
     const big = { reaction: false, actions: 2, damaging: true }
     expect(spellNotNow(big, { inEncounter: true, turnActive: true })).toBe('')
     expect(spellNotNow(big, { inEncounter: false, turnActive: false })).toBe('')
+  })
+})
+
+describe('tileButton', () => {
+  it('names a spell cast with its dice', () =>
+    expect(tileButton(tile({ kind: 'spell', name: 'Arc Lightning', dice: '3d8' })).label).toBe(
+      'Cast Arc Lightning · 3d8',
+    ))
+  it('weapon', () =>
+    expect(tileButton(tile({ kind: 'weapon', name: 'Staff', dice: '1d6' })).label).toBe(
+      'Attack with Staff · 1d6',
+    ))
+  it('reaction and summon verbs', () => {
+    expect(tileButton(tile({ kind: 'reaction', name: 'Defend' })).label).toBe('React: Defend')
+    expect(tileButton(tile({ kind: 'summon', name: 'Minions' })).label).toBe('Command Minions')
+  })
+  it('no dice, no dot', () =>
+    expect(tileButton(tile({ kind: 'ability', name: 'Dash', dice: '' })).label).toBe('Use Dash'))
+  it('unavailable disables with the reason', () =>
+    expect(
+      tileButton(tile({ kind: 'spell', name: 'Fire', unavailable: 'Not your turn' })),
+    ).toMatchObject({ disabled: true, reason: 'Not your turn' }))
+  it('available is enabled with no reason', () =>
+    expect(tileButton(tile())).toMatchObject({ disabled: false, reason: '' }))
+})
+
+describe('tileSub', () => {
+  it('a spell shows its tier, school and detail', () =>
+    expect(tileSub(act({ kind: 'spell', tier: 1, school: 'lightning', detail: 'Range 12' }))).toBe(
+      'Tier 1 · lightning · Range 12',
+    ))
+  it('a cantrip and other kinds', () => {
+    expect(tileSub(act({ kind: 'spell', tier: 0 }))).toBe('Cantrip')
+    expect(tileSub(act({ kind: 'reaction', detail: '1 reaction' }))).toBe('Reaction · 1 reaction')
+  })
+})
+
+describe('oddsLine', () => {
+  it('disadvantage with its reasons', () =>
+    expect(oddsLine({ rushed: 1, advantage: 0, why: 'Rushed' })).toBe('+1 disadvantage (Rushed)'))
+  it('advantage', () =>
+    expect(oddsLine({ rushed: 0, advantage: 2, why: 'Invisible, Helped' })).toBe(
+      '+2 advantage (Invisible, Helped)',
+    ))
+  it('no reasons, no brackets', () =>
+    expect(oddsLine({ rushed: 2, advantage: 0, why: '' })).toBe('+2 disadvantage'))
+  it('even odds or none say nothing', () => {
+    expect(oddsLine({ rushed: 0, advantage: 0, why: 'Rushed, Invisible' })).toBe('')
+    expect(oddsLine(undefined)).toBe('')
   })
 })

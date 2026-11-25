@@ -2,12 +2,11 @@
 import { classBySlug } from '~/data/nimble/classes'
 import type { NimbleSheet } from '~/types/sheets'
 import { abilityBaseName, keyStatValue, sheetResource } from '~/utils/nimbleBuild'
-import { endEffects } from '~/utils/nimbleEffects'
-import { encounterMana, isHollowOne } from '~/utils/nimblePlay'
+import { encounterMana, endConcentration as endFocus, isHollowOne } from '~/utils/nimblePlay'
 
 const props = defineProps<{ part?: 'mana' | 'uses' | 'concentration' }>()
 
-const { draft, canEdit } = useSheet<NimbleSheet>()
+const { draft, canEdit, say } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 const cls = computed(() => classBySlug(sheet.value.classSlug))
 const keyValue = computed(() => keyStatValue(sheet.value))
@@ -35,8 +34,8 @@ const showConcentration = computed(() => !props.part || props.part === 'concentr
 
 function endConcentration() {
   if (!canEdit.value) return
-  sheet.value.concentration = ''
-  endEffects(sheet.value, 'concentration')
+  const ended = endFocus(sheet.value).trim()
+  if (ended) say(ended)
 }
 
 function setMana(value: number) {

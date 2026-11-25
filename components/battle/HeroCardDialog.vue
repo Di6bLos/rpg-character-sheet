@@ -2,14 +2,19 @@
 // A hero's stats modal, opened from a party card (and, for players, a hero initiative
 // token). Loads the public subset (campaign_hero_card, useHeroCard) and shows only
 // what it returns. Side: HeroVitals (identity, HP with the GM's controls, Wounds,
-// Armor / Speed / Init, conditions). Main: HeroCardStats. For the viewer's own hero
+// Armor / Speed / Init, conditions). Main: the hero's system's stats (`card.system`):
+// HeroCardStats (Nimble), HeroCardStatsDnd5e or HeroCardStatsPf2e. For the viewer's own hero
 // the page passes the hero column's HP (`own-hp`). Footer: Whisper and Open full sheet.
+// `sheet` (phone): a bottom sheet with everything in one column; Whisper then emits
+// `whisper` so the frame can show its Chat tab.
 import type { RosterEntry } from '~/types'
 
 const props = defineProps<{
   roster: RosterEntry[]
   gm: boolean
+  sheet?: boolean
 }>()
+const emit = defineEmits<{ whisper: [] }>()
 const characterId = defineModel<string | null>('characterId', { required: true })
 defineSlots<{ 'own-hp'?: () => unknown }>()
 
@@ -40,8 +45,10 @@ async function whisper() {
   if (!to) return
   chat.open(to)
   commsTab.value = 'chat'
-  right.showChat()
+  // The phone has no right column (its frame shows Chat on `whisper`): keep the saved one.
+  if (!props.sheet) right.showChat()
   characterId.value = null
+  emit('whisper')
   // After the dialog closes (and hands focus back), put the cursor in the message box.
   await nextTick()
   await nextTick()
@@ -50,7 +57,7 @@ async function whisper() {
 </script>
 
 <template>
-  <UiDialog v-model="open" :title="title" width="820px">
+  <UiDialog v-model="open" :title="title" width="820px" :sheet="sheet">
     <p v-if="loading" class="hc__state" role="status">Loading stats…</p>
     <div v-else-if="error" class="notice notice--error hc__state" role="alert">
       <span>{{ error }}</span>
@@ -62,7 +69,7 @@ async function whisper() {
         Try again
       </button>
     </div>
-    <div v-else-if="card && live" class="hc">
+    <div v-else-if="card && live" class="hc" :class="{ 'hc--sheet': sheet }">
       <BattleHeroVitals
         v-if="characterId"
         :character-id="characterId"
@@ -74,7 +81,19 @@ async function whisper() {
         <template v-if="$slots['own-hp']" #own-hp><slot name="own-hp" /></template>
       </BattleHeroVitals>
 
-      <BattleHeroCardStats :card="card" class="hc__main" />
+      <BattleHeroCardStatsDnd5e
+        v-if="card.system === 'dnd5e'"
+        :card="card"
+        :live="live"
+        class="hc__main"
+      />
+      <BattleHeroCardStatsPf2e
+        v-else-if="card.system === 'pf2e'"
+        :card="card"
+        :live="live"
+        class="hc__main"
+      />
+      <BattleHeroCardStats v-else :card="card" class="hc__main" />
     </div>
 
     <template #actions>
@@ -108,6 +127,10 @@ async function whisper() {
   grid-template-columns: 300px minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+}
+
+.hc--sheet {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .hc__note {

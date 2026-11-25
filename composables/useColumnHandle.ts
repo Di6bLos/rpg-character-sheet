@@ -5,9 +5,12 @@
  * `side` says where the column is: the left column's handle is on its right edge
  * (dragging right widens it), the right column's on its left edge.
  */
+import type { MaybeRefOrGetter } from 'vue'
+
 export interface ColumnHandleOptions {
   side: 'left' | 'right'
-  bounds: { min: number; max: number; close: number }
+  /** Read on every move. */
+  bounds: MaybeRefOrGetter<{ min: number; max: number; close: number }>
   open: () => boolean
   /** The open column's saved width. */
   width: () => number
@@ -37,10 +40,11 @@ export function useColumnHandle(o: ColumnHandleOptions) {
   let startWidth = 0
 
   const current = () => (o.open() ? o.measure() : 0)
+  const bounds = () => toValue(o.bounds)
 
   /** Narrower than the close point: closed; otherwise open at that width. */
   function apply(px: number, save: boolean) {
-    if (px < o.bounds.close) o.setOpen(false, save)
+    if (px < bounds().close) o.setOpen(false, save)
     else o.setWidth(Math.min(px, o.limit()), save)
   }
 
@@ -53,7 +57,7 @@ export function useColumnHandle(o: ColumnHandleOptions) {
     dragWidth += grow * delta
     if (fromRail && !o.open()) {
       if (dragWidth < OPEN_PULL) return
-      dragWidth = o.bounds.min
+      dragWidth = bounds().min
     }
     apply(dragWidth, false)
   }
@@ -69,10 +73,10 @@ export function useColumnHandle(o: ColumnHandleOptions) {
     const widen = o.side === 'left' ? 'more' : 'less'
     const close = o.side === 'left' ? 'min' : 'max'
     if (step === close) return o.setOpen(false, false)
-    if (step !== 'less' && step !== 'more') return apply(o.bounds.max, false)
+    if (step !== 'less' && step !== 'more') return apply(bounds().max, false)
     if (!o.open()) return step === widen ? apply(o.width(), false) : undefined
     const now = current()
-    apply(step === widen ? now + KEY_STEP : Math.max(now - KEY_STEP, o.bounds.close - 1), false)
+    apply(step === widen ? now + KEY_STEP : Math.max(now - KEY_STEP, bounds().close - 1), false)
   }
 
   function onDrop() {

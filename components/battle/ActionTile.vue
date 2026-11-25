@@ -4,15 +4,25 @@
 // A click does what the sheet's button does (through `guarded`, so a dimmed tile does
 // nothing); Opportunity Attack and Help open a picker of their choices instead, and
 // upcastable spells get a tier popover (NimbleUpcast).
+// On touch a tap only opens the details (ActionDetails: a bottom sheet on a phone, a
+// popover elsewhere), which hold the picks, the upcast stepper and the Use button; the
+// tile then renders no tooltip, tier button or picker of its own.
+import type { FunctionalComponent } from 'vue'
 import type { BattleTile } from '~/composables/useBattleActions'
-import { guarded } from '~/utils/battleActions'
+import { guarded, tileSub } from '~/utils/battleActions'
 
 const props = defineProps<{
   action: BattleTile
   /** Show why it can't be used under the name (the All and category filters). */
   showReason?: boolean
   readonly?: boolean
+  /** Phone layout: the details open as a bottom sheet instead of a popover. */
+  sheet?: boolean
 }>()
+/** Its details opened or closed (touch). */
+const emit = defineEmits<{ details: [open: boolean] }>()
+
+const { touch } = useBoardLayout()
 
 const a = computed(() => props.action)
 const off = computed(() => a.value.unavailable !== '')
@@ -24,28 +34,15 @@ const tone = computed(() => {
   return 'ability'
 })
 
-const KIND: Record<BattleTile['kind'], string> = {
-  weapon: 'Weapon',
-  spell: 'Spell',
-  ability: 'Ability',
-  reaction: 'Reaction',
-  summon: 'Summon',
-}
-
-const sub = computed(() => {
-  const t = a.value.tier
-  const spell = t === null ? '' : t === 0 ? 'Cantrip' : `Tier ${t}`
-  return [a.value.kind === 'spell' ? spell : KIND[a.value.kind], a.value.school, a.value.detail]
-    .filter(Boolean)
-    .join(' · ')
-})
+const sub = computed(() => tileSub(a.value))
 
 const keys = computed(() => {
   const n = a.value.actions
   return [
     n ? `${n} ${n === 1 ? 'action' : 'actions'}` : 'No action',
     a.value.mana ? `${a.value.mana} mana` : '',
-    a.value.unavailable || (a.value.choices ? 'Click to choose' : 'Click to use'),
+    a.value.unavailable ||
+      (touch.value ? 'Tap for details' : a.value.choices ? 'Click to choose' : 'Click to use'),
   ]
     .filter(Boolean)
     .join(' · ')
@@ -57,8 +54,23 @@ const btn = ref<HTMLButtonElement | null>(null)
 const upBtn = ref<HTMLButtonElement | null>(null)
 const picking = ref(false)
 const upcasting = ref(false)
+const details = ref(false)
+// Actions keeps a tile with open details in Ready now while it is unusable.
+watch(details, (on) => emit('details', on))
+
+/** Stands in for the tooltip on touch: renders the tile button alone. */
+const Bare: FunctionalComponent = (_, { slots }) => slots.default?.()
+const Tooltip = resolveComponent('UiTooltip')
+const wrap = computed(() => (touch.value ? Bare : Tooltip))
+const tipProps = computed(() =>
+  touch.value ? {} : { title: a.value.name, sub: sub.value, text: a.value.desc, keys: keys.value },
+)
 
 function onClick() {
+  if (touch.value) {
+    details.value = !details.value
+    return
+  }
   if (a.value.choices) {
     // A dimmed tile opens nothing, but still closes a picker it opened before it dimmed
     // (the picker leaves clicks on its own tile to this handler).
@@ -71,14 +83,14 @@ function onClick() {
 
 <template>
   <div class="act" :class="{ 'act--off': off, 'act--react': a.group === 'react' }">
-    <UiTooltip :title="a.name" :sub="sub" :text="a.desc" :keys="keys">
+    <component :is="wrap" v-bind="tipProps">
       <button
         ref="btn"
         type="button"
         class="act__btn"
         :aria-disabled="off || undefined"
-        :aria-haspopup="a.choices ? 'true' : undefined"
-        :aria-expanded="a.choices ? picking : undefined"
+        :aria-haspopup="touch ? 'dialog' : a.choices ? 'true' : undefined"
+        :aria-expanded="touch ? details : a.choices ? picking : undefined"
         @click="onClick"
       >
         <span class="act__top">
@@ -98,9 +110,9 @@ function onClick() {
         </span>
         <span v-if="showReason && off" class="act__why">{{ a.unavailable }}</span>
       </button>
-    </UiTooltip>
+    </component>
     <button
-      v-if="a.upcast"
+      v-if="a.upcast && !touch"
       ref="upBtn"
       type="button"
       class="act__up"
@@ -111,15 +123,23 @@ function onClick() {
       T{{ a.upcast.at }}
     </button>
 
+    <BattleActionDetails
+      v-if="touch"
+      v-model="details"
+      :action="a"
+      :anchor="btn"
+      :mode="sheet ? 'sheet' : 'popover'"
+      :readonly="readonly"
+    />
     <BattleActionPicker
-      v-if="a.choices"
+      v-if="a.choices && !touch"
       v-model="picking"
       :choices="a.choices"
       :anchor="btn"
       :name="a.name"
     />
     <BattleActionPop
-      v-if="a.upcast"
+      v-if="a.upcast && !touch"
       v-model="upcasting"
       :anchor="upBtn"
       :label="`Upcast ${a.name}`"

@@ -123,11 +123,11 @@ onBeforeUnmount(up)
   }
 }
 
-// A thin line that shows on hover, focus and while dragging, with a grip in the middle.
+// A grip in the middle, dimmed so it is findable, full strength on hover, focus and drag.
 .split__grip {
   border-radius: 999px;
   background: var(--line-strong);
-  opacity: 0;
+  opacity: 0.45;
   transition: opacity 0.15s;
 
   .split--vertical & {

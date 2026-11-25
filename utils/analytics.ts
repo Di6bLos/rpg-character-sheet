@@ -1,5 +1,6 @@
 // Usage analytics: pure helpers that turn a route and a clicked element into an event.
 // The plugin (`plugins/usage-analytics.client.ts`) and `composables/useAnalytics.ts` send them.
+import { classifyLayout } from '~/utils/boardLayout'
 
 export type Surface = 'sheet' | 'party' | 'battle' | 'journal' | 'maps' | 'npcs' | 'other'
 export type PageSeat = 'gm' | 'player'
@@ -37,7 +38,8 @@ export function untracked(path: string): boolean {
     path === '/' ||
     path === '/signup' ||
     path.startsWith('/join/') ||
-    // `board/index.vue` and `gm/index.vue` only redirect to Battle or Party.
+    // `board/index.vue` and `gm/index.vue` only redirect to Battle (a route redirect, so
+    // these paths shouldn't reach here; the retired `party` pages redirect the same way).
     /^\/campaigns\/[^/]+\/(?:board|gm)\/?$/.test(path)
   )
 }
@@ -69,11 +71,9 @@ export function seatFor(path: string): PageSeat | null {
   return m[1] === 'gm' ? 'gm' : 'player'
 }
 
-/** 1200px matches `useWideBoard`, where the battle board turns on. */
+/** Width buckets for analytics: the battle board's frames (`classifyLayout`). */
 export function viewportFor(width: number): Viewport {
-  if (width < 700) return 'phone'
-  if (width < 1200) return 'tablet'
-  return 'desktop'
+  return classifyLayout(width)
 }
 
 /**
@@ -143,7 +143,7 @@ function labelledBy(el: Element): string {
 
 const ID_SEGMENT = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d+)$/i
 
-/** A link's route with ids swapped out: "/campaigns/<uuid>/board/party" → "/campaigns/:id/board/party". */
+/** A link's route with ids swapped out: "/campaigns/<uuid>/board/battle" → "/campaigns/:id/board/battle". */
 export function hrefPattern(href: string): string {
   let path = href
   try {

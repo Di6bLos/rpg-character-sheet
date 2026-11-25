@@ -1,20 +1,16 @@
 <script setup lang="ts">
-// Desktop battle board frame (Nimble, 1200px+): the one-line bar, the initiative
+// Desktop battle board frame (Nimble, 1280px+): the one-line bar, the initiative
 // strip and three columns that fill the viewport under the app nav. Only the
-// columns scroll; the page itself never does. For players the left and centre
-// columns share the seated hero's sheet editor (HeroScope).
+// columns scroll; the page itself never does. For players the whole board sits inside
+// the seated hero's sheet editor (HeroScope, in View, above the frame switch).
 import type { useInitiative } from '~/composables/useInitiative'
-import { LEFT_WIDTH } from '~/composables/useBattleLeft'
-import { RIGHT_WIDTH } from '~/composables/useBattleRight'
 
 defineProps<{
   init: ReturnType<typeof useInitiative>
-  /** Whose turn it is (a hero's character id), for the player's automatic turn steps. */
-  turnCharacterId: string | null
-  round: number | null
-  downSummons: string[]
+  /** The board is inside the player's sheet editor (HeroScope). */
+  hero: boolean
 }>()
-/** `hero`: the left and centre slots are inside the player's sheet editor (HeroScope). */
+/** `hero`: the left and centre slots may use the player's sheet editor (HeroScope). */
 defineSlots<{
   strip?: () => unknown
   left?: (props: { hero: boolean }) => unknown
@@ -23,6 +19,8 @@ defineSlots<{
 }>()
 
 const { gmControls } = useCampaignBoard()
+// On touch the columns have no splitters or rail: both stay open, at their saved widths.
+const { touch } = useBoardLayout()
 const left = useBattleLeft()
 const right = useBattleRight()
 
@@ -34,8 +32,8 @@ const CENTRE_MIN = 460
 const cols = ref<HTMLElement | null>(null)
 const leftEl = ref<HTMLElement | null>(null)
 const rightEl = ref<HTMLElement | null>(null)
-const leftOpen = computed(() => left.state.value.column)
-const open = computed(() => right.state.value.column)
+const leftOpen = computed(() => touch.value || left.state.value.column)
+const open = computed(() => touch.value || right.state.value.column)
 const leftWidth = computed(() => left.widthFor(gmControls.value))
 
 /** How wide `el` may grow now: its width plus what the centre has beyond its minimum. */
@@ -48,11 +46,11 @@ function growLimit(el: HTMLElement | null, max: number) {
 
 const leftHandle = useColumnHandle({
   side: 'left',
-  bounds: LEFT_WIDTH,
+  bounds: left.bounds,
   open: () => leftOpen.value,
   width: () => leftWidth.value,
   measure: () => leftEl.value?.getBoundingClientRect().width ?? leftWidth.value,
-  limit: () => growLimit(leftEl.value, LEFT_WIDTH.max),
+  limit: () => growLimit(leftEl.value, left.bounds.value.max),
   setOpen: left.setColumn,
   setWidth: left.setWidth,
   closeAt: left.closeAt,
@@ -61,11 +59,11 @@ const leftHandle = useColumnHandle({
 
 const rightHandle = useColumnHandle({
   side: 'right',
-  bounds: RIGHT_WIDTH,
+  bounds: right.bounds,
   open: () => open.value,
-  width: () => right.state.value.width,
-  measure: () => rightEl.value?.getBoundingClientRect().width ?? right.state.value.width,
-  limit: () => growLimit(rightEl.value, RIGHT_WIDTH.max),
+  width: () => right.width.value,
+  measure: () => rightEl.value?.getBoundingClientRect().width ?? right.width.value,
+  limit: () => growLimit(rightEl.value, right.bounds.value.max),
   setOpen: right.setColumn,
   setWidth: right.setWidth,
   closeAt: right.closeAt,
@@ -93,7 +91,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
     :style="{
       ...(top ? { '--battle-top': `${top}px` } : {}),
       '--battle-left': leftOpen ? `${leftWidth}px` : 'var(--battle-rail)',
-      '--battle-right': open ? `${right.state.value.width}px` : 'var(--battle-rail)',
+      '--battle-right': open ? `${right.width.value}px` : 'var(--battle-rail)',
     }"
   >
     <BattleBar :init="init" />
@@ -101,44 +99,35 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
       <slot name="strip" />
     </div>
     <div ref="cols" class="battle__cols">
-      <BattleHeroScope
-        v-slot="{ hero }"
-        :turn-character-id="turnCharacterId"
-        :round="round"
-        :down-summons="downSummons"
-      >
-        <!-- Kept mounted while closed, like the right column. -->
-        <div
-          ref="leftEl"
-          class="battle__side battle__side--left"
-          :class="{ 'is-closed': !leftOpen }"
-        >
-          <BattleSplitter
-            class="battle__split"
-            orientation="vertical"
-            :label="
-              leftOpen
-                ? `Resize the ${gmControls ? 'stat block' : 'hero'} column: drag, or click to close`
-                : `The ${gmControls ? 'stat block' : 'hero'} column is closed: click or drag right to open`
-            "
-            :value="leftOpen ? leftWidth : 0"
-            :min="0"
-            :max="LEFT_WIDTH.max"
-            @move="leftHandle.onMove"
-            @key="leftHandle.onKey"
-            @drop="leftHandle.onDrop"
-            @tap="leftHandle.onTap"
-          />
-          <div v-show="leftOpen" class="battle__col battle__col--left">
-            <slot name="left" :hero="hero" />
-          </div>
+      <!-- Kept mounted while closed, like the right column. -->
+      <div ref="leftEl" class="battle__side battle__side--left" :class="{ 'is-closed': !leftOpen }">
+        <BattleSplitter
+          v-if="!touch"
+          class="battle__split"
+          orientation="vertical"
+          :label="
+            leftOpen
+              ? `Resize the ${gmControls ? 'stat block' : 'hero'} column: drag, or click to close`
+              : `The ${gmControls ? 'stat block' : 'hero'} column is closed: click or drag right to open`
+          "
+          :value="leftOpen ? leftWidth : 0"
+          :min="0"
+          :max="left.bounds.value.max"
+          @move="leftHandle.onMove"
+          @key="leftHandle.onKey"
+          @drop="leftHandle.onDrop"
+          @tap="leftHandle.onTap"
+        />
+        <div v-show="leftOpen" class="battle__col battle__col--left">
+          <slot name="left" :hero="hero" />
         </div>
-        <div class="battle__col battle__col--centre"><slot name="centre" :hero="hero" /></div>
-      </BattleHeroScope>
+      </div>
+      <div class="battle__col battle__col--centre"><slot name="centre" :hero="hero" /></div>
       <!-- One element open or closed: the chat keeps its draft and live updates, and the
            handle keeps the pointer through a drag that opens or closes the column. -->
       <div ref="rightEl" class="battle__side battle__side--right" :class="{ 'is-closed': !open }">
         <BattleSplitter
+          v-if="!touch"
           class="battle__split"
           orientation="vertical"
           :label="
@@ -146,15 +135,15 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
               ? 'Resize party and chat: drag, or click to close'
               : 'Party and chat are closed: click or drag left to open'
           "
-          :value="open ? right.state.value.width : 0"
+          :value="open ? right.width.value : 0"
           :min="0"
-          :max="RIGHT_WIDTH.max"
+          :max="right.bounds.value.max"
           @move="rightHandle.onMove"
           @key="rightHandle.onKey"
           @drop="rightHandle.onDrop"
           @tap="rightHandle.onTap"
         />
-        <BattleRightRail v-if="!open" />
+        <BattleRightRail v-if="!open && !touch" />
         <div v-show="open" class="battle__col battle__col--right">
           <slot name="right" />
         </div>

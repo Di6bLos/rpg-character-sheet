@@ -2,10 +2,10 @@
 // The handle between the Party and Chat panels: drag it up or down to share the
 // right column between them, all the way to closing either one (a panel dragged
 // smaller than RIGHT_CLOSE_PX snaps closed: the Party to its header line, Chat to a
-// strip with the missed messages). A click opens the closed panel fully (closing
-// the other), or with both open closes Chat. Shown while the Party has heroes.
+// strip with the missed messages). A click shares the column half and half; a click on
+// either panel's header opens that panel fully or closes it. Shown while the Party has heroes.
 import type { RosterEntry } from '~/types'
-import { RIGHT_CLOSE_PX } from '~/composables/useBattleRight'
+import { RIGHT_CLOSE_PX, RIGHT_SPLIT } from '~/composables/useBattleRight'
 
 const props = defineProps<{ roster: RosterEntry[]; gm: boolean }>()
 
@@ -43,13 +43,9 @@ function onKey(step: 'less' | 'more' | 'min' | 'max') {
   if (now >= 1 && step === 'less') return right.setSplit(1 - close, false)
   apply(now + (step === 'more' ? 0.05 : -0.05), false)
 }
-/**
- * A click flips the column between the two panels: a closed panel opens fully (and
- * the other closes); with both open, Chat closes so the Party gets the column.
- * Anything in between is a drag.
- */
+/** A click shares the column half and half (a header click gives one panel all of it). */
 function onTap() {
-  right.setSplit(right.state.value.split >= 1 ? 0 : 1, false)
+  right.setSplit(RIGHT_SPLIT.initial, false)
 }
 function onDrop() {
   drag = null
@@ -62,7 +58,7 @@ function onDrop() {
     <BattleSplitter
       class="rsplit__bar"
       orientation="horizontal"
-      label="Resize party and chat panels: drag, or click to switch between party and chat"
+      label="Resize party and chat panels: drag, or click to share them half and half"
       :value="right.state.value.split * 100"
       :min="0"
       :max="100"

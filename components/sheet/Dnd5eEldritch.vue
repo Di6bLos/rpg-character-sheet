@@ -156,6 +156,7 @@ const byline = computed(() =>
           <span>{{ q.k }}</span>
         </div>
       </div>
+      <SheetDnd5eStatus />
     </section>
 
     <section class="e-panel" aria-labelledby="e-arms" style="gap: 14px">

@@ -68,10 +68,16 @@ export function useInitiative(
    * everyone) for D&D 5e and Pathfinder 2e.
    */
   const campaigns = useCampaignStore()
-  const defaultMode = (): InitiativeMode =>
-    (campaigns.byId(campaignId.value)?.system ?? 'nimble') === 'nimble' ? 'nimble' : 'classic'
-  /** The campaign's initiative rules (see `InitiativeMode`). */
-  const mode = computed<InitiativeMode>(() => encounter.value?.initiative_mode ?? defaultMode())
+  const nimble = () => (campaigns.byId(campaignId.value)?.system ?? 'nimble') === 'nimble'
+  const defaultMode = (): InitiativeMode => (nimble() ? 'nimble' : 'classic')
+  /**
+   * The campaign's initiative rules (see `InitiativeMode`). D&D 5e and PF2e are always
+   * Classic: the switch shows for Nimble only, so an encounter row set to Nimble before it
+   * went (the retired Party tracker offered it everywhere) can't strand them.
+   */
+  const mode = computed<InitiativeMode>(() =>
+    nimble() ? (encounter.value?.initiative_mode ?? 'nimble') : 'classic',
+  )
 
   /** Turn order: summons act on their summoner's turn, so they sit under the hero instead. */
   const order = computed(() =>
@@ -307,11 +313,18 @@ export function useInitiative(
     if (saved && next.ended && isGm.value) await refillActions(next.ended)
   }
 
-  /** Start the next round at the top of the order. Actions are not refilled here. */
-  function newRound() {
+  /**
+   * Start the next round at the top of the order. Actions are not refilled here. Resolves to
+   * an undo that puts the turn and round back (null when nothing moved).
+   */
+  async function newRound(): Promise<(() => Promise<void>) | null> {
     const next = newRoundStart(order.value, round.value)
-    if (!next) return
-    void saveEncounter({ active_combatant: next.active, round: next.round })
+    if (!next || !encounter.value) return null
+    const prev = { active_combatant: encounter.value.active_combatant, round: round.value }
+    if (!(await saveEncounter({ active_combatant: next.active, round: next.round }))) return null
+    return async () => {
+      await saveEncounter(prev)
+    }
   }
 
   function prevTurn() {
@@ -530,11 +543,16 @@ export function useInitiative(
     if (!(await saveEncounter({ initiative_mode: next }))) encounter.value.initiative_mode = before
   }
 
-  async function endEncounter() {
+  /** Clears the tracker; false (after its own error toast) when that failed. */
+  async function endEncounter(): Promise<boolean> {
     const { error } = await supabase.from('combatants').delete().eq('campaign_id', campaignId.value)
-    if (error) return snackbar.error(error, 'Could not clear the encounter')
+    if (error) {
+      snackbar.error(error, 'Could not clear the encounter')
+      return false
+    }
     rows.value = []
     await saveEncounter({ round: 1, active_combatant: null })
+    return true
   }
 
   return {

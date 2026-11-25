@@ -3,7 +3,12 @@
 // the sheet panels already read (via utils/battleActions.ts), and each tile's
 // `use` is the exact call the matching sheet button makes.
 import type { NimbleSheet } from '~/types/sheets'
-import { reactionReason, weaponReason, type BattleAction } from '~/utils/battleActions'
+import {
+  reactionReason,
+  weaponReason,
+  type ActionOdds,
+  type BattleAction,
+} from '~/utils/battleActions'
 import { usedUpLabel } from '~/utils/nimblePlay'
 import type { NimbleResultOptions } from './useNimbleActions'
 
@@ -21,6 +26,13 @@ export type BattleTile = BattleAction & {
   choices?: BattleChoice[]
   /** The spell's upcast control, for spells the sheet lets you upcast. */
   upcast?: { at: number; max: number; set: (tier: number) => void }
+  /** The attack's odds as its sheet card shows them (weapons, inventions, attack spells). */
+  odds?: ActionOdds
+}
+
+/** The odds fields of a sheet attack, as the tile's `odds`. */
+function oddsOf(a: { rushed: number; advantage: number; oddsWhy: string }): ActionOdds {
+  return { rushed: a.rushed, advantage: a.advantage, why: a.oddsWhy }
 }
 
 /** "2 actions · 3 mana" → the number before the word; 0 when the text doesn't say. */
@@ -38,9 +50,8 @@ const RANGE = /^(Range|Reach|Line|Cone)[^.]*/
 export function useBattleActions(options: NimbleResultOptions = {}) {
   const { draft } = useSheet<NimbleSheet>()
   const sheet = computed(() => draft.value.sheet)
-  const lastResult = ref('')
-  /** The full text behind a shortened result (own dice), for its tooltip. */
-  const lastDetail = ref('')
+  // Shared with the phone's result bar (one per hero editor, see useBattleResult).
+  const result = useBattleResult()
   /** The tile being used, while its click runs. */
   let using = ''
   const onResult = (message: string) => {
@@ -48,13 +59,11 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
     // (the dice are on the tile; the full text stays in the tooltip). The party sees
     // the same short line in chat.
     if (using && sheet.value.ownDice && /\byourself\b/.test(message)) {
-      lastResult.value = `${draft.value.name}: use ${using}`
-      lastDetail.value = message
+      result.set(`${draft.value.name}: use ${using}`, message)
       options.onResult?.(`uses ${using}`)
       return
     }
-    lastResult.value = message
-    lastDetail.value = ''
+    result.set(message)
     options.onResult?.(message)
   }
   function named(name: string, use: () => void): () => void {
@@ -91,6 +100,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       desc: [w.props, w.boost].filter(Boolean).join(' · '),
       offTurn: false,
       unavailable: weaponReason(w),
+      odds: oddsOf(w),
       use: w.roll,
     })),
     ...nimble.inventionAttacks.value.map((inv) => ({
@@ -105,6 +115,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       desc: inv.props,
       offTurn: false,
       unavailable: inv.why,
+      odds: oddsOf(inv),
       use: inv.run,
     })),
   ])
@@ -136,6 +147,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
       detail: first(a.props),
       offTurn: false,
       unavailable: a.why,
+      odds: oddsOf(a),
       use: a.run,
     }))
     const support = spells.tiers.value
@@ -145,19 +157,23 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
         // Summoning spells: exactly the Summons panel's card (its `blocked`, then At the max).
         // Others: exactly SpellCard's cast button (notNow, needs, busy, no actions, short).
         const summon = summonOf.get(s.name)
+        // A free cast (Firebrand after rolling Initiative) skips the turn and action checks.
+        const free = s.alts.find((a) => a.free && !a.why)
         const unavailable = summon
           ? summon.blocked || (full(summon.summon) ? 'At the max' : '')
-          : s.notNow ||
-            s.needs ||
-            (s.busy
-              ? 'Finish casting first'
-              : s.noActions
-                ? 'No actions left'
-                : s.short
-                  ? s.usesMinions
-                    ? `Needs ${s.cost}`
-                    : 'Not enough mana'
-                  : '')
+          : free
+            ? s.needs
+            : s.notNow ||
+              s.needs ||
+              (s.busy
+                ? 'Finish casting first'
+                : s.noActions
+                  ? 'No actions left'
+                  : s.short
+                    ? s.usesMinions
+                      ? `Needs ${s.cost}`
+                      : 'Not enough mana'
+                    : '')
         return {
           ...base,
           ...fields(s),
@@ -168,7 +184,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
           detail: RANGE.exec(s.desc)?.[0] ?? '',
           offTurn: waiting.value && unavailable === '',
           unavailable,
-          use: () => spells.cast(s),
+          use: free ? () => spells.cast(s, false, free.key) : () => spells.cast(s),
         }
       })
     const reacts = spells.reactionSpells.value.map((s) => ({
@@ -309,7 +325,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
     onTurn,
     actionsLeft: computed(() => nimble.left.value),
     mana,
-    lastResult,
-    lastDetail,
+    lastResult: result.text,
+    lastDetail: result.detail,
   }
 }

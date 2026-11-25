@@ -18,6 +18,7 @@ import {
   setMalfunction,
 } from '~/utils/nimbleEffects'
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
+import { weaponEnchantment } from '~/utils/nimbleSpellRules'
 import { addCondition, conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
 import {
   armorDice,
@@ -46,6 +47,7 @@ import {
   freeMove,
   afterAttack,
   critTriggerNames,
+  armorNow,
   attackBonus,
   isBloodied,
   manaCost,
@@ -70,6 +72,9 @@ import {
   spendResourceMove,
   startTurn,
   rage,
+  hitDiceToHp,
+  orderUpgrade,
+  orderUpgradeNote,
   endRage,
   spendFury,
   usedUpLabel,
@@ -108,6 +113,8 @@ function resourcePattern(r: { name: string; ability: string; kind: string; diceN
 }
 
 const CLASS_REACTION = /^(?:\([^)]*\)\s*)?Reaction\b/
+/** An ability usable as an action or a reaction (Reposition!): listed in both places. */
+const ACTION_OR_REACTION = /^Action\/Reaction\b/
 const STARTS_AS_ACTION =
   /^(?:\([^)]*\)\s*)?(?:Action(?::|\/Reaction\b)|\d+ actions?:|Spend \d+ actions?\b|You may spend \d+ actions?\b)/
 const WOUND_USE = /\byou may (?:gain|suffer) (?:1|a) Wound to (?!gain\b|double\b)/
@@ -115,6 +122,9 @@ const EXTRA_ACTIONS = /\byou may spend (\d+) additional actions? to\b/
 const STEAL = /\bSteal up to (?:STR|DEX|INT|WIL) actions from your next turn\b/
 const ATTACK_TEXT =
   /\b(?:[Aa]ttack (?:a target|ALL|your|with a|them|on your turn)|make (?:an?|\d+) (?:melee |ranged |weapon )?attacks?|[Ss]hoot\b|shooting\b|This attack\b)/
+const SET_HP_LVL = /\bSet their HP to (\d+)× your LVL\b/
+const HIT_DICE_HP = /\bexpend any number of Hit Dice and set your HP to the sum rolled\b/
+const COMBAT_DIE_MAX = /\bequal to the max value of your Combat Die\b/
 const FREE_ATTACK = /\bmake (?:an?|\d+) (?:melee |ranged |weapon )?attacks?\b[^.]*\bfor free\b/i
 
 const OPTIONAL_DICE = /\bmay roll \+(\d+)d(\d+)\b/
@@ -150,6 +160,24 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const opportunity = useState(`nimble-opportunity-${draft.value.id}`, () => false)
   const situation = useAttackSituation()
   const target = useAttackTarget()
+  const attackOdds = useAttackOdds()
+
+  /**
+   * An attack takes the target's Condemn advantage; outside combat the Disadvantage
+   * and Advantage steppers were for that one roll, so they go back to 0.
+   */
+  function spendTargetAdvantage() {
+    if (target.value.condemned) target.value = { ...target.value, condemned: 0 }
+    if (!sheet.value.inEncounter) attackOdds.value = { disadvantage: 0, advantage: 0 }
+  }
+
+  /** A crit with an enchanted weapon sets the target Smoldering (Enchant Weapon). */
+  function enchantCrit(): string {
+    const e = weaponEnchantment(sheet.value)
+    if (!e?.smoldering || target.value.smoldering) return ''
+    target.value = { ...target.value, smoldering: true }
+    return ` ${e.spell}: the target is Smoldering.`
+  }
   const critReady = useCritReady()
   /** Weapons whose optional extra dice the player turned on for their next attack. */
   const extraDice = useState<Record<string, boolean>>(
@@ -164,6 +192,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         paidUses.value = []
         opportunity.value = false
         situation.value = []
+        attackOdds.value = { disadvantage: 0, advantage: 0 }
         nextAttack.value = { ...NO_NEXT }
         critReady.value = {}
       }
@@ -180,18 +209,21 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     },
   )
 
-  // A fight's statuses on the target don't carry into the next one.
+  // A fight's statuses on the target, and the odds steppers, don't carry into the next one.
   watch(
     () => sheet.value.inEncounter,
     (now, before) => {
-      if (now !== before)
-        target.value = {
-          ...target.value,
-          sundered: false,
-          smoldering: false,
-          hampered: false,
-          hamperedUntilTurn: false,
-        }
+      if (now === before) return
+      target.value = {
+        ...target.value,
+        sundered: false,
+        smoldering: false,
+        hampered: false,
+        hamperedUntilTurn: false,
+        condemned: 0,
+        covered: false,
+      }
+      attackOdds.value = { disadvantage: 0, advantage: 0 }
     },
   )
 
@@ -235,7 +267,13 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
   const NOT_TURN = 'Not your turn'
   /** Waiting for your turn in combat; outside combat anything can be rolled. */
   const offTurn = computed(() => sheet.value.inEncounter && !sheet.value.turnActive)
-  const cond = computed(() => conditionMods(sheet.value, situation.value))
+  const cond = computed(() =>
+    conditionMods(sheet.value, situation.value, {
+      ...attackOdds.value,
+      condemned: target.value.condemned ?? 0,
+      covered: !!target.value.covered,
+    }),
+  )
 
   function report(message: string) {
     say(message)
@@ -297,6 +335,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
               : ''
       const sneak = r?.kind === 'crit' && res.count === 0 ? note : ''
       const bonus = attackBonus(sheet.value, draft.value.level, w, held.value)
+      const enchant = weaponEnchantment(sheet.value)
       const zealous = w.melee && zealMax.value > 0
       const zealDamage = zealous ? zealot.value * 5 : 0
       const quarryFlat = hasMark.value && quarry.value === 'damage' ? draft.value.level : 0
@@ -331,6 +370,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
         if (has(/\bGain advantage on the first attack you make each encounter\b/))
           sheet.value.uses['Ambusher@encounter'] = { used: 1 }
         const help = spendHelp(sheet.value)
+        spendTargetAdvantage()
         return sheet.value.ownDice
           ? help
           : help +
@@ -339,7 +379,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
                 miss,
                 crit,
                 quarry: hasMark.value && !!quarry.value,
-              })
+              }) +
+              (crit && !miss ? enchantCrit() : '')
       }
       return {
         name: w.name,
@@ -360,6 +401,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
           r?.kind === 'crit' && res.count === 0 ? r.name : '',
           w.onCrit?.length ? `${w.name} on-crit damage` : '',
           w.name === 'Sting' ? 'Sting' : '',
+          enchant?.smoldering ? enchant.spell : '',
         ].filter(Boolean),
         critReady: !!critReady.value[`w:${w.name}`],
         optionalDice: optional ? `+${optional[1]}d${optional[2]}` : '',
@@ -383,6 +425,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             notes.push(`${r.name}: add ${r.roll}d${r.die} (used this turn).`)
           }
           if (w.onCrit?.length) notes.push(`Add ${w.onCrit.join(' + ')}.`)
+          notes.push(enchantCrit().trim())
           notes.push(
             afterEffectAttack(sheet.value, draft.value.level, w.name, {
               miss: false,
@@ -457,6 +500,8 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             }
             if (w.onHit?.length) notes.push(`on a hit, add ${w.onHit.join(' + ')}`)
             if (w.onCrit?.length) notes.push(`on a crit, add ${w.onCrit.join(' + ')}`)
+            if (enchant?.smoldering)
+              notes.push(`on a crit, press It crit: the target is Smoldering (${enchant.spell})`)
             if (sneak)
               notes.push(`on a crit, add ${r?.roll}d${r?.die} Sneak Attack and mark it used`)
             const ended = endEffects(sheet.value, 'attack')
@@ -566,11 +611,14 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     sheet.value.abilities
       .filter(
         (a) =>
-          CLASS_REACTION.test(a.desc) &&
+          (CLASS_REACTION.test(a.desc) || ACTION_OR_REACTION.test(a.desc)) &&
           !limitedNames.value.has(abilityBaseName(a.name)) &&
           !summonBySource(abilityBaseName(a.name)),
       )
-      .map((a) => ({ name: abilityBaseName(a.name), desc: a.desc.replace(/^Reaction\s*/, '') })),
+      .map((a) => ({
+        name: abilityBaseName(a.name),
+        desc: a.desc.replace(/^(?:Action\/)?Reaction\s*/, ''),
+      })),
   )
 
   function reactionMax(name: string): number {
@@ -626,7 +674,10 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       const free = freeReaction(r.name)
       return {
         ...r,
-        desc: r.name === 'Defend' ? `${r.desc} Your Armor is ${sheet.value.ac}.` : r.desc,
+        desc:
+          r.name === 'Defend'
+            ? `${r.desc} Your Armor is ${armorNow(sheet.value, draft.value.level).value}.`
+            : r.desc,
         used,
         free,
         costText: `${free ? 'Free' : 'Costs 1 action'}${max > 1 ? ` · ${max - count} of ${max} left` : ''}`,
@@ -664,7 +715,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     const judgment = /\bexpend your Judgment Dice\b/i.test(text)
       ? ` ${expendJudgment(sheet.value)}`
       : ''
-    const extras = reactionExtras(name)
+    const extras = reactionExtras(name) + orderUpgradeNote(sheet.value, name)
     if (!attack) {
       if (!quiet) report(`${name}: ${paid}.${judgment}${extras}`)
       return paid
@@ -808,6 +859,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       paid += ` Spent ${mana} mana.`
     }
     paid += selfGains(sheet.value, draft.value.level, counter.text || text)
+    paid += orderEffects(base, counter.text || text)
     if (!counter.cost?.attack && FREE_ATTACK.test(counter.text || text)) paid += freeAttack(base)
     const judgment = /\bExpend your Judgment Dice\b/i.test(text) ? expendJudgment(sheet.value) : ''
     const summoned = [summonFromAbility(sheet.value, draft.value.level, base), judgment]
@@ -832,11 +884,33 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     )
     if (!attack || !line) return line
     sheet.value.rushed += 1
+    spendTargetAdvantage()
     return line + spendHelp(sheet.value)
+  }
+
+  /** An order used from its counter: its own numbers, then what its upgrade adds. */
+  function orderEffects(order: string, text: string): string {
+    const times = Number(SET_HP_LVL.exec(text)?.[1] ?? 0)
+    if (times) {
+      const hp = times * draft.value.level
+      return ` Set their HP to ${hp}.${orderUpgradeNote(sheet.value, order, { amount: hp })}`
+    }
+    if (HIT_DICE_HP.test(text)) {
+      const rolled = hitDiceToHp(sheet.value)
+      const burn = orderUpgradeNote(sheet.value, order, {
+        amount: sheet.value.ownDice ? undefined : rolled.total,
+      })
+      if (/\bSmoldering\b/.test(burn)) target.value = { ...target.value, smoldering: true }
+      return rolled.message + burn
+    }
+    return FREE_ATTACK.test(text) ? '' : orderUpgradeNote(sheet.value, order)
   }
 
   function freeAttack(source: string): string {
     prepaid.value += 1
+    const withering = orderUpgrade(sheet.value, source)
+    const die = withering && COMBAT_DIE_MAX.test(withering.text) ? (resource.value?.die ?? 0) : 0
+    const upgrade = die ? orderUpgradeNote(sheet.value, source, { die }) : ''
     const name = source.replace(/[!?.]+$/, '')
     const mentions = (pattern: string) =>
       sheet.value.abilities.filter((a) => new RegExp(pattern.replace('NAME', name)).test(a.desc))
@@ -846,19 +920,20 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
     )
     const notes = [
       armor.length
-        ? `+${sheet.value.ac} (${armor.map((a) => abilityBaseName(a.name)).join(', ')})`
+        ? `+${armorNow(sheet.value, draft.value.level).value} (${armor.map((a) => abilityBaseName(a.name)).join(', ')})`
         : '',
       clean.length
         ? `no disadvantage (${clean.map((a) => abilityBaseName(a.name)).join(', ')})`
         : '',
     ].filter(Boolean)
+    if (die) notes.push(`+${die} ${withering?.name}`)
     nextAttack.value = {
       ...NO_NEXT,
-      flat: armor.length ? sheet.value.ac : 0,
+      flat: (armor.length ? armorNow(sheet.value, draft.value.level).value : 0) + die,
       clean: clean.length > 0,
       note: notes.join(', '),
     }
-    return ` Your next attack roll is free${notes.length ? `: ${notes.join(', ')}` : ''}.`
+    return ` Your next attack roll is free${notes.length ? `: ${notes.join(', ')}` : ''}.${upgrade}`
   }
 
   /** Options that spend the class resource (Thrill of the Hunt…), shown beside its moves. */
@@ -1058,10 +1133,11 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
             paidFor(cost, before, a.desc, a.name)
             const spent = mana && spendMana(sheet.value, mana) ? ` Spent ${mana} mana.` : ''
             const free = !cost?.attack && FREE_ATTACK.test(a.desc) ? freeAttack(key) : ''
+            const upgrade = free ? '' : orderUpgradeNote(sheet.value, key)
             const wound = woundUse ? ` ${sufferWound(sheet.value, draft.value.level)}` : ''
             const effect = applyEffect(sheet.value, draft.value.level, key)
             report(
-              `${a.name}:${paid ?? ''}${spent}${free}${wound}${woundUse ? '' : selfGains(sheet.value, draft.value.level, a.desc)}${gadgetRoll(key)}${effect ? ` ${effect}` : ''}`,
+              `${a.name}:${paid ?? ''}${spent}${free}${upgrade}${wound}${woundUse ? '' : selfGains(sheet.value, draft.value.level, a.desc)}${gadgetRoll(key)}${effect ? ` ${effect}` : ''}`,
             )
           },
         },
@@ -1220,6 +1296,7 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       if (invention?.use === 'blade' || invention?.use === 'cannon') {
         sheet.value.rushed += 1
         help = spendHelp(sheet.value)
+        spendTargetAdvantage()
       }
       ready.value = 0
     } else if (!/inoperable|needs at least/.test(message)) ready.value = 0

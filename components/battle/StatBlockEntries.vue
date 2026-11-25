@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The linked stat block's sections (traits, actions, bloodied, last stand…) and GM notes.
 // An entry with dice in its text gets a Roll button: the first dice expression rolls
-// (thrown in the dice tray), posts to party chat as an action line under the
-// creature's name, and shows in a result bar pinned to the bottom of the panel, like
+// (thrown in the dice tray), posts its total (no dice) to party chat as an action line
+// under the creature's name, and shows the dice and total in a result bar pinned to the bottom of the panel, like
 // the player's result bar under their actions.
 import type { CampaignNpc, StatEntry } from '~/types'
 import { findDice, rollDice } from '~/utils/dice'
@@ -10,6 +10,8 @@ import { findDice, rollDice } from '~/utils/dice'
 const props = defineProps<{ npc: CampaignNpc; name: string }>()
 
 const chat = useBoardChat()
+// On touch the Roll buttons are 44px targets, 8px apart.
+const { touch } = useBoardLayout()
 const last = ref<{ key: string; text: string } | null>(null)
 // A new creature starts with no result showing.
 watch(
@@ -31,12 +33,13 @@ async function roll(it: StatEntry, key: string) {
   const detail = rolls.length > 1 || mod ? `${rolls.join(' + ')}${mod} = ` : ''
   const text = `${found.text}: ${detail}${total}`
   last.value = { key, text: `${props.name} · ${it.n || 'Roll'}: ${text}` }
-  await chat.send(`${props.name} · ${it.n || 'Roll'} ${text}`, 'party', 'action')
+  // The party sees only what it came to; the dice stay in the GM's bar.
+  await chat.send(`${props.name} · ${it.n || 'Roll'}: ${total}`, 'party', 'action')
 }
 </script>
 
 <template>
-  <div class="sbe">
+  <div class="sbe" :class="{ 'sbe--touch': touch }">
     <section v-for="(sec, si) in sections" :key="`${sec.title}-${si}`" class="sbe__sec">
       <h3 class="sbe__title">{{ sec.title }}</h3>
       <p v-for="(it, i) in sec.items" :key="`${it.n}-${i}`" class="sbe__entry">
@@ -140,5 +143,19 @@ async function roll(it: StatEntry, key: string) {
 
 .sbe__notes {
   white-space: pre-line;
+}
+
+// --- Touch -----------------------------------------------------------------------------
+.sbe--touch {
+  .sbe__sec {
+    gap: 8px;
+  }
+
+  .sbe__roll {
+    min-height: 44px;
+    margin: 4px 0 4px 8px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
 }
 </style>

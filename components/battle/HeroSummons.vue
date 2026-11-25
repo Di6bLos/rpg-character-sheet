@@ -1,18 +1,28 @@
 <script setup lang="ts">
-// The hero column's summons, one compact row each: name, HP and Slain (the sheet's
-// slay, with its on-death effects; the result also goes to party chat).
+// The hero column's summons, one compact row each: name, HP, Slain (the sheet's slay, with
+// its on-death effects), and Sacrifice / Dismiss where the summon allows them (as the
+// sheet's Summons panel); results also go to party chat. On touch the
+// rows and Slain buttons grow to 44px targets, 8px apart.
 import type { NimbleSheet } from '~/types/sheets'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const chat = useBoardChat()
-const { slay } = useNimbleSummons({
+const { slay, sacrifice, dismiss, groups } = useNimbleSummons({
   onResult: (message) => void chat.send(`${draft.value.name} · ${message}`, 'party', 'action'),
 })
 const summons = computed(() => draft.value.sheet.summons ?? [])
+/** What each summon's kind allows, by summon id. */
+const allows = computed(() => {
+  const out = new Map<string, { sacrifice: boolean; dismiss: boolean }>()
+  for (const g of groups.value)
+    for (const m of g.members) out.set(m.id, { sacrifice: g.canSacrifice, dismiss: g.dismissable })
+  return out
+})
+const { touch } = useBoardLayout()
 </script>
 
 <template>
-  <div v-if="summons.length" class="sum">
+  <div v-if="summons.length" class="sum" :class="{ 'sum--touch': touch }">
     <span class="sect">Summons</span>
     <ul class="sum__list">
       <li v-for="s in summons" :key="s.id" class="sum__row">
@@ -26,6 +36,26 @@ const summons = computed(() => draft.value.sheet.summons ?? [])
           @click="slay(s.id)"
         >
           Slain
+        </button>
+        <button
+          v-if="allows.get(s.id)?.sacrifice"
+          type="button"
+          class="btn btn--quiet btn--sm sum__slay"
+          :aria-label="`Sacrifice ${s.name}`"
+          :disabled="!canEdit"
+          @click="sacrifice(s.id)"
+        >
+          Sacrifice
+        </button>
+        <button
+          v-if="allows.get(s.id)?.dismiss"
+          type="button"
+          class="btn btn--quiet btn--sm sum__slay"
+          :aria-label="`Dismiss ${s.name}`"
+          :disabled="!canEdit"
+          @click="dismiss(s.id)"
+        >
+          Dismiss
         </button>
       </li>
     </ul>
@@ -72,5 +102,20 @@ const summons = computed(() => draft.value.sheet.summons ?? [])
   min-height: 24px;
   padding: 0 8px;
   font-size: 12px;
+}
+
+.sum--touch {
+  .sum__row {
+    min-height: 52px;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+
+  .sum__slay {
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
 }
 </style>

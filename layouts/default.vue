@@ -26,25 +26,18 @@ function isCurrent(match: string[]) {
 const initial = computed(() => (auth.profile?.display_name?.[0] ?? '?').toUpperCase())
 
 // "Manual dice", for all the player's heroes; the menu stays open to show it.
-const snackbar = useSnackbarStore()
-const ownDice = computed(() => auth.profile?.own_dice ?? false)
-const savingDice = ref(false)
-async function toggleOwnDice() {
-  savingDice.value = true
-  try {
-    await auth.updateProfile({ own_dice: !ownDice.value })
-  } catch (err) {
-    snackbar.error(err, 'Could not change how dice are rolled')
-  } finally {
-    savingDice.value = false
-  }
-}
+const account = useAccountMenu()
+const { ownDice, savingDice, toggleOwnDice } = account
 
 async function signOut() {
   menuOpen.value = false
-  await auth.logout()
-  await navigateTo('/')
+  await account.signOut()
 }
+
+// The phone battle board takes the whole screen and carries these links in its
+// campaign menu, so the nav (which wraps to two rows on a phone) steps aside while that
+// frame is mounted (it says so itself).
+const phoneBattle = usePhoneFrameMounted()
 
 function onDocClick(event: MouseEvent) {
   if (menuEl.value && !menuEl.value.contains(event.target as Node)) menuOpen.value = false
@@ -59,9 +52,9 @@ watch(
 </script>
 
 <template>
-  <div class="shell">
-    <a class="skip" href="#main">Skip to content</a>
-    <header class="topbar">
+  <div class="shell" :class="{ 'shell--phone': phoneBattle }">
+    <a class="skip" :href="phoneBattle ? '#battle-content' : '#main'">Skip to content</a>
+    <header v-if="!phoneBattle" class="topbar">
       <div class="topbar__inner">
         <NuxtLink to="/dashboard" class="topbar__logo" aria-label="Lantern dashboard">
           <LanternLogo />
@@ -133,6 +126,27 @@ watch(
 
 .shell__main {
   flex: 1;
+}
+
+// The phone battle board is exactly the visible screen: 100vh is taller than that on
+// phones while the browser bars show, which would let the page scroll.
+.shell--phone {
+  min-height: 0;
+  height: 100dvh;
+  overflow: hidden;
+
+  // Whatever sits above the board (the suspended banner) takes its height from it.
+  .shell__main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    // The board's frame (board/Shell) fills it, and the phone frame fills that.
+    > :deep(.page) {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+  }
 }
 
 .skip {

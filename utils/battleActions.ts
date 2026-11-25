@@ -3,6 +3,7 @@
  * rolls, costs and triggers stay in the Nimble composables; `unavailable` only explains why
  * something is greyed out, and the sheet and the board share the same rule.
  */
+import { oddsLabel } from './nimbleConditions'
 
 export type ActionGroup = 'attack' | 'support' | 'react'
 export type ActionKind = 'weapon' | 'spell' | 'ability' | 'reaction' | 'summon'
@@ -116,12 +117,17 @@ function matches(filter: ActionFilter, a: BattleAction): boolean {
   }
 }
 
-/** Group the actions into the board's sections; empty sections are left out. */
+/**
+ * Group the actions into the board's sections; empty sections are left out. `keep` is the
+ * tile whose details are open: it stays in Ready now even when it stops being usable (an
+ * upcast past the hero's mana), so its details don't vanish under the finger.
+ */
 export function sectionsFor(
   list: BattleAction[],
   filter: ActionFilter,
   query: string,
   onTurn: boolean,
+  keep: string | null = null,
 ): ActionSection[] {
   const q = query.trim().toLowerCase()
   const found = q
@@ -130,7 +136,8 @@ export function sectionsFor(
 
   let sections: ActionSection[]
   if (filter === 'ready') {
-    const open = found.filter((a) => a.unavailable === '')
+    const kept = (a: BattleAction) => a.key === keep
+    const open = found.filter((a) => a.unavailable === '' || kept(a))
     sections = onTurn
       ? [
           section(
@@ -153,7 +160,7 @@ export function sectionsFor(
           ),
           section(
             'Off-turn',
-            open.filter((a) => a.group === 'support' && a.offTurn),
+            open.filter((a) => a.group === 'support' && (a.offTurn || kept(a))),
           ),
           section(
             'Reactions',
@@ -199,4 +206,53 @@ export function readyNote(
   if (ctx.mana !== null) parts.push(`${ctx.mana} mana`)
   if (hidden > 0) parts.push(`hiding ${hidden} you can't use now`)
   return parts.join(' · ')
+}
+
+const VERB: Record<ActionKind, string> = {
+  spell: 'Cast',
+  weapon: 'Attack with',
+  reaction: 'React:',
+  summon: 'Command',
+  ability: 'Use',
+}
+
+/**
+ * The big button in an action's details (touch): what it does, e.g. "Cast Arc Lightning · 3d8",
+ * disabled with the reason while the action is unavailable.
+ */
+export function tileButton(tile: BattleAction): {
+  label: string
+  disabled: boolean
+  reason: string
+} {
+  const label = `${VERB[tile.kind]} ${tile.name}${tile.dice ? ` · ${tile.dice}` : ''}`
+  return { label, disabled: tile.unavailable !== '', reason: tile.unavailable }
+}
+
+const KIND: Record<ActionKind, string> = {
+  weapon: 'Weapon',
+  spell: 'Spell',
+  ability: 'Ability',
+  reaction: 'Reaction',
+  summon: 'Summon',
+}
+
+/** A tile's second line: the kind (or a spell's tier), school and one detail. */
+export function tileSub(a: BattleAction): string {
+  const t = a.tier
+  const spell = t === null ? '' : t === 0 ? 'Cantrip' : `Tier ${t}`
+  return [a.kind === 'spell' ? spell : KIND[a.kind], a.school, a.detail].filter(Boolean).join(' · ')
+}
+
+/** An attack's odds as the sheet computes them (the attack card's Odds: rushed, advantage, why). */
+export interface ActionOdds {
+  rushed: number
+  advantage: number
+  why: string
+}
+
+/** The odds line under the details' Use button: "+1 disadvantage (Rushed)"; '' for even odds. */
+export function oddsLine(odds: ActionOdds | undefined): string {
+  const text = odds ? oddsLabel(odds.rushed, odds.advantage) : ''
+  return text && odds?.why ? `${text} (${odds.why})` : text
 }

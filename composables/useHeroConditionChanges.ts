@@ -1,10 +1,9 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
 import type { HeroConditionChange } from '~/types'
-import type { NimbleSheet } from '~/types/sheets'
 import { keyedQueue } from '~/utils/keyedQueue'
 import {
-  applyConditionChange,
+  applyConditionChangeFor,
   freshConditionChanges,
   lastPerCondition,
 } from '~/utils/heroConditionChange'
@@ -27,6 +26,9 @@ const queue = keyedQueue()
 export function useSendHeroCondition() {
   const snackbar = useSnackbarStore()
   const { campaignId, reloadRoster } = useCampaignBoard()
+  // Only used on the board, so the campaign decides; Nimble while it loads, so a Nimble
+  // add never goes out without its end.
+  const features = useBattleFeatures()
 
   /** False when it failed. */
   async function send(characterId: string, name: string, condition: string, add: boolean) {
@@ -35,7 +37,8 @@ export function useSendHeroCondition() {
       p_character: characterId,
       p_condition: condition,
       p_add: add,
-      p_end: add ? (CONDITION_ENDS[condition] ?? null) : null,
+      // Only Nimble conditions end on their own; 5e and PF2e ones stay until removed.
+      p_end: add && features.value.nimbleHero ? (CONDITION_ENDS[condition] ?? null) : null,
     }
     try {
       const { error } = await queue.run(
@@ -61,11 +64,12 @@ export function useSendHeroCondition() {
 
 /**
  * Picks up condition changes the GM sent this hero while its sheet is open or the next
- * time it loads, applies them with the sheet's own rules and clears them. Same pattern
+ * time it loads, applies them with the sheet's own system's rules (Nimble's addCondition
+ * and usual ends; a plain add or remove for 5e and PF2e) and clears them. Same pattern
  * as useHeroHpChanges: claim by deleting first, so a second open copy can't apply twice.
  */
 export function useHeroConditionChanges() {
-  const { draft, canEdit, say } = useSheet<NimbleSheet>()
+  const { draft, canEdit, say } = useSheet()
   let channel: RealtimeChannel | null = null
   const taken = new Set<string>()
 
@@ -88,7 +92,7 @@ export function useHeroConditionChanges() {
     }
     const claimed = new Set((data ?? []).map((r: { id: string }) => r.id))
     for (const row of lastPerCondition(fresh.filter((r) => claimed.has(r.id)))) {
-      const message = applyConditionChange(draft.value.sheet, row)
+      const message = applyConditionChangeFor(draft.value.system, draft.value.sheet, row)
       if (message) say(message)
     }
   }
@@ -113,7 +117,7 @@ export function useHeroConditionChanges() {
   // Read what is waiting now, and again each time the listener is (re)connected, so a
   // change sent while joining or while disconnected isn't missed; `taken` drops repeats.
   function start() {
-    if (channel || draft.value.system !== 'nimble') return
+    if (channel) return
     const id = draft.value.id
     serial(() => catchUp(id))
     channel = supabase

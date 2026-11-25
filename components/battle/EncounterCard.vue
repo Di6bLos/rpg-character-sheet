@@ -2,12 +2,18 @@
 // One creature on the GM's encounter grid: portrait or initials, name (a pencil on hover
 // renames it in place: Enter saves, Escape cancels), initiative, the HP bar with numbers,
 // −5 / −1 / amount / +1 / +5 (EncounterHp), Armor (in the name row), conditions and action
-// pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one refunds). Slain creatures
-// grey out with Remove and Revive. Heroes take HP through their own sheet (a pickup).
+// pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one
+// refunds). Slain creatures grey out with Remove and Revive. Heroes take HP through their
+// own sheet (a pickup), applied with that system's rules.
+// Off Nimble (`useBattleFeatures`): no pips.
+// Compact (phone Encounter tab, one column): 44px targets 8px apart, and no tooltip (a
+// tap selects; the Creature tab shows the whole stat block).
 import type { CampaignNpc, RosterEntry } from '~/types'
+import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
-import { turnActionsFor } from '~/utils/nimblePlay'
+import { heroTurnActions } from '~/utils/nimblePlay'
+import { heroDead, heroDown } from '~/utils/roster'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -16,10 +22,12 @@ const props = defineProps<{
   hero?: RosterEntry
   selected: boolean
   acting: boolean
+  compact?: boolean
 }>()
 const emit = defineEmits<{ select: []; remove: [] }>()
 
 const heroHp = useSendHeroHp()
+const features = useBattleFeatures()
 
 const isPc = computed(() => props.c.kind === 'pc')
 const noHp = computed(() => !isPc.value && (props.c.hp_max ?? 0) <= 0)
@@ -31,9 +39,26 @@ const hp = computed(() => {
   return { now: props.c.hp ?? 0, max: props.c.hp_max ?? 0, temp: 0 }
 })
 const slain = computed(() => !isPc.value && hp.value.max > 0 && hp.value.now <= 0)
+/** A 5e / PF2e hero at 0 HP is down, as the strip and party card say (Nimble shows HP). */
+const down = computed(
+  () =>
+    isPc.value &&
+    !features.value.nimbleHero &&
+    heroDown(props.hero?.summary?.hp, props.hero?.summary?.hpMax),
+)
+/** Dead: three failed 5e death saves or PF2e Dying 4 (DownStatus's rule). */
+const deadHero = computed(() => down.value && heroDead(props.hero?.summary))
 const armor = computed(() =>
   isPc.value
-    ? String(props.hero?.summary?.ac ?? props.c.ac ?? '—')
+    ? String(
+        heroArmor(
+          props.hero?.summary?.ac,
+          props.hero?.summary?.conditions,
+          props.hero?.character_level,
+        ) ??
+          props.c.ac ??
+          '—',
+      )
     : statTop(props.npc, 'Armor') || String(props.c.ac ?? '—'),
 )
 const conditions = computed(() =>
@@ -43,10 +68,11 @@ const foot = computed(() => conditions.value.join(' · '))
 
 /** Monsters' pips are the GM's to click; a hero's come from their sheet (read-only). */
 const pips = computed(() => {
+  if (!features.value.pips) return null
   if (isPc.value) {
     const s = props.hero?.summary
     if (!s) return null
-    const max = turnActionsFor(s.abilityNames ?? [], !!s.dying)
+    const max = heroTurnActions(s.abilityNames ?? [], !!s.dying, s.conditions)
     return { total: max, used: Math.min(Math.max(0, s.actionsSpent ?? 0), max) }
   }
   const total = props.c.actions_max ?? 0
@@ -121,10 +147,20 @@ const tipKeys = computed(() =>
 </script>
 
 <template>
-  <UiTooltip :title="c.name" :sub="tipSub" :text="tipText" :keys="tipKeys">
+  <UiTooltip
+    :title="compact ? undefined : c.name"
+    :sub="compact ? undefined : tipSub"
+    :text="compact ? undefined : tipText"
+    :keys="compact ? undefined : tipKeys"
+  >
     <article
       class="ec"
-      :class="{ 'is-sel': selected, 'is-acting': acting, 'is-slain': slain }"
+      :class="{
+        'is-sel': selected,
+        'is-acting': acting,
+        'is-slain': slain,
+        'ec--compact': compact,
+      }"
       :aria-label="c.name"
       @click="emit('select')"
     >
@@ -136,7 +172,7 @@ const tipKeys = computed(() =>
           :class-slug="hero?.summary?.classSlug ?? null"
           :square="c.kind === 'monster'"
           :faded="slain"
-          :size="26"
+          :size="compact ? 32 : 26"
         />
         <input
           v-if="editing"
@@ -215,11 +251,15 @@ const tipKeys = computed(() =>
         :max="hp.max"
         :temp="hp.temp"
         :slain="slain"
+        :compact="compact"
+        :down="down"
+        :dead="deadHero"
         @change="change"
       >
         <BattleEncounterPips
           v-if="pips && !slain"
           :name="c.name"
+          :compact="compact"
           :total="pips.total"
           :used="pips.used"
           :readonly="isPc"
@@ -231,6 +271,7 @@ const tipKeys = computed(() =>
         v-if="noHp && pips"
         class="ec__pips"
         :name="c.name"
+        :compact="compact"
         :total="pips.total"
         :used="pips.used"
         :readonly="isPc"
@@ -446,6 +487,59 @@ const tipKeys = computed(() =>
     min-height: 28px;
     padding: 0 10px;
     font-size: 12px;
+  }
+}
+
+.ec--compact {
+  gap: 8px;
+  padding: 8px 10px 10px;
+
+  .ec__top {
+    gap: 8px;
+  }
+
+  .ec__name {
+    font-size: 15px;
+  }
+
+  .ec__pen {
+    width: 44px;
+    height: 44px;
+    margin: 0 -6px;
+    font-size: 15px;
+  }
+
+  .ec__rename {
+    min-height: 40px;
+    // 16px keeps iOS from zooming in on focus.
+    font-size: 16px;
+  }
+
+  .ec__armor {
+    font-size: 12px;
+  }
+
+  .ec__init input {
+    width: 48px;
+    height: 44px;
+    border-color: var(--line);
+    font-size: 16px;
+  }
+
+  .ec__nohp,
+  .ec__foot {
+    font-size: 12px;
+  }
+
+  .ec__nohp .btn,
+  .ec__slain .btn {
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+
+  .ec__slain {
+    gap: 8px;
   }
 }
 </style>
