@@ -5,6 +5,7 @@ import {
   INVEST_LIMIT,
   bulkState,
   etchRune,
+  itemFromDef,
   itemsDailyPrep,
   prepareStaff,
   runeProblem,
@@ -16,7 +17,7 @@ import {
   totalBulk,
   useWand,
 } from '../utils/pf2eInventory'
-import { castFromItem, itemFromDef, pay, useConsumable } from '../utils/pf2eItemUse'
+import { castFromItem, pay, useConsumable } from '../utils/pf2eItemUse'
 import { adjusted } from '../utils/pf2ePlay'
 import { dailyPreparations, slotsFor } from '../utils/pf2eSpells'
 import { defaultSheet } from '../utils/sheetDefaults'

@@ -159,23 +159,6 @@ function setFocus(n: number) {
   if (!canEdit.value) return
   sheet.value.focus.current = sheet.value.focus.current === n ? n - 1 : n
 }
-
-function bulkOf(qty: string): number {
-  const v = qty.trim().toUpperCase()
-  if (v === 'L') return 0.1
-  const n = Number.parseFloat(v)
-  return Number.isFinite(n) ? n : 0
-}
-
-const bulk = computed(() => {
-  const total = sheet.value.inventory.reduce((sum, item) => sum + bulkOf(item.qty), 0)
-  return Math.round(total * 10) / 10
-})
-const bulkPct = computed(() =>
-  sheet.value.bulkLimit > 0
-    ? Math.min(100, Math.round((bulk.value / sheet.value.bulkLimit) * 100))
-    : 0,
-)
 </script>
 
 <template>
@@ -612,41 +595,7 @@ const bulkPct = computed(() =>
       <p v-if="!sheet.feats.length" class="empty">No feats recorded yet.</p>
     </section>
 
-    <section class="panel stack" style="gap: 12px" aria-labelledby="inv-h">
-      <div class="panel-title" style="margin: 0">
-        <h2 id="inv-h">Inventory</h2>
-        <span class="small">
-          Bulk <strong>{{ bulk }}</strong> / {{ sheet.bulkLimit }} before encumbered
-        </span>
-      </div>
-      <div class="meter meter--accent meter--thin"><span :style="{ width: bulkPct + '%' }" /></div>
-      <div>
-        <div
-          v-for="(item, i) in sheet.inventory"
-          :key="i"
-          class="list-row"
-          style="padding: 10px 0; font-size: 14px"
-        >
-          <span>{{ item.name }}</span>
-          <span class="muted">{{ item.qty }}</span>
-        </div>
-      </div>
-      <div class="facts">
-        <span
-          >gp <strong>{{ sheet.coins.gp }}</strong></span
-        >
-        <span
-          >sp <strong>{{ sheet.coins.sp }}</strong></span
-        >
-        <span
-          >cp <strong>{{ sheet.coins.cp }}</strong></span
-        >
-      </div>
-      <div class="field">
-        <label for="pf-notes">Notes</label>
-        <textarea id="pf-notes" v-model="sheet.notes" class="input" rows="4" :readonly="!canEdit" />
-      </div>
-    </section>
+    <Pf2eSheetInventory />
   </div>
 </template>
 

@@ -3,7 +3,14 @@
 // and armor and what they add to Strikes, AC and saves (GM Core pp. 224–225), the constant
 // bonuses of worn and held items, and staff and wand charges (GM Core pp. 278, 282). Pure
 // functions on the sheet; using an item is `utils/pf2eItemUse.ts`.
-import type { Pf2eEffectDef, Pf2eItemDef } from '~/data/pf2e/types'
+import type {
+  Pf2eArmorDef,
+  Pf2eEffectDef,
+  Pf2eItemDef,
+  Pf2eShieldDef,
+  Pf2eSpellDef,
+  Pf2eWeaponDef,
+} from '~/data/pf2e/types'
 import type { InventoryItem, Pf2eItemState, Pf2eSheet } from '~/types/sheets'
 
 /** A modifier the way utils/pf2ePlay.ts stacks them (kept here to avoid an import cycle). */
@@ -106,6 +113,64 @@ export function syncEncumbered(s: Pf2eSheet): string | undefined {
   }
   if (!over && s.bulkEncumbered) delete s.bulkEncumbered
   return undefined
+}
+
+/** Any record the inventory can add: other equipment, or a weapon, armor or shield. */
+export type Pf2eOwnable =
+  | { set: 'item'; def: Pf2eItemDef }
+  | { set: 'weapons'; def: Pf2eWeaponDef }
+  | { set: 'armor'; def: Pf2eArmorDef }
+  | { set: 'shields'; def: Pf2eShieldDef }
+
+/**
+ * A new inventory entry from a data record, with the numbers the sheet uses copied onto it.
+ * Armor starts worn; a scroll or wand holds the `spell` chosen for it.
+ */
+export function itemFromDef(o: Pf2eOwnable, count = 1, spell?: Pf2eSpellDef): InventoryItem {
+  const d = o.def
+  const common: Pf2eItemState = {
+    id: d.id,
+    count,
+    bulk: d.bulk,
+    level: d.level,
+    price: d.price,
+    carry: 'stowed',
+    traits: d.traits,
+  }
+  let st: Pf2eItemState
+  let name = d.name
+  if (o.set === 'weapons')
+    st = { ...common, kind: 'weapon', ranged: o.def.type === 'Ranged', carry: 'held' }
+  else if (o.set === 'armor')
+    st = { ...common, kind: 'armor', category: o.def.category.toLowerCase(), carry: 'worn' }
+  else if (o.set === 'shields') st = { ...common, kind: 'shield', carry: 'held' }
+  else {
+    const i = o.def
+    const { healing, bonuses, duration, bomb, rune, spells, spellRank } = i
+    st = {
+      ...common,
+      kind: i.kind,
+      ...(i.usage ? { usage: i.usage } : {}),
+      ...(i.activations.length ? { activations: i.activations } : {}),
+      ...(healing ? { healing } : {}),
+      ...(bonuses ? { bonuses } : {}),
+      ...(duration ? { duration } : {}),
+      ...(bomb ? { bomb } : {}),
+      ...(rune ? { rune } : {}),
+      ...(spells ? { spells, charges: 0 } : {}),
+      ...(spellRank ? { spellRank } : {}),
+      ...(i.kind === 'wand' ? { wand: { cast: false, overcharged: false, broken: false } } : {}),
+    }
+    if (/^worn\b/i.test(i.usage ?? '')) st.carry = 'worn'
+    if (spell && spellRank) {
+      st.spell = { id: spell.id, name: spell.name, rank: spellRank }
+      name =
+        i.kind === 'scroll'
+          ? `Scroll of ${spell.name} (rank ${spellRank})`
+          : `${d.name.replace(/\s*\(\d+(?:st|nd|rd|th)-rank Spell\)$/i, '')} of ${spell.name} (rank ${spellRank})`
+    }
+  }
+  return { name, qty: bulkLabel(d.bulk), pf2e: st }
 }
 
 // --- Investing (GM Core p. 219) ----------------------------------------------------

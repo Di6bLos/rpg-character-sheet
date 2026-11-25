@@ -398,6 +398,8 @@ export interface Pf2eCreation {
   armor?: string
   shield?: string
   weapons: string[]
+  /** Other gear and consumables bought (AoN ids), with how many of each. */
+  items?: { id: string; count: number }[]
   /** Spells picked at creation (AoN ids): cantrips, then 1st-rank spells. */
   spells?: { cantrips: string[]; rank1: string[] }
   /** A cleric's divine font when the deity offers both. */

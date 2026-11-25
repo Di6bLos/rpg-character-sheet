@@ -1,81 +1,18 @@
-// Using Pathfinder 2e items from the sheet (GM Core pp. 220, 244–282): adding an item from the
-// data, consumables (a healing potion heals, an elixir's or potion's bonus turns on as an
+// Using Pathfinder 2e items from the sheet (GM Core pp. 220, 244–282): paying for them,
+// consumables (a healing potion heals, an elixir's or potion's bonus turns on as an
 // effect, a bomb is thrown as a Strike), and casting the spell in a scroll, wand or staff
 // through the spell rules at the item's rank. The bookkeeping (Bulk, runes, charges) is in
 // `utils/pf2eInventory.ts`.
-import type {
-  Pf2eArmorDef,
-  Pf2eEffectDef,
-  Pf2eItemDef,
-  Pf2eShieldDef,
-  Pf2eSpellDef,
-  Pf2eWeaponDef,
-} from '~/data/pf2e/types'
-import type { InventoryItem, Pf2eItemState, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import type { Pf2eEffectDef, Pf2eSpellDef } from '~/data/pf2e/types'
+import type { InventoryItem, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { type Rng, parseDice, rollAttack, rollDice, rollDie, sign } from '~/utils/dice'
 import { attacked, mapIndex } from '~/utils/pf2eActions'
 import { toggleEffect } from '~/utils/pf2eEffects'
-import { bulkLabel, highestSlot, spendOne, spendStaff, useWand } from '~/utils/pf2eInventory'
+import { highestSlot, spendOne, spendStaff, useWand } from '~/utils/pf2eInventory'
 import { adjusted, degreeOf, heal, proficiency, strikeResult } from '~/utils/pf2ePlay'
+import { type Pf2eBuildData, higher } from '~/utils/pf2eBuild'
+import { profileAt, weaponRankIn } from '~/utils/pf2eLevelUp'
 import { type Pf2eCastChoice, castEffect, heightenedRank } from '~/utils/pf2eSpells'
-
-/** Any record the inventory can add: other equipment, or a weapon, armor or shield. */
-export type Pf2eOwnable =
-  | { set: 'item'; def: Pf2eItemDef }
-  | { set: 'weapons'; def: Pf2eWeaponDef }
-  | { set: 'armor'; def: Pf2eArmorDef }
-  | { set: 'shields'; def: Pf2eShieldDef }
-
-/**
- * A new inventory entry from a data record, with the numbers the sheet uses copied onto it.
- * Armor starts worn; a scroll or wand holds the `spell` chosen for it.
- */
-export function itemFromDef(o: Pf2eOwnable, count = 1, spell?: Pf2eSpellDef): InventoryItem {
-  const d = o.def
-  const common: Pf2eItemState = {
-    id: d.id,
-    count,
-    bulk: d.bulk,
-    level: d.level,
-    price: d.price,
-    carry: 'stowed',
-    traits: d.traits,
-  }
-  let st: Pf2eItemState
-  let name = d.name
-  if (o.set === 'weapons')
-    st = { ...common, kind: 'weapon', ranged: o.def.type === 'Ranged', carry: 'held' }
-  else if (o.set === 'armor')
-    st = { ...common, kind: 'armor', category: o.def.category.toLowerCase(), carry: 'worn' }
-  else if (o.set === 'shields') st = { ...common, kind: 'shield', carry: 'held' }
-  else {
-    const i = o.def
-    const { healing, bonuses, duration, bomb, rune, spells, spellRank } = i
-    st = {
-      ...common,
-      kind: i.kind,
-      ...(i.usage ? { usage: i.usage } : {}),
-      ...(i.activations.length ? { activations: i.activations } : {}),
-      ...(healing ? { healing } : {}),
-      ...(bonuses ? { bonuses } : {}),
-      ...(duration ? { duration } : {}),
-      ...(bomb ? { bomb } : {}),
-      ...(rune ? { rune } : {}),
-      ...(spells ? { spells, charges: 0 } : {}),
-      ...(spellRank ? { spellRank } : {}),
-      ...(i.kind === 'wand' ? { wand: { cast: false, overcharged: false, broken: false } } : {}),
-    }
-    if (/^worn\b/i.test(i.usage ?? '')) st.carry = 'worn'
-    if (spell && spellRank) {
-      st.spell = { id: spell.id, name: spell.name, rank: spellRank }
-      name =
-        i.kind === 'scroll'
-          ? `Scroll of ${spell.name} (rank ${spellRank})`
-          : `${d.name.replace(/\s*\(\d+(?:st|nd|rd|th)-rank Spell\)$/i, '')} of ${spell.name} (rank ${spellRank})`
-    }
-  }
-  return { name, qty: bulkLabel(d.bulk), pf2e: st }
-}
 
 /** Takes the price of `count` from the hero's coins, making change; false when short. */
 export function pay(s: Pf2eSheet, cp: number): boolean {
@@ -124,6 +61,21 @@ function payActions(s: Pf2eSheet, cost: unknown): string | undefined {
   if (cost === 'reaction' && t) t.reaction = false
   else if (t?.active) t.actions -= actionCount(cost)
   return undefined
+}
+
+/**
+ * The hero's rank with bombs (GM Core p. 244: martial thrown weapons) at their level, from the
+ * class's proficiencies; a class trained in "alchemical bombs" (the alchemist, Player Core 2
+ * p. 56) raises them with its simple weapons. Hand-made sheets are taken as trained.
+ */
+export function bombRank(s: Pf2eSheet, level: number, data: Pf2eBuildData): Pf2eRank {
+  const p = profileAt(s, level, data)
+  if (!p) return 'T'
+  const martial = weaponRankIn(p, { name: '', category: 'Martial', group: 'Bomb' })
+  const cls = data.classes.find((c) => c.slug === s.classSlug)
+  const alchemical = cls?.attacks.some((l) => /alchemical bombs/i.test(l))
+  const simple = weaponRankIn(p, { name: '', category: 'Simple', group: '' })
+  return alchemical ? higher(martial, simple) : martial
 }
 
 export interface Pf2eItemUseOptions {
