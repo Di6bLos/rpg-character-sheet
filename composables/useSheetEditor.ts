@@ -1,10 +1,12 @@
 import type { InjectionKey, Ref } from 'vue'
 import type { Character } from '~/types'
-import type { AnySheet, NimbleSheet } from '~/types/sheets'
+import type { AnySheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
 import { showOutcome } from '~/utils/dice'
 import { applyHpChangeFor } from '~/utils/heroHpChange'
 import { beginEncounter, endEncounter, initiativeRoll } from '~/utils/nimblePlay'
+import { endPf2eEncounter, inEncounter as pf2eInEncounter, newTurn } from '~/utils/pf2eActions'
+import { acParts } from '~/utils/pf2ePlay'
 import { seatChange, type Seat } from '~/utils/turnSteps'
 
 export interface SheetEditor<T extends AnySheet = AnySheet> {
@@ -150,12 +152,33 @@ export function provideSheetEditor(
     { immediate: true },
   )
 
-  // The GM's encounter, for a Nimble hero the player edits in a campaign: its initiative
-  // rules (Classic starts heroes with full actions, read as `sheet.classicInitiative`),
-  // and whether the hero is seated on the tracker. Being seated joins the encounter
-  // (New encounter, then Roll Initiative); leaving the tracker ends it, and while seated
-  // the turn steps are only Roll Initiative, Start turn and End turn (`gmEncounter`).
-  const tracked = computed(() => canEdit.value && draft.value.system === 'nimble')
+  // PF2e: the AC parts the battle board stacks with the roster's conditions and shield
+  // (`acParts`), kept in step with the sheet so the party sees the hero's AC as it is.
+  watch(
+    () =>
+      canEdit.value && draft.value.system === 'pf2e'
+        ? JSON.stringify(acParts(draft.value.sheet as Pf2eSheet))
+        : null,
+    (parts) => {
+      if (parts === null) return
+      const sheet = draft.value.sheet as Pf2eSheet
+      if (JSON.stringify(sheet.acParts ?? null) !== parts) sheet.acParts = JSON.parse(parts)
+    },
+    { immediate: true },
+  )
+
+  // The GM's encounter, for a Nimble or PF2e hero the player edits in a campaign: its
+  // initiative rules (Nimble: Classic starts heroes with full actions, read as
+  // `sheet.classicInitiative`), and whether the hero is seated on the tracker. Being seated
+  // joins the encounter (Nimble: New encounter, then Roll Initiative); leaving the tracker
+  // ends it, and while seated the Nimble turn steps are only Roll Initiative, Start turn and
+  // End turn (`gmEncounter`). PF2e: leaving ends the encounter (endPf2eEncounter: Rage and
+  // the encounter's effects end), a new fight clears the last one's turn, and the tracker's
+  // Initiative is the sheet's (`turn.initiative`).
+  const nimble = computed(() => draft.value.system === 'nimble')
+  const tracked = computed(
+    () => canEdit.value && (draft.value.system === 'nimble' || draft.value.system === 'pf2e'),
+  )
   const encounter = useCampaignEncounter(
     computed(() => (tracked.value ? campaignId.value : null)),
     computed(() => (tracked.value ? draft.value.id : null)),
@@ -163,7 +186,7 @@ export function provideSheetEditor(
   watch(
     [encounter.mode, campaignId],
     ([mode, campaign]) => {
-      if (!tracked.value) return
+      if (!tracked.value || !nimble.value) return
       const sheet = draft.value.sheet as NimbleSheet
       // No campaign: the default Nimble rule. Unknown yet (loading, or a failed load):
       // keep what the sheet has.
@@ -188,6 +211,7 @@ export function provideSheetEditor(
     seat,
     (now, before) => {
       if (!tracked.value) return
+      if (!nimble.value) return pf2eSeat(now, before)
       const sheet = draft.value.sheet as NimbleSheet
       const change = seatChange(before, now, sheet)
       if (change === 'begin') lastRoll.value = beginEncounter(sheet)
@@ -198,18 +222,55 @@ export function provideSheetEditor(
     },
     { immediate: true },
   )
+  /**
+   * PF2e's seat: leaving the GM's tracker ends the encounter; a new fight (another seat than
+   * the one saved) first clears the last one. A roll made before the GM seats the hero stays.
+   */
+  function pf2eSeat(now: Seat, before: Seat | undefined) {
+    const sheet = draft.value.sheet as Pf2eSheet
+    const state = {
+      inEncounter: pf2eInEncounter(sheet),
+      awaitingInitiative: sheet.turn?.initiative === undefined && !sheet.turn?.active,
+      gmCombatant: sheet.gmCombatant,
+    }
+    const change = seatChange(before, now, state)
+    if (change === 'end') lastRoll.value = endPf2eEncounter(sheet)
+    else if (change === 'begin' && state.gmCombatant && state.gmCombatant !== now)
+      endPf2eEncounter(sheet)
+    if (now === null) return
+    const joined = now || undefined
+    if (sheet.gmCombatant !== joined) sheet.gmCombatant = joined
+  }
   const gmEncounter = computed(() => tracked.value && encounter.seated.value === true)
   // The GM typed this hero's Initiative while the sheet waits for it: take that score
   // (starting actions and "when you roll Initiative" effects) instead of asking for a
   // roll that would overwrite it. Only on the change seen here, so an old score on the
   // tracker is never applied to a new encounter.
   watch(encounter.hero, (now, before) => {
-    if (!tracked.value || !now?.rolled || before?.rolled !== false) return
+    if (!tracked.value || !now?.rolled) return
+    if (!nimble.value) return pf2eTrackerInitiative(now.initiative)
+    if (before?.rolled !== false) return
     const sheet = draft.value.sheet as NimbleSheet
     if (!sheet.awaitingInitiative) return
     const { message } = initiativeRoll(sheet, draft.value.level, Math.random, now.initiative)
     lastRoll.value = `GM set your Initiative. ${message}`
   })
+
+  /**
+   * PF2e: the tracker's Initiative for the seated hero is the sheet's, rolled there, on the
+   * board or typed by the GM, so the sheet won't roll another this encounter.
+   */
+  function pf2eTrackerInitiative(total: number) {
+    const sheet = draft.value.sheet as Pf2eSheet
+    const turn = (sheet.turn ??= newTurn())
+    if (turn.initiative === total) return
+    const was = turn.initiative
+    turn.initiative = total
+    lastRoll.value =
+      was === undefined
+        ? `Initiative ${total}, as the GM's tracker has it.`
+        : `Initiative ${total}: the GM's tracker changed it from ${was}.`
+  }
 
   /**
    * The sheet's ±1 HP buttons. 5e and PF2e follow the same rules as the GM's changes (temp HP

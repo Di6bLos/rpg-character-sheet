@@ -4,6 +4,7 @@
 import actionsUrl from './generated/actions.json?url'
 import ancestriesUrl from './generated/ancestries.json?url'
 import archetypesUrl from './generated/archetypes.json?url'
+import armsUrl from './generated/arms.json?url'
 import armorUrl from './generated/armor.json?url'
 import backgroundsUrl from './generated/backgrounds.json?url'
 import classesUrl from './generated/classes.json?url'
@@ -16,6 +17,7 @@ import heritagesUrl from './generated/heritages.json?url'
 import magicItemsUrl from './generated/magicItems.json?url'
 import runesUrl from './generated/runes.json?url'
 import shieldsUrl from './generated/shields.json?url'
+import snaresUrl from './generated/snares.json?url'
 import spellsUrl from './generated/spells.json?url'
 import stavesUrl from './generated/staves.json?url'
 import traitsUrl from './generated/traits.json?url'
@@ -43,6 +45,8 @@ export interface Pf2eData {
   actions: Pf2eActionDef[]
   ancestries: Pf2eAncestryDef[]
   archetypes: Pf2eArchetypeDef[]
+  /** Specific magic and precious-material weapons, armor and shields (GM Core pp. 228–243). */
+  arms: Pf2eItemDef[]
   armor: Pf2eArmorDef[]
   backgrounds: Pf2eBackgroundDef[]
   classes: Pf2eClassDef[]
@@ -55,6 +59,7 @@ export interface Pf2eData {
   magicItems: Pf2eItemDef[]
   runes: Pf2eItemDef[]
   shields: Pf2eShieldDef[]
+  snares: Pf2eItemDef[]
   spells: Pf2eSpellDef[]
   staves: Pf2eItemDef[]
   traits: Pf2eTraitDef[]
@@ -66,6 +71,7 @@ const URLS: Record<keyof Pf2eData, string> = {
   actions: actionsUrl,
   ancestries: ancestriesUrl,
   archetypes: archetypesUrl,
+  arms: armsUrl,
   armor: armorUrl,
   backgrounds: backgroundsUrl,
   classes: classesUrl,
@@ -78,6 +84,7 @@ const URLS: Record<keyof Pf2eData, string> = {
   magicItems: magicItemsUrl,
   runes: runesUrl,
   shields: shieldsUrl,
+  snares: snaresUrl,
   spells: spellsUrl,
   staves: stavesUrl,
   traits: traitsUrl,

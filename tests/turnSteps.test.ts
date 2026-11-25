@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { seatChange, turnHeadline, turnSteps, typesInitiative } from '../utils/turnSteps'
+import {
+  seatChange,
+  trackerTurnStep,
+  turnHeadline,
+  turnSteps,
+  typesInitiative,
+} from '../utils/turnSteps'
 
 const idle = {
   inEncounter: false,
@@ -138,5 +144,56 @@ describe('seatChange', () => {
     expect(seatChange('a', null, fighting)).toBeNull()
     expect(seatChange('a', 'a', idle)).toBeNull()
     expect(seatChange('a', 'a', inA)).toBeNull()
+  })
+})
+
+describe('trackerTurnStep: the GM tracker drives a PF2e hero’s turn', () => {
+  const at = (p: Partial<Parameters<typeof trackerTurnStep>[0]>) =>
+    trackerTurnStep({
+      mine: 'mira',
+      now: null,
+      before: null,
+      round: 1,
+      prevRound: 1,
+      active: false,
+      synced: true,
+      ...p,
+    })
+
+  it('starts the hero’s turn when the tracker reaches them', () => {
+    expect(at({ before: 'goblin', now: 'mira' })).toEqual({ end: false, start: true })
+  })
+
+  it('ends it when the tracker moves past them', () => {
+    expect(at({ before: 'mira', now: 'bram', active: true })).toEqual({ end: true, start: false })
+    // Already ended on the sheet: nothing to do.
+    expect(at({ before: 'mira', now: 'bram' })).toEqual({ end: false, start: false })
+  })
+
+  it('ends and starts again on a new round with only the hero to act', () => {
+    const wrap = { before: 'mira', now: 'mira', prevRound: 1, round: 2, active: true }
+    expect(at(wrap)).toEqual({ end: true, start: true })
+  })
+
+  it('a new round that starts on someone else ends the hero’s turn', () => {
+    expect(at({ before: 'mira', now: 'goblin', prevRound: 1, round: 2, active: true })).toEqual({
+      end: true,
+      start: false,
+    })
+  })
+
+  it('the tracker cleared (End encounter) ends a running turn', () => {
+    expect(at({ before: 'mira', now: null, round: null, active: true })).toEqual({
+      end: true,
+      start: false,
+    })
+  })
+
+  it('lines up once on load, without restarting a turn the tracker already started', () => {
+    const load = { synced: false, now: 'mira', round: 3 }
+    expect(at(load)).toEqual({ end: false, start: true })
+    expect(at({ ...load, startedRound: 3 })).toEqual({ end: false, start: false })
+    expect(at({ synced: false, now: 'bram', active: true })).toEqual({ end: true, start: false })
+    expect(at({ synced: false, now: null, active: true })).toEqual({ end: false, start: false })
   })
 })

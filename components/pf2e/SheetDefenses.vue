@@ -3,15 +3,20 @@
 // p. 445) with its dice, taken by End turn with its DC 15 flat check, an assisted recovery (DC 10
 // for particularly apt help, once a round) and End; a form to add one by hand; then the hero's
 // immunities, weaknesses and resistances (p. 408), those the player wrote down (removable) and
-// those effects give (Raging Resistance by instinct). Rules in utils/pf2eDamage.ts and
+// those effects give (Raging Resistance by instinct, Superstition's two traditions chosen
+// here). Rules in utils/pf2eDamage.ts and
 // utils/pf2ePlay.ts.
 import type { Pf2eSheet } from '~/types/sheets'
 import {
   PF2E_DAMAGE_TYPES,
+  SUPERSTITION_KEY,
+  SUPERSTITION_PAIRS,
   addPersistent,
   defensesOf,
+  instinctOf,
   persistentAmount,
   removePersistent,
+  superstitionTraditions,
 } from '~/utils/pf2eDamage'
 import { assistedRecovery } from '~/utils/pf2ePlay'
 
@@ -38,6 +43,19 @@ function end(t: string) {
 }
 
 const defenses = computed(() => defensesOf(sheet.value, draft.value.level))
+
+/** Superstition's two traditions for Raging Resistance (Player Core 2 p. 75). */
+const superstition = computed(() => instinctOf(sheet.value) === 'Superstition')
+const traditions = computed({
+  get: () => superstitionTraditions(sheet.value).join(' and '),
+  set: (v: string) => {
+    if (!canEdit.value) return
+    sheet.value.levelChoices = {
+      ...sheet.value.levelChoices,
+      [SUPERSTITION_KEY]: v ? v.split(' and ') : [],
+    }
+  },
+})
 
 type Kind = 'resistances' | 'weaknesses' | 'immunities'
 const kind = ref<Kind>('resistances')
@@ -165,6 +183,15 @@ const listed = computed(() => [
         </button>
       </li>
     </ul>
+    <label v-if="superstition" class="defs__form small">
+      Superstition resists spells of
+      <select v-model="traditions" class="input defs__type" :disabled="!canEdit">
+        <option value="">Choose two traditions</option>
+        <option v-for="p in SUPERSTITION_PAIRS" :key="p.join()" :value="p.join(' and ')">
+          {{ p.join(' and ') }}
+        </option>
+      </select>
+    </label>
     <form class="defs__form" @submit.prevent="addDefense">
       <label class="sr-only" for="pf-def-kind">Kind</label>
       <select id="pf-def-kind" v-model="kind" class="input defs__type" :disabled="!canEdit">

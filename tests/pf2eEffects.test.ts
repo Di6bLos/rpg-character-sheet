@@ -25,6 +25,7 @@ import {
   recoveryDc,
   takeDamage,
 } from '../utils/pf2ePlay'
+import { endPf2eEncounter, endPf2eTurn, startPf2eTurn } from '../utils/pf2eActions'
 import { defaultSheet } from '../utils/sheetDefaults'
 import { buildData, loadSet } from './helpers/pf2e'
 
@@ -174,6 +175,7 @@ describe('pf2e effects, second wave', () => {
   it('applies the ranger’s edges only while hunting prey (Player Core p. 154)', () => {
     const s = hero(['Hunt Prey', 'Flurry', 'Outwit'])
     expect(mapPenalties(s, false)).toEqual([0, 5, 10])
+    expect(mapPenalties(s, true)).toEqual([0, 4, 8])
     expect(adjusted(s, 5, { kind: 'skill', attr: 'CHA', skill: 'Deception' }).value).toBe(5)
     toggleEffect(s, 'Hunt Prey', 1)
     expect(mapPenalties(s, false)).toEqual([0, 3, 6])
@@ -304,5 +306,40 @@ describe('pf2e Devise a Stratagem (Player Core 2 p. 103)', () => {
       ready: false,
       struck: undefined,
     })
+  })
+})
+
+describe('pf2e effects that end by themselves (review fixes)', () => {
+  it('a bard’s own anthem lasts 1 round: it ends at the start of their next turn (p. 370)', () => {
+    for (const name of ['Courageous Anthem', 'Rallying Anthem']) {
+      const s = hero([name])
+      startPf2eTurn(s)
+      toggleEffect(s, name, 1)
+      endPf2eTurn(s)
+      expect(s.effects?.on).toEqual([name])
+      expect(startPf2eTurn(s)).toContain(`${name} ends`)
+      expect(s.effects?.on).toEqual([])
+    }
+  })
+
+  it('an ally’s anthem lasts through the one turn they take in that round', () => {
+    for (const name of ['Courageous Anthem (ally)', 'Rallying Anthem (ally)']) {
+      const s = hero()
+      setGiven(s, name, true)
+      startPf2eTurn(s)
+      expect(s.effects?.given.map((g) => g.name)).toEqual([name])
+      endPf2eTurn(s)
+      expect(s.effects?.given).toEqual([])
+    }
+  })
+
+  it('Rage ends with the encounter, and its temporary HP go (Player Core 2 p. 72)', () => {
+    const s = hero(['Rage'], { attrs: { ...defaultSheet('pf2e').attrs, CON: 2 } })
+    startPf2eTurn(s)
+    toggleEffect(s, 'Rage', 1)
+    expect(s.tempHp).toBe(3)
+    expect(endPf2eEncounter(s)).toContain('Rage ends')
+    expect(s.effects?.on).toEqual([])
+    expect(s.tempHp).toBe(0)
   })
 })

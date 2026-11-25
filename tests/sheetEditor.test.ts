@@ -3,6 +3,7 @@ import { computed, inject, nextTick, ref, toRaw, watch } from 'vue'
 import type { Character } from '~/types'
 import type { AnySheet } from '~/types/sheets'
 import { pendingSaves } from '~/utils/pendingSaves'
+import { defaultSheet } from '~/utils/sheetDefaults'
 
 vi.mock('~/stores/character', () => ({ portraitUrl: () => null }))
 
@@ -17,7 +18,7 @@ function hero(): Character<AnySheet> {
     level: 5,
     system: 'pf2e',
     portrait_path: null,
-    sheet: { hp: 20, hpMax: 20, xp: 0, xpNext: 1000 },
+    sheet: { ...defaultSheet('pf2e'), hp: 20, hpMax: 20, xp: 0, xpNext: 1000 },
   } as unknown as Character<AnySheet>
 }
 

@@ -9,11 +9,13 @@
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
 // Every system's sheet applies the GM's changes with its own rules; only Nimble conditions
 // end on their own timing. Where Nimble shows the GM mana, PF2e
-// (`gmPoints`) shows hero and focus points.
+// (`gmPoints`) shows hero and focus points. PF2e damage also takes its type, From a spell and
+// Shield Block (offered while the hero's shield is raised), so the hero's resistances,
+// weaknesses and shield apply; the picker's Persistent damage sets persistent damage.
 import type { HeroCard, RosterEntry } from '~/types'
-import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
+import { PF2E_DAMAGE_TYPES } from '~/utils/pf2eDamage'
 import { initiativeBonus, initiativeLabel } from '~/utils/heroCardStats'
 import { conditionLabels, heroDown, hpTone } from '~/utils/roster'
 
@@ -72,7 +74,7 @@ function pct(n: number, max: number): number {
 }
 
 // --- GM: add or remove conditions (sent to the hero's sheet like HP) ------------------
-const { send: sendCondition } = useSendHeroCondition()
+const { send: sendCondition, sendPersistent } = useSendHeroCondition()
 /** Toggles sent but not in the roster yet, so the chips answer at once. */
 const pending = ref(new Map<string, boolean>())
 watch(
@@ -93,6 +95,20 @@ const shownConditions = computed(() => {
   return list
 })
 
+/** PF2e persistent damage, through gm_set_hero_persistent (null dice ends it). */
+async function setPersistent(type: string, dice: string | null) {
+  if (!(await sendPersistent(props.characterId, props.card.name, type, dice))) return
+  sent.value = dice
+    ? `${props.card.name}: ${dice} persistent ${type} damage.`
+    : `${props.card.name}: no longer taking persistent ${type} damage.`
+}
+
+/** Conditions as chips for the players, PF2e persistent damage too. */
+const shownLabels = computed(() => [
+  ...conditionLabels(props.live.conditions, props.card.system, props.live.conditionValues),
+  ...props.live.persistent.map((p) => `${p.dice} persistent ${p.type}`),
+])
+
 async function toggleCondition(name: string, on: boolean) {
   pending.value.set(name, on)
   if (!(await sendCondition(props.characterId, props.card.name, name, on))) {
@@ -105,14 +121,27 @@ async function toggleCondition(name: string, on: boolean) {
 // --- GM: send an HP change to the hero's sheet ---------------------------------------
 const amount = ref<number | null>(null)
 const crit = ref(false)
+/** PF2e: the damage's type ('' untyped), whether a spell dealt it, and Shield Block. */
+const pf2e = computed(() => props.card.system === 'pf2e')
+const dmgType = ref('')
+const fromSpell = ref(false)
+const block = ref(false)
+const shieldUp = computed(() => !!props.live.shield?.name?.trim() && !!props.live.shield.raised)
+watch(shieldUp, (up) => up || (block.value = false))
 const { send } = useSendHeroHp()
 const sent = ref('')
 const uid = useId()
+function resetDamage() {
+  amount.value = null
+  crit.value = false
+  fromSpell.value = false
+  block.value = false
+}
 watch(
   () => props.characterId,
   () => {
-    amount.value = null
-    crit.value = false
+    resetDamage()
+    dmgType.value = ''
     sent.value = ''
   },
 )
@@ -126,10 +155,20 @@ async function adjust(sign: 1 | -1) {
   const name = props.card.name
   const n = step.value
   const isCrit = sign < 0 && crit.value
-  if (!(await send(id, name, sign * n, isCrit))) return
-  amount.value = null
-  crit.value = false
-  const what = sign < 0 ? `${n} damage${isCrit ? ' (crit)' : ''}` : `heal ${n}`
+  const typed = pf2e.value
+    ? { type: dmgType.value, spell: fromSpell.value, shieldBlock: block.value && shieldUp.value }
+    : {}
+  if (!(await send(id, name, sign * n, isCrit, typed))) return
+  resetDamage()
+  const kind = sign < 0 && typed.type ? ` ${typed.type}` : ''
+  const how = [
+    isCrit ? 'crit' : '',
+    typed.spell ? 'spell' : '',
+    typed.shieldBlock ? 'Shield Block' : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
+  const what = sign < 0 ? `${n}${kind} damage${how ? ` (${how})` : ''}` : `heal ${n}`
   sent.value = `Sent to ${name}: ${what}. Their sheet applies it.`
 }
 </script>
@@ -217,6 +256,32 @@ async function adjust(sign: 1 | -1) {
           Crit
         </button>
       </div>
+      <div v-if="pf2e" class="hc__ctl hc__typed">
+        <label class="sr-only" :for="`${uid}-type`">Damage type</label>
+        <select :id="`${uid}-type`" v-model="dmgType" class="input hc__type">
+          <option value="">Untyped</option>
+          <option v-for="t in PF2E_DAMAGE_TYPES" :key="t" :value="t">{{ t }}</option>
+        </select>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm hc__toggle"
+          :aria-pressed="fromSpell"
+          title="A spell dealt it (for resistances to spells)"
+          @click="fromSpell = !fromSpell"
+        >
+          Spell
+        </button>
+        <button
+          v-if="shieldUp"
+          type="button"
+          class="btn btn--ghost btn--sm hc__toggle"
+          :aria-pressed="block"
+          title="The hero Shield Blocks: their sheet checks the feat, the damage and the reaction"
+          @click="block = !block"
+        >
+          Shield Block
+        </button>
+      </div>
       <p class="hc__hint" role="status">{{ sent }}</p>
     </div>
 
@@ -271,7 +336,7 @@ async function adjust(sign: 1 | -1) {
 
     <div class="hc__tiles">
       <div class="hc__tile">
-        <b>{{ heroArmor(card.ac, card.conditions, card.level) }}</b>
+        <b>{{ live.ac ?? '—' }}</b>
         <span>{{ features.nimbleHero ? 'Armor' : 'AC' }}</span>
       </div>
       <div class="hc__tile">
@@ -290,20 +355,19 @@ async function adjust(sign: 1 | -1) {
       :subject="characterId"
       :conditions="shownConditions"
       :values="live.conditionValues"
+      :persistent="card.system === 'pf2e' ? live.persistent : undefined"
       :note="
         features.nimbleHero
           ? `Saved to ${card.name}'s sheet; it ends on its usual timing, or when you remove it.`
           : `Saved to ${card.name}'s sheet until you remove it.`
       "
       @toggle="toggleCondition"
+      @persistent="setPersistent"
     />
     <div v-else>
       <span class="hc__sect">Conditions</span>
-      <ul v-if="live.conditions.length" class="hc__chips">
-        <li
-          v-for="c in conditionLabels(live.conditions, card.system, live.conditionValues)"
-          :key="c"
-        >
+      <ul v-if="shownLabels.length" class="hc__chips">
+        <li v-for="c in shownLabels" :key="c">
           {{ c }}
         </li>
       </ul>
@@ -436,6 +500,22 @@ async function adjust(sign: 1 | -1) {
   background: var(--danger-bg);
   color: var(--danger-text);
   border-color: var(--danger);
+}
+
+.hc__typed {
+  flex-wrap: wrap;
+}
+
+.hc__type {
+  flex: 1 1 110px;
+  min-width: 0;
+  text-transform: capitalize;
+}
+
+.hc__toggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--page-text);
+  font-weight: 700;
 }
 
 .hc__mana {

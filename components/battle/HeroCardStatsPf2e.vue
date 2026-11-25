@@ -49,7 +49,7 @@ const feats = computed(() =>
 )
 
 const shield = computed(() => {
-  const s = props.card.shield
+  const s = props.live.shield ?? props.card.shield
   if (!s || !s.name.trim()) return null
   return { ...s, ac: s.ac ?? 2, broken: s.hpMax > 0 && s.hp <= s.bt }
 })

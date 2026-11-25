@@ -2,8 +2,10 @@
 // make one (Sudden Charge, Vicious Swing, Reactive Strike, Double Slice): each Strike's attack
 // bonus after conditions and effects, its multiple attack penalty (counted over the turn,
 // p. 402), damage with Rage, specialization, sneak attack and the like, the deadly and fatal
-// traits on a critical hit (p. 282), a finisher's precise strike dice, and the rolls, which the
-// dice tray shows with their total and degree. `providePf2eStrikes` in
+// traits on a critical hit (p. 282), two-hand's die and versatile's type as the hero holds the
+// weapon (pp. 282–283), property runes' persistent damage and keen's natural 19 (GM Core
+// p. 237), a finisher's precise strike dice, and the rolls, which the dice tray shows with
+// their total and degree. `providePf2eStrikes` in
 // components/sheet/Pf2eSheet.vue, `usePf2eStrikes` in its panels.
 import type { InjectionKey } from 'vue'
 import { loadPf2e } from '~/data/pf2e'
@@ -11,8 +13,15 @@ import type { Pf2eSheet } from '~/types/sheets'
 import { parseDice, rollCheck, rollDice, showOutcome, sign } from '~/utils/dice'
 import { attacked, mapIndex } from '~/utils/pf2eActions'
 import { finisherDice } from '~/utils/pf2eClassActions'
-import { critDiceFor } from '~/utils/pf2eDamage'
-import { strikeRunes } from '~/utils/pf2eInventory'
+import {
+  critDiceFor,
+  runeDamageNotes,
+  traitDie,
+  traitsInHands,
+  versatileType,
+} from '~/utils/pf2eDamage'
+import { strikeItem, strikeRunes } from '~/utils/pf2eInventory'
+import { afflictionLine } from '~/utils/pf2eItemUse'
 import {
   damageConditions,
   effectMods,
@@ -45,10 +54,37 @@ export interface Pf2eDamageRoll {
   by?: string
   /** Part of a finisher: precise strike deals its dice instead of its flat bonus (p. 158). */
   finisher?: boolean
-  /** Leave out precision and other extra dice (Double Slice adds them to one Strike only). */
+  /**
+   * Leave out precision and other extra dice (Double Slice adds them to one Strike only);
+   * property runes still roll.
+   */
   noExtra?: boolean
   /** Return the result instead of saying it (Double Slice says both together). */
   quiet?: boolean
+}
+
+/** Dice a Strike's damage adds to its weapon dice, with what they're from. */
+export interface Pf2eAddedDie {
+  dice: string
+  label: string
+}
+
+/** A weapon's property-rune damage on a hit (GM Core pp. 236–237): flaming's 1d6 fire. */
+export function runeDice(s: Pf2eSheet, strike: string): Pf2eAddedDie[] {
+  return (strikeRunes(s, strike)?.property ?? []).flatMap((p) =>
+    p.damage ? [{ dice: p.damage.dice, label: `${p.name} (${p.damage.type})` }] : [],
+  )
+}
+
+/**
+ * The dice a Strike's damage roll adds: its runes' always, the hero's own (precision, sneak
+ * attack) unless `noExtra`, for Double Slice's second Strike, which leaves those to the first.
+ */
+export function addedDice(
+  w: { runeDice: Pf2eAddedDie[]; extra: Pf2eAddedDie[] },
+  noExtra = false,
+): Pf2eAddedDie[] {
+  return [...w.runeDice, ...(noExtra ? [] : w.extra)]
 }
 
 const natNote = (n: number | null) => (n === 20 ? ', natural 20' : n === 1 ? ', natural 1' : '')
@@ -104,12 +140,38 @@ function create() {
     ready: damageFlags.value.stratagem,
     struck: stratagemStruck.value,
   })
+  /**
+   * How each Strike is held, by index: in two hands (two-hand's die, fatal aim's fatal) and
+   * dealing its versatile type (Player Core pp. 282–283).
+   */
+  const grip = ref<{ twoHands: number[]; versatile: number[] }>({ twoHands: [], versatile: [] })
+  const flip = (list: number[], index: number) =>
+    list.includes(index) ? list.filter((i) => i !== index) : [...list, index]
+  const toggleTwoHands = (index: number) => {
+    grip.value = { ...grip.value, twoHands: flip(grip.value.twoHands, index) }
+  }
+  const toggleVersatile = (index: number) => {
+    grip.value = { ...grip.value, versatile: flip(grip.value.versatile, index) }
+  }
+  // Devise a Stratagem lasts until the start of your next turn (Player Core 2 p. 103): Start
+  // turn (the round goes up) and End encounter (it goes back to 0) clear it.
+  watch(
+    () => sheet.value.turn?.round ?? 0,
+    () => {
+      damageFlags.value.stratagem = false
+      stratagemStruck.value = undefined
+    },
+  )
   /** The attack the next Strike is this turn (0–2), for the table's highlight. */
   const nextAttack = computed(() => mapIndex(sheet.value))
 
   const strikes = computed(() =>
     sheet.value.strikes.map((w, index) => {
-      const typeInitial = w.type ? ` ${w.type.charAt(0).toUpperCase()}` : ''
+      const held = traitsOf(w)
+      const twoHands = grip.value.twoHands.includes(index)
+      const versatile = versatileType(held)
+      const type = versatile && grip.value.versatile.includes(index) ? versatile : w.type
+      const typeInitial = type ? ` ${type.charAt(0).toUpperCase()}` : ''
       const attr = w.attr ?? 'STR'
       const traits = w.traits.split(',').map((t) => t.trim().toLowerCase())
       const level = draft.value.level
@@ -139,22 +201,23 @@ function create() {
         rank: w.rank,
         level,
       })
-      // Powerful Fist and the like: a bigger die for the fist.
-      const die = w.name === 'Fist' ? fistDie(sheet.value) : undefined
+      // Powerful Fist and the like: a bigger die for the fist; two-hand's die in two hands.
+      const hands = twoHands ? traitDie(held, 'two-hand') : undefined
+      const fist = w.name === 'Fist' ? fistDie(sheet.value) : undefined
+      const die = fist || hands ? Math.max(fist ?? 0, hands ?? 0) : undefined
       // Runes on the weapon (GM Core pp. 236–237): striking's dice, property runes' damage.
       const runes = strikeRunes(sheet.value, w.name)
       const dmg = shiftDice(w.dmg, dmgMods.value, die, runes?.striking ? runes.striking + 1 : 0)
-      const extra = [
-        ...extraDice(sheet.value, level, w, { ...damageFlags.value, stratagem }),
-        ...(runes?.property ?? []).flatMap((p) =>
-          p.damage ? [{ dice: p.damage.dice, label: `${p.name} (${p.damage.type})` }] : [],
-        ),
-      ]
+      const extra = extraDice(sheet.value, level, w, { ...damageFlags.value, stratagem })
+      const fromRunes = runeDice(sheet.value, w.name)
+      const added = addedDice({ runeDice: fromRunes, extra })
       const critNotes = (runes?.property ?? []).flatMap((p) =>
         p.crit ? [`${p.name}: ${p.crit}`] : [],
       )
+      // Persistent damage and damage against some foes only, which the total leaves out.
+      const runeNotes = runeDamageNotes(runes?.property ?? [])
       const penalties = mapPenalties(sheet.value, w.agile)
-      const shown = traitsOf(w)
+      const shown = traitsInHands(held, twoHands)
       const base = parseDice(dmg)
       const crit = base ? critDiceFor(shown, base) : { sides: 0, after: [] }
       // Precise strike's flat bonus, which a finisher deals as dice instead (p. 158).
@@ -176,16 +239,25 @@ function create() {
         precise,
         /** What a critical hit adds: "+1d10 fatal d10, +1d8 deadly d8", for the crit button. */
         critNote: crit.after.map((x) => `+${x.count}d${x.sides} ${x.label}`).join(', '),
-        dmg: `${dmg}${extra.map((x) => `+${x.dice}`).join('')}${typeInitial}`,
+        dmg: `${dmg}${added.map((x) => `+${x.dice}`).join('')}${typeInitial}`,
         dmgExpr: dmg,
         extra,
-        type: w.type,
-        dmgChanged: dmgMods.changed || extra.length > 0 || dmg !== w.dmg,
+        runeDice: fromRunes,
+        type,
+        twoHandDie: traitDie(held, 'two-hand'),
+        twoHands,
+        versatile,
+        versatileOn: type !== w.type,
+        keen: (runes?.property ?? []).some((p) => p.keen),
+        runeNotes,
+        dmgChanged: dmgMods.changed || added.length > 0 || runeNotes.length > 0 || dmg !== w.dmg,
         dmgNote: [
           dmgMods.note,
-          die ? `d${die} fist` : '',
+          fist && die === fist ? `d${die} fist` : '',
+          hands && die === hands ? `d${die} two hands` : '',
           runes?.striking ? `${runes.striking + 1} dice (striking)` : '',
-          ...extra.map((x) => `+${x.dice} ${x.label}`),
+          ...added.map((x) => `+${x.dice} ${x.label}`),
+          ...runeNotes,
         ]
           .filter(Boolean)
           .join(', '),
@@ -219,8 +291,9 @@ function create() {
     damageFlags.value.stratagem = st.ready
     stratagemStruck.value = st.struck
     const ac = targetAc.value
-    const degree = ac ? degreeOf(r.total, r.d20, ac) : undefined
-    const vs = ac && degree ? ` vs AC ${ac}: ${strikeResult(degree)}` : ''
+    const degree = ac ? degreeOf(r.total, r.d20, ac, w.keen) : undefined
+    const keen = w.keen && r.d20 === 19 ? ' (keen: a critical hit if it hits)' : ''
+    const vs = ac && degree ? ` vs AC ${ac}: ${strikeResult(degree)}` : keen
     const by = o.by && !o.quiet ? `${o.by}: ` : ''
     const own = o.penalty ? `, −${o.penalty}` : ''
     const text = `${by}${w.name} (attack ${step + 1}${own}, ${sign(bonus)}): ${r.total}${natNote(r.natural)}${vs}`
@@ -258,7 +331,7 @@ function create() {
       mod: expr.mod - flat,
     }
     const extra = [
-      ...(o.noExtra ? [] : w.extra),
+      ...addedDice(w, o.noExtra),
       ...(precise ? [{ dice: precise, label: 'precise strike finisher' }] : []),
     ]
     const parts = [rollDice(more).total]
@@ -279,11 +352,20 @@ function create() {
     const shown = crit
       ? `${total} (2 × ${rolled}${afterTotal ? ` + ${afterTotal}` : ''})`
       : String(total)
-    const text =
+    let text =
       `${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}${extras.length ? ` (${extras.join(', ')})` : ''}`.trim() +
-      // A property rune's critical effect (GM Core pp. 236–237), noted for the table to apply.
+      // A property rune's critical effect (GM Core pp. 236–237), noted for the table to apply,
+      // and its persistent damage or damage against some foes.
+      (w.runeNotes.length ? `; also ${w.runeNotes.join(', ')}` : '') +
       (crit && w.critNotes.length ? ` ${w.critNotes.join(' ')}` : '')
     stratagemStruck.value = stratagemDamaged(stratagemState(), index).struck
+    // An injury poison on the weapon goes into the target with this hit (GM Core p. 249).
+    const weapon = strikeItem(sheet.value, w.name)?.pf2e
+    const poison = weapon?.poisoned
+    if (weapon && poison) {
+      delete weapon.poisoned
+      text += ` ${poison.name}: the target is exposed (${afflictionLine({ ...poison, exposure: ['injury'] })}).`
+    }
     if (!o.quiet) {
       showOutcome({ label: `${w.name} damage`, total, detail: text })
       say(text)
@@ -291,7 +373,17 @@ function create() {
     return { total, text, type: w.type }
   }
 
-  return { targetAc, damageFlags, conditionsOffered, strikes, nextAttack, attack, damage }
+  return {
+    targetAc,
+    damageFlags,
+    conditionsOffered,
+    strikes,
+    nextAttack,
+    attack,
+    damage,
+    toggleTwoHands,
+    toggleVersatile,
+  }
 }
 
 export type Pf2eStrikes = ReturnType<typeof create>

@@ -22,9 +22,19 @@ function toggle(name: string) {
     return
   }
   s.conditions = [...s.conditions, name]
+  // Stunned without a value lasts a duration and takes every action (p. 446): the chip gives 1.
+  if (name === 'Stunned') s.conditionValues = { ...s.conditionValues, Stunned: 1 }
   // Falling unconscious ends Rage (Player Core 2 p. 72).
   const ended = name === 'Unconscious' ? endOnUnconscious(s) : ''
   if (ended) say(ended)
+}
+
+/** " 2" after a valued condition that's on; nothing for stunned for a duration. */
+function valueLabel(name: string, valued?: boolean) {
+  const s = sheet.value
+  if (!valued || !s.conditions.includes(name)) return ''
+  if (name === 'Stunned' && s.conditionValues?.Stunned === undefined) return ''
+  return ` ${conditionValue(s, name)}`
 }
 
 function step(name: string, by: number) {
@@ -55,10 +65,7 @@ function step(name: string, by: number) {
           :disabled="!canEdit"
           @click="toggle(c.name)"
         >
-          {{ c.name
-          }}{{
-            c.valued && sheet.conditions.includes(c.name) ? ` ${conditionValue(sheet, c.name)}` : ''
-          }}
+          {{ c.name }}{{ valueLabel(c.name, c.valued) }}
         </button>
         <span :id="`cond-${c.name}`" class="sr-only">{{ c.effect }}</span>
         <span v-if="c.valued && sheet.conditions.includes(c.name)" class="cond__step">

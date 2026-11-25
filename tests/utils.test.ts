@@ -3,7 +3,6 @@ import { luminance, onAccent, isHex } from '../utils/contrast'
 import {
   abilityMod,
   critDice,
-  mapPenalties,
   findDice,
   parseDice,
   rollAttack,
@@ -125,11 +124,6 @@ describe('dice', () => {
     expect(critDice({ count: 1, sides: 8, mod: 3 })).toEqual({ count: 2, sides: 8, mod: 3 })
     const crit = rollDice(critDice({ count: 1, sides: 8, mod: 3 }), faces(8, 5, 7))
     expect(crit).toEqual({ total: 15, rolls: [5, 7] })
-  })
-
-  it('applies the PF2e multiple attack penalty', () => {
-    expect(mapPenalties(false)).toEqual([0, 5, 10])
-    expect(mapPenalties(true)).toEqual([0, 4, 8])
   })
 
   it('misses a Nimble attack on a first-die 1', () => {

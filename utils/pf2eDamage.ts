@@ -28,6 +28,8 @@ export interface Pf2eHit {
   type?: string
   /** From a spell (resistance to spells, Arcane Cascade). */
   spell?: boolean
+  /** The spell's tradition, for resistance to one tradition's spells (Superstition). */
+  tradition?: string
   /** Persistent damage (resistance to persistent bleed). */
   persistent?: boolean
 }
@@ -59,6 +61,8 @@ export function covers(kind: string, hit: Pf2eHit): boolean {
       if (what === 'physical' || what === 'physical weapon') return PHYSICAL_TYPES.includes(type)
       if (what === 'energy') return ENERGY_TYPES.includes(type)
       if (/^(?:from )?spells?$/.test(what)) return !!hit.spell
+      const tradition = /^(arcane|divine|occult|primal) spells?$/.exec(what)?.[1]
+      if (tradition) return !!hit.spell && hit.tradition?.toLowerCase() === tradition
       return !!type && what === type
     })
 }
@@ -82,11 +86,24 @@ export const INSTINCT_RESISTS: Record<string, { types: string; note?: string }> 
   Fury: { types: 'physical', note: 'weapon damage only, not unarmed attacks' },
   Giant: { types: 'bludgeoning', note: 'also cold, electricity or fire, as you chose' },
   Spirit: { types: 'void', note: 'also damage from undead' },
-  Superstition: { types: 'spells', note: 'spells of your two chosen traditions' },
+  Superstition: { types: '', note: 'spells of the two traditions you chose' },
 }
 
+/**
+ * Superstition's Raging Resistance (Player Core 2 p. 75): spells of two associated traditions
+ * the barbarian chooses, kept in `levelChoices`.
+ */
+export const SUPERSTITION_PAIRS = [
+  ['Arcane', 'Occult'],
+  ['Arcane', 'Primal'],
+  ['Divine', 'Occult'],
+  ['Divine', 'Primal'],
+] as const
+export const SUPERSTITION_KEY = 'superstitionTraditions'
+export const superstitionTraditions = (s: Pf2eSheet) => s.levelChoices?.[SUPERSTITION_KEY] ?? []
+
 /** The hero's barbarian instinct, by its feature (or the sheet's subclass line). */
-const instinctOf = (s: Pf2eSheet) =>
+export const instinctOf = (s: Pf2eSheet) =>
   s.feats.find((f) => f.type.toLowerCase() === 'instinct')?.name ??
   s.subclass
     .split(',')
@@ -104,10 +121,20 @@ export interface Pf2eDefense {
 /** The hero's immunities, weaknesses and resistances: the sheet's own and the effects'. */
 export function defensesOf(s: Pf2eSheet, level = s.level ?? 1) {
   const own = s.defenses
-  const instinct = INSTINCT_RESISTS[instinctOf(s)]
+  const name = instinctOf(s)
+  const instinct = INSTINCT_RESISTS[name]
+  const chosen = superstitionTraditions(s)
   const fromEffects = resistancesNow(s, level).map((r): Pf2eDefense => {
     if (!/instinct/i.test(r.type)) return r
     if (!instinct) return r
+    if (name === 'Superstition')
+      return chosen.length === 2
+        ? {
+            ...r,
+            type: chosen.map((t) => `${t.toLowerCase()} spells`).join(' and '),
+            note: 'spells of the two traditions you chose, whatever their damage type',
+          }
+        : { ...r, type: '', note: 'choose your two traditions under Defenses' }
     return {
       ...r,
       type: instinct.types || r.type,
@@ -201,8 +228,8 @@ export function removePersistent(s: Pf2eSheet, type: string): string {
 
 // --- Deadly and fatal ------------------------------------------------------------------
 
-/** The die size a Strike's deadly or fatal trait names ("Deadly d10" → 10), if it has one. */
-export function traitDie(traits: string[], trait: 'deadly' | 'fatal') {
+/** The die size a Strike's valued trait names ("Deadly d10" → 10, "Two-Hand d12"), if any. */
+export function traitDie(traits: string[], trait: 'deadly' | 'fatal' | 'two-hand' | 'fatal aim') {
   const m = traits
     .map((t) => new RegExp(`^${trait}\\s+1?d(\\d+)$`, 'i').exec(t.trim()))
     .find(Boolean)
@@ -228,4 +255,47 @@ export function critDiceFor(traits: string[], weapon: { count: number; sides: nu
   if (deadly)
     after.push({ count: deadlyCount(weapon.count), sides: deadly, label: `deadly d${deadly}` })
   return { sides: fatal ?? weapon.sides, after }
+}
+
+// --- Two-hand, fatal aim, versatile (Player Core pp. 282–283; Guns & Gears p. 158) ----------
+
+/**
+ * A Strike's traits while it's held in two hands or not: a weapon with fatal aim gains fatal of
+ * that die in two hands (Guns & Gears (Remastered) p. 158), so the crit reads it.
+ */
+export function traitsInHands(traits: string[], twoHands: boolean) {
+  const aim = traitDie(traits, 'fatal aim')
+  return twoHands && aim && !traitDie(traits, 'fatal') ? [...traits, `Fatal d${aim}`] : traits
+}
+
+const VERSATILE: Record<string, string> = { B: 'Bludgeoning', P: 'Piercing', S: 'Slashing' }
+
+/** The damage type a versatile weapon can deal instead ("Versatile P" → Piercing), if any. */
+export function versatileType(traits: string[]) {
+  const letter = traits
+    .map((t) => /^versatile\s+([BPS])$/i.exec(t.trim())?.[1]?.toUpperCase())
+    .find(Boolean)
+  return letter ? VERSATILE[letter] : undefined
+}
+
+/** A property rune's damage the Strike's total leaves out, by name. */
+export interface Pf2eRuneDamageNote {
+  name: string
+  persistent?: { dice: string; type: string }
+  vs?: { dice: string; type: string; vs: string; persistent?: boolean; instead?: boolean }[]
+}
+
+/**
+ * What a Strike's property runes deal besides the damage roll (GM Core pp. 236–237): persistent
+ * damage the target takes as a condition (wounding's bleed, p. 445), and damage only against
+ * some foes (vitalizing against undead), for the table to apply.
+ */
+export function runeDamageNotes(runes: Pf2eRuneDamageNote[]) {
+  return runes.flatMap((r) => [
+    ...(r.persistent ? [`+${r.persistent.dice} persistent ${r.persistent.type} (${r.name})`] : []),
+    ...(r.vs ?? []).map(
+      (v) =>
+        `${v.instead ? '' : '+'}${v.dice}${v.persistent ? ' persistent' : ''} ${v.type} against ${v.vs}${v.instead ? ' instead' : ''} (${r.name})`,
+    ),
+  ])
 }

@@ -1,5 +1,7 @@
 import type { Ref } from 'vue'
 import type { HeroCard, RosterEntry } from '~/types'
+import { heroArmor } from '~/utils/nimbleConditions'
+import { acFromParts } from '~/utils/pf2ePlay'
 
 /**
  * A seated hero's public stats (campaign_hero_card) for the battle board, with the
@@ -56,16 +58,37 @@ export function useHeroCard(characterId: Ref<string | null>, roster: Ref<RosterE
     const c = card.value
     const s = entry.value?.summary
     if (!c) return null
+    const conditions = s?.conditions ?? c.conditions
+    const pf2e = c.system === 'pf2e' ? c : null
+    /** PF2e: the shield as the roster has it now (raised or not), else the card's. */
+    const shield = pf2e ? (s?.shield ? { ...pf2e.shield, ...s.shield } : pf2e.shield) : null
+    const conditionValues = pf2e ? (s?.conditionValues ?? pf2e.conditionValues ?? null) : null
     return {
       hp: s?.hp ?? c.hp,
       hpMax: s?.hpMax ?? c.hpMax,
       tempHp: s?.tempHp ?? c.tempHp,
       wounds: s?.wounds ?? c.wounds,
       woundsMax: s?.woundsMax ?? c.woundsMax,
-      conditions: s?.conditions ?? c.conditions,
+      conditions,
       /** PF2e values of valued conditions (frightened 2); null for other systems. */
-      conditionValues:
-        c.system === 'pf2e' ? (s?.conditionValues ?? c.conditionValues ?? null) : null,
+      conditionValues,
+      /**
+       * AC (Nimble: Armor) now: PF2e's after conditions, effects and a raised shield
+       * (`acFromParts`), Nimble's with its statuses.
+       */
+      ac: pf2e
+        ? (s?.acNow ??
+          acFromParts({
+            ac: c.ac,
+            acParts: s?.acParts ?? pf2e.acParts ?? undefined,
+            conditions,
+            conditionValues: conditionValues ?? undefined,
+            shield,
+          }))
+        : heroArmor(c.ac, conditions, c.level),
+      /** PF2e: the shield now and persistent damage; null and [] for other systems. */
+      shield,
+      persistent: pf2e ? (s?.persistent ?? pf2e.persistent ?? []) : [],
       /** Null for heroes without a mana pool. */
       mana: manaOf(s?.mana ?? null, c.mana),
       /** 5e death saves (null for other systems). */

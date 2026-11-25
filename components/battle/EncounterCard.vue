@@ -9,11 +9,10 @@
 // Compact (phone Encounter tab, one column): 44px targets 8px apart, and no tooltip (a
 // tap selects; the Creature tab shows the whole stat block).
 import type { CampaignNpc, RosterEntry } from '~/types'
-import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
 import { heroTurnActions } from '~/utils/nimblePlay'
-import { conditionLabels, heroDead, heroDown } from '~/utils/roster'
+import { conditionLabels, heroDead, heroDown, rosterAc } from '~/utils/roster'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -50,15 +49,7 @@ const down = computed(
 const deadHero = computed(() => down.value && heroDead(props.hero?.summary))
 const armor = computed(() =>
   isPc.value
-    ? String(
-        heroArmor(
-          props.hero?.summary?.ac,
-          props.hero?.summary?.conditions,
-          props.hero?.character_level,
-        ) ??
-          props.c.ac ??
-          '—',
-      )
+    ? String(rosterAc(props.hero) ?? props.c.ac ?? '—')
     : statTop(props.npc, 'Armor') || String(props.c.ac ?? '—'),
 )
 const conditions = computed(() =>

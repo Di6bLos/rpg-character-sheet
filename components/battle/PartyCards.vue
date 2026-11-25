@@ -9,10 +9,9 @@
 // DownStatus row ("Down · 1 saved · 2 failed" for 5e, "Down · Dying 2" for PF2e),
 // concentration is a chip, and the GM's cards show Passive Perception.
 import type { RosterEntry } from '~/types'
-import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { heroTurnActions } from '~/utils/nimblePlay'
-import { conditionLabels, dyingLine, heroDead, heroDown, hpClass } from '~/utils/roster'
+import { conditionLabels, dyingLine, heroDead, heroDown, hpClass, rosterAc } from '~/utils/roster'
 import { pf2ePointsLine } from '~/utils/heroCardStats'
 
 const props = defineProps<{
@@ -133,7 +132,7 @@ function mana(r: RosterEntry): string {
 
 /** The card's accessible name: everything it shows, since aria-label replaces its content. */
 function armorOf(r: RosterEntry) {
-  return heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level)
+  return rosterAc(r)
 }
 /** "Armor" (Nimble) or "AC" (5e, PF2e), as each sheet names it. */
 const armorWord = computed(() => (features.value.nimbleHero ? 'Armor' : 'AC'))

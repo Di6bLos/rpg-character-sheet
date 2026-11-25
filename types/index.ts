@@ -4,6 +4,7 @@ import type {
   NimbleSummon,
   Pf2eAttr,
   Pf2eProficiency,
+  Pf2eSheet,
   Pf2eSkill,
 } from '~/types/sheets'
 
@@ -144,6 +145,12 @@ export interface RosterEntry {
     conditionValues?: Record<string, number>
     /** PF2e feat names (Diehard changes when the hero dies). */
     featNames?: string[]
+    /** PF2e: the shield, the AC parts the sheet saves, and persistent damage. */
+    shield?: Pick<Pf2eSheet['shield'], 'name' | 'ac' | 'hp' | 'hpMax' | 'bt' | 'raised'>
+    acParts?: Pf2eSheet['acParts']
+    persistent?: Pf2eSheet['persistent']
+    /** PF2e AC now, worked out on load from the fields above (`acFromParts`). */
+    acNow?: number
     summons?: NimbleSummon[]
     abilityNames?: string[]
     portraitOverride?: string
@@ -355,6 +362,9 @@ export interface Pf2eHeroCard extends HeroCardBase {
   } | null
   /** Feats, the dialog's Key abilities (`type` and `level` make the source line). */
   feats: { name: string; desc: string; type: string; level: string }[]
+  /** The AC parts the sheet saves (null before it has) and persistent damage. */
+  acParts?: Pf2eSheet['acParts'] | null
+  persistent?: Pf2eSheet['persistent']
 }
 
 export type HeroCard = NimbleHeroCard | Dnd5eHeroCard | Pf2eHeroCard
@@ -367,6 +377,10 @@ export interface HeroHpChange {
   /** Negative is damage, positive is healing. */
   amount: number
   crit: boolean
+  /** PF2e damage: its type, whether a spell dealt it, and Shield Block; null otherwise. */
+  damage_type?: string | null
+  spell?: boolean | null
+  shield_block?: boolean | null
   created_by: string | null
   created_at: string
 }
@@ -378,6 +392,9 @@ export interface HeroConditionChange {
   condition: string
   /** True adds the condition, false removes it. */
   add: boolean
+  /** PF2e persistent damage ("Persistent Damage"): its type, and its dice (null ends it). */
+  persistent_type?: string | null
+  persistent_dice?: string | null
   created_by: string | null
   created_at: string
 }

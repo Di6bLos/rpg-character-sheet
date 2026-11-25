@@ -293,6 +293,93 @@ describe('GM hero HP changes, Pathfinder 2e (the sheet engine)', () => {
   })
 })
 
+describe('GM hero HP changes, PF2e damage type, spell and Shield Block', () => {
+  const mira = (patch: Partial<Pf2eSheet> = {}): Pf2eSheet => ({
+    ...defaultSheet('pf2e'),
+    hp: 20,
+    hpMax: 20,
+    ...patch,
+  })
+  const BLOCK = { type: 'General', level: '1', action: '↺', name: 'Shield Block', desc: '' }
+  const shield = {
+    name: 'Steel Shield',
+    ac: 2,
+    hardness: 5,
+    hp: 20,
+    hpMax: 20,
+    bt: 10,
+    raised: true,
+  }
+
+  it('applies resistances and weaknesses to the GM’s typed damage (Player Core p. 408)', () => {
+    const sheet = mira({
+      defenses: {
+        resistances: [{ type: 'fire', value: 5 }],
+        weaknesses: [{ type: 'cold', value: 3 }],
+        immunities: [],
+      },
+    })
+    const fire = { id: 'a', amount: -8, crit: false, damage_type: 'fire' }
+    expect(applyHpChangeFor('pf2e', sheet, 3, fire)).toMatch(/^GM: .*resistance 5 fire/)
+    expect(sheet.hp).toBe(17)
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'b', amount: -2, crit: false, damage_type: 'cold' })
+    expect(sheet.hp).toBe(12)
+    // Untyped, as before: no defenses.
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'c', amount: -2, crit: false })
+    expect(sheet.hp).toBe(10)
+  })
+
+  it('counts "from a spell" for a resistance to spells', () => {
+    const sheet = mira({
+      defenses: { resistances: [{ type: 'spells', value: 2 }], weaknesses: [], immunities: [] },
+    })
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -6, crit: false, damage_type: 'fire' })
+    expect(sheet.hp).toBe(14)
+    applyHpChangeFor('pf2e', sheet, 3, {
+      id: 'b',
+      amount: -6,
+      crit: false,
+      damage_type: 'fire',
+      spell: true,
+    })
+    expect(sheet.hp).toBe(10)
+  })
+
+  it('Shield Blocks physical damage, spending the reaction (Player Core p. 262)', () => {
+    const sheet = mira({ shield: { ...shield }, feats: [BLOCK] })
+    const line = applyHpChangeFor('pf2e', sheet, 3, {
+      id: 'a',
+      amount: -8,
+      crit: false,
+      damage_type: 'slashing',
+      shield_block: true,
+    })
+    expect(line).toBe('GM: Steel Shield blocks 5, takes 3. Took 3 slashing damage: 17/20 HP.')
+    expect(sheet.shield.hp).toBe(17)
+  })
+
+  it('says why Shield Block didn’t apply: fire isn’t physical, or no feat', () => {
+    const sheet = mira({ shield: { ...shield }, feats: [BLOCK] })
+    const fire = { id: 'a', amount: -4, crit: false, damage_type: 'fire', shield_block: true }
+    expect(applyHpChangeFor('pf2e', sheet, 3, fire)).toMatch(/^GM: No Shield Block: .*physical/)
+    expect([sheet.hp, sheet.shield.hp]).toEqual([16, 20])
+    const plain = mira({ shield: { ...shield } })
+    const cut = { id: 'b', amount: -4, crit: false, damage_type: 'slashing', shield_block: true }
+    expect(applyHpChangeFor('pf2e', plain, 3, cut)).toMatch(/Shield Block feat/)
+    expect(plain.hp).toBe(16)
+  })
+
+  it('Nimble and 5e ignore the type and Shield Block', () => {
+    const nimble = hero()
+    const typed = { id: 'a', amount: -5, crit: false, damage_type: 'fire', shield_block: true }
+    applyHpChangeFor('nimble', nimble, 3, typed)
+    expect(nimble.hp).toBe(15)
+    const dnd = { ...defaultSheet('dnd5e'), hp: 10, hpMax: 10 }
+    applyHpChangeFor('dnd5e', dnd, 3, typed)
+    expect(dnd.hp).toBe(5)
+  })
+})
+
 describe('GM hero HP changes dispatch', () => {
   it('sends 5e to its own rules (temp HP first)', () => {
     const sheet = { ...defaultSheet('dnd5e'), hp: 10, hpMax: 10, tempHp: 4 }

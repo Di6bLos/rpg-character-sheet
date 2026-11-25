@@ -20,10 +20,14 @@ function inline(text: string): string {
     .replace(/(^|[^_\w])_([^_\s][^_]*)_(?!\w)/g, '$1<em>$2</em>')
 }
 
-/** A table row's cells: split on pipes that aren't escaped (`\|`), outer pipes dropped. */
+/**
+ * A table row's cells: split on pipes that aren't escaped (`\|`) or inside inline code,
+ * outer pipes dropped.
+ */
 function cells(row: string): string[] {
   return row
     .trim()
+    .replace(/`[^`]*`/g, (code) => code.replace(/(?<!\\)\|/g, '\\|'))
     .replace(/^\|/, '')
     .replace(/(?<!\\)\|$/, '')
     .split(/(?<!\\)\|/)
@@ -31,12 +35,13 @@ function cells(row: string): string[] {
 }
 
 const TABLE_ROW = /^\s*\|.*\|\s*$/
-const TABLE_RULE = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/
+/** The line under a table's header: dashes in cells, with at least one pipe (as in GFM). */
+const TABLE_RULE = /^(?=.*\|)\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/
 
 function table(rows: string[]): string {
   const [first, second] = rows
   const head = second !== undefined && TABLE_RULE.test(second) ? cells(first ?? '') : null
-  const body = (head ? rows.slice(2) : rows).filter((r) => !TABLE_RULE.test(r)).map(cells)
+  const body = (head ? rows.slice(2) : rows).map(cells)
   const tr = (row: string[], tag: 'th' | 'td') =>
     `<tr>${row.map((c) => `<${tag}${tag === 'th' ? ' scope="col"' : ''}>${inline(c)}</${tag}>`).join('')}</tr>`
   return (

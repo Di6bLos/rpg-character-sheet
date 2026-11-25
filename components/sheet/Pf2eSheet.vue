@@ -4,6 +4,7 @@ import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import {
   type Pf2eStatContext,
   SAVE_ATTR,
+  acNow as acAfter,
   adjusted,
   degreeOf,
   heal,
@@ -63,8 +64,8 @@ function stepHp(by: number) {
   if (sheet.value.dying !== dyingBefore) say(message)
 }
 
-/** AC after conditions (off-guard, clumsy, frightened…). */
-const acNow = computed(() => adjusted(sheet.value, ac.value, { kind: 'ac' }))
+/** AC after conditions (off-guard, clumsy, frightened…), a raised shield; petrified is 9. */
+const acNow = computed(() => acAfter(sheet.value))
 
 const saveContext = (label: string): Pf2eStatContext =>
   label === 'Perception'
@@ -540,6 +541,26 @@ function setFocus(n: number) {
             <td>
               <div class="row" style="gap: 6px">
                 <span v-for="t in w.traits" :key="t" class="trait">{{ t }}</span>
+                <button
+                  v-if="w.twoHandDie"
+                  type="button"
+                  class="chip grip"
+                  :aria-pressed="w.twoHands"
+                  :title="`Two-hand: d${w.twoHandDie} damage dice while held in two hands`"
+                  @click="strikesApi.toggleTwoHands(w.index)"
+                >
+                  Two hands
+                </button>
+                <button
+                  v-if="w.versatile"
+                  type="button"
+                  class="chip grip"
+                  :aria-pressed="w.versatileOn"
+                  :title="`Versatile: deal ${w.versatile.toLowerCase()} damage instead`"
+                  @click="strikesApi.toggleVersatile(w.index)"
+                >
+                  {{ w.versatile }}
+                </button>
               </div>
             </td>
           </tr>
@@ -961,6 +982,12 @@ function setFocus(n: number) {
   padding: 0 12px;
   border-radius: min(var(--radius-control), 8px);
   font-size: 14px;
+}
+
+.grip {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .trait {
