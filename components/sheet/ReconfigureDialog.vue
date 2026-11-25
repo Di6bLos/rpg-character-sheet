@@ -4,7 +4,7 @@
 // Nimble heroes built from class data can also redo their level 1 choices.
 import { STAT_ARRAYS } from '~/data/nimble/core'
 import type { AnySheet, NimbleLevelInput, NimbleSheet, NimbleStat } from '~/types/sheets'
-import { canRestore, restoreBuild, restoreLevel } from '~/utils/levelHistory'
+import { canRestore, keepDamage, restoreBuild, restoreLevel } from '~/utils/levelHistory'
 import {
   buildNimbleSheet,
   creationChoices,
@@ -137,6 +137,7 @@ async function rebuildLevelOne() {
 
 async function finish() {
   const level = goal.value
+  if (original.value) keepDamage(draft.value.sheet, original.value.sheet)
   goal.value = 0
   original.value = null
   held.value = false

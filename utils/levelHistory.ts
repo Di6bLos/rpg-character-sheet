@@ -149,6 +149,11 @@ export function restoreBuild(sheet: AnySheet, built: AnySheet): void {
   sheet.levelHistory = []
 }
 
+export function keepDamage(sheet: AnySheet, before: { hp: number; hpMax: number }): void {
+  const damage = Math.max(0, before.hpMax - before.hp)
+  sheet.hp = Math.max(0, sheet.hpMax - damage)
+}
+
 function applySnapshot(sheet: AnySheet, snap: Loose) {
   const loose = sheet as unknown as Loose
   const handMade = Array.isArray(loose.abilities)
