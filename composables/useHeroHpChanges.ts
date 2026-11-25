@@ -11,12 +11,12 @@ type Row = Pick<HeroHpChange, 'id' | 'amount' | 'crit' | 'created_at'>
  * them with the sheet's own system's rules and clears them. Same pattern as useHeroEffects.
  */
 export function useHeroHpChanges() {
-  const { draft, canEdit, say } = useSheet()
+  const { draft, canEdit, held, say } = useSheet()
   let channel: RealtimeChannel | null = null
   const taken = new Set<string>()
 
   async function take(rows: Row[]) {
-    if (!canEdit.value) return
+    if (!canEdit.value || held.value) return
     const fresh = freshChanges(rows, taken)
     if (!fresh.length) return
     // Claim the rows by deleting them first, and apply only the ones this client
@@ -91,6 +91,9 @@ export function useHeroHpChanges() {
       },
       { immediate: true },
     )
+    watch(held, (on) => {
+      if (!on && channel) serial(() => catchUp(draft.value.id))
+    })
   })
 
   onBeforeUnmount(() => {

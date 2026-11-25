@@ -69,12 +69,12 @@ export function useSendHeroCondition() {
  * as useHeroHpChanges: claim by deleting first, so a second open copy can't apply twice.
  */
 export function useHeroConditionChanges() {
-  const { draft, canEdit, say } = useSheet()
+  const { draft, canEdit, held, say } = useSheet()
   let channel: RealtimeChannel | null = null
   const taken = new Set<string>()
 
   async function take(rows: Row[]) {
-    if (!canEdit.value) return
+    if (!canEdit.value || held.value) return
     const fresh = freshConditionChanges(rows, taken)
     if (!fresh.length) return
     const { data, error } = await supabase
@@ -145,6 +145,9 @@ export function useHeroConditionChanges() {
       },
       { immediate: true },
     )
+    watch(held, (on) => {
+      if (!on && channel) serial(() => catchUp(draft.value.id))
+    })
   })
 
   onBeforeUnmount(() => {

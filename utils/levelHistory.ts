@@ -153,6 +153,11 @@ export function restoreBuild(sheet: AnySheet, built: AnySheet): void {
   if (isNimble(sheet)) syncWornArmor(sheet, 1)
 }
 
+export function keepDamage(sheet: AnySheet, before: { hp: number; hpMax: number }): void {
+  const damage = Math.max(0, before.hpMax - before.hp)
+  sheet.hp = Math.max(0, sheet.hpMax - damage)
+}
+
 const isNimble = (s: AnySheet): s is NimbleSheet => 'stats' in s && 'abilities' in s
 
 function applySnapshot(sheet: AnySheet, snap: Loose) {
