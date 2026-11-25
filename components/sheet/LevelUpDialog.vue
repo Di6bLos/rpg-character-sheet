@@ -158,7 +158,6 @@ const todo = computed(() => {
     },
   }))
 })
-const TODO_SHOWN = 3
 
 async function confirmPf2e() {
   showErrors.value = true
@@ -612,24 +611,22 @@ async function confirm() {
     </template>
 
     <template #actions>
-      <p
-        v-if="level < MAX_LEVEL && todo.length"
-        id="lu-todo"
-        class="todo"
-        :class="{ err: showErrors }"
-      >
-        <span>Still to choose:</span>
+      <template v-if="level < MAX_LEVEL && todo.length">
+        <p id="lu-todo" class="sr-only">
+          Still to choose: {{ todo.map((t) => t.text).join('; ') }}
+        </p>
         <button
-          v-for="t in todo.slice(0, TODO_SHOWN)"
-          :key="t.text"
           type="button"
-          class="todo__item"
-          @click="t.go()"
+          class="todo"
+          :class="{ err: showErrors }"
+          aria-describedby="lu-todo"
+          @click="todo[0]?.go()"
         >
-          {{ t.text }}
+          <strong>{{ todo.length }} left:</strong>
+          <span class="todo__first">{{ todo[0]?.text }}</span>
+          <span aria-hidden="true">▸</span>
         </button>
-        <span v-if="todo.length > TODO_SHOWN">and {{ todo.length - TODO_SHOWN }} more</span>
-      </p>
+      </template>
       <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
       <button
         v-if="level < MAX_LEVEL"
@@ -648,36 +645,43 @@ async function confirm() {
 
 <style scoped lang="scss">
 .todo {
-  flex: 1 0 100%;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
-  margin: 0;
-  font-size: 14px;
-  color: var(--page-soft);
-
-  &.err > span {
-    color: var(--page-text);
-    font-weight: 700;
-  }
-}
-
-.todo__item {
-  min-height: 32px;
+  gap: 6px;
+  min-height: 44px;
+  margin-right: auto;
   padding: 0 4px;
   border: 0;
   background: transparent;
-  color: var(--page-text);
+  color: var(--page-soft);
   font: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-size: 14px;
+  text-align: left;
   cursor: pointer;
 
-  @media (pointer: coarse) {
-    min-height: 44px;
+  strong {
+    flex: none;
+    color: var(--page-text);
   }
+
+  &.err strong {
+    text-decoration: underline;
+  }
+
+  &:hover .todo__first {
+    color: var(--page-text);
+  }
+}
+
+.todo__first {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .lu-confirm.is-blocked {
@@ -691,6 +695,22 @@ async function confirm() {
 @media (max-width: 560px) {
   .lu-confirm {
     flex: 1 1 auto;
+  }
+
+  .todo {
+    position: relative;
+    flex-basis: 100%;
+    min-height: 32px;
+
+    // A 44px hit area on touch without a taller line: 6px into the 12px gap above Cancel
+    // and Confirm and into the gap above the footer, so it overlaps neither.
+    @media (pointer: coarse) {
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -6px 0;
+      }
+    }
   }
 }
 

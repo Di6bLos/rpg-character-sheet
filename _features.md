@@ -317,20 +317,22 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] `utils/pf2eBuild.ts`: level 1 build and its choices (boosts, skills, subclasses, deity, feats, gear)
 - [x] `/characters/new/pf2e` builder
 - [x] Spells and focus spells at creation
-- [ ] Level plan and level-up in `utils/pf2eBuild.ts`
-- [ ] Data-driven level-up in `LevelUpDialog` for PF2e sheets with a `classSlug`
+- [x] Level plan and level-up (`utils/pf2eLevelUp.ts`: `pf2eLevelPlan`, `applyPf2eLevel`; going back a level and Reconfigure replay the recorded picks)
+  - Choices the class data can't describe stay notes for the player: signature spells, Blessing of the Devoted, Gate's Threshold, inventor modifications, Divine Access, implement adept/paragon, choices inside feats (Canny Acumen, Domain Initiate)
+  - Not yet: archetype feats in class slots, swapping a repertoire spell, redoing level 1 through Reconfigure (the builder's steps live in its page)
+- [x] Data-driven level-up in `LevelUpDialog` for PF2e sheets with a `classSlug` (`components/pf2e/LevelUp.vue`)
 - [ ] Golden level tables after a `rules-auditor` pass per class
 
 ### 8.4 Play engine
 
 - [x] Proficiency, MAP, degrees of success, crits (Strikes against a target AC, ×2 crit damage)
-- [ ] Three actions per turn (turn tracker)
+- [x] Three actions per turn (turn tracker, `SheetTurn`, `utils/pf2eActions.ts`)
 - [x] Valued conditions (frightened, clumsy, off-guard…) on every number, dying, wounded, doomed, recovery checks, Heroic Recovery
 - [x] Shield Block (Hardness, broken threshold)
 - [x] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
-- [ ] Incredible Initiative's +2 on initiative rolls (the sheet has no initiative roll yet)
+- [x] Incredible Initiative's +2 on initiative rolls (Roll initiative in `SheetTurn`)
 - [x] Spell slots (prepared and spontaneous), heightening, cantrips, divine font, focus spells and Refocus, daily preparations
-- [ ] Spell damage rolls and heightened effects from the spell text
+- [x] Spell damage rolls and heightened effects from the spell text (`utils/pf2eSpellRules.ts`)
 - [x] Dice tray: checks, saves, Strikes, spell attacks, flat checks and damage with their total and degree
 - [ ] Target and odds rows
 
@@ -343,7 +345,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, Flurry of Blows, finishers with panache and bravado), barbarian instincts' Rage damage, sorcerer blood magic, champion reactions
 - [ ] Player Core 2 classes
 - [ ] Other classes, archetypes, ancestry feats
-- [ ] Spells that change numbers when cast on yourself, beyond the first wave
+- [x] Spells that change numbers when cast on yourself, beyond the first wave (`effectOnSelf` in `utils/pf2eSpells.ts`, offered after a cast in `SheetSpells`)
 
 ### 8.6 Battle board
 
