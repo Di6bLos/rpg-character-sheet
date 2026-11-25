@@ -1,15 +1,19 @@
 <script setup lang="ts">
-// Battle tab: the battle board (Nimble). The initiative strip, the
+// Battle tab: the battle board, for every game system. The initiative strip, the
 // player's hero column and actions or the GM's stat block and encounter grid, and the
 // party and chat on the right. On a phone the same parts go in the phone frame, one tab
 // at a time (the GM's tabs: Encounter, Creature, Party, Chat). On a tablet (768–1279px)
 // the tablet frame has the left and centre columns, with Party, Chat and Scribe in a
 // drawer. Every frame sits inside one HeroScope, so switching frames (a rotation) keeps
-// the hero's sheet editor and its automatic turn steps. Other systems get a note pointing to the Party tab.
+// the hero's sheet editor and its automatic turn steps. Systems without the Nimble hero
+// editor (5e, PF2e; `features.nimbleHero` false) give a seated player a read-only hero card
+// (HeroBasic) and a basic turn line with Roll initiative (TurnBasic); the other heroes are in
+// the party list (right column, tablet drawer, phone Party tab), not repeated in the centre.
 import { downSummonKeys } from '~/utils/initiative'
 import type { PhoneTab } from '~/utils/boardLayout'
 
-const { campaign, campaignId, isGm, gmControls, roster, base } = useCampaignBoard()
+const { campaign, campaignId, isGm, gmControls, roster } = useCampaignBoard()
+const features = useBattleFeatures()
 const { layout } = useBoardLayout()
 const phone = computed(() => layout.value === 'phone')
 const tablet = computed(() => layout.value === 'tablet')
@@ -26,6 +30,17 @@ const turnCharacterId = computed(
   () => init.order.value.find((c) => c.id === init.activeId.value)?.character_id ?? null,
 )
 const encounterRound = computed(() => (init.turnId.value ? init.round.value : null))
+/**
+ * A seated player's hero in a system without the hero editor (5e, PF2e); else null. Phone.vue's
+ * `basicPlayer` is the same rule: keep them in step.
+ */
+const basicHeroId = computed(() =>
+  !gmControls.value && !features.value.nimbleHero ? (campaign.value?.myCharacterId ?? null) : null,
+)
+const basicEntry = computed(() =>
+  basicHeroId.value ? roster.value.find((r) => r.character_id === basicHeroId.value) : undefined,
+)
+
 /** The hero whose stats modal is open (party cards and hero initiative tokens). */
 const cardId = ref<string | null>(null)
 
@@ -92,9 +107,11 @@ function onGridHero(characterId: string) {
 </script>
 
 <template>
+  <!-- Keyed by `enabled`: HeroScope reads it once, at setup. -->
   <BattleHeroScope
-    v-if="campaign?.system === 'nimble'"
+    :key="features.nimbleHero ? 'hero' : 'basic'"
     v-slot="{ hero }"
+    :enabled="features.nimbleHero"
     :turn-character-id="actingCharacterId"
     :round="encounterRound"
     :down-summons="downSummons"
@@ -128,9 +145,13 @@ function onGridHero(characterId: string) {
         </template>
         <BattleActions v-else-if="tab === 'actions' && hero" compact sheet />
         <BattleHero v-else-if="tab === 'hero' && hero" compact />
+        <template v-else-if="tab === 'hero' && basicHeroId">
+          <BattleHeroBasic v-if="basicEntry" compact :entry="basicEntry" />
+          <p v-else class="panel battle-empty" role="status">Loading your hero…</p>
+        </template>
         <template v-else-if="tab === 'party'">
           <!-- A watcher gets the same hint as on the tablet and desktop boards. -->
-          <template v-if="!hero && !gmControls">
+          <template v-if="!hero && !gmControls && !basicHeroId">
             <p v-if="isGm" class="panel battle-empty">
               <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run
               the encounter.
@@ -144,6 +165,7 @@ function onGridHero(characterId: string) {
             :roster="roster"
             :gm="gmControls"
             :acting-character-id="turnCharacterId"
+            :exclude="basicHeroId"
             @open="(id: string) => (cardId = id)"
           />
           <BattleEnemies :init="init" :gm="gmControls" />
@@ -157,6 +179,7 @@ function onGridHero(characterId: string) {
       </template>
       <template #turn>
         <BattleGmTurnBar v-if="gmControls" compact :init="init" :roster="roster" />
+        <BattleTurnBasic v-else-if="basicHeroId" compact :init="init" :character-id="basicHeroId" />
         <BattleTurnBar v-else compact :init="init" />
       </template>
       <template #dialogs="{ go }">
@@ -185,6 +208,8 @@ function onGridHero(characterId: string) {
       </template>
       <template #left>
         <BattleHero v-if="hero" />
+        <BattleHeroBasic v-else-if="basicEntry" :entry="basicEntry" />
+        <p v-else-if="basicHeroId" class="panel battle-empty" role="status">Loading your hero…</p>
         <BattleGmHero
           v-else-if="gmControls && gmHeroId"
           :character-id="gmHeroId"
@@ -201,6 +226,7 @@ function onGridHero(characterId: string) {
       <template #turn>
         <BattleTurnBar v-if="hero" :init="init" />
         <BattleGmTurnBar v-else-if="gmControls" compact :init="init" :roster="roster" />
+        <BattleTurnBasic v-else-if="basicHeroId" :init="init" :character-id="basicHeroId" />
       </template>
       <template #centre>
         <BattleActions v-if="hero" compact />
@@ -214,6 +240,7 @@ function onGridHero(characterId: string) {
           @update:selected="(id: string | null) => (id ? gmShow(id) : (gmPick = null))"
           @hero="onGridHero"
         />
+        <template v-else-if="basicHeroId" />
         <p v-else-if="isGm" class="panel battle-empty">
           <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
           encounter.
@@ -256,6 +283,8 @@ function onGridHero(characterId: string) {
       </template>
       <template #left>
         <BattleHero v-if="hero" />
+        <BattleHeroBasic v-else-if="basicEntry" :entry="basicEntry" />
+        <p v-else-if="basicHeroId" class="panel battle-empty" role="status">Loading your hero…</p>
         <BattleGmHero
           v-else-if="gmControls && gmHeroId"
           :character-id="gmHeroId"
@@ -285,6 +314,7 @@ function onGridHero(characterId: string) {
             @hero="onGridHero"
           />
         </template>
+        <BattleTurnBasic v-else-if="basicHeroId" :init="init" :character-id="basicHeroId" />
         <p v-else-if="isGm" class="panel battle-empty">
           <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
           encounter.
@@ -310,10 +340,6 @@ function onGridHero(characterId: string) {
       </template>
     </BattleBoard>
   </BattleHeroScope>
-  <div v-else class="panel battle-narrow">
-    <p>The battle board is for Nimble campaigns.</p>
-    <NuxtLink :to="`${base}/party`" class="btn">Go to Party</NuxtLink>
-  </div>
 </template>
 
 <style scoped lang="scss">
@@ -322,19 +348,5 @@ function onGridHero(characterId: string) {
   padding: 14px 16px;
   font-size: 13px;
   color: var(--page-muted);
-}
-
-.battle-narrow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px;
-
-  p {
-    margin: 0;
-    color: var(--page-muted);
-  }
 }
 </style>

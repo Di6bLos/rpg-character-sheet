@@ -24,10 +24,12 @@ const {
 const uid = useId()
 const amount = ref<number | null>(null)
 
+/** What − and + apply: the amount typed, whole (1 when empty). */
+const step = computed(() => Math.max(1, Math.floor(Number(amount.value) || 1)))
+
 /** − deals the amount as damage, + heals it; an empty field means 1. */
 function apply(sign: 1 | -1) {
-  const n = Math.max(1, Math.floor(Number(amount.value) || 1))
-  changeHp(sign * n)
+  changeHp(sign * step.value)
   amount.value = null
 }
 </script>
@@ -64,7 +66,7 @@ function apply(sign: 1 | -1) {
       <button
         type="button"
         class="step step--xs"
-        :aria-label="`Take ${amount || 1} damage`"
+        :aria-label="`Take ${step} damage`"
         :disabled="!canEdit"
         @click="apply(-1)"
       >
@@ -84,7 +86,7 @@ function apply(sign: 1 | -1) {
       <button
         type="button"
         class="step step--xs"
-        :aria-label="`Heal ${amount || 1}`"
+        :aria-label="`Heal ${step}`"
         :disabled="!canEdit"
         @click="apply(1)"
       >

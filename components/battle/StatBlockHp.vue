@@ -3,6 +3,7 @@
 // arrow keys preview the change, let go or Enter applies it), then −, amount, + and Set
 // (Enter in the amount sets it). An empty amount means 1 for − and +.
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
+import { hpTone } from '~/utils/roster'
 
 const props = defineProps<{ init: ReturnType<typeof useInitiative>; c: TurnRow }>()
 const c = computed(() => props.c)
@@ -11,7 +12,7 @@ const { touch } = useBoardLayout()
 
 const hpMax = computed(() => c.value.hp_max ?? 0)
 const hp = computed(() => c.value.hp ?? 0)
-const tone = computed(() => (hp.value * 2 <= hpMax.value ? 'danger' : ''))
+const tone = computed(() => hpTone(hp.value, hpMax.value))
 const amount = ref<number | null>(null)
 watch(
   () => props.c.id,
@@ -53,7 +54,7 @@ function setHp() {
       <button
         type="button"
         class="step step--xs"
-        :aria-label="`${c.name}: lose HP`"
+        :aria-label="`${c.name}: lose ${typed() || 1} HP`"
         @click="change(-1)"
       >
         −
@@ -71,7 +72,7 @@ function setHp() {
       <button
         type="button"
         class="step step--xs"
-        :aria-label="`${c.name}: gain HP`"
+        :aria-label="`${c.name}: gain ${typed() || 1} HP`"
         @click="change(1)"
       >
         +

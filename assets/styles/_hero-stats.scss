@@ -1,0 +1,130 @@
+// The battle board's hero stats dialog (HeroCardStats, HeroCardStatsDnd5e, HeroCardStatsPf2e):
+// its grid, section labels, stat tiles, name / value pairs, "None" and the Key abilities list. Each of those
+// components `@use`s this in its scoped style.
+
+.hcs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  align-content: start;
+}
+
+.hcs__full {
+  grid-column: 1 / -1;
+}
+
+.hcs__sect {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--page-muted);
+
+  &--gap {
+    margin-top: 12px;
+  }
+}
+
+.hcs__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  border-radius: min(var(--radius-control), 8px);
+  background: var(--inset);
+  font-size: 11px;
+  color: var(--page-soft);
+
+  b {
+    font-family: var(--font-heading);
+    font-size: 16px;
+    color: var(--page-text);
+  }
+
+  &--adv span {
+    color: color-mix(in srgb, var(--secondary) 70%, var(--page-text));
+    font-weight: 700;
+  }
+
+  &--dis span {
+    color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
+    font-weight: 700;
+  }
+}
+
+.hcs__pairs {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  font-size: 13px;
+
+  dt {
+    color: var(--page-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.hcs__none {
+  margin: 0;
+  font-size: 13px;
+  color: var(--page-muted);
+}
+
+// Pips for counted things (death saves, hero points); `--good` fills with the accent.
+.hcs__pips {
+  display: inline-flex;
+  gap: 4px;
+
+  i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--page-muted);
+
+    &.is-on {
+      background: var(--danger);
+      box-shadow: none;
+    }
+  }
+
+  &--good i.is-on {
+    background: var(--accent);
+  }
+}
+
+// Key abilities: one line each, the whole text on hover.
+.hcs__abil {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  li {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--page-soft);
+  }
+
+  b {
+    color: var(--page-text);
+  }
+}
+
+.hcs__src {
+  font-size: 11px;
+  color: var(--page-muted);
+}

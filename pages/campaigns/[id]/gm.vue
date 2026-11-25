@@ -3,7 +3,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const board = provideCampaignBoard('console')
-const chat = provideCampaignChat(board.campaignId)
+provideCampaignChat(board.campaignId)
 const { campaign, isGm, loading, load, campaignId } = board
 
 useHead({ title: () => `${campaign.value?.name ?? 'GM console'} · Lantern` })
@@ -21,7 +21,7 @@ watch(campaignId, load)
       <NuxtLink to="/campaigns" class="btn">Go to campaigns</NuxtLink>
     </div>
   </div>
-  <BoardShell v-else :unread="chat.totalUnread.value">
+  <BoardShell v-else>
     <NuxtPage />
   </BoardShell>
 </template>
