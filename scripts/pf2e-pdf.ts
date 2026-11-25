@@ -6,7 +6,17 @@
 //   node scripts/pf2e-pdf.ts [bibleDir] [outDir] [--only=09-equipment-1,…]
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const ROOT = join(import.meta.dirname, '..')
@@ -192,8 +202,12 @@ hr { border: 0; border-top: 1px solid #ccc; }
 .toc ol { columns: 2; font-size: 9pt; }
 `
 
-mkdirSync(join(OUT, 'html'), { recursive: true })
-mkdirSync(join(OUT, '.chrome'), { recursive: true })
+// The print HTML and Chrome's profile live in a temp folder, never in the project: the dev
+// server would reload on every file Chrome writes, and a leftover profile socket broke its watcher.
+mkdirSync(OUT, { recursive: true })
+const WORK = mkdtempSync(join(tmpdir(), 'pf2e-pdf-'))
+const PROFILE = join(WORK, 'chrome')
+process.on('exit', () => rmSync(WORK, { recursive: true, force: true }))
 const today = new Date().toISOString().slice(0, 10)
 const report: string[] = []
 
@@ -220,7 +234,7 @@ for (const v of VOLUMES.filter((x) => !ONLY || ONLY.includes(x.slug))) {
 <div class="toc"><h2>Contents</h2><ol>${titles.map((t) => `<li>${esc(t)}</li>`).join('')}</ol></div>
 ${chapters.map(html).join('\n')}
 </body></html>`
-  const htmlFile = join(OUT, 'html', `${v.slug}.html`)
+  const htmlFile = join(WORK, `${v.slug}.html`)
   writeFileSync(htmlFile, page)
   const pdf = join(OUT, `pf2e-${v.slug}.pdf`)
   execFileSync(
@@ -228,7 +242,7 @@ ${chapters.map(html).join('\n')}
     [
       '--headless=new',
       '--disable-gpu',
-      `--user-data-dir=${join(OUT, '.chrome')}`,
+      `--user-data-dir=${PROFILE}`,
       '--no-pdf-header-footer',
       '--generate-pdf-document-outline',
       `--print-to-pdf=${pdf}`,
