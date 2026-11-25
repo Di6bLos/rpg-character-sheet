@@ -689,6 +689,17 @@ describe('pf2e ability rules: review fixes', () => {
     expect(r.cost).toEqual({ kind: 'actions', min: 1, max: 1 })
     expect(r.costNote).toMatch(/as a free action if you're aware that creature could help answer/)
     expect(readCost('free')).toEqual({ kind: 'free' })
+    // The investigator's class feature writes it as "## Devise a Stratagem ◇ or ◆".
+    const inner = feature('Devise a Stratagem').embedded
+    expect(inner.map((e) => [e.name, e.cost])).toEqual([
+      ['Devise a Stratagem', { kind: 'actions', min: 1, max: 1 }],
+    ])
+    expect(inner[0]?.costNote).toMatch(/as a free action if/)
+    expect(feature('Impulses').embedded.find((e) => e.name === 'Elemental Blast')?.cost).toEqual({
+      kind: 'actions',
+      min: 1,
+      max: 2,
+    })
   })
 
   it('keeps the rolled initiative on the sheet through the turns, until the encounter ends', () => {

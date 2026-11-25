@@ -391,7 +391,7 @@ export const PF2E_RULE_PATTERNS = {
   levelHeading: /^#{1,4} [^\n]*?Level (\d+)\s*$/gm,
   labelledOption: /^(?:[-•]\s*)?\*\*[^*]+\*\*/,
   youAndAllies: /\byou and (?:all |your |each |any )*(?:allies|ally)\b/i,
-  embeddedHeading: /^#{1,4} ([^\n]+?) ([◆↺◇]+(?: to [◆↺◇]+)?)\s*$/gm,
+  embeddedHeading: /^#{1,4} ([^\n]+?) ([◆↺◇]+(?: (?:to|or) [◆↺◇]+)?)\s*$/gm,
   embeddedBold:
     /^\s*\*\*\s*(?:(?:Activate|Transcendence)\s*[—–-]\s*)?([^*\n]+?)\s*\*\*\s*(?:[—–-]\s*([^◆↺◇(*\n]+?)\s*)?([◆↺◇]+)\s*(\([^)\n]*\))?([^\n]*)$/gm,
 }
@@ -427,9 +427,12 @@ export function readCost(a: Pf2eActionCost | undefined): Pf2eCost | undefined {
   if (typeof a === 'number') return { kind: 'actions', min: a, max: a }
   const v = a.trim().toLowerCase()
   if (v === 'reaction' || v.startsWith('↺') || v.startsWith('reaction')) return { kind: 'reaction' }
-  // "free or 1" (Devise a Stratagem): free only in a case its text names, so 1 action.
-  const freeOr = /^free or (\d)$/.exec(v)
-  if (freeOr) return { kind: 'actions', min: Number(freeOr[1]), max: Number(freeOr[1]) }
+  // "free or 1", "◇ or ◆" (Devise a Stratagem): free only in a case its text names, so 1 action.
+  const freeOr = /^(?:free|◇) or (\d|◆+)$/.exec(v)
+  if (freeOr) {
+    const n = /\d/.test(freeOr[1]!) ? Number(freeOr[1]) : freeOr[1]!.length
+    return { kind: 'actions', min: n, max: n }
+  }
   if (v === 'free' || v === '◇' || v.startsWith('free')) return { kind: 'free' }
   const glyphs = [...v.matchAll(/◆+/g)].map((m) => m[0].length)
   if (glyphs.length) return { kind: 'actions', min: glyphs[0]!, max: glyphs.at(-1)! }
@@ -1073,7 +1076,7 @@ export function readAbility(input: Pf2eAbilityInput): Pf2eAbilityRules {
   }
   if (cost) rules.cost = cost
   const freeWhen =
-    typeof input.actions === 'string' && /^free or/i.test(input.actions)
+    typeof input.actions === 'string' && /^(?:free|◇) or/i.test(input.actions)
       ? P.freeWhen.exec(text)?.[0]
       : undefined
   const costNote = input.cost ?? field(P.costField, text) ?? freeWhen
