@@ -169,6 +169,10 @@ export interface Pf2eAbilityRules {
   embedded: Pf2eAbilityRules[]
   /** An embedded action's own text. */
   body?: string
+  /** What a use costs besides actions ("Expend a harm or heal spell"), from its Cost line. */
+  costNote?: string
+  /** What it's used with ("imbued into a body ikon"), from its Usage line. */
+  usage?: string
 }
 
 export type { Pf2eAmount, Pf2eDegreeName, Pf2eEnds }
@@ -181,6 +185,10 @@ export interface Pf2eAbilityInput {
   trigger?: string
   requirements?: string
   traits?: string[]
+  /** Stat lines the data keeps: what a use costs, what it's imbued into, how long it lasts. */
+  cost?: string
+  usage?: string
+  duration?: string
 }
 
 const PF2E_SKILLS = [
@@ -261,6 +269,7 @@ export const PF2E_RULE_PATTERNS = {
   triggerField: /\*\*Trigger\*\*\s*([^;*\n]+)/,
   requirementsField: /\*\*Requirements?\*\*\s*([^;*\n]+)/,
   traitsField: /\*\*Traits\*\*\s*([^\n]+)/,
+  costField: /\*\*Cost\*\*\s*([^;*\n]+)/,
   cooldown:
     /\b[Cc]an(?:'|’)?t (?:use [^.]{1,60}?|do so|[A-Z][\w'’ ]+) again (?:for|until) (1 minute|10 minutes|1 hour|24 hours|1 day|(?:after )?(?:the next time you make )?your next daily preparations)/,
   immunity:
@@ -303,7 +312,8 @@ export const PF2E_RULE_PATTERNS = {
     /increases? to (\d+d\d+) at (\d+)(?:st|nd|rd|th) level((?:,? (?:and )?\d+d\d+ at \d+(?:st|nd|rd|th) level)*)/i,
   perLevels:
     /^[^.]{0,40}?(?:per|for every|for each) (\d+|two|three|level)(?: levels?)?(?: you have)?\b(?! beyond)/i,
-  beyondLevel: /plus (\d+d\d+) (?:for every|per) level (?:you have )?beyond (\d+)(?:st|nd|rd|th)/i,
+  beyondLevel:
+    /(\d+d\d+) (?:for every|for each|per) level (?:you have )?beyond (\d+)(?:st|nd|rd|th)/i,
   tempHp:
     /\b(?:gain|gains|gaining|grant you|get) (?:a number of )?temporary Hit Points equal to (your level plus your Constitution modifier|your level|half your level|your Constitution modifier|double your level|twice your level|three times your level)/i,
   tempHpFixed: /\b(?:gain|gains|gaining|get) (\d+) temporary Hit Points/i,
@@ -391,7 +401,7 @@ export function readCost(a: Pf2eActionCost | undefined): Pf2eCost | undefined {
   if (typeof a === 'number') return { kind: 'actions', min: a, max: a }
   const v = a.trim().toLowerCase()
   if (v === 'reaction' || v.startsWith('↺') || v.startsWith('reaction')) return { kind: 'reaction' }
-  if (v === 'free' || v === '◇' || v === 'free action') return { kind: 'free' }
+  if (v === 'free' || v === '◇' || v.startsWith('free')) return { kind: 'free' }
   const glyphs = [...v.matchAll(/◆+/g)].map((m) => m[0].length)
   if (glyphs.length) return { kind: 'actions', min: glyphs[0]!, max: glyphs.at(-1)! }
   const words = [...v.matchAll(/\b(single|one|two|three|1|2|3)\b/g)].map((m) =>
@@ -906,6 +916,7 @@ export function embeddedActions(raw: string): (Pf2eAbilityInput & { at: number }
       frequency: field(P.frequencyField, body),
       trigger: field(P.triggerField, body),
       requirements: field(P.requirementsField, body),
+      cost: field(P.costField, body),
       traits: splitTraits(field(P.traitsField, body)),
     })
   })
@@ -922,6 +933,7 @@ export function embeddedActions(raw: string): (Pf2eAbilityInput & { at: number }
       frequency: field(P.frequencyField, line),
       trigger: field(P.triggerField, line),
       requirements: field(P.requirementsField, line),
+      cost: field(P.costField, line),
       traits: splitTraits(m[4]),
     })
   }
@@ -983,7 +995,7 @@ export function readAbility(input: Pf2eAbilityInput): Pf2eAbilityRules {
   const speed = P.speedIncrease.exec(text)
   const maxHp = P.maxHp.exec(text)
   const tempHp = readTempHp(text)
-  const ends = readEnds(text)
+  const ends = (input.duration ? readEnds(`for ${input.duration}`) : undefined) ?? readEnds(text)
   P.grants.lastIndex = 0
   const rules: Pf2eAbilityRules = {
     name: input.name,
@@ -1004,6 +1016,9 @@ export function readAbility(input: Pf2eAbilityInput): Pf2eAbilityRules {
     embedded: inner.map((e) => ({ ...readAbility(e), body: e.text })),
   }
   if (cost) rules.cost = cost
+  const costNote = input.cost ?? field(P.costField, text)
+  if (costNote) rules.costNote = costNote
+  if (input.usage) rules.usage = input.usage
   if (frequency) rules.frequency = frequency
   const trigger = input.trigger ?? field(P.triggerField, text)
   if (trigger) rules.trigger = trigger
@@ -1095,6 +1110,6 @@ function ownKind(r: Pf2eAbilityRules, hasEffect: boolean): Pf2eAbilityKind {
     r.rageDamage
   )
     return 'effect'
-  if (r.cost || r.frequency || r.trigger || r.grants.length) return 'use'
+  if (r.cost || r.frequency || r.trigger || r.costNote || r.grants.length) return 'use'
   return 'text'
 }

@@ -206,10 +206,19 @@ describe('pf2e ability rules: Player Core abilities', () => {
     expect(readCost('single action to three actions')).toEqual({ kind: 'actions', min: 1, max: 3 })
     expect(readCost('↺')).toEqual({ kind: 'reaction' })
     expect(readCost('◇')).toEqual({ kind: 'free' })
+    expect(readCost('free or 1')).toEqual({ kind: 'free' })
+    expect(readCost('1 to 3')).toEqual({ kind: 'actions', min: 1, max: 3 })
+    expect(readCost('reaction or 2')).toEqual({ kind: 'reaction' })
     expect(readFrequency('once per 10 minutes')).toMatchObject({ period: '10min', times: 1 })
     expect(readFrequency('three times per day')).toMatchObject({ period: 'day', times: 3 })
     expect(readFrequency('once per round')).toMatchObject({ period: 'round' })
     expect(readFrequency('once per Crimson Shroud')).toBeUndefined()
+  })
+
+  it('keeps the data’s Cost and Usage lines (Channel Smite expends a spell)', () => {
+    expect(feat('Channel Smite').costNote).toBe('Expend a harm or heal spell')
+    const usage = feats.find((f) => f.usage)!
+    expect(readAbility(usage).usage).toBe(usage.usage)
   })
 
   it('scales dice by level: increases by 1d6 at 5th and every 4 levels, or a listed table', () => {
@@ -478,20 +487,14 @@ const ALLOWED: Record<string, string> = {
   'Unstable Concoction':
     'raises an alchemical item’s dice by a step; items aren’t rolled by the sheet',
   'Read Psychometric Resonance': 'damage the GM may deal to the hero, not a roll the hero makes',
-  'Throttle the Divine':
-    'damage an ongoing grab deals when the grabbed creature acts; rolled by hand on its turn',
-  Stonebane: 'extra damage only against constructs and earth creatures: added by hand',
-  'Made for Combat': 'a choice of unarmed attacks for the player to add as a Strike',
-  'Sanguine Revitalization': 'heals the commander’s squadmates, not the hero',
   'Light Mortar': 'the innovation’s own statistics block (Aim, Load, Launch)',
   Water: 'the kineticist element’s Elemental Blast dice, rolled with the Elemental Blast action',
-  Undead: 'a sorcerer bloodline: its blood magic comes with casting a bloodline spell',
   Sunwrecker:
     'a mythic transcendence action written with its traits before the glyph; used as text',
+  Undead: 'a sorcerer bloodline: its blood magic comes with casting a bloodline spell',
   'Incredible Luck': 'changes how Charmed Life is rolled; its +2 is Charmed Life’s own',
   'Fresh Ingredients':
     'grants Natural Medicine’s +2 for fresh herbs; applied by hand with that feat',
-  'Frightful Figment': 'moves figment’s +2 from Deception to Intimidation; the spell’s bonus',
 }
 
 const ALL = [
@@ -554,11 +557,16 @@ describe('pf2e ability rules: coverage of every ability in the data', () => {
     expect(unexplained.length, unexplained.join('\n')).toBe(0)
   })
 
-  it('every allowlisted ability still exists and is still text-only', () => {
+  it('every allowlisted ability still exists, is text-only and still mentions numbers', () => {
     for (const name of Object.keys(ALLOWED)) {
-      const x = ALL.find(([, a]) => a.name === name)
-      expect(x, name).toBeDefined()
-      expect(classify(x![1]).kind, name).toBe('text')
+      const records = ALL.filter(([, a]) => a.name === name).map(([, a]) => a)
+      expect(records.length, `${name} is gone from the data`).toBeGreaterThan(0)
+      const held = records.some(
+        (x) =>
+          classify(x).kind === 'text' &&
+          Object.values(SIGNALS).some((re) => re.test(clean(x.text))),
+      )
+      expect(held, `${name} is no longer a text-only ability with numbers`).toBe(true)
     }
   })
 
