@@ -37,6 +37,7 @@ Design reference: `design/README.md`. Check tasks off as they land.
 ## Phase 4 · Library & admin
 
 - [x] Library: upload, system and category tags, filters, search, PDF viewer
+- [x] Library Rules tab: basic rules by topic for Nimble and Pathfinder 2e (5e coming soon), system picker, search, deep links
 - [x] Report a file (library, board, journal attachment)
 - [x] Admin: users table, roles, permission switches, restriction reason, moderation history, suspend
 - [x] Admin: reports queue (dismiss, remove, remove + restrict), campaigns and documents lists
