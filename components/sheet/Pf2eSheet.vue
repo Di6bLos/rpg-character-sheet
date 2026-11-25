@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { mapPenalties, parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
-import { PF2E_CONDITIONS } from '~/utils/sheetDefaults'
+import {
+  type Pf2eStatContext,
+  SAVE_ATTR,
+  adjusted,
+  degreeOf,
+  heal,
+  strikeResult,
+  takeDamage,
+} from '~/utils/pf2ePlay'
 
-const { draft, canEdit, hpPct, xpPct, xpLabel, adjustHp, lastRoll, say } = useSheet<Pf2eSheet>()
+const { draft, canEdit, hpPct, xpPct, xpLabel, lastRoll, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
 
 const RANK_NAME: Record<Pf2eRank, string> = {
@@ -42,6 +50,47 @@ const attrs = computed(() =>
 
 const hasShield = computed(() => sheet.value.shield.name.trim() !== '')
 const ac = computed(() => sheet.value.ac + (hasShield.value && sheet.value.shield.raised ? 2 : 0))
+/** The ±1 HP steppers go through the damage rules, so 0 HP still knocks the hero out. */
+function stepHp(by: number) {
+  if (!canEdit.value) return
+  const dyingBefore = sheet.value.dying
+  const message = by < 0 ? takeDamage(sheet.value, 1) : heal(sheet.value, 1)
+  if (sheet.value.dying !== dyingBefore) say(message)
+}
+
+/** AC after conditions (off-guard, clumsy, frightened…). */
+const acNow = computed(() => adjusted(sheet.value, ac.value, { kind: 'ac' }))
+
+const saveContext = (label: string): Pf2eStatContext =>
+  label === 'Perception'
+    ? { kind: 'perception', attr: 'WIS' }
+    : label === 'Class DC'
+      ? { kind: 'classDc', attr: sheet.value.keyAttr }
+      : { kind: 'save', attr: SAVE_ATTR[label], save: label as 'Fortitude' | 'Reflex' | 'Will' }
+const saves = computed(() =>
+  sheet.value.saves.map((x) => ({
+    ...x,
+    now: adjusted(sheet.value, x.value, saveContext(x.label)),
+  })),
+)
+const skills = computed(() =>
+  sheet.value.skills.map((x) => ({
+    ...x,
+    now: adjusted(sheet.value, x.value, { kind: 'skill', attr: x.attr }),
+  })),
+)
+
+const natNote = (n: number | null) => (n === 20 ? ', natural 20' : n === 1 ? ', natural 1' : '')
+
+/** A check with this modifier; the tray shows the die, the result line says the total. */
+function rollCheck(name: string, bonus: number) {
+  const r = rollAttack(bonus)
+  say(`${name}: ${r.total} (${r.d20} ${sign(bonus)}${natNote(r.natural)})`)
+}
+
+/** The target's AC, for Strike results; blank rolls without one. */
+const targetAc = ref<number | null>(null)
+
 const shieldPct = computed(() => {
   const { hp, hpMax } = sheet.value.shield
   return hpMax > 0 ? Math.round((hp / hpMax) * 100) : 0
@@ -52,43 +101,61 @@ function setHero(n: number) {
   sheet.value.heroPoints = sheet.value.heroPoints === n ? n - 1 : n
 }
 
-function toggleCondition(name: string) {
-  if (!canEdit.value) return
-  const list = sheet.value.conditions
-  const idx = list.indexOf(name)
-  if (idx >= 0) list.splice(idx, 1)
-  else list.push(name)
-}
-
 function setFocus(n: number) {
   if (!canEdit.value) return
   sheet.value.focus.current = sheet.value.focus.current === n ? n - 1 : n
 }
 
+/** A dice expression with its flat modifier moved by `delta` ("1d8+4", −1 → "1d8+3"). */
+function shiftDice(dmg: string, delta: number) {
+  const e = parseDice(dmg)
+  if (!e || !delta) return dmg
+  const mod = e.mod + delta
+  return `${e.count}d${e.sides}${mod ? sign(mod) : ''}`
+}
+
 const strikes = computed(() =>
   sheet.value.strikes.map((w) => {
     const typeInitial = w.type ? ` ${w.type.charAt(0).toUpperCase()}` : ''
+    const attr = w.attr ?? 'STR'
+    const attack = adjusted(sheet.value, w.bonus, { kind: 'attack', attr })
+    // Melee damage adds STR, so enfeebled lowers it (p. 443).
+    const dmgMods = w.ranged ? null : adjusted(sheet.value, 0, { kind: 'damage', attr: 'STR' })
+    const dmg = shiftDice(w.dmg, dmgMods?.value ?? 0)
+    const rollDmg = (crit: boolean) => {
+      const expr = parseDice(dmg)
+      if (!expr) return say(`${w.name}: “${w.dmg}” isn’t a dice expression like 1d8+4`)
+      const total = rollDice(expr).total
+      // A critical hit deals double damage (p. 401); deadly and fatal dice are added by hand.
+      const shown = crit ? `${total * 2} (2 × ${total})` : String(total)
+      say(`${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}`.trim())
+    }
     return {
       name: w.name,
       traits: w.traits
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean),
-      dmg: `${w.dmg}${typeInitial}`,
-      atks: mapPenalties(w.agile).map((penalty, i) => ({
-        text: sign(w.bonus - penalty),
-        label: `${w.name} attack ${i + 1}`,
-        roll: () => {
-          const r = rollAttack(w.bonus - penalty)
-          const note = r.natural === 20 ? ' · natural 20' : r.natural === 1 ? ' · natural 1' : ''
-          say(`${w.name} (attack ${i + 1}): ${r.total}${note}`)
-        },
-      })),
-      dmgRoll: () => {
-        const expr = parseDice(w.dmg)
-        if (!expr) return say(`${w.name}: “${w.dmg}” isn’t a dice expression like 1d8+4`)
-        say(`${w.name} damage: ${rollDice(expr).total} ${w.type.toLowerCase()}`.trim())
-      },
+      dmg: `${dmg}${typeInitial}`,
+      dmgChanged: !!dmgMods?.changed,
+      dmgNote: dmgMods?.note ?? '',
+      changed: attack.changed,
+      note: attack.note,
+      atks: mapPenalties(w.agile).map((penalty, i) => {
+        const bonus = attack.value - penalty
+        return {
+          text: sign(bonus),
+          label: `${w.name} attack ${i + 1}`,
+          roll: () => {
+            const r = rollAttack(bonus)
+            const ac = targetAc.value
+            const vs = ac ? ` vs AC ${ac}: ${strikeResult(degreeOf(r.total, r.d20, ac))}` : ''
+            say(`${w.name} (attack ${i + 1}): ${r.total}${natNote(r.natural)}${vs}`)
+          },
+        }
+      }),
+      dmgRoll: () => rollDmg(false),
+      critRoll: () => rollDmg(true),
     }
   }),
 )
@@ -199,7 +266,13 @@ const bulkPct = computed(() =>
           >
             <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
           </svg>
-          <div class="ac__v">{{ ac }}</div>
+          <div
+            class="ac__v"
+            :class="{ 'is-changed': acNow.changed }"
+            :title="acNow.changed ? `${ac} ${acNow.note}` : undefined"
+          >
+            {{ acNow.value }}
+          </div>
           <div class="caps" style="font-size: 11px">AC · {{ RANK_NAME[sheet.acRank] }}</div>
         </div>
         <div v-if="hasShield" class="tile shield">
@@ -231,16 +304,33 @@ const bulkPct = computed(() =>
       </div>
 
       <div class="saves">
-        <div v-for="s in sheet.saves" :key="s.label" class="tile" style="gap: 6px; padding: 12px">
+        <div v-for="x in saves" :key="x.label" class="tile" style="gap: 6px; padding: 12px">
           <div class="save__head">
-            <span class="tile__label">{{ s.label }}</span>
-            <span class="rank" :class="`rank--${s.rank}`" :title="RANK_NAME[s.rank]">{{
-              s.rank
+            <span class="tile__label">{{ x.label }}</span>
+            <span class="rank" :class="`rank--${x.rank}`" :title="RANK_NAME[x.rank]">{{
+              x.rank
             }}</span>
           </div>
-          <div class="tile__value" style="font-size: 24px">
-            {{ s.label === 'Class DC' ? s.value : sign(s.value) }}
+          <div
+            v-if="x.label === 'Class DC'"
+            class="tile__value"
+            :class="{ 'is-changed': x.now.changed }"
+            :title="x.now.changed ? `${x.value} ${x.now.note}` : undefined"
+            style="font-size: 24px"
+          >
+            {{ x.now.value }}
           </div>
+          <button
+            v-else
+            type="button"
+            class="tile__value roll-value"
+            :class="{ 'is-changed': x.now.changed }"
+            :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.label}`"
+            :aria-label="`Roll ${x.label} ${sign(x.now.value)}`"
+            @click="rollCheck(x.label, x.now.value)"
+          >
+            {{ sign(x.now.value) }}
+          </button>
         </div>
       </div>
 
@@ -253,7 +343,7 @@ const bulkPct = computed(() =>
               class="step"
               aria-label="Lose 1 hit point"
               :disabled="!canEdit"
-              @click="adjustHp(-1)"
+              @click="stepHp(-1)"
             >
               −
             </button>
@@ -265,7 +355,7 @@ const bulkPct = computed(() =>
               class="step"
               aria-label="Gain 1 hit point"
               :disabled="!canEdit"
-              @click="adjustHp(1)"
+              @click="stepHp(1)"
             >
               +
             </button>
@@ -277,33 +367,13 @@ const bulkPct = computed(() =>
             >Temp HP <strong>{{ sheet.tempHp }}</strong></span
           >
           <span
-            >Dying <strong>{{ sheet.dying }} / 4</strong></span
-          >
-          <span
-            >Wounded <strong>{{ sheet.wounded }}</strong></span
-          >
-          <span
             >Speed <strong>{{ sheet.speed }}</strong></span
           >
         </div>
+        <Pf2eSheetHealth />
       </div>
 
-      <div class="stack" style="gap: 8px">
-        <div class="caps">Conditions</div>
-        <div class="chips">
-          <button
-            v-for="c in PF2E_CONDITIONS"
-            :key="c"
-            type="button"
-            class="chip cond"
-            :aria-pressed="sheet.conditions.includes(c)"
-            :disabled="!canEdit"
-            @click="toggleCondition(c)"
-          >
-            {{ c }}
-          </button>
-        </div>
-      </div>
+      <Pf2eSheetConditions />
     </section>
 
     <section class="panel stack" style="gap: 12px" aria-labelledby="sk-h">
@@ -315,20 +385,24 @@ const bulkPct = computed(() =>
         </div>
       </div>
       <div class="skills">
-        <div
-          v-for="s in sheet.skills"
-          :key="s.name"
+        <button
+          v-for="x in skills"
+          :key="x.name"
+          type="button"
           class="skill"
-          :class="{ 'is-trained': s.rank !== 'U' }"
+          :class="{ 'is-trained': x.rank !== 'U' }"
+          :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.name}`"
+          :aria-label="`Roll ${x.name} ${sign(x.now.value)}`"
+          @click="rollCheck(x.name, x.now.value)"
         >
-          <span class="rank" :class="`rank--${s.rank}`" :title="RANK_NAME[s.rank]">{{
-            s.rank
+          <span class="rank" :class="`rank--${x.rank}`" :title="RANK_NAME[x.rank]">{{
+            x.rank
           }}</span>
           <span class="skill__name"
-            >{{ s.name }} <small>{{ s.attr }}</small></span
+            >{{ x.name }} <small>{{ x.attr }}</small></span
           >
-          <strong>{{ sign(s.value) }}</strong>
-        </div>
+          <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
+        </button>
       </div>
     </section>
   </div>
@@ -339,6 +413,17 @@ const bulkPct = computed(() =>
       <span class="small muted">
         Each button rolls that attack · 1st / 2nd / 3rd with multiple attack penalty
       </span>
+      <label class="target">
+        Target AC
+        <input
+          v-model.number="targetAc"
+          class="input"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          placeholder="—"
+        />
+      </label>
     </div>
     <div
       v-if="strikes.length"
@@ -371,7 +456,8 @@ const bulkPct = computed(() =>
                   :key="n"
                   type="button"
                   class="atk"
-                  :class="{ 'atk--first': n === 0 }"
+                  :class="{ 'atk--first': n === 0, 'is-changed': w.changed }"
+                  :title="w.changed ? w.note : undefined"
                   :aria-label="a.label"
                   @click="a.roll"
                 >
@@ -380,14 +466,27 @@ const bulkPct = computed(() =>
               </div>
             </td>
             <td>
-              <button
-                type="button"
-                class="dmg dmg-btn"
-                :aria-label="`Roll damage for ${w.name}`"
-                @click="w.dmgRoll"
-              >
-                {{ w.dmg }}
-              </button>
+              <div class="row" style="gap: 6px; flex-wrap: nowrap">
+                <button
+                  type="button"
+                  class="dmg dmg-btn"
+                  :class="{ 'is-changed': w.dmgChanged }"
+                  :title="w.dmgChanged ? w.dmgNote : undefined"
+                  :aria-label="`Roll damage for ${w.name}`"
+                  @click="w.dmgRoll"
+                >
+                  {{ w.dmg }}
+                </button>
+                <button
+                  type="button"
+                  class="atk crit-btn"
+                  :aria-label="`Roll critical damage for ${w.name}`"
+                  title="Critical hit: double damage"
+                  @click="w.critRoll"
+                >
+                  ×2
+                </button>
+              </div>
             </td>
             <td>
               <div class="row" style="gap: 6px">
@@ -610,6 +709,36 @@ const bulkPct = computed(() =>
   border: 1.5px solid var(--secondary);
 }
 
+.is-changed {
+  color: var(--warn-text);
+}
+
+.roll-value {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.target {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+
+  .input {
+    width: 80px;
+  }
+}
+
 .ac__v {
   font-family: var(--font-heading);
   font-size: 34px;
@@ -746,10 +875,21 @@ const bulkPct = computed(() =>
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   min-height: 40px;
+  padding: 0;
+  border: 0;
   border-bottom: 1px solid var(--track);
+  background: none;
+  font: inherit;
   font-size: 14px;
+  text-align: left;
   color: var(--page-soft);
+  cursor: pointer;
+
+  &:hover .skill__name {
+    text-decoration: underline;
+  }
 
   &.is-trained {
     color: var(--page-text);

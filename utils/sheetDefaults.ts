@@ -51,15 +51,6 @@ const NIMBLE_SKILLS: [string, NimbleStat][] = [
   ['Stealth', 'DEX'],
 ]
 
-export const PF2E_CONDITIONS = [
-  'Frightened',
-  'Off-guard',
-  'Clumsy',
-  'Enfeebled',
-  'Sickened',
-  'Prone',
-]
-
 function dnd5e(): Dnd5eSheet {
   return {
     lineage: '',

@@ -1,0 +1,168 @@
+import { describe, expect, it } from 'vitest'
+import type { Pf2eSheet } from '../types/sheets'
+import {
+  adjusted,
+  conditionMods,
+  deathAt,
+  degreeOf,
+  heal,
+  heroicRecovery,
+  isDead,
+  recoveryCheck,
+  stackMods,
+  takeDamage,
+} from '../utils/pf2ePlay'
+import { defaultSheet } from '../utils/sheetDefaults'
+
+function hero(over: Partial<Pf2eSheet> = {}): Pf2eSheet {
+  return { ...defaultSheet('pf2e'), hp: 20, hpMax: 20, ...over }
+}
+
+describe('pf2e degrees of success (Player Core p. 401)', () => {
+  it('beats the DC by 10 for a critical success, misses by 10 for a critical failure', () => {
+    expect(degreeOf(25, 12, 15)).toBe('critical success')
+    expect(degreeOf(15, 8, 15)).toBe('success')
+    expect(degreeOf(14, 8, 15)).toBe('failure')
+    expect(degreeOf(5, 3, 15)).toBe('critical failure')
+  })
+
+  it('moves one degree on a natural 20 or 1', () => {
+    expect(degreeOf(16, 20, 15)).toBe('critical success')
+    expect(degreeOf(12, 20, 15)).toBe('success')
+    expect(degreeOf(16, 1, 15)).toBe('failure')
+    expect(degreeOf(26, 1, 15)).toBe('success')
+  })
+})
+
+describe('pf2e bonuses and penalties (p. 400)', () => {
+  it('keeps only the worst penalty and best bonus of each type; untyped all apply', () => {
+    const { total } = stackMods([
+      { value: -2, type: 'status', source: 'Frightened 2' },
+      { value: -1, type: 'status', source: 'Sickened 1' },
+      { value: -2, type: 'circumstance', source: 'Off-guard' },
+      { value: 1, type: 'status', source: 'Heroism' },
+      { value: -1, type: 'untyped', source: 'A' },
+      { value: -1, type: 'untyped', source: 'B' },
+    ])
+    expect(total).toBe(-2 + 1 - 2 - 1 - 1)
+  })
+})
+
+describe('pf2e conditions on numbers (pp. 442–447)', () => {
+  it('frightened and sickened hit every check and DC but not damage, and do not stack', () => {
+    const s = hero({
+      conditions: ['Frightened', 'Sickened'],
+      conditionValues: { Frightened: 2, Sickened: 1 },
+    })
+    expect(adjusted(s, 20, { kind: 'ac' }).value).toBe(18)
+    expect(adjusted(s, 7, { kind: 'save', attr: 'CON', save: 'Fortitude' }).value).toBe(5)
+    expect(adjusted(s, 5, { kind: 'damage', attr: 'STR' }).changed).toBe(false)
+  })
+
+  it('clumsy lowers AC, Reflex and DEX skills, not Strength', () => {
+    const s = hero({ conditions: ['Clumsy'], conditionValues: { Clumsy: 2 } })
+    expect(adjusted(s, 18, { kind: 'ac' }).value).toBe(16)
+    expect(adjusted(s, 6, { kind: 'save', attr: 'DEX', save: 'Reflex' }).value).toBe(4)
+    expect(adjusted(s, 5, { kind: 'skill', attr: 'DEX' }).value).toBe(3)
+    expect(adjusted(s, 9, { kind: 'attack', attr: 'STR' }).changed).toBe(false)
+  })
+
+  it('enfeebled lowers Strength attacks and their damage', () => {
+    const s = hero({ conditions: ['Enfeebled'], conditionValues: { Enfeebled: 1 } })
+    expect(adjusted(s, 9, { kind: 'attack', attr: 'STR' }).value).toBe(8)
+    expect(adjusted(s, 4, { kind: 'damage', attr: 'STR' }).value).toBe(3)
+    expect(adjusted(s, 9, { kind: 'attack', attr: 'DEX' }).changed).toBe(false)
+  })
+
+  it('prone means off-guard (−2 AC) and −2 to attack rolls', () => {
+    const s = hero({ conditions: ['Prone'] })
+    expect(adjusted(s, 18, { kind: 'ac' }).value).toBe(16)
+    expect(adjusted(s, 9, { kind: 'attack', attr: 'STR' }).value).toBe(7)
+  })
+
+  it('unconscious: −4 status to AC, Perception and Reflex, plus off-guard', () => {
+    const s = hero({ conditions: ['Unconscious'] })
+    expect(adjusted(s, 18, { kind: 'ac' }).value).toBe(12)
+    expect(adjusted(s, 7, { kind: 'perception', attr: 'WIS' }).value).toBe(3)
+    expect(adjusted(s, 7, { kind: 'save', attr: 'CON', save: 'Fortitude' }).changed).toBe(false)
+  })
+
+  it('encumbered is clumsy 1 unless clumsy is already worse', () => {
+    expect(adjusted(hero({ conditions: ['Encumbered'] }), 18, { kind: 'ac' }).value).toBe(17)
+    const both = hero({ conditions: ['Encumbered', 'Clumsy'], conditionValues: { Clumsy: 3 } })
+    expect(adjusted(both, 18, { kind: 'ac' }).value).toBe(15)
+  })
+
+  it('names what changed a number', () => {
+    const s = hero({ conditions: ['Frightened', 'Prone'], conditionValues: { Frightened: 1 } })
+    expect(adjusted(s, 18, { kind: 'ac' }).note).toBe('−1 Frightened 1, −2 Off-guard')
+    expect(conditionMods(hero(), { kind: 'ac' })).toEqual([])
+  })
+})
+
+describe('pf2e damage and dying (pp. 410–411)', () => {
+  it('uses temp HP first', () => {
+    const s = hero({ tempHp: 5 })
+    takeDamage(s, 8)
+    expect([s.tempHp, s.hp]).toEqual([0, 17])
+  })
+
+  it('knocks out at 0 HP with dying 1, or 2 on a crit, plus wounded', () => {
+    const s = hero({ wounded: 1 })
+    const msg = takeDamage(s, 30, { crit: true })
+    expect(s.hp).toBe(0)
+    expect(s.dying).toBe(3)
+    expect(s.conditions).toContain('Unconscious')
+    expect(msg).toContain('Knocked out')
+  })
+
+  it('raises dying by 1 (2 on a crit) for damage while dying, and dies at 4 less doomed', () => {
+    const s = hero({ hp: 0, dying: 1, doomed: 1, conditions: ['Unconscious'] })
+    expect(deathAt(s)).toBe(3)
+    takeDamage(s, 3)
+    expect(s.dying).toBe(2)
+    expect(isDead(s)).toBe(false)
+    expect(takeDamage(s, 3)).toContain('dies')
+    expect(isDead(s)).toBe(true)
+  })
+
+  it('Shield Block takes up to the Hardness, then shield and hero share the rest', () => {
+    const s = hero({
+      shield: { name: 'Steel Shield', hardness: 5, hp: 20, hpMax: 20, bt: 10, raised: true },
+    })
+    const msg = takeDamage(s, 12, { shieldBlock: true })
+    expect(s.shield.hp).toBe(13)
+    expect(s.hp).toBe(13)
+    expect(msg).toContain('blocks 5')
+    takeDamage(s, 9, { shieldBlock: true })
+    expect(s.shield.hp).toBe(9)
+    expect(s.shield.raised).toBe(false)
+  })
+
+  it('healing from 0 ends dying, adds wounded and wakes the hero', () => {
+    const s = hero({ hp: 0, dying: 2, wounded: 0, conditions: ['Unconscious'] })
+    heal(s, 5)
+    expect(s).toMatchObject({ hp: 5, dying: 0, wounded: 1 })
+    expect(s.conditions).not.toContain('Unconscious')
+  })
+
+  it('recovery checks against DC 10 + dying', () => {
+    const s = hero({ hp: 0, dying: 2, conditions: ['Unconscious'] })
+    expect(recoveryCheck(s, 20)).toContain('critical success')
+    expect(s.dying).toBe(0)
+    expect(s.wounded).toBe(1)
+    const t = hero({ hp: 0, dying: 1 })
+    recoveryCheck(t, 5)
+    expect(t.dying).toBe(2)
+    recoveryCheck(t, 1)
+    expect(t.dying).toBe(4)
+    expect(isDead(t)).toBe(true)
+  })
+
+  it('Heroic Recovery spends every Hero Point and leaves wounded alone', () => {
+    const s = hero({ hp: 0, dying: 3, wounded: 1, heroPoints: 2 })
+    heroicRecovery(s)
+    expect(s).toMatchObject({ dying: 0, wounded: 1, heroPoints: 0, hp: 0 })
+    expect(heroicRecovery(hero({ dying: 1, heroPoints: 0 }))).toBe('No Hero Points left.')
+  })
+})

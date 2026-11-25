@@ -323,9 +323,11 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 
 ### 8.4 Play engine
 
-- [ ] Proficiency, MAP, three actions, degrees of success, crits
-- [ ] Valued conditions (frightened, clumsy, off-guard…), dying, wounded, doomed, hero points
-- [ ] Shields, persistent damage, resistances and weaknesses
+- [x] Proficiency, MAP, degrees of success, crits (Strikes against a target AC, ×2 crit damage)
+- [ ] Three actions per turn (turn tracker)
+- [x] Valued conditions (frightened, clumsy, off-guard…) on every number, dying, wounded, doomed, recovery checks, Heroic Recovery
+- [x] Shield Block (Hardness, broken threshold)
+- [ ] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
 - [ ] Spell slots, focus points, heightening, cantrips
 - [ ] Dice tray, target and odds rows
 

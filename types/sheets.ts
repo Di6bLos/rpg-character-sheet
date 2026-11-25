@@ -131,6 +131,9 @@ export interface Pf2eStrike {
   name: string
   bonus: number
   agile: boolean
+  /** The attribute the attack roll uses (conditions like clumsy and enfeebled read it). */
+  attr?: Pf2eAttr
+  ranged?: boolean
   dmg: string
   type: string
   traits: string
@@ -159,8 +162,12 @@ export interface Pf2eSheet extends SheetCommon {
   tempHp: number
   dying: number
   wounded: number
+  /** Lowers the dying value at which the hero dies (Player Core p. 443). */
+  doomed?: number
   speed: string
   conditions: string[]
+  /** Values of valued conditions in `conditions` (frightened 2); absent means 1. */
+  conditionValues?: Record<string, number>
   skills: Pf2eSkill[]
   strikes: Pf2eStrike[]
   focus: { max: number; current: number; note: string }

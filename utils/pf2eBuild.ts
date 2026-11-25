@@ -492,10 +492,13 @@ function strike(
           ? Math.floor(mods.STR / 2)
           : mods.STR
         : 0
+  const attrName: Pf2eAttr = ranged || (finesse && mods.DEX > mods.STR) ? 'DEX' : 'STR'
   return {
     name,
     bonus: proficiency(rank) + attr,
     agile: traits.includes('Agile'),
+    attr: attrName,
+    ranged,
     dmg: dmgMod ? `${die}${dmgMod > 0 ? '+' : ''}${dmgMod}` : die,
     type: types.join('/'),
     traits: traits.join(', '),
