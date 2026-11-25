@@ -106,6 +106,8 @@ const byline = computed(() => {
           />
         </div>
       </div>
+
+      <SheetDnd5eStatus class="block c-status" />
     </aside>
 
     <section class="leaf leaf--main" aria-label="Character record">
@@ -214,6 +216,10 @@ $vellum-dark: #cdb78e;
   align-items: flex-start;
   font-family: var(--font-body);
 }
+
+// IM Fell has only old-style figures, where "+0" reads as "+o": the big numbers (HP,
+// ability modifiers, the quick tiles, the level seal) use Spectral's lining figures.
+$numerals: var(--font-body);
 
 .leaf {
   display: flex;
@@ -352,7 +358,8 @@ $vellum-dark: #cdb78e;
   color: var(--on-accent);
 
   strong {
-    font-family: var(--font-display);
+    font-family: $numerals;
+    font-variant-numeric: lining-nums;
     font-weight: 400;
     font-size: 34px;
     line-height: 0.9;
@@ -375,7 +382,8 @@ $vellum-dark: #cdb78e;
 }
 
 .hp-value {
-  font-family: var(--font-display);
+  font-family: $numerals;
+  font-variant-numeric: lining-nums;
   font-size: 34px;
 
   small {
@@ -441,7 +449,8 @@ $vellum-dark: #cdb78e;
   }
 
   strong {
-    font-family: var(--font-display);
+    font-family: $numerals;
+    font-variant-numeric: lining-nums;
     font-weight: 400;
     font-size: 28px;
     line-height: 1.1;
@@ -554,7 +563,8 @@ $vellum-dark: #cdb78e;
 }
 
 .stats__mod {
-  font-family: var(--font-display);
+  font-family: $numerals;
+  font-variant-numeric: lining-nums;
   font-size: 44px;
   line-height: 1;
 }
@@ -668,6 +678,17 @@ $vellum-dark: #cdb78e;
       color: $brown;
     }
   }
+}
+
+// Temp HP and conditions in ink on the parchment.
+.c-status {
+  --d5-label: #{$brown};
+  --d5-field: rgba(255, 245, 220, 0.35);
+  --d5-field-text: #{$ink};
+  --d5-line: #{$brown};
+  --d5-chip-text: #{$ink-soft};
+  --d5-on: var(--accent-ink);
+  --d5-on-text: #{$vellum};
 }
 
 .notes-label {
