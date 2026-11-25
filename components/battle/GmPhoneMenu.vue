@@ -3,7 +3,8 @@
 // keeps on its top bar and turn bar's ⋯ that the phone's one-row turn bar has no room
 // for. Previous turn, Add the party, Sync summons, Reroll NPC initiative, the initiative
 // rules (GmModes) and End encounter (its confirm, GmEndEncounter). The same handlers as
-// the desktop's (useGmEncounterTools, useInitiative).
+// the desktop's (useGmEncounterTools, useInitiative). Sync summons and GmModes show only
+// where `useBattleFeatures` offers them (Nimble).
 import type { useInitiative } from '~/composables/useInitiative'
 import { plural } from '~/utils/format'
 
@@ -21,6 +22,7 @@ const btn = ref<HTMLButtonElement | null>(null)
 const menuId = useId()
 const endOpen = ref(false)
 
+const features = useBattleFeatures()
 const hasOrder = computed(() => props.init.order.value.length > 0)
 
 function close(refocus = false) {
@@ -75,7 +77,13 @@ function askEnd() {
           partyMissing ? `${plural(partyMissing, 'hero')} not seated` : 'Everyone is seated'
         }}</small>
       </button>
-      <button type="button" class="gpm__item" :disabled="busy || !hasOrder" @click="syncSummons">
+      <button
+        v-if="features.summons"
+        type="button"
+        class="gpm__item"
+        :disabled="busy || !hasOrder"
+        @click="syncSummons"
+      >
         Sync summons
         <small>Seat the heroes' summons, drop dismissed ones</small>
       </button>
@@ -83,7 +91,13 @@ function askEnd() {
         Reroll NPC initiative
         <small>Every monster and NPC rolls again</small>
       </button>
-      <BattleGmModes compact :mode="init.mode.value" :disabled="busy" @pick="setMode" />
+      <BattleGmModes
+        v-if="features.initiativeModes"
+        compact
+        :mode="init.mode.value"
+        :disabled="busy"
+        @pick="setMode"
+      />
       <button
         type="button"
         class="gpm__item gpm__item--danger"
