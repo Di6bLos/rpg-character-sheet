@@ -6,7 +6,10 @@ import {
   cleanMarkdown,
   closedArchetypeFeat,
   closedArchetypes,
+  closedPrerequisite,
+  closedTitlesIn,
   heritageAncestry,
+  leadNamesClosed,
   openBook,
   openSource,
   orcProblems,
@@ -15,6 +18,9 @@ import {
   sourceBooks,
   table,
   withoutArchetypes,
+  withoutClosedDedications,
+  withoutClosedMentions,
+  withoutClosedPrerequisites,
   withoutDeities,
   withoutLegacy,
 } from '../scripts/lib/aon'
@@ -239,6 +245,134 @@ describe('Golarion setting material', () => {
     expect(settingName('Weight of the World', deities)).toBeUndefined()
     expect(settingName('Setback', deities)).toBeUndefined()
     expect(settingName('Fireball', deities)).toBeUndefined()
+    // Treasure Vault's Pactmaster's Grace is named for a Katapesh organization.
+    expect(settingName("Pactmaster's Grace", deities)).toBe('Pactmaster')
+  })
+})
+
+describe('closed books named in open text', () => {
+  const CLOSED = new Set([
+    ...LEGACY,
+    'Draconic Codex',
+    'Treasure Vault',
+    'Grand Bazaar',
+    'Legends',
+    'Impossible Lands',
+  ])
+
+  it('finds a closed title as a citation, not as a word, an era or a remastered name', () => {
+    expect(closedTitlesIn('The dragons from Lost Omens: Draconic Codex use…', CLOSED)).toEqual([
+      'Lost Omens',
+      'Draconic Codex',
+    ])
+    expect(closedTitlesIn('in Pathfinder Lost Omens Grand Bazaar', CLOSED)).toEqual([
+      'Lost Omens',
+      'Grand Bazaar',
+    ])
+    expect(closedTitlesIn('Treasure Vault (Remastered) pg. 30', CLOSED)).toEqual([])
+    expect(closedTitlesIn('Legends say Aroden…, throughout the Impossible Lands', CLOSED)).toEqual(
+      [],
+    )
+    expect(closedTitlesIn('the Age of Lost Omens; Lost Omens, Doomed Patterns', CLOSED)).toEqual([])
+  })
+
+  // Player Core p. 326: Dragon Form's own rules stay; AoN's inlined Draconic Codex table goes.
+  it('drops a section whose lead names a closed book, with the table after it', () => {
+    const md = [
+      '# Dragon Form',
+      '**Source** Player Core pg. 326',
+      'Calling upon powerful magic, you gain a Large dragon battle form.',
+      '**Heightened (8th)** Your battle form is Huge.',
+      '### Monster Core Dragons',
+      ' The dragons from Lost Omens: Draconic Codex use the following specifications.',
+      '## Dragon Form',
+      '| **Dragon** | **Tradition** |',
+      '| --- | --- |',
+      '| Adamantine | Primal |',
+      '## Next',
+      'Kept.',
+    ].join('\n')
+    const out = withoutLegacy(md, CLOSED)
+    expect(out).toContain('Heightened (8th)')
+    expect(out).not.toMatch(/Draconic Codex|Adamantine|Monster Core Dragons/)
+    expect(out).toContain('## Next\nKept.')
+    expect(leadNamesClosed(md, CLOSED)).toBe(false)
+    expect(
+      leadNamesClosed(
+        '# Monster Core Dragons\n**Source** Player Core pg. 326\nThe dragons from Lost Omens: Draconic Codex use…',
+        CLOSED,
+      ),
+    ).toBe(true)
+  })
+
+  it('takes cross-references and lines naming closed books out of open text', () => {
+    const md = [
+      '## Siege weapons',
+      "The DC is the standard DC of the siege weapon's level (Core Rulebook 503).",
+      'You can find more in _Pathfinder Lost Omens Grand Bazaar_.',
+      'Legends say so.',
+    ].join('\n')
+    expect(withoutClosedMentions(md, CLOSED).split('\n')).toEqual([
+      '## Siege weapons',
+      "The DC is the standard DC of the siege weapon's level.",
+      'Legends say so.',
+    ])
+    expect(
+      orcProblems('You can find more in _Pathfinder Lost Omens Grand Bazaar_.', CLOSED),
+    ).toHaveLength(1)
+  })
+
+  it('drops Pathfinder Society notes, which are organized-play rulings', () => {
+    const md = [
+      '**Source** GM Core pg. 1',
+      '',
+      '_[**PFS Note**](/pathfinder-society) Characters from Kyonin have access. When using a _shawl_, the season is local._<br />_**Edicts** cooperate_',
+      '',
+      '**Price** 150 gp',
+    ].join('\n')
+    const out = clean(md)
+    expect(out).not.toMatch(/PFS|Kyonin|Edicts/)
+    expect(out).toContain('**Price** 150 gp')
+  })
+})
+
+describe('closed archetypes in prerequisites', () => {
+  const closed = new Set(['Bellflower Tiller', 'Blackjacket', 'Battle Harbinger', 'Hellknight'])
+
+  it('strips a closed dedication offered as an alternative, or listed beside an open one', () => {
+    expect(
+      withoutClosedDedications('Vigilante Dedication or Bellflower Tiller Dedication', closed),
+    ).toBe('Vigilante Dedication')
+    expect(withoutClosedDedications('Fighter Dedication or Blackjacket Dedication', closed)).toBe(
+      'Fighter Dedication',
+    )
+    expect(
+      withoutClosedDedications('Apocalypse Rider Dedication; Battle Harbinger Dedication', closed),
+    ).toBe('Apocalypse Rider Dedication')
+    expect(
+      withoutClosedDedications('A Dedication, Hellknight Dedication, or B Dedication', closed),
+    ).toBe('A Dedication or B Dedication')
+    expect(withoutClosedDedications('trained in Arcana, Nature, or Religion', closed)).toBe(
+      'trained in Arcana, Nature, or Religion',
+    )
+    expect(withoutClosedDedications('Hellknight Dedication', closed)).toBeUndefined()
+  })
+
+  it('drops a feat that needs only a closed dedication, and cleans the stat line', () => {
+    const feat = (prerequisite: string) =>
+      ({ id: 'f', category: 'feat', name: 'F', prerequisite }) as AonDoc
+    expect(closedPrerequisite(feat('[Hellknight Dedication](/Feats.aspx?ID=1)'), closed)).toBe(true)
+    expect(
+      closedPrerequisite(feat('Vigilante Dedication or Bellflower Tiller Dedication'), closed),
+    ).toBe(false)
+    const md = '**Prerequisites**\nVigilante Dedication or Bellflower Tiller Dedication\n\n---'
+    expect(withoutClosedPrerequisites(md, closed)).toBe(
+      '**Prerequisites**\nVigilante Dedication\n\n---',
+    )
+    expect(
+      withoutClosedPrerequisites('**Prerequisites** Hellknight Dedication\nText', closed),
+    ).toBe('Text')
+    expect(orcProblems(md, new Set(), closed)).toHaveLength(1)
   })
 })
 

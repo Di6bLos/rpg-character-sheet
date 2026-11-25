@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type Pf2eData, loadPf2e } from '../data/pf2e'
-import { openBook, settingName } from '../scripts/lib/aon'
+import { closedTitlesIn, openBook, settingName } from '../scripts/lib/aon'
 
 const dir = join(import.meta.dirname, '..', 'data', 'pf2e', 'generated')
 const load = <K extends keyof Pf2eData>(set: K): Pf2eData[K] =>
@@ -124,6 +124,37 @@ describe('pf2e data', () => {
 
   // A setting archetype (Hellknight, Red Mantis Assassin, Aldori Duelist) has no feats of its
   // own in the data, so a feat that still names one, or names a Golarion noun, fails here.
+  // The closed books (legacy and setting) as `npm run pf2e:data` last read them from AoN.
+  it('names no closed book anywhere, a deity’s own source aside', () => {
+    const books = JSON.parse(
+      readFileSync(join(import.meta.dirname, 'fixtures', 'pf2e', 'closed-books.json'), 'utf8'),
+    ) as { closed: string[]; legacy: string[] }
+    const closed = new Set(books.closed)
+    expect(closed).toContain('Draconic Codex')
+    for (const [set, rows] of Object.entries(data))
+      for (const r of rows as Pf2eData['traits']) {
+        const { source: _source, ...rest } = r
+        const json = JSON.stringify(set === 'deities' ? rest : r)
+        const named = closedTitlesIn(json, set === 'deities' ? new Set(books.legacy) : closed)
+        expect(named, `${set}: ${r.name}`).toEqual([])
+        expect(json, `${set}: ${r.name}`).not.toMatch(/PFS Note/)
+      }
+    // Player Core p. 326: Dragon Form keeps its own rules, not AoN's Draconic Codex table.
+    const dragonForm = data.spells.find((sp) => sp.id === 'spell-1502')!
+    expect(dragonForm.text).toContain('Heightened (8th)')
+    expect(dragonForm.text).not.toMatch(/Adamantine|Monster Core Dragons/)
+    expect(item("Pactmaster's Grace")).toBeUndefined()
+  })
+
+  it('takes closed archetypes’ dedications out of prerequisites', () => {
+    const prereq = (id: string) => data.feats.find((f) => f.id === id)?.prerequisites
+    expect(prereq('feat-6427')).toBe('Vigilante Dedication')
+    expect(prereq('feat-5084')).toBe('Fighter Dedication')
+    expect(prereq('feat-7314')).toBe('Apocalypse Rider Dedication')
+    const closedNames = /\b(?:Bellflower Tiller|Blackjacket|Battle Harbinger|Hellknight) Dedication/
+    for (const f of data.feats) expect(f.prerequisites ?? '', f.name).not.toMatch(closedNames)
+  })
+
   it('names only archetypes that are in the data themselves', () => {
     const deityNames = data.deities.map((d) => d.name)
     const own = new Set(

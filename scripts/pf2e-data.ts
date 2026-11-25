@@ -2,9 +2,10 @@
 // `data/pf2e/types.ts`) from the Archives of Nethys data in `.local/pf2e/aon/`. Remaster (ORC)
 // entries from the open rulebooks only (`OPEN_BOOKS` in `scripts/lib/aon.ts`): legacy (OGL)
 // entries, Golarion setting books (Lost Omens, Adventure Paths…), entries named for a deity or
-// Golarion proper noun, the feats of setting archetypes (and those archetypes' names on other
-// feats), the sections of those books AoN inlines and the deity lists on weapons and spells
-// are left out. Deities themselves are Paizo Reserved Material, kept under Paizo's Community
+// Golarion proper noun, the feats of setting archetypes (and those archetypes' names and
+// dedications on other feats), the sections of those books AoN inlines or names in a lead,
+// Pathfinder Society notes and the deity lists on weapons and spells are left out; the run
+// fails if a closed book's name would still be written. Deities themselves are Paizo Reserved Material, kept under Paizo's Community
 // Use Policy (the user's one exception). Also writes `data/pf2e/NOTICE.md` with the ORC and
 // Community Use notices and the books used.
 //
@@ -43,8 +44,11 @@ import {
   cleanMarkdown,
   closedArchetypeFeat,
   closedArchetypes,
+  closedPrerequisite,
   heritageAncestry,
   closedBooks,
+  closedTitlesIn,
+  leadNamesClosed,
   legacyBooks,
   loadAon,
   located,
@@ -56,6 +60,8 @@ import {
   skillNamesIn,
   slug,
   stripLinks,
+  withoutClosedDedications,
+  withoutClosedMentions,
   withoutLegacy,
 } from './lib/aon'
 import {
@@ -102,8 +108,14 @@ const current = docs.filter(
     !d.exclude_from_search &&
     !list(d.remaster_id).length &&
     (d.category === 'deity' || shareable(d, DEITY_NAMES)) &&
-    !closedArchetypeFeat(d, CLOSED_ARCHETYPES),
+    !closedArchetypeFeat(d, CLOSED_ARCHETYPES) &&
+    !closedPrerequisite(d, CLOSED_ARCHETYPES) &&
+    (d.category === 'deity' ||
+      !leadNamesClosed(cleanMarkdown(d.markdown ?? '', 1, new Map()), CLOSED)),
 )
+/** Prerequisites without the dedications of closed archetypes (Safe House's Bellflower Tiller). */
+const prerequisites = (p: string | undefined) =>
+  p === undefined ? undefined : withoutClosedDedications(p, CLOSED_ARCHETYPES)
 const of = (...cats: string[]) =>
   current
     .filter((d) => cats.includes(d.category))
@@ -166,9 +178,10 @@ const rank = (v: unknown) => RANK[String(v)] ?? 'U'
 
 /** Splits an entry's markdown into its stat lines (`**Key** value`) and its rules text. */
 function parts(d: AonDoc) {
-  const md = withoutLegacy(
-    cleanMarkdown(d.markdown ?? '', 1, byId),
-    d.category === 'deity' ? LEGACY : CLOSED,
+  const closed = d.category === 'deity' ? LEGACY : CLOSED
+  const md = withoutClosedMentions(
+    withoutLegacy(cleanMarkdown(d.markdown ?? '', 1, byId), closed),
+    closed,
   )
   const lines = md.split('\n')
   if (lines[0]?.startsWith('# ')) lines.shift()
@@ -472,7 +485,7 @@ const feats: Pf2eFeatDef[] = latest(of('feat'), featKey).map((d) => {
     ...rest,
     level: d.level ?? 1,
     ...opt('actions', cost(d.actions)),
-    ...opt('prerequisites', stats.Prerequisites),
+    ...opt('prerequisites', prerequisites(stats.Prerequisites)),
     ...opt('trigger', stats.Trigger),
     ...opt('requirements', stats.Requirements),
     ...opt('frequency', stats.Frequency),
@@ -543,7 +556,7 @@ const archetypes: Pf2eArchetypeDef[] = latest(of('archetype'))
       categories: list(d.archetype_category),
       ...opt(
         'prerequisites',
-        typeof d.prerequisite === 'string' ? d.prerequisite : stats.Prerequisites,
+        prerequisites(typeof d.prerequisite === 'string' ? d.prerequisite : stats.Prerequisites),
       ),
       ...opt('dedication', dedication?.id),
     }
@@ -845,6 +858,31 @@ const sets: Record<string, { id: string; source: { book: string } }[]> = {
   traits,
   deities,
 }
+/**
+ * What the committed data must never hold (fails the run): a left-out book named in a record,
+ * a deity's own source aside, or a Pathfinder Society note. The closed titles go to the test
+ * fixture `tests/fixtures/pf2e/closed-books.json` so the data test can check without AoN.
+ */
+const leaks: string[] = []
+for (const [name, rows] of Object.entries(sets))
+  for (const r of rows) {
+    const { source: _source, ...rest } = r
+    const json = JSON.stringify(name === 'deities' ? rest : r)
+    const named = closedTitlesIn(json, name === 'deities' ? LEGACY : CLOSED)
+    if (named.length) leaks.push(`${name} ${r.id}: ${named.join(', ')}`)
+    if (/PFS Note/.test(json)) leaks.push(`${name} ${r.id}: PFS Note`)
+  }
+if (leaks.length) {
+  console.error(`The data would name ${leaks.length} left-out source(s):\n${leaks.join('\n')}`)
+  process.exit(1)
+}
+const FIXTURES = join(ROOT, 'tests', 'fixtures', 'pf2e')
+mkdirSync(FIXTURES, { recursive: true })
+writeFileSync(
+  join(FIXTURES, 'closed-books.json'),
+  `${JSON.stringify({ closed: [...CLOSED].sort(), legacy: [...LEGACY].sort() }, null, 2)}\n`,
+)
+
 mkdirSync(OUT, { recursive: true })
 const books = new Set<string>()
 for (const [name, rows] of Object.entries(sets)) {
