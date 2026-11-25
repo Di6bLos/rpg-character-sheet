@@ -550,8 +550,19 @@ const feet = (v: unknown) => Number(/-?\d+/.exec(String(v ?? ''))?.[0] ?? 0)
 /** Reload in actions as printed, or the printed time when it isn't actions (a ballista's "1 minute"). */
 const reload = (printed: string | undefined): number | string | undefined =>
   printed === undefined ? undefined : /^\d+$/.test(printed) ? Number(printed) : printed
+/**
+ * Deadly and fatal carry a die size (Player Core p. 282) that AoN's trait list drops; the page's
+ * trait labels keep it ("Deadly d8").
+ */
+function sizedTraits(d: AonDoc): string[] {
+  const labels = [
+    ...String(d.markdown ?? '').matchAll(/<trait label="(Deadly|Fatal)\s+1?d(\d+)"/gi),
+  ].map((l) => `${l[1]} d${l[2]}`)
+  return list(d.trait).map((t) => labels.find((l) => l.startsWith(`${t} `)) ?? t)
+}
 const weapons: Pf2eWeaponDef[] = latest(of('weapon')).map((d) => ({
   ...base(d),
+  traits: sizedTraits(d),
   level: d.level ?? 0,
   price: num(d.price),
   bulk: num(d.bulk),

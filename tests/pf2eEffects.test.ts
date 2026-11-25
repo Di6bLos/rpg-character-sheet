@@ -41,7 +41,8 @@ describe('pf2e effect data', () => {
       ...loadSet('actions').map((a) => a.name),
       ...buildData.classes.flatMap((c) => [...c.features, ...c.subclasses].map((f) => f.name)),
     ])
-    for (const e of PF2E_EFFECTS) expect(names, e.name).toContain(e.name.replace(' (ally)', ''))
+    for (const e of PF2E_EFFECTS)
+      expect(names, e.name).toContain(e.has?.name ?? e.name.replace(' (ally)', ''))
   })
 })
 

@@ -189,12 +189,20 @@ export function abilityNames(s: Pf2eSheet) {
   ])
 }
 
+/** Whether the hero has the ability an entry names in `has` (of that kind, when it says). */
+const hasAbility = (s: Pf2eSheet, has: NonNullable<Pf2eEffectDef['has']>) =>
+  s.feats.some(
+    (f) => f.name === has.name && (!has.type || f.type.toLowerCase() === has.type.toLowerCase()),
+  )
+
 /** The hero's own effects: permanent ones and toggles they can turn on, written or derived. */
 export function ownEffects(s: Pf2eSheet): Pf2eEffectDef[] {
   const names = abilityNames(s)
   for (const f of s.feats) for (const e of featRules(f).embedded) names.add(e.name)
   return [
-    ...PF2E_EFFECTS.filter((e) => e.mode !== 'given' && names.has(e.name)),
+    ...PF2E_EFFECTS.filter(
+      (e) => e.mode !== 'given' && (e.has ? hasAbility(s, e.has) : names.has(e.name)),
+    ),
     ...sheetDerived(s),
     ...itemEffects(s),
   ]
@@ -280,6 +288,7 @@ export function effectMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
     if (!e.selector.some((x) => want.includes(x))) return []
     if (e.melee && !ctx.melee) return []
     if (e.weapons === 'agileFinesse' && !agileOrFinesse) return []
+    if (e.weapons === 'unarmed' && !traits.includes('unarmed')) return []
     if (e.skills && (ctx.kind !== 'skill' || !e.skills.includes(ctx.skill ?? ''))) return []
     if (e.actions && !e.actions.some((a) => a.toLowerCase() === ctx.action?.toLowerCase()))
       return []
@@ -473,11 +482,16 @@ export function shiftedDegree(
   return better ? { degree: hit.effect.to, by: hit.active.def.name, notes } : { degree, notes }
 }
 
-/** The hero's resistances from active effects, at their level (Guardian's Armor: physical 1 + ½ level). */
+/**
+ * The hero's resistances from active effects, at their level (Guardian's Armor: physical 1 + ½
+ * level); a toggle's own value when it was set on use (Selfish Shield with Relentless Reaction).
+ */
 export function resistancesNow(s: Pf2eSheet, level: number) {
   return allOf(s, 'resistance').map(({ effect, active }) => ({
     type: effect.type,
-    value: amountAt(effect.amount, level, s.attrs.CON, effect.min ?? 0) + (effect.add ?? 0),
+    value:
+      active.value ??
+      amountAt(effect.amount, level, s.attrs.CON, effect.min ?? 0) + (effect.add ?? 0),
     source: active.def.name,
   }))
 }

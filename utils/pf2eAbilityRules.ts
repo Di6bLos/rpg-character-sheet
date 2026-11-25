@@ -49,6 +49,18 @@ export interface Pf2eStrikeRule {
   ignoreMap?: boolean
   /** Extra weapon damage dice on a hit, by level (Vicious Swing: 1, 2 at 10th, 3 at 18th). */
   extraDice?: [level: number, dice: number][]
+  /** Unarmed Strikes only (Flurry of Blows). */
+  unarmed?: boolean
+  /** Strikes of these damage types only (Bleeding Finisher: slashing or piercing). */
+  damageTypes?: string[]
+  /** Each Strike at the current multiple attack penalty, not one after the other (Double Slice). */
+  sameMap?: boolean
+  /** One Strike with each of two weapons (Double Slice). */
+  twoWeapons?: boolean
+  /** Penalty on the second Strike when its weapon isn't agile (Double Slice: 2). */
+  secondPenalty?: number
+  /** The Strikes' damage is combined (Double Slice, Flurry of Blows). */
+  combine?: boolean
 }
 
 export interface Pf2eCheckRule {
@@ -277,7 +289,12 @@ export const PF2E_RULE_PATTERNS = {
   timeCost:
     /^(?:You )?(?:spend|spending|take|takes) (1 minute|10 minutes|1 hour|(?:\d+|one|two|several) (?:minutes|hours|days))\b/i,
   strike:
-    /\b(?:[Mm]ake|[Aa]ttempt) (a|an|one|two|three) (?:(melee|ranged|unarmed|weapon)(?: or (?:melee|ranged|unarmed|weapon))? )*(?:weapon )?Strikes?\b|\bStrike (twice|two times)\b/,
+    /\b(?:[Mm]ake|[Aa]ttempt) (a|an|one|two|three) (?:(melee|ranged|unarmed|weapon|slashing|piercing|bludgeoning)(?: or (?:melee|ranged|unarmed|weapon|slashing|piercing|bludgeoning))? )*(?:weapon )?Strikes?\b|\bStrike (twice|two times)\b/,
+  sameMap: /\beach using your current multiple attack penalty\b/i,
+  twoWeapons: /\bone with each of your two (?:melee )?weapons\b/i,
+  secondPenalty:
+    /\bIf the second Strike is made with a weapon that doesn(?:'|’)t have the agile trait, it takes a [–−-](\d+) penalty/i,
+  combineDamage: /\bcombine (?:their|the) damage\b/i,
   strideTwice: /\bStride (?:up to )?(twice|two times|three times)\b/,
   strideOnce:
     /\b(?:You |you |then |can )?(Stride|Step)\b(?! (?:up to )?(?:twice|two times|three times))/,
@@ -835,7 +852,18 @@ function readStrike(text: string): Pf2eStrikeRule | undefined {
   }
   if (/melee/.test(kinds) && !/ranged/.test(kinds)) rule.melee = true
   if (/ranged/.test(kinds) && !/melee/.test(kinds)) rule.ranged = true
+  if (/unarmed/.test(kinds) && !/melee|ranged|weapon/.test(kinds)) rule.unarmed = true
+  const types = kinds.match(/slashing|piercing|bludgeoning/g)
+  if (types) rule.damageTypes = types
   if (P.mapIgnored.test(text)) rule.ignoreMap = true
+  if (P.sameMap.test(text)) rule.sameMap = true
+  if (P.twoWeapons.test(text)) {
+    rule.twoWeapons = true
+    if (/two melee weapons/i.test(text)) rule.melee = true
+  }
+  const second = P.secondPenalty.exec(text)
+  if (second) rule.secondPenalty = Number(second[1])
+  if (P.combineDamage.test(text)) rule.combine = true
   if (P.extraDie.test(text)) {
     const steps: [number, number][] = [[1, 1]]
     P.extraDiceLevel.lastIndex = 0

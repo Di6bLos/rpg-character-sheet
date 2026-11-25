@@ -5,7 +5,7 @@
 // next Strike is for the multiple attack penalty. Its results show here. Rules in
 // utils/pf2eActions.ts; abilities spend from it in the Actions panel.
 import type { Pf2eSheet } from '~/types/sheets'
-import { rollAttack, sign } from '~/utils/dice'
+import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import { endPf2eEncounter, endPf2eTurn, startPf2eTurn } from '~/utils/pf2eActions'
 import { adjusted } from '~/utils/pf2ePlay'
 
@@ -37,11 +37,13 @@ const initiativeWhy = computed(() =>
 function rollInitiative() {
   if (!canEdit.value || initiativeWhy.value) return
   claim('turn:init', () => {
-    const r = rollAttack(initiative.value.value)
+    const r = rollCheck(initiative.value.value)
     rolled.value = r.total
     const nat = r.natural ? `, natural ${r.natural}` : ''
     const note = initiative.value.note ? ` (${initiative.value.note})` : ''
-    say(`Initiative: ${r.total} (${r.d20} ${sign(initiative.value.value)}${nat})${note}`)
+    const line = `Initiative: ${r.total} (${r.d20} ${sign(initiative.value.value)}${nat})${note}`
+    showOutcome({ label: 'Initiative', total: r.total, detail: line })
+    say(line)
   })
 }
 
