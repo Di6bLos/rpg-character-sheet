@@ -7,7 +7,8 @@
 // drawer. Every frame sits inside one HeroScope, so switching frames (a rotation) keeps
 // the hero's sheet editor and its automatic turn steps. Systems without the Nimble hero
 // editor (5e, PF2e; `features.nimbleHero` false) give a seated player a read-only hero card
-// (HeroBasic) and a basic turn line with Roll initiative (TurnBasic) above the roster.
+// (HeroBasic) and a basic turn line with Roll initiative (TurnBasic) above the roster of
+// the other heroes (their own is in HeroBasic).
 import { downSummonKeys } from '~/utils/initiative'
 import type { PhoneTab } from '~/utils/boardLayout'
 
@@ -177,7 +178,7 @@ function onGridHero(characterId: string) {
       </template>
       <template #turn>
         <BattleGmTurnBar v-if="gmControls" compact :init="init" :roster="roster" />
-        <BattleTurnBasic v-else-if="basicHeroId" :init="init" :character-id="basicHeroId" />
+        <BattleTurnBasic v-else-if="basicHeroId" compact :init="init" :character-id="basicHeroId" />
         <BattleTurnBar v-else compact :init="init" />
       </template>
       <template #dialogs="{ go }">
@@ -243,6 +244,7 @@ function onGridHero(characterId: string) {
           :roster="roster"
           :system="campaign.system"
           :turn-character-id="actingCharacterId"
+          :exclude="basicHeroId"
         />
         <p v-else-if="isGm" class="panel battle-empty">
           <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
@@ -324,6 +326,7 @@ function onGridHero(characterId: string) {
             :roster="roster"
             :system="campaign.system"
             :turn-character-id="actingCharacterId"
+            :exclude="basicHeroId"
           />
         </template>
         <p v-else-if="isGm" class="panel battle-empty">

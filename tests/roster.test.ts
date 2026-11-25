@@ -52,9 +52,9 @@ describe('downStatus / deathSavesLine / dyingLine', () => {
   it('gives 5e Down with the death saves', () => {
     const s = { deathSaves: { successes: 1, failures: 2 } }
     expect(downStatus(s)).toBe('Down')
-    expect(deathSavesLine(s)).toBe('Death saves 1✓ 2✗')
+    expect(deathSavesLine(s)).toBe('1 saved · 2 failed')
     expect(deathSavesLine(s, true)).toBe('Death saves 1 success, 2 failures')
-    expect(dyingLine(s)).toBe('Death saves 1✓ 2✗')
+    expect(dyingLine(s)).toBe('1 saved · 2 failed')
   })
 
   it('gives PF2e its Dying value and no death saves', () => {

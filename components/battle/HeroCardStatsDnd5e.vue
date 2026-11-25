@@ -81,7 +81,7 @@ const features = computed(() => (props.card.features ?? []).filter((f) => f.name
           </span>
         </span>
       </div>
-      <p class="hcs__none">{{ state }}</p>
+      <p v-if="state" class="hcs__none">{{ state }}</p>
     </div>
 
     <div class="hcs__full">

@@ -67,7 +67,7 @@ describe('pf2ePointsLine', () => {
 describe('deathSaveState', () => {
   it('reads not dying, rolling, stable at 3 successes and dead at 3 failures', () => {
     expect(deathSaveState(false, { successes: 0, failures: 0 })).toBe('Not dying.')
-    expect(deathSaveState(true, { successes: 2, failures: 1 })).toBe('Down: rolling death saves.')
+    expect(deathSaveState(true, { successes: 2, failures: 1 })).toBe('')
     expect(deathSaveState(true, { successes: 3, failures: 1 })).toBe('Down: stable.')
     expect(deathSaveState(true, { successes: 1, failures: 3 })).toBe('Dead.')
   })

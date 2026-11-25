@@ -5,14 +5,14 @@
 // focus points, `gmPoints`). A card opens
 // the hero's stats modal. Compact (phone): full-width touch-sized cards in the tab's
 // own scroll, free of the right column's Party / Chat split. Off Nimble
-// (`useBattleFeatures`) the GM's cards have no pips or mana; a hero at 0 HP reads "Down"
-// with a "Death saves 1✓ 2✗" row (5e) or "Dying 2" (PF2e), concentration is a chip, and
-// the GM's cards show Passive Perception.
+// (`useBattleFeatures`) the GM's cards have no pips or mana; a hero at 0 HP gets a
+// DownStatus row ("Down · 1 saved · 2 failed" for 5e, "Down · Dying 2" for PF2e),
+// concentration is a chip, and the GM's cards show Passive Perception.
 import type { RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { heroTurnActions } from '~/utils/nimblePlay'
-import { deathSavesLine, downStatus, heroDown } from '~/utils/roster'
+import { dyingLine, heroDown } from '~/utils/roster'
 import { pf2ePointsLine } from '~/utils/heroCardStats'
 
 const props = defineProps<{
@@ -49,8 +49,8 @@ function status(r: RosterEntry): string {
   const s = r.summary
   if (!s) return ''
   if (isDead(r)) return 'Dead'
-  // 5e and PF2e: down at 0 HP ("Dying 2" with PF2e's Dying value).
-  if (basicDown(r)) return downStatus(s)
+  // 5e and PF2e: down at 0 HP, on the DownStatus row of its own.
+  if (basicDown(r)) return ''
   if (s.dying) return 'Dying'
   const summons = (s.summons ?? []).filter((m) => !m.hpMax || m.hp > 0).length
   if (summons) return plural(summons, 'summon')
@@ -62,9 +62,10 @@ function basicDown(r: RosterEntry): boolean {
   return !features.value.nimbleHero && heroDown(r.summary?.hp, r.summary?.hpMax)
 }
 
-/** A downed 5e hero's death saves, on a row of their own so they never truncate. */
-function saves(r: RosterEntry, spoken = false): string {
-  return basicDown(r) ? deathSavesLine(r.summary, spoken) : ''
+/** A downed 5e / PF2e hero, for the card's accessible name: "Down, Death saves 1 success, …". */
+function downLabel(r: RosterEntry): string {
+  if (!basicDown(r)) return ''
+  return ['Down', dyingLine(r.summary, true)].filter(Boolean).join(', ')
 }
 
 function conditions(r: RosterEntry): string[] {
@@ -129,7 +130,7 @@ function label(r: RosterEntry): string {
   const conds = conditions(r).join(', ')
   const pp = passive(r)
   const passiveText = pp === null ? '' : `Passive Perception ${pp}`
-  const parts = [name, acting, sub(r), saves(r, true), hp, guard, passiveText, mana(r)]
+  const parts = [name, acting, sub(r), downLabel(r), hp, guard, passiveText, mana(r)]
   parts.push(actions, conds)
   return `${parts.filter(Boolean).join(', ')}. Open stats`
 }
@@ -211,7 +212,7 @@ function label(r: RosterEntry): string {
                 />
               </span>
             </span>
-            <span v-if="saves(r)" class="pc__saves">{{ saves(r) }}</span>
+            <BattleDownStatus v-if="basicDown(r)" class="pc__down" :summary="r.summary" />
             <span class="pc__bar" aria-hidden="true">
               <span
                 :class="{ 'is-low': hpFill(r) <= 0.5 }"
@@ -433,11 +434,8 @@ function label(r: RosterEntry): string {
   }
 }
 
-.pc__saves {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--page-soft);
-  white-space: nowrap;
+.pc__down {
+  margin-block: 1px;
 }
 
 .pc__bar {
@@ -522,10 +520,6 @@ function label(r: RosterEntry): string {
 
   .pc__bar {
     height: 6px;
-  }
-
-  .pc__saves {
-    font-size: 12px;
   }
 
   .pc__cond {

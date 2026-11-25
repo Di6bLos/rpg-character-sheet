@@ -1,21 +1,29 @@
 <script setup lang="ts">
 // Party roster cards: HP, temp HP, conditions; Nimble gets single-column long
-// cards with wounds, mana, armor, actions and concentration.
+// cards with wounds, mana, armor, actions and concentration. A downed 5e / PF2e hero gets
+// the battle board's DownStatus line. `exclude` leaves out one hero (the seated 5e / PF2e
+// player's own, already in their hero card beside it).
 import type { GameSystem, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
-import { dyingLine } from '~/utils/roster'
 
 const props = defineProps<{
   roster: RosterEntry[]
   system: GameSystem
   /** Character whose turn it is. */
   turnCharacterId?: string | null
+  /** A character to leave out (the viewer's own, shown in their hero card). */
+  exclude?: string | null
 }>()
 
 const auth = useAuthStore()
 
-const heroes = computed(() => props.roster.filter((r) => r.role !== 'gm' || r.character_id))
+const heroes = computed(() =>
+  props.roster.filter(
+    (r) =>
+      (r.role !== 'gm' || r.character_id) && (!props.exclude || r.character_id !== props.exclude),
+  ),
+)
 const nimble = computed(() => props.system === 'nimble')
 
 function hp(r: RosterEntry) {
@@ -50,11 +58,6 @@ function down(r: RosterEntry) {
   return !!r.character_id && (r.summary?.hp ?? 1) <= 0
 }
 
-/** Death saves (5e) or Dying N (PF2e) beside Down; the party cards use the same line. */
-function dying(r: RosterEntry) {
-  return dyingLine(r.summary) || 'Dying'
-}
-
 function dead(r: RosterEntry) {
   const w = wounds(r)
   return !!r.character_id && w.max > 0 && w.n >= w.max
@@ -75,7 +78,9 @@ function actions(r: RosterEntry) {
 <template>
   <section class="roster" aria-labelledby="ros-h">
     <h2 id="ros-h" class="rule-title">Party roster<span aria-hidden="true" /></h2>
-    <p v-if="!heroes.length" class="empty">No one has joined this campaign yet.</p>
+    <p v-if="!heroes.length" class="empty">
+      {{ exclude ? 'No other heroes at this table yet.' : 'No one has joined this campaign yet.' }}
+    </p>
 
     <div v-else-if="!nimble" class="roster__grid">
       <article
@@ -135,9 +140,7 @@ function actions(r: RosterEntry) {
               <span class="hp__temp" :style="{ left: hp(r).pct, width: hp(r).tempPct }" />
             </div>
           </div>
-          <div v-if="down(r)" class="dying">
-            <b>Down</b><span>{{ dying(r) }}</span>
-          </div>
+          <BattleDownStatus v-if="down(r)" class="dying" :summary="r.summary" />
           <div class="stats">
             <div>
               <b>{{ heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level) ?? '—' }}</b
@@ -494,17 +497,7 @@ function actions(r: RosterEntry) {
 }
 
 .dying {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  padding: 8px 10px;
-  border-radius: min(var(--radius-control), 8px);
-  border: 1px solid var(--danger);
-  font-size: 14px;
-
-  b {
-    color: var(--danger-text);
-  }
+  font-size: 13px;
 }
 
 .stats {

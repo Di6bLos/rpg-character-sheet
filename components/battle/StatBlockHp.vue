@@ -53,7 +53,7 @@ function setHp() {
       <button
         type="button"
         class="step step--xs"
-        :aria-label="`${c.name}: lose HP`"
+        :aria-label="`${c.name}: lose ${typed() || 1} HP`"
         @click="change(-1)"
       >
         −
@@ -71,7 +71,7 @@ function setHp() {
       <button
         type="button"
         class="step step--xs"
-        :aria-label="`${c.name}: gain HP`"
+        :aria-label="`${c.name}: gain ${typed() || 1} HP`"
         @click="change(1)"
       >
         +

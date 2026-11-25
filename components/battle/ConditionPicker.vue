@@ -86,7 +86,7 @@ watch(
         {{ a.name }} <span aria-hidden="true">×</span>
       </button>
     </div>
-    <p v-else class="cond__none">None</p>
+    <p v-else class="cond__none">No conditions</p>
 
     <UiDialog v-model="addOpen" :title="`Conditions · ${name}`" width="560px">
       <div class="pick">

@@ -44,22 +44,33 @@ export function downStatus(s: HeroSummary | null | undefined): string {
 }
 
 /**
- * A downed 5e hero's death saves: "Death saves 1✓ 2✗", or worded for an aria-label with
- * `spoken`; empty when the sheet has none or PF2e's Dying value says it instead.
+ * A downed 5e hero's death saves: "1 saved · 2 failed" (shown after "Down"), or worded for an
+ * aria-label with `spoken`; empty when the sheet has none or PF2e's Dying value says it instead.
  */
 export function deathSavesLine(s: HeroSummary | null | undefined, spoken = false): string {
   const ds = s?.deathSaves
   if (!ds || pf2eDying(s)) return ''
-  if (!spoken) return `Death saves ${ds.successes}✓ ${ds.failures}✗`
+  if (!spoken) return `${ds.successes} saved · ${ds.failures} failed`
   const won = `${ds.successes} ${ds.successes === 1 ? 'success' : 'successes'}`
   const lost = `${ds.failures} ${ds.failures === 1 ? 'failure' : 'failures'}`
   return `Death saves ${won}, ${lost}`
 }
 
 /**
- * What a downed 5e / PF2e hero is rolling: "Death saves 1✓ 2✗" (5e) or "Dying 2" (PF2e);
+ * What a downed 5e / PF2e hero is rolling: "1 saved · 2 failed" (5e) or "Dying 2" (PF2e);
  * empty when the sheet has neither.
  */
 export function dyingLine(s: HeroSummary | null | undefined, spoken = false): string {
   return pf2eDying(s) ? downStatus(s) : deathSavesLine(s, spoken)
+}
+
+/**
+ * The HP bar's band, as the hero column's bar (`NimbleHpBar`'s `tone`) has it: secondary
+ * (teal) while above half, accent at half or less, danger at 0. Pairs with `.meter--accent`
+ * and `.meter--danger`.
+ */
+export function hpTone(hp: number, hpMax: number): '' | 'accent' | 'danger' {
+  if (hpMax <= 0) return ''
+  if (hp <= 0) return 'danger'
+  return hp * 2 <= hpMax ? 'accent' : ''
 }

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 // The player's hero on the battle board for systems without the sheet-editor hero column
 // (D&D 5e, Pathfinder 2e): a read-only card from the campaign roster: portrait, name,
-// class and level, HP with temp HP ("Down" at 0, with the death saves or PF2e's Dying
-// value), AC, Init and Passive Perception, conditions and concentration, and a link to the
+// class and level, HP with temp HP (DownStatus at 0: the death saves or PF2e's Dying
+// value; the bar's band is the hero column's: `hpTone`), AC, Init and Passive Perception, conditions and concentration, and a link to the
 // full sheet, where everything is changed. Compact (the phone's Hero tab): 44px link.
 // While HeroScope has the hero's sheet editor (it applies the GM's HP and condition
 // changes), the numbers come from that live copy, with the GM's last change beneath HP.
 import type { RosterEntry } from '~/types'
 import { sign } from '~/utils/dice'
-import { dyingLine, heroDown } from '~/utils/roster'
+import { heroDown, hpTone } from '~/utils/roster'
 
 const props = defineProps<{ entry: RosterEntry; compact?: boolean }>()
 
@@ -58,11 +58,12 @@ const hp = computed(() => s.value.hp ?? 0)
 const hpMax = computed(() => s.value.hpMax ?? 0)
 const temp = computed(() => s.value.tempHp ?? 0)
 const down = computed(() => heroDown(s.value.hp, s.value.hpMax))
-/** "Death saves 1✓ 2✗" or "Dying 2" beside Down; PF2e's Wounded while up. */
-const dying = computed(() => {
-  if (down.value) return dyingLine(s.value)
-  const wounded = s.value.wounded
-  return typeof wounded === 'number' && wounded > 0 ? `Wounded ${wounded}` : ''
+/** The bar's band: teal, accent at half HP or less, danger at 0. */
+const tone = computed(() => hpTone(hp.value, hpMax.value))
+/** PF2e's Wounded while up (DownStatus says the rest while down). */
+const wounded = computed(() => {
+  const w = s.value.wounded
+  return !down.value && typeof w === 'number' && w > 0 ? `Wounded ${w}` : ''
 })
 const conditions = computed(() => {
   const list = s.value.conditions ?? []
@@ -112,20 +113,21 @@ const tiles = computed(() => [
     <div class="hb__hp">
       <div class="hb__hp-head">
         <span class="hb__sect">Hit points</span>
-        <span v-if="down" class="hb__down">Down</span>
         <span class="hb__hp-num"
           >{{ hp }} / {{ hpMax }}<b v-if="temp" class="hb__temp"> +{{ temp }} temp</b></span
         >
       </div>
       <div
         class="meter hb__bar"
+        :class="tone ? `meter--${tone}` : undefined"
         role="img"
         :aria-label="`${hp} of ${hpMax} hit points${temp ? `, ${temp} temporary` : ''}${down ? ', down' : ''}`"
       >
         <span :style="{ width: `${pct(hp, hpMax)}%` }" />
         <i v-if="temp" class="hb__temp-fill" :style="{ width: `${pct(temp, hpMax)}%` }" />
       </div>
-      <p v-if="dying" class="hb__dying">{{ dying }}</p>
+      <BattleDownStatus v-if="down" :summary="s" />
+      <p v-else-if="wounded" class="hb__dying">{{ wounded }}</p>
       <p v-if="gmNote" class="hb__note" role="status">{{ gmNote }}</p>
     </div>
 
@@ -141,7 +143,7 @@ const tiles = computed(() => [
       <ul v-if="conditions.length" class="hb__chips">
         <li v-for="c in conditions" :key="c">{{ c }}</li>
       </ul>
-      <p v-else class="hb__none">None</p>
+      <p v-else class="hb__none">No conditions</p>
     </div>
 
     <NuxtLink
@@ -204,17 +206,6 @@ const tiles = computed(() => [
   display: flex;
   align-items: baseline;
   gap: 8px;
-}
-
-.hb__down {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--danger-bg);
-  color: var(--danger-text);
 }
 
 .hb__hp-num {

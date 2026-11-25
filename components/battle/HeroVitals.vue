@@ -13,7 +13,7 @@ import type { HeroCard, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
-import { deathSavesLine, heroDown } from '~/utils/roster'
+import { heroDown, hpTone } from '~/utils/roster'
 
 const props = defineProps<{
   characterId: string
@@ -38,19 +38,22 @@ function ownHp(): boolean {
   return own.value && !!slots['own-hp']
 }
 /**
- * Where Nimble shows Wounds: a downed 5e hero's death saves ("Down · Death saves 1✓ 2✗"),
- * PF2e's "Down · Dying N" while down or "Wounded · N" while up; null otherwise.
+ * Where Nimble shows Wounds: a downed 5e / PF2e hero's DownStatus (the death saves or
+ * PF2e's Dying value); null for Nimble and while up.
  */
-const dyingNote = computed<{ label: string; value: string } | null>(() => {
+const downSummary = computed(() => {
   const l = props.live
-  const down = heroDown(l.hp, l.hpMax)
-  if (l.deathSaves) {
-    return down ? { label: 'Down', value: deathSavesLine({ deathSaves: l.deathSaves }) } : null
-  }
-  if (!l.pf2e) return null
-  if (down && l.pf2e.dying > 0) return { label: 'Down', value: `Dying ${l.pf2e.dying}` }
-  return l.pf2e.wounded > 0 ? { label: 'Wounded', value: String(l.pf2e.wounded) } : null
+  if (!l.deathSaves && !l.pf2e) return null
+  if (!heroDown(l.hp, l.hpMax)) return null
+  return { deathSaves: l.deathSaves ?? undefined, dying: l.pf2e?.dying }
 })
+/** PF2e's Wounded value while up. */
+const wounded = computed(() => {
+  const w = props.live.pf2e?.wounded ?? 0
+  return !downSummary.value && w > 0 ? w : 0
+})
+/** The bar's band, as the hero column and HeroBasic have it. */
+const tone = computed(() => hpTone(props.live.hp, props.live.hpMax))
 const dead = computed(() => props.live.woundsMax > 0 && props.live.wounds >= props.live.woundsMax)
 
 const identity = computed(() => {
@@ -110,11 +113,14 @@ watch(
   },
 )
 
+/** What − and + send: the amount typed (1 when empty), whole and at most 999. */
+const step = computed(() => Math.min(999, Math.max(1, Math.floor(Number(amount.value) || 1))))
+
 /** − sends the amount as damage (with Crit if on), + as healing; an empty field means 1. */
 async function adjust(sign: 1 | -1) {
   const id = props.characterId
   const name = props.card.name
-  const n = Math.min(999, Math.max(1, Math.floor(Number(amount.value) || 1)))
+  const n = step.value
   const isCrit = sign < 0 && crit.value
   if (!(await send(id, name, sign * n, isCrit))) return
   amount.value = null
@@ -147,7 +153,11 @@ async function adjust(sign: 1 | -1) {
         >
       </div>
       <div class="hc__bar" aria-hidden="true">
-        <span class="hc__fill" :style="{ width: `${pct(live.hp, live.hpMax)}%` }" />
+        <span
+          class="hc__fill"
+          :class="tone ? `hc__fill--${tone}` : undefined"
+          :style="{ width: `${pct(live.hp, live.hpMax)}%` }"
+        />
         <span
           v-if="live.tempHp"
           class="hc__fill hc__fill--temp"
@@ -169,7 +179,7 @@ async function adjust(sign: 1 | -1) {
         <button
           type="button"
           class="step step--xs"
-          :aria-label="`${card.name}: take ${amount || 1} damage`"
+          :aria-label="`${card.name}: take ${step} damage`"
           @click="adjust(-1)"
         >
           −
@@ -188,7 +198,7 @@ async function adjust(sign: 1 | -1) {
         <button
           type="button"
           class="step step--xs"
-          :aria-label="`${card.name}: heal ${amount || 1}`"
+          :aria-label="`${card.name}: heal ${step}`"
           @click="adjust(1)"
         >
           +
@@ -249,9 +259,10 @@ async function adjust(sign: 1 | -1) {
       </span>
     </div>
 
-    <div v-if="dyingNote && !ownHp()" class="hc__wounds">
-      <span class="hc__sect">{{ dyingNote.label }}</span>
-      <span class="hc__dying">{{ dyingNote.value }}</span>
+    <BattleDownStatus v-if="downSummary && !ownHp()" :summary="downSummary" />
+    <div v-else-if="wounded && !ownHp()" class="hc__wounds">
+      <span class="hc__sect">Wounded</span>
+      <span class="hc__dying">{{ wounded }}</span>
     </div>
 
     <div class="hc__tiles">
@@ -286,7 +297,7 @@ async function adjust(sign: 1 | -1) {
       <ul v-if="live.conditions.length" class="hc__chips">
         <li v-for="c in live.conditions" :key="c">{{ c }}</li>
       </ul>
-      <p v-else class="hc__none">None</p>
+      <p v-else class="hc__none">No conditions</p>
     </div>
   </div>
 </template>
@@ -365,10 +376,19 @@ async function adjust(sign: 1 | -1) {
 .hc__fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--accent);
+  background: var(--secondary);
 
+  &--accent {
+    background: var(--accent);
+  }
+
+  &--danger {
+    background: var(--danger);
+  }
+
+  // Temp HP over the right end, as on HeroBasic.
   &--temp {
-    background: var(--secondary);
+    background: var(--accent);
     opacity: 0.75;
     left: auto;
     right: 0;

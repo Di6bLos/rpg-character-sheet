@@ -1,19 +1,22 @@
 <script setup lang="ts">
 // The player's turn line on the battle board for systems without the Nimble turn steps
-// (D&D 5e, Pathfinder 2e): "Your turn", "<name> is acting" or "Not in combat" ("Waiting
-// for your turn" while seated before the GM starts), with the round while the encounter
-// runs. While the GM has seated the hero without an Initiative ("–" on the strip) a Roll
+// (D&D 5e, Pathfinder 2e): "Your turn", "<name> is acting" or "Not in combat", with the
+// round while the encounter runs. Seated before the GM's first Next turn it reads "Roll
+// your initiative" until the row has a number, then "Waiting for the GM to start" (the
+// strip already marks its first token, so it never says whose turn it is yet). While the GM has seated the hero without an Initiative ("–" on the strip) a Roll
 // initiative button rolls d20 + the hero's Init and sends it to the tracker
-// (`sendInitiative`); the button goes once the row has a number. A failed write keeps the
+// (`sendInitiative`) and shows the total with the Init in the dice tray; the button goes once the row has a number. A failed write keeps the
 // rolled total and offers to resend it, as the Nimble turn bar does. With Manual dice on
 // (account menu, `profiles.own_dice`) a field takes the player's own total instead.
+// Compact (the phone's turn slot): inset 8px from the sides and the tab bar below.
 import type { useInitiative } from '~/composables/useInitiative'
 import { sendInitiative } from '~/composables/useSendInitiative'
-import { rollDie } from '~/utils/dice'
+import { quietly, rollDie, showDice, showOutcome, sign } from '~/utils/dice'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
   characterId: string
+  compact?: boolean
 }>()
 
 const { campaignId, roster } = useCampaignBoard()
@@ -28,13 +31,16 @@ const row = computed(() =>
 )
 const acting = computed(() => props.init.order.value.find((c) => c.id === props.init.turnId.value))
 const mine = computed(() => !!acting.value && acting.value.character_id === props.characterId)
+const canRoll = computed(() => !!row.value && row.value.initiative_rolled === false)
 const headline = computed(() => {
-  // Seated before the GM's first Next turn: the Nimble turn bar's wording.
-  if (!acting.value) return row.value ? 'Waiting for your turn' : 'Not in combat'
+  // Seated before the GM's first Next turn.
+  if (!acting.value) {
+    if (!row.value) return 'Not in combat'
+    return canRoll.value ? 'Roll your initiative' : 'Waiting for the GM to start'
+  }
   return mine.value ? 'Your turn' : `${acting.value.name} is acting`
 })
 const round = computed(() => (props.init.turnId.value ? `Round ${props.init.round.value}` : ''))
-const canRoll = computed(() => !!row.value && row.value.initiative_rolled === false)
 
 const busy = ref(false)
 /** "Initiative 17. Sent to the GM's initiative tracker." after a roll. */
@@ -81,8 +87,28 @@ async function send(total: number) {
 function roll() {
   if (unsent.value !== null) return send(unsent.value)
   who.value?.focus()
-  const mod = roster.value.find((r) => r.character_id === props.characterId)?.summary?.initMod
-  return send(rollDie(20) + (mod ?? 0))
+  const mod = roster.value.find((r) => r.character_id === props.characterId)?.summary?.initMod ?? 0
+  const d20 = quietly(() => rollDie(20))
+  const total = d20 + mod
+  showDice({
+    sides: 20,
+    dice: [d20],
+    dropped: [],
+    primary: -1,
+    explosions: [],
+    extra: null,
+    mod,
+    total,
+    miss: false,
+    crit: false,
+    odds: 0,
+  })
+  showOutcome({
+    label: 'Initiative',
+    total,
+    detail: `Initiative ${total} (d20 ${d20} ${sign(mod)}).`,
+  })
+  return send(total)
 }
 
 /** The total typed with Manual dice on (it already has the hero's Init in it). */
@@ -99,7 +125,7 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
 <template>
   <section
     class="panel tb"
-    :class="{ 'tb--now': mine, 'tb--touch': touch }"
+    :class="{ 'tb--now': mine, 'tb--touch': touch, 'tb--compact': compact }"
     aria-label="Your turn"
     data-track-area="Turn"
   >
@@ -175,6 +201,11 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
 .tb__sub {
   font-size: 12px;
   color: var(--page-muted);
+}
+
+// The phone: clear of the screen edges and the tab bar, so its corners show.
+.tb--compact {
+  margin: 0 8px 8px;
 }
 
 // The typed total takes its own row on a narrow turn line.

@@ -74,7 +74,10 @@ export function featSource(f: { type: string; level: string }): string {
   return [f.type.trim(), f.level.trim()].filter(Boolean).join(' ')
 }
 
-/** A downed 5e hero's death-save state: dead at 3 failures, stable at 3 successes. */
+/**
+ * A 5e hero's death-save state: dead at 3 failures, stable at 3 successes; empty while
+ * rolling them (the pips and the vitals' Down line already say so).
+ */
 export function deathSaveState(
   down: boolean,
   saves: { successes: number; failures: number },
@@ -82,5 +85,5 @@ export function deathSaveState(
   if (!down) return 'Not dying.'
   if (saves.failures >= 3) return 'Dead.'
   if (saves.successes >= 3) return 'Down: stable.'
-  return 'Down: rolling death saves.'
+  return ''
 }

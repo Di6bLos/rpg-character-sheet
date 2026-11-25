@@ -46,6 +46,9 @@
   --danger: #e2735f;
   --danger-bg: #3a1d17;
   --danger-text: #f7c9bc;
+  // Danger as text on a page or panel (Down, death saves): 4.5:1 or better on either.
+  --danger-ink: #e2735f;
+  --panel-danger-ink: #e2735f;
   --ok-bg: #1f3531;
   --ok-text: #bfe9e1;
   --warn-bg: #3a2f1c;
@@ -146,6 +149,8 @@
   --panel-field: rgba(255, 245, 220, 0.4);
   --panel-track: #c4ad84;
   --panel-inset: rgba(90, 55, 25, 0.14);
+  // Parchment needs a dark red.
+  --panel-danger-ink: #7a2e1c;
   --font-display: 'IM Fell English', Georgia, serif;
   --font-heading: 'IM Fell English SC', Georgia, serif;
   --font-body: Spectral, Georgia, serif;
