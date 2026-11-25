@@ -69,7 +69,7 @@ npm run preview      # Preview production build locally
 
 Rules work goes through these so it stays consistent and cites its sources:
 
-- `rpg-rules` skill — shared reference: source books and page offsets, licensing (what may be committed), Nimble math (hero curve, level cadence, spell damage, monster design) and how the repo encodes it; 5e/PF2e stubs
+- `rpg-rules` skill — shared reference: source books and page offsets, licensing (what may be committed), Nimble math (hero curve, level cadence, spell damage, monster design) and how the repo encodes it; PF2e core math with citations; 5e stub. The PF2e rules bible is local: `npm run pf2e:bible` builds `.local/rules/pf2e/` from Archives of Nethys data in `.local/pf2e/aon/` (`--orc` for the Remaster/ORC-only set), and `npm run pf2e:pdf` prints that set as library PDFs in `.local/pf2e/pdf/`
 - `source-extract` skill — PDF (`.local/`, cached per page by `scripts/pdf-pages.sh`) or web page → typed data with page citations and license checks
 - `rules-auditor` agent — checks one class level by level against the book; writes `.local/audits/<class>.md`. Once a class is clean and the user agrees, record its golden table: `NIMBLE_GOLDEN=<slug> npx vitest run tests/nimbleLevels.test.ts -u` (fixtures in `tests/fixtures/nimble/`, ignored by Prettier)
 - `homebrew-designer` agent — original monsters, spells, items, NPCs balanced to the system's math → `homebrew/<system>/*.md`

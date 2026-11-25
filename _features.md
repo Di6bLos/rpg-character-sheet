@@ -287,3 +287,49 @@ From the ui-ux-reviewer pass (code read) plus browser checks on 2026-11-17 (chro
 - [x] Reset analytics (admin only, confirmed, logged)
 - [x] Apply the migration to the hosted project
 - [ ] ui-ux-reviewer pass on `/admin/analytics`
+
+## Phase 8 · Pathfinder 2e, data-driven (the Nimble treatment)
+
+Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then typed data, a builder, a play engine with structured effects, and the battle board. Each step is its own branch and PR.
+
+### 8.1 Sources
+
+- [x] Scrape every book from AoN's search backend in Chrome (46,796 entries in `.local/pf2e/aon/`)
+- [x] Rules bible by topic, `.local/rules/pf2e/` (`scripts/pf2e-bible.ts`): book rules chapters in order, a file per class, ancestry and archetype, then feats, spells, equipment, creatures, GM; Remaster/Legacy tags with page citations
+- [x] `rpg-rules/references/pf2e.md`: core math, DCs, encounter budget, creature-building tables, cited
+- [x] ORC-only bible and 16 library PDFs under 50 MB each (`--orc`, `scripts/pf2e-pdf.ts`, `.local/pf2e/pdf/`)
+- [ ] Upload the PDFs to the library
+- [ ] Decide whether legacy (OGL) content may be committed or shared (local-only for now)
+- [ ] Match the 44 heritages AoN lists without an ancestry (`ancestries/_unmatched-heritages.md`)
+
+### 8.2 Typed data (`data/pf2e/`)
+
+- [ ] Types modelled on `data/nimble/types.ts`, plus a structured effect model for feats and spells
+- [ ] Generator from the AoN data: classes, ancestries and heritages, backgrounds, feats, spells, equipment, conditions, actions (Remaster/ORC only, with citations and the ORC notice)
+- [ ] Lazy-loaded JSON for the large sets (feats, spells, items), not bundled
+- [ ] Data integrity tests
+
+### 8.3 Builder and level-up
+
+- [ ] `utils/pf2eBuild.ts`: build, level plan, level-up, choices
+- [ ] `/characters/new/pf2e` builder
+- [ ] Data-driven level-up in `LevelUpDialog` for PF2e sheets with a `classSlug`
+- [ ] Golden level tables after a `rules-auditor` pass per class
+
+### 8.4 Play engine
+
+- [ ] Proficiency, MAP, three actions, degrees of success, crits
+- [ ] Valued conditions (frightened, clumsy, off-guard…), dying, wounded, doomed, hero points
+- [ ] Shields, persistent damage, resistances and weaknesses
+- [ ] Spell slots, focus points, heightening, cantrips
+- [ ] Dice tray, target and odds rows
+
+### 8.5 Abilities, spells and effects
+
+- [ ] Player Core classes
+- [ ] Player Core 2 classes
+- [ ] Other classes, archetypes, ancestry feats
+
+### 8.6 Battle board
+
+- [ ] PF2e heroes on the battle board (tiles, turn bar, GM HP and condition changes)

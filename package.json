@@ -17,7 +17,9 @@
     "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli .",
     "test": "vitest run",
-    "seed:bestiary": "tsx scripts/bestiary-seed.ts"
+    "seed:bestiary": "tsx scripts/bestiary-seed.ts",
+    "pf2e:bible": "tsx scripts/pf2e-bible.ts",
+    "pf2e:pdf": "tsx scripts/pf2e-pdf.ts"
   },
   "dependencies": {
     "@3d-dice/dice-box-threejs": "0.0.12",

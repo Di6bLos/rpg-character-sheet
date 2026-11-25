@@ -5,17 +5,19 @@ PDFs live in `.local/` (gitignored, never committed). Cache and search them with
 
 Structured, page-cited rules references built from these PDFs live in `.local/rules/` (also gitignored): `core-rules.md`, `heroes-1.md` (Berserker–Oathsworn), `heroes-2.md` (Shadowmancer–Zephyr, story subclasses), `artificer.md`, `gm-guide.md`. Read those first; fall back to the PDF text when they mark something `[unclear]`.
 
+Pathfinder 2e has no PDFs here. Its text comes from Archives of Nethys, saved as data in `.local/pf2e/aon/`, and the rules bible built from it lives in `.local/rules/pf2e/` (everything) and `.local/rules/pf2e-orc/` (Remaster/ORC only, the shareable set). Each entry cites its book's printed page. See `pf2e.md`.
+
 ## Page numbering
 
 Some PDFs are two-page **spreads**: one PDF page holds two printed pages. Citations in the repo always use **printed** pages.
 
-| Book                     | File                         | Cache slug       | Layout  | Printed page → PDF page              | License                           |
-| ------------------------ | ---------------------------- | ---------------- | ------- | ------------------------------------ | --------------------------------- |
-| Nimble Core Rules        | `.local/nimble/core-rules.pdf`      | `core-rules`     | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL                       |
-| Nimble Heroes            | `.local/nimble/nimble-heroes.pdf`   | `nimble-heroes`  | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL                       |
-| Nimble Artificer 1.7     | `.local/nimble/Artificer1.7.pdf`    | `Artificer1.7`   | spreads | `ceil(p / 2)` (PDF 2 = pp. 3–4)      | Nimble 3PCL (assumed; no license page) |
-| Nimble Creator's Kit 1.2 | `.local/nimble/CreatorsKit1.2.pdf`  | `CreatorsKit1.2` | single  | same                                 | Nimble 3PCL (guidance, not rules) |
-| Nimble GM's Guide 1.0    | `.local/nimble/GMG-v1.0.pdf` | `GMG-v1.0`       | spreads | read the footer (PDF 16 = pp. 29–30) | Nimble 3PCL                       |
+| Book                     | File                               | Cache slug       | Layout  | Printed page → PDF page              | License                                |
+| ------------------------ | ---------------------------------- | ---------------- | ------- | ------------------------------------ | -------------------------------------- |
+| Nimble Core Rules        | `.local/nimble/core-rules.pdf`     | `core-rules`     | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL                            |
+| Nimble Heroes            | `.local/nimble/nimble-heroes.pdf`  | `nimble-heroes`  | spreads | `floor(p / 2) + 1`                   | Nimble 3PCL                            |
+| Nimble Artificer 1.7     | `.local/nimble/Artificer1.7.pdf`   | `Artificer1.7`   | spreads | `ceil(p / 2)` (PDF 2 = pp. 3–4)      | Nimble 3PCL (assumed; no license page) |
+| Nimble Creator's Kit 1.2 | `.local/nimble/CreatorsKit1.2.pdf` | `CreatorsKit1.2` | single  | same                                 | Nimble 3PCL (guidance, not rules)      |
+| Nimble GM's Guide 1.0    | `.local/nimble/GMG-v1.0.pdf`       | `GMG-v1.0`       | spreads | read the footer (PDF 16 = pp. 29–30) | Nimble 3PCL                            |
 
 The PDF → printed direction on spreads: PDF page `n` holds printed pages `2n−2` (left) and `2n−1` (right). The printed number sits on the page's footer line.
 
