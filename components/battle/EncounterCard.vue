@@ -2,8 +2,10 @@
 // One creature on the GM's encounter grid: portrait or initials, name (a pencil on hover
 // renames it in place: Enter saves, Escape cancels), initiative, the HP bar with numbers,
 // −5 / −1 / amount / +1 / +5 (EncounterHp), Armor (in the name row), conditions and action
-// pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one refunds). Slain creatures
-// grey out with Remove and Revive. Heroes take HP through their own sheet (a pickup).
+// pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one
+// refunds). Slain creatures grey out with Remove and Revive. Heroes take HP through their
+// own sheet (a pickup), applied with that system's rules.
+// Off Nimble (`useBattleFeatures`): no pips.
 // Compact (phone Encounter tab, one column): 44px targets 8px apart, and no tooltip (a
 // tap selects; the Creature tab shows the whole stat block).
 import type { CampaignNpc, RosterEntry } from '~/types'
@@ -11,6 +13,7 @@ import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
 import { heroTurnActions } from '~/utils/nimblePlay'
+import { conditionLabels, heroDead, heroDown } from '~/utils/roster'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -24,6 +27,7 @@ const props = defineProps<{
 const emit = defineEmits<{ select: []; remove: [] }>()
 
 const heroHp = useSendHeroHp()
+const features = useBattleFeatures()
 
 const isPc = computed(() => props.c.kind === 'pc')
 const noHp = computed(() => !isPc.value && (props.c.hp_max ?? 0) <= 0)
@@ -35,6 +39,15 @@ const hp = computed(() => {
   return { now: props.c.hp ?? 0, max: props.c.hp_max ?? 0, temp: 0 }
 })
 const slain = computed(() => !isPc.value && hp.value.max > 0 && hp.value.now <= 0)
+/** A 5e / PF2e hero at 0 HP is down, as the strip and party card say (Nimble shows HP). */
+const down = computed(
+  () =>
+    isPc.value &&
+    !features.value.nimbleHero &&
+    heroDown(props.hero?.summary?.hp, props.hero?.summary?.hpMax),
+)
+/** Dead: three failed 5e death saves or PF2e's death value (DownStatus's rule). */
+const deadHero = computed(() => down.value && heroDead(props.hero?.summary))
 const armor = computed(() =>
   isPc.value
     ? String(
@@ -49,12 +62,19 @@ const armor = computed(() =>
     : statTop(props.npc, 'Armor') || String(props.c.ac ?? '—'),
 )
 const conditions = computed(() =>
-  isPc.value ? (props.hero?.summary?.conditions ?? []) : (props.c.conditions ?? []),
+  isPc.value
+    ? conditionLabels(
+        props.hero?.summary?.conditions ?? [],
+        props.hero?.character_system,
+        props.hero?.summary?.conditionValues,
+      )
+    : (props.c.conditions ?? []),
 )
 const foot = computed(() => conditions.value.join(' · '))
 
 /** Monsters' pips are the GM's to click; a hero's come from their sheet (read-only). */
 const pips = computed(() => {
+  if (!features.value.pips) return null
   if (isPc.value) {
     const s = props.hero?.summary
     if (!s) return null
@@ -238,6 +258,8 @@ const tipKeys = computed(() =>
         :temp="hp.temp"
         :slain="slain"
         :compact="compact"
+        :down="down"
+        :dead="deadHero"
         @change="change"
       >
         <BattleEncounterPips

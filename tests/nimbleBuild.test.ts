@@ -756,7 +756,7 @@ describe('lowering the level', () => {
       levelTo(sheet, 6, cls.subclasses[0]!.slug)
       const before = strip(sheet)
       const input = creationInput(sheet, 6)!
-      expect(input.skillPoints).toEqual({ Might: 2 })
+      expect(input.skillPoints).toEqual({ Might: 2, Perception: 2 })
       const inputs = sheet.levelHistory!.map((e) => e.nimble!)
       restoreBuild(sheet, buildNimbleSheet(input))
       expect(sheet.levelHistory).toEqual([])

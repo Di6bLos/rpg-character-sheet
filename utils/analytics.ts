@@ -38,7 +38,8 @@ export function untracked(path: string): boolean {
     path === '/' ||
     path === '/signup' ||
     path.startsWith('/join/') ||
-    // `board/index.vue` and `gm/index.vue` only redirect to Battle or Party.
+    // `board/index.vue` and `gm/index.vue` only redirect to Battle (a route redirect, so
+    // these paths shouldn't reach here; the retired `party` pages redirect the same way).
     /^\/campaigns\/[^/]+\/(?:board|gm)\/?$/.test(path)
   )
 }
@@ -142,7 +143,7 @@ function labelledBy(el: Element): string {
 
 const ID_SEGMENT = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d+)$/i
 
-/** A link's route with ids swapped out: "/campaigns/<uuid>/board/party" → "/campaigns/:id/board/party". */
+/** A link's route with ids swapped out: "/campaigns/<uuid>/board/battle" → "/campaigns/:id/board/battle". */
 export function hrefPattern(href: string): string {
   let path = href
   try {
