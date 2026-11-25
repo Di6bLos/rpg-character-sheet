@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// A grid of PF2e options to pick one (radio) or several (checkbox) of: a search box for long
-// lists, uncommon and rare options hidden until asked for, and each option's rules text
-// behind a disclosure. Shows the first 60 matches; the rest on request.
+// A grid of PF2e options to pick one (pressed toggle buttons) or several (checkbox) of: a search
+// box for long lists, uncommon and rare options hidden until asked for, and each option's rules
+// text behind a disclosure. Shows the first 60 matches, plus the picked ones wherever they are;
+// the rest on request.
 import { loreHtml } from '~/utils/loreText'
 
 export interface Pf2eOption {
@@ -45,7 +46,12 @@ const matches = computed(() => {
         (!q || o.name.toLowerCase().includes(q) || o.meta?.toLowerCase().includes(q))),
   )
 })
-const visible = computed(() => matches.value.slice(0, shown.value))
+const visible = computed(() => {
+  const page = matches.value.slice(0, shown.value)
+  // A pick past the shown page (or the 61st background) stays on screen.
+  const later = matches.value.slice(shown.value).filter((o) => model.value.includes(o.id))
+  return [...page, ...later]
+})
 watch(query, () => (shown.value = PAGE))
 
 /** The first paragraph of rules text as plain words, cut to a card's length. */
@@ -59,6 +65,8 @@ function summary(text = '') {
         !p.startsWith('**') &&
         !p.startsWith('#') &&
         p !== '---' &&
+        // A bare page reference ("pg. 74") is source info, not a summary.
+        !/^pg\. \d+$/.test(p) &&
         // AoN's own notes ("Nethys Note: no description…") belong in the full text only.
         !/^_?(Nethys Note|Note from Nethys)/.test(p),
     )
@@ -67,8 +75,9 @@ function summary(text = '') {
 }
 
 function pick(o: Pf2eOption) {
-  if (o.disabled) return
   const on = model.value.includes(o.id)
+  // A disabled option can still be taken off (gear the new class isn't trained in).
+  if (o.disabled && !on) return
   if (!props.multiple) model.value = on ? [] : [o.id]
   else if (on) model.value = model.value.filter((id) => id !== o.id)
   else if (model.value.length < props.max) model.value = [...model.value, o.id]
@@ -91,7 +100,7 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
       <UiSwitch v-if="hasRare" v-model="showRare" label="Show uncommon and rare (ask your GM)" />
       <span class="small muted" aria-live="polite">{{ matches.length }} shown</span>
     </div>
-    <div class="options__grid" :role="multiple ? 'group' : 'radiogroup'" :aria-label="label">
+    <div class="options__grid" role="group" :aria-label="label">
       <div
         v-for="o in visible"
         :key="o.id"
@@ -101,9 +110,10 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
         <button
           type="button"
           class="option__pick"
-          :role="multiple ? 'checkbox' : 'radio'"
-          :aria-checked="model.includes(o.id)"
-          :aria-disabled="!!o.disabled || (full && !model.includes(o.id))"
+          :role="multiple ? 'checkbox' : undefined"
+          :aria-checked="multiple ? model.includes(o.id) : undefined"
+          :aria-pressed="multiple ? undefined : model.includes(o.id)"
+          :aria-disabled="(!!o.disabled || full) && !model.includes(o.id)"
           :title="o.disabled || undefined"
           @click="pick(o)"
         >

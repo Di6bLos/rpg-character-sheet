@@ -331,6 +331,16 @@ const breakdown = computed(() =>
     }
   }),
 )
+/** "Anc +1 · Bg +1 · Class +1 · Free +1", the phone's one-line breakdown. */
+const sourceLine = (r: (typeof breakdown.value)[number]) =>
+  [
+    r.ancestry ? `Anc ${sign(r.ancestry)}` : '',
+    r.background ? `Bg ${sign(r.background)}` : '',
+    r.cls ? 'Class +1' : '',
+    r.free ? 'Free +1' : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
 // --- Skills & feats ---------------------------------------------------------
 const plan = computed(() => (data.value && cls.value ? skillPlan(c.value, data.value) : null))
@@ -356,6 +366,12 @@ const slots = computed(() => featSlots(cls.value))
 const featLabel = (s: Pf2eFeatSlot) => {
   const trait = s === 'class' ? classFeatTrait(cls.value) : undefined
   return trait ? `${FEAT_LABEL[s]} (${trait.toLowerCase()})` : FEAT_LABEL[s]
+}
+/** Why a skill in the grid is already ticked: "background", "class choice"… */
+function skillSource(s: string) {
+  if (plan.value?.fixed.includes(s)) return 'already trained'
+  if (groupPicks.value.includes(s)) return 'from a choice above'
+  return ''
 }
 function setLore(i: number, value: string) {
   const lores = [...(c.value.lores ?? [])]
@@ -490,6 +506,10 @@ const built = computed(() => {
 const motion = (): ScrollBehavior =>
   import.meta.client && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
 
+function jumpTo(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: motion(), block: 'start' })
+}
+
 /** To the top of the step, where its error shows. */
 const toTop = () => import.meta.client && window.scrollTo({ top: 0, behavior: motion() })
 
@@ -573,9 +593,13 @@ async function create() {
         <div class="section-head">
           <h2 id="anc-h">Choose your ancestry</h2>
         </div>
+        <p v-if="ancestry" class="small muted">
+          {{ ancestry.name }} picked: its boosts and heritage are
+          <button type="button" class="jump" @click="jumpTo('anc-more')">below the list ↓</button>
+        </p>
         <Pf2eOptionCards v-model="ancestryPick" :options="ancestryOptions" label="Ancestries" />
         <template v-if="ancestry">
-          <div class="panel stack">
+          <div id="anc-more" class="panel stack">
             <h3>Ancestry boosts</h3>
             <UiSwitch
               v-model="c.freeAncestryBoosts"
@@ -588,6 +612,7 @@ async function create() {
               label="Free ancestry boosts"
               :count="boostPlan.free"
               :locked="boostPlan.fixed"
+              locked-label="from ancestry"
             />
           </div>
           <div class="section-head">
@@ -740,22 +765,26 @@ async function create() {
                 <tr>
                   <th scope="col">Attribute</th>
                   <th scope="col">Modifier</th>
-                  <th scope="col">Ancestry</th>
-                  <th scope="col">Background</th>
-                  <th scope="col">Class</th>
-                  <th scope="col">Free</th>
+                  <th scope="col" class="attrs__src">Ancestry</th>
+                  <th scope="col" class="attrs__src">Background</th>
+                  <th scope="col" class="attrs__src">Class</th>
+                  <th scope="col" class="attrs__src">Free</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="r in breakdown" :key="r.a">
-                  <th scope="row">{{ r.a }}</th>
+                  <th scope="row">
+                    {{ r.a }}
+                    <!-- Phones show the sources as one line under the attribute. -->
+                    <span v-if="sourceLine(r)" class="attrs__line">{{ sourceLine(r) }}</span>
+                  </th>
                   <td>
                     <strong>{{ sign(r.total) }}</strong>
                   </td>
-                  <td>{{ r.ancestry ? sign(r.ancestry) : '' }}</td>
-                  <td>{{ r.background ? sign(r.background) : '' }}</td>
-                  <td>{{ r.cls ? '+1' : '' }}</td>
-                  <td>{{ r.free ? '+1' : '' }}</td>
+                  <td class="attrs__src">{{ r.ancestry ? sign(r.ancestry) : '' }}</td>
+                  <td class="attrs__src">{{ r.background ? sign(r.background) : '' }}</td>
+                  <td class="attrs__src">{{ r.cls ? '+1' : '' }}</td>
+                  <td class="attrs__src">{{ r.free ? '+1' : '' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -820,7 +849,10 @@ async function create() {
                 "
                 @change="toggleFree(s)"
               />
-              {{ s }}
+              <span>
+                {{ s }}
+                <span v-if="skillSource(s)" class="skill-pick__from">{{ skillSource(s) }}</span>
+              </span>
             </label>
           </div>
         </div>
@@ -944,10 +976,10 @@ async function create() {
               <p v-for="(f, i) in built.feats" :key="i" class="small">
                 <strong>{{ f.name }}</strong>
                 <template v-if="f.action">
-                  <span aria-hidden="true"> {{ f.action }}</span>
+                  <span aria-hidden="true">{{ ` ${f.action}` }}</span>
                   <span class="sr-only">({{ ACTION_NAME[f.action] ?? f.action }})</span>
                 </template>
-                <span class="muted"> {{ f.type }}</span>
+                <span class="muted">{{ ` · ${f.type}` }}</span>
               </p>
             </div>
           </div>
