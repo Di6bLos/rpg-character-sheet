@@ -27,6 +27,7 @@ import {
   orcProblems,
   page,
   remaster,
+  openSource,
   shareable,
   slug,
   withoutArchetypes,
@@ -147,7 +148,7 @@ rmSync(OUT, { recursive: true, force: true })
   const rules = of('rules', 'sidebar')
   const books = new Map<string, Doc[]>()
   for (const d of rules) {
-    const b = d.primary_source ?? 'Unknown'
+    const b = openSource(d) ?? d.primary_source ?? 'Unknown'
     books.set(b, [...(books.get(b) ?? []), d])
   }
   const rank = (book: string) => (CORE.includes(book) ? CORE.indexOf(book) : CORE.length)
@@ -411,7 +412,7 @@ for (const c of classNames) {
   const other = feats.filter((d) => !placed.has(d.id))
   const bySource = new Map<string, Doc[]>()
   for (const d of other)
-    bySource.set(d.primary_source ?? '?', [...(bySource.get(d.primary_source ?? '?') ?? []), d])
+    bySource.set(openSource(d) ?? '?', [...(bySource.get(openSource(d) ?? '?') ?? []), d])
   write(
     'feats/other.md',
     'Other feats',

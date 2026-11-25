@@ -16,6 +16,7 @@ import type {
 } from '~/data/pf2e/types'
 import type { Pf2eAttr, Pf2eFeat, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { type Pf2eAbilityRules, amountAt, readAbility } from '~/utils/pf2eAbilityRules'
+import { inventoryEffects } from '~/utils/pf2eInventory'
 import type { Pf2eMod, Pf2eStatContext } from '~/utils/pf2ePlay'
 
 const BY_NAME = new Map(PF2E_EFFECTS.map((e) => [e.name, e]))
@@ -163,9 +164,16 @@ function sheetDerived(s: Pf2eSheet): Pf2eEffectDef[] {
   )
 }
 
-/** A def by name: written ones first, then the hero's derived ones. */
+/** Effects of items: a used consumable's (an elixir's bonus) and worn or held items' bonuses. */
+const itemEffects = (s: Pf2eSheet) => [...(s.effects?.items ?? []), ...inventoryEffects(s)]
+
+/** A def by name: written ones first, then the hero's derived ones and their items'. */
 export function pf2eEffectDef(s: Pf2eSheet, name: string): Pf2eEffectDef | undefined {
-  return BY_NAME.get(name) ?? sheetDerived(s).find((d) => d.name === name)
+  return (
+    BY_NAME.get(name) ??
+    sheetDerived(s).find((d) => d.name === name) ??
+    itemEffects(s).find((d) => d.name === name)
+  )
 }
 
 /** Effects allies can give the hero, to pick from. */
@@ -196,6 +204,7 @@ export function ownEffects(s: Pf2eSheet): Pf2eEffectDef[] {
       (e) => e.mode !== 'given' && (e.has ? hasAbility(s, e.has) : names.has(e.name)),
     ),
     ...sheetDerived(s),
+    ...itemEffects(s),
   ]
 }
 
@@ -603,6 +612,7 @@ function endToggle(s: Pf2eSheet, name: string) {
   const effects = (s.effects ??= { on: [], given: [] })
   effects.on = effects.on.filter((n) => n !== name)
   if (effects.values) delete effects.values[name]
+  if (effects.items) effects.items = effects.items.filter((d) => d.name !== name)
   const temp = effects.tempHp
   if (temp?.from !== name) return `${name} ends.`
   delete effects.tempHp

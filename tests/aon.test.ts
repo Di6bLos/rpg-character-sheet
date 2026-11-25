@@ -8,7 +8,9 @@ import {
   closedArchetypes,
   heritageAncestry,
   openBook,
+  openSource,
   orcProblems,
+  page,
   settingName,
   sourceBooks,
   table,
@@ -206,6 +208,25 @@ describe('Golarion setting material', () => {
       'Season of Ghosts (Hardcover)',
     ])
       expect(openBook(book), book).toBe(false)
+  })
+
+  // AoN files Player Core's staff under its Tian Xia Character Guide reprint: the open book
+  // that prints it is still Player Core, cited at its own page.
+  it('finds the open rulebook behind a setting reprint, and its page', () => {
+    const staff: AonDoc = {
+      id: 'weapon-367',
+      category: 'weapon',
+      name: 'Staff',
+      primary_source: 'Tian Xia Character Guide',
+      source: ['Tian Xia Character Guide', 'Player Core'],
+      markdown:
+        '**Source** [Tian Xia Character Guide](/Sources.aspx?ID=230) pg. 127, [Player Core](/Sources.aspx?ID=216) pg. 277',
+    }
+    expect(openSource(staff)).toBe('Player Core')
+    expect(page(staff, 'Player Core')).toBe(277)
+    expect(page(staff)).toBe(127)
+    expect(openSource({ ...staff, source: ['Tian Xia Character Guide'] })).toBeUndefined()
+    expect(openSource({ ...staff, primary_source: 'GM Core' })).toBe('GM Core')
   })
 
   it('spots records named for a deity or a Golarion proper noun', () => {

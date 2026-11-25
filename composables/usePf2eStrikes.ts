@@ -12,6 +12,7 @@ import { parseDice, rollCheck, rollDice, showOutcome, sign } from '~/utils/dice'
 import { attacked, mapIndex } from '~/utils/pf2eActions'
 import { finisherDice } from '~/utils/pf2eClassActions'
 import { critDiceFor } from '~/utils/pf2eDamage'
+import { strikeRunes } from '~/utils/pf2eInventory'
 import {
   damageConditions,
   effectMods,
@@ -52,14 +53,18 @@ export interface Pf2eDamageRoll {
 
 const natNote = (n: number | null) => (n === 20 ? ', natural 20' : n === 1 ? ', natural 1' : '')
 
-/** A dice expression with its flat modifier moved by `delta` ("1d8+4", −1 → "1d8+3"). */
-function shiftDice(dmg: string, delta: number, die?: number) {
+/**
+ * A dice expression with its flat modifier moved by `delta` ("1d8+4", −1 → "1d8+3"), a bigger
+ * die, and at least `count` dice (a striking rune's, GM Core p. 236).
+ */
+function shiftDice(dmg: string, delta: number, die?: number, count = 0) {
   const e = parseDice(dmg)
   if (!e) return dmg
   const sides = die && die > e.sides ? die : e.sides
+  const dice = Math.max(e.count, count)
   const mod = e.mod + delta
-  if (!delta && sides === e.sides) return dmg
-  return `${e.count}d${sides}${mod ? sign(mod) : ''}`
+  if (!delta && sides === e.sides && dice === e.count) return dmg
+  return `${dice}d${sides}${mod ? sign(mod) : ''}`
 }
 
 function create() {
@@ -120,6 +125,7 @@ function create() {
         attr: intAttack ? 'INT' : attr,
         traits,
         level,
+        weapon: w.name,
         ...(w.rank ? { rank: w.rank } : {}),
       })
       // Melee damage adds STR, so enfeebled lowers it (p. 443); effects like Rage and
@@ -135,8 +141,18 @@ function create() {
       })
       // Powerful Fist and the like: a bigger die for the fist.
       const die = w.name === 'Fist' ? fistDie(sheet.value) : undefined
-      const dmg = shiftDice(w.dmg, dmgMods.value, die)
-      const extra = extraDice(sheet.value, level, w, { ...damageFlags.value, stratagem })
+      // Runes on the weapon (GM Core pp. 236–237): striking's dice, property runes' damage.
+      const runes = strikeRunes(sheet.value, w.name)
+      const dmg = shiftDice(w.dmg, dmgMods.value, die, runes?.striking ? runes.striking + 1 : 0)
+      const extra = [
+        ...extraDice(sheet.value, level, w, { ...damageFlags.value, stratagem }),
+        ...(runes?.property ?? []).flatMap((p) =>
+          p.damage ? [{ dice: p.damage.dice, label: `${p.name} (${p.damage.type})` }] : [],
+        ),
+      ]
+      const critNotes = (runes?.property ?? []).flatMap((p) =>
+        p.crit ? [`${p.name}: ${p.crit}`] : [],
+      )
       const penalties = mapPenalties(sheet.value, w.agile)
       const shown = traitsOf(w)
       const base = parseDice(dmg)
@@ -168,10 +184,12 @@ function create() {
         dmgNote: [
           dmgMods.note,
           die ? `d${die} fist` : '',
+          runes?.striking ? `${runes.striking + 1} dice (striking)` : '',
           ...extra.map((x) => `+${x.dice} ${x.label}`),
         ]
           .filter(Boolean)
           .join(', '),
+        critNotes,
         changed: attack.changed,
         note: attack.note,
         intAttack,
@@ -262,7 +280,9 @@ function create() {
       ? `${total} (2 × ${rolled}${afterTotal ? ` + ${afterTotal}` : ''})`
       : String(total)
     const text =
-      `${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}${extras.length ? ` (${extras.join(', ')})` : ''}`.trim()
+      `${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}${extras.length ? ` (${extras.join(', ')})` : ''}`.trim() +
+      // A property rune's critical effect (GM Core pp. 236–237), noted for the table to apply.
+      (crit && w.critNotes.length ? ` ${w.critNotes.join(' ')}` : '')
     stratagemStruck.value = stratagemDamaged(stratagemState(), index).struck
     if (!o.quiet) {
       showOutcome({ label: `${w.name} damage`, total, detail: text })

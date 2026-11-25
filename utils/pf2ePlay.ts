@@ -23,6 +23,7 @@ import {
   shieldBroken,
   toggleEffect,
 } from '~/utils/pf2eEffects'
+import { runeMods } from '~/utils/pf2eInventory'
 
 const RANK_BONUS: Record<Pf2eRank, number> = { U: 0, T: 2, E: 4, M: 6, L: 8 }
 
@@ -101,6 +102,8 @@ export interface Pf2eStatContext {
   action?: string
   /** A spell attack or DC: weapon and class DC proficiency increases don't apply. */
   spell?: boolean
+  /** Strikes: the Strike's name, for its weapon's potency rune (GM Core p. 224). */
+  weapon?: string
 }
 
 export interface Pf2eConditionDef {
@@ -238,9 +241,13 @@ export function conditionMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
   return mods
 }
 
-/** A number after conditions and active effects, with what changed it for its tooltip. */
+/** A number after conditions, active effects and runes, with what changed it for its tooltip. */
 export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext) {
-  const { total, applied } = stackMods([...conditionMods(s, ctx), ...effectMods(s, ctx)])
+  const { total, applied } = stackMods([
+    ...conditionMods(s, ctx),
+    ...effectMods(s, ctx),
+    ...runeMods(s, ctx.kind, ctx.weapon),
+  ])
   return {
     value: base + total,
     changed: total !== 0,

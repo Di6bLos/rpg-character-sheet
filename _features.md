@@ -308,7 +308,8 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Generator from the AoN data (`npm run pf2e:data`): classes, ancestries and heritages, backgrounds, feats, spells, weapons, armor, shields, conditions, actions, traits (Remaster/ORC only, with citations and `data/pf2e/NOTICE.md`)
 - [x] Each set a static file fetched on first use (`loadPf2e`), not bundled
 - [x] Data integrity tests (`tests/pf2eData.test.ts`)
-- [ ] Other equipment (gear, consumables, magic items, runes) with their activations
+- [x] Other equipment (gear, consumables, magic items, runes) with their activations: `gear`, `consumables`, `magicItems`, `runes`, `staves`, `wands` (ORC open books, setting names out), the sheet's Inventory panel (Bulk with encumbered and overloaded, worn/held/stowed, investing up to 10, coins, add from the data with a search), runes on weapons and armor (potency, striking, resilient, property runes' damage; etching rules with the property-rune limit), Use for consumables (potions heal, elixir bonuses as effects, bombs as Strikes), scrolls, wands (overcharge) and staves (charges, daily prep), level 0–1 gear and consumables in the builder
+  - Partial: property runes other than extra damage show their text (crit effects, resistances, activations); persistent damage from bombs and runes is said, not tracked (8.4); talismans, oils, ammunition and other activations spend one and say so; conditional item bonuses ("to High Jump", "against poisons") are shown, not applied; mutagen drawbacks, shield runes, specific magic weapons and armor, handwraps, precious materials and item crafting are not in yet
 - [x] Deities for clerics and champions (Reserved Material, under Paizo's Community Use Policy)
 - [ ] Structured effect model for feats and spells (with 8.5, where it is first used)
 
