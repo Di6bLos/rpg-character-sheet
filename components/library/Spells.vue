@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // Library → Spells: every spell of a game system as a searchable, sortable table (a card list
 // on phones), filtered by rank or tier, tradition or school and the rest; a row opens the
-// spell's full text. The search, filters and sort are in the URL (?tab=spells&system=pf2e&
-// q=fire&rank=3&sort=actions) so a link opens the same list. PF2e has ~1,200 spells, so the
-// list shows 100 rows at a time and is filtered from text lower-cased once on load.
+// spell's full text. The search, filters, sort and open spell are in the URL (?tab=spells&
+// system=pf2e&q=fire&rank=3&sort=actions&spell=spell-1530) so a link opens the same view. PF2e
+// has ~1,200 spells, so the list shows 100 rows at a time, filtered from text lower-cased once.
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import { SCHOOL_LABELS, SPELLS } from '~/data/nimble/spells'
@@ -350,11 +350,24 @@ onMounted(() => {
 onBeforeUnmount(() => media?.removeEventListener('change', onMedia))
 
 // --- Reading a spell ---------------------------------------------------------------
-const reading = ref<SpellView | null>(null)
+// The open spell is the URL's `spell` (a PF2e id, a Nimble name), so a link opens it too.
+const reading = computed<SpellView | null>(() => {
+  const id = route.query.spell
+  if (typeof id !== 'string' || !id) return null
+  if (pf2e.value) {
+    const s = pf2eSpells.value?.find((x) => x.id === id)
+    return s ? memo(s, pf2eView) : null
+  }
+  const s = SPELLS.find((x) => x.name === id)
+  return s ? memo(s, nimbleView) : null
+})
+function readSpell(id?: string) {
+  void router.replace({ query: { ...route.query, spell: id } })
+}
 const readingOpen = computed({
   get: () => reading.value !== null,
   set: (open) => {
-    if (!open) reading.value = null
+    if (!open) readSpell()
   },
 })
 
@@ -518,7 +531,7 @@ const toolbarStuck = useStuck(toolbarEl)
 
       <ul v-else-if="phone" class="cards">
         <li v-for="v in shown" :key="v.id">
-          <button type="button" class="card" aria-haspopup="dialog" @click="reading = v">
+          <button type="button" class="card" aria-haspopup="dialog" @click="readSpell(v.id)">
             <span class="card__head">
               <strong>{{ v.name }}</strong>
               <span v-if="v.glyph" class="glyph"
@@ -560,7 +573,7 @@ const toolbarStuck = useStuck(toolbarEl)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="v in shown" :key="v.id" @click="reading = v">
+            <tr v-for="v in shown" :key="v.id" @click="readSpell(v.id)">
               <td v-for="c in columns" :key="c.key" :class="`col-${c.key}`">
                 <template v-if="c.key === 'name'">
                   <button type="button" class="name" aria-haspopup="dialog">
@@ -625,7 +638,7 @@ const toolbarStuck = useStuck(toolbarEl)
         <p v-if="reading.source" class="read__source">{{ reading.source }}</p>
       </template>
       <template #actions>
-        <button type="button" class="btn btn--ghost" @click="reading = null">Close</button>
+        <button type="button" class="btn btn--ghost" @click="readSpell()">Close</button>
       </template>
     </UiDialog>
   </div>

@@ -47,12 +47,36 @@ watch(
     subnavObserver?.disconnect()
     subnavH.value = node?.offsetHeight ?? 0
     if (!node) return
-    subnavObserver = new ResizeObserver(() => (subnavH.value = node.offsetHeight))
+    subnavObserver = new ResizeObserver(() => {
+      subnavH.value = node.offsetHeight
+      tabEdges()
+    })
     subnavObserver.observe(node)
+    showActiveTab()
   },
   { flush: 'post' },
 )
 onBeforeUnmount(() => subnavObserver?.disconnect())
+
+// Phones: the tabs scroll sideways in one row, faded at an edge with more tabs past it, and
+// the current tab is scrolled into view.
+const tabFade = reactive({ start: false, end: false })
+function tabEdges() {
+  const nav = subnavEl.value
+  if (!nav) return
+  tabFade.start = nav.scrollLeft > 2
+  tabFade.end = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2
+}
+function showActiveTab() {
+  const nav = subnavEl.value
+  const current = nav?.querySelector<HTMLElement>('[aria-current=page]')
+  if (nav && current) {
+    const left = current.getBoundingClientRect().left - nav.getBoundingClientRect().left
+    nav.scrollLeft += left - (nav.clientWidth - current.offsetWidth) / 2
+  }
+  tabEdges()
+}
+watch(tab, () => nextTick(showActiveTab))
 
 const cat = ref<'All' | LibraryCategory>('All')
 const q = ref('')
@@ -256,7 +280,13 @@ function report(doc: LibraryDocument) {
       />
     </header>
 
-    <nav ref="subnavEl" aria-label="Library sections" class="lib-tabs sticky-bar">
+    <nav
+      ref="subnavEl"
+      aria-label="Library sections"
+      class="lib-tabs sticky-bar"
+      :class="{ 'fade-start': tabFade.start, 'fade-end': tabFade.end }"
+      @scroll.passive="tabEdges"
+    >
       <NuxtLink to="/library" :aria-current="tab === 'documents' ? 'page' : undefined"
         >Documents</NuxtLink
       >
@@ -279,7 +309,8 @@ function report(doc: LibraryDocument) {
         v-if="site.settings.npc_pool_library"
         :to="{ path: '/library', query: { tab: 'npcs' } }"
         :aria-current="tab === 'npcs' ? 'page' : undefined"
-        >NPCs &amp; monsters</NuxtLink
+        ><span class="tab-long">NPCs &amp; monsters</span
+        ><span class="tab-short">NPCs</span></NuxtLink
       >
     </nav>
 
@@ -597,12 +628,54 @@ function report(doc: LibraryDocument) {
 
   .lib-tabs {
     position: static;
+    flex-wrap: nowrap;
     gap: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     a {
+      flex: none;
       padding: 0 10px;
       font-size: 16px;
+      white-space: nowrap;
     }
+
+    &.fade-start {
+      mask-image: linear-gradient(90deg, transparent, #000 32px);
+    }
+
+    &.fade-end {
+      mask-image: linear-gradient(270deg, transparent, #000 32px);
+    }
+
+    &.fade-start.fade-end {
+      mask-image: linear-gradient(
+        90deg,
+        transparent,
+        #000 32px,
+        #000 calc(100% - 32px),
+        transparent
+      );
+    }
+  }
+}
+
+.tab-short {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .tab-long {
+    display: none;
+  }
+
+  .tab-short {
+    display: inline;
   }
 }
 </style>
