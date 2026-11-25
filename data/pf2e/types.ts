@@ -115,7 +115,18 @@ export interface Pf2eHeritageDef extends Pf2eRecord {
 export interface Pf2eBackgroundDef extends Pf2eRecord {
   /** Attribute names it may boost (one of them, plus a free boost). */
   boosts: string[]
+  /**
+   * Skills it trains outright, plus AoN's wording for a Lore the player names ("Lore related
+   * to the terrain you worked in").
+   */
   skills: string[]
+  /**
+   * Skills to pick from: "your choice of the Arcana, Nature, Occultism, or Religion skill",
+   * "the Legal Lore skill or Warfare Lore skill". No options means any skill.
+   */
+  skillChoices?: { options: string[]; count: number }[]
+  /** Trained in your deity's skill (Raised by Belief): the builder fills it in from the deity. */
+  deitySkill?: boolean
   feats: string[]
 }
 
