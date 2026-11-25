@@ -62,6 +62,8 @@ export interface InventoryItem {
   custom?: CustomItem
   /** PF2e: what the inventory tracks about the item; `qty` stays the Bulk of one. */
   pf2e?: Pf2eItemState
+  /** Nimble: armor or a shield the hero is wearing; what they wear sets their Armor. */
+  worn?: boolean
 }
 
 /**
@@ -169,6 +171,9 @@ export interface Dnd5eSheet extends SheetCommon {
   speed: string
   profBonus: number
   deathSaves: { successes: number; failures: number }
+  tempHp: number
+  /** Condition names from DND5E_CONDITIONS (the GM can set them from the battle board). */
+  conditions: string[]
   weapons: Dnd5eWeapon[]
   features: NamedEntry[]
 }

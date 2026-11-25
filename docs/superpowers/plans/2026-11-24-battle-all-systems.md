@@ -42,10 +42,10 @@
 
 - Produces: two campaigns in the local stack, run by `gm@test.local`, each with `player@test.local`'s hero seated: **"Test Table 5e"** (`system: 'dnd5e'`, level 3 Fighter "Corin", `defaultSheet('dnd5e')` with `class: 'Fighter'`, `hp: 28`, `hpMax: 28`, `ac: 16`, `initMod: 2`) and **"Test Table PF2e"** (`system: 'pf2e'`, level 3 Rogue "Mira", `defaultSheet('pf2e')` with `class: 'Rogue'`, `hp: 38`, `hpMax: 38`, `ac: 19`, `initMod: 3`). Each has one campaign NPC (Goblin, `stat_block: { hp: 7, ac: 15, initMod: 2 }`) so the GM can add it from the add dialog. Use the system ids exactly as `GameSystem` spells them.
 
-- [ ] **Step 1:** Add both campaigns to `seedLocal`, re-runnable like "Test Table" (look the campaign up by name and system before inserting; `--reset` rebuilds the two sheets).
-- [ ] **Step 2:** Run `npm run dev:seed` twice. Expected: no error, no duplicate campaigns (check `select name, system from campaigns` on the local DB).
-- [ ] **Step 3:** Print the two campaign URLs in `dev-local.ts`'s banner beside the Nimble one; update CLAUDE.md's Environment paragraph.
-- [ ] **Step 4: Commit** — `CHORE: 5e and PF2e test campaigns in the local seed`
+- [x] **Step 1:** Add both campaigns to `seedLocal`, re-runnable like "Test Table" (look the campaign up by name and system before inserting; `--reset` rebuilds the two sheets).
+- [x] **Step 2:** Run `npm run dev:seed` twice. Expected: no error, no duplicate campaigns (check `select name, system from campaigns` on the local DB).
+- [x] **Step 3:** Print the two campaign URLs in `dev-local.ts`'s banner beside the Nimble one; update CLAUDE.md's Environment paragraph.
+- [x] **Step 4: Commit** — `CHORE: 5e and PF2e test campaigns in the local seed`
 
 ### Task 2: Battle features per system, condition lists, phone tabs
 
@@ -65,7 +65,7 @@
   - `useBattleFeatures(): ComputedRef<BattleFeatures>` — from `useCampaignBoard().campaign.value?.system`, Nimble while the campaign loads.
   - `phoneTabs(role: PhoneRole, scribe: boolean, actions: boolean): PhoneTab[]` — a player without actions has no `'actions'` tab; `pickTab(role, scribe, actions, saved)` likewise, and a player's default is `'actions'` with actions, `'hero'` without. `usePhoneTab(role, scribe, actions: Ref<boolean>)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // tests/battleFeatures.test.ts
@@ -89,10 +89,10 @@ it('a player without actions gets Hero first and no Actions tab', () => {
 })
 ```
 
-- [ ] **Step 2:** Run `npx vitest run tests/battleFeatures.test.ts tests/boardLayout.test.ts`. Expected: FAIL (module not found / wrong arity).
-- [ ] **Step 3:** Implement the interfaces above; update the existing `phoneTabs` / `pickTab` / `usePhoneTab` tests to pass `actions: true` (Nimble behaviour unchanged); Phone.vue passes `actions = useBattleFeatures().value.nimbleHero`.
-- [ ] **Step 4:** Run `npx vitest run`. Expected: all pass. `npm run type-check`, `npm run lint` clean.
-- [ ] **Step 5: Commit** — `FEAT: battle features and condition lists per game system`
+- [x] **Step 2:** Run `npx vitest run tests/battleFeatures.test.ts tests/boardLayout.test.ts`. Expected: FAIL (module not found / wrong arity).
+- [x] **Step 3:** Implement the interfaces above; update the existing `phoneTabs` / `pickTab` / `usePhoneTab` tests to pass `actions: true` (Nimble behaviour unchanged); Phone.vue passes `actions = useBattleFeatures().value.nimbleHero`.
+- [x] **Step 4:** Run `npx vitest run`. Expected: all pass. `npm run type-check`, `npm run lint` clean.
+- [x] **Step 5: Commit** — `FEAT: battle features and condition lists per game system`
 
 ### Task 3: Battle opens for 5e and PF2e — frames, player hero card and turn bar
 
@@ -111,14 +111,14 @@ it('a player without actions gets Hero first and no Actions tab', () => {
   - `sendInitiative(campaignId: string, characterId: string, total: number): Promise<{ note: string; failed: boolean }>` exported from `composables/useSendInitiative.ts`; `useSendInitiative()` becomes a thin wrapper over it (same notes as today).
   - View for a non-Nimble seated player (`!gmControls && !features.nimbleHero && campaign.myCharacterId`): left `HeroBasic`; centre `TurnBasic` above `BoardRoster`; phone Hero tab `HeroBasic compact`, no `HeroStrip`, no `ResultBar`. GM and watcher slots unchanged. The "battle board is for Nimble campaigns" note and its CSS go.
 
-- [ ] **Step 1:** Before any change, on `npm run dev:local` take 1440×860 mouse screenshots of Test Table's Battle as GM and as Player into the SDD workspace (baseline for the Nimble regression check).
-- [ ] **Step 2:** Implement `sendInitiative` and refit `useSendInitiative` on it; `npx vitest run` and `npm run type-check` pass.
-- [ ] **Step 3:** Add `enabled` to HeroScope; View drops the `v-if="campaign?.system === 'nimble'"` gate and passes `:enabled="features.nimbleHero"`.
-- [ ] **Step 4:** Build `HeroBasic` and `TurnBasic` and place them per the Interfaces block in the desktop, tablet and phone templates of View.
-- [ ] **Step 5:** Smoke, Test Table 5e as Player at 1440×860, 1024×768 and 390×844 (touch): hero card values match Corin's sheet; Hero is the phone's first tab; no console errors.
-- [ ] **Step 6:** Smoke the Roll initiative cases: as GM click Add party (Corin unrolled, "–"); as Player the button shows, a click puts a number on the strip and the button goes; reload — no button. Remove Corin from the tracker as GM; the button is gone (no row).
-- [ ] **Step 7:** Nimble check: Test Table at 1440×860 as GM and Player matches the Step 1 screenshots.
-- [ ] **Step 8:** Update CLAUDE.md's `components/battle/` bullet (every system; HeroBasic, TurnBasic, `enabled`). **Commit** — `FEAT: battle board for D&D 5e and Pathfinder 2e players`
+- [x] **Step 1:** Before any change, on `npm run dev:local` take 1440×860 mouse screenshots of Test Table's Battle as GM and as Player into the SDD workspace (baseline for the Nimble regression check).
+- [x] **Step 2:** Implement `sendInitiative` and refit `useSendInitiative` on it; `npx vitest run` and `npm run type-check` pass.
+- [x] **Step 3:** Add `enabled` to HeroScope; View drops the `v-if="campaign?.system === 'nimble'"` gate and passes `:enabled="features.nimbleHero"`.
+- [x] **Step 4:** Build `HeroBasic` and `TurnBasic` and place them per the Interfaces block in the desktop, tablet and phone templates of View.
+- [x] **Step 5:** Smoke, Test Table 5e as Player at 1440×860, 1024×768 and 390×844 (touch): hero card values match Corin's sheet; Hero is the phone's first tab; no console errors.
+- [x] **Step 6:** Smoke the Roll initiative cases: as GM click Add party (Corin unrolled, "–"); as Player the button shows, a click puts a number on the strip and the button goes; reload — no button. Remove Corin from the tracker as GM; the button is gone (no row).
+- [x] **Step 7:** Nimble check: Test Table at 1440×860 as GM and Player matches the Step 1 screenshots.
+- [x] **Step 8:** Update CLAUDE.md's `components/battle/` bullet (every system; HeroBasic, TurnBasic, `enabled`). **Commit** — `FEAT: battle board for D&D 5e and Pathfinder 2e players`
 
 ### Task 4: Hide the Nimble-only parts for other systems (GM side and shared cards)
 
@@ -137,14 +137,14 @@ it('a player without actions gets Hero first and no Actions tab', () => {
   - `heroStats` false: `HeroCardDialog` shows only `HeroVitals` (no `HeroCardStats`), at the side panel's width.
   - `ConditionPicker` lists `conditionNames(system)`; descriptions only where Nimble has them.
 
-- [ ] **Step 1:** Gate `EncounterCard` and `PartyCards` pips; Nimble cards unchanged.
-- [ ] **Step 2:** Gate Sync summons, GmModes and summon tokens.
-- [ ] **Step 3:** Gate the GM hero controls and the stats dialog's stats.
-- [ ] **Step 4:** Feed `ConditionPicker` from `conditionNames`.
-- [ ] **Step 5:** Smoke Test Table 5e and PF2e as GM at 1440×860, 768×1024 (touch) and 390×844 (touch): add the Goblin and the party, Next turn round to round 2 (the Goblin's HP and conditions work; 5e picker shows Exhaustion, PF2e shows Off-guard), open Corin from a token and a party card (vitals read-only, no stats grid), no pips, no Sync summons, no initiative switch, no console errors.
-- [ ] **Step 6:** Down at 0 HP: set Corin's HP to 0 on his sheet; the strip token and party card show Down (not Slain/Dead) and the roster shows his death saves.
-- [ ] **Step 7:** Nimble check against Task 3's baselines (GM and Player, 1440×860), plus the GM ⋯ menu still has Sync summons and the initiative switch.
-- [ ] **Step 8:** Update CLAUDE.md. **Commit** — `FEAT: battle board hides Nimble-only tools for other systems`
+- [x] **Step 1:** Gate `EncounterCard` and `PartyCards` pips; Nimble cards unchanged.
+- [x] **Step 2:** Gate Sync summons, GmModes and summon tokens.
+- [x] **Step 3:** Gate the GM hero controls and the stats dialog's stats.
+- [x] **Step 4:** Feed `ConditionPicker` from `conditionNames`.
+- [x] **Step 5:** Smoke Test Table 5e and PF2e as GM at 1440×860, 768×1024 (touch) and 390×844 (touch): add the Goblin and the party, Next turn round to round 2 (the Goblin's HP and conditions work; 5e picker shows Exhaustion, PF2e shows Off-guard), open Corin from a token and a party card (vitals read-only, no stats grid), no pips, no Sync summons, no initiative switch, no console errors.
+- [x] **Step 6:** Down at 0 HP: set Corin's HP to 0 on his sheet; the strip token and party card show Down (not Slain/Dead) and the roster shows his death saves.
+- [x] **Step 7:** Nimble check against Task 3's baselines (GM and Player, 1440×860), plus the GM ⋯ menu still has Sync summons and the initiative switch.
+- [x] **Step 8:** Update CLAUDE.md. **Commit** — `FEAT: battle board hides Nimble-only tools for other systems`
 
 ### Task 5: Retire the Party (classic) page
 
@@ -162,11 +162,11 @@ it('a player without actions gets Hero first and no Actions tab', () => {
   - `/campaigns/:id/{board,gm}` and `/campaigns/:id/{board,gm}/party` → `/campaigns/:id/{board,gm}/battle`, `replace: true`, query and hash kept.
   - Analytics keeps `'party'` in `Surface` and `PLAY_SURFACES` (old events); no new path maps to it.
 
-- [ ] **Step 1:** Before deleting, `grep -rn "BoardPartyView\|BoardInitiative\|BoardActionPanel\|BoardLorePanel\b\|useDockedPanel\|edge-tabs\|board-dock\|DOCK_QUERY" components composables pages layouts assets stores plugins utils` — expected hits only in the files listed above; any other hit is a user this plan missed: stop and add it to this task.
-- [ ] **Step 2:** Turn both `party.vue` pages into the same redirect `index.vue` uses (to `battle`); point both `index.vue` pages at `battle` unconditionally.
-- [ ] **Step 3:** Delete the listed files and the `@use 'board-dock'` line; remove the Party tab from `useBoardNav`, the Party (classic) link from Bar's campaign menu (desktop and tablet) and the drawer code that only it used; drop `battle` from `useBoardLayout`.
-- [ ] **Step 4:** Dashboard and notification links to `/board/battle` (`/gm/battle` for the GM's own campaigns); the notification's "already here" check compares against the battle paths.
-- [ ] **Step 5:** `npm run test`, `npm run type-check`, `npm run lint` all pass.
-- [ ] **Step 6:** Smoke the old links: visit `/campaigns/<test-table-id>/board/party?x=1` and `/gm/party` — both land on Battle with `?x=1`; a party chat message from another account raises a notification that opens Battle; the dashboard card opens Battle.
-- [ ] **Step 7:** Sweep every campaign (Test Table, 5e, PF2e) as GM and Player at 390×844 (touch), 768×1024 (touch), 1100×800 and 1440×860: bar tabs show no Party, the GM's campaign name opens Table, chat and Scribe work, no console errors. Nimble 1440×860 matches Task 3's baselines.
-- [ ] **Step 8:** Update CLAUDE.md (drop the ActionPanel*, LorePanel*, `useDockedPanel` bullets and every "Party tab" mention; message kinds now say the battle board posts `'action'` rows), `design/README.md`, `_features.md`. **Commit** — `REFACTOR: retire the Party (classic) page`
+- [x] **Step 1:** Before deleting, `grep -rn "BoardPartyView\|BoardInitiative\|BoardActionPanel\|BoardLorePanel\b\|useDockedPanel\|edge-tabs\|board-dock\|DOCK_QUERY" components composables pages layouts assets stores plugins utils` — expected hits only in the files listed above; any other hit is a user this plan missed: stop and add it to this task.
+- [x] **Step 2:** Turn both `party.vue` pages into the same redirect `index.vue` uses (to `battle`); point both `index.vue` pages at `battle` unconditionally.
+- [x] **Step 3:** Delete the listed files and the `@use 'board-dock'` line; remove the Party tab from `useBoardNav`, the Party (classic) link from Bar's campaign menu (desktop and tablet) and the drawer code that only it used; drop `battle` from `useBoardLayout`.
+- [x] **Step 4:** Dashboard and notification links to `/board/battle` (`/gm/battle` for the GM's own campaigns); the notification's "already here" check compares against the battle paths.
+- [x] **Step 5:** `npm run test`, `npm run type-check`, `npm run lint` all pass.
+- [x] **Step 6:** Smoke the old links: visit `/campaigns/<test-table-id>/board/party?x=1` and `/gm/party` — both land on Battle with `?x=1`; a party chat message from another account raises a notification that opens Battle; the dashboard card opens Battle.
+- [x] **Step 7:** Sweep every campaign (Test Table, 5e, PF2e) as GM and Player at 390×844 (touch), 768×1024 (touch), 1100×800 and 1440×860: bar tabs show no Party, the GM's campaign name opens Table, chat and Scribe work, no console errors. Nimble 1440×860 matches Task 3's baselines.
+- [x] **Step 8:** Update CLAUDE.md (drop the ActionPanel*, LorePanel*, `useDockedPanel` bullets and every "Party tab" mention; message kinds now say the battle board posts `'action'` rows), `design/README.md`, `_features.md`. **Commit** — `REFACTOR: retire the Party (classic) page`

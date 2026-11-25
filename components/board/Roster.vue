@@ -1,9 +1,11 @@
 <script setup lang="ts">
 // Party roster cards: HP, temp HP, conditions; Nimble gets single-column long
-// cards with wounds, mana, armor, actions and concentration.
+// cards with wounds, mana, armor, actions and concentration. A downed 5e / PF2e hero gets
+// the battle board's DownStatus line.
 import type { GameSystem, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
+import { hpClass } from '~/utils/roster'
 
 const props = defineProps<{
   roster: RosterEntry[]
@@ -28,7 +30,8 @@ function hp(r: RosterEntry) {
     temp,
     pct: `${Math.round((Math.min(now, max) / total) * 100)}%`,
     tempPct: `${Math.round((temp / total) * 100)}%`,
-    low: max > 0 && now * 2 <= max,
+    /** The band (`hpClass`) for the bar and the number. */
+    band: hpClass(now, max),
   }
 }
 
@@ -47,13 +50,6 @@ function conditions(r: RosterEntry): string[] {
 
 function down(r: RosterEntry) {
   return !!r.character_id && (r.summary?.hp ?? 1) <= 0
-}
-
-function dyingLine(r: RosterEntry) {
-  const ds = r.summary?.deathSaves
-  if (ds) return `Death saves · ${ds.successes} success, ${ds.failures} fail`
-  if (typeof r.summary?.dying === 'number') return `Dying ${r.summary.dying}`
-  return 'Dying'
 }
 
 function dead(r: RosterEntry) {
@@ -116,7 +112,7 @@ function actions(r: RosterEntry) {
             <div class="hp__nums">
               <span class="caps">Hit points</span>
               <span>
-                <b :class="{ 'is-low': hp(r).low }">{{ hp(r).now }}</b> / {{ hp(r).max }}
+                <b :class="hp(r).band">{{ hp(r).now }}</b> / {{ hp(r).max }}
                 <template v-if="hp(r).temp"> · +{{ hp(r).temp }} temp</template>
               </span>
             </div>
@@ -128,17 +124,11 @@ function actions(r: RosterEntry) {
               :aria-valuemax="hp(r).max"
               :aria-valuenow="hp(r).now"
             >
-              <span
-                class="hp__fill"
-                :class="{ 'is-low': hp(r).low }"
-                :style="{ width: hp(r).pct }"
-              />
+              <span class="hp__fill" :class="hp(r).band" :style="{ width: hp(r).pct }" />
               <span class="hp__temp" :style="{ left: hp(r).pct, width: hp(r).tempPct }" />
             </div>
           </div>
-          <div v-if="down(r)" class="dying">
-            <b>Down</b><span>{{ dyingLine(r) }}</span>
-          </div>
+          <BattleDownStatus v-if="down(r)" class="dying" :summary="r.summary" />
           <div class="stats">
             <div>
               <b>{{ heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level) ?? '—' }}</b
@@ -199,7 +189,7 @@ function actions(r: RosterEntry) {
             <div class="hp__nums">
               <span class="caps">Hit points</span>
               <span>
-                <b :class="{ 'is-low': hp(r).low }">{{ hp(r).now }}</b> / {{ hp(r).max }}
+                <b :class="hp(r).band">{{ hp(r).now }}</b> / {{ hp(r).max }}
                 <template v-if="hp(r).temp"> · +{{ hp(r).temp }} temp</template>
               </span>
             </div>
@@ -211,11 +201,7 @@ function actions(r: RosterEntry) {
               :aria-valuemax="hp(r).max"
               :aria-valuenow="hp(r).now"
             >
-              <span
-                class="hp__fill"
-                :class="{ 'is-low': hp(r).low }"
-                :style="{ width: hp(r).pct }"
-              />
+              <span class="hp__fill" :class="hp(r).band" :style="{ width: hp(r).pct }" />
               <span class="hp__temp" :style="{ left: hp(r).pct, width: hp(r).tempPct }" />
             </div>
             <BoardManaGauge
@@ -460,7 +446,13 @@ function actions(r: RosterEntry) {
   }
 }
 
-.is-low {
+// The HP number takes the bar's band at half or less (amber, red at 0).
+.hp__nums b.hp--accent {
+  color: var(--accent-text);
+}
+
+.hp__nums b.hp--danger,
+.wounds__txt.is-low {
   color: var(--danger-text);
 }
 
@@ -480,32 +472,19 @@ function actions(r: RosterEntry) {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 999px;
-  background: var(--ok-text, var(--accent));
-
-  &.is-low {
-    background: var(--danger);
-  }
+  background: var(--hp-fill, var(--secondary));
 }
 
 .hp__temp {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: var(--temp-hp);
+  opacity: 0.75;
 }
 
 .dying {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  padding: 8px 10px;
-  border-radius: min(var(--radius-control), 8px);
-  border: 1px solid var(--danger);
-  font-size: 14px;
-
-  b {
-    color: var(--danger-text);
-  }
+  font-size: 13px;
 }
 
 .stats {

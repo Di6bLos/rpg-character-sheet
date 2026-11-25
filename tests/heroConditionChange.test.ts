@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { NimbleSheet } from '../types/sheets'
+import type { Dnd5eSheet, NimbleSheet } from '../types/sheets'
 import {
   applyConditionChange,
+  applyConditionChangeFor,
   freshConditionChanges,
   lastPerCondition,
 } from '../utils/heroConditionChange'
 import { CONDITION_ENDS } from '../utils/nimbleConditions'
+import { toggleEffect } from '../utils/pf2eEffects'
+import { conditionValue } from '../utils/pf2ePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
 
 function hero(patch: Partial<NimbleSheet> = {}): NimbleSheet {
@@ -66,5 +69,85 @@ describe('GM hero condition changes', () => {
       { id: 'c', condition: 'Prone', add: false },
     ]
     expect(lastPerCondition(rows).map((r) => r.id)).toEqual(['b', 'c'])
+  })
+})
+
+describe('GM hero condition changes, D&D 5e and PF2e', () => {
+  it('adds and removes a 5e condition plainly, with no end', () => {
+    const sheet = defaultSheet('dnd5e')
+    expect(
+      applyConditionChangeFor('dnd5e', sheet, { id: 'a', condition: 'Prone', add: true }),
+    ).toBe('GM: you are Prone.')
+    expect(sheet.conditions).toEqual(['Prone'])
+    expect('conditionEnds' in sheet).toBe(false)
+    expect(
+      applyConditionChangeFor('dnd5e', sheet, { id: 'b', condition: 'Prone', add: false }),
+    ).toBe('GM: no longer Prone.')
+    expect(sheet.conditions).toEqual([])
+  })
+
+  it('says nothing for a PF2e sheet that already matches', () => {
+    const sheet = { ...defaultSheet('pf2e'), conditions: ['Off-guard'] }
+    expect(
+      applyConditionChangeFor('pf2e', sheet, { id: 'a', condition: 'Off-guard', add: true }),
+    ).toBe('')
+    expect(
+      applyConditionChangeFor('pf2e', sheet, { id: 'b', condition: 'Prone', add: false }),
+    ).toBe('')
+    expect(sheet.conditions).toEqual(['Off-guard'])
+  })
+
+  it('removing a PF2e valued condition drops its value, and a new add starts at 1', () => {
+    const sheet = {
+      ...defaultSheet('pf2e'),
+      conditions: ['Frightened', 'Sickened'],
+      conditionValues: { Frightened: 2, Sickened: 1 },
+    }
+    expect(
+      applyConditionChangeFor('pf2e', sheet, { id: 'a', condition: 'Frightened', add: false }),
+    ).toBe('GM: no longer Frightened.')
+    expect(sheet.conditionValues).toEqual({ Sickened: 1 })
+    applyConditionChangeFor('pf2e', sheet, { id: 'b', condition: 'Frightened', add: true })
+    expect(conditionValue(sheet, 'Frightened')).toBe(1)
+  })
+
+  it('a GM setting a PF2e hero Unconscious ends Rage, as the sheet does', () => {
+    const sheet = {
+      ...defaultSheet('pf2e'),
+      feats: [{ type: 'Class', level: '1', action: '', name: 'Rage', desc: '' }],
+    }
+    toggleEffect(sheet, 'Rage', 1)
+    expect(sheet.effects?.on).toEqual(['Rage'])
+    const line = applyConditionChangeFor('pf2e', sheet, {
+      id: 'a',
+      condition: 'Unconscious',
+      add: true,
+    })
+    expect(line).toMatch(/^GM: you are Unconscious\. Rage ends/)
+    expect(sheet.effects?.on).toEqual([])
+  })
+
+  it('copes with an old 5e sheet that has no conditions list', () => {
+    const sheet = { ...defaultSheet('dnd5e') } as Partial<Dnd5eSheet> as Dnd5eSheet
+    delete (sheet as Partial<Dnd5eSheet>).conditions
+    applyConditionChangeFor('dnd5e', sheet, { id: 'a', condition: 'Prone', add: true })
+    expect(sheet.conditions).toEqual(['Prone'])
+  })
+
+  it('dispatches 5e and PF2e to the plain add, with no end', () => {
+    const dnd = defaultSheet('dnd5e')
+    applyConditionChangeFor('dnd5e', dnd, { id: 'a', condition: 'Prone', add: true })
+    expect(dnd.conditions).toEqual(['Prone'])
+    const pf2e = defaultSheet('pf2e')
+    applyConditionChangeFor('pf2e', pf2e, { id: 'a', condition: 'Prone', add: true })
+    expect(pf2e.conditions).toEqual(['Prone'])
+    expect('conditionEnds' in pf2e).toBe(false)
+  })
+
+  it('keeps Nimble on its own rules (the usual end)', () => {
+    const sheet = hero()
+    const timed = Object.keys(CONDITION_ENDS)[0]!
+    applyConditionChangeFor('nimble', sheet, { id: 'a', condition: timed, add: true })
+    expect(sheet.conditionEnds?.[timed]).toBe(CONDITION_ENDS[timed])
   })
 })
