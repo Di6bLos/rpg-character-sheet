@@ -47,6 +47,7 @@ import {
   legacyBooks,
   loadAon,
   located,
+  openSource,
   page,
   remaster,
   shareable,
@@ -205,9 +206,10 @@ function record(d: AonDoc): Pf2eRecord & { stats: Record<string, string> } {
   return {
     id: d.id,
     name: d.name,
+    // The open rulebook that prints it, even when AoN files it under a setting reprint.
     source: {
-      book: (d.primary_source ?? '').trim(),
-      ...opt('page', page(d) < 9999 ? page(d) : undefined),
+      book: openSource(d) ?? (d.primary_source ?? '').trim(),
+      ...opt('page', page(d, openSource(d)) < 9999 ? page(d, openSource(d)) : undefined),
     },
     rarity: (d.rarity ?? 'common') as Pf2eRarity,
     traits: list(d.trait),

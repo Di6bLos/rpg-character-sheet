@@ -22,6 +22,8 @@ export interface AonDoc {
   spell_type?: string
   item_category?: string
   primary_source?: string
+  /** Every book that prints it, the primary one first. */
+  source?: string[]
   release_date?: string
   remaster_name?: string[]
   legacy_name?: string[]
@@ -261,11 +263,22 @@ export function settingName(name: string, deities: string[]) {
 }
 
 /**
+ * The open rulebook an entry is printed in: its primary source, or, when AoN files it under a
+ * later setting reprint, the first open book that also prints it (Player Core's spear and
+ * staff are filed under Tian Xia Character Guide, Dark Archive's deviant feats under the
+ * Gatewalkers Player's Guide). Undefined when no open rulebook prints it.
+ */
+export const openSource = (d: AonDoc) =>
+  openBook(d.primary_source)
+    ? d.primary_source!.trim()
+    : (d.source ?? []).map((b) => b.trim()).find((b) => openBook(b))
+
+/**
  * Whether an entry belongs in the shareable set: printed in an open rulebook and not named for
  * a deity or Golarion proper noun. Deities themselves are judged by the caller.
  */
 export const shareable = (d: AonDoc, deities: string[]) =>
-  openBook(d.primary_source) && !settingName(d.name, deities)
+  !!openSource(d) && !settingName(d.name, deities)
 
 /**
  * Books a shareable output leaves out wherever they're cited: legacy (OGL) books, and every
@@ -305,9 +318,16 @@ export const slug = (s: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
-/** First printed page in the entry's source line. */
-export const page = (d: AonDoc) =>
-  Number(/\*\*Source\*\*[\s\S]{0,300}?pg\. (\d+)/.exec(d.markdown ?? '')?.[1] ?? 9999)
+/** First printed page in the entry's source line, or the page `book` prints it on. */
+export const page = (d: AonDoc, book?: string) => {
+  const md = d.markdown ?? ''
+  const cited = book
+    ? new RegExp(
+        `\\*\\*Source\\*\\*[^\\n]*?${book.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]?(?:\\([^)]*\\))? pg\\. (\\d+)`,
+      ).exec(md)
+    : null
+  return Number(cited?.[1] ?? /\*\*Source\*\*[\s\S]{0,300}?pg\. (\d+)/.exec(md)?.[1] ?? 9999)
+}
 
 export const stripLinks = (s: string) => s.replace(/\[([^\]]*)\]\((?:[^()]|\([^)]*\))*\)/g, '$1')
 

@@ -369,6 +369,110 @@ describe('pf2e data', () => {
     expect(data.spells.find((s) => s.name === 'Raise Dead')?.cost).toMatch(/gemstones/)
   })
 
+  // AoN files many Player Core weapons under a later setting reprint (the spear and staff under
+  // Tian Xia Character Guide); they are Player Core's and must be in the data, cited in an open
+  // book (Player Core, or an open reprint such as Treasure Vault's bola).
+  it('has every weapon in Player Core’s tables (pp. 277–280)', () => {
+    const table = {
+      Simple: [
+        'Blowgun',
+        'Clan Dagger',
+        'Club',
+        'Crossbow',
+        'Dagger',
+        'Dart',
+        'Gauntlet',
+        'Hand Crossbow',
+        'Heavy Crossbow',
+        'Javelin',
+        'Katar',
+        'Light Mace',
+        'Longspear',
+        'Mace',
+        'Morningstar',
+        'Sickle',
+        'Sling',
+        'Spear',
+        'Spiked Gauntlet',
+        'Staff',
+      ],
+      Martial: [
+        'Alchemical Bomb',
+        'Arbalest',
+        'Bastard Sword',
+        'Battle Axe',
+        'Bo Staff',
+        'Bola',
+        'Composite Longbow',
+        'Composite Shortbow',
+        'Dogslicer',
+        'Elven Curve Blade',
+        'Falchion',
+        "Filcher's Fork",
+        'Flail',
+        'Glaive',
+        'Gnome Hooked Hammer',
+        'Greataxe',
+        'Greatclub',
+        'Greatpick',
+        'Greatsword',
+        'Guisarme',
+        'Halberd',
+        'Halfling Sling Staff',
+        'Hatchet',
+        'Horsechopper',
+        'Kama',
+        'Katana',
+        'Khakkhara',
+        'Kukri',
+        'Lance',
+        'Light Hammer',
+        'Light Pick',
+        'Longbow',
+        'Longsword',
+        'Main-gauche',
+        'Maul',
+        'Nunchaku',
+        'Orc Knuckle Dagger',
+        'Pick',
+        'Ranseur',
+        'Rapier',
+        'Sai',
+        'Sap',
+        'Scimitar',
+        'Scythe',
+        'Shield Bash',
+        'Shield Boss',
+        'Shield Spikes',
+        'Shortbow',
+        'Shortsword',
+        'Shuriken',
+        'Spiked Chain',
+        'Starknife',
+        'Sword Cane',
+        'Temple Sword',
+        'Trident',
+        'Wakizashi',
+        'War Flail',
+        'Warhammer',
+        'Whip',
+      ],
+      Advanced: ['Dwarven Waraxe', 'Gnome Flickmace', 'Orc Necksplitter', 'Sawtooth Saber'],
+      Ammunition: ['Arrows', 'Blowgun Darts', 'Bolts', 'Sling Bullets'],
+    }
+    for (const [category, names] of Object.entries(table))
+      for (const name of names) {
+        const w = data.weapons.find((x) => x.name === name)
+        expect(w?.category, name).toBe(category)
+        expect(openBook(w?.source.book), name).toBe(true)
+      }
+    expect(data.weapons.find((w) => w.name === 'Staff')).toMatchObject({
+      source: { book: 'Player Core', page: 277 },
+      damage: '1d4',
+      traits: ['Monk', 'Two-Hand'],
+    })
+  })
+
   it('keeps weapon, armor and shield statistics', () => {
     expect(data.weapons.find((w) => w.name === 'Longsword')).toMatchObject({
       damage: '1d8',
