@@ -18,6 +18,7 @@ import {
   ancestryBoostPlan,
   backgroundBoostSlots,
   creationFocusSpells,
+  curriculumOptions,
   focusChoice,
   deityOptions,
   emptyCreation,
@@ -111,7 +112,7 @@ export function autoCreation(
   )
   c.skills = picks
   c.lores = plan2.lores.map(() => 'Local')
-  for (const slot of featSlots(resolve(c, data).cls))
+  for (const slot of featSlots(resolve(c, data).cls, resolve(c, data).subclassPicks))
     c.feats[slot] = featOptions(slot, c, data)[0]!.id
   if (spellcastingPlan(c, data)?.traditionChoice) c.tradition = 'Arcane'
   const casting = spellcastingPlan(c, data)
@@ -125,6 +126,13 @@ export function autoCreation(
       rank1: spellOptions('spell', c, data)
         .slice(0, casting.rank1)
         .map((s) => s.id),
+      ...(casting.curriculum
+        ? {
+            curriculum: curriculumOptions(c, data)
+              .slice(0, casting.curriculum.count)
+              .map((s) => s.id),
+          }
+        : {}),
     }
     if (casting.fonts.length > 1) c.font = casting.fonts[0]
   }

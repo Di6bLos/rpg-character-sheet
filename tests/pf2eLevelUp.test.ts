@@ -5,6 +5,8 @@ import { buildPf2eSheet, emptyCreation } from '../utils/pf2eBuild'
 import {
   applyPf2eLevel,
   boostAttrs,
+  levelSpellOptions,
+  profileAt,
   featPrerequisites,
   gatedParts,
   levelFeatOptions,
@@ -247,20 +249,38 @@ describe('pf2e level-up: casters and the rogue (Player Core class tables)', () =
     expect(pf2eLevelPlan(at[14]!, 15, data)!.skillMax).toBe('L')
   })
 
-  it('wizard: spell proficiency 7/15/19, two spellbook spells a level', () => {
+  it('wizard: spell proficiency 7/15/19, two spellbook spells a level, the curriculum', () => {
     const at = build('Wizard')
     expect(ranks(at[5]!)).toMatchObject({ Reflex: 'E', Fortitude: 'T' })
     expect(ranks(at[10]!)).toMatchObject({ Fortitude: 'E', Perception: 'T' })
     expect(ranks(at[20]!)).toMatchObject({ Will: 'M', Perception: 'E' })
     expect([1, 7, 15, 19].map((l) => at[l]!.spellcasting!.rank)).toEqual(['T', 'E', 'M', 'L'])
-    expect(slotMax(at[5]!)).toEqual([3, 3, 2])
-    expect(slotMax(at[10]!)).toEqual([3, 3, 3, 3, 3])
-    expect(slotMax(at[20]!)).toEqual([3, 3, 3, 3, 3, 3, 3, 3, 3, 1])
+    // The table's slots plus a curriculum slot of each rank 1–9 (Player Core p. 197).
+    expect(slotMax(at[5]!)).toEqual([4, 4, 3])
+    expect(slotMax(at[10]!)).toEqual([4, 4, 4, 4, 4])
+    expect(slotMax(at[20]!)).toEqual([4, 4, 4, 4, 4, 4, 4, 4, 4, 1])
+    // Two spells a level, and a curriculum spell with each new rank from 2nd to 9th.
     const book = (l: number) => at[l]!.spellcasting!.spells.length
-    expect(book(20) - book(1)).toBe(38)
+    expect(book(20) - book(1)).toBe(38 + 8)
+    const school = named(cls('Wizard').subclasses, 'School of Ars Grammatica')
+    expect(at[1]!.creation!.subclasses['Wizard Arcane School']).toEqual([school.id])
     expect(pf2eLevelPlan(at[4]!, 5, data)!.spells).toEqual([
       { key: 'book', label: '2 new spells of rank 3 or lower', count: 2, rank: 3 },
+      {
+        key: 'curriculum3',
+        label: 'Rank 3 curriculum spell',
+        count: 1,
+        rank: 3,
+        exact: true,
+        only: ['Enthrall', 'Veil of Privacy'],
+      },
     ])
+    const pick = pf2eLevelPlan(at[4]!, 5, data)!.spells[1]!
+    expect(levelSpellOptions(pick, at[4]!, data).map((x) => x.name)).toEqual([
+      'Enthrall',
+      'Veil of Privacy',
+    ])
+    expect(pf2eLevelPlan(at[5]!, 6, data)!.spells.map((x) => x.key)).toEqual(['book'])
   })
 
   it('sorcerer: a repertoire spell per new slot, the bloodline gift first at each new rank', () => {
@@ -291,7 +311,10 @@ describe('pf2e level-up: every class', () => {
     const slots = Array.from({ length: 19 }, (_, i) => levelFeatSlots(c, i + 2)).flat()
     const n = (k: string) => slots.filter((x) => x.kind === k).length
     expect(n('class')).toBe(10)
-    expect(n('skill')).toBe(c.name === 'Rogue' ? 19 : 10)
+    // Rogues get a skill feat every level; Skillful Lessons adds one at each odd level from
+    // 3rd (Player Core 2 p. 100), Stylish Tricks one at 3rd, 7th and 15th (p. 158).
+    const skillFeats: Record<string, number> = { Rogue: 19, Investigator: 19, Swashbuckler: 13 }
+    expect(n('skill')).toBe(skillFeats[c.name] ?? 10)
     expect(n('general')).toBe(5)
     expect(n('ancestry')).toBe(4)
     for (let l = 2; l <= 20; l++) expect(pf2eLevelPlan(s, l, data)!.feats.length).toBeGreaterThan(0)
@@ -430,5 +453,177 @@ describe('gatedParts', () => {
       [13, 'At 13th level, more.'],
       [7, 'Seven.'],
     ])
+  })
+})
+
+describe('pf2e review fixes: level-ups', () => {
+  const hero = (name: string, sub: string[] = []) =>
+    buildPf2eSheet(autoCreation(cls(name), data, 'Acolyte', sub), data)
+
+  it('investigator: Skillful Lessons’ skill feat at 3rd and every odd level (PC2 p. 100)', () => {
+    const s = levelTo(hero('Investigator'), 2)
+    const plan = pf2eLevelPlan(s, 3, data)!
+    const lesson = plan.feats.find((f) => f.label === 'Skill feat (Skillful Lessons)')
+    expect(lesson).toMatchObject({ key: 'skill', kind: 'skill' })
+    expect(lesson?.help).toMatch(/Intelligence-, Wisdom-, or Charisma-based skill/)
+    expect(levelFeatSlots(cls('Investigator'), 4).map((f) => f.key)).toEqual(['class', 'skill'])
+    expect(levelFeatSlots(cls('Investigator'), 5).filter((f) => f.kind === 'skill')).toHaveLength(1)
+    applyPf2eLevel(s, 3, autoLevelPicks(s, 3, data), data)
+    expect(s.feats.filter((f) => f.type === 'Skill feat' && f.level === '3')).toHaveLength(1)
+  })
+
+  it('swashbuckler: Stylish Tricks’ extra skill increase and skill feat at 3, 7, 15 (PC2 p. 158)', () => {
+    const s = levelTo(hero('Swashbuckler'), 2)
+    const plan = pf2eLevelPlan(s, 3, data)!
+    expect(plan.skillIncreases).toBe(2)
+    expect(plan.feats.map((f) => f.label)).toContain('Skill feat (Stylish Tricks)')
+    expect(plan.notes.join(' ')).toMatch(/Stylish Tricks: its skill increase applies only to/)
+    expect(pf2eLevelPlan(levelTo(hero('Swashbuckler'), 4), 5, data)!.skillIncreases).toBe(1)
+    const picks = autoLevelPicks(s, 3, data)
+    expect(picks.skills).toHaveLength(2)
+    expect(pf2eLevelProblems(plan, picks, s)).toEqual([])
+  })
+
+  it('a witch’s pool grows by one with Cackle, not to three (p. 298)', () => {
+    const s = levelTo(hero('Witch'), 1)
+    expect(s.focus.max).toBe(1)
+    const cackle = named(data.feats, 'Cackle')
+    const at = levelTo(s, Math.max(2, cackle.level) - 1)
+    const lvl = Math.max(2, cackle.level)
+    const picks = autoLevelPicks(at, lvl, data)
+    picks.feats.class = cackle.id
+    const plan = pf2eLevelPlan(at, lvl, data, picks)!
+    expect(plan.focus.map((f) => f.name)).toEqual(['Cackle'])
+    expect(plan.focusPoints).toEqual({ from: 1, to: 2 })
+    applyPf2eLevel(at, lvl, picks, data)
+    expect(at.focus).toMatchObject({ max: 2, current: 2 })
+  })
+
+  it('a psychic’s Clarity of Focus adds a Focus Point at 5th (Dark Archive p. 9)', () => {
+    const s = levelTo(hero('Psychic'), 4)
+    expect(s.focus.max).toBe(2)
+    expect(pf2eLevelPlan(s, 5, data, autoLevelPicks(s, 5, data))!.focusPoints).toEqual({
+      from: 2,
+      to: 3,
+    })
+    applyPf2eLevel(s, 5, autoLevelPicks(s, 5, data), data)
+    expect(s.focus.max).toBe(3)
+  })
+
+  it('ruffian and avenger medium armor follows light armor expertise and mastery', () => {
+    for (const racket of ['Ruffian', 'Avenger']) {
+      const s = levelTo(hero('Rogue', [racket]), 1)
+      const at = (l: number) => profileAt(s, l, data)!.armor
+      expect([at(1).medium, at(13).medium, at(19).medium], racket).toEqual(['T', 'E', 'M'])
+      expect([at(13).light, at(19).light], racket).toEqual(['E', 'M'])
+    }
+    const thief = levelTo(hero('Rogue', ['Thief']), 1)
+    expect(profileAt(thief, 19, data)!.armor.medium).toBe('U')
+  })
+
+  it('animist: apparition slots as a second, spontaneous track (War of Immortals p. 10)', () => {
+    const s = hero('Animist')
+    const track = s.archetypeCasting?.find((e) => e.archetype === 'Apparition')
+    expect(track).toMatchObject({
+      label: 'Apparition spells',
+      kind: 'spontaneous',
+      tradition: 'Divine',
+      rank: 'T',
+    })
+    expect(track!.slots[0]?.max).toBe(1)
+    expect(s.spellcasting?.slots[0]?.max).toBe(1)
+    expect(s.notes).toMatch(/Apparition spellcasting/)
+    const plan = pf2eLevelPlan(levelTo(hero('Animist'), 2), 3, data)!
+    expect(plan.slots).toContainEqual({
+      rank: 2,
+      from: 0,
+      to: 1,
+      archetype: 'Apparition',
+      label: 'Apparition spells',
+    })
+    levelTo(s, 10)
+    const at10 = s.archetypeCasting!.find((e) => e.archetype === 'Apparition')!
+    expect(at10.slots.slice(0, 5).map((r) => r.max)).toEqual([2, 2, 2, 1, 1])
+    expect(s.spellcasting!.slots.slice(0, 5).map((r) => r.max)).toEqual([2, 2, 2, 2, 2])
+    expect(at10.rank).toBe(s.spellcasting!.rank)
+    expect(at10.rank).toBe('E')
+  })
+})
+
+describe('pf2e review fixes: Reconfigure and going back', () => {
+  it('flags recorded picks that no longer fit, so the player picks again', () => {
+    const s = levelTo(buildPf2eSheet(dwarfFighter(), data), 5)
+    const picks = autoLevelPicks(s, 6, data)
+    const plan = pf2eLevelPlan(s, 6, data, picks)!
+    expect(pf2eLevelProblems(plan, picks, s, data)).toEqual([])
+    // A feat the hero already has isn't offered again.
+    const taken = data.feats.find((f) => f.id === s.feats.find((x) => x.type === 'Class feat')!.id)!
+    const stale = { ...picks, feats: { ...picks.feats, class: taken.id } }
+    expect(pf2eLevelProblems(plan, stale, s, data)).toContainEqual({
+      section: 'feat:class',
+      text: `${taken.name} isn't an option for the fighter feat any more: pick again`,
+    })
+    // A feat whose prerequisites the hero lost.
+    const needs = levelFeatOptions('skill', s, 6, data).find(
+      (f) =>
+        /^trained in Athletics$/i.test(f.prerequisites ?? '') && !/more than once/i.test(f.text),
+    )!
+    const weaker = structuredClone(s)
+    weaker.skills.find((x) => x.name === 'Athletics')!.rank = 'U'
+    const lost = { ...picks, feats: { ...picks.feats, skill: needs.id } }
+    expect(
+      pf2eLevelProblems(pf2eLevelPlan(weaker, 6, data, lost)!, lost, weaker, data),
+    ).toContainEqual({
+      section: 'feat:skill',
+      text: `${needs.name} needs ${needs.prerequisites}: pick again`,
+    })
+  })
+
+  it('flags a recorded spell its pick no longer offers', () => {
+    const s = levelTo(buildPf2eSheet(autoCreation(cls('Wizard')), data), 4)
+    const picks = autoLevelPicks(s, 5, data)
+    const plan = pf2eLevelPlan(s, 5, data, picks)!
+    const high = data.spells.find(
+      (x) => x.kind === 'spell' && x.rank === 5 && x.traditions.includes('Arcane'),
+    )!
+    const stale = { ...picks, spells: { ...picks.spells, book: [picks.spells.book![0]!, high.id] } }
+    expect(pf2eLevelProblems(plan, stale, s, data)).toContainEqual({
+      section: 'spells:book',
+      text: `${high.name} isn't an option for 2 new spells of rank 3 or lower any more: pick again`,
+    })
+  })
+
+  it('keeps feats and Strikes added by hand when a level is lowered', () => {
+    const s = levelTo(buildPf2eSheet(dwarfFighter(), data), 4)
+    const homeRule = { type: 'Feat', level: '', action: '', name: 'Home rule', desc: 'GM gift' }
+    s.feats.push({ ...homeRule })
+    applyPf2eLevel(s, 5, autoLevelPicks(s, 5, data, BOOSTS), data)
+    s.feats.push({ ...homeRule, name: 'Boon at 5th', level: '5' })
+    s.strikes.push({ name: 'Bite', bonus: 9, agile: false, dmg: '1d6', type: 'P', traits: '' })
+    const levelFive = s.feats.filter((f) => f.id && f.level === '5').map((f) => f.name)
+    expect(levelFive.length).toBeGreaterThan(0)
+    expect(restoreLevel(s, 4)).toBe(true)
+    const names = s.feats.map((f) => f.name)
+    expect(names).toEqual(expect.arrayContaining(['Home rule', 'Boon at 5th']))
+    expect(names.filter((n) => n === 'Home rule')).toHaveLength(1)
+    for (const n of levelFive) expect(names).not.toContain(n)
+    expect(s.strikes.map((x) => x.name)).toContain('Bite')
+  })
+
+  it('keeps the spell slots prepared, cast and spent where they still exist', () => {
+    const w = levelTo(buildPf2eSheet(autoCreation(cls('Wizard')), data), 2)
+    const first = w.spellcasting!.spells[0]!.id
+    applyPf2eLevel(w, 3, autoLevelPicks(w, 3, data), data)
+    w.spellcasting!.slots[0]!.prepared![0] = { id: first, cast: true }
+    w.spellcasting!.slots[1]!.prepared![0] = { id: first, cast: false }
+    expect(restoreLevel(w, 2)).toBe(true)
+    expect(w.spellcasting!.slots[0]!.prepared![0]).toEqual({ id: first, cast: true })
+    expect(w.spellcasting!.slots[1]!.max).toBe(0)
+
+    const so = levelTo(buildPf2eSheet(autoCreation(cls('Sorcerer')), data), 1)
+    applyPf2eLevel(so, 2, autoLevelPicks(so, 2, data), data)
+    so.spellcasting!.slots[0]!.used = 4
+    expect(restoreLevel(so, 1)).toBe(true)
+    expect(so.spellcasting!.slots[0]).toMatchObject({ max: 3, used: 3 })
   })
 })

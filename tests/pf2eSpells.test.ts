@@ -41,7 +41,9 @@ describe('pf2e spellcasting at creation', () => {
     const bard = spellcastingPlan(autoCreation(cls('Bard')), data)
     expect(bard).toMatchObject({ tradition: 'Occult', kind: 'spontaneous', cantrips: 5, rank1: 2 })
     const wizard = spellcastingPlan(autoCreation(cls('Wizard')), data)
-    expect(wizard).toMatchObject({ tradition: 'Arcane', kind: 'prepared', cantrips: 5, rank1: 2 })
+    expect(wizard).toMatchObject({ tradition: 'Arcane', kind: 'prepared' })
+    // Two slots, plus the arcane school's curriculum slot (Player Core p. 197).
+    expect(wizard?.slots[0]).toBe(3)
     expect(spellcastingPlan(autoCreation(cls('Fighter')), data)).toBeNull()
   })
 
@@ -306,7 +308,9 @@ describe('pf2e casting (pp. 297–298)', () => {
       focusSpells: [ref('Counter Performance')],
       focus: { max: 1, current: 0, note: '' },
     }
-    expect(dailyPreparations(s)).toBe('Daily preparations: Focus Points and daily abilities restored.')
+    expect(dailyPreparations(s)).toBe(
+      'Daily preparations: Focus Points and daily abilities restored.',
+    )
     expect(s.focus.current).toBe(1)
   })
 
@@ -315,5 +319,106 @@ describe('pf2e casting (pp. 297–298)', () => {
     s.spellcasting!.slots[0]!.prepared![0]!.id = 'x'
     setSlotMax(s.spellcasting!, 1, 3)
     expect(s.spellcasting?.slots[0]?.prepared?.map((p) => p.id)).toEqual(['x', null, null])
+  })
+})
+
+describe('pf2e review fixes: spells at creation', () => {
+  const sub = (k: string, n: string) => named(cls(k).subclasses, n)
+  const withPick = (k: string, kind: string, n: string) => {
+    const c = autoCreation(cls(k))
+    c.subclasses = { ...c.subclasses, [kind]: [sub(k, n).id] }
+    return c
+  }
+  const names = (refs?: Pf2eSpellRef[]) => (refs ?? []).map((s) => s.name)
+
+  it('fills a spellbook, familiar or dirge with the book’s counts, not the slots', () => {
+    const counts = (k: string) => {
+      const p = spellcastingPlan(autoCreation(cls(k)), data)!
+      return [p.cantrips, p.rank1]
+    }
+    // Wizard p. 197, witch p. 178, magus and necromancer Impossible Magic pp. 11, 31.
+    expect(counts('Wizard')).toEqual([10, 5])
+    expect(counts('Witch')).toEqual([10, 5])
+    expect(counts('Magus')).toEqual([8, 5])
+    expect(counts('Necromancer')).toEqual([8, 4])
+    // Classes whose known spells match their slots keep them.
+    expect(counts('Cleric')).toEqual([5, 2])
+    expect(counts('Bard')).toEqual([5, 2])
+    const necro = buildPf2eSheet(autoCreation(cls('Necromancer')), data)
+    expect(names(necro.spellcasting?.spells)).toContain('Harm')
+    expect(necro.spellcasting?.spells).toHaveLength(5)
+    expect(necro.spellcasting?.cantrips).toHaveLength(8)
+  })
+
+  it('gives a wizard two curriculum spells and a curriculum slot per rank (p. 197)', () => {
+    const c = withPick('Wizard', 'Wizard Arcane School', 'School of Battle Magic')
+    c.spells = { ...c.spells!, curriculum: [] }
+    const plan = spellcastingPlan(c, data)!
+    expect(plan.curriculum).toEqual({
+      count: 2,
+      names: ['Breathe Fire', 'Force Barrage', 'Mystic Armor'],
+    })
+    expect(plan.slots[0]).toBe(3)
+    expect(spellProblems(c, data)).toEqual(['Choose 2 1st-rank curriculum spells'])
+    c.spells.curriculum = ['Breathe Fire', 'Force Barrage'].map((n) => named(data.spells, n).id)
+    expect(spellProblems(c, data)).toEqual([])
+    const s = buildPf2eSheet(c, data)
+    expect(s.spellcasting?.spells).toHaveLength(7)
+    expect(s.spellcasting?.cantrips).toHaveLength(10)
+    expect(s.spellcasting?.slots[0]?.max).toBe(3)
+    expect(s.spellcasting?.slots[0]?.prepared?.[2]?.id).toBe(c.spells.curriculum[0])
+    expect(s.notes).toContain('Curriculum: one extra cantrip (Shield or Telekinetic Projectile)')
+    // A spell off the curriculum doesn't count.
+    c.spells.curriculum = [c.spells.rank1[0]!, c.spells.curriculum[0]!]
+    expect(spellProblems(c, data)).toEqual(['Choose 2 1st-rank curriculum spells'])
+  })
+
+  it('gives a unified-theory wizard no curriculum but one more spellbook spell (p. 200)', () => {
+    const c = withPick('Wizard', 'Wizard Arcane School', 'School of Unified Magical Theory')
+    const plan = spellcastingPlan(c, data)!
+    expect(plan.curriculum).toBeUndefined()
+    expect(plan.slots[0]).toBe(2)
+    expect(plan.rank1).toBe(6)
+  })
+
+  it('gives a sorcerer four cantrips and two spells plus the bloodline’s gifts (PC2 p. 144)', () => {
+    for (const [bloodline, cantrip, first] of [
+      ['Aberrant', 'Daze', 'Phantom Pain'],
+      ['Angelic', 'Light', 'Heal'],
+      ['Draconic', 'Shield', 'Fear'],
+      ['Imperial', 'Detect Magic', 'Force Barrage'],
+    ] as const) {
+      const c = withPick('Sorcerer', 'Sorcerer Bloodline', bloodline)
+      if (bloodline === 'Draconic') c.tradition = 'Arcane'
+      const plan = spellcastingPlan(c, data)!
+      expect([plan.cantrips, plan.rank1], bloodline).toEqual([4, 2])
+      c.spells = {
+        cantrips: plan.tradition ? c.spells!.cantrips.slice(0, 4) : [],
+        rank1: c.spells!.rank1.slice(0, 2),
+      }
+      expect(spellProblems(c, data), bloodline).toEqual([])
+      const s = buildPf2eSheet(c, data)
+      expect(names(s.spellcasting?.cantrips), bloodline).toContain(cantrip)
+      expect(names(s.spellcasting?.spells), bloodline).toContain(first)
+      expect(names(s.focusSpells), bloodline).not.toContain(cantrip)
+      expect(names(focusSpellOptions(c, data)), bloodline).not.toContain(cantrip)
+    }
+  })
+
+  it('has a witch choose one of her two hexes, and teaches the lesson’s spell (p. 178)', () => {
+    const c = autoCreation(cls('Witch'))
+    const choice = focusChoice(c, data)!
+    expect(choice.options.map((s) => s.name).sort()).toEqual(["Patron's Puppet", 'Phase Familiar'])
+    expect(names(creationFocusSpells(c, data))).not.toContain("Patron's Puppet")
+    expect(names(creationFocusSpells(c, data))).not.toContain('Phase Familiar')
+    const s = buildPf2eSheet(c, data)
+    const hexes = names(s.focusSpells).filter((n) =>
+      ["Patron's Puppet", 'Phase Familiar'].includes(n),
+    )
+    expect(hexes).toHaveLength(1)
+    expect(s.focus.max).toBe(1)
+    // Devourer of Decay's lesson: "your familiar learns _enfeeble_".
+    const decay = withPick('Witch', 'Witch Patron Theme', 'Devourer of Decay')
+    expect(names(buildPf2eSheet(decay, data).spellcasting?.spells)).toContain('Enfeeble')
   })
 })

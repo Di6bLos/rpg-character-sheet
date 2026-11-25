@@ -144,8 +144,9 @@ export function canRestore(sheet: AnySheet, target: number): boolean {
 
 /**
  * Puts the sheet back to how it was at `target`. Play state (current HP, wounds,
- * inventory, notes…) stays, clamped to the restored maximums, and abilities added
- * by hand (Nimble entries without a level) are kept.
+ * inventory, notes, PF2e spell slots spent and prepared…) stays, clamped to the restored
+ * maximums, and entries added by hand are kept (Nimble abilities without a level, PF2e feats
+ * and Strikes).
  *
  * Returns false when there is no snapshot for that level (levelled up before the
  * history existed); then only Nimble's level-tagged abilities and picks above
@@ -168,7 +169,7 @@ export function restoreLevel(sheet: AnySheet, target: number): boolean {
     return false
   }
 
-  applySnapshot(sheet, entry.before)
+  applySnapshot(sheet, entry.before, target)
   sheet.levelHistory = history.filter((e) => e.level <= target)
   // The inventory (and what's worn) is play state the snapshot keeps; Armor follows it.
   if (isNimble(sheet)) syncWornArmor(sheet, target)
@@ -192,12 +193,82 @@ export function keepDamage(sheet: AnySheet, before: { hp: number; hpMax: number 
 
 const isNimble = (s: AnySheet): s is NimbleSheet => 'stats' in s && 'abilities' in s
 
-function applySnapshot(sheet: AnySheet, snap: Loose) {
+type SlotState = { max: number; used: number; prepared?: { id: string | null; cast: boolean }[] }
+type Casting = {
+  spells?: { id: string }[]
+  slots?: SlotState[]
+  font?: { max: number; used: number }
+}
+
+/**
+ * PF2e spell slots are play state where the slot still exists: slots spent today and the spells
+ * prepared in them (and whether they were cast), kept slot by slot, clamped to the restored
+ * maximums; a prepared spell the restored sheet no longer knows leaves its slot empty.
+ */
+function castingState(loose: Loose) {
+  const entries = (s: Loose) => [
+    ...(s.spellcasting ? [['', s.spellcasting as Casting] as const] : []),
+    ...((s.archetypeCasting as (Casting & { archetype: string })[] | undefined) ?? []).map(
+      (c) => [c.archetype, c] as const,
+    ),
+  ]
+  const saved = new Map(
+    entries(loose).map(([k, c]) => [k, JSON.parse(JSON.stringify(c)) as Casting]),
+  )
+  return () => {
+    for (const [k, c] of entries(loose)) {
+      const was = saved.get(k)
+      if (!was) continue
+      const known = new Set((c.spells ?? []).map((x) => x.id))
+      c.slots?.forEach((slot, i) => {
+        const old = was.slots?.[i]
+        if (!old) return
+        slot.used = Math.min(old.used, slot.max)
+        slot.prepared?.forEach((p, j) => {
+          const o = old.prepared?.[j]
+          if (o && (!o.id || known.has(o.id))) Object.assign(p, o)
+        })
+      })
+      if (c.font && was.font) c.font.used = Math.min(was.font.used, c.font.max)
+    }
+  }
+}
+
+/**
+ * PF2e entries added by hand stay when a level is undone, as Nimble's do: feats without an id
+ * or not from a later level, and Strikes the snapshot doesn't have.
+ */
+function handEntries(loose: Loose, target: number | undefined) {
+  const feats = Array.isArray(loose.feats)
+    ? (loose.feats as { id?: string; name: string; type?: string; level?: string }[])
+    : null
+  const strikes = Array.isArray(loose.strikes) ? (loose.strikes as { name: string }[]) : null
+  const keptFeats = (feats ?? []).filter(
+    (f) => !f.id || (target !== undefined && Number(f.level) <= target),
+  )
+  const keptStrikes = [...(strikes ?? [])]
+  const same = (a: { name: string; type?: string }, b: { name: string; type?: string }) =>
+    a.name === b.name && a.type === b.type
+  return () => {
+    if (feats && Array.isArray(loose.feats)) {
+      const list = loose.feats as { name: string; type?: string }[]
+      for (const f of keptFeats) if (!list.some((x) => same(x, f))) list.push(f)
+    }
+    if (strikes && Array.isArray(loose.strikes)) {
+      const list = loose.strikes as { name: string }[]
+      for (const s of keptStrikes) if (!list.some((x) => x.name === s.name)) list.push(s)
+    }
+  }
+}
+
+function applySnapshot(sheet: AnySheet, snap: Loose, target?: number) {
   const loose = sheet as unknown as Loose
   const handMade = Array.isArray(loose.abilities)
     ? (loose.abilities as { name: string; level?: number }[]).filter((a) => !a.level)
     : []
   const live = liveFields(loose)
+  const restoreCasting = castingState(loose)
+  const restoreHand = handEntries(loose, target)
   const before = JSON.parse(JSON.stringify(snap)) as Loose
 
   for (const k of ADDED_BY_LEVELS) if (!(k in before)) delete loose[k]
@@ -205,6 +276,8 @@ function applySnapshot(sheet: AnySheet, snap: Loose) {
 
   sheet.hp = Math.min(sheet.hp, sheet.hpMax)
   restoreLiveFields(loose, live)
+  restoreCasting()
+  restoreHand()
   if (Array.isArray(loose.abilities)) {
     const list = loose.abilities as { name: string; level?: number }[]
     for (const a of handMade) if (!list.some((b) => !b.level && b.name === a.name)) list.push(a)

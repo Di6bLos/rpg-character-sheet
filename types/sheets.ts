@@ -424,10 +424,15 @@ export interface Pf2eSpellcasting {
 /**
  * An archetype's spellcasting (Player Core p. 215): its own tradition, attribute and rank, the
  * cantrips its dedication grants, and the slots its basic, expert and master spellcasting feats
- * give by level.
+ * give by level. Also holds a class's second track of slots (`label`).
  */
 export interface Pf2eArchetypeCasting extends Pf2eSpellcasting {
   archetype: string
+  /**
+   * The panel's name when this is the class's own second track (an animist's "Apparition
+   * spells", War of Immortals p. 10) rather than an archetype's.
+   */
+  label?: string
 }
 
 /** The choices a Pathfinder 2e hero was built from (Player Core pp. 22–27); ids are AoN ids. */
@@ -452,15 +457,18 @@ export interface Pf2eCreation {
   skills: string[]
   /** Names for the Lore skills a background leaves to the player, in its order ("Desert"). */
   lores?: string[]
-  /** Feat slot (`ancestry`, `class`, `skill`) → feat id. */
+  /** Feat slot (`ancestry`, `class`, `class2` for a bonus class feat, `skill`) → feat id. */
   feats: Record<string, string>
   armor?: string
   shield?: string
   weapons: string[]
   /** Other gear and consumables bought (AoN ids), with how many of each. */
   items?: { id: string; count: number }[]
-  /** Spells picked at creation (AoN ids): cantrips, then 1st-rank spells. */
-  spells?: { cantrips: string[]; rank1: string[] }
+  /**
+   * Spells picked at creation (AoN ids): cantrips, 1st-rank spells, and a wizard's 1st-rank
+   * curriculum spells (Player Core p. 197).
+   */
+  spells?: { cantrips: string[]; rank1: string[]; curriculum?: string[] }
   /** A cleric's divine font when the deity offers both. */
   font?: string
   /** The tradition a draconic bloodline or dragon eidolon leaves to the player. */

@@ -22,7 +22,9 @@ import {
   backgroundBoostSlots,
   buildPf2eSheet,
   classFeatTrait,
+  bonusClassFeat,
   creationProblems,
+  curriculumOptions,
   deityOptions,
   emptyCreation,
   featOptions,
@@ -38,6 +40,7 @@ import {
   isAmmunition,
   keyAttributeOptions,
   levelOneFeatures,
+  needsDeity,
   resolve,
   setSlotBoost,
   skillPlan,
@@ -82,6 +85,7 @@ const SETS = [
 const FEAT_LABEL: Record<Pf2eFeatSlot, string> = {
   ancestry: 'Ancestry feat',
   class: 'Class feat',
+  class2: 'Bonus class feat',
   skill: 'Skill feat',
 }
 
@@ -175,6 +179,7 @@ watch(
     c.value.deity = undefined
     c.value.skills = []
     delete c.value.feats.class
+    delete c.value.feats.class2
     delete c.value.feats.skill
     c.value.spells = undefined
     c.value.font = undefined
@@ -195,6 +200,12 @@ watch(keyOptions, (keys) => {
   if (keys.length && !keys.includes(c.value.keyAttribute)) c.value.keyAttribute = keys[0]!
 })
 const wantsDeity = computed(() => !!data.value && wantsDeityFor(c.value, data.value))
+/**
+ * Where the deity is picked: on the Class step when the class or its choice serves one, else on
+ * the Background step for a background that does (Raised by Belief). One choice either way.
+ */
+const classDeity = computed(() => !!cls.value && needsDeity(cls.value, subclassPicks.value))
+const backgroundDeity = computed(() => wantsDeity.value && !classDeity.value)
 watch(wantsDeity, (want) => {
   if (!want) c.value.deity = undefined
 })
@@ -396,8 +407,16 @@ function toggleFree(skill: string) {
   else if (freePicks.value.length < (plan.value?.free ?? 0))
     c.value.skills = [...c.value.skills, skill]
 }
-const slots = computed(() => featSlots(cls.value))
+const slots = computed(() => featSlots(cls.value, subclassPicks.value))
+// A bonus class feat's slot goes when the choice that gave it changes.
+watch(slots, (now) => {
+  if (!now.includes('class2')) delete c.value.feats.class2
+})
 const featLabel = (s: Pf2eFeatSlot) => {
+  if (s === 'class2') {
+    const bonus = bonusClassFeat(cls.value, subclassPicks.value)
+    return `${FEAT_LABEL[s]}${bonus?.trait ? ` (${bonus.trait.toLowerCase()})` : ''} from ${bonus?.from}`
+  }
   const trait = s === 'class' ? classFeatTrait(cls.value) : undefined
   return trait ? `${FEAT_LABEL[s]} (${trait.toLowerCase()})` : FEAT_LABEL[s]
 }
@@ -541,6 +560,9 @@ const cantripCards = computed(() =>
 const rank1Cards = computed(() =>
   data.value ? spellOptions('spell', c.value, data.value).map((s) => opt(s, spellMeta(s))) : [],
 )
+const curriculumCards = computed(() =>
+  data.value ? curriculumOptions(c.value, data.value).map((s) => opt(s, spellMeta(s))) : [],
+)
 // Focus spells are uncommon by nature: no rarity switch in front of the class's own.
 const focusCards = computed(() =>
   data.value
@@ -560,7 +582,7 @@ watch(
 const focusPicks = computed(() =>
   data.value ? chosenFocusSpells(c.value, data.value).map((s) => s.id) : [],
 )
-function setSpells(which: 'cantrips' | 'rank1', ids: string[]) {
+function setSpells(which: 'cantrips' | 'rank1' | 'curriculum', ids: string[]) {
   c.value.spells = { cantrips: [], rank1: [], ...c.value.spells, [which]: ids }
 }
 
@@ -744,6 +766,19 @@ async function create() {
           :options="backgroundOptions"
           label="Backgrounds"
         />
+        <template v-if="backgroundDeity && background">
+          <div class="section-head"><h3>Deity</h3></div>
+          <p class="small muted">
+            {{ background.name }} trains you in your deity’s skill and boosts its divine attribute.
+          </p>
+          <Pf2eOptionCards v-model="deityPick" :options="deityCards" label="Deities" />
+          <p class="small muted cup">
+            Deities use trademarks and/or copyrights owned by Paizo Inc., used under Paizo's
+            Community Use Policy (paizo.com/licenses/communityuse). We are expressly prohibited from
+            charging you to use or access this content. Lantern is not published, endorsed, or
+            specifically approved by Paizo.
+          </p>
+        </template>
       </section>
 
       <!-- 1 · Class ---------------------------------------------------- -->
@@ -833,7 +868,7 @@ async function create() {
             />
           </template>
 
-          <template v-if="wantsDeity">
+          <template v-if="classDeity">
             <div class="section-head"><h3>Deity</h3></div>
             <p v-if="background?.deitySkill" class="small muted">
               {{ background.name }} trains you in your deity’s skill.
@@ -1012,7 +1047,9 @@ async function create() {
             {{
               casting.kind === 'spontaneous'
                 ? 'These go in your spell repertoire: you can cast any of them with your slots.'
-                : 'These are the spells you prepare today; you can prepare others on the sheet.'
+                : casting.rank1 > (casting.slots[0] ?? 0)
+                  ? 'These are the spells you know (your spellbook, familiar or dirge); you prepare from them each day on the sheet.'
+                  : 'These are the spells you prepare today; you can prepare others on the sheet.'
             }}
           </p>
           <div class="section-head">
@@ -1041,6 +1078,34 @@ async function create() {
             :max="casting.rank1"
             @update:model-value="setSpells('rank1', $event)"
           />
+          <template v-if="casting.curriculum">
+            <div class="section-head">
+              <h3>
+                Curriculum spells
+                <span class="small muted">· choose {{ casting.curriculum.count }}</span>
+              </h3>
+            </div>
+            <p class="small muted">
+              Your arcane school adds {{ casting.curriculum.count }} 1st-rank spells from its
+              curriculum to your spellbook, and gives you a curriculum slot of each rank you can
+              cast<template v-if="casting.curriculumCantrips">
+                and a curriculum cantrip ({{ casting.curriculumCantrips.join(' or ') }})</template
+              >.
+            </p>
+            <Pf2eOptionCards
+              :model-value="c.spells?.curriculum ?? []"
+              :options="curriculumCards"
+              label="Curriculum spells"
+              multiple
+              :max="casting.curriculum.count"
+              @update:model-value="setSpells('curriculum', $event)"
+            />
+          </template>
+          <p v-if="casting.granted.length" class="small">
+            <strong>Also known</strong>:
+            {{ casting.granted.map((s) => s.name).join(', ') }}
+            <span class="muted">(from your class and choices)</span>
+          </p>
           <div v-if="casting.fonts.length > 1" class="panel stack">
             <h3>Divine font</h3>
             <div class="row" role="group" aria-label="Divine font" style="gap: 8px">

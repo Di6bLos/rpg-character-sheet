@@ -31,8 +31,9 @@ export interface Pf2eRecord {
   /** Names of the legacy entries this one replaces. */
   replaces?: string[]
   /**
-   * What AoN's entry leaves out that the book prints (a druidic order's skill, feat and order
-   * spell; an awakened animal's Hit Points), for the builder to say instead of guessing.
+   * What AoN's entry leaves out that the book prints (an awakened animal's Hit Points), for the
+   * builder to say instead of guessing. A druidic order's skill, feat and order spell are
+   * hand-encoded in `data/pf2e/subclassGrants.ts` instead.
    */
   gap?: string
 }
@@ -82,8 +83,16 @@ export interface Pf2eClassDef extends Pf2eRecord {
   traditions: string[]
   /** Class advancement table: what each level grants, by the book's names. */
   advancement: { level: number; features: string[] }[]
-  /** Spells per day for slot casters: cantrips, then slots for ranks 1–10. */
-  spellSlots?: { level: number; cantrips: number; slots: number[] }[]
+  /**
+   * Spells per day for slot casters: cantrips, then slots for ranks 1–10. `extra`: a second
+   * track the table prints after a plus sign (an animist's apparition slots, "2+1").
+   */
+  spellSlots?: {
+    level: number
+    cantrips: number
+    slots: number[]
+    extra?: { cantrips: number; slots: number[] }
+  }[]
   features: Pf2eClassFeature[]
   subclasses: Pf2eSubclassOption[]
 }
