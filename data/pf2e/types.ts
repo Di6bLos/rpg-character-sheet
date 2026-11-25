@@ -236,6 +236,8 @@ export type Pf2eEffect =
       weapons?: 'agileFinesse'
       skills?: string[]
       byLevel?: [level: number, value: number][]
+      /** Effects whose bonus of the same type this one adds to instead of the higher counting. */
+      cumulativeWith?: string[]
     }
   /** A different multiple attack penalty (the Flurry edge against hunted prey). */
   | { kind: 'map'; second: number; third: number; agileSecond: number; agileThird: number }

@@ -78,6 +78,7 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     name: 'Precision',
     source: { book: 'Player Core', page: 154 },
     mode: 'permanent',
+    requires: 'Hunt Prey',
     effects: [
       {
         kind: 'damageDice',
@@ -105,6 +106,7 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     mode: 'permanent',
     requires: 'Hunt Prey',
     effects: [{ kind: 'map', second: -3, third: -6, agileSecond: -2, agileThird: -4 }],
+    note: 'Only for attacks against your hunted prey: against anyone else the penalty is −5/−10 (agile −4/−8).',
   },
   {
     name: 'Outwit',
@@ -121,7 +123,7 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
       },
       { kind: 'modifier', selector: ['ac'], value: 1, type: 'circumstance' },
     ],
-    note: 'Also +2 circumstance to Recall Knowledge about your prey; the AC bonus is against its attacks.',
+    note: 'Only against your prey: the +2 to Deception, Intimidation and Stealth is for checks against it, the +1 AC against its attacks. Also +2 to Recall Knowledge about it.',
   },
   {
     name: 'Thief',
@@ -195,7 +197,14 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     source: { book: 'Player Core 2', page: 118 },
     mode: 'toggle',
     effects: [
-      { kind: 'modifier', selector: ['ac'], value: 4, type: 'item' },
+      // Cumulative with mystic armor (and runes on explorer's clothing, already in base AC).
+      {
+        kind: 'modifier',
+        selector: ['ac'],
+        value: 4,
+        type: 'item',
+        cumulativeWith: ['Mystic Armor'],
+      },
       { kind: 'dexCap', value: 0 },
       { kind: 'modifier', selector: ['speed'], value: -5, type: 'untyped' },
     ],

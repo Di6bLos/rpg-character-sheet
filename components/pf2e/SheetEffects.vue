@@ -27,9 +27,10 @@ const withToggle = computed(() => {
 })
 const on = computed(() => new Set(sheet.value.effects?.on ?? []))
 const given = computed(() => new Map((sheet.value.effects?.given ?? []).map((g) => [g.name, g])))
+/** Notes of what's on; permanent ones only when they need a toggle (Outwit: against your prey). */
 const notes = computed(() =>
   activeEffects(sheet.value)
-    .filter((a) => a.def.note && a.def.mode !== 'permanent')
+    .filter((a) => a.def.note && (a.def.mode !== 'permanent' || a.def.requires))
     .map((a) => `${a.def.name}: ${a.def.note}`),
 )
 

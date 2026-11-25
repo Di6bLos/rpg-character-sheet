@@ -4,12 +4,16 @@ import type { Pf2eFeat, Pf2eSheet } from '../types/sheets'
 import {
   activeEffects,
   baseDeathAt,
+  damageConditions,
   extraDice,
   mapPenalties,
   ownEffects,
   recoveryDcChange,
   setGiven,
   speedNow,
+  stratagemAttacked,
+  stratagemDamaged,
+  stratagemUsesInt,
   toggleEffect,
 } from '../utils/pf2eEffects'
 import {
@@ -131,7 +135,11 @@ describe('pf2e extra damage dice', () => {
   })
 
   it('adds the Precision edge on the first hit on hunted prey', () => {
-    const s = hero(['Precision'])
+    const s = hero(['Hunt Prey', 'Precision'])
+    expect(extraDice(s, 11, club, { huntedPrey: true })).toEqual([])
+    expect(damageConditions(s)).toEqual([])
+    toggleEffect(s, 'Hunt Prey', 11)
+    expect(damageConditions(s)).toEqual(['huntedPrey'])
     expect(extraDice(s, 11, club, { huntedPrey: true })[0]?.dice).toBe('2d8')
     expect(extraDice(s, 11, club, {})).toEqual([])
   })
@@ -232,5 +240,55 @@ describe('pf2e effects, second wave', () => {
       { dice: '2d6', label: 'strategic strike' },
     ])
     expect(extraDice(s, 5, rapier, {})).toEqual([])
+  })
+
+  it('Mountain Stance’s +4 item AC adds to Mystic Armor’s +1, as its text says (PC2 p. 118)', () => {
+    const s = hero(['Mountain Stance', 'Mystic Armor'])
+    toggleEffect(s, 'Mountain Stance', 1)
+    toggleEffect(s, 'Mystic Armor', 1)
+    const ac = adjusted(s, 15, { kind: 'ac' })
+    expect(ac.value).toBe(20)
+    expect(ac.note).toBe('+5 Mountain Stance + Mystic Armor')
+    toggleEffect(s, 'Mountain Stance', 1)
+    expect(adjusted(s, 15, { kind: 'ac' }).value).toBe(16)
+  })
+
+  it('notes that Flurry and Outwit count only against the hunted prey (Player Core p. 154)', () => {
+    const notes = (name: string) => PF2E_EFFECTS.find((e) => e.name === name)?.note ?? ''
+    expect(notes('Flurry')).toMatch(/only for attacks against your hunted prey/i)
+    expect(notes('Outwit')).toMatch(/only against your prey/i)
+  })
+})
+
+describe('pf2e Devise a Stratagem (Player Core 2 p. 103)', () => {
+  const int = (INT: number, DEX = 0) => ({ ...defaultSheet('pf2e').attrs, INT, DEX })
+
+  it('uses INT for agile, finesse and ranged Strikes, not thrown or plain melee ones', () => {
+    const s = hero([], { attrs: int(4, 2) })
+    expect(stratagemUsesInt(s, { traits: 'Finesse', attr: 'DEX' })).toBe(true)
+    expect(stratagemUsesInt(s, { traits: 'Deadly d10', ranged: true, attr: 'DEX' })).toBe(true)
+    expect(stratagemUsesInt(s, { traits: 'Thrown 30 ft', ranged: true })).toBe(false)
+    expect(stratagemUsesInt(s, { traits: 'Sweep' })).toBe(false)
+  })
+
+  it('keeps the better attribute: INT only when it is at least the usual one', () => {
+    expect(stratagemUsesInt(hero([], { attrs: int(2, 4) }), { traits: 'Agile', attr: 'DEX' })).toBe(
+      false,
+    )
+    expect(stratagemUsesInt(hero([], { attrs: int(3, 3) }), { traits: 'Agile', attr: 'DEX' })).toBe(
+      true,
+    )
+  })
+
+  it('covers only the next Strike: its attack spends it, its damage keeps the dice once', () => {
+    const struck = stratagemAttacked({ ready: true }, 0, true)
+    expect(struck).toEqual({ ready: false, struck: 0 })
+    expect(stratagemAttacked(struck, 0, false)).toEqual({ ready: false, struck: undefined })
+    expect(stratagemDamaged(struck, 1)).toBe(struck)
+    expect(stratagemDamaged(struck, 0)).toEqual({ ready: false })
+    expect(stratagemAttacked({ ready: true }, 2, false)).toEqual({
+      ready: false,
+      struck: undefined,
+    })
   })
 })

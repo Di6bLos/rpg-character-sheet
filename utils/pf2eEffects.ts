@@ -5,7 +5,7 @@
 // damage dice, Speed, and the dying rules Diehard and Toughness change.
 import { PF2E_EFFECTS } from '~/data/pf2e/effects'
 import type { Pf2eEffect, Pf2eEffectDef, Pf2eSelector } from '~/data/pf2e/types'
-import type { Pf2eSheet } from '~/types/sheets'
+import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
 import type { Pf2eMod, Pf2eStatContext } from '~/utils/pf2ePlay'
 
 const BY_NAME = new Map(PF2E_EFFECTS.map((e) => [e.name, e]))
@@ -82,15 +82,34 @@ export function effectMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
   // Rage's damage is halved if the weapon is agile (Player Core 2 p. 72), flag or trait.
   const agile = ctx.agile || traits.includes('agile')
   const agileOrFinesse = agile || traits.includes('finesse')
-  const mods: Pf2eMod[] = allOf(s, 'modifier').flatMap(({ effect: e, active }) => {
+  const found = allOf(s, 'modifier').flatMap(({ effect: e, active }) => {
     if (!e.selector.some((x) => want.includes(x))) return []
     if (e.melee && !ctx.melee) return []
     if (e.weapons === 'agileFinesse' && !agileOrFinesse) return []
     if (e.skills && (ctx.kind !== 'skill' || !e.skills.includes(ctx.skill ?? ''))) return []
     const base = active.value ?? (e.byLevel ? atLevel(e.byLevel, ctx.level ?? 1, e.value) : e.value)
     const value = e.agileHalf && agile ? Math.floor(base / 2) : base
-    return value ? [{ value, type: e.type, source: active.def.name }] : []
+    return value ? [{ value, type: e.type, source: active.def.name, with: e.cumulativeWith }] : []
   })
+  // A bonus that's cumulative with named ones of its type adds to them instead of only the
+  // higher counting (Mountain Stance's item bonus with Mystic Armor's, Player Core 2 p. 118).
+  const adds = new Map(
+    found.map((m) => [
+      m,
+      found.filter((o) => o !== m && o.type === m.type && m.with?.includes(o.source)),
+    ]),
+  )
+  const absorbed = new Set([...adds.values()].flat())
+  const mods: Pf2eMod[] = found
+    .filter((m) => !absorbed.has(m))
+    .map((m) => {
+      const more = adds.get(m) ?? []
+      return {
+        value: more.reduce((n, o) => n + o.value, m.value),
+        type: m.type,
+        source: [m.source, ...more.map((o) => o.source)].join(' + '),
+      }
+    })
   // Raise a Shield: +2 circumstance to AC (Player Core p. 274), so it doesn't stack with Shield.
   if (ctx.kind === 'ac' && s.shield.name && s.shield.raised)
     mods.push({ value: 2, type: 'circumstance', source: 'Raised shield' })
@@ -180,6 +199,41 @@ export function extraDice(
 export const damageConditions = (s: Pf2eSheet) => [
   ...new Set(allOf(s, 'damageDice').map(({ effect }) => effect.when)),
 ]
+
+/**
+ * Devise a Stratagem's attack (Player Core 2 p. 103): the Strike can add INT instead of STR or
+ * DEX, so it does when INT is at least as good; a melee, unarmed or thrown weapon must be agile
+ * or finesse. Strategic strike's dice come only with a Strike that adds INT (p. 100).
+ */
+export function stratagemUsesInt(
+  s: Pf2eSheet,
+  strike: { traits: string; ranged?: boolean; attr?: Pf2eAttr },
+) {
+  const traits = strike.traits.split(',').map((t) => t.trim().toLowerCase())
+  const thrown = traits.some((t) => t.startsWith('thrown'))
+  const fits =
+    traits.includes('agile') || traits.includes('finesse') || (!!strike.ranged && !thrown)
+  return fits && s.attrs.INT >= s.attrs[strike.attr ?? 'STR']
+}
+
+/**
+ * Devise a Stratagem covers only the first Strike after it (p. 103). `ready`: the next attack
+ * roll gets it; `struck`: the Strike (by index) whose attack used INT, until its damage is rolled.
+ */
+export interface Pf2eStratagem {
+  ready: boolean
+  struck?: number
+}
+
+/** After an attack roll: it spends a ready stratagem, and ends the last one's damage. */
+export const stratagemAttacked = (st: Pf2eStratagem, strike: number, usedInt: boolean) => ({
+  ready: false,
+  struck: st.ready && usedInt ? strike : undefined,
+})
+
+/** After a damage roll: the struck Strike's strategic strike dice are spent. */
+export const stratagemDamaged = (st: Pf2eStratagem, strike: number): Pf2eStratagem =>
+  st.struck === strike ? { ready: st.ready } : st
 
 /** Diehard: the dying value at which the hero dies before doomed (p. 254). */
 export const baseDeathAt = (s: Pf2eSheet) =>

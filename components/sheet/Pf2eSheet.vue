@@ -10,7 +10,15 @@ import {
   strikeResult,
   takeDamage,
 } from '~/utils/pf2ePlay'
-import { damageConditions, extraDice, mapPenalties, speedNow } from '~/utils/pf2eEffects'
+import {
+  damageConditions,
+  extraDice,
+  mapPenalties,
+  speedNow,
+  stratagemAttacked,
+  stratagemDamaged,
+  stratagemUsesInt,
+} from '~/utils/pf2eEffects'
 import { dailyPreparations } from '~/utils/pf2eSpells'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, lastRoll, say } = useSheet<Pf2eSheet>()
@@ -96,6 +104,8 @@ const targetAc = ref<number | null>(null)
 
 /** Situations that add damage dice the hero's abilities give (sneak attack, precision). */
 const damageFlags = ref({ offGuard: false, huntedPrey: false, stratagem: false })
+/** The Strike whose attack used Devise a Stratagem, until its damage is rolled. */
+const stratagemStruck = ref<number>()
 const conditionsOffered = computed(() => damageConditions(sheet.value))
 
 const speed = computed(() => speedNow(sheet.value))
@@ -136,23 +146,27 @@ function shiftDice(dmg: string, delta: number) {
   return `${e.count}d${e.sides}${mod ? sign(mod) : ''}`
 }
 
+const stratagemState = () => ({
+  ready: damageFlags.value.stratagem,
+  struck: stratagemStruck.value,
+})
+
 const strikes = computed(() =>
-  sheet.value.strikes.map((w) => {
+  sheet.value.strikes.map((w, index) => {
     const typeInitial = w.type ? ` ${w.type.charAt(0).toUpperCase()}` : ''
     const attr = w.attr ?? 'STR'
     const traits = w.traits.split(',').map((t) => t.trim().toLowerCase())
     const level = draft.value.level
-    // Devise a Stratagem: INT for the attack with an agile, finesse or ranged weapon or a sap
-    // (Player Core 2 p. 100), which strategic strike's dice go with.
-    const stratagem =
-      damageFlags.value.stratagem &&
-      (w.ranged || traits.some((t) => ['agile', 'finesse', 'sap'].includes(t)))
-    const attackBase = stratagem
+    // Devise a Stratagem: the next Strike's attack can use INT (Player Core 2 p. 103), and
+    // strategic strike's dice go with it; the Strike that did keeps them for its damage.
+    const intAttack = damageFlags.value.stratagem && stratagemUsesInt(sheet.value, w)
+    const stratagem = intAttack || stratagemStruck.value === index
+    const attackBase = intAttack
       ? w.bonus - sheet.value.attrs[attr] + sheet.value.attrs.INT
       : w.bonus
     const attack = adjusted(sheet.value, attackBase, {
       kind: 'attack',
-      attr: stratagem ? 'INT' : attr,
+      attr: intAttack ? 'INT' : attr,
       traits,
       level,
     })
@@ -187,6 +201,7 @@ const strikes = computed(() =>
       say(
         `${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}${extras}`.trim(),
       )
+      stratagemStruck.value = stratagemDamaged(stratagemState(), index).struck
     }
     return {
       name: w.name,
@@ -208,6 +223,9 @@ const strikes = computed(() =>
           label: `${w.name} attack ${i + 1}`,
           roll: () => {
             const r = rollAttack(bonus)
+            const st = stratagemAttacked(stratagemState(), index, intAttack)
+            damageFlags.value.stratagem = st.ready
+            stratagemStruck.value = st.struck
             const ac = targetAc.value
             const vs = ac ? ` vs AC ${ac}: ${strikeResult(degreeOf(r.total, r.d20, ac))}` : ''
             say(`${w.name} (attack ${i + 1}): ${r.total}${natNote(r.natural)}${vs}`)
@@ -496,7 +514,7 @@ const bulkPct = computed(() =>
       </label>
       <label v-if="conditionsOffered.includes('stratagem')" class="target">
         <input v-model="damageFlags.stratagem" type="checkbox" />
-        Devise a Stratagem (INT to the attack)
+        Devise a Stratagem (next Strike: INT to the attack)
       </label>
     </div>
     <div
