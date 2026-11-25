@@ -703,4 +703,12 @@ describe('pf2e ability rules: review fixes', () => {
     expect(s.turn.initiative).toBeUndefined()
     expect(inEncounter(s)).toBe(false)
   })
+
+  it('scales “for every level you have beyond 6th” from that level, as one roll', () => {
+    for (const name of ['Storming Breath', 'Enervating Wail']) {
+      const damage = feat(name).damage
+      expect(damage.map((d) => d.dice)).toEqual(['4d6'])
+      expect([6, 9, 20].map((l) => diceAt(damage[0]!, l))).toEqual(['4d6', '7d6', '18d6'])
+    }
+  })
 })

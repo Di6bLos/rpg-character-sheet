@@ -335,9 +335,11 @@ export const PF2E_RULE_PATTERNS = {
   increaseSteps:
     /increases? to (\d+d\d+) at (\d+)(?:st|nd|rd|th) level((?:,? (?:and )?\d+d\d+ at \d+(?:st|nd|rd|th) level)*)/i,
   perLevels:
-    /^[^.]{0,40}?(?:per|for every|for each) (\d+|two|three|level)(?: levels?)?(?: you have)?\b(?! beyond)/i,
+    /^[^.]{0,40}?(?:per|for every|for each) (\d+|two|three|level)(?: levels?)?(?: you have)?\b(?!(?: you have)? beyond)/i,
   beyondLevel:
-    /(\d+d\d+) (?:for every|for each|per) level (?:you have )?beyond (\d+)(?:st|nd|rd|th)/i,
+    /(\d+d\d+)(?: damage)? (?:for every|for each|per) level (?:you have )?beyond (\d+)(?:st|nd|rd|th)/i,
+  scalingDice: /^\s*(?:for every|for each|per) (?:\d+ |two |three |four )?levels?\b/i,
+  damageIs: /\bThe damage is (\d+d\d+)(?=, plus \d+d\d+ (?:damage )?(?:for every|for each|per) )/g,
   tempHp:
     /\b(?:gain|gains|gaining|grant you|get) (?:a number of )?temporary Hit Points equal to (your level plus your Constitution modifier|your level|half your level|your Constitution modifier|double your level|twice your level|three times your level)/i,
   tempHpFixed: /\b(?:gain|gains|gaining|get) (\d+) temporary Hit Points/i,
@@ -646,9 +648,19 @@ function readDice(text: string, heal: boolean): Pf2eDiceRule[] {
   const re = heal ? P.healing : P.damage
   re.lastIndex = 0
   const out: Pf2eDiceRule[] = []
-  for (const m of text.matchAll(re)) {
+  // "The damage is 4d6, plus 1d6 for every level…" (Enervating Wail): damage named before it.
+  const found = [...text.matchAll(re), ...(heal ? [] : text.matchAll(P.damageIs))].sort(
+    (a, b) => (a.index ?? 0) - (b.index ?? 0),
+  )
+  const seen = new Set<number>()
+  for (const m of found) {
     const index = m.index ?? 0
+    const at = index + m[0].indexOf(m[1]!)
+    if (seen.has(at)) continue
+    seen.add(at)
     const after = text.slice(index + m[0].length)
+    // "plus 1d6 damage for every level you have beyond 6th" is the scaling, not more damage.
+    if (/\bplus\s*$/.test(text.slice(0, index)) && P.scalingDice.test(after)) continue
     // Dice for durations ("for 1d4 rounds") aren't damage.
     const rule: Pf2eDiceRule = { dice: m[1]!.replace(/\s+/g, '') }
     if (!heal) {

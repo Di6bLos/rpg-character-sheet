@@ -153,15 +153,26 @@ export function derivedEffects(r: Pf2eAbilityRules, book = ''): Pf2eEffectDef[] 
   return out
 }
 
+/**
+ * Bloodlines whose blood magic has a written entry (Player Core 2 p. 144): the toggle read from
+ * the bloodline's text would only repeat it (Fey's Cloak of Ribbons, Imperial's Imperious
+ * Defense, Aesir, Diabolic, Elemental).
+ */
+const WRITTEN_BLOOD_MAGIC = new Set(
+  PF2E_EFFECTS.filter((e) => e.has?.type === 'Bloodline').map((e) => e.has!.name),
+)
+
 /** Derived effects of the hero's abilities that have no written entry. */
 function sheetDerived(s: Pf2eSheet): Pf2eEffectDef[] {
-  return s.feats.flatMap((f) =>
-    derivedEffects(featRules(f), f.type).filter(
+  return s.feats.flatMap((f) => {
+    const blood = f.type.toLowerCase() === 'bloodline' && WRITTEN_BLOOD_MAGIC.has(f.name)
+    return derivedEffects(featRules(f), f.type).filter(
       (d) =>
+        !(blood && d.mode === 'toggle') &&
         !BY_NAME.has(d.name) &&
         !BY_NAME.has(d.name.replace(/ \((?:when it applies|Rage damage)\)$/, '')),
-    ),
-  )
+    )
+  })
 }
 
 /** Effects of items: a used consumable's (an elixir's bonus) and worn or held items' bonuses. */
