@@ -95,7 +95,8 @@ export const openBook = (book: string | undefined) => OPEN_BOOKS.has((book ?? ''
 /**
  * Golarion proper nouns that make a record setting material by its name, even in an open
  * rulebook (Aldori Parry, Hellknight Plate, Alkenstar Outlaw): nations, regions and cities,
- * peoples, organizations. Deities are checked from the deity entries themselves.
+ * peoples, organizations, and named characters (Jassim's Allegiance). Deities are checked
+ * from the deity entries themselves.
  */
 export const GOLARION_NAMES = [
   'Golarion',
@@ -222,6 +223,7 @@ export const GOLARION_NAMES = [
   'Arclord',
   'Twilight Talon',
   'Grand Lodge',
+  'Jassim',
 ]
 
 /** Records whose name matches a deity or Golarion name by accident: "Set" in Set-up Strike, a spell named like a philosophy. */
