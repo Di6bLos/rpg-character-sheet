@@ -57,6 +57,7 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
       },
     ],
     note: "Can't use concentrate actions unless they have the rage trait (Seek is fine). Lasts 1 minute, until unconscious or the encounter ends; then its temporary HP go, and Rage gives none for 1 minute.",
+    ends: 'encounter',
   },
   {
     name: 'Sneak Attack',
@@ -330,14 +331,16 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     source: { book: 'Player Core', page: 371 },
     mode: 'toggle',
     effects: [{ kind: 'modifier', selector: ['ac', 'saves'], value: 1, type: 'status' }],
-    note: 'Also resistance to physical damage equal to half the spell’s rank.',
+    note: 'Also resistance to physical damage equal to half the spell’s rank. Duration 1 round: until the start of your next turn.',
+    ends: 'startOfTurn',
   },
   {
     name: 'Rallying Anthem (ally)',
     source: { book: 'Player Core', page: 371 },
     mode: 'given',
     effects: [{ kind: 'modifier', selector: ['ac', 'saves'], value: 1, type: 'status' }],
-    note: 'Also resistance to physical damage equal to half the spell’s rank.',
+    note: 'Also resistance to physical damage equal to half the spell’s rank. Duration 1 round, the caster’s: it ends at the end of your turn, the one turn you take in that round.',
+    ends: 'endOfTurn',
   },
   {
     name: 'Enlarge',
@@ -378,7 +381,8 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     source: { book: 'Player Core', page: 370 },
     mode: 'toggle',
     effects: [{ kind: 'modifier', selector: ['attack', 'damage'], value: 1, type: 'status' }],
-    note: 'Also +1 status bonus to saves against fear effects.',
+    note: 'Also +1 status bonus to saves against fear effects. Duration 1 round: until the start of your next turn.',
+    ends: 'startOfTurn',
   },
   {
     name: 'Bless',
@@ -406,7 +410,8 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     source: { book: 'Player Core', page: 370 },
     mode: 'given',
     effects: [{ kind: 'modifier', selector: ['attack', 'damage'], value: 1, type: 'status' }],
-    note: 'Also +1 status bonus to saves against fear effects.',
+    note: 'Also +1 status bonus to saves against fear effects. Duration 1 round, the caster’s: it ends at the end of your turn, the one turn you take in that round.',
+    ends: 'endOfTurn',
   },
 
   // --- Spells, fourth wave: buffs a hero casts on themselves or gets from an ally ----
