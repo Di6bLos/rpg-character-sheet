@@ -20,10 +20,12 @@ import {
   type Pf2eActionEntry as Entry,
   type Pf2eActionGroup,
   type Pf2eRowState,
+  type Pf2eStatLines,
   blockedReason,
   checkChoices,
   costGlyph,
   featPatches,
+  featStatLines,
   frequencyLabel,
   groupOf,
   payFor,
@@ -79,11 +81,21 @@ const CORE_BOOKS = new Set(['Player Core', 'Player Core 2'])
 const actionData = ref<Pf2eActionDef[]>([])
 const patches = ref(new Map<number, Partial<Pf2eFeat>>())
 
+/** Cost and Usage lines from the data, by feat index (sheets don't store them). */
+const statLines = ref(new Map<number, Pf2eStatLines>())
+
 onMounted(async () => {
   actionData.value = await loadPf2e('actions')
-  if (!sheet.value.feats.some((f) => !f.traits)) return
+  const own = sheet.value.feats
+  if (!own.some((f) => f.id || !f.traits)) return
   const feats = await loadPf2e('feats')
-  patches.value = featPatches(sheet.value.feats, { feats, actions: actionData.value })
+  const known = new Set([...feats, ...actionData.value].map((x) => x.id))
+  const options = own.some((f) => f.id && !known.has(f.id))
+    ? (await loadPf2e('classes')).flatMap((c) => [...c.features, ...c.subclasses])
+    : []
+  statLines.value = featStatLines(own, [...feats, ...actionData.value, ...options])
+  if (!own.some((f) => !f.traits)) return
+  patches.value = featPatches(own, { feats, actions: actionData.value })
   if (!canEdit.value) return
   for (const [i, patch] of patches.value) {
     const f = sheet.value.feats[i]
@@ -137,7 +149,15 @@ function entryFor(
 const mine = computed<Entry[]>(() =>
   sheet.value.feats.flatMap((raw, i) => {
     const f = { ...raw, ...patches.value.get(i), desc: raw.desc.replace(/\\n/g, '\n') }
-    const r = featRules(f)
+    const lines = statLines.value.get(i)
+    const read = featRules(f)
+    const r = lines
+      ? {
+          ...read,
+          ...(lines.cost && !read.costNote ? { costNote: lines.cost } : {}),
+          ...(lines.usage ? { usage: lines.usage } : {}),
+        }
+      : read
     const same = r.embedded.some((e) => e.name === f.name)
     const own = usable(r) && !same ? [entryFor(`f${i}`, f.name, r, f.desc)] : []
     const inner = r.embedded

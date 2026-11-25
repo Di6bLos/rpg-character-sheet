@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // One ability in the PF2e Actions panel: its action glyph (named for screen readers), name,
-// frequency with uses left, trigger and requirements, what it does in short (the rest folded),
+// frequency with uses left, trigger, requirements, cost and usage, what it does in short (the rest folded),
 // the choices its Use needs (skill, Treat Wounds DC, weapon, actions, healing yourself) and
 // Use; after it makes a Strike, that Strike's damage buttons. SheetActions.vue does the rest.
 import type { Pf2eRank } from '~/types/sheets'
@@ -74,6 +74,8 @@ const checkLabel = computed(() => {
     <p v-if="r.requirements" class="small arow__line">
       <strong>Requirements</strong> {{ r.requirements }}
     </p>
+    <p v-if="r.costNote" class="small arow__line"><strong>Cost</strong> {{ r.costNote }}</p>
+    <p v-if="r.usage" class="small arow__line"><strong>Usage</strong> {{ r.usage }}</p>
     <p class="small arow__line">{{ entry.summary }}</p>
     <p v-if="checkLabel || dmg || entry.via" class="small muted arow__line">
       <template v-if="entry.via">Makes a {{ entry.via.name }} check. </template>

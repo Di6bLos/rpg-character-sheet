@@ -17,6 +17,7 @@ import {
 import {
   blockedReason,
   endPf2eTurn,
+  featStatLines,
   mapIndex,
   payFor,
   resolveUse,
@@ -219,6 +220,17 @@ describe('pf2e ability rules: Player Core abilities', () => {
     expect(feat('Channel Smite').costNote).toBe('Expend a harm or heal spell')
     const usage = feats.find((f) => f.usage)!
     expect(readAbility(usage).usage).toBe(usage.usage)
+  })
+
+  it('finds a sheet feat’s Cost and Usage lines in the data by id, else by name', () => {
+    const smite = find(feats, 'Channel Smite') as Ability & { id: string }
+    const sheetFeats: Pf2eFeat[] = [
+      { type: 'Feat', level: '1', action: '◆◆', name: 'Renamed by hand', desc: '', id: smite.id },
+      { type: 'Feat', level: '1', action: '', name: 'Toughness', desc: '' },
+    ]
+    const lines = featStatLines(sheetFeats, feats)
+    expect(lines.get(0)).toEqual({ cost: 'Expend a harm or heal spell' })
+    expect(lines.has(1)).toBe(false)
   })
 
   it('scales dice by level: increases by 1d6 at 5th and every 4 levels, or a listed table', () => {

@@ -513,5 +513,32 @@ export function featPatches(
   return out
 }
 
+/** A feat's Cost and Usage lines, which sheets don't store. */
+export interface Pf2eStatLines {
+  cost?: string
+  usage?: string
+}
+
+/**
+ * The Cost and Usage lines of the hero's feats, class features and options from the data, by
+ * id (else by name), by feat index; only feats that have one. Read at runtime so sheets need
+ * no new fields.
+ */
+export function featStatLines(
+  feats: Pf2eFeat[],
+  records: { id: string; name: string; cost?: string; usage?: string }[],
+): Map<number, Pf2eStatLines> {
+  const byId = new Map(records.map((r) => [r.id, r]))
+  const byName = new Map<string, (typeof records)[number]>()
+  for (const r of records) if (!byName.has(r.name)) byName.set(r.name, r)
+  const out = new Map<number, Pf2eStatLines>()
+  feats.forEach((f, i) => {
+    const r = (f.id ? byId.get(f.id) : undefined) ?? byName.get(f.name)
+    if (r?.cost || r?.usage)
+      out.set(i, { ...(r.cost ? { cost: r.cost } : {}), ...(r.usage ? { usage: r.usage } : {}) })
+  })
+  return out
+}
+
 const GLYPH: Record<string, string> = { 1: '◆', 2: '◆◆', 3: '◆◆◆', reaction: '↺', free: '◇' }
 const glyph = (a: string | number) => GLYPH[String(a)] ?? String(a)
