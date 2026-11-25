@@ -114,7 +114,10 @@ describe('pf2e effects on numbers', () => {
   })
 
   it('Fleet adds 5 feet of Speed', () => {
-    expect(speedNow(hero(['Fleet'], { speed: '25 ft' }))).toEqual({ text: '30 ft', changed: true })
+    expect(speedNow(hero(['Fleet'], { speed: '25 ft' }))).toMatchObject({
+      text: '30 ft',
+      changed: true,
+    })
     expect(speedNow(hero([], { speed: '25 ft' })).changed).toBe(false)
   })
 })

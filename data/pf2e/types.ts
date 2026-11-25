@@ -281,6 +281,7 @@ export type Pf2eSelector =
   | 'skills'
   | 'checks'
   | 'speed'
+  | 'initiative'
 
 /**
  * One structured piece of what an ability does, read by `utils/pf2eEffects.ts`. Hand-written
@@ -305,6 +306,10 @@ export type Pf2eEffect =
       byLevel?: [level: number, value: number][]
       /** Effects whose bonus of the same type this one adds to instead of the higher counting. */
       cumulativeWith?: string[]
+      /** Only for these actions' checks, rolled from the Actions panel (Make an Impression). */
+      actions?: string[]
+      /** From this level on (a doctrine's or specialization's later benefit). */
+      level?: number
     }
   /** A different multiple attack penalty (the Flurry edge against hunted prey). */
   | { kind: 'map'; second: number; third: number; agileSecond: number; agileThird: number }
@@ -321,17 +326,67 @@ export type Pf2eEffect =
       kind: 'damageDice'
       /** Dice by level: the last entry at or below the hero's level applies. */
       dice: [level: number, dice: string][]
-      when: 'offGuard' | 'huntedPrey' | 'stratagem'
-      /** Which Strikes: agile, finesse or ranged (sneak attack). */
-      weapons?: 'agileFinesseRanged'
+      /** `always`: while the effect is on (Qi Form's 1d6, Weapon Surge's spirit dice). */
+      when: 'offGuard' | 'huntedPrey' | 'stratagem' | 'always'
+      /** Which Strikes: agile, finesse or ranged (sneak attack), or unarmed (Inner Upheaval). */
+      weapons?: 'agileFinesseRanged' | 'unarmed'
       label: string
     }
-  /** Temporary Hit Points when turned on: level + CON (Rage). */
-  | { kind: 'tempHp'; formula: 'levelPlusCon' }
+  /** Temporary Hit Points when turned on: level + CON (Rage), level, half level, a number. */
+  | { kind: 'tempHp'; formula: Pf2eAmount }
   /** The dying value at which the hero dies (Diehard: 5). */
   | { kind: 'deathAt'; value: number }
   /** Change to recovery check DCs (Toughness: −1). */
   | { kind: 'recoveryDc'; value: number }
+  /** A degree of success turned into another on a save (Juggernaut: success → critical success). */
+  | {
+      kind: 'degree'
+      save: 'Fortitude' | 'Reflex' | 'Will' | 'all'
+      from: Pf2eDegreeName
+      to: Pf2eDegreeName
+      /** Only against these effects ("a fear effect"): shown on the roll, not applied. */
+      against?: string
+      level?: number
+    }
+  /** A proficiency rank the ability raises the statistic to (Juggernaut: Fortitude master). */
+  | {
+      kind: 'proficiency'
+      stat: 'Fortitude' | 'Reflex' | 'Will' | 'Perception' | 'Class DC' | 'AC' | 'attack' | 'spell'
+      rank: Pf2eRank
+      level?: number
+    }
+  /** Resistance the hero has, by an amount or a formula, plus `add` (Raging Resistance: 3 + CON). */
+  | {
+      kind: 'resistance'
+      type: string
+      amount: Pf2eAmount
+      add?: number
+      min?: number
+      level?: number
+    }
+  /** The fist's damage die (Powerful Fist: d6). */
+  | { kind: 'fistDie'; die: number }
+
+/** An amount by the hero's level or Constitution, or a number. */
+export type Pf2eAmount =
+  | number
+  | 'level'
+  | 'halfLevel'
+  | 'doubleLevel'
+  | 'tripleLevel'
+  | 'con'
+  | 'levelPlusCon'
+
+export type Pf2eDegreeName = 'critical success' | 'success' | 'failure' | 'critical failure'
+
+/** When a toggle turned on by a use ends by itself (Shield: at the start of your next turn). */
+export type Pf2eEnds =
+  | 'startOfTurn'
+  | 'endOfTurn'
+  | 'endOfNextTurn'
+  | 'trigger'
+  | 'minute'
+  | 'encounter'
 
 export interface Pf2eEffectDef {
   /** The feat, class feature, action or spell it belongs to, by name. */
@@ -351,4 +406,8 @@ export interface Pf2eEffectDef {
   endsWhenUnconscious?: boolean
   /** Rules the effect can't apply itself, shown while it's on. */
   note?: string
+  /** A toggle that ends by itself, by the turn steps. */
+  ends?: Pf2eEnds
+  /** Read from the ability's text by utils/pf2eAbilityRules.ts rather than written here. */
+  derived?: boolean
 }

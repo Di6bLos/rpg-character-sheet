@@ -34,9 +34,18 @@ const notes = computed(() =>
     .map((a) => `${a.def.name}: ${a.def.note}`),
 )
 
+const { claim, resultIn } = useResultOwner()
+
 function toggle(name: string) {
-  if (canEdit.value) say(toggleEffect(sheet.value, name, draft.value.level))
+  if (canEdit.value)
+    claim('effects:', () => say(toggleEffect(sheet.value, name, draft.value.level)))
 }
+
+/** Effects allies can give fold away (about 25), showing only those on you, until opened. */
+const alliesOpen = ref(false)
+const shownGiven = computed(() =>
+  alliesOpen.value ? GIVEN_EFFECTS : GIVEN_EFFECTS.filter((e) => given.value.has(e.name)),
+)
 
 function giveToggle(name: string, values?: number[]) {
   if (!canEdit.value) return
@@ -63,12 +72,23 @@ function setValue(name: string, value: number) {
         :disabled="!canEdit"
         @click="toggle(e.name)"
       >
-        {{ e.name }}
+        <span v-if="on.has(e.name)" aria-hidden="true">✓ </span>{{ e.name }}
       </button>
     </div>
     <div class="fx-row">
-      <span class="caps">From allies</span>
-      <span v-for="e in GIVEN_EFFECTS" :key="e.name" class="fx-given">
+      <button
+        type="button"
+        class="fx-fold caps"
+        :aria-expanded="alliesOpen"
+        aria-controls="fx-allies"
+        @click="alliesOpen = !alliesOpen"
+      >
+        From allies{{ given.size ? ` · ${given.size} on` : '' }}
+        <span aria-hidden="true">{{ alliesOpen ? '▴' : '▾' }}</span>
+      </button>
+    </div>
+    <div v-if="shownGiven.length" id="fx-allies" class="fx-row">
+      <span v-for="e in shownGiven" :key="e.name" class="fx-given">
         <button
           type="button"
           class="chip"
@@ -77,7 +97,8 @@ function setValue(name: string, value: number) {
           :disabled="!canEdit"
           @click="giveToggle(e.name, e.values)"
         >
-          {{ e.name.replace(' (ally)', '') }}
+          <span v-if="given.has(e.name)" aria-hidden="true">✓ </span
+          >{{ e.name.replace(' (ally)', '') }}
         </button>
         <select
           v-if="e.values && given.has(e.name)"
@@ -96,6 +117,9 @@ function setValue(name: string, value: number) {
     </p>
     <p v-for="[toggleName, names] in withToggle" :key="toggleName" class="small muted">
       With {{ toggleName }}: {{ names.join(', ') }}
+    </p>
+    <p v-if="resultIn('effects:')" class="roll-status" role="status" aria-live="polite">
+      {{ resultIn('effects:') }}
     </p>
     <ul v-if="notes.length" class="fx-notes">
       <li v-for="n in notes" :key="n" class="small">{{ n }}</li>
@@ -119,6 +143,24 @@ function setValue(name: string, value: number) {
     background: color-mix(in srgb, var(--accent) 18%, transparent);
     color: var(--page-text);
     font-weight: 700;
+  }
+}
+
+.fx-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .fx-fold {
+    min-height: 44px;
   }
 }
 

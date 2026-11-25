@@ -1,8 +1,11 @@
-import type { NimbleSheet } from '~/types/sheets'
-
+/**
+ * Which panel or row made the last result, so it shows where it was made (Nimble and PF2e
+ * sheets): `claim` runs a roll under a key, `resultFor` / `resultIn` give it back there, and
+ * `unclaimed` is any other result.
+ */
 export function useResultOwner() {
-  const { draft, lastRoll } = useSheet<NimbleSheet>()
-  const owner = useState(`nimble-result-owner-${draft.value.id}`, () => ({ key: '', message: '' }))
+  const { draft, lastRoll } = useSheet()
+  const owner = useState(`result-owner-${draft.value.id}`, () => ({ key: '', message: '' }))
   const claimed = computed(() => !!owner.value.key && owner.value.message === lastRoll.value)
 
   function claim(key: string, run: () => void) {

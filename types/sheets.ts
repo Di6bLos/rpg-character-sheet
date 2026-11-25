@@ -157,9 +157,17 @@ export interface Pf2eFeat {
   /** "once per day", "once per 10 minutes"… as the book puts it. */
   frequency?: string
   trigger?: string
+  requirements?: string
+  /** Its traits (Flourish, Attack, Press…), from the data. */
+  traits?: string[]
 }
 
 export interface Pf2eSheet extends SheetCommon {
+  /**
+   * The character's level, copied from the character by the sheet so rules on the sheet
+   * alone can tell when a later benefit starts (Warpriest's fifth doctrine at 15th).
+   */
+  level?: number
   heritage: string
   subclass: string
   deity: string
@@ -215,9 +223,31 @@ export interface Pf2eSheet extends SheetCommon {
     on: string[]
     given: { name: string; value?: number }[]
     tempHp?: { from: string; amount: number }
+    /** A toggle's number at the rank its spell was cast (Competitive Edge +2), by name. */
+    values?: Record<string, number>
   }
-  /** Abilities with a daily frequency used since the last daily preparations, by name. */
+  /**
+   * Uses of abilities with a frequency since daily preparations (which clear it): the name for
+   * a daily use, "name@period" for shorter ones (turn, round, minute, 10min, hour), with
+   * ":target" for a per-target limit (Battle Medicine), once per use.
+   */
   used?: string[]
+  /**
+   * The turn tracker (Player Core pp. 436–437): `active` between Start turn and End turn,
+   * actions left, whether the reaction is spent, attacks made this turn (the multiple attack
+   * penalty), and the round count.
+   */
+  turn?: {
+    active: boolean
+    actions: number
+    reaction: boolean
+    attacks: number
+    round: number
+    /** A flourish action was used this turn (p. 413: one per turn). */
+    flourish?: boolean
+    /** Effects begun this turn that last until the end of the next one. */
+    carry?: string[]
+  }
 }
 
 /** A spell from `data/pf2e`: its AoN id, name and lowest rank (cantrips are rank 1). */
