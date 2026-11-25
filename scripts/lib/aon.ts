@@ -61,17 +61,234 @@ export function legacyBooks(docs: AonDoc[]) {
   return books
 }
 
+/**
+ * The setting-neutral rulebooks: the only books the shareable set (the ORC bible, the library
+ * PDFs, the committed data) takes entries from. Everything else AoN carries is Golarion
+ * setting, Paizo Reserved Material even when published under ORC: the Lost Omens line
+ * (Divine Mysteries, Tian Xia Character Guide, Hellfire Dispatches…), Adventure Paths and
+ * their player's guides, standalone adventures, Society scenarios, comics, April Fools and
+ * blog posts. AoN also files "Secrets of the Unlit Star Game Master's Guide" under
+ * Rulebooks; it is left out until someone checks it. Deities are the one exception the user
+ * approved (Community Use Policy, see `.claude/skills/rpg-rules/references/licensing.md`).
+ */
+export const OPEN_BOOKS = new Set([
+  'Player Core',
+  'Player Core 2',
+  'GM Core',
+  'Monster Core',
+  'Monster Core 2',
+  'NPC Core',
+  'Rage of Elements',
+  'Howl of the Wild',
+  'War of Immortals',
+  'War of Immortals Alternate Mythic Rules',
+  'Battlecry!',
+  'Impossible Magic',
+  'Feybound',
+  'Dark Archive (Remastered)',
+  'Guns & Gears (Remastered)',
+  'Treasure Vault (Remastered)',
+])
+
+export const openBook = (book: string | undefined) => OPEN_BOOKS.has((book ?? '').trim())
+
+/**
+ * Golarion proper nouns that make a record setting material by its name, even in an open
+ * rulebook (Aldori Parry, Hellknight Plate, Alkenstar Outlaw): nations, regions and cities,
+ * peoples, organizations, and named characters (Jassim's Allegiance). Deities are checked
+ * from the deity entries themselves.
+ */
+export const GOLARION_NAMES = [
+  'Golarion',
+  'Absalom',
+  'Starstone',
+  'Inner Sea',
+  'Avistan',
+  'Garund',
+  'Tian Xia',
+  'Casmaron',
+  'Arcadia',
+  'Varisia',
+  'Varisian',
+  'Cheliax',
+  'Chelish',
+  'Chelaxian',
+  'Taldor',
+  'Taldan',
+  'Andoran',
+  'Galt',
+  'Isger',
+  'Molthune',
+  'Nirmathas',
+  'Lastwall',
+  'Ustalav',
+  'Brevoy',
+  'River Kingdoms',
+  'Mendev',
+  'Numeria',
+  'Irrisen',
+  'Mammoth Lords',
+  'Belkzen',
+  'Nidal',
+  'Druma',
+  'Kyonin',
+  'Five Kings',
+  'Mana Wastes',
+  'Geb',
+  'Nex',
+  'Alkenstar',
+  'Jistka',
+  'Jistkan',
+  'Osirion',
+  'Osirian',
+  'Thuvia',
+  'Rahadoum',
+  'Katapesh',
+  'Qadira',
+  'Kelesh',
+  'Keleshite',
+  'Vudra',
+  'Vudrani',
+  'Jalmeray',
+  'Mwangi',
+  'Sargava',
+  'Shackles',
+  'Thassilon',
+  'Thassilonian',
+  'Azlant',
+  'Azlanti',
+  'Sarkoris',
+  'Worldwound',
+  'Razmiran',
+  'Korvosa',
+  'Magnimar',
+  'Riddleport',
+  'Sandpoint',
+  'Kaer Maga',
+  'Oppara',
+  'Egorian',
+  'Kintargo',
+  'Westcrown',
+  'Brastlewark',
+  'Highhelm',
+  'Dongun',
+  'Iblydos',
+  'Minkai',
+  'Goka',
+  'Quain',
+  'Shokuro',
+  'Lingshen',
+  'Xa Hoi',
+  'Dtang Ma',
+  'Hwanggot',
+  'Po Li',
+  'Bachuan',
+  'Jinin',
+  'Kwanlai',
+  'Impossible Lands',
+  'Mordant Spire',
+  'Ravounel',
+  'Kortos',
+  'Darklands',
+  'Nar-Voth',
+  'Sekamina',
+  'Stasian',
+  'Ulfen',
+  'Kellid',
+  'Garundi',
+  'Shoanti',
+  'Erutaki',
+  'Shory',
+  'Runelord',
+  'Sihedron',
+  'Pathfinder',
+  'Hellknight',
+  'Aldori',
+  'Swordlord',
+  'Red Mantis',
+  'Eagle Knight',
+  'Golden Legion',
+  'Gray Gardener',
+  'Lion Blade',
+  'Magaambya',
+  'Firebrand',
+  'Bellflower',
+  'Aspis',
+  'Whispering Way',
+  'Night Herald',
+  'Free Captain',
+  'Knights of Ozem',
+  'Ozem',
+  'Palatine Eye',
+  'Arclord',
+  'Twilight Talon',
+  'Grand Lodge',
+  'Jassim',
+]
+
+/** Records whose name matches a deity or Golarion name by accident: "Set" in Set-up Strike, a spell named like a philosophy. */
+export const NOT_SETTING = new Set(['Set-up Strike', 'Weight of the World'])
+
+const nameRe = (names: string[]) =>
+  new RegExp(
+    `(?:^|[^\\w])(${[...new Set(names)]
+      .sort((a, b) => b.length - a.length)
+      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|')})(?=$|[^\\w])`,
+  )
+
+/**
+ * The deity or Golarion name a record is named for (Achaekek's Clutch → Achaekek), if any.
+ * `deities` are deity names; an epithet in parentheses is ignored.
+ */
+const settingRes = new WeakMap<string[], RegExp>()
+export function settingName(name: string, deities: string[]) {
+  if (NOT_SETTING.has(name)) return undefined
+  let re = settingRes.get(deities)
+  if (!re) {
+    re = nameRe([...GOLARION_NAMES, ...deities.map((d) => d.replace(/\s*\(.*\)$/, ''))])
+    settingRes.set(deities, re)
+  }
+  return re.exec(name)?.[1]
+}
+
+/**
+ * Whether an entry belongs in the shareable set: printed in an open rulebook and not named for
+ * a deity or Golarion proper noun. Deities themselves are judged by the caller.
+ */
+export const shareable = (d: AonDoc, deities: string[]) =>
+  openBook(d.primary_source) && !settingName(d.name, deities)
+
+/**
+ * Books a shareable output leaves out wherever they're cited: legacy (OGL) books, and every
+ * book that isn't an open rulebook, whose sections AoN sometimes inlines into rulebook pages.
+ */
+export function closedBooks(docs: AonDoc[]) {
+  const books = legacyBooks(docs)
+  for (const d of docs)
+    for (const b of [d.primary_source, ...(d.category === 'source' ? [d.name] : [])])
+      if (b && !openBook(b)) books.add(b.trim())
+  return books
+}
+
+/** AoN's action names → glyphs; ranges ("Single Action to Three Actions") are built from these. */
 export const ACTIONS: Record<string, string> = {
   'Single Action': '◆',
   'Two Actions': '◆◆',
   'Three Actions': '◆◆◆',
   Reaction: '↺',
   'Free Action': '◇',
-  'One to Three Actions': '◆ to ◆◆◆',
-  'One or Two Actions': '◆ or ◆◆',
-  'Two or Three Actions': '◆◆ or ◆◆◆',
-  'Two to Three Actions': '◆◆ to ◆◆◆',
 }
+
+/**
+ * Glyphs for an AoN action string: one cost, or a range or choice of costs ("Single Action
+ * to Three Actions" → "◆ to ◆◆◆"); a part with no glyph ("2 rounds") stays as words.
+ */
+export const actionGlyph = (s: string) =>
+  s
+    .split(/ (or|to) /)
+    .map((p, i) => (i % 2 ? p : (ACTIONS[p] ?? p.replace(/ Actions?$/, '').toLowerCase())))
+    .join(' ')
 
 export const slug = (s: string) =>
   s
@@ -85,23 +302,59 @@ export const page = (d: AonDoc) =>
   Number(/\*\*Source\*\*[\s\S]{0,300}?pg\. (\d+)/.exec(d.markdown ?? '')?.[1] ?? 9999)
 
 export const stripLinks = (s: string) => s.replace(/\[([^\]]*)\]\((?:[^()]|\([^)]*\))*\)/g, '$1')
-const actionGlyph = (s: string) => ACTIONS[s] ?? `[${s}]`
 
-function table(html: string) {
-  const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((r) =>
-    [...(r[1] ?? '').matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((c) =>
-      stripLinks((c[1] ?? '').replace(/<[^>]+>/g, ' '))
+/**
+ * An HTML table as a markdown one. A `rowspan` cell repeats in each row it covers and a
+ * `colspan` cell takes its first column, the rest left blank; rows AoN leaves empty under a
+ * rowspan (`<tr></tr>`) are dropped once filled, since they only repeat the row above.
+ */
+export function table(html: string) {
+  const rows: string[][] = []
+  const carry: { text: string; left: number }[] = []
+  for (const r of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
+    const cells = [...(r[1] ?? '').matchAll(/<t[hd]([^>]*)>([\s\S]*?)<\/t[hd]>/g)]
+    const row: string[] = []
+    let col = 0
+    const fill = () => {
+      while (carry[col]?.left) {
+        row[col] = carry[col]!.text
+        carry[col]!.left--
+        col++
+      }
+    }
+    for (const [, attrs = '', inner = ''] of cells) {
+      fill()
+      const text = stripLinks(inner.replace(/<[^>]+>/g, ' '))
         .replace(/\s+/g, ' ')
         .replace(/\|/g, '\\|')
-        .trim(),
-    ),
-  )
+        .trim()
+      const down = Number(/rowspan="(\d+)"/.exec(attrs)?.[1] ?? 1)
+      const across = Number(/colspan="(\d+)"/.exec(attrs)?.[1] ?? 1)
+      for (let k = 0; k < across; k++) {
+        row[col] = k ? '' : text
+        if (down > 1) carry[col] = { text: row[col]!, left: down - 1 }
+        col++
+      }
+    }
+    fill()
+    for (let i = col; i < carry.length; i++)
+      if (carry[i]?.left) {
+        row[i] = carry[i]!.text
+        carry[i]!.left--
+      }
+    if (cells.length) rows.push(Array.from(row, (c) => c ?? ''))
+  }
   if (!rows.length) return ''
   const width = Math.max(...rows.map((r) => r.length))
   const line = (r: string[]) =>
     `| ${Array.from({ length: width }, (_, i) => r[i] ?? '').join(' | ')} |`
   return `\n${line(rows[0] ?? [])}\n| ${Array(width).fill('---').join(' | ')} |\n${rows.slice(1).map(line).join('\n')}\n`
 }
+
+const SUPERSCRIPT = '⁰¹²³⁴⁵⁶⁷⁸⁹'
+/** A footnote mark: digits as superscripts ("+4²"), anything else after a caret ("^R"). */
+const footnote = (mark: string) =>
+  /^\d+$/.test(mark) ? [...mark].map((d) => SUPERSCRIPT[Number(d)]).join('') : `^${mark}`
 
 /**
  * AoN's markup → plain markdown; `h` is the heading level of the entry's own title.
@@ -123,6 +376,12 @@ export function cleanMarkdown(
       return `\n${cleanMarkdown(sub.markdown, h + Number(lvl) - 1, byId, onEmbed, new Set([...seen, id]))}\n`
     },
   )
+  // A few pages use an HTML heading, one of them closed by `</title>` (Human's Ethnicities).
+  s = s.replace(
+    /<h([1-6])[^>]*>([\s\S]*?)<\/(?:h\1|title)>/g,
+    (_, lvl: string, inner: string) =>
+      `\n${'#'.repeat(Math.min(6, h + Number(lvl) - 1))} ${inner.replace(/<[^>]+>/g, '').trim()}\n`,
+  )
   s = s.replace(/<title([^>]*)>([\s\S]*?)<\/title>/g, (_, attrs: string, inner: string) => {
     const lvl = Number(/level="(\d+)"/.exec(attrs)?.[1] ?? 1)
     const right = /right="([^"]*)"/.exec(attrs)?.[1]?.trim()
@@ -139,7 +398,12 @@ export function cleanMarkdown(
     const labels = [...inner.matchAll(/label="([^"]*)"/g)].map((m) => m[1])
     return labels.length ? `\n**Traits** ${labels.join(', ')}\n` : ''
   })
-  s = s.replace(/<actions string="([^"]*)"\s*\/>/g, (_, a: string) => actionGlyph(a))
+  s = s.replace(/( ?)<actions string="([^"]*)"\s*\/>/g, (_, sp: string, a: string) =>
+    actionGlyph(a) ? `${sp}${actionGlyph(a)}` : '',
+  )
+  // AoN's own spoiler warnings ("Nethys Note: This page contains HUGE SPOILERS…") are not book text.
+  s = s.replace(/(?:\*\*_|_\*\*)Nethys Note:[^*]*?spoilers[^*]*?(?:_\*\*|\*\*_)/gi, '')
+  s = s.replace(/<sup>\s*([^<]*?)\s*<\/sup>/g, (_, mark: string) => footnote(mark))
   s = s.replace(/<table[\s\S]*?<\/table>/g, table)
   s = s
     .replace(/<li[^>]*>/g, '\n- ')
@@ -147,7 +411,7 @@ export function cleanMarkdown(
     .replace(/<br\s*\/?>/g, '\n')
     .replace(/<hr\s*\/?>/g, '\n---\n')
     .replace(/<image[^>]*\/?>(?:<\/image>)?/g, '')
-    .replace(/<\/?[a-z][a-z-]*(?:\s[^>]*)?\/?>/g, '')
+    .replace(/<\/?[a-z][a-z0-9-]*(?:\s[^>]*)?\/?>/g, '')
   return stripLinks(s)
     .replace(/&nbsp;/g, ' ')
     .replace(/&quot;/g, '"')
@@ -162,47 +426,132 @@ export function cleanMarkdown(
     .trim()
 }
 
-/** Drops each subsection whose own source line names one of `legacy`'s books. */
+const SOURCE_LINE = /^\*\*Source\*\* (.+)$/
+
+/**
+ * The books a `**Source**` line cites, in order: "Player Core pg. 150, Core Rulebook pg. 165"
+ * → both. A book name may hold a comma ("Cheliax, Infernal Inheritance"), so entries are
+ * split after each page number, not at every comma.
+ */
+export function sourceBooks(line: string) {
+  const rest = SOURCE_LINE.exec(line.trim())?.[1]
+  if (!rest) return []
+  const cited = [...rest.matchAll(/(?:^|, )(.+?) pg\. \d+/g)].map((m) => m[1]!.trim())
+  return cited.length ? cited : [rest.trim()]
+}
+
+/**
+ * Drops each subsection whose own source line (before its next heading) cites only books in
+ * `legacy` (the books to leave out) or is titled with one of them, and takes those books out
+ * of every source line that also cites another ("Player Core pg. 150, Core Rulebook pg. 165"
+ * → "Player Core pg. 150").
+ */
 export function withoutLegacy(md: string, legacy: Set<string>) {
   const lines = md.split('\n')
   const out: string[] = []
+  const heading = (l: string) => /^(#{1,6}) /.exec(l)
   let skip = 0
   lines.forEach((line, i) => {
-    const head = /^(#+) /.exec(line)
+    const head = heading(line)
     if (head) {
       const lvl = head[1]!.length
       if (skip && lvl <= skip) skip = 0
       if (!skip) {
-        const next = lines.slice(i + 1).findIndex((l) => l.startsWith('#'))
+        const next = lines.slice(i + 1).findIndex((l) => heading(l))
         const block = lines.slice(i + 1, next < 0 ? undefined : i + 1 + next)
-        const book = block.map((l) => /^\*\*Source\*\* (.+?) pg\./.exec(l)?.[1]).find(Boolean)
-        if (book && legacy.has(book)) skip = lvl
+        const books = sourceBooks(block.find((l) => SOURCE_LINE.test(l)) ?? '')
+        // A section titled with a left-out book (Avatar's forms per book) is that book's too.
+        const titled = legacy.has(line.slice(lvl + 1).trim())
+        if (titled || (books.length && books.every((b) => legacy.has(b)))) skip = lvl
       }
     }
-    if (!skip) out.push(line)
+    if (skip) return
+    const rest = SOURCE_LINE.exec(line)?.[1]
+    if (!rest) return out.push(line)
+    const cited = [...rest.matchAll(/(?:^|, )((.+?) pg\. \d+)/g)]
+    const kept = cited.filter((m) => !legacy.has(m[2]!.trim())).map((m) => m[1])
+    out.push(cited.length && kept.length ? `**Source** ${kept.join(', ')}` : line)
   })
   return out.join('\n')
 }
 
+/** Stat lines that list deities: Reserved Material, left out of the shareable set. */
+const DEITY_STAT = /^\*\*(?:Deity|Deities|Favored Weapons?)\*\*/
+
+/**
+ * Drops the deity stat lines (`**Deities**` on spells and domains, `**Favored Weapon**` on
+ * weapons) with their values, which AoN prints on the same line or the lines below.
+ */
+export function withoutDeities(md: string) {
+  const out: string[] = []
+  let dropping = false
+  for (const line of md.split('\n')) {
+    if (DEITY_STAT.test(line)) dropping = true
+    else if (dropping && (line.trim() === '' || /^(#|\*\*[^*]+\*\*)/.test(line))) dropping = false
+    if (!dropping) out.push(line)
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n')
+}
+
+/** Lines that must not reach a shareable (ORC) output: a legacy book cited, a deity stat line. */
+export function orcProblems(md: string, legacy: Set<string>) {
+  return md
+    .split('\n')
+    .filter((l) => sourceBooks(l).some((b) => legacy.has(b)) || DEITY_STAT.test(l))
+}
+
+/**
+ * Heritages whose name doesn't say their ancestry: the legacy half-elf and half-orc (full,
+ * non-ORC bible only), rat heritages, and Dijiang, a sprite heritage (Tian Xia Character
+ * Guide p. 46, beside Gandharva, Kanchil and Leungli Sprite; Sprite's Spark names it).
+ */
 const HERITAGE_ALIASES: [RegExp, string][] = [
   [/^Half-(Elf|Orc)$/, 'Human'],
   [/\bRat\b/, 'Ratfolk'],
+  [/^Dijiang$/, 'Sprite'],
 ]
 
+/** An entry's name with the book and printed page it starts on. */
+export interface Placed {
+  name: string
+  book: string
+  page: number
+}
+
+export const located = (d: AonDoc): Placed => ({
+  name: d.name,
+  book: d.primary_source ?? '',
+  page: page(d),
+})
+
+/** How far past its ancestry's first page a heritage may print and still be the ancestry's own. */
+const HERITAGE_PAGES = 6
+
 /**
- * The ancestry a heritage belongs to, from its name (AoN stores no link): an alias, then
- * the ancestry the name ends with, then one it names. `ancestries` are ancestry names.
+ * The ancestry a heritage belongs to (AoN stores no link): an alias, then the ancestry the
+ * name ends with, then one it names; failing those, the ancestry printed just before it in
+ * the same book, within a few pages (Climbing Animal → Awakened Animal, Shadow of the Smith →
+ * Wayang, House Drake → Dragonet).
  */
-export function heritageAncestry(heritage: string, ancestries: string[]) {
-  const names = [...ancestries].sort((a, b) => b.length - a.length)
-  const alias = HERITAGE_ALIASES.find(([re, a]) => re.test(heritage) && names.includes(a))
+export function heritageAncestry(heritage: Placed, ancestries: Placed[]) {
+  const names = [...new Set(ancestries.map((a) => a.name))].sort((a, b) => b.length - a.length)
+  const name = heritage.name
+  const alias = HERITAGE_ALIASES.find(([re, a]) => re.test(name) && names.includes(a))
   if (alias) return alias[1]
-  const words = heritage.split(/[\s-]+/)
-  return (
-    names.find((n) => heritage.endsWith(n)) ??
+  const words = name.split(/[\s-]+/)
+  const named =
+    names.find((n) => name.endsWith(n)) ??
     names.find((n) => words.includes(n)) ??
-    names.find((n) => heritage.includes(n))
-  )
+    names.find((n) => name.includes(n))
+  if (named) return named
+  return ancestries
+    .filter(
+      (a) =>
+        a.book === heritage.book &&
+        heritage.page >= a.page &&
+        heritage.page - a.page <= HERITAGE_PAGES,
+    )
+    .sort((a, b) => b.page - a.page)[0]?.name
 }
 
 /** Subclass types whose name doesn't start with their class's. */

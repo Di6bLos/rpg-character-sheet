@@ -18,8 +18,9 @@ import {
   ancestryBoostPlan,
   armorRank,
   attributeMods,
-  backgroundBoostOptions,
+  backgroundBoostSlots,
   buildPf2eSheet,
+  classFeatTrait,
   creationProblems,
   deityOptions,
   emptyCreation,
@@ -30,10 +31,17 @@ import {
   spellOptions,
   spellcastingPlan,
   gearCost,
+  gearOptions,
+  isAmmunition,
+  keyAttributeOptions,
+  levelOneFeatures,
   needsDeity,
   resolve,
+  setSlotBoost,
   skillPlan,
+  slotTaken,
   subclassChoices,
+  untrainedGear,
   weaponRank,
 } from '~/utils/pf2eBuild'
 
@@ -102,6 +110,7 @@ const ancestry = computed(() => picked.value?.ancestry)
 const background = computed(() => picked.value?.background)
 const cls = computed(() => picked.value?.cls)
 const deity = computed(() => picked.value?.deity)
+const subclassPicks = computed(() => picked.value?.subclassPicks ?? [])
 
 /** A single pick as the `string[]` the option cards take. */
 function single(key: 'ancestry' | 'heritage' | 'background' | 'class') {
@@ -143,7 +152,10 @@ watch(
 )
 watch(
   () => c.value.background,
-  () => (c.value.backgroundBoosts = []),
+  () => {
+    c.value.backgroundBoosts = []
+    c.value.lores = []
+  },
 )
 watch(
   () => c.value.class,
@@ -159,6 +171,27 @@ watch(
     c.value.focus = undefined
   },
 )
+// A subclass can add a key attribute (a ruffian's Strength) or settle it (a psychic's mind).
+const keyOptions = computed(() =>
+  cls.value ? keyAttributeOptions(cls.value, subclassPicks.value) : [],
+)
+watch(keyOptions, (keys) => {
+  if (keys.length && !keys.includes(c.value.keyAttribute)) c.value.keyAttribute = keys[0]!
+})
+const wantsDeity = computed(() => !!cls.value && needsDeity(cls.value, subclassPicks.value))
+watch(wantsDeity, (want) => {
+  if (!want) c.value.deity = undefined
+})
+// Gear the new class or deity isn't trained in comes off; other changes show as a problem.
+watch(
+  () => [c.value.class, c.value.deity],
+  () => {
+    if (!data.value) return
+    const untrained = untrainedGear(c.value, data.value).map((g) => g.id)
+    if (c.value.armor && untrained.includes(c.value.armor)) c.value.armor = undefined
+    c.value.weapons = c.value.weapons.filter((id) => !untrained.includes(id))
+  },
+)
 
 const price = (cp: number) =>
   cp % 100 === 0 ? `${cp / 100} gp` : cp % 10 === 0 ? `${cp / 10} sp` : `${cp} cp`
@@ -169,6 +202,7 @@ const opt = (r: Pf2eRecord, meta?: string): Pf2eOption => ({
   meta,
   text: r.text,
   rarity: r.rarity,
+  gap: r.gap,
 })
 
 // --- Ancestry ---------------------------------------------------------------
@@ -177,9 +211,9 @@ const ancestryOptions = computed(() =>
     opt(
       a,
       [
-        `HP ${a.hp}`,
+        a.hp ? `HP ${a.hp}` : '',
         a.size.join('/'),
-        `Speed ${a.speed} ft`,
+        a.speed ? `Speed ${a.speed} ft` : '',
         boostLine(ancestryBoostPlan(a, false)),
       ]
         .filter(Boolean)
@@ -197,7 +231,10 @@ function boostLine(plan: ReturnType<typeof ancestryBoostPlan>) {
 const heritageOptions = computed(() => {
   const all = data.value?.heritages ?? []
   const own = all.filter((h) => h.ancestry && h.ancestry === ancestry.value?.slug)
-  const versatile = showVersatile.value ? all.filter((h) => h.versatile) : []
+  // A picked versatile heritage stays in view with the switch off.
+  const versatile = all.filter(
+    (h) => h.versatile && (showVersatile.value || h.id === c.value.heritage),
+  )
   return [...own, ...versatile].map((h) => opt(h, h.versatile ? 'Versatile heritage' : undefined))
 })
 const boostPlan = computed(() =>
@@ -225,18 +262,16 @@ const backgroundOptions = computed(() =>
     ),
   ),
 )
-const bgFirst = computed({
-  get: () => c.value.backgroundBoosts.slice(0, 1),
-  set: (v: Pf2eAttr[]) =>
-    (c.value.backgroundBoosts = [v[0]!, c.value.backgroundBoosts[1]!].filter(Boolean)),
-})
-const bgSecond = computed({
-  get: () => c.value.backgroundBoosts.slice(1, 2),
-  set: (v: Pf2eAttr[]) => {
-    const first = c.value.backgroundBoosts[0]
-    c.value.backgroundBoosts = first ? [first, ...v.slice(0, 1)] : []
-  },
-})
+const bgSlots = computed(() =>
+  background.value ? backgroundBoostSlots(background.value, deity.value) : [],
+)
+const bgSlotPick = (i: number) => {
+  const a = c.value.backgroundBoosts[i]
+  return a ? [a] : []
+}
+function setBgSlot(i: number, v: Pf2eAttr[]) {
+  c.value.backgroundBoosts = setSlotBoost(c.value.backgroundBoosts, bgSlots.value, i, v[0])
+}
 
 // --- Class ------------------------------------------------------------------
 const RANK: Record<string, string> = {
@@ -306,6 +341,16 @@ const breakdown = computed(() =>
     }
   }),
 )
+/** "Anc +1 · Bg +1 · Class +1 · Free +1", the phone's one-line breakdown. */
+const sourceLine = (r: (typeof breakdown.value)[number]) =>
+  [
+    r.ancestry ? `Anc ${sign(r.ancestry)}` : '',
+    r.background ? `Bg ${sign(r.background)}` : '',
+    r.cls ? 'Class +1' : '',
+    r.free ? 'Free +1' : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
 // --- Skills & feats ---------------------------------------------------------
 const plan = computed(() => (data.value && cls.value ? skillPlan(c.value, data.value) : null))
@@ -328,6 +373,21 @@ function toggleFree(skill: string) {
     c.value.skills = [...c.value.skills, skill]
 }
 const slots = computed(() => featSlots(cls.value))
+const featLabel = (s: Pf2eFeatSlot) => {
+  const trait = s === 'class' ? classFeatTrait(cls.value) : undefined
+  return trait ? `${FEAT_LABEL[s]} (${trait.toLowerCase()})` : FEAT_LABEL[s]
+}
+/** Why a skill in the grid is already ticked: "background", "class choice"… */
+function skillSource(s: string) {
+  if (plan.value?.fixed.includes(s)) return 'already trained'
+  if (groupPicks.value.includes(s)) return 'from a choice above'
+  return ''
+}
+function setLore(i: number, value: string) {
+  const lores = [...(c.value.lores ?? [])]
+  lores[i] = value
+  c.value.lores = Array.from(lores, (x) => x ?? '')
+}
 const ACTION_NAME: Record<string, string> = {
   '◆': '1 action',
   '◆◆': '2 actions',
@@ -335,9 +395,15 @@ const ACTION_NAME: Record<string, string> = {
   '↺': 'reaction',
   '◇': 'free action',
 }
+/** Glyphs back to words, part by part: "◇ or ◆" → "free action or 1 action". */
+const glyphWords = (g: string) =>
+  g
+    .split(/ (to|or) /)
+    .map((p) => ACTION_NAME[p] ?? p)
+    .join(' ')
 const featMeta = (f: Pf2eFeatDef) =>
   [
-    ACTION_NAME[actionGlyph(f.actions)] ?? actionGlyph(f.actions),
+    glyphWords(actionGlyph(f.actions)),
     f.traits.join(', '),
     f.prerequisites ? `Needs ${f.prerequisites}` : '',
   ]
@@ -362,46 +428,61 @@ function setFeat(slot: Pf2eFeatSlot, ids: string[]) {
 
 // --- Gear -------------------------------------------------------------------
 const spent = computed(() => (data.value ? gearCost(c.value, data.value) : 0))
+const gear = computed(() => (data.value ? gearOptions(data.value) : null))
 const armorCards = computed(() =>
-  data.value && cls.value
-    ? data.value.armor
-        .filter((a) => a.level === 0)
-        .map((a) => ({
-          ...opt(
-            a,
-            [
-              a.category,
-              `AC +${a.ac}`,
-              a.dexCap !== undefined ? `Dex cap +${a.dexCap}` : '',
-              a.strength ? `Str ${a.strength}` : '',
-              price(a.price),
-            ]
-              .filter(Boolean)
-              .join(' · '),
-          ),
-          disabled:
-            armorRank(cls.value!, a.category) === 'U'
-              ? `Not trained in ${a.category.toLowerCase()} armor`
-              : undefined,
-        }))
+  gear.value && cls.value
+    ? gear.value.armor.map((a) => ({
+        ...opt(
+          a,
+          [
+            a.category,
+            `AC +${a.ac}`,
+            a.dexCap !== undefined ? `Dex cap +${a.dexCap}` : '',
+            a.strength ? `Str +${a.strength}` : '',
+            a.checkPenalty ? `Check ${a.checkPenalty}` : '',
+            a.speedPenalty ? `Speed ${a.speedPenalty} ft` : '',
+            price(a.price),
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        ),
+        disabled:
+          armorRank(cls.value!, a.category, subclassPicks.value) === 'U'
+            ? `Not trained in ${a.category.toLowerCase()} armor`
+            : undefined,
+      }))
     : [],
 )
 const shieldCards = computed(() =>
-  (data.value?.shields ?? [])
-    .filter((s) => s.level === 0)
-    .map((s) => opt(s, `AC +${s.ac} · Hardness ${s.hardness} · HP ${s.hp} · ${price(s.price)}`)),
+  (gear.value?.shields ?? []).map((s) =>
+    opt(
+      s,
+      [
+        `AC +${s.ac}`,
+        `Hardness ${s.hardness}`,
+        `HP ${s.hp}`,
+        s.speedPenalty ? `Speed ${s.speedPenalty} ft` : '',
+        price(s.price),
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    ),
+  ),
 )
 const weaponCards = computed(() =>
-  data.value && cls.value
-    ? data.value.weapons
-        .filter((w) => w.level === 0)
-        .map((w) => ({
-          ...opt(
-            w,
-            `${w.category} ${w.type.toLowerCase()} · ${w.damage} ${w.damageTypes.join('/').toLowerCase()} · ${price(w.price)}`,
-          ),
-          disabled: weaponRank(w, cls.value!, deity.value) === 'U' ? 'Not trained' : undefined,
-        }))
+  gear.value && cls.value
+    ? gear.value.weapons.map((w) => ({
+        ...opt(
+          w,
+          isAmmunition(w)
+            ? `Ammunition · ${price(w.price)}`
+            : `${w.category} ${w.type.toLowerCase()} · ${w.damage} ${w.damageTypes.join('/').toLowerCase()} · ${price(w.price)}`,
+        ),
+        disabled:
+          !isAmmunition(w) && weaponRank(w, cls.value!, deity.value, subclassPicks.value) === 'U'
+            ? 'Not trained'
+            : undefined,
+      }))
     : [],
 )
 const weaponPick = computed({
@@ -454,7 +535,7 @@ const stepErrors = computed<string[]>(() => {
       (boostPlan.value && c.value.ancestryBoosts.length !== boostPlan.value.free
         ? 'Choose your free ancestry boosts'
         : ''),
-    p.background[0] ?? (c.value.backgroundBoosts.length < 2 ? 'Choose both background boosts' : ''),
+    p.background[0] ?? '',
     p.class[0] ?? '',
     p.attributes[0] ?? '',
     p.skills[0] ?? '',
@@ -476,6 +557,10 @@ const built = computed(() => {
 /** Smooth scrolling unless the reader asked for reduced motion. */
 const motion = (): ScrollBehavior =>
   import.meta.client && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+
+function jumpTo(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: motion(), block: 'start' })
+}
 
 /** To the top of the step, where its error shows. */
 const toTop = () => import.meta.client && window.scrollTo({ top: 0, behavior: motion() })
@@ -560,9 +645,13 @@ async function create() {
         <div class="section-head">
           <h2 id="anc-h">Choose your ancestry</h2>
         </div>
+        <p v-if="ancestry" class="small muted">
+          {{ ancestry.name }} picked: its boosts and heritage are
+          <button type="button" class="jump" @click="jumpTo('anc-more')">below the list ↓</button>
+        </p>
         <Pf2eOptionCards v-model="ancestryPick" :options="ancestryOptions" label="Ancestries" />
         <template v-if="ancestry">
-          <div class="panel stack">
+          <div id="anc-more" class="panel stack">
             <h3>Ancestry boosts</h3>
             <UiSwitch
               v-model="c.freeAncestryBoosts"
@@ -575,6 +664,7 @@ async function create() {
               label="Free ancestry boosts"
               :count="boostPlan.free"
               :locked="boostPlan.fixed"
+              locked-label="from ancestry"
             />
           </div>
           <div class="section-head">
@@ -595,18 +685,17 @@ async function create() {
         </p>
         <div v-else class="panel stack">
           <h3>{{ background.name }} boosts</h3>
-          <Pf2eBoostPicker
-            v-model="bgFirst"
-            :label="listOr(background.boosts)"
-            :count="1"
-            :allowed="backgroundBoostOptions(background)"
-          />
-          <Pf2eBoostPicker
-            v-model="bgSecond"
-            label="Free boost"
-            :count="1"
-            :taken="c.backgroundBoosts.slice(0, 1)"
-          />
+          <template v-for="(slot, i) in bgSlots" :key="i">
+            <Pf2eBoostPicker
+              :model-value="bgSlotPick(i)"
+              :label="slot.label"
+              :count="1"
+              :allowed="i <= c.backgroundBoosts.length ? slot.allowed : []"
+              :taken="slotTaken(c.backgroundBoosts, bgSlots, i)"
+              @update:model-value="setBgSlot(i, $event)"
+            />
+            <p v-if="slot.note" class="small muted">{{ slot.note }}</p>
+          </template>
         </div>
         <Pf2eOptionCards
           v-model="backgroundPick"
@@ -651,16 +740,16 @@ async function create() {
               </div>
             </dl>
             <Pf2eBoostPicker
-              v-if="cls.keyAttributes.length > 1"
+              v-if="keyOptions.length > 1"
               v-model="keyPick"
               label="Key attribute"
               :count="1"
-              :allowed="cls.keyAttributes"
+              :allowed="keyOptions"
             />
             <p v-else class="small">
-              Key attribute: <strong>{{ cls.keyAttributes[0] }}</strong> (+1)
+              Key attribute: <strong>{{ keyOptions[0] }}</strong> (+1)
             </p>
-            <p class="small muted">Level 1: {{ cls.advancement[0]?.features.join(', ') }}</p>
+            <p class="small muted">Level 1: {{ levelOneFeatures(cls).join(', ') }}</p>
           </article>
 
           <template v-for="ch in choices" :key="ch.key">
@@ -698,7 +787,7 @@ async function create() {
             />
           </template>
 
-          <template v-if="needsDeity(cls)">
+          <template v-if="wantsDeity">
             <div class="section-head"><h3>Deity</h3></div>
             <Pf2eOptionCards v-model="deityPick" :options="deityCards" label="Deities" />
             <p class="small muted cup">
@@ -728,22 +817,26 @@ async function create() {
                 <tr>
                   <th scope="col">Attribute</th>
                   <th scope="col">Modifier</th>
-                  <th scope="col">Ancestry</th>
-                  <th scope="col">Background</th>
-                  <th scope="col">Class</th>
-                  <th scope="col">Free</th>
+                  <th scope="col" class="attrs__src">Ancestry</th>
+                  <th scope="col" class="attrs__src">Background</th>
+                  <th scope="col" class="attrs__src">Class</th>
+                  <th scope="col" class="attrs__src">Free</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="r in breakdown" :key="r.a">
-                  <th scope="row">{{ r.a }}</th>
+                  <th scope="row">
+                    {{ r.a }}
+                    <!-- Phones show the sources as one line under the attribute. -->
+                    <span v-if="sourceLine(r)" class="attrs__line">{{ sourceLine(r) }}</span>
+                  </th>
                   <td>
                     <strong>{{ sign(r.total) }}</strong>
                   </td>
-                  <td>{{ r.ancestry ? sign(r.ancestry) : '' }}</td>
-                  <td>{{ r.background ? sign(r.background) : '' }}</td>
-                  <td>{{ r.cls ? '+1' : '' }}</td>
-                  <td>{{ r.free ? '+1' : '' }}</td>
+                  <td class="attrs__src">{{ r.ancestry ? sign(r.ancestry) : '' }}</td>
+                  <td class="attrs__src">{{ r.background ? sign(r.background) : '' }}</td>
+                  <td class="attrs__src">{{ r.cls ? '+1' : '' }}</td>
+                  <td class="attrs__src">{{ r.free ? '+1' : '' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -762,27 +855,36 @@ async function create() {
             <span class="muted">From your background, class and choices:</span>
             {{ plan.fixed.join(', ') }}
           </p>
-          <div
-            v-for="(g, gi) in plan.groups"
-            :key="gi"
-            class="skill-group"
-            role="radiogroup"
-            :aria-label="`Choose ${listOr(g.options)}`"
-          >
-            <strong class="small">Choose one</strong>
+          <fieldset v-for="(g, gi) in plan.groups" :key="gi" class="skill-group">
+            <legend class="small">Choose one: {{ listOr(g.options) }}</legend>
             <button
               v-for="o in g.options"
               :key="o"
               type="button"
-              role="radio"
               class="chip"
               :class="{ 'chip--on': groupPicks.includes(o) }"
-              :aria-checked="groupPicks.includes(o)"
+              :aria-pressed="groupPicks.includes(o)"
               :disabled="plan.fixed.includes(o)"
               @click="pickGroup(g.options, o)"
             >
               {{ o }}
             </button>
+          </fieldset>
+          <div v-for="(l, li) in plan.lores" :key="`lore-${li}`" class="field lore-name">
+            <label :for="`lore-${li}`">Name your background’s Lore skill</label>
+            <p :id="`lore-hint-${li}`" class="small muted">{{ l.hint }}</p>
+            <div class="lore-name__row">
+              <input
+                :id="`lore-${li}`"
+                class="input"
+                maxlength="40"
+                placeholder="e.g. Desert"
+                :aria-describedby="`lore-hint-${li}`"
+                :value="c.lores?.[li] ?? ''"
+                @input="setLore(li, ($event.target as HTMLInputElement).value)"
+              />
+              <span>Lore</span>
+            </div>
           </div>
           <p class="small">
             <strong>Free skills</strong>: {{ freePicks.length }} of {{ plan.free }} chosen
@@ -799,13 +901,16 @@ async function create() {
                 "
                 @change="toggleFree(s)"
               />
-              {{ s }}
+              <span>
+                {{ s }}
+                <span v-if="skillSource(s)" class="skill-pick__from">{{ skillSource(s) }}</span>
+              </span>
             </label>
           </div>
         </div>
         <template v-for="s in slots" :key="s">
           <div class="section-head">
-            <h3>{{ FEAT_LABEL[s] }}</h3>
+            <h3>{{ featLabel(s) }}</h3>
           </div>
           <Pf2eOptionCards
             :model-value="featPick(s)"
@@ -983,7 +1088,7 @@ async function create() {
           <div class="cols">
             <div class="stack" style="gap: 8px">
               <h4 class="caps">Strikes</h4>
-              <p v-for="s in built.strikes" :key="s.name" class="small">
+              <p v-for="(s, i) in built.strikes" :key="i" class="small">
                 <strong>{{ s.name }}</strong> {{ sign(s.bonus) }} · {{ s.dmg }}
                 {{ s.type.toLowerCase() }}
               </p>
@@ -1001,7 +1106,7 @@ async function create() {
                 {{ built.inventory.map((i) => i.name).join(', ') || 'None yet' }} ·
                 {{ built.coins.gp }} gp {{ built.coins.sp }} sp {{ built.coins.cp }} cp left
               </p>
-              <p class="small">{{ built.notes }}</p>
+              <p v-for="(n, i) in built.notes.split('\n')" :key="i" class="small">{{ n }}</p>
               <template v-if="built.spellcasting">
                 <h4 class="caps">Spells · {{ built.spellcasting.tradition }}</h4>
                 <p class="small">
@@ -1025,13 +1130,13 @@ async function create() {
             </div>
             <div class="stack" style="gap: 8px">
               <h4 class="caps">Feats &amp; features</h4>
-              <p v-for="f in built.feats" :key="`${f.type}-${f.name}`" class="small">
+              <p v-for="(f, i) in built.feats" :key="i" class="small">
                 <strong>{{ f.name }}</strong>
                 <template v-if="f.action">
-                  <span aria-hidden="true"> {{ f.action }}</span>
-                  <span class="sr-only">({{ ACTION_NAME[f.action] ?? f.action }})</span>
+                  <span aria-hidden="true">{{ ` ${f.action}` }}</span>
+                  <span class="sr-only">({{ glyphWords(f.action) }})</span>
                 </template>
-                <span class="muted"> {{ f.type }}</span>
+                <span class="muted">{{ ` · ${f.type}` }}</span>
               </p>
             </div>
           </div>
@@ -1192,11 +1297,60 @@ async function create() {
   }
 }
 
+.attrs__line {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  // Attribute and Modifier only; where the boosts come from is one small line per row.
+  .attrs__src {
+    display: none;
+  }
+
+  .attrs__line {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--panel-soft);
+  }
+}
+
+.jump {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.lore-name__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .input {
+    max-width: 260px;
+  }
+}
+
 .skill-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+
+  legend {
+    float: left;
+    margin-right: 6px;
+    font-weight: 700;
+  }
 }
 
 .chip--on {
@@ -1227,6 +1381,12 @@ async function create() {
     width: 18px;
     height: 18px;
   }
+}
+
+.skill-pick__from {
+  display: block;
+  font-size: 11px;
+  color: var(--panel-soft);
 }
 
 .over {
