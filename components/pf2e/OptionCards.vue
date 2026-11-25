@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // A grid of PF2e options to pick one (pressed toggle buttons) or several (checkbox) of: a search
 // box for long lists, uncommon and rare options hidden until asked for, and each option's rules
-// text behind a disclosure. Shows the first 60 matches, plus the picked ones wherever they are;
+// text in a modal (its Rules text button), where it can be picked too. Shows the first 60 matches, plus the picked ones wherever they are;
 // the rest on request. `compact` keeps each card to its name line (the level-up dialog);
 // `hideUnavailable` adds a switch, on by default, that hides options that can't be picked.
 import { loreHtml } from '~/utils/loreText'
@@ -96,6 +96,24 @@ function pick(o: Pf2eOption) {
 }
 
 const full = computed(() => props.multiple && model.value.length >= props.max)
+
+/** The option whose rules text is open in the modal. */
+const reading = ref<Pf2eOption | null>(null)
+const readingOpen = computed({
+  get: () => reading.value !== null,
+  set: (open) => {
+    if (!open) reading.value = null
+  },
+})
+const readingOn = computed(() => !!reading.value && model.value.includes(reading.value.id))
+const readingBlocked = computed(
+  () => !!reading.value && !readingOn.value && (!!reading.value.disabled || full.value),
+)
+
+function pickFromModal() {
+  if (reading.value) pick(reading.value)
+  reading.value = null
+}
 </script>
 
 <template>
@@ -150,13 +168,15 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
           <span v-if="o.gap" class="option__gap">{{ o.gap }}</span>
           <span v-if="o.text && !compact" class="option__sum">{{ summary(o.text) }}</span>
         </button>
-        <details v-if="o.text" class="option__text">
-          <summary>
-            Rules text<span class="sr-only">: {{ o.name }}</span>
-          </summary>
-          <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
-          <div class="option__body" v-html="loreHtml(o.text)" />
-        </details>
+        <button
+          v-if="o.text"
+          type="button"
+          class="option__text"
+          aria-haspopup="dialog"
+          @click="reading = o"
+        >
+          Rules text<span class="sr-only">: {{ o.name }}</span>
+        </button>
       </div>
     </div>
     <button
@@ -170,6 +190,35 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
     <p v-if="!matches.length" class="small muted">
       {{ query ? `Nothing matches “${query}”.` : 'Nothing you can pick right now.' }}
     </p>
+    <UiDialog v-model="readingOpen" :title="reading?.name ?? ''" width="620px" sheet>
+      <template #eyebrow>
+        <p v-if="reading?.meta" class="option__meta">
+          <span v-if="reading.actions" class="option__glyph"
+            ><span aria-hidden="true">{{ reading.actions }}</span
+            ><span class="sr-only">{{ reading.actionsLabel ?? reading.actions }}</span></span
+          >
+          {{ reading.meta }}
+        </p>
+      </template>
+      <template v-if="reading">
+        <p v-if="reading.disabled" class="option__why">{{ reading.disabled }}</p>
+        <p v-if="reading.gap" class="option__gap">{{ reading.gap }}</p>
+        <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+        <div class="option__body" v-html="loreHtml(reading.text ?? '')" />
+      </template>
+      <template #actions>
+        <button type="button" class="btn btn--ghost" @click="reading = null">Close</button>
+        <button
+          type="button"
+          class="btn"
+          :aria-disabled="readingBlocked"
+          :disabled="readingBlocked"
+          @click="pickFromModal"
+        >
+          {{ readingOn ? 'Remove' : 'Choose' }} {{ reading?.name }}
+        </button>
+      </template>
+    </UiDialog>
   </div>
 </template>
 
@@ -314,20 +363,22 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
 }
 
 .option__text {
-  padding: 0 14px 10px;
+  align-self: flex-start;
+  margin: 0 14px 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text);
+  min-height: 32px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 
-  summary {
-    cursor: pointer;
-    font-weight: 600;
-    color: var(--accent-text);
-    min-height: 32px;
-    display: flex;
-    align-items: center;
-
-    @media (pointer: coarse) {
-      min-height: 44px;
-    }
+  @media (pointer: coarse) {
+    min-height: 44px;
   }
 }
 
