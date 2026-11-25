@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { classBySlug } from '~/data/nimble/classes'
-import type { Dnd5eSheet, NimbleLevelInput, NimbleSheet, Pf2eSheet } from '~/types/sheets'
+import type {
+  Dnd5eSheet,
+  NimbleLevelInput,
+  NimbleSheet,
+  Pf2eLevelInput,
+  Pf2eSheet,
+} from '~/types/sheets'
 import { abilityMod, rollDie, sign } from '~/utils/dice'
 import { LEVEL_UP_RULES, MAX_LEVEL, averageHp, canBump, hpGain, pointsUsed } from '~/utils/levelUp'
 import { recordLevel } from '~/utils/levelHistory'
@@ -15,10 +21,11 @@ import { systemLabel } from '~/utils/systems'
 
 const open = defineModel<boolean>({ required: true })
 const props = defineProps<{
-  previous?: NimbleLevelInput
+  /** A level's recorded picks to start from (Reconfigure): Nimble's or PF2e's. */
+  previous?: NimbleLevelInput | Pf2eLevelInput
   progress?: string
 }>()
-const { draft, save } = useSheet()
+const { draft, save, saveNow } = useSheet()
 const snackbar = useSnackbarStore()
 
 const system = computed(() => draft.value.system)
@@ -55,7 +62,7 @@ watch(open, (isOpen) => {
   skillPoint.value = ''
   showErrors.value = false
   const was = props.previous
-  if (!was) return
+  if (!was || !('hpGain' in was)) return
   hpOverride.value = was.hpGain
   bumps.value = Object.fromEntries(
     Object.entries(was.statBumps).filter((e): e is [string, number] => !!e[1]),
@@ -110,6 +117,29 @@ const nimbleProblems = computed<string[]>(() => {
   }
   return out
 })
+
+// Data-driven PF2e level-up (sheets made in the builder); hand-made sheets keep free text.
+const pf2eMode = computed(() => {
+  const s = draft.value.sheet as Pf2eSheet
+  return system.value === 'pf2e' && !!s.classSlug && !!s.creation && level.value < MAX_LEVEL
+})
+const pf2ePrevious = computed(() =>
+  props.previous && !('hpGain' in props.previous) ? props.previous : undefined,
+)
+const pf2eBody = ref<{ problems: string[]; commit: () => boolean } | null>(null)
+const pf2eProblems = computed(() => (pf2eMode.value ? (pf2eBody.value?.problems ?? ['…']) : []))
+
+async function confirmPf2e() {
+  showErrors.value = true
+  if (pf2eProblems.value.length || !pf2eBody.value?.commit()) return
+  const next = level.value + 1
+  draft.value.level = next
+  open.value = false
+  // saveNow: the draft's change watcher hasn't marked it dirty yet, so save() would wait for
+  // the autosave and a closed tab could lose the level.
+  await saveNow()
+  if (!props.progress) snackbar.show(`${draft.value.name} is now level ${next}`)
+}
 
 /** Hit die (5e, Nimble) or fixed HP per level (PF2e). */
 const die = computed(() => {
@@ -214,6 +244,7 @@ async function confirmNimble() {
 }
 
 async function confirm() {
+  if (pf2eMode.value) return confirmPf2e()
   if (plan.value) return confirmNimble()
   showErrors.value = true
   if (!gainValid.value) return
@@ -322,7 +353,14 @@ async function confirm() {
         <strong>Level {{ level + 1 }}</strong>
       </div>
 
-      <section class="step-block" aria-labelledby="lu-hp">
+      <Pf2eLevelUp
+        v-if="pf2eMode && open"
+        ref="pf2eBody"
+        :previous="pf2ePrevious"
+        :show-errors="showErrors"
+      />
+
+      <section v-if="!pf2eMode" class="step-block" aria-labelledby="lu-hp">
         <div class="step-head">
           <h3 id="lu-hp">1 · Hit points</h3>
           <span class="small muted">{{ hpHint }}</span>
@@ -385,7 +423,7 @@ async function confirm() {
         </p>
       </section>
 
-      <section v-if="!plan || statRule" class="step-block" aria-labelledby="lu-ab">
+      <section v-if="!pf2eMode && (!plan || statRule)" class="step-block" aria-labelledby="lu-ab">
         <div class="step-head">
           <h3 id="lu-ab">2 · {{ rules.boostTitle }}</h3>
           <span class="small points" :class="{ done: left === 0 }">
@@ -513,7 +551,7 @@ async function confirm() {
         </p>
       </template>
 
-      <section v-else class="step-block" aria-labelledby="lu-ft">
+      <section v-else-if="!pf2eMode" class="step-block" aria-labelledby="lu-ft">
         <h3 id="lu-ft">3 · New features</h3>
         <div class="feats">
           <div class="field">
@@ -531,7 +569,7 @@ async function confirm() {
         </div>
       </section>
 
-      <section class="summary" aria-label="Summary">
+      <section v-if="!pf2eMode" class="summary" aria-label="Summary">
         <div class="caps" style="margin-bottom: 8px">Updates automatically</div>
         <dl>
           <div v-for="r in summary" :key="r.label">
@@ -548,8 +586,14 @@ async function confirm() {
         v-if="level < MAX_LEVEL"
         type="button"
         class="btn"
-        :disabled="!!plan && nimbleProblems.length > 0"
-        :title="plan && nimbleProblems.length ? nimbleProblems.join('\n') : undefined"
+        :disabled="(!!plan && nimbleProblems.length > 0) || pf2eProblems.length > 0"
+        :title="
+          pf2eProblems.length
+            ? pf2eProblems.join('\n')
+            : plan && nimbleProblems.length
+              ? nimbleProblems.join('\n')
+              : undefined
+        "
         @click="confirm"
       >
         Confirm level {{ level + 1 }}

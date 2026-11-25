@@ -1,9 +1,16 @@
 <script setup lang="ts">
 // Reconfigure: go back to an earlier level, undoing what the levels above it
 // granted, then level back up one level at a time, starting from the old picks.
-// Nimble heroes built from class data can also redo their level 1 choices.
+// Nimble heroes built from class data can also redo their level 1 choices; PF2e heroes replay
+// their recorded level-up picks the same way.
 import { STARTING_SKILL_POINTS, STAT_ARRAYS } from '~/data/nimble/core'
-import type { AnySheet, NimbleLevelInput, NimbleSheet, NimbleStat } from '~/types/sheets'
+import type {
+  AnySheet,
+  NimbleLevelInput,
+  NimbleSheet,
+  NimbleStat,
+  Pf2eLevelInput,
+} from '~/types/sheets'
 import { canRestore, restoreBuild, restoreLevel } from '~/utils/levelHistory'
 import {
   buildNimbleSheet,
@@ -83,7 +90,7 @@ function startLevelOne() {
 
 const goal = ref(0)
 const original = ref<{ level: number; sheet: AnySheet } | null>(null)
-const previous = ref<Record<number, NimbleLevelInput>>({})
+const previous = ref<Record<number, NimbleLevelInput | Pf2eLevelInput>>({})
 const levelUpOpen = ref(false)
 const openedAt = ref(0)
 
@@ -98,8 +105,8 @@ function begin(from: number) {
   }
   previous.value = Object.fromEntries(
     (sheet.levelHistory ?? [])
-      .filter((e) => e.level > from && e.nimble)
-      .map((e) => [e.level, e.nimble!]),
+      .filter((e) => e.level > from && (e.nimble || e.pf2e))
+      .map((e) => [e.level, (e.nimble ?? e.pf2e)!]),
   )
   goal.value = draft.value.level
 }

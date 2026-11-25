@@ -31,6 +31,8 @@ export interface LevelHistoryEntry {
   before: Record<string, unknown>
   /** What was picked (Nimble sheets built from class data), to replay the level. */
   nimble?: NimbleLevelInput
+  /** What was picked (PF2e sheets built from class data), to replay the level. */
+  pf2e?: Pf2eLevelInput
 }
 
 export interface NimbleLevelInput {
@@ -111,6 +113,22 @@ export interface Dnd5eSheet extends SheetCommon {
 }
 
 // --- Pathfinder 2e --------------------------------------------------------
+/** A PF2e level-up's picks (Player Core p. 29); ids are AoN ids. */
+export interface Pf2eLevelInput {
+  /** The four attribute boosts at 5th, 10th, 15th and 20th level, each to a different one. */
+  boosts: Pf2eAttr[]
+  /** Feat slot key (`class`, `skill`, `general`, `ancestry`) → feat id. */
+  feats: Record<string, string>
+  /** One skill per skill increase, in order. */
+  skills: string[]
+  /** Skills an Intelligence increase trains (Player Core p. 29). */
+  trained?: string[]
+  /** Spells learned, by pick key (`rank3`, `book`, `cantrip`) → spell ids. */
+  spells: Record<string, string[]>
+  /** Feature choices (a weapon group, a saving throw, a later subclass option) by key. */
+  choices: Record<string, string[]>
+}
+
 export type Pf2eAttr = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA'
 export type Pf2eRank = 'U' | 'T' | 'E' | 'M' | 'L'
 
@@ -205,6 +223,13 @@ export interface Pf2eSheet extends SheetCommon {
   classSlug?: string
   /** What the builder was given (AoN ids), so the build can be read back or redone. */
   creation?: Pf2eCreation
+  /**
+   * Level-up choices later levels read, by key: a fighter's weapon group, a monk's path to
+   * perfection, an exemplar's epithets.
+   */
+  levelChoices?: Record<string, string[]>
+  /** Attributes holding a partial boost (Player Core p. 19: a boost to +4 or more). */
+  partialBoosts?: Pf2eAttr[]
   /** The class's spellcasting, for casters (Player Core pp. 297–298). */
   spellcasting?: Pf2eSpellcasting
   /** Focus spells the hero knows; `focus` holds the pool. */
