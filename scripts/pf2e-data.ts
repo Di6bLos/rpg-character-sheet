@@ -232,8 +232,6 @@ const opt = <K extends string, V>(key: K, v: V | undefined | '') =>
 
 /** What AoN's entry leaves out that the book prints, kept as a note rather than guessed. */
 const GAPS: Record<string, string> = {
-  'Druidic Order':
-    "AoN's order pages hold only the description: the order's trained skill, order feat and order spell are not in this data.",
   'ancestry:Awakened Animal':
     'AoN leaves Hit Points and Speed blank: the heritage (Climbing, Flying, Running or Swimming Animal) gives the Speed; the Hit Points are not in this data.',
   'ancestry:Merfolk':
@@ -320,12 +318,20 @@ const classes: Pf2eClassDef[] = classDocs.map((d) => {
     level: Number(lvl),
     features: splitList(straight(f ?? '')),
   }))
+  // A second number after a plus sign is a second track of slots (an animist's "2+1": two
+  // animist slots and one apparition slot, War of Immortals p. 10).
+  const plus = (cell?: string) => Number(/\+\s*(\d+)/.exec(cell ?? '')?.[1] ?? 0)
   const slots = tableRows(full, ['Your Level', 'Cantrips'])
     .filter(([lvl]) => /^\d+$/.test(lvl ?? ''))
     .map(([lvl, can, ...r]) => ({
       level: Number(lvl),
       cantrips: num(can),
       slots: Array.from({ length: 10 }, (_, i) => num(r[i])),
+      ...([can, ...r].some((x) => plus(x))
+        ? {
+            extra: { cantrips: plus(can), slots: Array.from({ length: 10 }, (_, i) => plus(r[i])) },
+          }
+        : {}),
     }))
     // The psychic's table prints level 1 last.
     .sort((a, b) => a.level - b.level)

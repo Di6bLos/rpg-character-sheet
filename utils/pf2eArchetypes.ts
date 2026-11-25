@@ -3,7 +3,7 @@
 // dedication trains, multiclass spellcasting by level, and the free archetype variant (GM Core
 // p. 84). `utils/pf2eLevelUp.ts` puts them into the level plan; the proficiencies a dedication
 // grants are read there with the class features' sentences.
-import type { Pf2eFeatDef, Pf2eSpellDef } from '~/data/pf2e/types'
+import type { Pf2eClassDef, Pf2eFeatDef, Pf2eSpellDef } from '~/data/pf2e/types'
 import type {
   Pf2eArchetypeCasting,
   Pf2eAttr,
@@ -292,13 +292,17 @@ export interface DedicationCasting {
   attr: Pf2eAttr
   kind: 'prepared' | 'spontaneous'
   cantrips: number
+  /** The cantrips come from the class's psi cantrips ("one standard psi cantrip of your choice from your conscious mind"). */
+  psi?: boolean
 }
 
 /**
  * The spellcasting a dedication grants (Player Core pp. 216–223: "You cast spells like a
  * wizard, gaining a spellbook with four common arcane cantrips… Your key spellcasting
  * attribute for wizard archetype spells is Intelligence, and they are arcane wizard spells").
- * A psychic's is the attribute the hero qualified with, the higher of the two.
+ * A psychic's is the attribute the hero qualified with, the higher of the two. The cantrips are
+ * the ones it prepares each day when it says so ("a spellbook with four common arcane cantrips
+ * … You can prepare two cantrips each day": two), else the ones it grants.
  */
 export function dedicationCasting(
   f: Pf2eFeatDef,
@@ -316,16 +320,46 @@ export function dedicationCasting(
   const attr = key[1] ? ATTR[key[1].toLowerCase()]! : (qualified ?? 'CHA')
   const tradition = /\bthey are (arcane|divine|occult|primal)\b/i.exec(t)?.[1]
   const count =
-    /\bwith (one|two|three|four) (?:[\w-]+ ){0,2}cantrips?\b/i.exec(t) ??
-    /\bprepare (one|two|three|four) (?:common )?cantrips? each day\b/i.exec(t)
+    /\bprepare (one|two|three|four) (?:common )?cantrips? each day\b/i.exec(t) ??
+    /\bwith (one|two|three|four) (?:[\w-]+ ){0,2}cantrips?\b/i.exec(t)
   return {
     archetype: dedicationArchetype(f),
     ...(tradition ? { tradition: tradition[0]!.toUpperCase() + tradition.slice(1) } : {}),
     attr,
     kind: /\bspell repertoire\b/i.test(t) ? 'spontaneous' : 'prepared',
     cantrips: NUMBER[count?.[1]?.toLowerCase() ?? ''] ?? 0,
+    ...(/\bstandard psi cantrips? of your choice\b/i.test(t) ? { psi: true } : {}),
   }
 }
+
+/**
+ * A class's standard psi cantrips, from each conscious mind's "**Standard Psi Cantrips**
+ * Telekinetic Hand and Telekinetic Projectile" (Dark Archive p. 9): what Psychic Dedication's
+ * cantrip is chosen from.
+ */
+export function psiCantrips(cls: Pf2eClassDef | undefined) {
+  return [
+    ...new Set(
+      (cls?.subclasses ?? []).flatMap(
+        (o) =>
+          /\*\*Standard Psi Cantrips\*\*\s*([^\n]+)/
+            .exec(o.text)?.[1]
+            ?.split(/,\s*|\s+and\s+/)
+            .map((x) => x.trim())
+            .filter(Boolean) ?? [],
+      ),
+    ),
+  ]
+}
+
+/**
+ * Signature spells an archetype's repertoire has (Player Core p. 215): one with the basic
+ * spellcasting benefits from 6th level, one more with the expert and the master benefits.
+ */
+export const signatureCount = (level: number, tiers: Set<CastingTier>) =>
+  (tiers.has('basic') && level >= 6 ? 1 : 0) +
+  (tiers.has('expert') ? 1 : 0) +
+  (tiers.has('master') ? 1 : 0)
 
 export type CastingTier = 'basic' | 'expert' | 'master'
 
@@ -426,7 +460,7 @@ const rankAbove = (a: Pf2eRank, b: Pf2eRank) => RANK_ORDER.indexOf(a) > RANK_ORD
 export function archetypeCastingPlan(
   sheet: Pf2eSheet,
   level: number,
-  data: FeatData,
+  data: FeatData & { classes?: Pf2eClassDef[] },
   choices: Record<string, string[]>,
   added: Pf2eFeat[],
   attrs: Record<Pf2eAttr, number>,
@@ -455,15 +489,17 @@ export function archetypeCastingPlan(
         options: TRADITIONS.map((t) => ({ id: t, name: t })),
         count: 1,
       })
+    const psi = c.psi ? psiCantrips(data.classes?.find((k) => k.name === c.archetype)) : []
     if (c.cantrips)
       out.spells.push({
         key: `arch:${c.archetype}:cantrip`,
-        label: `${c.archetype} archetype cantrips`,
+        label: `${c.archetype} archetype ${psi.length ? 'psi cantrip' : 'cantrips'}`,
         count: c.cantrips,
         rank: 1,
         cantrip: true,
         archetype: c.archetype,
         ...(tradition ? { tradition } : {}),
+        ...(psi.length ? { only: psi } : {}),
       })
     casters.push({ archetype: c.archetype, kind: c.kind, tradition, rank: 'T' })
   }
@@ -499,6 +535,21 @@ export function archetypeCastingPlan(
     const to = tierRank(after)
     if (rankAbove(to, c.rank))
       out.ranks.push({ label: `${c.archetype} archetype spell attack and DC`, from: c.rank, to })
+    const entry = sheet.archetypeCasting?.find((e) => e.archetype === c.archetype)
+    const more = signatureCount(level, after) - signatureCount(level - 1, before)
+    const open = (entry?.spells ?? []).filter((x) => !x.signature)
+    if (c.kind === 'spontaneous' && more > 0 && open.length)
+      out.choices.push({
+        key: `signature:${c.archetype}`,
+        label: `${c.archetype} archetype signature spell${more === 1 ? '' : 's'}`,
+        feature: {
+          name: 'Signature spell',
+          text: 'Choose a spell from your archetype repertoire as a signature spell: you can heighten it to any rank you have archetype slots for (Player Core pp. 215, 297).',
+          from: `${c.archetype} archetype`,
+        },
+        options: open.map((x) => ({ id: `${x.id}@${x.rank}`, name: `${x.name} (rank ${x.rank})` })),
+        count: Math.min(more, open.length),
+      })
   }
   return out
 }
@@ -536,9 +587,15 @@ export function applyArchetypeCasting(
       for (const id of (picks.spells[p.key] ?? []).slice(0, p.count)) {
         const def = data.spells.find((s) => s.id === id)
         const list = p.cantrip ? entry.cantrips : entry.spells
-        if (def && !list.some((x) => x.id === def.id))
-          list.push({ id: def.id, name: def.name, rank: p.learnAt ?? def.rank })
+        // A repertoire can learn a spell again at a higher rank (Player Core 2 p. 144).
+        const rank = p.learnAt ?? def?.rank ?? 1
+        if (def && !list.some((x) => x.id === def.id && x.rank === rank))
+          list.push({ id: def.id, name: def.name, rank })
       }
+    }
+    for (const key of picks.choices[`signature:${entry.archetype}`] ?? []) {
+      const spell = entry.spells.find((x) => `${x.id}@${x.rank}` === key)
+      if (spell) spell.signature = true
     }
   }
 }

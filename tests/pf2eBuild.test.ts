@@ -679,11 +679,13 @@ describe('pf2e feats from the class table and heritages', () => {
     expect(names).not.toContain('initial proficiencies')
   })
 
-  it('notes what the data leaves out (a druid’s order) on the sheet', () => {
-    const druid = cls('Druid')
-    const order = druid.subclasses.find((o) => o.gap)!
-    const c = withPicks('Druid', { 'Druidic Order': [order.id] })
-    expect(buildPf2eSheet(c, data).notes).toContain(`${order.name}: ${order.gap}`)
+  it('notes what the data leaves out on the sheet (an awakened animal’s Hit Points)', () => {
+    const awakened = named(data.ancestries, 'Awakened Animal')
+    expect(awakened.gap).toBeTruthy()
+    const c = autoCreation(cls('Fighter'))
+    c.ancestry = awakened.id
+    c.heritage = data.heritages.find((h) => h.ancestry === awakened.slug)!.id
+    expect(buildPf2eSheet(c, data).notes).toContain(`${awakened.name}: ${awakened.gap}`)
   })
 })
 
@@ -750,6 +752,89 @@ describe('pf2e background skill choices from the data', () => {
     const deity = resolve(c, data).deity!
     expect(deity).toBeDefined()
     expect(skillPlan(c, data).fixed).toContain(deity.skill[0])
-    expect(creationProblems({ ...c, deity: undefined }, data).class).toEqual(['Choose a deity'])
+    // The deity is picked on the Background step, where the background asks for it.
+    const none = creationProblems({ ...c, deity: undefined }, data)
+    expect(none.class).toEqual([])
+    expect(none.background).toContain('Choose a deity')
+    // A cleric picks it once, on the Class step, for both.
+    const cleric = autoCreation(cls('Cleric'), data, 'Raised by Belief')
+    const both = creationProblems({ ...cleric, deity: undefined }, data)
+    expect(both.class).toEqual(['Choose a deity'])
+    expect(both.background).not.toContain('Choose a deity')
+  })
+})
+
+describe('pf2e review fixes: creation (Player Core pp. 22–27)', () => {
+  it('asks for the druidic order’s skill, feat, order spell and a focus pool (pp. 122–126)', () => {
+    const orders = {
+      Animal: ['Athletics', 'Animal Companion', 'Heal Animal'],
+      Leaf: ['Diplomacy', 'Leshy Familiar', 'Cornucopia'],
+      Storm: ['Acrobatics', 'Storm Born', 'Tempest Surge'],
+      Untamed: ['Intimidation', 'Untamed Form', 'Untamed Shift'],
+    }
+    for (const [order, [skill, feat, focus]] of Object.entries(orders)) {
+      const c = autoCreation(cls('Druid'), data, 'Acolyte', [order])
+      for (const [step, list] of Object.entries(creationProblems(c, data)))
+        expect(list, `${order} ${step}`).toEqual([])
+      const s = buildPf2eSheet(c, data)
+      expect(s.skills.find((x) => x.name === skill)?.rank, order).toBe('T')
+      expect(
+        s.feats.map((f) => f.name),
+        order,
+      ).toContain(feat)
+      expect(
+        s.focusSpells?.map((f) => f.name),
+        order,
+      ).toContain(focus)
+      expect(s.focus.max, order).toBeGreaterThanOrEqual(1)
+      expect(s.notes, order).not.toContain('order spell are not in this data')
+      // The order feat isn't offered again for the druid feat slot.
+      expect(
+        featOptions('class', c, data).map((f) => f.name),
+        order,
+      ).not.toContain(feat)
+    }
+    const animal = autoCreation(cls('Druid'), data, 'Acolyte', ['Animal'])
+    expect(buildPf2eSheet(animal, data).focus).toMatchObject({ max: 1, current: 1 })
+    // Untamed Form grants _untamed form_ too: two order spells, two points (p. 298).
+    const untamed = autoCreation(cls('Druid'), data, 'Acolyte', ['Untamed'])
+    const s = buildPf2eSheet(untamed, data)
+    expect(s.focusSpells?.map((f) => f.name).sort()).toEqual(['Untamed Form', 'Untamed Shift'])
+    expect(s.focus.max).toBe(2)
+  })
+
+  it('gives a fury barbarian and a unified-theory wizard their bonus class feat', () => {
+    const fury = autoCreation(cls('Barbarian'), data, 'Acolyte', ['Fury'])
+    expect(featSlots(cls('Barbarian'), resolve(fury, data).subclassPicks)).toEqual([
+      'ancestry',
+      'class',
+      'class2',
+    ])
+    expect(
+      creationProblems({ ...fury, feats: { ...fury.feats, class2: '' } }, data).skills,
+    ).toContain('Choose the bonus class feat from Fury')
+    const giant = withPicks('Barbarian', { 'Barbarian Instinct': [sub('Barbarian', 'Giant').id] })
+    expect(featSlots(cls('Barbarian'), resolve(giant, data).subclassPicks)).toEqual([
+      'ancestry',
+      'class',
+    ])
+    const s = buildPf2eSheet(fury, data)
+    expect(s.feats.filter((f) => f.type === 'Class feat')).toHaveLength(2)
+    expect(fury.feats.class).not.toBe(fury.feats.class2)
+    expect(featOptions('class2', fury, data).map((f) => f.id)).not.toContain(fury.feats.class)
+
+    const unified = autoCreation(cls('Wizard'), data, 'Acolyte', [
+      'School of Unified Magical Theory',
+      'Spell Blending',
+    ])
+    expect(featSlots(cls('Wizard'), resolve(unified, data).subclassPicks)).toEqual([
+      'ancestry',
+      'class2',
+    ])
+    // Experimental Spellshaping's feat must be a spellshape one (p. 195).
+    const shaping = autoCreation(cls('Wizard'), data, 'Acolyte', ['Experimental Spellshaping'])
+    const options = featOptions('class2', shaping, data)
+    expect(options.length).toBeGreaterThan(0)
+    expect(options.every((f) => f.traits.includes('Spellshape'))).toBe(true)
   })
 })

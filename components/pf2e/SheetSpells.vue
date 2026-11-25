@@ -11,7 +11,7 @@
 // own spellcasting (Player Core p. 215) instead, without the focus spells.
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
-import type { Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
+import type { Pf2eArchetypeCasting, Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
 import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import { actionGlyph } from '~/utils/pf2eBuild'
 import { type Pf2eBloodMagic, bloodMagic } from '~/utils/pf2eClassActions'
@@ -61,6 +61,13 @@ const sc = computed(() =>
     : sheet.value.spellcasting,
 )
 const level = computed(() => draft.value.level)
+/** The class's own second track names itself (Apparition spells); an archetype's says whose. */
+const title = computed(() =>
+  props.archetype
+    ? ((sc.value as Pf2eArchetypeCasting | undefined)?.label ??
+      `${props.archetype} archetype spells`)
+    : 'Spells',
+)
 
 const spells = shallowRef<Pf2eSpellDef[]>([])
 onMounted(async () => {
@@ -328,9 +335,9 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
 
 <template>
   <section class="panel stack" style="gap: 14px" :aria-labelledby="`${panelId}-h`">
-    <UiFold :name="archetype ? `${archetype} archetype spells` : 'Spells'" />
+    <UiFold :name="title" />
     <div class="panel-title" style="margin: 0">
-      <h2 :id="`${panelId}-h`">{{ archetype ? `${archetype} archetype spells` : 'Spells' }}</h2>
+      <h2 :id="`${panelId}-h`">{{ title }}</h2>
       <span v-if="sc" class="small muted">{{ sc.tradition }} · {{ sc.kind }}</span>
     </div>
 

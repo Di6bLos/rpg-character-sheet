@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type Pf2eData, loadPf2e } from '../data/pf2e'
+import { SUBCLASS_GRANTS } from '../data/pf2e/subclassGrants'
 import { openBook, settingName } from '../scripts/lib/aon'
 
 const dir = join(import.meta.dirname, '..', 'data', 'pf2e', 'generated')
@@ -253,12 +254,26 @@ describe('pf2e data', () => {
       expect(o.usage, o.name).toBeTruthy()
   })
 
-  it("says what AoN's druidic orders leave out instead of inventing it", () => {
+  it("fills in what AoN's druidic orders leave out from the book (Player Core pp. 125–126)", () => {
     const orders = subclasses.filter((o) => o.kind === 'Druidic Order')
-    expect(orders.length).toBeGreaterThan(0)
-    for (const o of orders) expect(o.gap, o.name).toMatch(/order spell/)
+    expect(orders.map((o) => o.name).sort()).toEqual(['Animal', 'Leaf', 'Storm', 'Untamed'])
+    for (const o of orders) {
+      const g = SUBCLASS_GRANTS[`${o.kind}:${o.name}`]!
+      expect(g, o.name).toBeDefined()
+      expect(o.gap, o.name).toBeUndefined()
+      for (const f of g.feats)
+        expect(
+          data.feats.some((x) => x.name === f && x.classes.includes('Druid')),
+          f,
+        ).toBe(true)
+      for (const sp of g.focus)
+        expect(
+          data.spells.some((x) => x.name === sp && x.kind === 'focus'),
+          sp,
+        ).toBe(true)
+    }
     const gaps = [...data.ancestries, ...subclasses].filter((r) => r.gap).map((r) => r.name)
-    expect(gaps.sort()).toEqual(['Awakened Animal', 'Merfolk', ...orders.map((o) => o.name)].sort())
+    expect(gaps.sort()).toEqual(['Awakened Animal', 'Merfolk'])
   })
 
   it('gives ancestries boosts, Hit Points and Speed a builder can use', () => {

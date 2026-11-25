@@ -372,7 +372,11 @@ defineExpose({ problems, progress, commit, jump })
           </dd>
         </div>
         <div v-for="s in plan.slots" :key="`slot-${s.archetype ?? ''}${s.rank}`">
-          <dt>Rank {{ s.rank }} slots{{ s.archetype ? ` (${s.archetype} archetype)` : '' }}</dt>
+          <dt>
+            Rank {{ s.rank }} slots{{
+              s.label ? ` (${s.label})` : s.archetype ? ` (${s.archetype} archetype)` : ''
+            }}
+          </dt>
           <dd>
             {{ s.from }} → <strong>{{ s.to }}</strong>
           </dd>
@@ -390,6 +394,12 @@ defineExpose({ problems, progress, commit, jump })
         <div v-if="plan.focus.length">
           <dt>Focus spells</dt>
           <dd>{{ plan.focus.map((s) => s.name).join(', ') }}</dd>
+        </div>
+        <div v-if="plan.focusPoints">
+          <dt>Focus Points</dt>
+          <dd>
+            {{ plan.focusPoints.from }} → <strong>{{ plan.focusPoints.to }}</strong>
+          </dd>
         </div>
       </dl>
       <div v-if="gains.length" class="gains">
