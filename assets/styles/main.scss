@@ -1,5 +1,4 @@
 @use 'themes';
-@use 'board-dock';
 
 *,
 *::before,
@@ -194,6 +193,8 @@ img {
   --track: var(--panel-track);
   --inset: var(--panel-inset);
   --accent-text: var(--accent-ink);
+  --danger-ink: var(--panel-danger-ink);
+  --temp-hp: var(--panel-temp-hp);
 
   h2,
   h3 {
@@ -683,6 +684,16 @@ select.input {
   width: 32px;
   height: 32px;
   font-size: 16px;
+}
+
+// HP bar bands (`hpTone` / `hpClass` in utils/roster.ts): a bar's fill reads
+// `var(--hp-fill, var(--secondary))`, and these set it on the fill or an ancestor.
+.hp--accent {
+  --hp-fill: var(--accent);
+}
+
+.hp--danger {
+  --hp-fill: var(--danger);
 }
 
 .meter {

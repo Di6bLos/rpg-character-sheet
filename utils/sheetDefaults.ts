@@ -51,13 +51,62 @@ const NIMBLE_SKILLS: [string, NimbleStat][] = [
   ['Stealth', 'DEX'],
 ]
 
-export const PF2E_CONDITIONS = [
+export const DND5E_CONDITIONS = [
+  'Blinded',
+  'Charmed',
+  'Deafened',
+  'Exhaustion',
   'Frightened',
-  'Off-guard',
-  'Clumsy',
-  'Enfeebled',
-  'Sickened',
+  'Grappled',
+  'Incapacitated',
+  'Invisible',
+  'Paralyzed',
+  'Petrified',
+  'Poisoned',
   'Prone',
+  'Restrained',
+  'Stunned',
+  'Unconscious',
+]
+
+/**
+ * PF2e conditions as on/off chips. Dying, Wounded and Doomed are values the sheet keeps as
+ * numbers (`dying`, `wounded`; Doomed isn't tracked), so they aren't chips.
+ */
+export const PF2E_CONDITIONS = [
+  'Blinded',
+  'Clumsy',
+  'Concealed',
+  'Confused',
+  'Controlled',
+  'Dazzled',
+  'Deafened',
+  'Drained',
+  'Encumbered',
+  'Enfeebled',
+  'Fascinated',
+  'Fatigued',
+  'Fleeing',
+  'Frightened',
+  'Grabbed',
+  'Hidden',
+  'Immobilized',
+  'Invisible',
+  'Observed',
+  'Off-guard',
+  'Paralyzed',
+  'Persistent Damage',
+  'Petrified',
+  'Prone',
+  'Quickened',
+  'Restrained',
+  'Sickened',
+  'Slowed',
+  'Stunned',
+  'Stupefied',
+  'Unconscious',
+  'Undetected',
+  'Unnoticed',
 ]
 
 function dnd5e(): Dnd5eSheet {
@@ -79,6 +128,8 @@ function dnd5e(): Dnd5eSheet {
     speed: '30 ft',
     profBonus: 2,
     deathSaves: { successes: 0, failures: 0 },
+    tempHp: 0,
+    conditions: [],
     weapons: [],
     features: [],
     inventory: [],

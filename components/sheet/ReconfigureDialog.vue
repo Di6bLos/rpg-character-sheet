@@ -2,20 +2,20 @@
 // Reconfigure: go back to an earlier level, undoing what the levels above it
 // granted, then level back up one level at a time, starting from the old picks.
 // Nimble heroes built from class data can also redo their level 1 choices.
-import { STARTING_SKILL_POINTS, STAT_ARRAYS } from '~/data/nimble/core'
+import { STAT_ARRAYS } from '~/data/nimble/core'
 import type { AnySheet, NimbleLevelInput, NimbleSheet, NimbleStat } from '~/types/sheets'
-import { canRestore, restoreBuild, restoreLevel } from '~/utils/levelHistory'
+import { canRestore, keepDamage, restoreBuild, restoreLevel } from '~/utils/levelHistory'
 import {
   buildNimbleSheet,
   creationChoices,
   creationInput,
+  creationProblems,
   syncCompanions,
-  validatePicks,
   type Picks,
 } from '~/utils/nimbleBuild'
 
 const open = defineModel<boolean>({ required: true })
-const { draft, saveNow } = useSheet()
+const { draft, held, saveNow } = useSheet()
 const snackbar = useSnackbarStore()
 
 const creation = computed(() =>
@@ -54,19 +54,16 @@ const keyValue = computed(() => {
 const choices = computed(() =>
   cls.value ? creationChoices(cls.value, background.value, picks.value) : [],
 )
-const problems = computed(() => {
-  const out: string[] = []
-  const left = STARTING_SKILL_POINTS - Object.values(skillPoints.value).reduce((a, b) => a + b, 0)
-  if (left) out.push(`Place ${left} more skill point${left === 1 ? '' : 's'}`)
-  const req = background.value?.requires
-  if (req && stats.value[req.stat] > req.max)
-    out.push(`${background.value!.name} needs ${req.stat} of ${req.max} or less`)
-  for (const c of choices.value) {
-    const err = validatePicks(c, picks.value[c.key])
-    if (err) out.push(`${c.label}: ${err}`)
-  }
-  return out
-})
+const problems = computed(() =>
+  creation.value
+    ? creationProblems({
+        ...creation.value,
+        stats: stats.value,
+        skillPoints: skillPoints.value,
+        picks: picks.value,
+      })
+    : [],
+)
 
 function startLevelOne() {
   const was = creation.value!
@@ -102,13 +99,13 @@ function begin(from: number) {
       .map((e) => [e.level, e.nimble!]),
   )
   goal.value = draft.value.level
+  held.value = true
 }
 
 async function climb(from: number) {
   if (draft.value.system === 'nimble') syncCompanions(draft.value.sheet as NimbleSheet)
   draft.value.level = from
   open.value = false
-  await saveNow()
   if (from >= goal.value) return finish()
   openedAt.value = from
   levelUpOpen.value = true
@@ -138,10 +135,14 @@ async function rebuildLevelOne() {
   await climb(1)
 }
 
-function finish() {
-  snackbar.show(`${draft.value.name} is reconfigured at level ${goal.value}`)
+async function finish() {
+  const level = goal.value
+  if (original.value) keepDamage(draft.value.sheet, original.value.sheet)
   goal.value = 0
   original.value = null
+  held.value = false
+  await saveNow()
+  snackbar.show(`${draft.value.name} is reconfigured at level ${level}`)
 }
 
 async function stepClosed() {
@@ -158,6 +159,7 @@ async function stepClosed() {
   draft.value.level = saved.level
   goal.value = 0
   original.value = null
+  held.value = false
   await saveNow()
   snackbar.show(`Reconfigure cancelled: ${draft.value.name} is back as before`)
 }
@@ -165,6 +167,34 @@ async function stepClosed() {
 watch(levelUpOpen, (isOpen) => {
   if (!isOpen) void stepClosed()
 })
+
+const router = useRouter()
+let releaseGuards: (() => void) | null = null
+
+function warnUnload(event: BeforeUnloadEvent) {
+  event.preventDefault()
+}
+
+function guardLeaving(on: boolean) {
+  if (on && !releaseGuards) {
+    window.addEventListener('beforeunload', warnUnload)
+    const removeRouteGuard = router.beforeEach(() =>
+      window.confirm(
+        `Leave without finishing? ${draft.value.name} stays as before Reconfigure started.`,
+      ),
+    )
+    releaseGuards = () => {
+      window.removeEventListener('beforeunload', warnUnload)
+      removeRouteGuard()
+    }
+  } else if (!on && releaseGuards) {
+    releaseGuards()
+    releaseGuards = null
+  }
+}
+
+watch(held, guardLeaving)
+onBeforeUnmount(() => guardLeaving(false))
 </script>
 
 <template>

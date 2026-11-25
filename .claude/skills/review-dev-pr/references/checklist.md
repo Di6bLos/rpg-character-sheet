@@ -13,7 +13,7 @@ Problems this repo's PRs tend to have. Check each one that applies to the diff, 
 
 ## Same rule in more than one place
 
-- **The board and the sheet must agree.** Spell and action blocked reasons live in several chains: `SpellCard`, `castReason` (`utils/battleActions.ts`), `ActionPanelMenus`, the reaction lists in `useNimbleSpells`, and the support-spell chain in `useBattleActions`. A new reason has to be in all of them.
+- **The board and the sheet must agree.** Spell and action blocked reasons live in several chains: `SpellCard`, `castReason` (`utils/battleActions.ts`), the reaction lists in `useNimbleSpells`, and the support-spell chain in `useBattleActions`. A new reason has to be in all of them.
 - **Sheet panels and the battle board** share composables (`useNimbleActions`, `useNimbleSpells`, `useTurnSteps`…). A change in one view should still work in the other.
 
 ## UI and conventions

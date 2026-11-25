@@ -1,8 +1,8 @@
 import type { ComputedRef } from 'vue'
 import { SHORT_TOUCH_QUERY, classifyLayout, type BoardLayout } from '~/utils/boardLayout'
 
-// One media query listener per query, shared by every caller (Shell, the pages and View all
-// ask), added with the first caller and removed when the last one's scope is disposed.
+// One media query listener per query, shared by every caller (the battle frames and their
+// parts ask), added with the first caller and removed when the last one's scope is disposed.
 const QUERIES = {
   tablet: '(min-width: 768px)',
   desktop: '(min-width: 1280px)',
@@ -48,15 +48,13 @@ function stop() {
 }
 
 /**
- * The battle board's size class and input type. `battle` is true for a Nimble campaign.
- * Without a window (or matchMedia) it reports desktop and no touch.
+ * The battle board's size class and input type. Without a window (or matchMedia) it reports
+ * desktop and no touch.
  */
 export function useBoardLayout(): {
   layout: ComputedRef<BoardLayout>
   touch: ComputedRef<boolean>
-  battle: ComputedRef<boolean>
 } {
-  const board = useCampaignBoardOptional()
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     if (users++ === 0) start()
     onScopeDispose(() => {
@@ -74,7 +72,6 @@ export function useBoardLayout(): {
             : 'phone',
     ),
     touch: computed(() => state.touch.value),
-    battle: computed(() => board?.campaign.value?.system === 'nimble'),
   }
 }
 
