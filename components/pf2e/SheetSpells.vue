@@ -7,12 +7,15 @@
 // spell rolls at the rank it goes off (utils/pf2eSpellRules.ts): a spell attack against the
 // Target AC with the chosen MAP, or the DC and damage for each save result, healing the hero can
 // take, and a buff it can turn on. Rules text comes from `data/pf2e` (fetched when the panel
-// opens); rules in utils/pf2eSpells.ts.
+// opens); rules in utils/pf2eSpells.ts. With `archetype` it shows that multiclass archetype's
+// own spellcasting (Player Core p. 215) instead, without the focus spells.
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
-import { rollAttack, sign } from '~/utils/dice'
+import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import { actionGlyph } from '~/utils/pf2eBuild'
+import { type Pf2eBloodMagic, bloodMagic } from '~/utils/pf2eClassActions'
+import { pf2eEffectDef, toggleEffect } from '~/utils/pf2eEffects'
 import { heal } from '~/utils/pf2ePlay'
 import {
   castCantrip,
@@ -37,14 +40,26 @@ import { readCost } from '~/utils/pf2eAbilityRules'
 import { actionCostLabel, attacked } from '~/utils/pf2eActions'
 import { loreHtml } from '~/utils/loreText'
 
+const props = defineProps<{ archetype?: string }>()
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
-const { claim, resultFor } = useResultOwner()
+const owner = useResultOwner()
+/** Result keys of an archetype's panel are its own, so a spell both panels list doesn't clash. */
+const prefix = props.archetype ? `arch:${props.archetype}:` : ''
+const claim = (key: string, run: () => void) => owner.claim(prefix + key, run)
+const resultFor = (key: string) => owner.resultFor(prefix + key)
+const panelId = props.archetype
+  ? `spells-${props.archetype.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+  : 'spells'
 /** The cast's offers (heal yourself, temp HP, the buff on yourself) for the row that made it. */
 const offersFor = (key: string) => (lastCast.value?.key === key ? lastCast.value : null)
 /** A spell's action cost for screen readers ("Two actions"). */
 const costName = (id: string) => actionCostLabel(readCost(byId.value.get(id)?.actions))
 const sheet = computed(() => draft.value.sheet)
-const sc = computed(() => sheet.value.spellcasting)
+const sc = computed(() =>
+  props.archetype
+    ? sheet.value.archetypeCasting?.find((e) => e.archetype === props.archetype)
+    : sheet.value.spellcasting,
+)
 const level = computed(() => draft.value.level)
 
 const spells = shallowRef<Pf2eSpellDef[]>([])
@@ -75,8 +90,10 @@ function rollSpellAttack() {
   const n = numbers.value
   if (!n) return
   claim('spells-head', () => {
-    const r = rollAttack(n.attack.value)
-    say(`Spell attack: ${r.total} (${r.d20} ${sign(n.attack.value)})`)
+    const r = rollCheck(n.attack.value)
+    const line = `Spell attack: ${r.total} (${r.d20} ${sign(n.attack.value)})`
+    showOutcome({ label: 'Spell attack', total: r.total, detail: line })
+    say(line)
   })
 }
 
@@ -141,6 +158,8 @@ const lastCast = ref<{
   healing?: number
   temp?: number
   offer?: string
+  /** A sorcerer's blood magic from a bloodline or sorcerous gift spell (Player Core 2 p. 144). */
+  blood?: Pf2eBloodMagic
 } | null>(null)
 
 /**
@@ -161,27 +180,57 @@ function castIn(key: string, message: string, def: Pf2eSpellDef | undefined, ran
   lastCast.value = null
   if (!def || !castWentOff(message)) return say(message)
   const r = castEffect(sheet.value, def, rank, level.value, {
+    sc: sc.value,
     actions: actionsOf(def),
     melee: !!meleeFor.value[def.id],
     attackNumber: attackNumber.value,
     targetAc: targetAc.value,
   })
   payCast(def)
-  say(`${message} ${r.text}`.trim())
+  const blood = bloodMagic(sheet.value, def.name, rank)
+  const target = blood?.damage ? ` Or a target takes ${blood.damage} damage.` : ''
+  const bloodLine = blood ? ` Blood magic, ${blood.name}: ${blood.text}${target}` : ''
+  say(`${message} ${r.text}${bloodLine}`.trim())
   const effect = spellRules(def).effect
   const offer = effect && !effect.self ? effect.def.name : undefined
-  if (r.healing || r.temp || offer)
-    lastCast.value = { key, def, rank, healing: r.healing, temp: r.temp, offer }
+  if (r.healing || r.temp || offer || blood?.toggles.length)
+    lastCast.value = {
+      key,
+      def,
+      rank,
+      healing: r.healing,
+      temp: r.temp,
+      offer,
+      ...(blood?.toggles.length ? { blood } : {}),
+    }
+}
+
+/** Takes the blood magic's effect on yourself (one of them, for Imperious Defense). */
+function bloodSelf(name: string) {
+  const last = lastCast.value
+  if (!canEdit.value || !last?.blood) return
+  const blood = last.blood
+  const tempHp = pf2eEffectDef(sheet.value, name)?.effects.some((e) => e.kind === 'tempHp')
+  claim(last.key, () =>
+    say(
+      `${blood.name}: ${toggleEffect(sheet.value, name, level.value, tempHp ? last.rank : undefined)}`,
+    ),
+  )
+  lastCast.value = { ...last, blood: undefined }
 }
 
 function castFromSlot(s: Pf2eSpellRef) {
   const slot = castRank(s)
-  cast(castSpontaneous(sheet.value, s, slot), byId.value.get(s.id), spontaneousRank(s, slot))
+  cast(
+    castSpontaneous(sheet.value, s, slot, sc.value),
+    byId.value.get(s.id),
+    spontaneousRank(s, slot),
+  )
 }
 
 function castFromPrepared(rank: number, index: number, id: string | null) {
   cast(
-    castPrepared(sheet.value, rank, index),
+    castPrepared(sheet.value, rank, index, sc.value),
     id ? byId.value.get(id) : undefined,
     rank,
     `slot:${rank}:${index}`,
@@ -278,10 +327,10 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
 </script>
 
 <template>
-  <section class="panel stack" style="gap: 14px" aria-labelledby="spells-h">
-    <UiFold name="Spells" />
+  <section class="panel stack" style="gap: 14px" :aria-labelledby="`${panelId}-h`">
+    <UiFold :name="archetype ? `${archetype} archetype spells` : 'Spells'" />
     <div class="panel-title" style="margin: 0">
-      <h2 id="spells-h">Spells</h2>
+      <h2 :id="`${panelId}-h`">{{ archetype ? `${archetype} archetype spells` : 'Spells' }}</h2>
       <span v-if="sc" class="small muted">{{ sc.tradition }} · {{ sc.kind }}</span>
     </div>
 
@@ -409,6 +458,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           @heal="healSelf"
           @temp="tempSelf"
           @buff="buffSelf"
+          @blood="bloodSelf"
           @dismiss="lastCast = null"
         />
       </div>
@@ -536,6 +586,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             @heal="healSelf"
             @temp="tempSelf"
             @buff="buffSelf"
+            @blood="bloodSelf"
             @dismiss="lastCast = null"
           />
         </div>
@@ -591,6 +642,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             @heal="healSelf"
             @temp="tempSelf"
             @buff="buffSelf"
+            @blood="bloodSelf"
             @dismiss="lastCast = null"
           />
         </div>
@@ -667,13 +719,14 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           @heal="healSelf"
           @temp="tempSelf"
           @buff="buffSelf"
+          @blood="bloodSelf"
           @dismiss="lastCast = null"
         />
       </div>
     </div>
 
     <!-- Focus spells -->
-    <div v-if="sheet.focusSpells?.length || edit" class="group">
+    <div v-if="!archetype && (sheet.focusSpells?.length || edit)" class="group">
       <div class="rank-head">
         <h3 class="caps">Focus spells · rank {{ heightenedRank(level) }}</h3>
         <span
@@ -757,6 +810,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           @heal="healSelf"
           @temp="tempSelf"
           @buff="buffSelf"
+          @blood="bloodSelf"
           @dismiss="lastCast = null"
         />
       </div>
@@ -778,13 +832,13 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
     </div>
 
     <div v-if="adding" class="adder panel">
-      <label class="small" for="spell-search">
+      <label class="small" :for="`${panelId}-search`">
         Add a {{ adding === 'focus' ? 'focus spell' : adding
         }}{{ sc && adding !== 'focus' ? ` (${sc.tradition})` : '' }}
       </label>
       <div class="row" style="gap: 8px">
         <input
-          id="spell-search"
+          :id="`${panelId}-search`"
           v-model="query"
           class="input"
           type="search"

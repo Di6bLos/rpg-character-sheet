@@ -149,9 +149,29 @@ export interface Pf2eFeatDef extends Pf2eRecord {
   classes: string[]
   /** Ancestry or versatile heritage names whose feat list includes it. */
   ancestries: string[]
+  /** Archetypes whose feat list includes it (Player Core p. 215). */
   archetypes: string[]
+  /**
+   * The level an archetype lists it at when that differs from `level` (an Additional Feat,
+   * Player Core p. 215: Advanced Warden is a 6th-level Beastmaster feat).
+   */
+  archetypeLevels?: Record<string, number>
   general: boolean
   skill: boolean
+}
+
+/**
+ * An archetype (Player Core pp. 215–216): its introduction, AoN's categories (Multiclass for
+ * the class archetypes, Combat Style, Profession…) and its dedication feat. The feats are in
+ * `feats`, by their `archetypes`.
+ */
+export interface Pf2eArchetypeDef extends Pf2eRecord {
+  /** The level of its dedication feat. */
+  level: number
+  categories: string[]
+  prerequisites?: string
+  /** The dedication feat's AoN id. */
+  dedication?: string
 }
 
 /** The class options that list a spell, by name ("Lesson of Shadow", a deity's domain…). */
@@ -231,6 +251,118 @@ export interface Pf2eShieldDef extends Pf2eRecord {
   speedPenalty: number
 }
 
+/**
+ * What an item is: adventuring gear, a consumable (potion, elixir, scroll, talisman, magical
+ * or alchemical ammunition, oil, bomb), a held or worn magic item, a weapon or armor rune, a
+ * staff or a wand (GM Core chapter 11).
+ */
+export type Pf2eItemKind =
+  | 'gear'
+  | 'potion'
+  | 'elixir'
+  | 'scroll'
+  | 'talisman'
+  | 'ammunition'
+  | 'oil'
+  | 'bomb'
+  | 'held'
+  | 'worn'
+  | 'rune'
+  | 'staff'
+  | 'wand'
+
+/**
+ * An item's activation (GM Core p. 220): its actions, or what it takes when that isn't only
+ * actions ("Cast a Spell", "Strike"), traits, frequency, trigger, requirements and effect.
+ * A consumable's effect is its rules text.
+ */
+export interface Pf2eActivation {
+  /** The activation's own name ("Activate—Dim the Lights"). */
+  name?: string
+  actions?: Pf2eActionCost
+  /** "Cast a Spell", "Strike", "Interact" when the line names one. */
+  as?: string
+  traits: string[]
+  frequency?: string
+  trigger?: string
+  requirements?: string
+  cost?: string
+  effect?: string
+}
+
+/**
+ * A bonus an item gives to a statistic the sheet rolls (Player Core p. 400). One that holds
+ * only sometimes ("to High Jump and Long Jump", "against poisons") keeps its sentence in
+ * `when` and is shown, not applied.
+ */
+export interface Pf2eItemBonus {
+  value: number
+  type: 'item' | 'status' | 'circumstance'
+  selector: Pf2eSelector
+  skills?: string[]
+  when?: string
+}
+
+export interface Pf2eItemDamage {
+  dice: string
+  /** Lowercase damage type ("fire"). */
+  type: string
+}
+
+/** A rune's numbers (GM Core pp. 224–237). */
+export interface Pf2eRuneNumbers {
+  /** A fundamental rune (potency, striking, resilient) or a property rune. */
+  slot: 'potency' | 'striking' | 'resilient' | 'property'
+  onto: 'weapon' | 'armor'
+  /** Potency +1–3; striking 1–3 (striking, greater, major); resilient +1–3. */
+  value?: number
+  /** A property rune's damage on a hit (flaming: 1d6 fire). */
+  damage?: Pf2eItemDamage
+  /** What it does on a critical hit, as printed. */
+  crit?: string
+  /** Its Usage line: "etched onto a melee weapon", "etched onto light armor". */
+  usage: string
+}
+
+/** The numbers the sheet uses from an item, read from its text by the generator. */
+export interface Pf2eItemNumbers {
+  /** Hit Points it restores (Healing Potion (Minor): 1d8, GM Core p. 259). */
+  healing?: string
+  /** Bonuses it gives: a consumable's while its effect lasts, a worn or held item's always. */
+  bonuses?: Pf2eItemBonus[]
+  /** How long a consumable's effect lasts ("1 minute", "10 minutes"). */
+  duration?: string
+  /** A bomb (GM Core p. 244): damage, persistent and splash damage, item bonus to its attack. */
+  bomb?: {
+    damage: Pf2eItemDamage
+    persistent?: Pf2eItemDamage
+    splash?: number
+    attack?: number
+  }
+  rune?: Pf2eRuneNumbers
+  /** A staff's spells by rank (cantrips at 0), its lower types' included (GM Core p. 278). */
+  spells?: { rank: number; names: string[] }[]
+  /** The spell rank a scroll or wand holds (GM Core pp. 262, 282). */
+  spellRank?: number
+}
+
+/**
+ * An item from GM Core and the other open books: one record per grade for items printed with
+ * several ("Healing Potion (Lesser)"), its text the item's own followed by the grade's.
+ */
+export interface Pf2eItemDef extends Pf2eRecord, Pf2eItemNumbers {
+  kind: Pf2eItemKind
+  /** AoN's id of the entry the grades share. */
+  parent?: string
+  level: number
+  /** Price in copper pieces. */
+  price: number
+  /** 0.1 is light (L), 0 negligible. */
+  bulk: number
+  usage?: string
+  activations: Pf2eActivation[]
+}
+
 export interface Pf2eConditionDef extends Pf2eRecord {
   /** Has a value, like frightened 2. */
   valued: boolean
@@ -301,7 +433,8 @@ export type Pf2eEffect =
       type: 'status' | 'circumstance' | 'item' | 'untyped'
       melee?: boolean
       agileHalf?: boolean
-      weapons?: 'agileFinesse'
+      /** Agile or finesse Strikes (Precise Strike), or unarmed ones (an animal instinct's). */
+      weapons?: 'agileFinesse' | 'unarmed'
       skills?: string[]
       byLevel?: [level: number, value: number][]
       /** Effects whose bonus of the same type this one adds to instead of the higher counting. */
@@ -397,6 +530,11 @@ export interface Pf2eEffectDef {
    * `given`: an ally's effect on the hero (Bless), chosen from a list.
    */
   mode: 'permanent' | 'toggle' | 'given'
+  /**
+   * The ability the hero must have when `name` isn't one (a barbarian instinct's Rage damage,
+   * a bloodline's blood magic), and its kind ("Instinct", "Bloodline") when names repeat.
+   */
+  has?: { name: string; type?: string }
   effects: Pf2eEffect[]
   /** Values for a `given` effect that scales (Heroism +1/+2/+3); modifiers use the chosen one. */
   values?: number[]

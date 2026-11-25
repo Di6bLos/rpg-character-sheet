@@ -11,6 +11,7 @@ import type {
   Pf2eDeityDef,
   Pf2eFeatDef,
   Pf2eHeritageDef,
+  Pf2eItemDef,
   Pf2eRecord,
   Pf2eShieldDef,
   Pf2eSpellDef,
@@ -25,11 +26,12 @@ import type {
   Pf2eSheet,
   Pf2eStrike,
 } from '~/types/sheets'
+import { itemFromDef } from '~/utils/pf2eInventory'
 import { proficiency } from '~/utils/pf2ePlay'
 import { focusPoolMax, fontSlots, slotsFor } from '~/utils/pf2eSpells'
 import { PF2E_SKILLS, defaultSheet } from '~/utils/sheetDefaults'
 
-/** The data sets the builder reads. */
+/** The data sets the builder reads; gear and consumables only for the Gear step's other items. */
 export type Pf2eBuildData = Pick<
   Pf2eData,
   | 'classes'
@@ -42,7 +44,8 @@ export type Pf2eBuildData = Pick<
   | 'armor'
   | 'shields'
   | 'spells'
->
+> &
+  Partial<Pick<Pf2eData, 'gear' | 'consumables'>>
 
 export const PF2E_ATTRS: Pf2eAttr[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']
 const ATTR_BY_NAME: Record<string, Pf2eAttr> = {
@@ -110,8 +113,6 @@ export const actionWords = (a?: Pf2eActionCost) => glyphWords(actionGlyph(a))
 const byId = <T extends { id: string }>(list: T[], id?: string) =>
   id ? list.find((x) => x.id === id) : undefined
 const present = <T>(x: T | undefined): x is T => x !== undefined
-/** Bulk as the sheet writes it: L for light items. */
-const bulkLabel = (b: number) => (b > 0 && b < 1 ? 'L' : String(b))
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'")
 export const higher = (a: Pf2eRank, b: Pf2eRank) =>
   RANK_ORDER.indexOf(a) >= RANK_ORDER.indexOf(b) ? a : b
@@ -1006,16 +1007,33 @@ export const isAmmunition = (w: Pf2eWeaponDef) => w.category === 'Ammunition'
 export const uniqueNames = <T extends { name: string }>(list: T[]) =>
   list.filter((x, i) => list.findIndex((y) => y.name === x.name) === i)
 
-/** What the Gear step sells: level 0–1 items, no unarmed attacks (every hero has a fist). */
-export function gearOptions(data: Pick<Pf2eBuildData, 'armor' | 'shields' | 'weapons'>) {
+/**
+ * What the Gear step sells: level 0–1 items, no unarmed attacks (every hero has a fist), and
+ * the other gear and consumables with a Price (Player Core pp. 287–295, GM Core chapter 11).
+ * Scrolls are left to the sheet, where the spell in one is chosen.
+ */
+export function gearOptions(
+  data: Pick<Pf2eBuildData, 'armor' | 'shields' | 'weapons' | 'gear' | 'consumables'>,
+) {
   const buyable = <T extends { level: number; name: string }>(list: T[]) =>
     uniqueNames(list.filter((x) => x.level <= GEAR_MAX_LEVEL))
   return {
     armor: buyable(data.armor),
     shields: buyable(data.shields),
     weapons: buyable(data.weapons).filter((w) => w.category !== 'Unarmed'),
+    items: buyable([...(data.gear ?? []), ...(data.consumables ?? [])]).filter(
+      (i) => i.price > 0 && i.kind !== 'scroll',
+    ),
   }
 }
+
+/** The other gear picked, with how many of each. */
+const pickedItems = (c: Pf2eCreation, data: Pf2eBuildData) =>
+  (c.items ?? []).flatMap((p) => {
+    const def: Pf2eItemDef | undefined =
+      byId(data.gear ?? [], p.id) ?? byId(data.consumables ?? [], p.id)
+    return def ? [{ def, count: Math.max(1, p.count) }] : []
+  })
 
 /** Armor and weapons picked that the hero isn't trained in (ammunition needs no training). */
 export function untrainedGear(c: Pf2eCreation, data: Pf2eBuildData) {
@@ -1037,7 +1055,8 @@ export function gearCost(c: Pf2eCreation, data: Pf2eBuildData) {
     byId(data.shields, c.shield),
     ...c.weapons.map((id) => byId(data.weapons, id)),
   ]
-  return items.reduce((sum, i) => sum + (i?.price ?? 0), 0)
+  const other = pickedItems(c, data).reduce((sum, p) => sum + p.def.price * p.count, 0)
+  return items.reduce((sum, i) => sum + (i?.price ?? 0), other)
 }
 
 /**
@@ -1400,9 +1419,10 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
       ...backgroundFeats.map((f) => featEntry('Skill feat (background)', f)),
     ],
     inventory: [
-      ...(armor ? [{ name: armor.name, qty: bulkLabel(armor.bulk) }] : []),
-      ...(shield ? [{ name: shield.name, qty: bulkLabel(shield.bulk) }] : []),
-      ...weapons.map((w) => ({ name: w.name, qty: bulkLabel(w.bulk) })),
+      ...(armor ? [itemFromDef({ set: 'armor', def: armor })] : []),
+      ...(shield ? [itemFromDef({ set: 'shields', def: shield })] : []),
+      ...weapons.map((w) => itemFromDef({ set: 'weapons', def: w })),
+      ...pickedItems(c, data).map((p) => itemFromDef({ set: 'item', def: p.def }, p.count)),
     ],
     coins: { gp: Math.floor(left / 100), sp: Math.floor((left % 100) / 10), cp: left % 10 },
     bulkLimit: 5 + mods.STR,

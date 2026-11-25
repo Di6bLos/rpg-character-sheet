@@ -16,6 +16,7 @@ import type {
   Pf2eActionCost,
   Pf2eActionDef,
   Pf2eAncestryDef,
+  Pf2eArchetypeDef,
   Pf2eArmorDef,
   Pf2eBackgroundDef,
   Pf2eClassDef,
@@ -23,6 +24,8 @@ import type {
   Pf2eDeityDef,
   Pf2eFeatDef,
   Pf2eHeritageDef,
+  Pf2eItemDef,
+  Pf2eItemKind,
   Pf2eRarity,
   Pf2eRecord,
   Pf2eShieldDef,
@@ -45,14 +48,29 @@ import {
   legacyBooks,
   loadAon,
   located,
+  openSource,
   page,
   remaster,
+  settingName,
   shareable,
   skillNamesIn,
   slug,
   stripLinks,
   withoutLegacy,
 } from './lib/aon'
+import {
+  bombNumbers,
+  itemActivations,
+  itemBonuses,
+  itemDuration,
+  itemGrades,
+  itemHealing,
+  runeNumbers,
+  spellRankIn,
+  staffSpells,
+  withLowerSpells,
+  withoutActivations,
+} from './lib/aonItems'
 
 const ROOT = join(import.meta.dirname, '..')
 const DATA = process.argv[2] ?? join(ROOT, '.local', 'pf2e', 'aon')
@@ -190,9 +208,10 @@ function record(d: AonDoc): Pf2eRecord & { stats: Record<string, string> } {
   return {
     id: d.id,
     name: d.name,
+    // The open rulebook that prints it, even when AoN files it under a setting reprint.
     source: {
-      book: (d.primary_source ?? '').trim(),
-      ...opt('page', page(d) < 9999 ? page(d) : undefined),
+      book: openSource(d) ?? (d.primary_source ?? '').trim(),
+      ...opt('page', page(d, openSource(d)) < 9999 ? page(d, openSource(d)) : undefined),
     },
     rarity: (d.rarity ?? 'common') as Pf2eRarity,
     traits: list(d.trait),
@@ -464,10 +483,71 @@ const feats: Pf2eFeatDef[] = latest(of('feat'), featKey).map((d) => {
     classes: traits.filter((t) => classNames.includes(t)),
     ancestries: traits.filter((t) => featLists.has(t)),
     archetypes: list(d.archetype).filter((a) => !CLOSED_ARCHETYPES.has(a)),
+    ...opt('archetypeLevels', archetypeLevels(stats.Archetype ?? stats.Archetypes, d.level ?? 1)),
     general: traits.includes('General'),
     skill: traits.includes('Skill'),
   }
 })
+
+/**
+ * The level an archetype lists a feat at when it differs from the feat's own (Player Core
+ * p. 215, Additional Feats): "Beastmaster (Level 6)" on Advanced Warden, a 4th-level feat.
+ */
+function archetypeLevels(line: string | undefined, level: number) {
+  const out: Record<string, number> = {}
+  for (const m of (line ?? '').matchAll(/([^,]+?)\s*\(Level (\d+)\)/g)) {
+    const name = m[1]!.replace(/\*+$/, '').trim()
+    if (!CLOSED_ARCHETYPES.has(name) && Number(m[2]) !== level) out[name] = Number(m[2])
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+// --- Archetypes -----------------------------------------------------------------
+/**
+ * An archetype's introduction and its "Multiclass X Characters" advice. The other sections
+ * (AoN's Additional Feats boilerplate, follower lists) go, and so does every paragraph naming a
+ * deity or Golarion proper noun: that lore is Reserved Material. Artifact and mythic archetypes
+ * open with the history of a named item or ascension, so they keep no introduction at all.
+ */
+function archetypeText(text: string, categories: string[]) {
+  if (categories.some((c) => c === 'Artifact' || c === 'Mythic')) return ''
+  const sections = text.split(/^(?=#+ )/m)
+  return sections
+    .filter((sec, i) => i === 0 || /^#+ Multiclass .* Characters/.test(sec))
+    .join('')
+    .split(/\n{2,}/)
+    .filter((para) => !/^Click here\b/.test(para.trim()) && !settingName(para, DEITY_NAMES))
+    .join('\n\n')
+    .trim()
+}
+
+/**
+ * Archetypes (Player Core pp. 215–216): the archetype's own entry, without the feats AoN
+ * embeds (they are in `feats`; an Additional Feat's level is its `archetypeLevels`). A mythic
+ * archetype's dedication lacks the Dedication trait and is found by its name.
+ */
+const archetypes: Pf2eArchetypeDef[] = latest(of('archetype'))
+  .filter((d) => !CLOSED_ARCHETYPES.has(d.name))
+  .map((d) => {
+    const { stats, ...rest } = record({
+      ...d,
+      markdown: (d.markdown ?? '').replace(/<document[\s\S]*?\/>/g, ''),
+    })
+    const dedication =
+      feats.find((f) => f.traits.includes('Dedication') && f.archetypes.includes(d.name)) ??
+      feats.find((f) => f.name.toLowerCase() === `${d.name} dedication`.toLowerCase())
+    return {
+      ...rest,
+      text: archetypeText(rest.text, list(d.archetype_category)),
+      level: d.level ?? dedication?.level ?? 2,
+      categories: list(d.archetype_category),
+      ...opt(
+        'prerequisites',
+        typeof d.prerequisite === 'string' ? d.prerequisite : stats.Prerequisites,
+      ),
+      ...opt('dedication', dedication?.id),
+    }
+  })
 
 const KIND: Record<string, Pf2eSpellDef['kind']> = {
   Spell: 'spell',
@@ -533,8 +613,19 @@ const feet = (v: unknown) => Number(/-?\d+/.exec(String(v ?? ''))?.[0] ?? 0)
 /** Reload in actions as printed, or the printed time when it isn't actions (a ballista's "1 minute"). */
 const reload = (printed: string | undefined): number | string | undefined =>
   printed === undefined ? undefined : /^\d+$/.test(printed) ? Number(printed) : printed
+/**
+ * Deadly and fatal carry a die size (Player Core p. 282) that AoN's trait list drops; the page's
+ * trait labels keep it ("Deadly d8").
+ */
+function sizedTraits(d: AonDoc): string[] {
+  const labels = [
+    ...String(d.markdown ?? '').matchAll(/<trait label="(Deadly|Fatal)\s+1?d(\d+)"/gi),
+  ].map((l) => `${l[1]} d${l[2]}`)
+  return list(d.trait).map((t) => labels.find((l) => l.startsWith(`${t} `)) ?? t)
+}
 const weapons: Pf2eWeaponDef[] = latest(of('weapon')).map((d) => ({
   ...base(d),
+  traits: sizedTraits(d),
   level: d.level ?? 0,
   price: num(d.price),
   bulk: num(d.bulk),
@@ -570,6 +661,129 @@ const shields: Pf2eShieldDef[] = latest(of('shield')).map((d) => ({
   hp: num(d.hp),
   speedPenalty: feet(d.speed_penalty),
 }))
+
+// --- Other equipment (GM Core chapter 11, Player Core pp. 287–295) -------------
+/** AoN's item categories → the sets they go in and what each item is. */
+const ITEM_SETS: Record<string, (d: AonDoc) => Pf2eItemKind | undefined> = {
+  gear: (d) => (d.item_category === 'Adventuring Gear' ? 'gear' : undefined),
+  consumables: (d) =>
+    (
+      ({
+        Potions: 'potion',
+        'Alchemical Elixirs': 'elixir',
+        Scrolls: 'scroll',
+        Talismans: 'talisman',
+        'Magical Ammunition': 'ammunition',
+        'Alchemical Ammunition': 'ammunition',
+        Oils: 'oil',
+        'Alchemical Bombs': 'bomb',
+      }) as Record<string, Pf2eItemKind>
+    )[String(d.item_subcategory ?? '')],
+  magicItems: (d) =>
+    d.item_category === 'Held Items'
+      ? 'held'
+      : d.item_category === 'Worn Items' && d.item_subcategory === 'Other Worn Items'
+        ? 'worn'
+        : undefined,
+  runes: (d) =>
+    d.item_category === 'Runes' &&
+    /^(?:Fundamental|Weapon Property|Armor Property)/.test(String(d.item_subcategory ?? ''))
+      ? 'rune'
+      : undefined,
+  staves: (d) => (d.item_category === 'Staves' && !d.item_subcategory ? 'staff' : undefined),
+  wands: (d) => (d.item_category === 'Wands' ? 'wand' : undefined),
+}
+
+const spellKey = (n: string) => straight(n).toLowerCase()
+const spellNames = new Map(spells.map((s) => [spellKey(s.name), s.name]))
+/**
+ * A staff's spells by their names in the data (the book prints them in lowercase); a limit in
+ * brackets stays ("Elemental Form (air only)"). A name the data doesn't have (a legacy spell
+ * a reprinted staff still lists) stays as printed.
+ */
+const namedSpells = (list: { rank: number; names: string[] }[]) =>
+  list.map(({ rank, names }) => ({
+    rank,
+    names: names.map((n) => {
+      const [, spell = n, limit = ''] = /^(.*?)(\s*\([^)]*\))?$/.exec(n.trim()) ?? []
+      const named = spellNames.get(spellKey(spell))
+      return named ? `${named}${limit}` : n
+    }),
+  }))
+
+/**
+ * One record per item the hero can own: each grade of an item printed with several (its text
+ * is the item's own followed by the grade's), else the item itself; an entry without a Price
+ * (a family's summary page) is left out. Staff types keep their lower types' spells.
+ */
+function itemSet(kindOf: (d: AonDoc) => Pf2eItemKind | undefined): Pf2eItemDef[] {
+  const docs = current.filter((d) => d.category === 'equipment' && kindOf(d))
+  const owned = latest(
+    docs.filter((d) =>
+      d.item_parent_id ? true : !list(d.item_child_id).length && d.price !== undefined,
+    ),
+  )
+  const staffLists = new Map<string, { rank: number; names: string[] }[]>()
+  // In level order, so each staff type keeps the spells of the ones below it.
+  return [...owned]
+    .sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+    .map((d) => {
+      const parent = d.item_parent_id ? byId.get(String(d.item_parent_id)) : undefined
+      const kind = kindOf(d)!
+      const { stats, text: whole } = record(parent ?? d)
+      const { text: own, grades } = itemGrades(whole)
+      const grade = parent ? (grades.find((g) => g.name === d.name)?.text ?? '') : ''
+      const text = [own, grade].filter(Boolean).join('\n\n')
+      const usage = String(d.usage ?? parent?.usage ?? stats.Usage ?? '') || undefined
+      const sub = String(d.item_subcategory ?? '')
+      const numbers: Partial<Pf2eItemDef> = {}
+      const healing = itemHealing(grade) ?? itemHealing(own)
+      if (healing) numbers.healing = healing
+      if (kind === 'bomb') {
+        const bomb = bombNumbers(grade) ?? bombNumbers(own)
+        if (bomb) numbers.bomb = bomb
+      } else if (kind !== 'rune') {
+        // A permanent item's activations aren't constant bonuses (Bracers of Missile
+        // Deflection's +2 is against the triggering attack only).
+        const consumable = d.trait?.includes('Consumable')
+        const bonuses = consumable
+          ? itemBonuses(own, grade)
+          : itemBonuses(withoutActivations(own), withoutActivations(grade))
+        if (bonuses.length) numbers.bonuses = bonuses
+      }
+      if (['potion', 'elixir', 'oil', 'talisman', 'ammunition'].includes(kind)) {
+        const duration = itemDuration(own, grade)
+        if (duration) numbers.duration = duration
+      }
+      if (kind === 'rune') numbers.rune = runeNumbers(d.name, sub, usage ?? '', text)
+      if (kind === 'scroll' || kind === 'wand') {
+        const rank = spellRankIn(d.name)
+        if (rank) numbers.spellRank = rank
+      }
+      if (kind === 'staff') {
+        const key = String(parent?.id ?? d.id)
+        const all = withLowerSpells(staffLists.get(key) ?? [], staffSpells(grade || own))
+        staffLists.set(key, all)
+        numbers.spells = namedSpells(all)
+      }
+      return {
+        ...base(d),
+        text,
+        kind,
+        ...opt('parent', parent?.id),
+        level: d.level ?? 0,
+        price: num(d.price),
+        bulk: num(d.bulk ?? parent?.bulk),
+        ...opt('usage', usage),
+        activations: itemActivations(stats, text),
+        ...numbers,
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+}
+const itemSets = Object.fromEntries(
+  Object.entries(ITEM_SETS).map(([name, kindOf]) => [name, itemSet(kindOf)]),
+)
 
 // --- Rules references -------------------------------------------------------
 const conditions: Pf2eConditionDef[] = latest(of('condition')).map((d) => {
@@ -620,10 +834,12 @@ const sets: Record<string, { id: string; source: { book: string } }[]> = {
   heritages,
   backgrounds,
   feats,
+  archetypes,
   spells,
   weapons,
   armor,
   shields,
+  ...itemSets,
   conditions,
   actions,
   traits,

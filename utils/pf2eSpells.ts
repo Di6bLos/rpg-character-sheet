@@ -6,6 +6,7 @@ import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eSheet, Pf2eSlotRank, Pf2eSpellRef, Pf2eSpellcasting } from '~/types/sheets'
 import { type Rng, rollDie } from '~/utils/dice'
 import { setGiven, toggleEffect } from '~/utils/pf2eEffects'
+import { itemsDailyPrep } from '~/utils/pf2eInventory'
 import { adjusted, conditionValue, proficiency } from '~/utils/pf2ePlay'
 import { type Pf2eCastRoll, castRolls, effectValue, spellRules } from '~/utils/pf2eSpellRules'
 
@@ -69,9 +70,16 @@ const heightenNote = (spell: Pf2eSpellRef, rank: number) =>
 export const spontaneousRank = (spell: Pf2eSpellRef, slotRank: number) =>
   spell.signature ? slotRank : spell.rank
 
-/** Spontaneous casting (p. 297): spend a slot of the spell's rank or higher. */
-export function castSpontaneous(s: Pf2eSheet, spell: Pf2eSpellRef, slotRank: number): string {
-  const sc = s.spellcasting
+/**
+ * Spontaneous casting (p. 297): spend a slot of the spell's rank or higher. `sc` is the
+ * spellcasting it's cast from: the class's, or an archetype's (p. 215).
+ */
+export function castSpontaneous(
+  s: Pf2eSheet,
+  spell: Pf2eSpellRef,
+  slotRank: number,
+  sc: Pf2eSpellcasting | undefined = s.spellcasting,
+): string {
   const slot = sc?.slots[slotRank - 1]
   if (!sc || !slot) return `No rank ${slotRank} slots.`
   if (slotRank < spell.rank) return `${spell.name} is a rank ${spell.rank} spell.`
@@ -85,8 +93,12 @@ export function castSpontaneous(s: Pf2eSheet, spell: Pf2eSpellRef, slotRank: num
 }
 
 /** Prepared casting: the spell in that slot is spent. */
-export function castPrepared(s: Pf2eSheet, rank: number, index: number): string {
-  const sc = s.spellcasting
+export function castPrepared(
+  s: Pf2eSheet,
+  rank: number,
+  index: number,
+  sc: Pf2eSpellcasting | undefined = s.spellcasting,
+): string {
   const entry = sc?.slots[rank - 1]?.prepared?.[index]
   if (!sc || !entry?.id) return 'Nothing prepared in that slot.'
   if (entry.cast) return 'That slot was already cast today.'
@@ -140,19 +152,24 @@ export function refocus(s: Pf2eSheet): string {
   return `Refocused: ${s.focus.current}/${s.focus.max} Focus Points.`
 }
 
-/** Daily preparations: slots, divine font and the focus pool come back. */
+/**
+ * Daily preparations: slots (archetypes' too), divine font and the focus pool come back; wands
+ * can be cast again and staves wait to be prepared (`itemsDailyPrep`).
+ */
 export function dailyPreparations(s: Pf2eSheet): string {
   const sc = s.spellcasting
-  if (sc) {
-    for (const r of sc.slots) {
+  for (const c of [...(sc ? [sc] : []), ...(s.archetypeCasting ?? [])]) {
+    for (const r of c.slots) {
       r.used = 0
       for (const p of r.prepared ?? []) p.cast = false
     }
-    if (sc.font) sc.font.used = 0
+    if (c.font) c.font.used = 0
   }
   s.focus.current = s.focus.max
   s.used = []
-  return `Daily preparations: ${sc ? 'spell slots, ' : ''}Focus Points and daily abilities restored.`
+  itemsDailyPrep(s)
+  const slots = sc || s.archetypeCasting?.length
+  return `Daily preparations: ${slots ? 'spell slots, ' : ''}Focus Points and daily abilities restored.`
 }
 
 /** Slots for a level from the class's spells-per-day row; prepared slots start empty. */
@@ -189,6 +206,8 @@ export interface Pf2eCastChoice {
   attackNumber?: number
   targetAc?: number | null
   rng?: Rng
+  /** The spellcasting it's cast with, when not the class's (an archetype's, p. 215). */
+  sc?: Pf2eSpellcasting
 }
 
 const MAP = [0, 5, 10]
@@ -205,7 +224,8 @@ export function castEffect(
   level: number,
   choice: Pf2eCastChoice = {},
 ): Pf2eCastRoll & { selfEffect?: string } {
-  const numbers = s.spellcasting ? spellNumbers(s, s.spellcasting, level) : focusNumbers(s)
+  const sc = choice.sc ?? s.spellcasting
+  const numbers = sc ? spellNumbers(s, sc, level) : focusNumbers(s)
   const map = MAP[choice.attackNumber ?? 0] ?? 0
   const roll = castRolls(spell, {
     rank,

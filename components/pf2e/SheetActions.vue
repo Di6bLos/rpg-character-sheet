@@ -21,6 +21,7 @@ import {
   type Pf2eActionGroup,
   type Pf2eRowState,
   type Pf2eStatLines,
+  attacked,
   blockedReason,
   checkChoices,
   costGlyph,
@@ -34,6 +35,8 @@ import {
   timePasses,
   usesLeft,
 } from '~/utils/pf2eActions'
+import { showOutcome } from '~/utils/dice'
+import { championReaction, isChampionReaction, strikeAfter } from '~/utils/pf2eClassActions'
 import { featRules } from '~/utils/pf2eEffects'
 import { dailyPreparations } from '~/utils/pf2eSpells'
 
@@ -230,11 +233,23 @@ const choicesFor = (e: Entry) => {
   const r = checkOf(e)
   return r?.check ? checkChoices(sheet.value, r, e.via?.name ?? e.name) : []
 }
-/** The Strikes an ability can make, weapons before the fist. */
-const weaponsFor = (e: Entry) =>
-  strikesApi.strikes.value
-    .filter((w) => (e.rules.strike?.melee ? !w.ranged : e.rules.strike?.ranged ? w.ranged : true))
+/**
+ * The Strikes an ability can make, weapons before the fist: melee or ranged ones, unarmed ones
+ * (Flurry of Blows), ones of the damage types it names (Bleeding Finisher: slashing or piercing).
+ */
+const weaponsFor = (e: Entry) => {
+  const st = e.rules.strike
+  return strikesApi.strikes.value
+    .filter((w) => (st?.melee ? !w.ranged : st?.ranged ? w.ranged : true))
+    .filter((w) => !st?.unarmed || w.unarmed)
+    .filter((w) => !st?.twoWeapons || !w.unarmed)
+    .filter((w) => {
+      if (!st?.damageTypes) return true
+      const types = w.type.toLowerCase().split(/[/, ]+/)
+      return st.damageTypes.some((t) => types.includes(t) || types.includes(t.charAt(0)))
+    })
     .sort((a, b) => Number(a.name === 'Fist') - Number(b.name === 'Fist'))
+}
 const tiersFor = (e: Entry) => {
   const tiers = checkOf(e)?.check?.tiers ?? []
   const order: Pf2eRank[] = ['U', 'T', 'E', 'M', 'L']
@@ -269,7 +284,7 @@ function use(e: Entry, st: Pf2eRowState) {
     target: target.value,
     ...(st.actions ? { actions: st.actions } : {}),
   }
-  payFor(s, e.rules, opts)
+  const paid = payFor(s, e.rules, opts)
   const glyph = costGlyph(e.rules.cost)
   const lines: string[] = [
     `${e.name}${glyph ? ` ${glyph}` : ''}${target.value.trim() ? ` on ${target.value.trim()}` : ''}:`,
@@ -289,18 +304,48 @@ function use(e: Entry, st: Pf2eRowState) {
           : 'Stride, then:',
       )
     if (index === undefined) lines.push('No Strike on the sheet to make it with.')
-    else
+    else {
+      // Double Slice: one Strike with each weapon, both at the current multiple attack penalty,
+      // the second −2 unless agile, counted as two attacks after (Player Core p. 140).
+      const second = strike.twoWeapons
+        ? (st.weapon2 ?? weapons.find((w) => w.index !== index)?.index)
+        : undefined
+      const step = strikesApi.nextAttack.value
+      const finisher = e.rules.traits.some((t) => t.toLowerCase() === 'finisher')
+      st.struck = []
       for (let k = 0; k < strike.count; k++) {
-        const countAs = strike.count === 1 ? strike.mapCount : strike.mapCount === 0 ? 0 : 1
-        const res = strikesApi.attack(index, {
+        const at = k > 0 && second !== undefined ? second : index
+        const w = strikesApi.strikes.value[at]
+        const countAs = strike.sameMap
+          ? 0
+          : strike.count === 1
+            ? strike.mapCount
+            : strike.mapCount === 0
+              ? 0
+              : 1
+        const fixed = strike.ignoreMap || e.rules.cost?.kind === 'reaction' ? 0 : undefined
+        const penalty = k > 0 && strike.secondPenalty && w && !w.agile ? strike.secondPenalty : 0
+        const res = strikesApi.attack(at, {
           quiet: true,
           countAs,
-          ...(strike.ignoreMap || e.rules.cost?.kind === 'reaction' ? { map: 0 } : {}),
+          ...(fixed !== undefined ? { map: fixed } : strike.sameMap ? { map: step } : {}),
+          ...(penalty ? { penalty } : {}),
         })
         lines.push(res.text)
-        st.struck = { index, extraDie: extraDiceAt(e.rules) }
+        st.struck.push({
+          index: at,
+          extraDie: extraDiceAt(e.rules),
+          ...(res.degree ? { degree: res.degree } : {}),
+          ...(finisher ? { finisher } : {}),
+        })
       }
+      if (strike.sameMap) attacked(s, strike.mapCount)
+      if (strike.count === 1)
+        lines.push(...strikeAfter(s, e.rules, e.text, level.value, st.struck[0]?.degree).lines)
+    }
   }
+  if (paid) lines.push(paid)
+  if (isChampionReaction(e.name)) lines.push(...championReaction(s, e.name, level.value))
   const rules =
     e.rules.check || !e.via
       ? e.rules
@@ -335,13 +380,32 @@ function use(e: Entry, st: Pf2eRowState) {
   say(lines.join(' '))
 }
 
+/**
+ * Damage for the Strikes a use made. One Strike rolls as the button says; several (Double Slice,
+ * Flurry of Blows) are combined (Player Core p. 140): those that missed are left out, each
+ * critical hit doubles its own, and precision dice are added once, to the first that hit.
+ */
 function strikeDamage(e: Entry, crit: boolean, row: Pf2eRowState) {
-  const st = row.struck
-  if (!st || !canEdit.value) return
-  strikesApi.damage(st.index, crit, {
-    ...(st.extraDie ? { extraDie: st.extraDie } : {}),
-    by: e.name,
-  })
+  const list = row.struck ?? []
+  if (!list.length || !canEdit.value) return
+  const one = (st: (typeof list)[number], c: boolean, o: { quiet?: boolean; noExtra?: boolean }) =>
+    strikesApi.damage(st.index, c, {
+      ...(st.extraDie ? { extraDie: st.extraDie } : {}),
+      ...(st.finisher ? { finisher: true } : {}),
+      by: e.name,
+      ...o,
+    })
+  if (list.length === 1) return void one(list[0]!, crit, {})
+  const landed = list.filter((x) => x.degree !== 'failure' && x.degree !== 'critical failure')
+  if (!landed.length) return say(`${e.name}: no Strike hit, so no damage.`)
+  const rolls = landed.map((st, k) =>
+    one(st, st.degree ? st.degree === 'critical success' : crit, { quiet: true, noExtra: k > 0 }),
+  )
+  const total = rolls.reduce((n, r) => n + (r?.total ?? 0), 0)
+  const missed = list.length - landed.length
+  const text = `${e.name} combined damage: ${total} (${rolls.map((r) => r?.text).join('; ')})${missed ? `; ${missed} Strike${missed === 1 ? '' : 's'} missed` : ''}. Resistances and weaknesses apply once.`
+  showOutcome({ label: `${e.name} damage`, total, detail: text })
+  say(text)
 }
 
 function rest(period: 'minute' | '10min' | 'hour') {
@@ -489,7 +553,7 @@ const dmgPreview = (e: Entry) =>
         1 hour
       </button>
       <button
-        v-if="!sheet.spellcasting && !sheet.focusSpells?.length"
+        v-if="!sheet.spellcasting && !sheet.focusSpells?.length && !sheet.archetypeCasting?.length"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"

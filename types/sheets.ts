@@ -1,6 +1,13 @@
 // System-specific sheet data stored in characters.sheet (jsonb).
 // Every sheet shares SheetCommon so rosters and the GM console can read a
 // character's headline numbers without knowing its system.
+import type {
+  Pf2eActivation,
+  Pf2eEffectDef,
+  Pf2eItemDamage,
+  Pf2eItemKind,
+  Pf2eItemNumbers,
+} from '~/data/pf2e/types'
 
 export interface SheetCommon {
   /** Race / ancestry. */
@@ -53,6 +60,60 @@ export interface InventoryItem {
   /** Nimble: short label such as Weapon or Armor. */
   tag?: string
   custom?: CustomItem
+  /** PF2e: what the inventory tracks about the item; `qty` stays the Bulk of one. */
+  pf2e?: Pf2eItemState
+}
+
+/**
+ * A Pathfinder 2e item on the sheet (Player Core pp. 269–271, GM Core pp. 219–225), with a
+ * copy of the numbers its data record gives so the sheet works without loading the data.
+ */
+export interface Pf2eItemState extends Pf2eItemNumbers {
+  /** AoN id of the record it was added from; absent for hand-written items. */
+  id?: string
+  kind?: Pf2eItemKind | 'weapon' | 'armor' | 'shield'
+  count: number
+  /** Bulk of one: 0.1 is light, 0 negligible (Player Core p. 269). */
+  bulk: number
+  level?: number
+  /** Price of one in copper pieces. */
+  price?: number
+  /** Worn, held, or stowed (carried in a pack). Armor carried rather than worn is 1 Bulk more. */
+  carry: 'worn' | 'held' | 'stowed'
+  usage?: string
+  traits?: string[]
+  /** Invested today (GM Core p. 219: at most 10). */
+  invested?: boolean
+  activations?: Pf2eActivation[]
+  /** Armor's category (light, medium, heavy, unarmored) and a weapon's melee or ranged, for runes. */
+  category?: string
+  ranged?: boolean
+  /** Runes etched on a weapon or armor (GM Core pp. 224–225). */
+  runes?: Pf2eItemRunes
+  /** A staff's charges left today (GM Core p. 278). */
+  charges?: number
+  /** A wand's day (GM Core p. 282): cast, overcharged, broken or destroyed. */
+  wand?: { cast: boolean; overcharged: boolean; broken: boolean }
+  /** The spell in a scroll or wand, at the item's rank. */
+  spell?: { id: string; name: string; rank: number }
+}
+
+export interface Pf2eItemRunes {
+  /** Weapon or armor potency +0–3. */
+  potency: number
+  /** Striking 0–3: extra weapon damage dice (striking, greater, major). */
+  striking: number
+  /** Resilient +0–3: item bonus to saves. */
+  resilient: number
+  property: Pf2ePropertyRune[]
+}
+
+export interface Pf2ePropertyRune {
+  id: string
+  name: string
+  level: number
+  damage?: Pf2eItemDamage
+  crit?: string
 }
 
 export type CustomItemEffectKind =
@@ -127,6 +188,8 @@ export interface Pf2eLevelInput {
   spells: Record<string, string[]>
   /** Feature choices (a weapon group, a saving throw, a later subclass option) by key. */
   choices: Record<string, string[]>
+  /** The free archetype variant turned on or off from this level (GM Core p. 84). */
+  freeArchetype?: boolean
 }
 
 export type Pf2eAttr = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA'
@@ -173,6 +236,12 @@ export interface Pf2eFeat {
   requirements?: string
   /** Its traits (Flourish, Attack, Press…), from the data. */
   traits?: string[]
+  /** The archetype it was taken for (Player Core p. 215), shown grouped under it. */
+  archetype?: string
+  /** It is that archetype's dedication feat. */
+  dedication?: boolean
+  /** The feat that granted it (Basic Maneuver's fighter feat), which counts as one feat. */
+  via?: string
 }
 
 export interface Pf2eSheet extends SheetCommon {
@@ -210,12 +279,28 @@ export interface Pf2eSheet extends SheetCommon {
   conditions: string[]
   /** Values of valued conditions in `conditions` (frightened 2); absent means 1. */
   conditionValues?: Record<string, number>
+  /**
+   * Persistent damage conditions (Player Core p. 445), one per damage type: the dice or
+   * amount taken at the end of each turn, and the round of its last assisted recovery.
+   */
+  persistent?: { dice: string; type: string; assisted?: number }[]
+  /**
+   * Resistances, weaknesses and immunities the player wrote down (ancestry, items, the GM's
+   * call; p. 408). Effects add their own resistances on top.
+   */
+  defenses?: {
+    resistances: { type: string; value: number }[]
+    weaknesses: { type: string; value: number }[]
+    immunities: string[]
+  }
   skills: Pf2eSkill[]
   strikes: Pf2eStrike[]
   focus: { max: number; current: number; note: string }
   feats: Pf2eFeat[]
   bulkLimit: number
-  coins: { gp: number; sp: number; cp: number }
+  coins: { pp?: number; gp: number; sp: number; cp: number }
+  /** The sheet gave the hero encumbered for carrying too much (Player Core p. 269). */
+  bulkEncumbered?: boolean
   /**
    * Class slug from `data/pf2e` for heroes made in the builder; absent on hand-made
    * sheets, which keep the free-text editing.
@@ -234,6 +319,8 @@ export interface Pf2eSheet extends SheetCommon {
   spellcasting?: Pf2eSpellcasting
   /** Focus spells the hero knows; `focus` holds the pool. */
   focusSpells?: Pf2eSpellRef[]
+  /** Spellcasting from multiclass archetypes, one entry per archetype (Player Core p. 215). */
+  archetypeCasting?: Pf2eArchetypeCasting[]
   /**
    * Effects from `data/pf2e/effects.ts`: toggles the hero has turned on (Rage) and effects
    * from allies (Bless, Heroism +2), by name. `tempHp`: the temporary Hit Points a toggle
@@ -245,6 +332,8 @@ export interface Pf2eSheet extends SheetCommon {
     tempHp?: { from: string; amount: number }
     /** A toggle's number at the rank its spell was cast (Competitive Edge +2), by name. */
     values?: Record<string, number>
+    /** Effects of consumables the hero used (an elixir's bonus), on until they end. */
+    items?: Pf2eEffectDef[]
   }
   /**
    * Uses of abilities with a frequency since daily preparations (which clear it): the name for
@@ -267,6 +356,8 @@ export interface Pf2eSheet extends SheetCommon {
     flourish?: boolean
     /** Effects begun this turn that last until the end of the next one. */
     carry?: string[]
+    /** A finisher was used this turn: no more attack actions (Player Core 2 p. 163). */
+    finisher?: boolean
   }
 }
 
@@ -306,6 +397,15 @@ export interface Pf2eSpellcasting {
   font?: { spell: string; max: number; used: number }
 }
 
+/**
+ * An archetype's spellcasting (Player Core p. 215): its own tradition, attribute and rank, the
+ * cantrips its dedication grants, and the slots its basic, expert and master spellcasting feats
+ * give by level.
+ */
+export interface Pf2eArchetypeCasting extends Pf2eSpellcasting {
+  archetype: string
+}
+
 /** The choices a Pathfinder 2e hero was built from (Player Core pp. 22–27); ids are AoN ids. */
 export interface Pf2eCreation {
   ancestry: string
@@ -333,6 +433,8 @@ export interface Pf2eCreation {
   armor?: string
   shield?: string
   weapons: string[]
+  /** Other gear and consumables bought (AoN ids), with how many of each. */
+  items?: { id: string; count: number }[]
   /** Spells picked at creation (AoN ids): cantrips, then 1st-rank spells. */
   spells?: { cantrips: string[]; rank1: string[] }
   /** A cleric's divine font when the deity offers both. */
@@ -341,6 +443,8 @@ export interface Pf2eCreation {
   tradition?: string
   /** Focus spells and class cantrips (AoN ids); absent means the ones the features name. */
   focus?: string[]
+  /** The free archetype variant (GM Core p. 84): an archetype feat at every even level. */
+  freeArchetype?: boolean
 }
 
 // --- Nimble ---------------------------------------------------------------

@@ -309,7 +309,8 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Generator from the AoN data (`npm run pf2e:data`): classes, ancestries and heritages, backgrounds, feats, spells, weapons, armor, shields, conditions, actions, traits (Remaster/ORC only, with citations and `data/pf2e/NOTICE.md`)
 - [x] Each set a static file fetched on first use (`loadPf2e`), not bundled
 - [x] Data integrity tests (`tests/pf2eData.test.ts`)
-- [ ] Other equipment (gear, consumables, magic items, runes) with their activations
+- [x] Other equipment (gear, consumables, magic items, runes) with their activations: `gear`, `consumables`, `magicItems`, `runes`, `staves`, `wands` (ORC open books, setting names out), the sheet's Inventory panel (Bulk with encumbered and overloaded, worn/held/stowed, investing up to 10, coins, add from the data with a search), runes on weapons and armor (potency, striking, resilient, property runes' damage; etching rules with the property-rune limit), Use for consumables (potions heal, elixir bonuses as effects, bombs as Strikes), scrolls, wands (overcharge) and staves (charges, daily prep), level 0–1 gear and consumables in the builder
+  - Partial: property runes other than extra damage show their text (crit effects, resistances, activations); persistent damage from bombs and runes is said, not tracked (8.4); talismans, oils, ammunition and other activations spend one and say so; conditional item bonuses ("to High Jump", "against poisons") are shown, not applied; mutagen drawbacks, shield runes, specific magic weapons and armor, handwraps, precious materials and item crafting are not in yet
 - [x] Deities for clerics and champions (Reserved Material, under Paizo's Community Use Policy)
 - [ ] Structured effect model for feats and spells (with 8.5, where it is first used)
 
@@ -330,12 +331,12 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Three actions per turn (turn tracker, `SheetTurn`, `utils/pf2eActions.ts`)
 - [x] Valued conditions (frightened, clumsy, off-guard…) on every number, dying, wounded, doomed, recovery checks, Heroic Recovery
 - [x] Shield Block (Hardness, broken threshold)
-- [ ] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
-  - Partly: the hero's resistances from effects (`resistancesNow`), persistent damage rolled and typed by spells and actions with a reminder at End turn; not yet weaknesses or deadly and fatal dice
+- [x] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
 - [x] Incredible Initiative's +2 on initiative rolls (Roll initiative in `SheetTurn`)
 - [x] Spell slots (prepared and spontaneous), heightening, cantrips, divine font, focus spells and Refocus, daily preparations
 - [x] Spell damage rolls and heightened effects from the spell text (`utils/pf2eSpellRules.ts`)
-- [ ] Dice tray, target and odds rows
+- [x] Dice tray: checks, saves, Strikes, spell attacks, flat checks and damage with their total and degree
+- [ ] Target and odds rows
 
 ### 8.5 Abilities, spells and effects
 
@@ -343,10 +344,11 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] First wave: Rage, Sneak Attack, Precision edge, Courageous Anthem, Bless, Heroism, Toughness, Diehard, Fleet, Incredible Initiative (note)
 - [x] Abilities with an action get Use, daily frequencies tracked until daily preparations
 - [x] Second wave: Hunt Prey with the Flurry and Outwit edges, Thief, Precise Strike, Strategic Strike and Devise a Stratagem, weapon specialization (and greater), Crane and Mountain Stance, Shield, Mystic Armor, Rallying Anthem, Enlarge, Haste, Guidance
-- [ ] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, finishers), barbarian instincts, sorcerer blood magic, champion reactions
-  - Partly: actions read from their text (`utils/pf2eAbilityRules.ts`: Vicious Swing's extra dice and multiple attack penalty, Reactive Strike), finishers as a note on the precision edge
+- [x] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, Flurry of Blows, finishers with panache and bravado), barbarian instincts' Rage damage, sorcerer blood magic, champion reactions
 - [ ] Player Core 2 classes
 - [ ] Other classes, archetypes, ancestry feats
+  - [x] Archetypes: dedications and archetype feats in class slots, the dedication rule, feats that grant feats, multiclass dedications' skills, proficiencies and spellcasting (its own Spells panel, slots by level), the free archetype variant, archetype feats grouped on the sheet (`utils/pf2eArchetypes.ts`)
+  - [ ] Archetype benefits the text can't give the sheet yet: Fighter Resiliency-style Hit Points, Arcane Breadth's extra slots, signature spells, a Lore of your choice, class DC for the archetype's class, dedication subclass choices (muse, school, bloodline) beyond a note
 - [x] Spells that change numbers when cast on yourself, beyond the first wave (`effectOnSelf` in `utils/pf2eSpells.ts`, offered after a cast in `SheetSpells`)
 
 ### 8.6 Battle board

@@ -3,20 +3,28 @@
 // feats and spells never weigh down the app bundle. Licensing: `./NOTICE.md`.
 import actionsUrl from './generated/actions.json?url'
 import ancestriesUrl from './generated/ancestries.json?url'
+import archetypesUrl from './generated/archetypes.json?url'
 import armorUrl from './generated/armor.json?url'
 import backgroundsUrl from './generated/backgrounds.json?url'
 import classesUrl from './generated/classes.json?url'
 import conditionsUrl from './generated/conditions.json?url'
+import consumablesUrl from './generated/consumables.json?url'
 import deitiesUrl from './generated/deities.json?url'
 import featsUrl from './generated/feats.json?url'
+import gearUrl from './generated/gear.json?url'
 import heritagesUrl from './generated/heritages.json?url'
+import magicItemsUrl from './generated/magicItems.json?url'
+import runesUrl from './generated/runes.json?url'
 import shieldsUrl from './generated/shields.json?url'
 import spellsUrl from './generated/spells.json?url'
+import stavesUrl from './generated/staves.json?url'
 import traitsUrl from './generated/traits.json?url'
+import wandsUrl from './generated/wands.json?url'
 import weaponsUrl from './generated/weapons.json?url'
 import type {
   Pf2eActionDef,
   Pf2eAncestryDef,
+  Pf2eArchetypeDef,
   Pf2eArmorDef,
   Pf2eBackgroundDef,
   Pf2eClassDef,
@@ -24,6 +32,7 @@ import type {
   Pf2eDeityDef,
   Pf2eFeatDef,
   Pf2eHeritageDef,
+  Pf2eItemDef,
   Pf2eShieldDef,
   Pf2eSpellDef,
   Pf2eTraitDef,
@@ -33,32 +42,46 @@ import type {
 export interface Pf2eData {
   actions: Pf2eActionDef[]
   ancestries: Pf2eAncestryDef[]
+  archetypes: Pf2eArchetypeDef[]
   armor: Pf2eArmorDef[]
   backgrounds: Pf2eBackgroundDef[]
   classes: Pf2eClassDef[]
   conditions: Pf2eConditionDef[]
+  consumables: Pf2eItemDef[]
   deities: Pf2eDeityDef[]
   feats: Pf2eFeatDef[]
+  gear: Pf2eItemDef[]
   heritages: Pf2eHeritageDef[]
+  magicItems: Pf2eItemDef[]
+  runes: Pf2eItemDef[]
   shields: Pf2eShieldDef[]
   spells: Pf2eSpellDef[]
+  staves: Pf2eItemDef[]
   traits: Pf2eTraitDef[]
+  wands: Pf2eItemDef[]
   weapons: Pf2eWeaponDef[]
 }
 
 const URLS: Record<keyof Pf2eData, string> = {
   actions: actionsUrl,
   ancestries: ancestriesUrl,
+  archetypes: archetypesUrl,
   armor: armorUrl,
   backgrounds: backgroundsUrl,
   classes: classesUrl,
   conditions: conditionsUrl,
+  consumables: consumablesUrl,
   deities: deitiesUrl,
   feats: featsUrl,
+  gear: gearUrl,
   heritages: heritagesUrl,
+  magicItems: magicItemsUrl,
+  runes: runesUrl,
   shields: shieldsUrl,
   spells: spellsUrl,
+  staves: stavesUrl,
   traits: traitsUrl,
+  wands: wandsUrl,
   weapons: weaponsUrl,
 }
 

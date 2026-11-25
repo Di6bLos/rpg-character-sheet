@@ -11,18 +11,34 @@ const load = <K extends keyof Pf2eData>(set: K): Pf2eData[K] =>
 const data = {
   actions: load('actions'),
   ancestries: load('ancestries'),
+  archetypes: load('archetypes'),
   armor: load('armor'),
   backgrounds: load('backgrounds'),
   classes: load('classes'),
   conditions: load('conditions'),
+  consumables: load('consumables'),
   deities: load('deities'),
   feats: load('feats'),
+  gear: load('gear'),
   heritages: load('heritages'),
+  magicItems: load('magicItems'),
+  runes: load('runes'),
   shields: load('shields'),
   spells: load('spells'),
+  staves: load('staves'),
   traits: load('traits'),
+  wands: load('wands'),
   weapons: load('weapons'),
 }
+const items = [
+  ...data.gear,
+  ...data.consumables,
+  ...data.magicItems,
+  ...data.runes,
+  ...data.staves,
+  ...data.wands,
+]
+const item = (name: string) => items.find((i) => i.name === name)
 const classNames = new Set(data.classes.map((c) => c.name))
 const featNames = new Set(data.feats.map((f) => f.name))
 const subclasses = data.classes.flatMap((c) => c.subclasses)
@@ -51,6 +67,12 @@ describe('pf2e data', () => {
       'conditions',
       'actions',
       'traits',
+      'gear',
+      'consumables',
+      'magicItems',
+      'runes',
+      'staves',
+      'wands',
     ] as const
     for (const set of byName)
       expect(dupes(data[set].map((r) => r.name.toLowerCase())), set).toEqual([])
@@ -84,6 +106,22 @@ describe('pf2e data', () => {
     expect(data.deities.length).toBeGreaterThan(0)
   })
 
+  // Items named for deities and places (Treasure Vault's Rovagug's Mud and Achaekek's Kiss,
+  // GM Core's Frozen Lava of Mhar Massif) stay out; a writing set (Player Core p. 292) is not
+  // named for the deity Set.
+  it('leaves setting-named items out of every item set', () => {
+    for (const name of [
+      "Rovagug's Mud",
+      "Achaekek's Kiss",
+      'Bellflower Toolbelt',
+      'Frozen Lava of Mhar Massif',
+      "Eternal Eruption of Droskar's Crag",
+    ])
+      expect(item(name), name).toBeUndefined()
+    expect(item('Writing Set')?.source).toEqual({ book: 'Player Core', page: 292 })
+    for (const i of items) expect(i.text, i.name).not.toMatch(/Core Rulebook pg\./)
+  })
+
   // A setting archetype (Hellknight, Red Mantis Assassin, Aldori Duelist) has no feats of its
   // own in the data, so a feat that still names one, or names a Golarion noun, fails here.
   it('names only archetypes that are in the data themselves', () => {
@@ -103,6 +141,28 @@ describe('pf2e data', () => {
         data.feats.some((f) => f.archetypes.includes(a)),
         a,
       ).toBe(false)
+  })
+
+  it('has a record for every archetype a feat names, with its dedication', () => {
+    const deityNames = data.deities.map((d) => d.name)
+    const names = new Set(data.archetypes.map((a) => a.name))
+    for (const a of new Set(data.feats.flatMap((f) => f.archetypes))) expect(names, a).toContain(a)
+    for (const a of data.archetypes) {
+      expect(settingName(a.name, deityNames), a.name).toBeUndefined()
+      expect(openBook(a.source.book), a.name).toBe(true)
+      for (const para of a.text.split(/\n{2,}/))
+        expect(settingName(para, deityNames), `${a.name}: ${para}`).toBeUndefined()
+    }
+    const byName = (n: string) => data.archetypes.find((a) => a.name === n)!
+    // Player Core p. 219: the fighter archetype, its dedication a 2nd-level feat.
+    expect(byName('Fighter')).toMatchObject({ level: 2, categories: ['Multiclass'] })
+    expect(data.feats.find((f) => f.id === byName('Fighter').dedication)?.name).toBe(
+      'Fighter Dedication',
+    )
+    // Player Core p. 159, Player Core 2 p. 188: Advanced Warden is a 6th-level Beastmaster feat.
+    expect(data.feats.find((f) => f.name === 'Advanced Warden')?.archetypeLevels).toEqual({
+      Beastmaster: 6,
+    })
   })
 
   it('has rules text for every trait, spoiler notes aside', () => {
@@ -332,6 +392,110 @@ describe('pf2e data', () => {
     expect(data.spells.find((s) => s.name === 'Raise Dead')?.cost).toMatch(/gemstones/)
   })
 
+  // AoN files many Player Core weapons under a later setting reprint (the spear and staff under
+  // Tian Xia Character Guide); they are Player Core's and must be in the data, cited in an open
+  // book (Player Core, or an open reprint such as Treasure Vault's bola).
+  it('has every weapon in Player Core’s tables (pp. 277–280)', () => {
+    const table = {
+      Simple: [
+        'Blowgun',
+        'Clan Dagger',
+        'Club',
+        'Crossbow',
+        'Dagger',
+        'Dart',
+        'Gauntlet',
+        'Hand Crossbow',
+        'Heavy Crossbow',
+        'Javelin',
+        'Katar',
+        'Light Mace',
+        'Longspear',
+        'Mace',
+        'Morningstar',
+        'Sickle',
+        'Sling',
+        'Spear',
+        'Spiked Gauntlet',
+        'Staff',
+      ],
+      Martial: [
+        'Alchemical Bomb',
+        'Arbalest',
+        'Bastard Sword',
+        'Battle Axe',
+        'Bo Staff',
+        'Bola',
+        'Composite Longbow',
+        'Composite Shortbow',
+        'Dogslicer',
+        'Elven Curve Blade',
+        'Falchion',
+        "Filcher's Fork",
+        'Flail',
+        'Glaive',
+        'Gnome Hooked Hammer',
+        'Greataxe',
+        'Greatclub',
+        'Greatpick',
+        'Greatsword',
+        'Guisarme',
+        'Halberd',
+        'Halfling Sling Staff',
+        'Hatchet',
+        'Horsechopper',
+        'Kama',
+        'Katana',
+        'Khakkhara',
+        'Kukri',
+        'Lance',
+        'Light Hammer',
+        'Light Pick',
+        'Longbow',
+        'Longsword',
+        'Main-gauche',
+        'Maul',
+        'Nunchaku',
+        'Orc Knuckle Dagger',
+        'Pick',
+        'Ranseur',
+        'Rapier',
+        'Sai',
+        'Sap',
+        'Scimitar',
+        'Scythe',
+        'Shield Bash',
+        'Shield Boss',
+        'Shield Spikes',
+        'Shortbow',
+        'Shortsword',
+        'Shuriken',
+        'Spiked Chain',
+        'Starknife',
+        'Sword Cane',
+        'Temple Sword',
+        'Trident',
+        'Wakizashi',
+        'War Flail',
+        'Warhammer',
+        'Whip',
+      ],
+      Advanced: ['Dwarven Waraxe', 'Gnome Flickmace', 'Orc Necksplitter', 'Sawtooth Saber'],
+      Ammunition: ['Arrows', 'Blowgun Darts', 'Bolts', 'Sling Bullets'],
+    }
+    for (const [category, names] of Object.entries(table))
+      for (const name of names) {
+        const w = data.weapons.find((x) => x.name === name)
+        expect(w?.category, name).toBe(category)
+        expect(openBook(w?.source.book), name).toBe(true)
+      }
+    expect(data.weapons.find((w) => w.name === 'Staff')).toMatchObject({
+      source: { book: 'Player Core', page: 277 },
+      damage: '1d4',
+      traits: ['Monk', 'Two-Hand'],
+    })
+  })
+
   it('keeps weapon, armor and shield statistics', () => {
     expect(data.weapons.find((w) => w.name === 'Longsword')).toMatchObject({
       damage: '1d8',
@@ -355,6 +519,148 @@ describe('pf2e data', () => {
       hardness: 5,
       hp: 20,
     })
+  })
+
+  it('keeps every item a price, level, Bulk and a kind its set holds', () => {
+    const kinds: Record<string, string[]> = {
+      gear: ['gear'],
+      consumables: ['potion', 'elixir', 'scroll', 'talisman', 'ammunition', 'oil', 'bomb'],
+      magicItems: ['held', 'worn'],
+      runes: ['rune'],
+      staves: ['staff'],
+      wands: ['wand'],
+    }
+    for (const [set, allowed] of Object.entries(kinds))
+      for (const i of data[set as 'gear']) {
+        expect(allowed, `${set}: ${i.name}`).toContain(i.kind)
+        expect(i.price, i.name).toBeGreaterThanOrEqual(0)
+        expect(i.level, i.name).toBeGreaterThanOrEqual(0)
+        expect(i.bulk, i.name).toBeGreaterThanOrEqual(0)
+        expect(i.source.page, i.name).toBeGreaterThan(0)
+        for (const a of i.activations) expect(String(a.actions ?? ''), i.name).not.toMatch(/Action/)
+      }
+    for (const k of kinds.consumables!)
+      expect(
+        data.consumables.some((i) => i.kind === k),
+        k,
+      ).toBe(true)
+  })
+
+  it('reads consumables as printed (GM Core pp. 244–262, Player Core 2 pp. 283–289)', () => {
+    expect(item('Healing Potion (Minor)')).toMatchObject({
+      kind: 'potion',
+      level: 1,
+      price: 400,
+      bulk: 0.1,
+      healing: '1d8',
+      source: { book: 'GM Core', page: 259 },
+      activations: [{ actions: 1, traits: ['manipulate'] }],
+    })
+    expect(item('Healing Potion (Lesser)')).toMatchObject({
+      level: 3,
+      price: 1200,
+      healing: '2d8+5',
+    })
+    expect(item('Healing Potion (Major)')?.healing).toBe('8d8+30')
+    expect(item("Alchemist's Fire (Lesser)")).toMatchObject({
+      kind: 'bomb',
+      price: 300,
+      bomb: {
+        damage: { dice: '1d8', type: 'fire' },
+        persistent: { dice: '1', type: 'fire' },
+        splash: 1,
+      },
+      activations: [{ actions: 1, as: 'Strike' }],
+    })
+    expect(item("Alchemist's Fire (Moderate)")?.bomb).toMatchObject({
+      damage: { dice: '2d8' },
+      attack: 1,
+    })
+    expect(item('Eagle-Eye Elixir (Lesser)')).toMatchObject({
+      bonuses: [{ value: 1, type: 'item', selector: 'perception' }],
+      duration: '1 hour',
+    })
+    expect(item('Cognitive Mutagen (Moderate)')).toMatchObject({
+      bonuses: [
+        { value: 2, selector: 'skills', skills: ['Arcana', 'Crafting', 'Occultism', 'Society'] },
+      ],
+      duration: '10 minutes',
+    })
+    expect(item('1st-rank Scroll')).toMatchObject({ level: 1, price: 400, spellRank: 1 })
+    expect(item('10th-rank Scroll')).toMatchObject({ level: 19, price: 800000, spellRank: 10 })
+  })
+
+  it('reads runes as printed (GM Core pp. 226, 236–237)', () => {
+    expect(item('Weapon Potency (+1)')).toMatchObject({
+      level: 2,
+      price: 3500,
+      rune: { slot: 'potency', onto: 'weapon', value: 1 },
+    })
+    expect(item('Striking')).toMatchObject({
+      level: 4,
+      price: 6500,
+      rune: { slot: 'striking', value: 1 },
+    })
+    expect(item('Striking (Major)')?.rune?.value).toBe(3)
+    expect(item('Armor Potency (+1)')).toMatchObject({
+      level: 5,
+      price: 16000,
+      rune: { onto: 'armor', value: 1 },
+    })
+    expect(item('Resilient')).toMatchObject({
+      level: 8,
+      price: 34000,
+      rune: { slot: 'resilient', value: 1 },
+    })
+    expect(item('Flaming')).toMatchObject({
+      level: 8,
+      price: 50000,
+      rune: { slot: 'property', damage: { dice: '1d6', type: 'fire' } },
+    })
+    expect(item('Flaming')?.rune?.crit).toMatch(/1d10 persistent fire damage on a critical hit/)
+    for (const r of data.runes) expect(r.rune?.usage, r.name).toMatch(/^etched (?:onto|into)/)
+  })
+
+  it('reads staves, wands and worn items as printed (GM Core pp. 279–286)', () => {
+    expect(item('Staff of Fire')).toMatchObject({
+      level: 3,
+      price: 6000,
+      spells: [
+        { rank: 0, names: ['Ignition'] },
+        { rank: 1, names: ['Breathe Fire'] },
+      ],
+    })
+    const greater = item('Staff of Fire (Greater)')?.spells
+    expect(greater?.find((r) => r.rank === 1)?.names).toEqual(['Breathe Fire'])
+    expect(greater?.find((r) => r.rank === 3)?.names).toEqual(['Floating Flame', 'Fireball'])
+    // Staff spells are the data's spells (a limit in brackets aside), except legacy names a
+    // reprinted staff still prints (Dragonprism Staff's burning hands).
+    const spellNames = new Set(data.spells.map((sp) => sp.name))
+    const listed = data.staves.flatMap((st) => (st.spells ?? []).flatMap((r) => r.names))
+    const unknown = listed.filter((n) => !spellNames.has(n.replace(/\s*\([^)]*\)$/, '')))
+    expect(unknown.length / listed.length).toBeLessThan(0.05)
+    expect(greater?.find((r) => r.rank === 0)?.names).toEqual(['Ignition'])
+    expect(item('Magic Wand (1st-rank Spell)')).toMatchObject({
+      level: 3,
+      price: 6000,
+      spellRank: 1,
+      activations: [{ as: 'Cast a Spell', frequency: 'once per day, plus overcharge' }],
+    })
+    expect(item('Boots of Bounding')).toMatchObject({
+      kind: 'worn',
+      traits: ['Invested', 'Magical'],
+      bonuses: [
+        { value: 5, type: 'item', selector: 'speed' },
+        { selector: 'skills', when: expect.any(String) },
+      ],
+    })
+    // An activation's bonus is for its trigger, not a constant one.
+    expect(item('Bracers of Missile Deflection')?.bonuses).toBeUndefined()
+    expect(item('Bracers of Missile Deflection')?.activations[0]).toMatchObject({
+      actions: 'reaction',
+      frequency: 'once per day',
+    })
+    expect(item('Rope')).toMatchObject({ kind: 'gear', price: 50, bulk: 0.1 })
   })
 
   it('gives deities what a cleric needs', () => {
