@@ -1,6 +1,10 @@
 // Pure rules logic that turns Nimble class data (data/nimble) into a sheet:
 // the level 1 build, what each level-up grants, and applying a level-up.
 import { abilityArmor } from '~/utils/nimbleArmor'
+import { UPGRADE, abilityBaseName, classFlagAt } from '~/utils/nimbleClassRules'
+import { syncWornArmor } from '~/utils/nimbleWornArmor'
+
+export { abilityBaseName, classFlagAt }
 import { ancestryBySlug } from '~/data/nimble/ancestries'
 import { backgroundBySlug } from '~/data/nimble/backgrounds'
 import { classBySlug, poolOptionByName, subclassBySlug } from '~/data/nimble/classes'
@@ -9,6 +13,7 @@ import {
   BASE_WOUNDS,
   MAX_SKILL_BONUS,
   STARTING_SKILL_POINTS,
+  armorByName,
   weaponByName,
 } from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
@@ -87,16 +92,6 @@ export function stepHitDie(die: number, steps: number): number {
   return HIT_DIE_STEPS[Math.min(HIT_DIE_STEPS.length - 1, idx + steps)] ?? die
 }
 
-/** True once the class table has granted a per-level flag (Swift Feet, Iron Defense (2)…). */
-export function classFlagAt(
-  cls: ClassDef,
-  level: number,
-  flag: 'initiativePerLevel' | 'meleeDamagePerLevel' | 'armorDoubled',
-): boolean {
-  for (let l = 1; l <= level; l++) if (cls.levels[l]?.[flag]) return true
-  return false
-}
-
 /** Armor from the class formula at a level; Iron Defense (2) doubles it from level 13. */
 export function classArmor(cls: ClassDef, stats: Record<NimbleStat, number>, level = 1): number {
   const { base, dexMax, shield, addStr, addInt } = cls.armorCalc
@@ -151,8 +146,6 @@ export function weaponAttack(
     melee: w.melee,
   }
 }
-
-const UPGRADE = /^(.*) \((\d+)\)$/
 
 /**
  * Adds an ability, or upgrades the earlier one when the name ends in "(n)":
@@ -608,6 +601,7 @@ export function applyNimbleLevel(sheet: NimbleSheet, level: number, input: Level
     applyChoice(sheet, cls, choice, input.picks[choice.key] ?? [], level)
   syncDerived(sheet, cls, before, level, level - 1)
   sheet.ac += abilityArmor(sheet) - armorBefore
+  syncWornArmor(sheet, level)
   syncCompanions(sheet)
 }
 
@@ -844,6 +838,7 @@ export function changeSubclass(
   }
   syncDerived(sheet, cls, before, level, level)
   sheet.ac += abilityArmor(sheet) - armorBefore
+  syncWornArmor(sheet, level)
   syncCompanions(sheet)
 }
 
@@ -898,11 +893,6 @@ export function subclassChangeChoices(
       }
   }
   return { abilities, choices, spells }
-}
-
-/** Base name of an ability: "Sneak Attack (3)" is "Sneak Attack". */
-export function abilityBaseName(name: string): string {
-  return UPGRADE.exec(name)?.[1] ?? name
 }
 
 export function malfunctionRisks(
@@ -1109,6 +1099,20 @@ export function buildNimbleSheet(input: NimbleBuildInput): NimbleSheet {
 
   for (const choice of creationChoices(cls, background, input.picks))
     applyChoice(sheet, cls, choice, input.picks[choice.key] ?? [], 1)
+  // The class's starting Armor (armorCalc) assumes its starting armor and shield are worn;
+  // after the abilities, so an armor invention (Armor Prototype) can be seen.
+  const wearing = new Set<string>()
+  sheet.inventory = sheet.inventory.map((g) => {
+    const kind = armorByName(g.name)?.kind
+    const invention = sheet.abilities.some(
+      (a) => abilityBaseName(a.name) === g.name && a.desc.startsWith('Armor: '),
+    )
+    const slot = kind === 'Shield' ? 'shield' : kind || invention ? 'body' : ''
+    if (!slot || wearing.has(slot)) return g
+    wearing.add(slot)
+    return { ...g, worn: true }
+  })
+
   // After the abilities, so weapon perks (Swift Fists) can be seen.
   sheet.attacks = cls.startingWeapons
     .map((w) => weaponAttack(w, stats, sheet.abilities, classMeleeDamage(cls, 1)))
@@ -1275,7 +1279,12 @@ function swapPicks(picks: unknown, from: string, to: string) {
  * is remembered (abilities, choices and the level history), so rebuilding a level
  * keeps it.
  */
-export function swapPoolOption(sheet: NimbleSheet, from: string, to: string): boolean {
+export function swapPoolOption(
+  sheet: NimbleSheet,
+  from: string,
+  to: string,
+  level: number,
+): boolean {
   const cls = classBySlug(sheet.classSlug)
   const option = cls && poolOptionByName(cls, to)
   if (!cls || !option || !sheet.abilities.some((a) => abilityBaseName(a.name) === from))
@@ -1299,6 +1308,7 @@ export function swapPoolOption(sheet: NimbleSheet, from: string, to: string): bo
   applyPoolEffects(sheet, cls, from, -1)
   applyPoolEffects(sheet, cls, to, 1)
   sheet.ac += abilityArmor(sheet) - armorBefore
+  syncWornArmor(sheet, level)
   syncCompanions(sheet)
   return true
 }
