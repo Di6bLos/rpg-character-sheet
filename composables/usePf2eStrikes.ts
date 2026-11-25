@@ -45,10 +45,37 @@ export interface Pf2eDamageRoll {
   by?: string
   /** Part of a finisher: precise strike deals its dice instead of its flat bonus (p. 158). */
   finisher?: boolean
-  /** Leave out precision and other extra dice (Double Slice adds them to one Strike only). */
+  /**
+   * Leave out precision and other extra dice (Double Slice adds them to one Strike only);
+   * property runes still roll.
+   */
   noExtra?: boolean
   /** Return the result instead of saying it (Double Slice says both together). */
   quiet?: boolean
+}
+
+/** Dice a Strike's damage adds to its weapon dice, with what they're from. */
+export interface Pf2eAddedDie {
+  dice: string
+  label: string
+}
+
+/** A weapon's property-rune damage on a hit (GM Core pp. 236–237): flaming's 1d6 fire. */
+export function runeDice(s: Pf2eSheet, strike: string): Pf2eAddedDie[] {
+  return (strikeRunes(s, strike)?.property ?? []).flatMap((p) =>
+    p.damage ? [{ dice: p.damage.dice, label: `${p.name} (${p.damage.type})` }] : [],
+  )
+}
+
+/**
+ * The dice a Strike's damage roll adds: its runes' always, the hero's own (precision, sneak
+ * attack) unless `noExtra`, for Double Slice's second Strike, which leaves those to the first.
+ */
+export function addedDice(
+  w: { runeDice: Pf2eAddedDie[]; extra: Pf2eAddedDie[] },
+  noExtra = false,
+): Pf2eAddedDie[] {
+  return [...w.runeDice, ...(noExtra ? [] : w.extra)]
 }
 
 const natNote = (n: number | null) => (n === 20 ? ', natural 20' : n === 1 ? ', natural 1' : '')
@@ -144,12 +171,9 @@ function create() {
       // Runes on the weapon (GM Core pp. 236–237): striking's dice, property runes' damage.
       const runes = strikeRunes(sheet.value, w.name)
       const dmg = shiftDice(w.dmg, dmgMods.value, die, runes?.striking ? runes.striking + 1 : 0)
-      const extra = [
-        ...extraDice(sheet.value, level, w, { ...damageFlags.value, stratagem }),
-        ...(runes?.property ?? []).flatMap((p) =>
-          p.damage ? [{ dice: p.damage.dice, label: `${p.name} (${p.damage.type})` }] : [],
-        ),
-      ]
+      const extra = extraDice(sheet.value, level, w, { ...damageFlags.value, stratagem })
+      const fromRunes = runeDice(sheet.value, w.name)
+      const added = addedDice({ runeDice: fromRunes, extra })
       const critNotes = (runes?.property ?? []).flatMap((p) =>
         p.crit ? [`${p.name}: ${p.crit}`] : [],
       )
@@ -176,16 +200,17 @@ function create() {
         precise,
         /** What a critical hit adds: "+1d10 fatal d10, +1d8 deadly d8", for the crit button. */
         critNote: crit.after.map((x) => `+${x.count}d${x.sides} ${x.label}`).join(', '),
-        dmg: `${dmg}${extra.map((x) => `+${x.dice}`).join('')}${typeInitial}`,
+        dmg: `${dmg}${added.map((x) => `+${x.dice}`).join('')}${typeInitial}`,
         dmgExpr: dmg,
         extra,
+        runeDice: fromRunes,
         type: w.type,
-        dmgChanged: dmgMods.changed || extra.length > 0 || dmg !== w.dmg,
+        dmgChanged: dmgMods.changed || added.length > 0 || dmg !== w.dmg,
         dmgNote: [
           dmgMods.note,
           die ? `d${die} fist` : '',
           runes?.striking ? `${runes.striking + 1} dice (striking)` : '',
-          ...extra.map((x) => `+${x.dice} ${x.label}`),
+          ...added.map((x) => `+${x.dice} ${x.label}`),
         ]
           .filter(Boolean)
           .join(', '),
@@ -258,7 +283,7 @@ function create() {
       mod: expr.mod - flat,
     }
     const extra = [
-      ...(o.noExtra ? [] : w.extra),
+      ...addedDice(w, o.noExtra),
       ...(precise ? [{ dice: precise, label: 'precise strike finisher' }] : []),
     ]
     const parts = [rollDice(more).total]

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { addedDice, runeDice } from '../composables/usePf2eStrikes'
 import type { Pf2eSheet } from '../types/sheets'
 import { activeEffects, speedNow } from '../utils/pf2eEffects'
 import {
@@ -163,6 +164,19 @@ describe('pf2e runes (GM Core pp. 224–237)', () => {
     expect(strikeRunes(s, 'Longsword')?.property[0]).toMatchObject({
       damage: { dice: '1d6', type: 'fire' },
     })
+  })
+
+  it('keeps the flaming rune’s fire on a Strike that leaves its precision dice to another', () => {
+    const s = hero()
+    const sword = longsword()
+    s.inventory.push(sword)
+    etchRune(sword, item(runes, 'Weapon Potency (+1)'))
+    etchRune(sword, item(runes, 'Flaming'))
+    const fire = runeDice(s, 'Longsword')
+    expect(fire).toEqual([{ dice: '1d6', label: 'Flaming (fire)' }])
+    const sneak = [{ dice: '1d6', label: 'sneak attack' }]
+    expect(addedDice({ runeDice: fire, extra: sneak })).toEqual([...fire, ...sneak])
+    expect(addedDice({ runeDice: fire, extra: sneak }, true)).toEqual(fire)
   })
 
   it('adds armor potency to AC, and resilient to saves only while invested', () => {
