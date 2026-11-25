@@ -7,8 +7,8 @@
 // drawer. Every frame sits inside one HeroScope, so switching frames (a rotation) keeps
 // the hero's sheet editor and its automatic turn steps. Systems without the Nimble hero
 // editor (5e, PF2e; `features.nimbleHero` false) give a seated player a read-only hero card
-// (HeroBasic) and a basic turn line with Roll initiative (TurnBasic) above the roster of
-// the other heroes (their own is in HeroBasic).
+// (HeroBasic) and a basic turn line with Roll initiative (TurnBasic); the other heroes are in
+// the party list (right column, tablet drawer, phone Party tab), not repeated in the centre.
 import { downSummonKeys } from '~/utils/initiative'
 import type { PhoneTab } from '~/utils/boardLayout'
 
@@ -240,13 +240,7 @@ function onGridHero(characterId: string) {
           @update:selected="(id: string | null) => (id ? gmShow(id) : (gmPick = null))"
           @hero="onGridHero"
         />
-        <BoardRoster
-          v-else-if="basicHeroId && campaign"
-          :roster="roster"
-          :system="campaign.system"
-          :turn-character-id="actingCharacterId"
-          :exclude="basicHeroId"
-        />
+        <template v-else-if="basicHeroId" />
         <p v-else-if="isGm" class="panel battle-empty">
           <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
           encounter.
@@ -320,16 +314,7 @@ function onGridHero(characterId: string) {
             @hero="onGridHero"
           />
         </template>
-        <template v-else-if="basicHeroId && campaign">
-          <BattleTurnBasic :init="init" :character-id="basicHeroId" />
-          <!-- Whose turn by the encounter (as TurnBasic), not the first row before it starts. -->
-          <BoardRoster
-            :roster="roster"
-            :system="campaign.system"
-            :turn-character-id="actingCharacterId"
-            :exclude="basicHeroId"
-          />
-        </template>
+        <BattleTurnBasic v-else-if="basicHeroId" :init="init" :character-id="basicHeroId" />
         <p v-else-if="isGm" class="panel battle-empty">
           <NuxtLink :to="`/campaigns/${campaignId}/gm`">Open the GM console</NuxtLink> to run the
           encounter.

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 // Party roster cards: HP, temp HP, conditions; Nimble gets single-column long
 // cards with wounds, mana, armor, actions and concentration. A downed 5e / PF2e hero gets
-// the battle board's DownStatus line. `exclude` leaves out one hero (the seated 5e / PF2e
-// player's own, already in their hero card beside it).
+// the battle board's DownStatus line.
 import type { GameSystem, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
@@ -13,18 +12,11 @@ const props = defineProps<{
   system: GameSystem
   /** Character whose turn it is. */
   turnCharacterId?: string | null
-  /** A character to leave out (the viewer's own, shown in their hero card). */
-  exclude?: string | null
 }>()
 
 const auth = useAuthStore()
 
-const heroes = computed(() =>
-  props.roster.filter(
-    (r) =>
-      (r.role !== 'gm' || r.character_id) && (!props.exclude || r.character_id !== props.exclude),
-  ),
-)
+const heroes = computed(() => props.roster.filter((r) => r.role !== 'gm' || r.character_id))
 const nimble = computed(() => props.system === 'nimble')
 
 function hp(r: RosterEntry) {
@@ -80,9 +72,7 @@ function actions(r: RosterEntry) {
 <template>
   <section class="roster" aria-labelledby="ros-h">
     <h2 id="ros-h" class="rule-title">Party roster<span aria-hidden="true" /></h2>
-    <p v-if="!heroes.length" class="empty">
-      {{ exclude ? 'No other heroes at this table yet.' : 'No one has joined this campaign yet.' }}
-    </p>
+    <p v-if="!heroes.length" class="empty">No one has joined this campaign yet.</p>
 
     <div v-else-if="!nimble" class="roster__grid">
       <article
