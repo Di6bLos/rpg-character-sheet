@@ -11,6 +11,8 @@ import {
   type Pf2eBuildData,
   ancestryBoostPlan,
   backgroundBoostSlots,
+  creationFocusSpells,
+  focusChoice,
   deityOptions,
   emptyCreation,
   featOptions,
@@ -92,7 +94,10 @@ export function autoCreation(
   c.lores = plan2.lores.map(() => 'Local')
   for (const slot of featSlots(resolve(c, data).cls))
     c.feats[slot] = featOptions(slot, c, data)[0]!.id
+  if (spellcastingPlan(c, data)?.traditionChoice) c.tradition = 'Arcane'
   const casting = spellcastingPlan(c, data)
+  const choice = focusChoice(c, data)
+  if (choice) c.focus = [...creationFocusSpells(c, data), choice.options[0]!].map((s) => s.id)
   if (casting) {
     c.spells = {
       cantrips: spellOptions('cantrip', c, data)

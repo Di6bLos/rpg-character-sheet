@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import type { Pf2eSheet, Pf2eSpellRef } from '../types/sheets'
 import {
   buildPf2eSheet,
+  chosenFocusSpells,
   creationFocusSpells,
+  focusChoice,
+  focusPool,
+  focusSpellOptions,
+  spellAttribute,
   spellProblems,
   spellcastingPlan,
 } from '../utils/pf2eBuild'
@@ -93,6 +98,97 @@ describe('pf2e spellcasting at creation', () => {
       'Choose 2 1st-rank spells',
       expect.stringMatching(/^Choose your divine font/),
     ])
+  })
+})
+
+describe('pf2e spellcasting review fixes (#61)', () => {
+  const sub = (k: string, n: string) => named(cls(k).subclasses, n)
+
+  it('lets a draconic sorcerer and a dragon summoner pick their tradition', () => {
+    for (const [k, kind, name] of [
+      ['Sorcerer', 'Sorcerer Bloodline', 'Draconic'],
+      ['Summoner', 'Summoner Eidolon', 'Dragon'],
+    ] as const) {
+      const c = autoCreation(cls(k))
+      c.subclasses = { ...c.subclasses, [kind]: [sub(k, name).id] }
+      c.tradition = undefined
+      expect(spellcastingPlan(c, data), k).toMatchObject({ tradition: '', traditionChoice: true })
+      expect(spellProblems(c, data), k).toEqual(['Choose your tradition'])
+      c.tradition = 'Primal'
+      expect(spellcastingPlan(c, data)?.tradition, k).toBe('Primal')
+    }
+    // A bloodline that names its tradition needs no pick, and ignores a stale one.
+    const angelic = autoCreation(cls('Sorcerer'))
+    angelic.subclasses = { 'Sorcerer Bloodline': [sub('Sorcerer', 'Angelic').id] }
+    angelic.tradition = 'Primal'
+    expect(spellcastingPlan(angelic, data)).toMatchObject({
+      tradition: 'Divine',
+      traditionChoice: false,
+    })
+  })
+
+  it('casts a magus’s spells with Intelligence, whatever the key attribute', () => {
+    const c = autoCreation(cls('Magus'))
+    expect(c.keyAttribute).not.toBe('INT')
+    expect(spellAttribute(c, data)).toBe('INT')
+    expect(buildPf2eSheet(c, data).spellcasting?.attr).toBe('INT')
+    // Others use the key: a psychic's comes from the subconscious mind.
+    expect(spellAttribute(autoCreation(cls('Wizard')), data)).toBe('INT')
+    const psychic = autoCreation(cls('Psychic'))
+    expect(spellAttribute(psychic, data)).toBe(psychic.keyAttribute)
+  })
+
+  it('reads the focus pool from the text: a witch 1, a psychic 2', () => {
+    expect(focusPool(autoCreation(cls('Witch')), data)).toBe(1)
+    expect(focusPool(autoCreation(cls('Psychic')), data)).toBe(2)
+    expect(buildPf2eSheet(autoCreation(cls('Psychic')), data).focus.max).toBe(2)
+    expect(focusPool(autoCreation(cls('Champion')), data)).toBe(1)
+  })
+
+  it('has a champion choose one devotion spell, within the deity’s font', () => {
+    const c = autoCreation(cls('Champion'))
+    const heal = data.deities.find((d) => d.divineFont.join() === 'Heal')!
+    c.deity = heal.id
+    const names = focusChoice(c, data)!.options.map((s) => s.name)
+    expect(names).toEqual(expect.arrayContaining(['Shields of the Spirit', 'Lay on Hands']))
+    expect(names).not.toContain('Touch of the Void')
+    // None of the three is granted outright.
+    expect(creationFocusSpells(c, data).map((s) => s.name)).not.toContain('Lay on Hands')
+    c.focus = undefined
+    expect(spellProblems(c, data)).toContainEqual(expect.stringMatching(/^Choose one of /))
+    c.focus = [named(data.spells, 'Shields of the Spirit').id]
+    expect(spellProblems(c, data)).toEqual([])
+    c.focus = [
+      named(data.spells, 'Shields of the Spirit').id,
+      named(data.spells, 'Lay on Hands').id,
+    ]
+    expect(spellProblems(c, data)).toContainEqual(expect.stringMatching(/^Choose one of /))
+  })
+
+  it('lists each focus spell once', () => {
+    for (const k of data.classes) {
+      const c = autoCreation(k)
+      const names = focusSpellOptions(c, data).map((s) => s.name)
+      expect(new Set(names).size, k.name).toBe(names.length)
+      const chosen = chosenFocusSpells(c, data).map((s) => s.name)
+      expect(new Set(chosen).size, k.name).toBe(chosen.length)
+    }
+  })
+
+  it('reads the 1st-level row of the spells table by level, not position', () => {
+    const psychic = cls('Psychic')
+    const shuffled = {
+      ...psychic,
+      spellSlots: [...(psychic.spellSlots ?? [])].reverse(),
+      advancement: [...psychic.advancement].reverse(),
+    }
+    const c = autoCreation(psychic)
+    const plan = spellcastingPlan(c, { ...data, classes: [shuffled] })
+    expect(plan).toMatchObject({
+      cantrips: spellcastingPlan(c, data)!.cantrips,
+      rank1: spellcastingPlan(c, data)!.rank1,
+      kind: 'spontaneous',
+    })
   })
 })
 
