@@ -346,6 +346,8 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, Flurry of Blows, finishers with panache and bravado), barbarian instincts' Rage damage, sorcerer blood magic, champion reactions
 - [ ] Player Core 2 classes
 - [ ] Other classes, archetypes, ancestry feats
+  - [x] Archetypes: dedications and archetype feats in class slots, the dedication rule, feats that grant feats, multiclass dedications' skills, proficiencies and spellcasting (its own Spells panel, slots by level), the free archetype variant, archetype feats grouped on the sheet (`utils/pf2eArchetypes.ts`)
+  - [ ] Archetype benefits the text can't give the sheet yet: Fighter Resiliency-style Hit Points, Arcane Breadth's extra slots, signature spells, a Lore of your choice, class DC for the archetype's class, dedication subclass choices (muse, school, bloodline) beyond a note
 - [x] Spells that change numbers when cast on yourself, beyond the first wave (`effectOnSelf` in `utils/pf2eSpells.ts`, offered after a cast in `SheetSpells`)
 
 ### 8.6 Battle board

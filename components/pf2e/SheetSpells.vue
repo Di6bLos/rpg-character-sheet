@@ -7,7 +7,8 @@
 // spell rolls at the rank it goes off (utils/pf2eSpellRules.ts): a spell attack against the
 // Target AC with the chosen MAP, or the DC and damage for each save result, healing the hero can
 // take, and a buff it can turn on. Rules text comes from `data/pf2e` (fetched when the panel
-// opens); rules in utils/pf2eSpells.ts.
+// opens); rules in utils/pf2eSpells.ts. With `archetype` it shows that multiclass archetype's
+// own spellcasting (Player Core p. 215) instead, without the focus spells.
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
@@ -39,14 +40,26 @@ import { readCost } from '~/utils/pf2eAbilityRules'
 import { actionCostLabel, attacked } from '~/utils/pf2eActions'
 import { loreHtml } from '~/utils/loreText'
 
+const props = defineProps<{ archetype?: string }>()
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
-const { claim, resultFor } = useResultOwner()
+const owner = useResultOwner()
+/** Result keys of an archetype's panel are its own, so a spell both panels list doesn't clash. */
+const prefix = props.archetype ? `arch:${props.archetype}:` : ''
+const claim = (key: string, run: () => void) => owner.claim(prefix + key, run)
+const resultFor = (key: string) => owner.resultFor(prefix + key)
+const panelId = props.archetype
+  ? `spells-${props.archetype.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+  : 'spells'
 /** The cast's offers (heal yourself, temp HP, the buff on yourself) for the row that made it. */
 const offersFor = (key: string) => (lastCast.value?.key === key ? lastCast.value : null)
 /** A spell's action cost for screen readers ("Two actions"). */
 const costName = (id: string) => actionCostLabel(readCost(byId.value.get(id)?.actions))
 const sheet = computed(() => draft.value.sheet)
-const sc = computed(() => sheet.value.spellcasting)
+const sc = computed(() =>
+  props.archetype
+    ? sheet.value.archetypeCasting?.find((e) => e.archetype === props.archetype)
+    : sheet.value.spellcasting,
+)
 const level = computed(() => draft.value.level)
 
 const spells = shallowRef<Pf2eSpellDef[]>([])
@@ -167,6 +180,7 @@ function castIn(key: string, message: string, def: Pf2eSpellDef | undefined, ran
   lastCast.value = null
   if (!def || !castWentOff(message)) return say(message)
   const r = castEffect(sheet.value, def, rank, level.value, {
+    sc: sc.value,
     actions: actionsOf(def),
     melee: !!meleeFor.value[def.id],
     attackNumber: attackNumber.value,
@@ -207,12 +221,16 @@ function bloodSelf(name: string) {
 
 function castFromSlot(s: Pf2eSpellRef) {
   const slot = castRank(s)
-  cast(castSpontaneous(sheet.value, s, slot), byId.value.get(s.id), spontaneousRank(s, slot))
+  cast(
+    castSpontaneous(sheet.value, s, slot, sc.value),
+    byId.value.get(s.id),
+    spontaneousRank(s, slot),
+  )
 }
 
 function castFromPrepared(rank: number, index: number, id: string | null) {
   cast(
-    castPrepared(sheet.value, rank, index),
+    castPrepared(sheet.value, rank, index, sc.value),
     id ? byId.value.get(id) : undefined,
     rank,
     `slot:${rank}:${index}`,
@@ -309,10 +327,10 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
 </script>
 
 <template>
-  <section class="panel stack" style="gap: 14px" aria-labelledby="spells-h">
-    <UiFold name="Spells" />
+  <section class="panel stack" style="gap: 14px" :aria-labelledby="`${panelId}-h`">
+    <UiFold :name="archetype ? `${archetype} archetype spells` : 'Spells'" />
     <div class="panel-title" style="margin: 0">
-      <h2 id="spells-h">Spells</h2>
+      <h2 :id="`${panelId}-h`">{{ archetype ? `${archetype} archetype spells` : 'Spells' }}</h2>
       <span v-if="sc" class="small muted">{{ sc.tradition }} · {{ sc.kind }}</span>
     </div>
 
@@ -708,7 +726,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
     </div>
 
     <!-- Focus spells -->
-    <div v-if="sheet.focusSpells?.length || edit" class="group">
+    <div v-if="!archetype && (sheet.focusSpells?.length || edit)" class="group">
       <div class="rank-head">
         <h3 class="caps">Focus spells · rank {{ heightenedRank(level) }}</h3>
         <span
@@ -814,13 +832,13 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
     </div>
 
     <div v-if="adding" class="adder panel">
-      <label class="small" for="spell-search">
+      <label class="small" :for="`${panelId}-search`">
         Add a {{ adding === 'focus' ? 'focus spell' : adding
         }}{{ sc && adding !== 'focus' ? ` (${sc.tradition})` : '' }}
       </label>
       <div class="row" style="gap: 8px">
         <input
-          id="spell-search"
+          :id="`${panelId}-search`"
           v-model="query"
           class="input"
           type="search"

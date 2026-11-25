@@ -68,7 +68,13 @@ type Loose = Record<string, unknown>
  * boosts, level-up choices, a first focus spell): gone again when a snapshot without them is
  * restored.
  */
-const ADDED_BY_LEVELS = ['level', 'partialBoosts', 'levelChoices', 'focusSpells']
+const ADDED_BY_LEVELS = [
+  'level',
+  'partialBoosts',
+  'levelChoices',
+  'focusSpells',
+  'archetypeCasting',
+]
 
 /**
  * Play state nested inside objects whose other fields depend on the level: the

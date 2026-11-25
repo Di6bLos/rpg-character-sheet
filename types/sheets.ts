@@ -193,6 +193,8 @@ export interface Pf2eLevelInput {
   spells: Record<string, string[]>
   /** Feature choices (a weapon group, a saving throw, a later subclass option) by key. */
   choices: Record<string, string[]>
+  /** The free archetype variant turned on or off from this level (GM Core p. 84). */
+  freeArchetype?: boolean
 }
 
 export type Pf2eAttr = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA'
@@ -239,6 +241,12 @@ export interface Pf2eFeat {
   requirements?: string
   /** Its traits (Flourish, Attack, Press…), from the data. */
   traits?: string[]
+  /** The archetype it was taken for (Player Core p. 215), shown grouped under it. */
+  archetype?: string
+  /** It is that archetype's dedication feat. */
+  dedication?: boolean
+  /** The feat that granted it (Basic Maneuver's fighter feat), which counts as one feat. */
+  via?: string
 }
 
 export interface Pf2eSheet extends SheetCommon {
@@ -316,6 +324,8 @@ export interface Pf2eSheet extends SheetCommon {
   spellcasting?: Pf2eSpellcasting
   /** Focus spells the hero knows; `focus` holds the pool. */
   focusSpells?: Pf2eSpellRef[]
+  /** Spellcasting from multiclass archetypes, one entry per archetype (Player Core p. 215). */
+  archetypeCasting?: Pf2eArchetypeCasting[]
   /**
    * Effects from `data/pf2e/effects.ts`: toggles the hero has turned on (Rage) and effects
    * from allies (Bless, Heroism +2), by name. `tempHp`: the temporary Hit Points a toggle
@@ -392,6 +402,15 @@ export interface Pf2eSpellcasting {
   font?: { spell: string; max: number; used: number }
 }
 
+/**
+ * An archetype's spellcasting (Player Core p. 215): its own tradition, attribute and rank, the
+ * cantrips its dedication grants, and the slots its basic, expert and master spellcasting feats
+ * give by level.
+ */
+export interface Pf2eArchetypeCasting extends Pf2eSpellcasting {
+  archetype: string
+}
+
 /** The choices a Pathfinder 2e hero was built from (Player Core pp. 22–27); ids are AoN ids. */
 export interface Pf2eCreation {
   ancestry: string
@@ -429,6 +448,8 @@ export interface Pf2eCreation {
   tradition?: string
   /** Focus spells and class cantrips (AoN ids); absent means the ones the features name. */
   focus?: string[]
+  /** The free archetype variant (GM Core p. 84): an archetype feat at every even level. */
+  freeArchetype?: boolean
 }
 
 // --- Nimble ---------------------------------------------------------------

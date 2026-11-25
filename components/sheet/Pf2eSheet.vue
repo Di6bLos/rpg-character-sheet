@@ -555,6 +555,11 @@ function setFocus(n: number) {
   <Pf2eSheetActions />
 
   <Pf2eSheetSpells v-if="sheet.spellcasting || sheet.focusSpells?.length" />
+  <Pf2eSheetSpells
+    v-for="c in sheet.archetypeCasting ?? []"
+    :key="c.archetype"
+    :archetype="c.archetype"
+  />
 
   <div class="two-col">
     <section class="panel stack" style="gap: 12px" aria-labelledby="ft-h">
@@ -577,24 +582,7 @@ function setFocus(n: number) {
           />
         </div>
       </div>
-      <div v-for="(f, i) in sheet.feats" :key="i" class="feat">
-        <div class="feat__meta">
-          <span>{{ f.type }}</span>
-          <small>{{ f.level }}</small>
-        </div>
-        <div class="feat__body">
-          <strong>{{ f.action }} {{ f.name }}</strong>
-          <span v-if="f.frequency || f.trigger" class="small muted">
-            {{
-              [f.frequency && `Frequency ${f.frequency}`, f.trigger && `Trigger ${f.trigger}`]
-                .filter(Boolean)
-                .join(' · ')
-            }}
-          </span>
-          <span>{{ f.desc }}</span>
-        </div>
-      </div>
-      <p v-if="!sheet.feats.length" class="empty">No feats recorded yet.</p>
+      <Pf2eSheetFeats />
     </section>
 
     <Pf2eSheetInventory />
@@ -992,50 +980,5 @@ function setFocus(n: number) {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-}
-
-.feat {
-  display: flex;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--track);
-}
-
-.feat__meta {
-  flex: 0 0 72px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-
-  span {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--page-muted);
-  }
-
-  small {
-    font-size: 12px;
-    color: var(--page-soft);
-  }
-}
-
-.feat__body {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-
-  strong {
-    font-size: 14px;
-  }
-
-  span {
-    font-size: 13px;
-    color: var(--page-soft);
-    line-height: 1.45;
-  }
 }
 </style>

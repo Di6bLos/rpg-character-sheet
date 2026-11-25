@@ -186,6 +186,7 @@ export function abilityNames(s: Pf2eSheet) {
     ...(s.focusSpells ?? []).map((f) => f.name),
     ...(s.spellcasting?.cantrips ?? []).map((f) => f.name),
     ...(s.spellcasting?.spells ?? []).map((f) => f.name),
+    ...(s.archetypeCasting ?? []).flatMap((c) => [...c.cantrips, ...c.spells]).map((f) => f.name),
   ])
 }
 

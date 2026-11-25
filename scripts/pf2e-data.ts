@@ -16,6 +16,7 @@ import type {
   Pf2eActionCost,
   Pf2eActionDef,
   Pf2eAncestryDef,
+  Pf2eArchetypeDef,
   Pf2eArmorDef,
   Pf2eBackgroundDef,
   Pf2eClassDef,
@@ -50,6 +51,7 @@ import {
   openSource,
   page,
   remaster,
+  settingName,
   shareable,
   skillNamesIn,
   slug,
@@ -481,10 +483,71 @@ const feats: Pf2eFeatDef[] = latest(of('feat'), featKey).map((d) => {
     classes: traits.filter((t) => classNames.includes(t)),
     ancestries: traits.filter((t) => featLists.has(t)),
     archetypes: list(d.archetype).filter((a) => !CLOSED_ARCHETYPES.has(a)),
+    ...opt('archetypeLevels', archetypeLevels(stats.Archetype ?? stats.Archetypes, d.level ?? 1)),
     general: traits.includes('General'),
     skill: traits.includes('Skill'),
   }
 })
+
+/**
+ * The level an archetype lists a feat at when it differs from the feat's own (Player Core
+ * p. 215, Additional Feats): "Beastmaster (Level 6)" on Advanced Warden, a 4th-level feat.
+ */
+function archetypeLevels(line: string | undefined, level: number) {
+  const out: Record<string, number> = {}
+  for (const m of (line ?? '').matchAll(/([^,]+?)\s*\(Level (\d+)\)/g)) {
+    const name = m[1]!.replace(/\*+$/, '').trim()
+    if (!CLOSED_ARCHETYPES.has(name) && Number(m[2]) !== level) out[name] = Number(m[2])
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+// --- Archetypes -----------------------------------------------------------------
+/**
+ * An archetype's introduction and its "Multiclass X Characters" advice. The other sections
+ * (AoN's Additional Feats boilerplate, follower lists) go, and so does every paragraph naming a
+ * deity or Golarion proper noun: that lore is Reserved Material. Artifact and mythic archetypes
+ * open with the history of a named item or ascension, so they keep no introduction at all.
+ */
+function archetypeText(text: string, categories: string[]) {
+  if (categories.some((c) => c === 'Artifact' || c === 'Mythic')) return ''
+  const sections = text.split(/^(?=#+ )/m)
+  return sections
+    .filter((sec, i) => i === 0 || /^#+ Multiclass .* Characters/.test(sec))
+    .join('')
+    .split(/\n{2,}/)
+    .filter((para) => !/^Click here\b/.test(para.trim()) && !settingName(para, DEITY_NAMES))
+    .join('\n\n')
+    .trim()
+}
+
+/**
+ * Archetypes (Player Core pp. 215–216): the archetype's own entry, without the feats AoN
+ * embeds (they are in `feats`; an Additional Feat's level is its `archetypeLevels`). A mythic
+ * archetype's dedication lacks the Dedication trait and is found by its name.
+ */
+const archetypes: Pf2eArchetypeDef[] = latest(of('archetype'))
+  .filter((d) => !CLOSED_ARCHETYPES.has(d.name))
+  .map((d) => {
+    const { stats, ...rest } = record({
+      ...d,
+      markdown: (d.markdown ?? '').replace(/<document[\s\S]*?\/>/g, ''),
+    })
+    const dedication =
+      feats.find((f) => f.traits.includes('Dedication') && f.archetypes.includes(d.name)) ??
+      feats.find((f) => f.name.toLowerCase() === `${d.name} dedication`.toLowerCase())
+    return {
+      ...rest,
+      text: archetypeText(rest.text, list(d.archetype_category)),
+      level: d.level ?? dedication?.level ?? 2,
+      categories: list(d.archetype_category),
+      ...opt(
+        'prerequisites',
+        typeof d.prerequisite === 'string' ? d.prerequisite : stats.Prerequisites,
+      ),
+      ...opt('dedication', dedication?.id),
+    }
+  })
 
 const KIND: Record<string, Pf2eSpellDef['kind']> = {
   Spell: 'spell',
@@ -771,6 +834,7 @@ const sets: Record<string, { id: string; source: { book: string } }[]> = {
   heritages,
   backgrounds,
   feats,
+  archetypes,
   spells,
   weapons,
   armor,

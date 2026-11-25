@@ -11,6 +11,7 @@ const load = <K extends keyof Pf2eData>(set: K): Pf2eData[K] =>
 const data = {
   actions: load('actions'),
   ancestries: load('ancestries'),
+  archetypes: load('archetypes'),
   armor: load('armor'),
   backgrounds: load('backgrounds'),
   classes: load('classes'),
@@ -140,6 +141,28 @@ describe('pf2e data', () => {
         data.feats.some((f) => f.archetypes.includes(a)),
         a,
       ).toBe(false)
+  })
+
+  it('has a record for every archetype a feat names, with its dedication', () => {
+    const deityNames = data.deities.map((d) => d.name)
+    const names = new Set(data.archetypes.map((a) => a.name))
+    for (const a of new Set(data.feats.flatMap((f) => f.archetypes))) expect(names, a).toContain(a)
+    for (const a of data.archetypes) {
+      expect(settingName(a.name, deityNames), a.name).toBeUndefined()
+      expect(openBook(a.source.book), a.name).toBe(true)
+      for (const para of a.text.split(/\n{2,}/))
+        expect(settingName(para, deityNames), `${a.name}: ${para}`).toBeUndefined()
+    }
+    const byName = (n: string) => data.archetypes.find((a) => a.name === n)!
+    // Player Core p. 219: the fighter archetype, its dedication a 2nd-level feat.
+    expect(byName('Fighter')).toMatchObject({ level: 2, categories: ['Multiclass'] })
+    expect(data.feats.find((f) => f.id === byName('Fighter').dedication)?.name).toBe(
+      'Fighter Dedication',
+    )
+    // Player Core p. 159, Player Core 2 p. 188: Advanced Warden is a 6th-level Beastmaster feat.
+    expect(data.feats.find((f) => f.name === 'Advanced Warden')?.archetypeLevels).toEqual({
+      Beastmaster: 6,
+    })
   })
 
   it('has rules text for every trait, spoiler notes aside', () => {

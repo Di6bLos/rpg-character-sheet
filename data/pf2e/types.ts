@@ -149,9 +149,29 @@ export interface Pf2eFeatDef extends Pf2eRecord {
   classes: string[]
   /** Ancestry or versatile heritage names whose feat list includes it. */
   ancestries: string[]
+  /** Archetypes whose feat list includes it (Player Core p. 215). */
   archetypes: string[]
+  /**
+   * The level an archetype lists it at when that differs from `level` (an Additional Feat,
+   * Player Core p. 215: Advanced Warden is a 6th-level Beastmaster feat).
+   */
+  archetypeLevels?: Record<string, number>
   general: boolean
   skill: boolean
+}
+
+/**
+ * An archetype (Player Core pp. 215–216): its introduction, AoN's categories (Multiclass for
+ * the class archetypes, Combat Style, Profession…) and its dedication feat. The feats are in
+ * `feats`, by their `archetypes`.
+ */
+export interface Pf2eArchetypeDef extends Pf2eRecord {
+  /** The level of its dedication feat. */
+  level: number
+  categories: string[]
+  prerequisites?: string
+  /** The dedication feat's AoN id. */
+  dedication?: string
 }
 
 /** The class options that list a spell, by name ("Lesson of Shadow", a deity's domain…). */
