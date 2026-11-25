@@ -3,9 +3,11 @@ definePageMeta({ layout: 'auth', middleware: 'guest' })
 useHead({ title: 'Reset password · Lantern' })
 
 const auth = useAuthStore()
-const route = useRoute()
 
-const email = ref(typeof route.query.email === 'string' ? route.query.email : '')
+// The sign-in page passes what was typed in history state, not the URL, so the address
+// stays out of browser history and request logs.
+const prefill: unknown = window.history.state?.email
+const email = ref(typeof prefill === 'string' ? prefill : '')
 const busy = ref(false)
 const error = ref('')
 const sent = ref(false)

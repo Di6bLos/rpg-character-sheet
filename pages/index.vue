@@ -62,7 +62,7 @@ async function submit() {
         <label for="login-password">Password</label>
         <NuxtLink
           class="small"
-          :to="{ path: '/forgot-password', query: email.trim() ? { email: email.trim() } : {} }"
+          :to="{ path: '/forgot-password', state: email.trim() ? { email: email.trim() } : {} }"
         >
           Forgot password?
         </NuxtLink>

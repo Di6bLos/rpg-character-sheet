@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { readAuthLink } from '~/utils/authLinks'
+
 // The reset email links here with a recovery session in the URL hash, which the
-// Supabase client turns into a session while the auth plugin starts. No guest
-// middleware: that session would bounce the player to the dashboard.
+// Supabase client turns into a session while the auth plugin starts; the auth store
+// marks it `recovering` (and comes here from wherever the link landed). No guest
+// middleware: it would send that session straight back here.
 definePageMeta({ layout: 'auth' })
 useHead({ title: 'Set a new password · Lantern' })
 
@@ -18,17 +21,18 @@ const linkError = ref('')
 const passwordValid = computed(() => password.value.length >= 8)
 const matches = computed(() => password.value === confirm.value)
 const mismatch = computed(() => confirm.value.length > 0 && !matches.value)
-const expired = computed(() => linkError.value !== '' || !auth.isAuthenticated)
+const view = computed(() => {
+  if (linkError.value) return 'expired'
+  // busy: saving clears `recovering` just before the page moves on to the dashboard.
+  if (auth.recovering || busy.value) return 'form'
+  return auth.isAuthenticated ? 'signed-in' : 'expired'
+})
 
 onMounted(() => {
-  const hash = new URLSearchParams(window.location.hash.slice(1))
-  if (hash.get('error') || hash.get('error_code')) {
-    linkError.value = hash.get('error_description') ?? 'This reset link isn’t valid.'
-  }
+  const link = readAuthLink(window.location)
+  linkError.value = link.error
   // Keep tokens and errors out of the address bar and history.
-  if (window.location.hash) {
-    history.replaceState(history.state, '', window.location.pathname + window.location.search)
-  }
+  if (link.cleanUrl) history.replaceState(history.state, '', link.cleanUrl)
 })
 
 async function submit() {
@@ -36,8 +40,13 @@ async function submit() {
   error.value = ''
   busy.value = true
   try {
-    await auth.updatePassword(password.value)
-    snackbar.show('Password updated')
+    const othersSignedOut = await auth.updatePassword(password.value)
+    snackbar.show(
+      othersSignedOut
+        ? 'Password updated'
+        : 'Password updated, but other devices could not be signed out',
+      othersSignedOut ? 'success' : 'error',
+    )
     await navigateTo('/dashboard')
   } catch (err) {
     error.value = (err as { message?: string }).message ?? 'Could not update the password.'
@@ -48,11 +57,17 @@ async function submit() {
 </script>
 
 <template>
-  <div v-if="expired" class="stack">
+  <div v-if="view === 'expired'" class="stack">
     <h1 class="auth-title">Link expired</h1>
     <p>This reset link has expired or was already used. Ask for a new one.</p>
     <NuxtLink to="/forgot-password" class="btn btn--block">Send a new link</NuxtLink>
     <p class="small muted"><NuxtLink to="/">Back to sign in</NuxtLink></p>
+  </div>
+
+  <div v-else-if="view === 'signed-in'" class="stack">
+    <h1 class="auth-title">No reset in progress</h1>
+    <p>To set a new password, open the link in a password reset email.</p>
+    <NuxtLink to="/dashboard" class="btn btn--block">Back to the dashboard</NuxtLink>
   </div>
 
   <form v-else class="stack" novalidate @submit.prevent="submit">

@@ -83,7 +83,7 @@ Rules work goes through these so it stays consistent and cites its sources:
 | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------- |
 | `/`, `/signup`                                                                    | Sign in, sign up                                                       | guest                        |
 | `/forgot-password`                                                                | Request a password reset email                                         | guest                        |
-| `/reset-password`                                                                 | Set a new password (from the reset email link)                         | reset link session           |
+| `/reset-password`                                                                 | Set a new password (a reset link's session is sent here from any page) | reset link session           |
 | `/dashboard`                                                                      | Player dashboard                                                       | user                         |
 | `/characters`                                                                     | Character slots                                                        | user                         |
 | `/characters/new/nimble`                                                          | Nimble hero builder (class → ancestry → stats → background → review)   | user                         |
