@@ -12,14 +12,23 @@ const store = useLibraryStore()
 const site = useSiteStore()
 const route = useRoute()
 
-/** Documents, the basic rules, or the shared NPC pool (hidden when admins switch it off). */
+const TAB_TITLES = { rules: 'Rules', spells: 'Spells', classes: 'Classes' } as const
+type CompendiumTab = keyof typeof TAB_TITLES
+
+/**
+ * Documents, the basic rules, spells, classes, or the shared NPC pool (hidden when admins
+ * switch it off).
+ */
 const tab = computed(() => {
-  if (route.query.tab === 'rules') return 'rules'
-  return route.query.tab === 'npcs' && site.settings.npc_pool_library ? 'npcs' : 'documents'
+  const t = route.query.tab
+  if (typeof t === 'string' && t in TAB_TITLES) return t as CompendiumTab
+  return t === 'npcs' && site.settings.npc_pool_library ? 'npcs' : 'documents'
 })
 useHead({
   title: computed(() =>
-    tab.value === 'rules' ? 'Rules · Library · Lantern' : 'Library · Lantern',
+    tab.value in TAB_TITLES
+      ? `${TAB_TITLES[tab.value as CompendiumTab]} · Library · Lantern`
+      : 'Library · Lantern',
   ),
 })
 const snackbar = useSnackbarStore()
@@ -209,8 +218,9 @@ function report(doc: LibraryDocument) {
         </div>
         <h1 style="margin-top: 6px">Library</h1>
         <p>
-          The basic rules of each game, plus references and homebrew any player or GM can read from
-          their dashboard. Campaign-specific notes go in that campaign’s journal.
+          The basic rules, spells and classes of each game, plus references and homebrew any player
+          or GM can read from their dashboard. Campaign-specific notes go in that campaign’s
+          journal.
         </p>
       </div>
       <button
@@ -256,6 +266,16 @@ function report(doc: LibraryDocument) {
         >Rules</NuxtLink
       >
       <NuxtLink
+        :to="{ path: '/library', query: { tab: 'spells' } }"
+        :aria-current="tab === 'spells' ? 'page' : undefined"
+        >Spells</NuxtLink
+      >
+      <NuxtLink
+        :to="{ path: '/library', query: { tab: 'classes' } }"
+        :aria-current="tab === 'classes' ? 'page' : undefined"
+        >Classes</NuxtLink
+      >
+      <NuxtLink
         v-if="site.settings.npc_pool_library"
         :to="{ path: '/library', query: { tab: 'npcs' } }"
         :aria-current="tab === 'npcs' ? 'page' : undefined"
@@ -266,6 +286,10 @@ function report(doc: LibraryDocument) {
     <LibraryNpcPool v-if="tab === 'npcs'" />
 
     <LibraryRules v-else-if="tab === 'rules'" />
+
+    <LazyLibrarySpells v-else-if="tab === 'spells'" />
+
+    <LazyLibraryClasses v-else-if="tab === 'classes'" />
 
     <template v-else>
       <RestrictedNotice v-if="!canUpload" title="Uploads are turned off for your account">

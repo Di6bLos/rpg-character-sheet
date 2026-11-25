@@ -4,13 +4,7 @@
 // topic and search are in the URL (?tab=rules&system=pf2e&topic=combat&q=flank) so a link
 // opens the same page, and the last system is remembered per browser.
 import { loadPf2e } from '~/data/pf2e'
-import {
-  READY_SYSTEMS,
-  RULES_SYSTEMS,
-  loadRulesFile,
-  rulesSystem,
-  type RulesTopic,
-} from '~/data/rules'
+import { loadRulesFile, rulesSystem, type RulesSystem, type RulesTopic } from '~/data/rules'
 import type { GameSystem } from '~/types'
 import { loreHtml } from '~/utils/loreText'
 import {
@@ -27,36 +21,10 @@ import {
 const route = useRoute()
 const router = useRouter()
 
-const STORE_KEY = 'lantern-rules-system'
-function remembered(): string | null {
-  try {
-    return localStorage.getItem(STORE_KEY)
-  } catch {
-    return null
-  }
-}
-function remember(id: string) {
-  try {
-    localStorage.setItem(STORE_KEY, id)
-  } catch {
-    // Private windows and blocked storage just don't remember.
-  }
-}
-
-const fallback = READY_SYSTEMS[0] ?? RULES_SYSTEMS[0]
-const ready = (id: unknown) =>
-  typeof id === 'string' && (rulesSystem(id)?.topics.length ?? 0) > 0 ? id : null
-
-const sys = computed(
-  () => rulesSystem(ready(route.query.system) ?? ready(remembered()) ?? fallback?.id) ?? fallback,
-)
+const hasTopics = (s: RulesSystem) => s.topics.length > 0
+const sys = useLibrarySystem(hasTopics)
 const topic = computed<RulesTopic | undefined>(
   () => sys.value?.topics.find((t) => t.slug === route.query.topic) ?? sys.value?.topics[0],
-)
-watch(
-  () => sys.value?.id,
-  (id) => id && remember(id),
-  { immediate: true },
 )
 
 function query(changes: Record<string, string | undefined>) {
@@ -220,22 +188,12 @@ const phoneTopic = computed({
 <template>
   <div class="rules">
     <div ref="toolbarEl" class="toolbar sticky-bar" :class="{ 'is-stuck': toolbarStuck }">
-      <div class="chips" role="group" aria-label="Game system">
-        <template v-for="s in RULES_SYSTEMS" :key="s.id">
-          <button
-            v-if="s.topics.length"
-            type="button"
-            class="chip"
-            :aria-pressed="sys?.id === s.id"
-            @click="pickSystem(s.id)"
-          >
-            {{ s.label }}
-          </button>
-          <span v-else class="chip chip--soon" :title="`${s.label} rules are on the way`">
-            {{ s.label }} <small>coming soon</small>
-          </span>
-        </template>
-      </div>
+      <LibrarySystemPicker
+        :current="sys?.id"
+        :is-ready="hasTopics"
+        what="rules"
+        @pick="pickSystem"
+      />
       <div class="search">
         <label for="rules-q" class="sr-only">Search {{ sys?.label }} rules</label>
         <input
@@ -338,7 +296,7 @@ const phoneTopic = computed({
           </nav>
         </template>
 
-        <footer class="rules__notice">{{ sys.attribution }}</footer>
+        <LibraryNotice :text="sys.attribution" />
       </article>
     </div>
   </div>
@@ -354,16 +312,6 @@ const phoneTopic = computed({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.chip--soon {
-  border-style: dashed;
-  color: var(--page-muted);
-  cursor: default;
-
-  small {
-    font-size: 12px;
-  }
 }
 
 .search {
@@ -548,15 +496,6 @@ const phoneTopic = computed({
 
 .rules__next {
   margin-left: auto;
-}
-
-.rules__notice {
-  margin-top: 28px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--page-muted);
 }
 
 // Phones and narrow tablets: a topic select over the text instead of the side list.
