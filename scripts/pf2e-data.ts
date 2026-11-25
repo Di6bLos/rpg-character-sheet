@@ -626,15 +626,31 @@ const feet = (v: unknown) => Number(/-?\d+/.exec(String(v ?? ''))?.[0] ?? 0)
 /** Reload in actions as printed, or the printed time when it isn't actions (a ballista's "1 minute"). */
 const reload = (printed: string | undefined): number | string | undefined =>
   printed === undefined ? undefined : /^\d+$/.test(printed) ? Number(printed) : printed
+/** A valued trait's value as the page prints it: a die, dice, a distance, a number, damage types. */
+const TRAIT_VALUE = /^(?:\d*[dD]\d+|\d+ ft\.?|\d+|[BPS]|\(?[BPS](?:, [BPS])*,? or [BPS]\)?)$/
+
 /**
- * Deadly and fatal carry a die size (Player Core p. 282) that AoN's trait list drops; the page's
- * trait labels keep it ("Deadly d8").
+ * Valued traits (Player Core pp. 282–283) carry a value AoN's trait list drops; the page's
+ * trait labels keep it: Deadly d8, Fatal d10, Two-Hand d12, Versatile P, Thrown 20 ft.,
+ * Volley 30 ft., Fatal Aim d12, Scatter 5 ft., Capacity 3, Jousting d6, Modular B, P, or S.
+ * Dice are written "dN" ("Fatal 1d10" → "Fatal d10", "Deadly D10" → "Deadly d10").
  */
 function sizedTraits(d: AonDoc): string[] {
-  const labels = [
-    ...String(d.markdown ?? '').matchAll(/<trait label="(Deadly|Fatal)\s+1?d(\d+)"/gi),
-  ].map((l) => `${l[1]} d${l[2]}`)
-  return list(d.trait).map((t) => labels.find((l) => l.startsWith(`${t} `)) ?? t)
+  const labels = [...String(d.markdown ?? '').matchAll(/<trait label="([^"]+)"/gi)].map((l) =>
+    l[1]!.replace(/\s+/g, ' ').trim(),
+  )
+  return list(d.trait).map((t) => {
+    const label = labels.find((l) => {
+      if (!l.toLowerCase().startsWith(`${t.toLowerCase()} `)) return false
+      return TRAIT_VALUE.test(l.slice(t.length + 1))
+    })
+    if (!label) return t
+    const value = label
+      .slice(t.length + 1)
+      .replace(/^1?[dD](\d+)$/, 'd$1')
+      .replace(/^\((.*)\)$/, '$1')
+    return `${t} ${value}`
+  })
 }
 const weapons: Pf2eWeaponDef[] = latest(of('weapon')).map((d) => ({
   ...base(d),
@@ -709,20 +725,86 @@ const ITEM_SETS: Record<string, (d: AonDoc) => Pf2eItemKind | undefined> = {
 
 const spellKey = (n: string) => straight(n).toLowerCase()
 const spellNames = new Map(spells.map((s) => [spellKey(s.name), s.name]))
+const spellRanks = new Map(spells.map((s) => [s.name, s.rank]))
 /**
- * A staff's spells by their names in the data (the book prints them in lowercase); a limit in
- * brackets stays ("Elemental Form (air only)"). A name the data doesn't have (a legacy spell
- * a reprinted staff still lists) stays as printed.
+ * The spell a specific wand casts (GM Core p. 282) and its rank when the name has none: "You
+ * cast _fireball_ at the indicated rank", "The spell is _mist_.", "You cast 4th-rank _sleep_". A Magic Wand, or a wand that adds to whatever spell it holds
+ * ("You Cast the Spell, and increase its area"), names none: its owner picks the spell.
+ */
+function wandSpell(text: string) {
+  const m =
+    /\bYou cast (?:(\d+)(?:st|nd|rd|th)-rank )?_([^_]+)_/i.exec(text) ??
+    /\bThe spell is (?:(\d+)(?:st|nd|rd|th)-rank )?_([^_]+)_/.exec(text)
+  if (!m) return undefined
+  // A spell the data doesn't have (Chromatic Burst's chromatic armor) keeps its printed name.
+  const name =
+    spellNames.get(spellKey(m[2]!)) ?? m[2]!.replace(/\b\w/g, (c) => c.toUpperCase()).trim()
+  return { name, rank: Number(m[1] ?? 0) || (spellRanks.get(name) ?? 1) }
+}
+/**
+ * Legacy spell names → the remastered spell AoN links them to (`remaster_id`): a reprinted
+ * staff still prints "burning hands" (Breathe Fire), "acid arrow" (Acid Grip), "obscuring
+ * mist" (Mist).
+ */
+const REMASTERED = new Map(
+  all
+    .filter((d) => d.category === 'spell' && !remaster(d))
+    .flatMap((d) => {
+      const to = list(d.remaster_id)
+        .map((id) => byId.get(id)?.name)
+        .find((n) => n && spellNames.has(spellKey(n)))
+      return to ? [[spellKey(d.name), to] as const] : []
+    }),
+)
+/** The data's name for a spell a staff prints, a limit in brackets left out for the lookup. */
+const spellOf = (printed: string) => {
+  const [, spell = printed, limit = ''] = /^(.*?)(\s*\([^)]*\))?$/.exec(printed.trim()) ?? []
+  const named = spellNames.get(spellKey(spell)) ?? REMASTERED.get(spellKey(spell))
+  return named ? `${named}${limit}` : undefined
+}
+/**
+ * A staff's spells by their names in the data (the book prints them in lowercase, a legacy
+ * one by its old name); a limit in brackets stays ("Elemental Form (air only)"). A spell the
+ * data doesn't have, one from a setting or legacy book (Divine Mysteries' acidic burst,
+ * Secrets of Magic's magnetic repulsion), stays as printed and is listed in `missingSpells`.
  */
 const namedSpells = (list: { rank: number; names: string[] }[]) =>
-  list.map(({ rank, names }) => ({
-    rank,
-    names: names.map((n) => {
-      const [, spell = n, limit = ''] = /^(.*?)(\s*\([^)]*\))?$/.exec(n.trim()) ?? []
-      const named = spellNames.get(spellKey(spell))
-      return named ? `${named}${limit}` : n
-    }),
-  }))
+  list.map(({ rank, names }) => ({ rank, names: names.map((n) => spellOf(n) ?? n) }))
+const missingSpells = (list: { rank: number; names: string[] }[]) => [
+  ...new Set(list.flatMap((r) => r.names).filter((n) => !spellOf(n))),
+]
+
+const allById = new Map(all.map((d) => [d.id, d]))
+/**
+ * A remastered grade AoN files under a legacy item (Rage of Elements' Aeon Stone (Cymophane
+ * Cabochon) under the Core Rulebook's aeon stone): its family is the remastered item of the
+ * same name (GM Core's aeon stone, p. 264), its text its own section of the legacy page.
+ * Undefined when the parent is remastered; null when no remastered family exists, so the
+ * grade goes.
+ */
+function legacyParent(d: AonDoc) {
+  const id = d.item_parent_id ? String(d.item_parent_id) : ''
+  const old = id && !byId.has(id) ? allById.get(id) : undefined
+  if (!old) return undefined
+  const family = current.find(
+    (f) => f.category === 'equipment' && f.name === old.name && !f.item_parent_id,
+  )
+  if (!family) return null
+  const { grades } = itemGrades(
+    withoutClosedMentions(cleanMarkdown(d.markdown ?? '', 1, byId), CLOSED)
+      .split('\n')
+      .slice(1)
+      .join('\n'),
+  )
+  const grade = grades
+    .find((g) => g.name === d.name)
+    ?.text.split('\n')
+    .filter((l) => !l.startsWith('**Traits**'))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  return grade ? { family, grade } : null
+}
 
 /**
  * One record per item the hero can own: each grade of an item printed with several (its text
@@ -740,12 +822,16 @@ function itemSet(kindOf: (d: AonDoc) => Pf2eItemKind | undefined): Pf2eItemDef[]
   // In level order, so each staff type keeps the spells of the ones below it.
   return [...owned]
     .sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
-    .map((d) => {
-      const parent = d.item_parent_id ? byId.get(String(d.item_parent_id)) : undefined
+    .flatMap((d) => {
       const kind = kindOf(d)!
+      const legacy = legacyParent(d)
+      if (legacy === null) return []
+      const parent =
+        legacy?.family ?? (d.item_parent_id ? byId.get(String(d.item_parent_id)) : undefined)
       const { stats, text: whole } = record(parent ?? d)
       const { text: own, grades } = itemGrades(whole)
-      const grade = parent ? (grades.find((g) => g.name === d.name)?.text ?? '') : ''
+      const grade =
+        legacy?.grade ?? (parent ? (grades.find((g) => g.name === d.name)?.text ?? '') : '')
       const text = [own, grade].filter(Boolean).join('\n\n')
       const usage = String(d.usage ?? parent?.usage ?? stats.Usage ?? '') || undefined
       const sub = String(d.item_subcategory ?? '')
@@ -768,29 +854,40 @@ function itemSet(kindOf: (d: AonDoc) => Pf2eItemKind | undefined): Pf2eItemDef[]
         const duration = itemDuration(own, grade)
         if (duration) numbers.duration = duration
       }
-      if (kind === 'rune') numbers.rune = runeNumbers(d.name, sub, usage ?? '', text)
+      if (kind === 'rune') numbers.rune = runeNumbers(d.name, sub, usage ?? '', own, grade)
       if (kind === 'scroll' || kind === 'wand') {
         const rank = spellRankIn(d.name)
         if (rank) numbers.spellRank = rank
+      }
+      if (kind === 'wand') {
+        const fixed = wandSpell(text)
+        if (fixed) {
+          numbers.castsSpell = fixed.name
+          numbers.spellRank ??= fixed.rank
+        }
       }
       if (kind === 'staff') {
         const key = String(parent?.id ?? d.id)
         const all = withLowerSpells(staffLists.get(key) ?? [], staffSpells(grade || own))
         staffLists.set(key, all)
         numbers.spells = namedSpells(all)
+        const missing = missingSpells(all)
+        if (missing.length) numbers.missingSpells = missing
       }
-      return {
-        ...base(d),
-        text,
-        kind,
-        ...opt('parent', parent?.id),
-        level: d.level ?? 0,
-        price: num(d.price),
-        bulk: num(d.bulk ?? parent?.bulk),
-        ...opt('usage', usage),
-        activations: itemActivations(stats, text),
-        ...numbers,
-      }
+      return [
+        {
+          ...base(d),
+          text,
+          kind,
+          ...opt('parent', parent?.id),
+          level: d.level ?? 0,
+          price: num(d.price),
+          bulk: num(d.bulk ?? parent?.bulk),
+          ...opt('usage', usage),
+          activations: itemActivations(stats, text),
+          ...numbers,
+        },
+      ]
     })
     .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
 }

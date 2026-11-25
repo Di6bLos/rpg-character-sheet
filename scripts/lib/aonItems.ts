@@ -160,9 +160,12 @@ function bonusTarget(
   return undefined
 }
 
-/** Words after the statistic that limit the bonus ("…to High Jump", "…against poisons"). */
+/**
+ * Words after the statistic that limit the bonus ("…to High Jump", "…against poisons", "…checks
+ * and DCs against Hide").
+ */
 const QUALIFIED =
-  /^\s*(?:,\s*)?(?:to|against|when|while|if|made|with|for checks|on|from|you make)\b/i
+  /^\s*(?:,\s*)?(?:and DCs\s+)?(?:to|against|when|while|if|made|with|for checks|on|from|you make)\b/i
 /** Sentences that open with a condition hold only sometimes. */
 const CONDITIONAL_START = /^(?:When|If|While|Whenever|On a|After|Each time|As long as)\b/
 
@@ -260,33 +263,125 @@ export function bombNumbers(text: string): Pf2eItemNumbers['bomb'] {
 }
 
 const GRADE_STEP: Record<string, number> = { greater: 2, major: 3 }
+const NUMBER_WORDS: Record<string, number> = { two: 2, three: 3, four: 4, five: 5 }
+
+/** "Mythic Striking" deals five weapon damage dice; the potency and resilient ones are +4 (War of Immortals). */
+function mythicValue(slot: Pf2eRuneNumbers['slot'], text: string) {
+  if (slot === 'striking') {
+    const dice = /\bdeals (\w+) weapon damage dice\b/i.exec(text)?.[1]?.toLowerCase()
+    return (NUMBER_WORDS[dice ?? ''] ?? 2) - 1
+  }
+  return Number(/\+(\d) item bonus|\bby (\d)\b/.exec(text)?.slice(1).find(Boolean) ?? 0)
+}
+
+/** Sentences of a critical hit's effect ("On a critical hit…", "When you critically hit…"). */
+const CRIT = /\bon a critical hit\b|\bcritically hit\b|\bis a critical hit and\b/i
+
+/**
+ * A property rune's critical hit effect with its grade's own sentences applied (GM Core pp.
+ * 236–237): a grade's own critical sentence replaces the item's (Fearsome (Greater):
+ * frightened 2), "The save DC is 34" and "The Escape DC is 28" replace the DC, "Increase the
+ * persistent damage on a critical hit to 2d10" the dice, and what else that sentence adds
+ * follows it ("the deafness is permanent").
+ */
+function critOf(own: string, grade: string) {
+  // From the first critical sentence to the end of its paragraph (Rooting's immobilized and
+  // Escape DC follow it), activations aside.
+  const paragraph = withoutActivations(own)
+    .split(/\n{2,}/)
+    .map((p) => sentences(p))
+    .find((p) => p.some((x) => CRIT.test(x)))
+  const base = paragraph ? paragraph.slice(paragraph.findIndex((x) => CRIT.test(x))).join(' ') : ''
+  const gradeCrit = sentences(withoutActivations(grade)).filter(
+    (x) => CRIT.test(x) && !/^Increase\b|\bignores?\b/.test(x),
+  )
+  let crit = gradeCrit.length ? gradeCrit.join(' ') : base
+  for (const x of sentences(grade)) {
+    const dc = /\b(?:save|Escape) DC is (\d+)/.exec(x)?.[1]
+    if (dc) {
+      crit = crit.replace(/\bDC \d+/g, `DC ${dc}`)
+      const rest = /^The (?:save|Escape) DC is \d+(?:,? and (.+))?\.?$/.exec(x)?.[1]
+      if (rest) crit = `${crit} Greater: ${rest.replace(/\.$/, '')}.`
+    }
+    const more =
+      /^Increase the ([\w ]*?) ?damage (?:dealt )?[\w ]*?on a critical hit to (\d+d\d+)/.exec(x)
+    if (more) crit = crit.replace(new RegExp(`\\b\\d+d\\d+(?= ${more[1]!.trim()}\\b)`), more[2]!)
+  }
+  return crit || undefined
+}
+
+/**
+ * A property rune's extra damage on a hit (GM Core pp. 236–237), as printed: "an additional
+ * 1d6 fire damage", "an extra 1d6 electricity damage", "add 1d6 acid damage", "an extra 1d6
+ * persistent bleed damage". Persistent damage is kept apart (it's a condition, p. 445), and
+ * damage only against some foes ("to undead", "against an unholy target") goes in `vs`. A
+ * grade's "Increase the persistent vitality damage to 2d6" raises it.
+ */
+function runeDamage(own: string, grade: string) {
+  const out: Pick<Pf2eRuneNumbers, 'damage' | 'persistent' | 'vs'> = {}
+  const vs: NonNullable<Pf2eRuneNumbers['vs']> = []
+  const raised = /^Increase the (persistent )?(\w+) damage to (\d+d\d+)\b/m.exec(
+    sentences(grade).join('\n'),
+  )
+  for (const sentence of sentences(own).filter(
+    (x) => !CRIT.test(x) || /\bon a successful Strike\b/.test(x),
+  )) {
+    const re =
+      /\b(?:(?:an? )?(?:additional|extra)|add) (\d+d\d+) (persistent )?(\w+) damage(?: (?:to|against) (?!the damage)([^,.;]+))?|\b(?:as well as|and) (\d+d\d+) (\w+) damage to ([^,.;]+?)(?= and \d|[,.;]|$)|\bor an extra (\d+d\d+) against ([^,.;]+)/g
+    let last = ''
+    for (const m of sentence.matchAll(re)) {
+      if (m[1]) {
+        const type = m[3]!.toLowerCase()
+        last = type
+        const persistent = !!m[2]
+        const dice = raised && raised[2]!.toLowerCase() === type ? raised[3]! : m[1]
+        const hit = { dice, type }
+        if (m[4]) vs.push({ ...hit, vs: m[4].trim(), ...(persistent ? { persistent } : {}) })
+        else if (persistent) out.persistent ??= hit
+        else out.damage ??= hit
+      } else if (m[5]) {
+        last = m[6]!.toLowerCase()
+        vs.push({ dice: m[5], type: last, vs: m[7]!.trim() })
+      } else if (m[8] && last) vs.push({ dice: m[8], type: last, vs: m[9]!.trim(), instead: true })
+    }
+  }
+  if (vs.length) out.vs = vs
+  return out
+}
 
 /**
  * A rune's numbers (GM Core pp. 224–237): a potency rune's +N (from its name), a striking
- * rune's extra dice (striking 1, greater 2, major 3), a resilient rune's bonus to saves, a
- * property rune's damage on a hit and what it does on a critical hit.
+ * rune's extra dice (striking 1, greater 2, major 3), a resilient rune's bonus to saves; the
+ * mythic ones from their text (War of Immortals: five dice, +4). A property rune's damage on
+ * a hit, persistent and against some foes apart, what it does on a critical hit (its grade's
+ * sentences applied), and keen's wider critical range. `grade` is the grade's own text.
  */
 export function runeNumbers(
   name: string,
   subcategory: string,
   usage: string,
-  text: string,
+  own: string,
+  grade = '',
 ): Pf2eRuneNumbers {
+  const text = [own, grade].filter(Boolean).join('\n\n')
   const onto = /armor/i.test(subcategory) ? 'armor' : 'weapon'
-  const grade = /\((Greater|Major)\)/.exec(name)?.[1]?.toLowerCase()
+  const step = /\((Greater|Major)\)/.exec(name)?.[1]?.toLowerCase()
   if (subcategory.startsWith('Fundamental')) {
-    const plus = Number(/\(\+(\d)\)/.exec(name)?.[1] ?? 0)
-    if (/Potency/.test(name)) return { slot: 'potency', onto, value: plus, usage }
-    const slot = name.startsWith('Striking') ? 'striking' : 'resilient'
-    return { slot, onto, value: GRADE_STEP[grade ?? ''] ?? 1, usage }
+    const slot = /Potency/.test(name) ? 'potency' : /Striking/.test(name) ? 'striking' : 'resilient'
+    if (/^Mythic\b/.test(name)) return { slot, onto, value: mythicValue(slot, text), usage }
+    if (slot === 'potency')
+      return { slot, onto, value: Number(/\(\+(\d)\)/.exec(name)?.[1] ?? 0), usage }
+    return { slot, onto, value: GRADE_STEP[step ?? ''] ?? 1, usage }
   }
-  const damage = dmg(/\badditional (\d+d\d+) (\w+) damage\b/.exec(text))
-  const crit = sentences(text).find((s) => /\bcritical hit\b/i.test(s))
+  // Keen (GM Core p. 237): a natural 19 that hits is a critical hit; that's its whole effect.
+  const keen = /\bcritical hit on a 19 on the die\b/.test(text)
+  const crit = keen ? undefined : critOf(own, grade)
   return {
     slot: 'property',
     onto,
-    ...(damage ? { damage } : {}),
+    ...runeDamage(own, grade),
     ...(crit ? { crit } : {}),
+    ...(keen ? { keen } : {}),
     usage,
   }
 }

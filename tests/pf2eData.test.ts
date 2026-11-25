@@ -523,8 +523,23 @@ describe('pf2e data', () => {
     expect(data.weapons.find((w) => w.name === 'Staff')).toMatchObject({
       source: { book: 'Player Core', page: 277 },
       damage: '1d4',
-      traits: ['Monk', 'Two-Hand'],
+      traits: ['Monk', 'Two-Hand d8'],
     })
+  })
+
+  // Player Core pp. 282–283: valued traits keep their values, as the weapon tables print them.
+  it('keeps the values of valued weapon traits', () => {
+    const traits = (name: string) => data.weapons.find((w) => w.name === name)?.traits
+    expect(traits('Bastard Sword')).toEqual(['Two-Hand d12'])
+    expect(traits('Pick')).toEqual(['Fatal d10'])
+    expect(traits('Gladius')).toContain('Versatile S')
+    expect(traits('Lance')).toContain('Jousting d6')
+    expect(traits('Hand Cannon')).toContain('Modular B, P, or S')
+    for (const w of data.weapons)
+      for (const t of w.traits)
+        expect(t, w.name).not.toMatch(
+          /^(?:Two-Hand|Versatile|Deadly|Fatal|Volley|Scatter|Capacity)$/,
+        )
   })
 
   it('keeps weapon, armor and shield statistics', () => {
@@ -649,6 +664,42 @@ describe('pf2e data', () => {
       rune: { slot: 'property', damage: { dice: '1d6', type: 'fire' } },
     })
     expect(item('Flaming')?.rune?.crit).toMatch(/1d10 persistent fire damage on a critical hit/)
+    // GM Core pp. 236–237: every way the runes print their damage on a hit.
+    const rune = (name: string) => item(name)?.rune
+    expect(rune('Shock')?.damage).toEqual({ dice: '1d6', type: 'electricity' })
+    expect(rune('Thundering')?.damage).toEqual({ dice: '1d6', type: 'sonic' })
+    expect(rune('Corrosive')?.damage).toEqual({ dice: '1d6', type: 'acid' })
+    expect(rune('Decaying')?.damage).toEqual({ dice: '1d4', type: 'void' })
+    expect(rune('Astral')?.damage).toEqual({ dice: '1d6', type: 'spirit' })
+    expect(rune('Holy')).toMatchObject({
+      damage: { dice: '1d4', type: 'spirit' },
+      vs: [{ dice: '2d4', type: 'spirit', vs: 'an unholy target', instead: true }],
+    })
+    expect(rune('Unholy')?.damage).toEqual({ dice: '1d4', type: 'spirit' })
+    // Persistent damage is its own condition; damage only against undead is never a hit's.
+    expect(rune('Wounding')).toMatchObject({ persistent: { dice: '1d6', type: 'bleed' } })
+    expect(rune('Wounding')?.damage).toBeUndefined()
+    expect(rune('Vitalizing')).toMatchObject({
+      vs: [{ dice: '1d6', type: 'vitality', vs: 'undead', persistent: true }],
+    })
+    expect(rune('Vitalizing')?.damage).toBeUndefined()
+    expect(rune('Vitalizing (Greater)')?.vs?.[0]?.dice).toBe('2d6')
+    expect(rune('Brilliant')?.damage).toEqual({ dice: '1d4', type: 'fire' })
+    // A grade's own numbers (GM Core p. 237): Flaming (Greater) 2d10, Frost (Greater) DC 34.
+    expect(rune('Flaming (Greater)')?.crit).toMatch(/plus 2d10 persistent fire damage/)
+    expect(rune('Flaming (Greater)')?.damage?.dice).toBe('1d6')
+    expect(rune('Frost (Greater)')?.crit).toMatch(/DC 34 Fortitude/)
+    expect(rune('Fearsome (Greater)')?.crit).toMatch(/frightened 2/)
+    expect(rune('Rooting (True)')?.crit).toMatch(/Escape DC 41/)
+    expect(rune('Thundering (Greater)')?.crit).toMatch(/DC 34.*deafness is permanent/)
+    // Keen widens the critical range instead of adding a note.
+    expect(rune('Keen')).toMatchObject({ keen: true })
+    expect(rune('Keen')?.crit).toBeUndefined()
+    // War of Immortals' mythic runes: five weapon dice, +4.
+    expect(rune('Mythic Striking')).toMatchObject({ slot: 'striking', value: 4 })
+    expect(rune('Mythic Weapon Potency')).toMatchObject({ slot: 'potency', value: 4 })
+    expect(rune('Mythic Armor Potency')).toMatchObject({ slot: 'potency', value: 4 })
+    expect(rune('Mythic Resilient')).toMatchObject({ slot: 'resilient', value: 4 })
     for (const r of data.runes) expect(r.rune?.usage, r.name).toMatch(/^etched (?:onto|into)/)
   })
 
@@ -670,6 +721,26 @@ describe('pf2e data', () => {
     const listed = data.staves.flatMap((st) => (st.spells ?? []).flatMap((r) => r.names))
     const unknown = listed.filter((n) => !spellNames.has(n.replace(/\s*\([^)]*\)$/, '')))
     expect(unknown.length / listed.length).toBeLessThan(0.05)
+    // Legacy names a staff still prints go to their remastered spells (GM Core p. 279); spells
+    // from setting or legacy books stay as printed and are listed as missing.
+    const prism = item('Dragonprism Staff')!
+    expect(prism.spells?.find((r) => r.rank === 1)?.names).toContain('Breathe Fire')
+    expect(prism.spells?.find((r) => r.rank === 2)?.names).toContain('Acid Grip')
+    expect(item('Staff of Air (Greater)')?.spells?.flatMap((r) => r.names)).toContain('Mist')
+    for (const st of data.staves)
+      for (const n of (st.spells ?? []).flatMap((r) => r.names))
+        if (!spellNames.has(n.replace(/\s*\([^)]*\)$/, '')))
+          expect(st.missingSpells, `${st.name}: ${n}`).toContain(n)
+    expect(prism.missingSpells).toEqual(['reflective scales'])
+    // A specific wand casts its own spell (GM Core p. 282); a Magic Wand holds one you pick.
+    expect(item('Wand of Smoldering Fireballs (5th-Rank Spell)')).toMatchObject({
+      castsSpell: 'Fireball',
+      spellRank: 5,
+    })
+    expect(item('Wand of Choking Mist (2nd-Rank Spell)')?.castsSpell).toBe('Mist')
+    expect(item('Wand of Tormented Slumber')).toMatchObject({ castsSpell: 'Sleep', spellRank: 4 })
+    expect(item('Magic Wand (1st-rank Spell)')?.castsSpell).toBeUndefined()
+    expect(item('Wand of Widening (1st-rank Spell)')?.castsSpell).toBeUndefined()
     expect(greater?.find((r) => r.rank === 0)?.names).toEqual(['Ignition'])
     expect(item('Magic Wand (1st-rank Spell)')).toMatchObject({
       level: 3,
@@ -692,6 +763,17 @@ describe('pf2e data', () => {
       frequency: 'once per day',
     })
     expect(item('Rope')).toMatchObject({ kind: 'gear', price: 50, bulk: 0.1 })
+    // Rage of Elements' aeon stones, which AoN files under the legacy aeon stone, take GM
+    // Core's aeon stone text and their own (p. 98), their bonus against Hide and Sneak only.
+    expect(item('Aeon Stone (Cymophane Cabochon)')).toMatchObject({
+      parent: 'equipment-3055',
+      source: { book: 'Rage of Elements', page: 98 },
+      bonuses: [{ value: 2, selector: 'perception', when: expect.stringMatching(/Hide/) }],
+    })
+    for (const i of data.magicItems) {
+      expect(i.text, i.name).not.toBe('')
+      if (i.parent) expect(i.parent, i.name).not.toBe('equipment-407')
+    }
   })
 
   it('gives deities what a cleric needs', () => {

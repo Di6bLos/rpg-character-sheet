@@ -309,17 +309,31 @@ export interface Pf2eItemDamage {
   type: string
 }
 
+/** A rune's damage against some foes only ("to undead", "against an unholy target"). */
+export interface Pf2eRuneVsDamage extends Pf2eItemDamage {
+  vs: string
+  persistent?: boolean
+  /** It replaces the rune's usual damage (holy: 2d4 instead of 1d4 against unholy). */
+  instead?: boolean
+}
+
 /** A rune's numbers (GM Core pp. 224–237). */
 export interface Pf2eRuneNumbers {
   /** A fundamental rune (potency, striking, resilient) or a property rune. */
   slot: 'potency' | 'striking' | 'resilient' | 'property'
   onto: 'weapon' | 'armor'
-  /** Potency +1–3; striking 1–3 (striking, greater, major); resilient +1–3. */
+  /** Potency +1–4; striking 1–4 (striking, greater, major, mythic); resilient +1–4. */
   value?: number
   /** A property rune's damage on a hit (flaming: 1d6 fire). */
   damage?: Pf2eItemDamage
-  /** What it does on a critical hit, as printed. */
+  /** Persistent damage it deals on a hit (wounding: 1d6 bleed), a condition apart (p. 445). */
+  persistent?: Pf2eItemDamage
+  /** Damage only against some foes (vitalizing: 1d6 persistent vitality to undead). */
+  vs?: Pf2eRuneVsDamage[]
+  /** What it does on a critical hit, as printed with its grade's numbers. */
   crit?: string
+  /** Keen (GM Core p. 237): a natural 19 that hits is a critical hit. */
+  keen?: boolean
   /** Its Usage line: "etched onto a melee weapon", "etched onto light armor". */
   usage: string
 }
@@ -342,8 +356,12 @@ export interface Pf2eItemNumbers {
   rune?: Pf2eRuneNumbers
   /** A staff's spells by rank (cantrips at 0), its lower types' included (GM Core p. 278). */
   spells?: { rank: number; names: string[] }[]
+  /** Staff spells from setting or legacy books the data leaves out, as printed. */
+  missingSpells?: string[]
   /** The spell rank a scroll or wand holds (GM Core pp. 262, 282). */
   spellRank?: number
+  /** The spell a specific wand casts, by name (Wand of Smoldering Fireballs: Fireball). */
+  castsSpell?: string
 }
 
 /**
