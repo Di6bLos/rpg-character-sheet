@@ -3,15 +3,25 @@
 // (p. 401), and damage, Shield Block, knocked out, dying, wounded and doomed (pp. 269,
 // 406, 410–412). Pure functions on the sheet; the sheet panels call them and `say()` the result.
 import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import { type Rng, parseDice, rollCheck, rollDice } from '~/utils/dice'
+import {
+  ASSISTED_DC,
+  PERSISTENT_DC,
+  type Pf2eHit,
+  applyDefenses,
+  removePersistent,
+} from '~/utils/pf2eDamage'
 import {
   baseDeathAt,
   effectConditions,
   effectMods,
   endOnUnconscious,
+  pf2eEffectDef,
   raisedShieldBonus,
   recoveryDcChange,
   shieldAc,
   shieldBroken,
+  toggleEffect,
 } from '~/utils/pf2eEffects'
 
 const RANK_BONUS: Record<Pf2eRank, number> = { U: 0, T: 2, E: 4, M: 6, L: 8 }
@@ -284,11 +294,42 @@ export { raisedShieldBonus, shieldAc, shieldBroken }
  */
 export const strikeDamage = (rolled: number, crit = false) => Math.max(1, rolled) * (crit ? 2 : 1)
 
-export interface Pf2eDamageOptions {
+export interface Pf2eDamageOptions extends Pf2eHit {
   /** From an attacker's critical hit or your own critical failure. */
   crit?: boolean
   /** Shield Block: the raised shield takes up to its Hardness, then you both take the rest. */
   shieldBlock?: boolean
+}
+
+/** One type of damage in a single blow or tick (a Strike's fire and slashing, persistent damage). */
+export interface Pf2eDamagePart extends Pf2eHit {
+  amount: number
+}
+
+/**
+ * Immunities, weaknesses and resistances on each part (p. 407; persistent damage apart from the
+ * rest, p. 445); an effect's resistance "against the triggering damage" ends once it's used
+ * (Selfish Shield). Returns the total and the notes.
+ */
+function afterDefenses(s: Pf2eSheet, parts: Pf2eDamagePart[]) {
+  const notes: string[] = []
+  let total = 0
+  const used = new Set<string>()
+  for (const p of parts) {
+    const raw = Math.max(0, Math.floor(p.amount))
+    const d = applyDefenses(s, raw, p)
+    total += d.amount
+    if (d.resisted && pf2eEffectDef(s, d.resisted.source)?.ends === 'trigger')
+      used.add(d.resisted.source)
+    if (d.notes.length) {
+      const what = [p.persistent ? 'persistent' : '', p.type ?? ''].filter(Boolean).join(' ')
+      notes.push(`${what ? `${what} ` : ''}${raw} → ${d.amount} (${d.notes.join(', ')}).`)
+    }
+  }
+  for (const name of used)
+    if (s.effects?.on.includes(name)) notes.push(toggleEffect(s, name, s.level ?? 1))
+  const types = [...new Set(parts.map((p) => p.type).filter(Boolean))]
+  return { total, notes, type: types.length === 1 ? `${types[0]} ` : '' }
 }
 
 /**
@@ -297,9 +338,20 @@ export interface Pf2eDamageOptions {
  * (2 on a crit). One blow of at least double your max HP kills outright (massive damage,
  * p. 412); it's counted after Shield Block, as that's the damage the hero takes.
  */
-export function takeDamage(s: Pf2eSheet, amount: number, o: Pf2eDamageOptions = {}): string {
-  let left = Math.max(0, Math.floor(amount))
-  const notes: string[] = []
+export function takeDamage(
+  s: Pf2eSheet,
+  amount: number | Pf2eDamagePart[],
+  o: Pf2eDamageOptions = {},
+): string {
+  // A typed amount or parts go through the hero's defenses first (p. 407); the HP steppers don't.
+  const typed = Array.isArray(amount) || o.type !== undefined || !!o.spell
+  const parts: Pf2eDamagePart[] = Array.isArray(amount)
+    ? amount
+    : [{ amount, ...(o.type ? { type: o.type } : {}), spell: o.spell, persistent: o.persistent }]
+  const defended = typed ? afterDefenses(s, parts) : undefined
+  let left = defended?.total ?? Math.max(0, Math.floor(parts[0]?.amount ?? 0))
+  const kind = defended?.type ?? ''
+  const notes: string[] = [...(defended?.notes ?? [])]
   if (o.shieldBlock && s.shield.name && !shieldBroken(s)) {
     const prevented = Math.min(left, s.shield.hardness)
     left -= prevented
@@ -314,7 +366,7 @@ export function takeDamage(s: Pf2eSheet, amount: number, o: Pf2eDamageOptions = 
     s.hp = 0
     s.dying = Math.max(1, deathAt(s))
     addCondition(s, 'Unconscious')
-    const took = `Took ${left} damage${o.crit ? ' (crit)' : ''}, double your max HP or more:`
+    const took = `Took ${left} ${kind}damage${o.crit ? ' (crit)' : ''}, double your max HP or more:`
     return [...notes, `${took} massive damage, your hero dies instantly.`].join(' ')
   }
   if (s.hp === 0 && s.dying > 0) {
@@ -325,7 +377,7 @@ export function takeDamage(s: Pf2eSheet, amount: number, o: Pf2eDamageOptions = 
   s.tempHp -= fromTemp
   left -= fromTemp
   s.hp = Math.max(0, s.hp - left)
-  const took = `Took ${fromTemp + left} damage${o.crit ? ' (crit)' : ''}: ${s.hp}/${s.hpMax} HP.`
+  const took = `Took ${fromTemp + left} ${kind}damage${o.crit ? ' (crit)' : ''}: ${s.hp}/${s.hpMax} HP.`
   if (s.hp > 0 || fromTemp + left === 0) return [...notes, took].join(' ')
   addCondition(s, 'Unconscious')
   const ended = endOnUnconscious(s)
@@ -347,7 +399,9 @@ export function heal(s: Pf2eSheet, amount: number): string {
     removeCondition(s, 'Unconscious')
   }
   // Wounded ends when you're restored to full HP and rested (p. 447); the player clears it.
-  return `Healed ${s.hp - was}: ${s.hp}/${s.hpMax} HP.${note}`
+  // Bleed ends when you're healed to full HP (p. 407).
+  const bled = s.hp === s.hpMax ? removePersistent(s, 'bleed') : ''
+  return `Healed ${s.hp - was}: ${s.hp}/${s.hpMax} HP.${note}${bled ? ` ${bled}` : ''}`
 }
 
 /** The recovery check DC (p. 411): 10 + dying, 1 lower with Toughness (p. 263). */
@@ -385,4 +439,55 @@ export function heroicRecovery(s: Pf2eSheet): string {
   s.heroPoints = 0
   s.dying = 0
   return `Spent ${spent} Hero Point${spent === 1 ? '' : 's'}: stable at 0 HP, wounded stays ${s.wounded}.`
+}
+
+// --- Persistent damage (p. 445) ---------------------------------------------------
+
+/** A persistent amount rolled anew: dice through the dice tray, or a flat number. */
+function rollAmount(dice: string, rng: Rng) {
+  const e = parseDice(dice)
+  return e ? rollDice(e, rng).total : Math.max(0, Number(dice) || 0)
+}
+
+/**
+ * The end of your turn with persistent damage (p. 445): each condition's dice are rolled anew
+ * and all of it is taken at once (so dying rises only once), its own type through weaknesses
+ * and resistances; then a DC 15 flat check for each, a success ending it.
+ */
+export function takePersistent(s: Pf2eSheet, rng: Rng = Math.random): string {
+  const list = s.persistent ?? []
+  if (!list.length || isDead(s)) return ''
+  const rolled = list.map((p) => ({ p, amount: rollAmount(p.dice, rng) }))
+  const each = rolled.map(({ p, amount }) => `${amount} ${p.type} (${p.dice})`).join(', ')
+  const took = takeDamage(
+    s,
+    rolled.map(({ p, amount }) => ({ amount, type: p.type, persistent: true })),
+  )
+  const checks = rolled.map(({ p }) => flatCheck(s, p.type, PERSISTENT_DC, rng))
+  return `Persistent damage ${each}. ${took} ${checks.join(' ')}`
+}
+
+function flatCheck(s: Pf2eSheet, type: string, dc: number, rng: Rng) {
+  const r = rollCheck(0, rng)
+  const ends = r.d20 >= dc
+  if (ends) removePersistent(s, type)
+  return `Flat check ${r.d20} vs DC ${dc}: persistent ${type} ${ends ? 'ends' : 'goes on'}.`
+}
+
+/**
+ * Assisted recovery (p. 445): help (usually 2 actions) gives another flat check right away, once
+ * a round; particularly apt help, like dousing the flames, lowers the DC to 10.
+ */
+export function assistedRecovery(
+  s: Pf2eSheet,
+  type: string,
+  apt = false,
+  rng: Rng = Math.random,
+): string {
+  const p = s.persistent?.find((x) => x.type === type)
+  if (!p) return `No persistent ${type} damage.`
+  const round = s.turn?.round ?? 0
+  if (round > 0 && p.assisted === round) return 'Already helped this round.'
+  p.assisted = round
+  return `Assisted recovery: ${flatCheck(s, type, apt ? ASSISTED_DC : PERSISTENT_DC, rng)}`
 }

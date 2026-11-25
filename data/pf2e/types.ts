@@ -301,7 +301,8 @@ export type Pf2eEffect =
       type: 'status' | 'circumstance' | 'item' | 'untyped'
       melee?: boolean
       agileHalf?: boolean
-      weapons?: 'agileFinesse'
+      /** Agile or finesse Strikes (Precise Strike), or unarmed ones (an animal instinct's). */
+      weapons?: 'agileFinesse' | 'unarmed'
       skills?: string[]
       byLevel?: [level: number, value: number][]
       /** Effects whose bonus of the same type this one adds to instead of the higher counting. */
@@ -397,6 +398,11 @@ export interface Pf2eEffectDef {
    * `given`: an ally's effect on the hero (Bless), chosen from a list.
    */
   mode: 'permanent' | 'toggle' | 'given'
+  /**
+   * The ability the hero must have when `name` isn't one (a barbarian instinct's Rage damage,
+   * a bloodline's blood magic), and its kind ("Instinct", "Bloodline") when names repeat.
+   */
+  has?: { name: string; type?: string }
   effects: Pf2eEffect[]
   /** Values for a `given` effect that scales (Heroism +1/+2/+3); modifiers use the chosen one. */
   values?: number[]

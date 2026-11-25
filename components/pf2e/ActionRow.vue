@@ -19,7 +19,7 @@ const props = defineProps<{
   why: string
   left: number
   choices: Pf2eCheckChoice[]
-  weapons: { index: number; name: string }[]
+  weapons: { index: number; name: string; critNote?: string }[]
   tiers: { rank: Pf2eRank; dc: number; bonus: number }[]
   dmg: string
   /** The result of its last use, shown under it. */
@@ -31,6 +31,18 @@ const emit = defineEmits<{
 }>()
 
 const state = reactive<Pf2eRowState>({})
+/** The second weapon Double Slice uses unless picked: the first other than the first pick. */
+const secondDefault = computed(
+  () =>
+    props.weapons.find((w) => w.index !== (state.weapon ?? props.weapons[0]?.index))?.name ?? '',
+)
+/** What a critical hit adds with the weapon used (deadly, fatal). */
+const critNote = computed(
+  () =>
+    props.weapons.find((w) => w.index === state.struck?.at(-1)?.index)?.critNote ??
+    props.weapons.find((w) => w.index === (state.weapon ?? props.weapons[0]?.index))?.critNote ??
+    '',
+)
 const r = computed(() => props.entry.rules)
 const glyph = computed(() => costGlyph(r.value.cost))
 const label = computed(() => actionCostLabel(r.value.cost))
@@ -125,11 +137,23 @@ const checkLabel = computed(() => {
         v-if="r.strike && weapons.length > 1"
         v-model="state.weapon"
         class="input arow__select"
-        :aria-label="`Strike for ${entry.name}`"
+        :aria-label="
+          r.strike.twoWeapons ? `First weapon for ${entry.name}` : `Strike for ${entry.name}`
+        "
       >
         <option :value="undefined">{{ weapons[0]?.name }}</option>
         <option v-for="w in weapons.slice(1)" :key="w.index" :value="w.index">{{ w.name }}</option>
       </select>
+      <select
+        v-if="r.strike?.twoWeapons && weapons.length > 1"
+        v-model="state.weapon2"
+        class="input arow__select"
+        :aria-label="`Second weapon for ${entry.name}`"
+      >
+        <option :value="undefined">{{ secondDefault }}</option>
+        <option v-for="w in weapons" :key="w.index" :value="w.index">{{ w.name }}</option>
+      </select>
+      <span v-else-if="r.strike?.twoWeapons" class="small muted">Needs two melee weapons</span>
       <select
         v-if="range.length"
         v-model="state.actions"
@@ -154,14 +178,14 @@ const checkLabel = computed(() => {
         Use
       </button>
       <span v-if="why" :id="`${id}-why`" class="small muted arow__why">{{ why }}</span>
-      <template v-if="state.struck">
+      <template v-if="state.struck?.length">
         <button type="button" class="btn btn--ghost btn--sm" @click="emit('damage', false, state)">
-          Damage
+          {{ state.struck.length > 1 ? 'Combined damage' : 'Damage' }}
         </button>
         <button
           type="button"
           class="btn btn--ghost btn--sm"
-          title="Critical hit: double damage"
+          :title="`Critical hit: double damage${critNote ? `, then ${critNote}` : ''}`"
           @click="emit('damage', true, state)"
         >
           Crit ×2

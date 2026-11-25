@@ -8,7 +8,7 @@
 // the Actions panel (components/pf2e/SheetActions.vue) calls these and `say()`s the result.
 import type { Pf2eActionDef, Pf2eFeatDef } from '~/data/pf2e/types'
 import type { Pf2eAttr, Pf2eFeat, Pf2eRank, Pf2eSheet } from '~/types/sheets'
-import { type Rng, parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
+import { type Rng, parseDice, rollCheck, rollDice, showOutcome, sign } from '~/utils/dice'
 import {
   type Pf2eAbilityRules,
   type Pf2eCost,
@@ -18,8 +18,9 @@ import {
   amountAt,
   diceAt,
 } from '~/utils/pf2eAbilityRules'
+import { bravado, finisherBlock, spendFinisher } from '~/utils/pf2eClassActions'
 import { pf2eEffectDef, endPf2eEffects, mapPenalties, toggleEffect } from '~/utils/pf2eEffects'
-import { adjusted, conditionValue, degreeOf, heal, isDead } from '~/utils/pf2ePlay'
+import { adjusted, conditionValue, degreeOf, heal, isDead, takePersistent } from '~/utils/pf2ePlay'
 
 type Turn = NonNullable<Pf2eSheet['turn']>
 
@@ -73,6 +74,7 @@ export function startPf2eTurn(s: Pf2eSheet): string {
   if (slowLoss) notes.push(`Slowed: ${slowLoss} fewer.`)
   actions = cantAct ? 0 : Math.max(0, actions - stunLoss - slowLoss)
   Object.assign(t, { active: true, actions, reaction: !cantAct, attacks: 0, flourish: false })
+  delete t.finisher
   t.round += 1
   refreshUses(s, TURN_PERIODS)
   if (s.dying > 0 && !isDead(s)) notes.push('Dying: roll your recovery check.')
@@ -83,13 +85,15 @@ export function startPf2eTurn(s: Pf2eSheet): string {
 }
 
 /**
- * End your turn (p. 437): frightened drops by 1, effects lasting until the end of your turn
- * end (and those "until the end of your next turn" begun before this turn), and the reminder
- * for persistent damage.
+ * End your turn (p. 437): persistent damage and its flat checks (p. 445), frightened drops by 1,
+ * effects lasting until the end of your turn end (and those "until the end of your next turn"
+ * begun before this turn).
  */
-export function endPf2eTurn(s: Pf2eSheet): string {
+export function endPf2eTurn(s: Pf2eSheet, rng: Rng = Math.random): string {
   const t = turnOf(s)
   const notes: string[] = []
+  const persistent = takePersistent(s, rng)
+  if (persistent) notes.push(persistent)
   const frightened = conditionValue(s, 'Frightened')
   if (frightened && s.conditions.includes('Frightened')) {
     setCondition(s, 'Frightened', frightened - 1)
@@ -104,9 +108,10 @@ export function endPf2eTurn(s: Pf2eSheet): string {
         notes.push(toggleEffect(s, name, 0))
     }
   delete t.carry
+  delete t.finisher
   t.active = false
   t.actions = 0
-  return ['Turn ended.', ...notes, 'Take any persistent damage now.'].join(' ')
+  return ['Turn ended.', ...notes].join(' ')
 }
 
 /** End of the encounter: the turn tracker clears and effects that last a fight end. */
@@ -210,10 +215,15 @@ export interface Pf2eRowState {
   skill?: string
   tier?: Pf2eRank
   weapon?: number
+  /** The second weapon of a two-weapon ability (Double Slice). */
+  weapon2?: number
   actions?: number
   onSelf?: boolean
-  /** The Strike the last use made, for its damage buttons. */
-  struck?: { index: number; extraDie: number }
+  /**
+   * The Strikes the last use made, for its damage buttons: each one's degree when the target's
+   * AC was set, and whether it was part of a finisher.
+   */
+  struck?: { index: number; extraDie: number; degree?: Pf2eDegreeName; finisher?: boolean }[]
 }
 
 // --- Uses ------------------------------------------------------------------------
@@ -269,7 +279,7 @@ export function blockedReason(
   const t = s.turn
   if (!t?.active) {
     if (r.cost?.kind === 'reaction' && t && !t.reaction) return 'Reaction already used this round'
-    return ''
+    return finisherBlock(s, r)
   }
   if (r.cost?.kind === 'reaction' && !t.reaction) return 'Reaction already used this round'
   if (r.cost?.kind === 'actions') {
@@ -278,7 +288,7 @@ export function blockedReason(
   }
   if (r.traits.some((x) => x.toLowerCase() === 'flourish') && t.flourish)
     return 'You’ve used a flourish action this turn'
-  return ''
+  return finisherBlock(s, r)
 }
 
 /** Pays for a use: actions or the reaction while the turn tracker runs, flourish, frequency. */
@@ -292,6 +302,7 @@ export function payFor(
   if (t && r.cost?.kind === 'reaction') t.reaction = false
   if (t?.active && r.traits.some((x) => x.toLowerCase() === 'flourish')) t.flourish = true
   if (r.frequency) spendUse(s, opts.name, r.frequency, opts.target)
+  return spendFinisher(s, r)
 }
 
 export interface Pf2eCheckChoice {
@@ -406,7 +417,7 @@ export function resolveUse(s: Pf2eSheet, r: Pf2eAbilityRules, o: Pf2eUseOptions)
       if (attack) attacked(s)
       const tier = check.tiers?.find((x) => x.rank === o.tier) ?? check.tiers?.[0]
       const dc = tier?.dc ?? check.dc ?? o.dc ?? null
-      const roll = o.rng ? rollAttack(bonus, o.rng) : rollAttack(bonus)
+      const roll = o.rng ? rollCheck(bonus, o.rng) : rollCheck(bonus)
       const nat = roll.natural ? `, natural ${roll.natural}` : ''
       const map = penalty ? `, −${penalty} multiple attack penalty` : ''
       let line = `${choice.skill} ${sign(bonus)}: ${roll.total} (${roll.d20}${nat}${map})`
@@ -420,6 +431,14 @@ export function resolveUse(s: Pf2eSheet, r: Pf2eAbilityRules, o: Pf2eUseOptions)
       else line += '.'
       if (choice.note) line += ` (${choice.note})`
       lines.push(line)
+      showOutcome({
+        label: `${o.name}: ${choice.skill}`,
+        total: roll.total,
+        detail: line,
+        ...(degree ? { degree: DEGREE_WORD[degree] } : {}),
+      })
+      const panache = degree ? bravado(s, o.name, degree) : ''
+      if (panache) lines.push(panache)
       if (tier && degree) {
         const bonusHeal = tier.bonus
         if (degree === 'success' || degree === 'critical success') {
@@ -433,10 +452,10 @@ export function resolveUse(s: Pf2eSheet, r: Pf2eAbilityRules, o: Pf2eUseOptions)
       }
     }
   } else if (check?.skills[0] === 'flat' && check.dc) {
-    const roll = o.rng ? rollAttack(0, o.rng) : rollAttack(0)
-    lines.push(
-      `Flat check: ${roll.d20} vs DC ${check.dc}: ${roll.d20 >= check.dc ? 'success' : 'failure'}.`,
-    )
+    const roll = o.rng ? rollCheck(0, o.rng) : rollCheck(0)
+    const flat = roll.d20 >= check.dc ? 'Success' : 'Failure'
+    lines.push(`Flat check: ${roll.d20} vs DC ${check.dc}: ${flat.toLowerCase()}.`)
+    showOutcome({ label: 'Flat check', total: roll.d20, detail: lines.at(-1)!, degree: flat })
   }
   const fits = (d: { degree?: Pf2eDegreeName }) => !d.degree || d.degree === degree
   for (const d of r.damage.filter(fits)) {

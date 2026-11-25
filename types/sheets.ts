@@ -210,6 +210,20 @@ export interface Pf2eSheet extends SheetCommon {
   conditions: string[]
   /** Values of valued conditions in `conditions` (frightened 2); absent means 1. */
   conditionValues?: Record<string, number>
+  /**
+   * Persistent damage conditions (Player Core p. 445), one per damage type: the dice or
+   * amount taken at the end of each turn, and the round of its last assisted recovery.
+   */
+  persistent?: { dice: string; type: string; assisted?: number }[]
+  /**
+   * Resistances, weaknesses and immunities the player wrote down (ancestry, items, the GM's
+   * call; p. 408). Effects add their own resistances on top.
+   */
+  defenses?: {
+    resistances: { type: string; value: number }[]
+    weaknesses: { type: string; value: number }[]
+    immunities: string[]
+  }
   skills: Pf2eSkill[]
   strikes: Pf2eStrike[]
   focus: { max: number; current: number; note: string }
@@ -267,6 +281,8 @@ export interface Pf2eSheet extends SheetCommon {
     flourish?: boolean
     /** Effects begun this turn that last until the end of the next one. */
     carry?: string[]
+    /** A finisher was used this turn: no more attack actions (Player Core 2 p. 163). */
+    finisher?: boolean
   }
 }
 
