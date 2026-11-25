@@ -38,6 +38,7 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     name: 'Rage',
     source: { book: 'Player Core 2', page: 72 },
     mode: 'toggle',
+    endsWhenUnconscious: true,
     effects: [
       { kind: 'tempHp', formula: 'levelPlusCon' },
       {
@@ -49,7 +50,7 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
         agileHalf: true,
       },
     ],
-    note: "Can't use concentrate actions unless they have the rage trait (Seek is fine). Lasts 1 minute, until unconscious or the encounter ends.",
+    note: "Can't use concentrate actions unless they have the rage trait (Seek is fine). Lasts 1 minute, until unconscious or the encounter ends; then its temporary HP go, and Rage gives none for 1 minute.",
   },
   {
     name: 'Sneak Attack',

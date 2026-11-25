@@ -3,7 +3,7 @@
 // (p. 401), and damage, Shield Block, knocked out, dying, wounded and doomed (pp. 269,
 // 410–411). Pure functions on the sheet; the sheet panels call them and `say()` the result.
 import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
-import { baseDeathAt, effectMods, recoveryDcChange } from '~/utils/pf2eEffects'
+import { baseDeathAt, effectMods, endOnUnconscious, recoveryDcChange } from '~/utils/pf2eEffects'
 
 const RANK_BONUS: Record<Pf2eRank, number> = { U: 0, T: 2, E: 4, M: 6, L: 8 }
 
@@ -66,6 +66,8 @@ export interface Pf2eStatContext {
   /** Strikes: melee, and agile (Rage's damage is halved for agile attacks). */
   melee?: boolean
   agile?: boolean
+  /** Strikes: their traits, lowercased (an agile trait halves Rage's damage too). */
+  traits?: string[]
   /** A Reflex save, for unconscious. */
   save?: 'Fortitude' | 'Reflex' | 'Will'
 }
@@ -282,7 +284,9 @@ export function takeDamage(s: Pf2eSheet, amount: number, o: Pf2eDamageOptions = 
   const took = `Took ${fromTemp + left} damage${o.crit ? ' (crit)' : ''}: ${s.hp}/${s.hpMax} HP.`
   if (s.hp > 0 || fromTemp + left === 0) return [...notes, took].join(' ')
   addCondition(s, 'Unconscious')
-  return `${[...notes, took].join(' ')} Knocked out:${worsen(s, (o.crit ? 2 : 1) + s.wounded)}`
+  const ended = endOnUnconscious(s)
+  const out = `${[...notes, took].join(' ')} Knocked out:${worsen(s, (o.crit ? 2 : 1) + s.wounded)}`
+  return ended ? `${out} ${ended}` : out
 }
 
 /** Heal (p. 411): back above 0 HP you lose dying (gaining wounded) and wake up. */
@@ -298,14 +302,16 @@ export function heal(s: Pf2eSheet, amount: number): string {
   return `Healed ${s.hp - was}: ${s.hp}/${s.hpMax} HP.${note}`
 }
 
+/** The recovery check DC (p. 411): 10 + dying, 1 lower with Toughness (p. 263). */
+export const recoveryDc = (s: Pf2eSheet) => 10 + s.dying + recoveryDcChange(s)
+
 /**
  * Recovery check (p. 411): a flat check against DC 10 + dying at the start of your turn.
  * Critical success −2, success −1, failure +1, critical failure +2.
  */
 export function recoveryCheck(s: Pf2eSheet, natural: number): string {
   if (s.dying <= 0) return 'Not dying: no recovery check.'
-  // Toughness lowers the DC by 1 (p. 263).
-  const dc = 10 + s.dying + recoveryDcChange(s)
+  const dc = recoveryDc(s)
   const d = degreeOf(natural, natural, dc)
   const head = `Recovery check: ${natural} vs DC ${dc}, ${d}.`
   if (d === 'critical failure' || d === 'failure')

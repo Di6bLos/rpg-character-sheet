@@ -139,6 +139,7 @@ const strikes = computed(() =>
   sheet.value.strikes.map((w) => {
     const typeInitial = w.type ? ` ${w.type.charAt(0).toUpperCase()}` : ''
     const attr = w.attr ?? 'STR'
+    const traits = w.traits.split(',').map((t) => t.trim().toLowerCase())
     const attack = adjusted(sheet.value, w.bonus, { kind: 'attack', attr })
     // Melee damage adds STR, so enfeebled lowers it (p. 443); effects like Rage and
     // Courageous Anthem add theirs (Rage only to melee, halved for agile).
@@ -147,6 +148,7 @@ const strikes = computed(() =>
       attr: w.ranged ? undefined : 'STR',
       melee: !w.ranged,
       agile: w.agile,
+      traits,
     })
     const dmg = shiftDice(w.dmg, dmgMods.value)
     const extra = extraDice(sheet.value, draft.value.level, w, damageFlags.value)

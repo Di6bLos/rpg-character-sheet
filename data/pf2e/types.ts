@@ -259,6 +259,8 @@ export interface Pf2eEffectDef {
   effects: Pf2eEffect[]
   /** Values for a `given` effect that scales (Heroism +1/+2/+3); modifiers use the chosen one. */
   values?: number[]
+  /** A toggle that ends when the hero falls unconscious (Rage). */
+  endsWhenUnconscious?: boolean
   /** Rules the effect can't apply itself, shown while it's on. */
   note?: string
 }

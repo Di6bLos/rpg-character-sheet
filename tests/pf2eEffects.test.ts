@@ -11,7 +11,7 @@ import {
   speedNow,
   toggleEffect,
 } from '../utils/pf2eEffects'
-import { adjusted, deathAt, recoveryCheck, takeDamage } from '../utils/pf2ePlay'
+import { adjusted, deathAt, recoveryCheck, recoveryDc, takeDamage } from '../utils/pf2ePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
 import { buildData, loadSet } from './helpers/pf2e'
 
@@ -40,8 +40,39 @@ describe('pf2e effects on numbers', () => {
     expect(adjusted(s, 4, { kind: 'damage', attr: 'STR', melee: true }).value).toBe(6)
     expect(adjusted(s, 4, { kind: 'damage', attr: 'STR', melee: true, agile: true }).value).toBe(5)
     expect(adjusted(s, 0, { kind: 'damage', melee: false }).changed).toBe(false)
-    expect(toggleEffect(s, 'Rage', 1)).toBe('Rage ends.')
+    expect(toggleEffect(s, 'Rage', 1)).toBe(
+      'Rage ends: you lose its 4 remaining temporary Hit Points.',
+    )
     expect(adjusted(s, 4, { kind: 'damage', attr: 'STR', melee: true }).value).toBe(4)
+  })
+
+  it('halves Rage for a Strike whose traits say agile, even without the agile flag', () => {
+    const s = hero(['Rage'])
+    toggleEffect(s, 'Rage', 1)
+    const ctx = { kind: 'damage' as const, melee: true, traits: ['agile', 'finesse'] }
+    expect(adjusted(s, 0, ctx).value).toBe(1)
+    expect(adjusted(s, 0, { ...ctx, traits: ['finesse'] }).value).toBe(2)
+  })
+
+  it('takes Rage’s remaining temp HP away when it ends, not temp HP from elsewhere', () => {
+    const s = hero(['Rage'], { attrs: { ...defaultSheet('pf2e').attrs, CON: 3 } })
+    toggleEffect(s, 'Rage', 2)
+    takeDamage(s, 2)
+    expect(s.tempHp).toBe(3)
+    expect(toggleEffect(s, 'Rage', 2)).toContain('lose its 3 remaining temporary Hit Points')
+    expect(s.tempHp).toBe(0)
+    s.tempHp = 9
+    toggleEffect(s, 'Rage', 2)
+    expect(toggleEffect(s, 'Rage', 2)).toBe('Rage ends.')
+    expect(s.tempHp).toBe(9)
+  })
+
+  it('ends Rage when the hero is knocked out (Player Core 2 p. 72)', () => {
+    const s = hero(['Rage'], { hp: 3 })
+    toggleEffect(s, 'Rage', 1)
+    expect(takeDamage(s, 10)).toContain('Rage ends')
+    expect(s.effects?.on).toEqual([])
+    expect(adjusted(s, 4, { kind: 'damage', melee: true }).value).toBe(4)
   })
 
   it('only applies a toggle the hero has', () => {
@@ -110,6 +141,8 @@ describe('pf2e Diehard and Toughness (pp. 254, 263)', () => {
   it('Toughness lowers the recovery check DC by 1', () => {
     const s = hero(['Toughness'], { hp: 0, dying: 1 })
     expect(recoveryDcChange(s)).toBe(-1)
+    expect(recoveryDc(s)).toBe(10)
+    expect(recoveryDc({ ...s, feats: [] })).toBe(11)
     expect(recoveryCheck(s, 10)).toContain('vs DC 10, success')
   })
 })

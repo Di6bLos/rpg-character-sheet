@@ -74,11 +74,13 @@ function selectors(ctx: Pf2eStatContext): Pf2eSelector[] {
 /** Modifiers active effects add to one number. */
 export function effectMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
   const want = selectors(ctx)
+  // Rage's damage is halved if the weapon is agile (Player Core 2 p. 72), flag or trait.
+  const agile = ctx.agile || (ctx.traits ?? []).includes('agile')
   return allOf(s, 'modifier').flatMap(({ effect: e, active }) => {
     if (!e.selector.some((x) => want.includes(x))) return []
     if (e.melee && !ctx.melee) return []
     const base = active.value ?? e.value
-    const value = e.agileHalf && ctx.agile ? Math.floor(base / 2) : base
+    const value = e.agileHalf && agile ? Math.floor(base / 2) : base
     return value ? [{ value, type: e.type, source: active.def.name }] : []
   })
 }
@@ -132,23 +134,45 @@ export const baseDeathAt = (s: Pf2eSheet) =>
 export const recoveryDcChange = (s: Pf2eSheet) =>
   allOf(s, 'recoveryDc').reduce((n, { effect }) => n + effect.value, 0)
 
+/**
+ * Ends a toggle. Temporary HP it gave go with it (Rage, Player Core 2 p. 72), unless the
+ * hero has more now than it gave (they came from something else).
+ */
+function endToggle(s: Pf2eSheet, name: string) {
+  const effects = (s.effects ??= { on: [], given: [] })
+  effects.on = effects.on.filter((n) => n !== name)
+  const temp = effects.tempHp
+  if (temp?.from !== name) return `${name} ends.`
+  delete effects.tempHp
+  if (s.tempHp === 0 || s.tempHp > temp.amount) return `${name} ends.`
+  const lost = s.tempHp
+  s.tempHp = 0
+  return `${name} ends: you lose its ${lost} remaining temporary Hit Points.`
+}
+
 /** Turns one of the hero's toggles on or off; Rage's temp HP don't stack with others. */
 export function toggleEffect(s: Pf2eSheet, name: string, level: number): string {
   const def = BY_NAME.get(name)
   if (!def || def.mode !== 'toggle') return `${name} isn't something you turn on.`
   const effects = (s.effects ??= { on: [], given: [] })
-  if (effects.on.includes(name)) {
-    effects.on = effects.on.filter((n) => n !== name)
-    return `${name} ends.`
-  }
+  if (effects.on.includes(name)) return endToggle(s, name)
   effects.on = [...effects.on, name]
   const temp = def.effects.find((e) => e.kind === 'tempHp')
   if (temp) {
     const amount = level + s.attrs.CON
-    s.tempHp = Math.max(s.tempHp, amount)
+    if (amount > s.tempHp) {
+      s.tempHp = amount
+      effects.tempHp = { from: name, amount }
+    }
     return `${name}: ${amount} temporary Hit Points (you keep the higher of these and any you had).`
   }
   return `${name} is on.`
+}
+
+/** Falling unconscious ends the toggles that say so (Rage); returns what ended, for the log. */
+export function endOnUnconscious(s: Pf2eSheet): string {
+  const ending = (s.effects?.on ?? []).filter((n) => BY_NAME.get(n)?.endsWhenUnconscious)
+  return ending.map((n) => endToggle(s, n)).join(' ')
 }
 
 /** Sets or clears an ally's effect on the hero; `value` for scaling ones like Heroism. */
