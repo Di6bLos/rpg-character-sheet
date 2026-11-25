@@ -1,13 +1,19 @@
 <script setup lang="ts">
 // The battle board's party: one compact card per hero (the other heroes for a player,
 // all of them for the GM) with portrait, name, Acting tag, class and level, one status
-// line, the HP bar and Armor. The GM's cards add action pips and mana. A card opens
+// line, the HP bar and Armor. The GM's cards add action pips and mana (PF2e: hero and
+// focus points, `gmPoints`). A card opens
 // the hero's stats modal. Compact (phone): full-width touch-sized cards in the tab's
-// own scroll, free of the right column's Party / Chat split.
+// own scroll, free of the right column's Party / Chat split. Off Nimble
+// (`useBattleFeatures`) the GM's cards have no pips or mana; a hero at 0 HP gets a
+// DownStatus row ("Down · 1 saved · 2 failed" for 5e, "Down · Dying 2" for PF2e),
+// concentration is a chip, and the GM's cards show Passive Perception.
 import type { RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { heroTurnActions } from '~/utils/nimblePlay'
+import { conditionLabels, dyingLine, heroDead, heroDown, hpClass } from '~/utils/roster'
+import { pf2ePointsLine } from '~/utils/heroCardStats'
 
 const props = defineProps<{
   roster: RosterEntry[]
@@ -15,16 +21,21 @@ const props = defineProps<{
   /** The hero whose turn it is (a character id), for the Acting tag. */
   actingCharacterId?: string | null
   compact?: boolean
+  /** A hero to leave out (the seated 5e / PF2e player's own, on the phone's Hero tab). */
+  exclude?: string | null
 }>()
 const emit = defineEmits<{ open: [characterId: string] }>()
 
 const auth = useAuthStore()
 const right = useBattleRight()
+const features = useBattleFeatures()
 
 const heroes = computed(() =>
   props.roster.filter(
     (r): r is RosterEntry & { character_id: string } =>
-      !!r.character_id && (props.gm || r.user_id !== auth.userId),
+      !!r.character_id &&
+      (props.gm || r.user_id !== auth.userId) &&
+      (!props.exclude || r.character_id !== props.exclude),
   ),
 )
 
@@ -32,15 +43,19 @@ const heroes = computed(() =>
 const toggles = computed(() => !props.compact && heroes.value.length > 0)
 const partyClosed = computed(() => right.state.value.split <= 0)
 
+/** Nimble: Wounds at max. 5e / PF2e: three failed death saves or PF2e's death value (DownStatus row). */
 function isDead(r: RosterEntry) {
   const s = r.summary
+  if (basicDown(r)) return heroDead(s)
   return !!s && (s.woundsMax ?? 0) > 0 && (s.wounds ?? 0) >= (s.woundsMax ?? 0)
 }
 
-/** One line: dead or dying first, then summons or Wounds. Conditions get their own row. */
+/** One line: dead, dying or down first, then summons or Wounds. Conditions get their own row. */
 function status(r: RosterEntry): string {
   const s = r.summary
   if (!s) return ''
+  // 5e and PF2e: down (or dead) at 0 HP, on the DownStatus row of its own.
+  if (basicDown(r)) return ''
   if (isDead(r)) return 'Dead'
   if (s.dying) return 'Dying'
   const summons = (s.summons ?? []).filter((m) => !m.hpMax || m.hp > 0).length
@@ -48,8 +63,26 @@ function status(r: RosterEntry): string {
   return s.wounds ? `Wounds ${s.wounds}` : ''
 }
 
+/** A 5e / PF2e hero at 0 HP. */
+function basicDown(r: RosterEntry): boolean {
+  return !features.value.nimbleHero && heroDown(r.summary?.hp, r.summary?.hpMax)
+}
+
+/** A downed 5e / PF2e hero, for the card's accessible name: "Down, Death saves 1 success, …". */
+function downLabel(r: RosterEntry): string {
+  if (!basicDown(r)) return ''
+  const tag = heroDead(r.summary) ? 'Dead' : 'Down'
+  return [tag, dyingLine(r.summary, true)].filter(Boolean).join(', ')
+}
+
 function conditions(r: RosterEntry): string[] {
-  return r.summary?.conditions ?? []
+  const list = conditionLabels(
+    r.summary?.conditions ?? [],
+    r.character_system,
+    r.summary?.conditionValues,
+  )
+  const conc = r.summary?.concentration
+  return !features.value.nimbleHero && conc ? [...list, `Concentrating · ${conc}`] : list
 }
 
 function sub(r: RosterEntry): string {
@@ -58,10 +91,22 @@ function sub(r: RosterEntry): string {
   return [who.join(' '), status(r)].filter(Boolean).join(' · ')
 }
 
+/** The GM's 5e / PF2e cards: Passive Perception under the armor. */
+function passive(r: RosterEntry): number | null {
+  const p = r.summary?.passivePerception
+  return props.gm && !features.value.nimbleHero && typeof p === 'number' ? p : null
+}
+
 function hpFill(r: RosterEntry): number {
   const s = r.summary
   if (!s?.hpMax) return 0
   return Math.min(1, Math.max(0, (s.hp ?? 0) / s.hpMax))
+}
+
+/** The bar's band (`hpClass`): teal, amber at half or less, red at 0. */
+function hpBand(r: RosterEntry): string {
+  const s = r.summary
+  return s?.hp === undefined ? '' : hpClass(s.hp, s.hpMax ?? 0)
 }
 
 function hpText(r: RosterEntry): string {
@@ -72,32 +117,40 @@ function hpText(r: RosterEntry): string {
 
 function pips(r: RosterEntry): { total: number; used: number } | null {
   const s = r.summary
-  if (!props.gm || !s) return null
+  if (!props.gm || !s || !features.value.pips) return null
   const max = heroTurnActions(s.abilityNames ?? [], !!s.dying, s.conditions)
   const spent = s.actionsSpent ?? 0
   return { total: Math.max(max, max - spent), used: Math.min(Math.max(0, spent), max) }
 }
 
+/** The GM's resource line: Nimble mana, PF2e hero and focus points. */
 function mana(r: RosterEntry): string {
+  if (!props.gm) return ''
+  if (features.value.gmPoints) return pf2ePointsLine(r.summary)
   const m = r.summary?.mana
-  return props.gm && m && m.max > 0 ? `mana ${m.current}/${m.max}` : ''
+  return features.value.nimbleHero && m && m.max > 0 ? `mana ${m.current}/${m.max}` : ''
 }
 
 /** The card's accessible name: everything it shows, since aria-label replaces its content. */
 function armorOf(r: RosterEntry) {
   return heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level)
 }
+/** "Armor" (Nimble) or "AC" (5e, PF2e), as each sheet names it. */
+const armorWord = computed(() => (features.value.nimbleHero ? 'Armor' : 'AC'))
 
 function label(r: RosterEntry): string {
   const name = r.character_name ?? r.display_name
   const acting = r.character_id === props.actingCharacterId ? 'acting' : ''
   const tempHp = r.summary?.tempHp
-  const guard = tempHp ? `${tempHp} temp HP` : `Armor ${armorOf(r) ?? 'unknown'}`
+  const guard = tempHp ? `${tempHp} temp HP` : `${armorWord.value} ${armorOf(r) ?? 'unknown'}`
   const p = pips(r)
   const actions = p ? `${p.total - p.used} of ${p.total} actions left` : ''
   const hp = r.summary?.hp === undefined ? 'HP unknown' : `${hpText(r)} HP`
   const conds = conditions(r).join(', ')
-  const parts = [name, acting, sub(r), hp, guard, mana(r), actions, conds]
+  const pp = passive(r)
+  const passiveText = pp === null ? '' : `Passive Perception ${pp}`
+  const parts = [name, acting, sub(r), downLabel(r), hp, guard, passiveText, mana(r)]
+  parts.push(actions, conds)
   return `${parts.filter(Boolean).join(', ')}. Open stats`
 }
 </script>
@@ -178,11 +231,9 @@ function label(r: RosterEntry): string {
                 />
               </span>
             </span>
+            <BattleDownStatus v-if="basicDown(r)" class="pc__down" :summary="r.summary" />
             <span class="pc__bar" aria-hidden="true">
-              <span
-                :class="{ 'is-low': hpFill(r) <= 0.5 }"
-                :style="{ width: `${hpFill(r) * 100}%` }"
-              />
+              <span :class="hpBand(r)" :style="{ width: `${hpFill(r) * 100}%` }" />
             </span>
             <span v-if="conditions(r).length" class="pc__conds" aria-hidden="true">
               <span v-for="cond in conditions(r)" :key="cond" class="pc__cond">{{ cond }}</span>
@@ -191,7 +242,8 @@ function label(r: RosterEntry): string {
           <span class="pc__right">
             <b>{{ hpText(r) }}</b>
             <span v-if="r.summary?.tempHp">+{{ r.summary.tempHp }} temp</span>
-            <span v-else>Armor {{ armorOf(r) ?? '—' }}</span>
+            <span v-else>{{ armorWord }} {{ armorOf(r) ?? '—' }}</span>
+            <span v-if="passive(r) !== null">Passive {{ passive(r) }}</span>
           </span>
         </button>
       </li>
@@ -200,7 +252,6 @@ function label(r: RosterEntry): string {
 </template>
 
 <style scoped lang="scss">
-// Not `.party`: PartyView's scoped `.party` (the narrow layout) would also style this root.
 .party-cards {
   // Its dragged share of the column (half by default; RightSplit moves it), and
   // Chat takes the rest; more heroes scroll inside. The 14px is the gap between them.
@@ -399,6 +450,10 @@ function label(r: RosterEntry): string {
   }
 }
 
+.pc__down {
+  margin-block: 1px;
+}
+
 .pc__bar {
   display: block;
   height: 5px;
@@ -410,11 +465,7 @@ function label(r: RosterEntry): string {
   span {
     display: block;
     height: 100%;
-    background: var(--secondary);
-
-    &.is-low {
-      background: var(--danger);
-    }
+    background: var(--hp-fill, var(--secondary));
   }
 }
 

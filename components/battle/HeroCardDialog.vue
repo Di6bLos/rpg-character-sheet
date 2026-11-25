@@ -2,7 +2,8 @@
 // A hero's stats modal, opened from a party card (and, for players, a hero initiative
 // token). Loads the public subset (campaign_hero_card, useHeroCard) and shows only
 // what it returns. Side: HeroVitals (identity, HP with the GM's controls, Wounds,
-// Armor / Speed / Init, conditions). Main: HeroCardStats. For the viewer's own hero
+// Armor / Speed / Init, conditions). Main: the hero's system's stats (`card.system`):
+// HeroCardStats (Nimble), HeroCardStatsDnd5e or HeroCardStatsPf2e. For the viewer's own hero
 // the page passes the hero column's HP (`own-hp`). Footer: Whisper and Open full sheet.
 // `sheet` (phone): a bottom sheet with everything in one column; Whisper then emits
 // `whisper` so the frame can show its Chat tab.
@@ -80,7 +81,19 @@ async function whisper() {
         <template v-if="$slots['own-hp']" #own-hp><slot name="own-hp" /></template>
       </BattleHeroVitals>
 
-      <BattleHeroCardStats :card="card" class="hc__main" />
+      <BattleHeroCardStatsDnd5e
+        v-if="card.system === 'dnd5e'"
+        :card="card"
+        :live="live"
+        class="hc__main"
+      />
+      <BattleHeroCardStatsPf2e
+        v-else-if="card.system === 'pf2e'"
+        :card="card"
+        :live="live"
+        class="hc__main"
+      />
+      <BattleHeroCardStats v-else :card="card" class="hc__main" />
     </div>
 
     <template #actions>
