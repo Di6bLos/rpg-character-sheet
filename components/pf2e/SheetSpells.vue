@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The PF2e sheet's Spells panel (Player Core pp. 297–303): spell attack and DC after
 // conditions, cantrips (heightened to half the level), slots by rank — spontaneous casters
-// pick the rank to cast at, prepared casters fill each slot — a cleric's divine font, focus
+// pick the slot to cast from (only signature spells heighten), prepared casters fill each
+// slot — a cleric's divine font, focus
 // spells and Refocus, daily preparations, and adding or removing spells. Rules text comes
 // from `data/pf2e` (fetched when the panel opens); rules in utils/pf2eSpells.ts.
 import { loadPf2e } from '~/data/pf2e'
@@ -21,6 +22,7 @@ import {
   refocus,
   setSlotMax,
   spellNumbers,
+  spontaneousRank,
 } from '~/utils/pf2eSpells'
 import { loreHtml } from '~/utils/loreText'
 
@@ -67,6 +69,7 @@ function castRanks(spell: Pf2eSpellRef) {
 const castAt = ref<Record<string, number>>({})
 const castRank = (spell: Pf2eSpellRef) =>
   castAt.value[spell.id] ?? castRanks(spell)[0]?.rank ?? spell.rank
+const fontRank = computed(() => (sc.value ? highestRank(sc.value) : 0))
 
 function run(message: string) {
   if (canEdit.value) say(message)
@@ -126,8 +129,9 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
       <span v-if="sc" class="small muted">{{ sc.tradition }} · {{ sc.kind }}</span>
     </div>
 
-    <div v-if="sc && numbers" class="head">
+    <div class="head">
       <button
+        v-if="numbers"
         type="button"
         class="tile head__tile"
         :class="{ 'is-changed': numbers.attack.changed }"
@@ -138,6 +142,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
         <span class="tile__value">{{ sign(numbers.attack.value) }}</span>
       </button>
       <div
+        v-if="numbers"
         class="tile head__tile"
         :class="{ 'is-changed': numbers.dc.changed }"
         :title="numbers.dc.changed ? numbers.dc.note : undefined"
@@ -156,7 +161,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
         </button>
         <label class="check">
           <input v-model="edit" type="checkbox" :disabled="!canEdit" />
-          Edit slots and spells
+          {{ sc ? 'Edit slots and spells' : 'Edit focus spells' }}
         </label>
       </div>
     </div>
@@ -248,7 +253,21 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             @click="open = open === s.id ? null : s.id"
           >
             {{ s.name }} <small>{{ actionGlyph(byId.get(s.id)?.actions) }}</small>
+            <small v-if="s.signature && !edit" class="tag">signature</small>
           </button>
+          <label
+            v-if="edit"
+            class="check"
+            title="A signature spell heightens to any rank you have slots for (Player Core p. 297)"
+          >
+            <input
+              type="checkbox"
+              :checked="!!s.signature"
+              :disabled="!canEdit"
+              @change="s.signature = ($event.target as HTMLInputElement).checked"
+            />
+            Signature
+          </label>
           <select
             v-if="castRanks(s).length > 1"
             class="input input--sm"
@@ -257,7 +276,9 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             @change="castAt[s.id] = Number(($event.target as HTMLSelectElement).value)"
           >
             <option v-for="o in castRanks(s)" :key="o.rank" :value="o.rank">
-              Rank {{ o.rank }} ({{ o.left }})
+              Rank {{ o.rank }} ({{ o.left }}){{
+                spontaneousRank(s, o.rank) < o.rank ? ', not heightened' : ''
+              }}
             </option>
           </select>
           <button
@@ -354,10 +375,15 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
       <button
         type="button"
         class="btn btn--ghost btn--sm"
-        :disabled="!canEdit || sc.font.used >= sc.font.max"
+        :disabled="!canEdit || sc.font.used >= sc.font.max || !fontRank"
+        :title="
+          !fontRank
+            ? 'Your divine font casts at your highest slot rank: add slots first'
+            : undefined
+        "
         @click="run(castFont(sheet))"
       >
-        Cast {{ sc.font.spell }}
+        Cast {{ sc.font.spell }}{{ fontRank ? ` · rank ${fontRank}` : '' }}
       </button>
     </div>
 
@@ -574,6 +600,13 @@ button.head__tile {
     background: var(--accent);
     box-shadow: none;
   }
+}
+
+.tag {
+  margin-left: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .font {

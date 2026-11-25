@@ -46,16 +46,27 @@ export function stupefiedCheck(s: Pf2eSheet) {
 const heightenNote = (spell: Pf2eSpellRef, rank: number) =>
   rank > spell.rank ? ` at rank ${rank} (heightened from ${spell.rank})` : ` at rank ${rank}`
 
+/**
+ * The rank a repertoire spell goes off at from a slot (p. 297): a spontaneous caster heightens
+ * only to a rank they know the spell at, a signature spell to any slot's rank. From a higher
+ * slot otherwise it's cast at the rank it's known, without heightened effects.
+ */
+export const spontaneousRank = (spell: Pf2eSpellRef, slotRank: number) =>
+  spell.signature ? slotRank : spell.rank
+
 /** Spontaneous casting (p. 297): spend a slot of the spell's rank or higher. */
-export function castSpontaneous(s: Pf2eSheet, spell: Pf2eSpellRef, rank: number): string {
+export function castSpontaneous(s: Pf2eSheet, spell: Pf2eSpellRef, slotRank: number): string {
   const sc = s.spellcasting
-  const slot = sc?.slots[rank - 1]
-  if (!sc || !slot) return `No rank ${rank} slots.`
-  if (rank < spell.rank) return `${spell.name} is a rank ${spell.rank} spell.`
-  if (slot.used >= slot.max) return `No rank ${rank} slots left today.`
+  const slot = sc?.slots[slotRank - 1]
+  if (!sc || !slot) return `No rank ${slotRank} slots.`
+  if (slotRank < spell.rank) return `${spell.name} is a rank ${spell.rank} spell.`
+  if (slot.used >= slot.max) return `No rank ${slotRank} slots left today.`
   slot.used += 1
+  const rank = spontaneousRank(spell, slotRank)
+  const from = rank < slotRank ? ` from a rank ${slotRank} slot (not heightened)` : ''
+  const left = slot.max - slot.used
   const flat = stupefiedCheck(s)
-  return `Cast ${spell.name}${heightenNote(spell, rank)}: ${slot.max - slot.used} rank ${rank} slot${slot.max - slot.used === 1 ? '' : 's'} left.${flat.note}`
+  return `Cast ${spell.name}${heightenNote(spell, rank)}${from}: ${left} rank ${slotRank} slot${left === 1 ? '' : 's'} left.${flat.note}`
 }
 
 /** Prepared casting: the spell in that slot is spent. */
@@ -70,13 +81,14 @@ export function castPrepared(s: Pf2eSheet, rank: number, index: number): string 
   return `Cast ${spell?.name ?? 'the spell'}${spell ? heightenNote(spell, rank) : ''}.${flat.note}`
 }
 
-/** A divine font slot: heal or harm at the highest rank. */
+/** A divine font slot: heal or harm at the highest rank of the hero's spell slots. */
 export function castFont(s: Pf2eSheet): string {
   const font = s.spellcasting?.font
   if (!font) return 'No divine font.'
+  const rank = highestRank(s.spellcasting!)
+  if (!rank) return 'No spell slots yet: your divine font casts at your highest slot rank.'
   if (font.used >= font.max) return 'No divine font slots left today.'
   font.used += 1
-  const rank = highestRank(s.spellcasting!)
   const flat = stupefiedCheck(s)
   return `Cast ${font.spell} at rank ${rank} from your divine font: ${font.max - font.used} left.${flat.note}`
 }
@@ -124,7 +136,7 @@ export function dailyPreparations(s: Pf2eSheet): string {
     if (sc.font) sc.font.used = 0
   }
   s.focus.current = s.focus.max
-  return 'Daily preparations: spell slots and Focus Points restored.'
+  return `Daily preparations: ${sc ? 'spell slots and ' : ''}Focus Points restored.`
 }
 
 /** Slots for a level from the class's spells-per-day row; prepared slots start empty. */

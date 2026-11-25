@@ -201,6 +201,11 @@ export interface Pf2eSpellRef {
   id: string
   name: string
   rank: number
+  /**
+   * A spontaneous caster's signature spell (Player Core p. 297): it heightens to any rank the
+   * hero has slots for, not only the rank it's known at.
+   */
+  signature?: boolean
 }
 
 /** One rank of spell slots; prepared casters fill each slot with a spell. */

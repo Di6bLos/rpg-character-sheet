@@ -20,6 +20,7 @@ import {
   setSlotMax,
   slotsFor,
   spellNumbers,
+  spontaneousRank,
 } from '../utils/pf2eSpells'
 import { defaultSheet } from '../utils/sheetDefaults'
 import { autoCreation, buildData as data, named } from './helpers/pf2e'
@@ -141,11 +142,22 @@ describe('pf2e casting (pp. 297–298)', () => {
     })
   })
 
-  it('casts spontaneously from a slot of the rank or higher, heightening it', () => {
+  it('casts spontaneously from a slot of the rank or higher; only a signature spell heightens', () => {
     const s = caster('spontaneous')
-    expect(castSpontaneous(s, ref('Fear'), 3)).toContain('at rank 3 (heightened from 1)')
-    expect(castSpontaneous(s, ref('Fear'), 3)).toBe('No rank 3 slots left today.')
+    const fear = { ...ref('Fear'), signature: true }
+    expect(castSpontaneous(s, fear, 3)).toContain('at rank 3 (heightened from 1)')
+    expect(castSpontaneous(s, fear, 3)).toBe('No rank 3 slots left today.')
     expect(castSpontaneous(s, ref('Fireball'), 1)).toBe('Fireball is a rank 3 spell.')
+    expect(s.spellcasting?.slots[2]?.used).toBe(1)
+  })
+
+  it('casts a non-signature spell from a higher slot at the rank it is known (p. 297)', () => {
+    const s = caster('spontaneous')
+    expect(spontaneousRank(ref('Fear'), 3)).toBe(1)
+    expect(spontaneousRank({ ...ref('Fear'), signature: true }, 3)).toBe(3)
+    const msg = castSpontaneous(s, ref('Fear'), 3)
+    expect(msg).toContain('Cast Fear at rank 1 from a rank 3 slot (not heightened)')
+    expect(msg).not.toContain('heightened from')
     expect(s.spellcasting?.slots[2]?.used).toBe(1)
   })
 
@@ -161,6 +173,14 @@ describe('pf2e casting (pp. 297–298)', () => {
     const s = caster('prepared')
     expect(castFont(s)).toContain('Heal at rank 3')
     expect(s.spellcasting?.font?.used).toBe(1)
+  })
+
+  it('has no divine font to cast before there are spell slots', () => {
+    const s = caster('prepared')
+    for (const r of s.spellcasting!.slots) r.max = 0
+    expect(castFont(s)).toContain('No spell slots yet')
+    expect(castFont(s)).not.toContain('rank 0')
+    expect(s.spellcasting?.font?.used).toBe(0)
   })
 
   it('spends Focus Points on focus spells, not on focus cantrips; Refocus gets one back', () => {
@@ -181,6 +201,16 @@ describe('pf2e casting (pp. 297–298)', () => {
     dailyPreparations(s)
     expect(s.spellcasting?.slots[0]?.prepared?.[0]?.cast).toBe(false)
     expect(s.spellcasting?.font?.used).toBe(0)
+    expect(s.focus.current).toBe(1)
+  })
+
+  it('restores a focus-only hero’s pool at daily preparations', () => {
+    const s: Pf2eSheet = {
+      ...defaultSheet('pf2e'),
+      focusSpells: [ref('Counter Performance')],
+      focus: { max: 1, current: 0, note: '' },
+    }
+    expect(dailyPreparations(s)).toBe('Daily preparations: Focus Points restored.')
     expect(s.focus.current).toBe(1)
   })
 
