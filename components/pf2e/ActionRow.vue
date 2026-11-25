@@ -36,6 +36,12 @@ const secondDefault = computed(
   () =>
     props.weapons.find((w) => w.index !== (state.weapon ?? props.weapons[0]?.index))?.name ?? '',
 )
+/** The other weapons Double Slice's second Strike can use. */
+const secondChoices = computed(() =>
+  props.weapons.filter(
+    (w) => w.index !== (state.weapon ?? props.weapons[0]?.index) && w.name !== secondDefault.value,
+  ),
+)
 /** What a critical hit adds with the weapon used (deadly, fatal). */
 const critNote = computed(
   () =>
@@ -151,7 +157,7 @@ const checkLabel = computed(() => {
         :aria-label="`Second weapon for ${entry.name}`"
       >
         <option :value="undefined">{{ secondDefault }}</option>
-        <option v-for="w in weapons" :key="w.index" :value="w.index">{{ w.name }}</option>
+        <option v-for="w in secondChoices" :key="w.index" :value="w.index">{{ w.name }}</option>
       </select>
       <span v-else-if="r.strike?.twoWeapons" class="small muted">Needs two melee weapons</span>
       <select

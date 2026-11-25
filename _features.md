@@ -327,11 +327,12 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [ ] Three actions per turn (turn tracker)
 - [x] Valued conditions (frightened, clumsy, off-guard…) on every number, dying, wounded, doomed, recovery checks, Heroic Recovery
 - [x] Shield Block (Hardness, broken threshold)
-- [ ] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
+- [x] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
 - [ ] Incredible Initiative's +2 on initiative rolls (the sheet has no initiative roll yet)
 - [x] Spell slots (prepared and spontaneous), heightening, cantrips, divine font, focus spells and Refocus, daily preparations
 - [ ] Spell damage rolls and heightened effects from the spell text
-- [ ] Dice tray, target and odds rows
+- [x] Dice tray: checks, saves, Strikes, spell attacks, flat checks and damage with their total and degree
+- [ ] Target and odds rows
 
 ### 8.5 Abilities, spells and effects
 
@@ -339,7 +340,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] First wave: Rage, Sneak Attack, Precision edge, Courageous Anthem, Bless, Heroism, Toughness, Diehard, Fleet, Incredible Initiative (note)
 - [x] Abilities with an action get Use, daily frequencies tracked until daily preparations
 - [x] Second wave: Hunt Prey with the Flurry and Outwit edges, Thief, Precise Strike, Strategic Strike and Devise a Stratagem, weapon specialization (and greater), Crane and Mountain Stance, Shield, Mystic Armor, Rallying Anthem, Enlarge, Haste, Guidance
-- [ ] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, finishers), barbarian instincts, sorcerer blood magic, champion reactions
+- [x] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, Flurry of Blows, finishers with panache and bravado), barbarian instincts' Rage damage, sorcerer blood magic, champion reactions
 - [ ] Player Core 2 classes
 - [ ] Other classes, archetypes, ancestry feats
 - [ ] Spells that change numbers when cast on yourself, beyond the first wave

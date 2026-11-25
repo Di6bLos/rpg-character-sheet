@@ -242,6 +242,7 @@ const weaponsFor = (e: Entry) => {
   return strikesApi.strikes.value
     .filter((w) => (st?.melee ? !w.ranged : st?.ranged ? w.ranged : true))
     .filter((w) => !st?.unarmed || w.unarmed)
+    .filter((w) => !st?.twoWeapons || !w.unarmed)
     .filter((w) => {
       if (!st?.damageTypes) return true
       const types = w.type.toLowerCase().split(/[/, ]+/)
