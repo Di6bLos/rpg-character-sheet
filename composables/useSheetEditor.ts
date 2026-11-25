@@ -236,6 +236,10 @@ export function provideSheetEditor(
       snackbar.show('Portraits can be up to 5 MB', 'error')
       return
     }
+    if (held.value) {
+      snackbar.show('Finish or cancel Reconfigure before changing the portrait', 'error')
+      return
+    }
     uploadingPortrait.value = true
     const previous = draft.value.portrait_path
     let uploaded: string | null = null
@@ -243,7 +247,8 @@ export function provideSheetEditor(
       uploaded = await store.uploadPortrait(draft.value.id, file)
       draft.value.portrait_path = uploaded
       await saveNow()
-      if (previous && previous !== uploaded) await store.removePortrait(previous)
+      // A hold that began during the upload kept the new path from saving yet.
+      if (previous && previous !== uploaded && !held.value) await store.removePortrait(previous)
     } catch (err) {
       if (uploaded && draft.value.portrait_path === uploaded) {
         // The new path never reached the database; put the old one back and
