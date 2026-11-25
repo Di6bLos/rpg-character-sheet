@@ -505,6 +505,12 @@ export const needsDeity = (cls: Pf2eClassDef, picks: Pf2eSubclassOption[] = []) 
   /\bdeity\b/i.test(levelOneFeatures(cls).join(', ')) ||
   picks.some((p) => /\byour deity's\b/i.test(levelOneText(p.text)))
 
+/** Whether the build needs a deity: the class or its choices, or a background that serves one. */
+export function wantsDeity(c: Pf2eCreation, data: Pf2eBuildData) {
+  const { cls, background, subclassPicks } = resolve(c, data)
+  return (!!cls && needsDeity(cls, subclassPicks)) || !!background?.deitySkill
+}
+
 /** Deities a cleric or champion can follow: those that grant a divine font. */
 export const deityOptions = (data: Pf2eBuildData) =>
   data.deities.filter((d) => d.divineFont.length > 0)
@@ -591,12 +597,14 @@ const cleanEntry = (s: string) =>
     .trim()
 
 /**
- * A background's skills: plain names are trained; "Genealogy Lore or Heraldry Lore" is a
- * choice; prose like "Lore related to the terrain you worked in" is a Lore the player names.
+ * A background's skills: plain names are trained; "Genealogy Lore or Heraldry Lore" and the
+ * data's `skillChoices` are choices (one with no options is a free pick of any skill); prose
+ * like "Lore related to the terrain you worked in" is a Lore the player names.
  */
 export function backgroundSkills(b: Pf2eBackgroundDef) {
   const fixed: string[] = []
-  const groups: Pf2eSkillPlan['groups'] = []
+  const groups: Pf2eSkillPlan['groups'] = (b.skillChoices ?? []).filter((g) => g.options.length)
+  const free = (b.skillChoices ?? []).reduce((n, g) => n + (g.options.length ? 0 : g.count), 0)
   const lores: Pf2eSkillPlan['lores'] = []
   for (const entry of b.skills) {
     const clean = cleanEntry(entry)
@@ -607,7 +615,7 @@ export function backgroundSkills(b: Pf2eBackgroundDef) {
     else if (either.length === 1 && named(head)) fixed.push(head)
     else lores.push({ hint: clean.replace(/\.$/, '') })
   }
-  return { fixed, groups, lores }
+  return { fixed, groups, lores, free }
 }
 
 /** A Lore the player named, as the sheet writes it: "desert" → "Desert Lore". */
@@ -634,10 +642,10 @@ export function skillPlan(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSkillPlan {
   const int = attributeMods(c, data).INT
   const bg = background
     ? backgroundSkills(background)
-    : { fixed: [], groups: [], lores: [] as Pf2eSkillPlan['lores'] }
+    : { fixed: [], groups: [], lores: [] as Pf2eSkillPlan['lores'], free: 0 }
   const fixed: string[] = [...new Set(bg.fixed)]
   const groups: Pf2eSkillPlan['groups'] = [...bg.groups]
-  let free = 0
+  let free = bg.free
   const add = (s: string) => {
     if (fixed.includes(s)) free++
     else fixed.push(s)
@@ -658,6 +666,8 @@ export function skillPlan(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSkillPlan {
   if (cls) classLores(cls).forEach(add)
   if (cls && deity && needsDeity(cls, subclassPicks))
     for (const s of deity.skill.slice(0, 1)) add(s)
+  // Raised by Belief: "You're trained in your deity's associated skill".
+  if (deity && background?.deitySkill) for (const s of deity.skill.slice(0, 1)) add(s)
   for (const o of subclassPicks) {
     o.skills.forEach(add)
     // "You're trained in Society and one of the following skills of your choice: Arcana, …"
@@ -683,7 +693,12 @@ export function skillProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   let left = [...picks]
   for (const g of plan.groups) {
     const hit = left.filter((s) => g.options.includes(s)).slice(0, g.count)
-    if (hit.length < g.count) out.push(`Choose ${g.options.join(' or ')}`)
+    if (hit.length < g.count)
+      out.push(
+        g.count > 1
+          ? `Choose ${g.count} of ${g.options.join(', ')}`
+          : `Choose ${g.options.join(' or ')}`,
+      )
     left = left.filter((s) => !hit.includes(s))
   }
   if (left.length !== plan.free)
@@ -707,28 +722,68 @@ export const trainedSkills = (c: Pf2eCreation, data: Pf2eBuildData) => {
 
 // --- Spellcasting --------------------------------------------------------------
 
-/** The subclass options the hero picked. */
-const subclassPicks = (c: Pf2eCreation, cls: Pf2eClassDef) =>
-  cls.subclasses.filter((s) => Object.values(c.subclasses).some((ids) => ids.includes(s.id)))
+/** The four magical traditions (Player Core p. 297). */
+export const PF2E_TRADITIONS = ['Arcane', 'Divine', 'Occult', 'Primal']
+
+/** Level 1 feature text, then the picked subclasses' text, as plain words. */
+const levelOneRules = (c: Pf2eCreation, data: Pf2eBuildData) => {
+  const { cls, subclassPicks } = resolve(c, data)
+  if (!cls) return { features: '', picks: '' }
+  return {
+    features: plain(
+      cls.features
+        .filter((f) => f.level === 1)
+        .map((f) => f.text)
+        .join(' '),
+    ),
+    picks: plain(subclassPicks.map((s) => levelOneText(s.text)).join(' ')),
+  }
+}
+
+/**
+ * The attribute a caster's spells use, from the class text: "your spell attack modifier and
+ * spell DC are calculated using your Intelligence modifier" (a magus, whose key is STR or DEX).
+ * "Since your key attribute is…" and a psychic's "the attribute stated in your subconscious
+ * mind" mean the key attribute.
+ */
+export function spellAttribute(c: Pf2eCreation, data: Pf2eBuildData): Pf2eAttr {
+  const { features } = levelOneRules(c, data)
+  const named =
+    /spell DCs? (?:are calculated using|use) your (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) modifier/i.exec(
+      features,
+    )
+  const said =
+    named && !/Since your key attribute/i.test(features) ? ATTR_BY_NAME[named[1]!] : undefined
+  return said ?? c.keyAttribute
+}
 
 /**
  * A caster's 1st-level spellcasting (Player Core pp. 297–298, each class entry): the
- * tradition (a sorcerer's bloodline, witch's patron or summoner's eidolon sets it),
- * prepared or spontaneous (classes with a spell repertoire are spontaneous), and how many
- * cantrips and 1st-rank spells to choose, from the class's spells-per-day table.
+ * tradition (a sorcerer's bloodline, witch's patron or summoner's eidolon sets it; a draconic
+ * bloodline or dragon eidolon leaves it to the player, `traditionChoice`), prepared or
+ * spontaneous (classes with a spell repertoire are spontaneous), and how many cantrips and
+ * 1st-rank spells to choose, from the class's spells-per-day table (its level 1 row, found by
+ * level).
  */
 export function spellcastingPlan(c: Pf2eCreation, data: Pf2eBuildData) {
-  const { cls, deity } = resolve(c, data)
-  const row = cls?.spellSlots?.[0]
+  const { cls, deity, subclassPicks } = resolve(c, data)
+  const row = cls?.spellSlots?.find((r) => r.level === 1)
   if (!cls || !row) return null
-  const l1 = norm(cls.advancement[0]?.features.join(', ') ?? '')
+  const l1 = norm(levelOneFeatures(cls).join(', '))
+  // The choice that sets the tradition: its other options name one (bloodlines, eidolons).
+  const setting = new Set(cls.subclasses.filter((s) => s.traditions.length).map((s) => s.kind))
+  const setter = subclassPicks.find((s) => setting.has(s.kind))
+  const fromPick = subclassPicks.find((s) => s.traditions.length)?.traditions[0]
+  // A pick that sets the tradition but names none ("variable": a draconic exemplar, a dragon).
+  const traditionChoice = cls.traditions.length !== 1 && !fromPick && !!setter
   const tradition =
     cls.traditions.length === 1
       ? cls.traditions[0]!
-      : (subclassPicks(c, cls).find((s) => s.traditions.length)?.traditions[0] ?? '')
+      : (fromPick ?? (traditionChoice && c.tradition ? c.tradition : ''))
   const fonts = l1.includes('divine font') ? (deity?.divineFont ?? []) : []
   return {
     tradition,
+    traditionChoice,
     kind: l1.includes('spell repertoire') ? ('spontaneous' as const) : ('prepared' as const),
     cantrips: row.cantrips,
     rank1: row.slots[0] ?? 0,
@@ -749,43 +804,97 @@ export function spellOptions(which: 'cantrip' | 'spell', c: Pf2eCreation, data: 
   )
 }
 
+const spellNamed = (text: string, name: string) =>
+  new RegExp(`\\b${name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text)
+
+/** The class's focus spells and class cantrips up to 1st rank, once each. */
+const classFocusSpells = (c: Pf2eCreation, data: Pf2eBuildData) => {
+  const { cls } = resolve(c, data)
+  if (!cls) return []
+  return uniqueNames(
+    data.spells.filter(
+      (s) =>
+        (s.kind === 'focus' || s.kind === 'cantrip') && s.classes.includes(cls.name) && s.rank <= 1,
+    ),
+  )
+}
+
+/**
+ * A focus spell the class text has the player choose: "Choose either _shields of the spirit_
+ * or a spell based on your deity's divine font (_lay on hands_ if your deity allows heal,
+ * _touch of the void_ if your deity allows harm)" (a champion's devotion spell). Spells the
+ * deity's font rules out are left out.
+ */
+export function focusChoice(c: Pf2eCreation, data: Pf2eBuildData) {
+  const { cls, deity } = resolve(c, data)
+  const sentence = cls?.features
+    .filter((f) => f.level === 1)
+    .map((f) => /Choose either [^.]*\./.exec(f.text.replace(/\s+/g, ' '))?.[0])
+    .find(Boolean)
+  if (!sentence) return null
+  const lower = sentence.replace(/[_*]/g, ' ').toLowerCase()
+  const options = classFocusSpells(c, data).filter((s) => {
+    if (!spellNamed(lower, s.name)) return false
+    const font = new RegExp(`${s.name.toLowerCase()}\\s+if your deity allows (heal|harm)`).exec(
+      lower,
+    )?.[1]
+    return !font || !deity || deity.divineFont.map((f) => f.toLowerCase()).includes(font)
+  })
+  return options.length ? { options, count: 1 } : null
+}
+
 /**
  * Focus spells the 1st-level features and subclass picks grant: those of the class whose
- * name the features' text mentions (a bard's composition cantrips, a muse's spell…).
+ * name the features' text mentions (a bard's composition cantrips, a muse's spell…), except
+ * the ones a "Choose either…" leaves to the player (`focusChoice`).
  */
 export function creationFocusSpells(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSpellDef[] {
-  const { cls } = resolve(c, data)
+  const { cls, subclassPicks } = resolve(c, data)
   if (!cls) return []
   const text = [
     ...cls.features.filter((f) => f.level === 1).map((f) => f.text),
-    ...subclassPicks(c, cls).map((s) => s.text),
+    ...subclassPicks.map((s) => s.text),
   ]
-    .join('\n')
+    .join(' ')
     // Spell names are italic in the rules text (_courageous anthem_).
     .replace(/[_*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/Choose either [^.]*\./g, ' ')
     .toLowerCase()
-  return data.spells.filter(
-    (s) =>
-      (s.kind === 'focus' || s.kind === 'cantrip') &&
-      s.classes.includes(cls.name) &&
-      s.rank <= 1 &&
-      new RegExp(`\\b${s.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text),
-  )
+  return classFocusSpells(c, data).filter((s) => spellNamed(text, s.name))
 }
 
 /** The class's focus spells and class cantrips up to 1st rank, to pick from. */
 export function focusSpellOptions(c: Pf2eCreation, data: Pf2eBuildData) {
-  const { cls } = resolve(c, data)
-  if (!cls) return []
-  return data.spells.filter(
-    (s) =>
-      (s.kind === 'focus' || s.kind === 'cantrip') && s.classes.includes(cls.name) && s.rank <= 1,
-  )
+  return classFocusSpells(c, data)
 }
 
 /** The focus spells the build uses: the player's picks, or the ones the features name. */
 export const chosenFocusSpells = (c: Pf2eCreation, data: Pf2eBuildData) =>
-  c.focus ? data.spells.filter((s) => c.focus!.includes(s.id)) : creationFocusSpells(c, data)
+  c.focus
+    ? uniqueNames(data.spells.filter((s) => c.focus!.includes(s.id)))
+    : creationFocusSpells(c, data)
+
+const COUNT: Record<string, number> = { one: 1, two: 2, three: 3 }
+
+/**
+ * Focus Points at 1st level, from the text: "you start with a focus pool of 2 Focus Points"
+ * (a psychic, whose psi cantrips cost none), "you also gain a focus pool of 1 Focus Point" (a
+ * champion). Without such a line, one point per focus spell that costs one, up to 3 (p. 298).
+ */
+export function focusPool(c: Pf2eCreation, data: Pf2eBuildData) {
+  const { features, picks } = levelOneRules(c, data)
+  const said = [...`${features} ${picks}`.matchAll(/(?:start with|gain) a focus pool of (\w+)/gi)]
+    .map((m) => COUNT[m[1]!.toLowerCase()] ?? Number(m[1]))
+    .filter((n) => n > 0)
+  if (said.length) return Math.min(3, Math.max(...said))
+  const spells = chosenFocusSpells(c, data)
+  const cantrips = new Set(spells.filter((f) => f.traits.includes('Cantrip')).map((f) => f.id))
+  return focusPoolMax(
+    spells.map((f) => ({ id: f.id, name: f.name, rank: f.rank })),
+    cantrips,
+  )
+}
 
 // --- Proficiencies --------------------------------------------------------------
 
@@ -953,7 +1062,7 @@ function strike(
 
 /** What is missing, by builder step: ancestry, background, class, attributes, skills & feats, gear. */
 export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
-  const { ancestry, heritage, background, cls, deity, subclassPicks } = resolve(c, data)
+  const { ancestry, heritage, background, cls, deity } = resolve(c, data)
   const ancestryStep = [
     ancestry ? '' : 'Choose an ancestry',
     heritage ? '' : 'Choose a heritage',
@@ -971,7 +1080,7 @@ export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
             : `Choose ${ch.count.min}–${ch.count.max} for ${ch.label.toLowerCase()}`,
         )
     }
-    if (needsDeity(cls, subclassPicks) && !deity) classStep.push('Choose a deity')
+    if (wantsDeity(c, data) && !deity) classStep.push('Choose a deity')
   }
   const trait = classFeatTrait(cls)
   const featStep = [
@@ -1005,9 +1114,21 @@ export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
 /** What the spells step still needs: the picks the class's table asks for, a divine font. */
 export function spellProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   const plan = spellcastingPlan(c, data)
-  if (!plan) return []
-  if (!plan.tradition) return ['Choose the option that sets your tradition first (class step)']
-  const out: string[] = []
+  const choice = focusChoice(c, data)
+  const focusOut =
+    choice &&
+    chosenFocusSpells(c, data).filter((s) => choice.options.some((o) => o.id === s.id)).length !==
+      choice.count
+      ? [`Choose one of ${choice.options.map((o) => o.name).join(', ')}`]
+      : []
+  if (!plan) return focusOut
+  if (!plan.tradition)
+    return [
+      plan.traditionChoice
+        ? 'Choose your tradition'
+        : 'Choose the option that sets your tradition first (class step)',
+    ]
+  const out: string[] = [...focusOut]
   const n = (ids?: string[]) => ids?.length ?? 0
   if (n(c.spells?.cantrips) !== plan.cantrips) out.push(`Choose ${plan.cantrips} cantrips`)
   if (n(c.spells?.rank1) !== plan.rank1)
@@ -1152,10 +1273,7 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
   const font = plan?.fonts.length ? (plan.fonts.length === 1 ? plan.fonts[0] : c.font) : undefined
   const focusDefs = chosenFocusSpells(c, data)
   const focusSpells = focusDefs.map((f) => ({ id: f.id, name: f.name, rank: f.rank }))
-  const focusCantrips = new Set(
-    focusDefs.filter((f) => f.traits.includes('Cantrip')).map((f) => f.id),
-  )
-  const focusMax = focusPoolMax(focusSpells, focusCantrips)
+  const focusMax = focusPool(c, data)
   const spent = gearCost(c, data)
   const left = STARTING_CP - spent
 
@@ -1269,7 +1387,7 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
           spellcasting: {
             tradition: plan.tradition,
             kind: plan.kind,
-            attr: c.keyAttribute,
+            attr: spellAttribute(c, data),
             rank: 'T' as const,
             cantrips: (c.spells?.cantrips ?? []).flatMap(spellRef),
             spells: rank1,

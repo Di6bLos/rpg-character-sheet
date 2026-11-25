@@ -26,7 +26,9 @@ import {
   emptyCreation,
   featOptions,
   featSlots,
+  focusChoice,
   focusSpellOptions,
+  PF2E_TRADITIONS,
   chosenFocusSpells,
   spellOptions,
   spellcastingPlan,
@@ -35,13 +37,13 @@ import {
   isAmmunition,
   keyAttributeOptions,
   levelOneFeatures,
-  needsDeity,
   resolve,
   setSlotBoost,
   skillPlan,
   slotTaken,
   subclassChoices,
   untrainedGear,
+  wantsDeity as wantsDeityFor,
   weaponRank,
 } from '~/utils/pf2eBuild'
 
@@ -169,7 +171,13 @@ watch(
     c.value.spells = undefined
     c.value.font = undefined
     c.value.focus = undefined
+    c.value.tradition = undefined
   },
+)
+// A new bloodline, patron, order… grants other focus spells: the old picks go.
+watch(
+  () => JSON.stringify(c.value.subclasses),
+  () => (c.value.focus = undefined),
 )
 // A subclass can add a key attribute (a ruffian's Strength) or settle it (a psychic's mind).
 const keyOptions = computed(() =>
@@ -178,7 +186,7 @@ const keyOptions = computed(() =>
 watch(keyOptions, (keys) => {
   if (keys.length && !keys.includes(c.value.keyAttribute)) c.value.keyAttribute = keys[0]!
 })
-const wantsDeity = computed(() => !!cls.value && needsDeity(cls.value, subclassPicks.value))
+const wantsDeity = computed(() => !!data.value && wantsDeityFor(c.value, data.value))
 watch(wantsDeity, (want) => {
   if (!want) c.value.deity = undefined
 })
@@ -362,10 +370,18 @@ const groupPicks = computed(() =>
 const freePicks = computed(() =>
   c.value.skills.filter((s) => !plan.value?.fixed.includes(s) && !groupPicks.value.includes(s)),
 )
-/** Picks a skill for an "either…or" choice, replacing only that choice's earlier pick. */
-function pickGroup(options: string[], skill: string) {
-  const before = groupPicks.value.find((s) => options.includes(s))
-  c.value.skills = [...c.value.skills.filter((s) => s !== before && s !== skill), skill]
+/**
+ * Picks a skill for a choice. An "either…or" replaces that choice's earlier pick; a choice of
+ * several ("four of the following") toggles, up to its count.
+ */
+function pickGroup(g: { options: string[]; count: number }, skill: string) {
+  const mine = c.value.skills.filter((s) => g.options.includes(s)).slice(0, g.count)
+  if (g.count > 1) {
+    if (mine.includes(skill)) c.value.skills = c.value.skills.filter((s) => s !== skill)
+    else if (mine.length < g.count) c.value.skills = [...c.value.skills, skill]
+    return
+  }
+  c.value.skills = [...c.value.skills.filter((s) => s !== mine[0] && s !== skill), skill]
 }
 function toggleFree(skill: string) {
   if (c.value.skills.includes(skill)) c.value.skills = c.value.skills.filter((s) => s !== skill)
@@ -517,6 +533,13 @@ const focusCards = computed(() =>
         rarity: undefined,
       }))
     : [],
+)
+const devotion = computed(() => (data.value ? focusChoice(c.value, data.value) : null))
+watch(
+  () => casting.value?.traditionChoice,
+  (choose) => {
+    if (!choose) c.value.tradition = undefined
+  },
 )
 const focusPicks = computed(() =>
   data.value ? chosenFocusSpells(c.value, data.value).map((s) => s.id) : [],
@@ -789,6 +812,9 @@ async function create() {
 
           <template v-if="wantsDeity">
             <div class="section-head"><h3>Deity</h3></div>
+            <p v-if="background?.deitySkill" class="small muted">
+              {{ background.name }} trains you in your deity’s skill.
+            </p>
             <Pf2eOptionCards v-model="deityPick" :options="deityCards" label="Deities" />
             <p class="small muted cup">
               Deities use trademarks and/or copyrights owned by Paizo Inc., used under Paizo's
@@ -856,7 +882,9 @@ async function create() {
             {{ plan.fixed.join(', ') }}
           </p>
           <fieldset v-for="(g, gi) in plan.groups" :key="gi" class="skill-group">
-            <legend class="small">Choose one: {{ listOr(g.options) }}</legend>
+            <legend class="small">
+              {{ g.count > 1 ? `Choose ${g.count}` : 'Choose one' }}: {{ listOr(g.options) }}
+            </legend>
             <button
               v-for="o in g.options"
               :key="o"
@@ -865,7 +893,7 @@ async function create() {
               :class="{ 'chip--on': groupPicks.includes(o) }"
               :aria-pressed="groupPicks.includes(o)"
               :disabled="plan.fixed.includes(o)"
-              @click="pickGroup(g.options, o)"
+              @click="pickGroup(g, o)"
             >
               {{ o }}
             </button>
@@ -932,6 +960,26 @@ async function create() {
         <p v-if="!casting && !focusCards.length" class="panel small muted">
           {{ cls?.name }}s don’t cast spells at 1st level. Next: gear.
         </p>
+        <div v-else-if="casting?.traditionChoice" class="panel stack">
+          <h3>Tradition</h3>
+          <p class="small muted">
+            Your {{ subclassPicks.map((p) => p.name).join(', ') }} choice leaves the tradition to
+            you (the kind of dragon behind it): pick it here.
+          </p>
+          <div class="row" role="group" aria-label="Tradition" style="gap: 8px; flex-wrap: wrap">
+            <button
+              v-for="t in PF2E_TRADITIONS"
+              :key="t"
+              type="button"
+              class="chip"
+              :class="{ 'chip--on': c.tradition === t }"
+              :aria-pressed="c.tradition === t"
+              @click="c.tradition = t"
+            >
+              {{ t }}
+            </button>
+          </div>
+        </div>
         <p v-else-if="casting && !casting.tradition" class="panel small muted">
           Your tradition comes from your class choice (a bloodline, patron or eidolon): pick it in
           the Class step first.
@@ -972,15 +1020,14 @@ async function create() {
           />
           <div v-if="casting.fonts.length > 1" class="panel stack">
             <h3>Divine font</h3>
-            <div class="row" role="radiogroup" aria-label="Divine font" style="gap: 8px">
+            <div class="row" role="group" aria-label="Divine font" style="gap: 8px">
               <button
                 v-for="f in casting.fonts"
                 :key="f"
                 type="button"
-                role="radio"
                 class="chip"
                 :class="{ 'chip--on': c.font === f }"
-                :aria-checked="c.font === f"
+                :aria-pressed="c.font === f"
                 @click="c.font = f"
               >
                 {{ f }}
@@ -993,8 +1040,11 @@ async function create() {
             <h3>Focus spells &amp; class cantrips</h3>
           </div>
           <p class="small muted">
-            Picked from what your class and choices name; check them against the rules text (a
-            champion takes one of lay on hands or touch of the void).
+            Picked from what your class and choices name; check them against the rules text.
+          </p>
+          <p v-if="devotion" class="small">
+            <strong>Choose one</strong>:
+            {{ devotion.options.map((o) => o.name).join(' or ') }}
           </p>
           <Pf2eOptionCards
             :model-value="focusPicks"
