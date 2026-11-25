@@ -323,6 +323,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
   - Choices the class data can't describe stay notes for the player: signature spells, Blessing of the Devoted, Gate's Threshold, inventor modifications, Divine Access, implement adept/paragon, choices inside feats (Canny Acumen, Domain Initiate)
   - Not yet: archetype feats in class slots, swapping a repertoire spell, redoing level 1 through Reconfigure (the builder's steps live in its page)
 - [x] Data-driven level-up in `LevelUpDialog` for PF2e sheets with a `classSlug` (`components/pf2e/LevelUp.vue`)
+- [x] Review fixes: spellbook/familiar/dirge counts, wizard curriculum, sorcerer gifts, witch hex choice, bonus class feats at 1st, Raised by Belief's deity on the Background step, druidic orders (skill, feat, order spell), focus pool growth, bonus skill feats and increases (Skillful Lessons, Stylish Tricks), racket medium armor, animist apparition slots, stale Reconfigure picks flagged, hand-made feats and Strikes kept when lowering a level
 - [ ] Golden level tables after a `rules-auditor` pass per class
 
 ### 8.4 Play engine
