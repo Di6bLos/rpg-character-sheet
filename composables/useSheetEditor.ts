@@ -67,6 +67,17 @@ export function provideSheetEditor(
   let pendingSave: Promise<void> | null = null
 
   /**
+   * The row a save sends, as JSON. The sheet is plain JSON (jsonb). A JSON round-trip
+   * copies it even when reactive proxies ended up nested inside (e.g. arrays rebuilt
+   * with .filter() on the reactive draft), which structuredClone rejects.
+   */
+  function savedRow(): string {
+    const { name, level, sheet, portrait_path } = draft.value
+    return JSON.stringify({ name: name.trim() || 'Unnamed', level, sheet, portrait_path })
+  }
+  let lastSaved = savedRow()
+
+  /**
    * Saves the draft. A call made while a save is in flight runs after it. Each save is
    * tracked per character, so a load elsewhere (the board after a layout swap) waits for it.
    */
@@ -90,20 +101,16 @@ export function provideSheetEditor(
   }
 
   async function persist() {
-    saving.value = true
     // Cleared up front so edits made while the request is in flight re-mark it.
     dirty.value = false
+    const row = savedRow()
+    // The change watcher re-marks the draft after saveNow() has already saved it; the
+    // autosave that follows would send the same row again.
+    if (row === lastSaved) return
+    saving.value = true
     try {
-      const { name, level, sheet, portrait_path } = draft.value
-      await store.save(draft.value.id, {
-        name: name.trim() || 'Unnamed',
-        level,
-        // The sheet is plain JSON (jsonb). A JSON round-trip copies it even when
-        // reactive proxies ended up nested inside (e.g. arrays rebuilt with
-        // .filter() on the reactive draft), which structuredClone rejects.
-        sheet: JSON.parse(JSON.stringify(sheet)) as AnySheet,
-        portrait_path,
-      })
+      await store.save(draft.value.id, JSON.parse(row) as Partial<Character<AnySheet>>)
+      lastSaved = row
     } catch (err) {
       dirty.value = true
       snackbar.error(err, 'Could not save the sheet')

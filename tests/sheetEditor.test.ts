@@ -80,9 +80,26 @@ describe('sheet editor saves', () => {
     await Promise.resolve()
     expect(store.save).not.toHaveBeenCalled()
 
-    e.draft.value.level = 5
+    e.draft.value.level = 4
     e.held.value = false
     await e.saveNow()
-    expect(savedLevels()).toEqual([5])
+    expect(savedLevels()).toEqual([4])
+  })
+
+  it('saves a change once: the autosave after saveNow skips the same sheet', async () => {
+    const e = editor()
+    e.draft.value.level = 6
+    await e.saveNow()
+    await nextTick()
+    vi.advanceTimersByTime(5000)
+    await Promise.resolve()
+    expect(savedLevels()).toEqual([6])
+    expect(e.dirty.value).toBe(false)
+
+    e.draft.value.sheet.hp = 12
+    await nextTick()
+    vi.advanceTimersByTime(5000)
+    await Promise.resolve()
+    expect(savedLevels()).toEqual([6, 6])
   })
 })
