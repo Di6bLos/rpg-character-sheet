@@ -37,14 +37,19 @@ export function applyHpChange(sheet: NimbleSheet, level: number, change: Change)
   return `GM: healed ${n}: ${sheet.hp}/${sheet.hpMax} HP.`
 }
 
-/** Damage off temp HP first, then HP (floor 0). Returns whether HP was above 0 before. */
-function hurt(sheet: { hp: number; tempHp?: number }, n: number): boolean {
+/**
+ * Damage off temp HP first, then HP (floor 0). Returns whether HP was above 0 before, and
+ * the damage left over once HP hit 0.
+ */
+function hurt(sheet: { hp: number; tempHp?: number }, n: number) {
   const wasUp = sheet.hp > 0
   const temp = Math.max(0, sheet.tempHp ?? 0)
   const fromTemp = Math.min(temp, n)
   sheet.tempHp = temp - fromTemp
-  sheet.hp = Math.max(0, sheet.hp - (n - fromTemp))
-  return wasUp
+  const toHp = n - fromTemp
+  const before = Math.max(0, sheet.hp)
+  sheet.hp = Math.max(0, before - toHp)
+  return { wasUp, overflow: Math.max(0, toHp - before) }
 }
 
 /** Heals up to max HP. Returns whether the hero was at 0 before. */
@@ -60,22 +65,34 @@ function tookLine(n: number, crit: boolean, sheet: { hp: number; hpMax: number }
 
 /**
  * D&D 5e: damage takes temp HP first, then HP down to 0 (a crit's extra dice are already
- * in the amount); healing caps at max HP, and healing from 0 resets the death saves.
+ * in the amount). Damage while already at 0 fails a death save (2 on a crit, up to 3); damage
+ * left over after 0 that reaches max HP is massive damage: dead (3 failures). Healing caps
+ * at max HP, and healing from 0 resets the death saves.
  */
 export function applyDnd5eHpChange(sheet: Dnd5eSheet, change: Change): string {
   const n = Math.abs(Math.floor(change.amount))
   if (!n) return ''
   if (change.amount < 0) {
-    const wasUp = hurt(sheet, n)
-    const down = wasUp && sheet.hp === 0 ? ' Down: roll death saves.' : ''
-    return `${tookLine(n, change.crit, sheet)}${down}`
+    const { wasUp, overflow } = hurt(sheet, n)
+    const saves = sheet.deathSaves ?? (sheet.deathSaves = { successes: 0, failures: 0 })
+    let note = ''
+    if (sheet.hp === 0 && overflow >= sheet.hpMax && sheet.hpMax > 0) {
+      saves.failures = 3
+      note = ' Massive damage: dead.'
+    } else if (wasUp && sheet.hp === 0) {
+      note = ' Down: roll death saves.'
+    } else if (!wasUp && overflow > 0) {
+      saves.failures = Math.min(3, saves.failures + (change.crit ? 2 : 1))
+      note = ` Death save failed (${saves.failures}/3).`
+    }
+    return `${tookLine(n, change.crit, sheet)}${note}`
   }
   const wasDown = mend(sheet, n)
   if (wasDown) sheet.deathSaves = { successes: 0, failures: 0 }
   return `GM: healed ${n}: ${sheet.hp}/${sheet.hpMax} HP.${wasDown ? ' Death saves reset.' : ''}`
 }
 
-/** PF2e's Dying value at which the hero dies (the sheet shows Dying N / 4). */
+/** PF2e's Dying value at which the hero dies (the sheet shows Dying N / 4); ignores Doomed. */
 const PF2E_DEAD_AT = 4
 
 /**
@@ -89,10 +106,11 @@ export function applyPf2eHpChange(sheet: Pf2eSheet, change: Change): string {
   if (!n) return ''
   const wounded = Math.max(0, sheet.wounded ?? 0)
   if (change.amount < 0) {
-    const wasUp = hurt(sheet, n)
+    const { wasUp, overflow } = hurt(sheet, n)
     const step = change.crit ? 2 : 1
     let note = ''
-    if (sheet.hp === 0) {
+    // Temp HP that soaks the whole hit at 0 HP leaves Dying alone.
+    if (sheet.hp === 0 && (wasUp || overflow > 0)) {
       const dying = wasUp ? step + wounded : Math.max(0, sheet.dying ?? 0) + step
       sheet.dying = Math.min(PF2E_DEAD_AT, dying)
       note = ` Dying ${sheet.dying}.`

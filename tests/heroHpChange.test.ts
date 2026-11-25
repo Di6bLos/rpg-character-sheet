@@ -88,6 +88,32 @@ describe('GM hero HP changes, D&D 5e', () => {
     expect(sheet.hp).toBe(0)
   })
 
+  it('damage while already at 0 fails a death save, 2 on a crit, up to 3', () => {
+    const sheet = corin({ hp: 0, deathSaves: { successes: 1, failures: 0 } })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -3, crit: false })).toBe(
+      'GM: took 3 damage: 0/20 HP. Death save failed (1/3).',
+    )
+    applyHpChangeFor('dnd5e', sheet, 3, { id: 'b', amount: -3, crit: true })
+    expect(sheet.deathSaves).toEqual({ successes: 1, failures: 3 })
+    applyHpChangeFor('dnd5e', sheet, 3, { id: 'c', amount: -3, crit: true })
+    expect(sheet.deathSaves.failures).toBe(3)
+  })
+
+  it('massive damage (the rest after 0 reaches max HP) kills outright', () => {
+    const sheet = corin({ hp: 5 })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -25, crit: false })).toBe(
+      'GM: took 25 damage: 0/20 HP. Massive damage: dead.',
+    )
+    expect(sheet.deathSaves.failures).toBe(3)
+    const down = corin({ hp: 0, tempHp: 2 })
+    expect(applyHpChangeFor('dnd5e', down, 3, { id: 'b', amount: -21, crit: false })).toMatch(
+      /Death save failed \(1\/3\)\.$/,
+    )
+    expect(applyHpChangeFor('dnd5e', down, 3, { id: 'c', amount: -20, crit: false })).toMatch(
+      /Massive damage: dead\.$/,
+    )
+  })
+
   it('heals up to max', () => {
     const sheet = corin({ hp: 15 })
     expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: 8, crit: false })).toBe(
@@ -179,6 +205,18 @@ describe('GM hero HP changes, Pathfinder 2e', () => {
 })
 
 describe('GM hero HP changes dispatch', () => {
+  it('sends 5e to its own rules (temp HP first)', () => {
+    const sheet = { ...defaultSheet('dnd5e'), hp: 10, hpMax: 10, tempHp: 4 }
+    applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -5, crit: false })
+    expect([sheet.tempHp, sheet.hp]).toEqual([0, 9])
+  })
+
+  it('sends PF2e to its own rules (Dying at 0)', () => {
+    const sheet = { ...defaultSheet('pf2e'), hp: 3, hpMax: 10 }
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -5, crit: false })
+    expect(sheet.dying).toBe(1)
+  })
+
   it('sends Nimble to its own rules', () => {
     const sheet = hero({ conditions: ['Warded'] })
     expect(applyHpChangeFor('nimble', sheet, 3, { id: 'a', amount: -9, crit: false })).toBe(

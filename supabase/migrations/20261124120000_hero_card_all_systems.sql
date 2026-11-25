@@ -255,3 +255,5 @@ language sql stable security definer set search_path = '' as $$
     and (private.is_campaign_member(p_campaign) or private.is_staff())
   order by m.role, p.display_name
 $$;
+
+revoke execute on all functions in schema private from public;

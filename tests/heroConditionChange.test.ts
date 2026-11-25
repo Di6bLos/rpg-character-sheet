@@ -102,6 +102,16 @@ describe('GM hero condition changes, D&D 5e and PF2e', () => {
     expect(sheet.conditions).toEqual(['Prone'])
   })
 
+  it('dispatches 5e and PF2e to the plain add, with no end', () => {
+    const dnd = defaultSheet('dnd5e')
+    applyConditionChangeFor('dnd5e', dnd, { id: 'a', condition: 'Prone', add: true })
+    expect(dnd.conditions).toEqual(['Prone'])
+    const pf2e = defaultSheet('pf2e')
+    applyConditionChangeFor('pf2e', pf2e, { id: 'a', condition: 'Prone', add: true })
+    expect(pf2e.conditions).toEqual(['Prone'])
+    expect('conditionEnds' in pf2e).toBe(false)
+  })
+
   it('keeps Nimble on its own rules (the usual end)', () => {
     const sheet = hero()
     const timed = Object.keys(CONDITION_ENDS)[0]!

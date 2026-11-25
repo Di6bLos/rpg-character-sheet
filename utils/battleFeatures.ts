@@ -42,7 +42,9 @@ export function battleFeatures(system: GameSystem): BattleFeatures {
  */
 export function conditionNames(system: GameSystem): string[] {
   if (system === 'dnd5e') return [...DND5E_CONDITIONS]
-  if (system === 'pf2e') return [...PF2E_CONDITIONS]
+  // PF2e's Dying and Wounded are numbers on the sheet (the HP pickups set them), so the
+  // GM's picker leaves those names out; the sheet's own chips still list them.
+  if (system === 'pf2e') return PF2E_CONDITIONS.filter((x) => x !== 'Dying' && x !== 'Wounded')
   return [...CONDITIONS, ...SPELL_STATUSES]
     .filter((x) => !AUTO_CONDITIONS.includes(x.name) && x.name !== 'Helped')
     .map((x) => x.name)

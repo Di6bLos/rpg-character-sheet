@@ -19,6 +19,9 @@ describe('battleFeatures', () => {
     expect(conditionNames('dnd5e')).toHaveLength(15)
     expect(conditionNames('dnd5e')).toContain('Exhaustion')
     expect(conditionNames('pf2e')).toContain('Off-guard')
+    // The hero's Dying and Wounded numbers are the truth, so the GM's picker leaves them out.
+    expect(conditionNames('pf2e')).not.toContain('Dying')
+    expect(conditionNames('pf2e')).not.toContain('Wounded')
     expect(conditionNames('nimble')).not.toContain('Helped')
     expect(conditionNames('nimble')).not.toContain('Bloodied')
   })

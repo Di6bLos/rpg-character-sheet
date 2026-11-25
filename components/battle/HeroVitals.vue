@@ -13,6 +13,7 @@ import type { HeroCard, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
+import { deathSavesLine, heroDown } from '~/utils/roster'
 
 const props = defineProps<{
   characterId: string
@@ -36,6 +37,20 @@ const own = computed(() => !!props.entry && props.entry.user_id === auth.userId)
 function ownHp(): boolean {
   return own.value && !!slots['own-hp']
 }
+/**
+ * Where Nimble shows Wounds: a downed 5e hero's death saves ("Down · Death saves 1✓ 2✗"),
+ * PF2e's "Down · Dying N" while down or "Wounded · N" while up; null otherwise.
+ */
+const dyingNote = computed<{ label: string; value: string } | null>(() => {
+  const l = props.live
+  const down = heroDown(l.hp, l.hpMax)
+  if (l.deathSaves) {
+    return down ? { label: 'Down', value: deathSavesLine({ deathSaves: l.deathSaves }) } : null
+  }
+  if (!l.pf2e) return null
+  if (down && l.pf2e.dying > 0) return { label: 'Down', value: `Dying ${l.pf2e.dying}` }
+  return l.pf2e.wounded > 0 ? { label: 'Wounded', value: String(l.pf2e.wounded) } : null
+})
 const dead = computed(() => props.live.woundsMax > 0 && props.live.wounds >= props.live.woundsMax)
 
 const identity = computed(() => {
@@ -234,6 +249,11 @@ async function adjust(sign: 1 | -1) {
       </span>
     </div>
 
+    <div v-if="dyingNote && !ownHp()" class="hc__wounds">
+      <span class="hc__sect">{{ dyingNote.label }}</span>
+      <span class="hc__dying">{{ dyingNote.value }}</span>
+    </div>
+
     <div class="hc__tiles">
       <div class="hc__tile">
         <b>{{ heroArmor(card.ac, card.conditions, card.level) }}</b>
@@ -404,6 +424,12 @@ async function adjust(sign: 1 | -1) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.hc__dying {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--page-soft);
 }
 
 .hc__pips {
