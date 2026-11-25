@@ -53,6 +53,8 @@ export interface InventoryItem {
   /** Nimble: short label such as Weapon or Armor. */
   tag?: string
   custom?: CustomItem
+  /** Nimble: armor or a shield the hero is wearing; what they wear sets their Armor. */
+  worn?: boolean
 }
 
 export type CustomItemEffectKind =
@@ -108,6 +110,9 @@ export interface Dnd5eSheet extends SheetCommon {
   speed: string
   profBonus: number
   deathSaves: { successes: number; failures: number }
+  tempHp: number
+  /** Condition names from DND5E_CONDITIONS (the GM can set them from the battle board). */
+  conditions: string[]
   weapons: Dnd5eWeapon[]
   features: NamedEntry[]
 }

@@ -25,7 +25,7 @@ const props = defineProps<{
   previous?: NimbleLevelInput | Pf2eLevelInput
   progress?: string
 }>()
-const { draft, save, saveNow } = useSheet()
+const { draft, saveNow } = useSheet()
 const snackbar = useSnackbarStore()
 
 const system = computed(() => draft.value.system)
@@ -270,7 +270,7 @@ async function confirmNimble() {
   })
   draft.value.level = next
   open.value = false
-  await save()
+  await saveNow()
   if (!props.progress) snackbar.show(`${draft.value.name} is now level ${next}`)
 }
 
@@ -345,7 +345,7 @@ async function confirm() {
   // can never leave a half-applied level-up behind.
   draft.value.level = next
   open.value = false
-  await save()
+  await saveNow()
   snackbar.show(`${draft.value.name} is now level ${next}`)
 }
 </script>

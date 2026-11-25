@@ -30,7 +30,7 @@ const sizes = computed(
 function switchTo(option: string) {
   const held = sizes.value?.held
   if (!canEdit.value || !held || held === option) return
-  const message = switchSummonOption(sheet.value, held, option)
+  const message = switchSummonOption(sheet.value, held, option, draft.value.level)
   if (!message) return
   say(message)
   const next = summonBySource(option)?.id

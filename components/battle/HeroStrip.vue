@@ -4,6 +4,7 @@
 // and Armor and mana (or the class resource). A tap goes to the Hero tab.
 import type { NimbleSheet } from '~/types/sheets'
 import { armorNow } from '~/utils/nimblePlay'
+import { hpClass } from '~/utils/roster'
 
 const emit = defineEmits<{ 'go-hero': [] }>()
 
@@ -91,7 +92,7 @@ const label = computed(
           >/{{ sheet.hpMax }}<template v-if="sheet.tempHp"> +{{ sheet.tempHp }}</template></span
         >
       </span>
-      <span class="hs__bar" :class="{ 'is-low': hpPct <= 50 }">
+      <span class="hs__bar" :class="hpClass(sheet.hp, sheet.hpMax)">
         <i :style="{ width: `${hpPct}%` }" />
         <em v-if="tempPct" :style="{ left: `${hpPct}%`, width: `${tempPct}%` }" />
       </span>
@@ -195,19 +196,15 @@ const label = computed(
 
   i {
     left: 0;
-    background: var(--secondary);
+    background: var(--hp-fill, var(--secondary));
   }
 
-  &.is-low i {
-    background: var(--danger);
-  }
-
-  // Temp HP: a striped stretch after the HP.
+  // Temp HP: a striped stretch after the HP, in its own colour.
   em {
     background: repeating-linear-gradient(
       45deg,
-      var(--secondary) 0 3px,
-      color-mix(in srgb, var(--secondary) 60%, transparent) 3px 6px
+      var(--temp-hp) 0 3px,
+      color-mix(in srgb, var(--temp-hp) 60%, transparent) 3px 6px
     );
   }
 }
