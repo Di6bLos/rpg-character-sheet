@@ -14,3 +14,27 @@ export function readAuthLink(url: Pick<Location, 'hash' | 'pathname' | 'search'>
     cleanUrl: url.hash ? url.pathname + url.search : null,
   }
 }
+
+/** How long a reset link's session counts as a reset: the link's lifetime (`otp_expiry`). */
+export const RECOVERY_MAX_MS = 60 * 60 * 1000
+
+/** Whether a saved `{ userId, at }` reset mark still belongs to this session's user. */
+export function recoveryStillValid(
+  raw: string | null,
+  userId: string | null,
+  now: number,
+  maxAgeMs = RECOVERY_MAX_MS,
+): boolean {
+  if (!raw || !userId) return false
+  try {
+    const saved = JSON.parse(raw) as { userId?: unknown; at?: unknown }
+    return (
+      saved.userId === userId &&
+      typeof saved.at === 'number' &&
+      now >= saved.at &&
+      now - saved.at < maxAgeMs
+    )
+  } catch {
+    return false
+  }
+}

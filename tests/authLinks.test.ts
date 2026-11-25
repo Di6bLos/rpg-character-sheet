@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readAuthLink } from '../utils/authLinks'
+import { RECOVERY_MAX_MS, readAuthLink, recoveryStillValid } from '../utils/authLinks'
 
 const at = (hash: string, search = '') => ({ hash, pathname: '/reset-password', search })
 
@@ -30,5 +30,25 @@ describe('readAuthLink', () => {
 
   it('leaves an address with no hash alone', () => {
     expect(readAuthLink(at(''))).toEqual({ error: '', cleanUrl: null })
+  })
+})
+
+describe('recoveryStillValid', () => {
+  const mark = JSON.stringify({ userId: 'ana', at: 1000 })
+
+  it('keeps a reset of the same user within the link lifetime', () => {
+    expect(recoveryStillValid(mark, 'ana', 1000 + RECOVERY_MAX_MS - 1)).toBe(true)
+  })
+  it('drops it once the link lifetime has passed', () => {
+    expect(recoveryStillValid(mark, 'ana', 1000 + RECOVERY_MAX_MS)).toBe(false)
+  })
+  it('drops it for another user or no session', () => {
+    expect(recoveryStillValid(mark, 'bo', 2000)).toBe(false)
+    expect(recoveryStillValid(mark, null, 2000)).toBe(false)
+  })
+  it('drops a missing or unreadable mark', () => {
+    expect(recoveryStillValid(null, 'ana', 2000)).toBe(false)
+    expect(recoveryStillValid('{oops', 'ana', 2000)).toBe(false)
+    expect(recoveryStillValid(JSON.stringify({ userId: 'ana' }), 'ana', 2000)).toBe(false)
   })
 })
