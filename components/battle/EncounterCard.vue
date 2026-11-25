@@ -13,7 +13,7 @@ import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
 import { heroTurnActions } from '~/utils/nimblePlay'
-import { deadBySaves, heroDown } from '~/utils/roster'
+import { heroDead, heroDown } from '~/utils/roster'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -46,8 +46,8 @@ const down = computed(
     !features.value.nimbleHero &&
     heroDown(props.hero?.summary?.hp, props.hero?.summary?.hpMax),
 )
-/** Down by three failed 5e death saves: "Dead" (DownStatus's rule). */
-const deadBySavesHero = computed(() => down.value && deadBySaves(props.hero?.summary))
+/** Dead: three failed 5e death saves or PF2e Dying 4 (DownStatus's rule). */
+const deadHero = computed(() => down.value && heroDead(props.hero?.summary))
 const armor = computed(() =>
   isPc.value
     ? String(
@@ -252,9 +252,8 @@ const tipKeys = computed(() =>
         :temp="hp.temp"
         :slain="slain"
         :compact="compact"
-        :readonly="isPc && !features.gmHeroControls"
         :down="down"
-        :dead="deadBySavesHero"
+        :dead="deadHero"
         @change="change"
       >
         <BattleEncounterPips

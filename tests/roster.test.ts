@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { RosterEntry } from '../types'
 import {
   authorLabel,
-  deadBySaves,
+  heroDead,
+  heroStable,
   deathSavesLine,
   downStatus,
   dyingLine,
@@ -81,19 +82,43 @@ describe('downStatus / deathSavesLine / dyingLine', () => {
   })
 })
 
-describe('deadBySaves', () => {
+describe('heroDead', () => {
   it('reads a 5e hero with three failed death saves as Dead', () => {
     const s = { deathSaves: { successes: 1, failures: 3 } }
-    expect(deadBySaves(s)).toBe(true)
+    expect(heroDead(s)).toBe(true)
     expect(downStatus(s)).toBe('Dead')
     expect(deathSavesLine(s)).toBe('')
     expect(dyingLine(s, true)).toBe('')
   })
 
-  it('never for PF2e or fewer failures', () => {
-    expect(deadBySaves({ deathSaves: { successes: 0, failures: 2 } })).toBe(false)
-    expect(deadBySaves({ dying: 1, deathSaves: { successes: 0, failures: 3 } })).toBe(false)
-    expect(deadBySaves(null)).toBe(false)
+  it('reads a PF2e hero at Dying 4 as Dead', () => {
+    const s = { dying: 4 }
+    expect(heroDead(s)).toBe(true)
+    expect(downStatus(s)).toBe('Dead')
+    expect(dyingLine(s)).toBe('')
+  })
+
+  it('not below Dying 4 or three failures', () => {
+    expect(heroDead({ deathSaves: { successes: 0, failures: 2 } })).toBe(false)
+    expect(heroDead({ dying: 3 })).toBe(false)
+    expect(heroDead({ dying: 1, deathSaves: { successes: 0, failures: 3 } })).toBe(false)
+    expect(heroDead(null)).toBe(false)
+  })
+})
+
+describe('heroStable', () => {
+  it('reads a 5e hero with three successes as Stable', () => {
+    const s = { deathSaves: { successes: 3, failures: 1 } }
+    expect(heroStable(s)).toBe(true)
+    expect(downStatus(s)).toBe('Down')
+    expect(deathSavesLine(s)).toBe('Stable')
+    expect(dyingLine(s, true)).toBe('Stable')
+  })
+
+  it('not while rolling, dead or PF2e dying', () => {
+    expect(heroStable({ deathSaves: { successes: 2, failures: 0 } })).toBe(false)
+    expect(heroStable({ deathSaves: { successes: 3, failures: 3 } })).toBe(false)
+    expect(heroStable({ dying: 2, deathSaves: { successes: 3, failures: 0 } })).toBe(false)
   })
 })
 

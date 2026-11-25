@@ -41,6 +41,14 @@ export const useNotificationsStore = defineStore('notifications', () => {
   let session = 0
   const timers = new Map<number, ReturnType<typeof setTimeout>>()
   const rosters = new Map<string, Promise<RosterEntry[]>>()
+  /** The campaign whose battle-board chat is on screen (`useCampaignChat`'s `setVisible`). */
+  let chatOnScreen: string | null = null
+
+  /** The board's chat panel says when it is on screen, so its messages don't also toast. */
+  function setChatOnScreen(campaignId: string, on: boolean) {
+    if (on) chatOnScreen = campaignId
+    else if (chatOnScreen === campaignId) chatOnScreen = null
+  }
 
   function dismiss(id: number) {
     notices.value = notices.value.filter((n) => n.id !== id)
@@ -136,9 +144,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
     if (secret ? !auth.profile?.notify_secret : !auth.profile?.notify_journal) return
     // The board sends the GM on to the console's Battle tab.
     const to = `/campaigns/${row.campaign_id}/board/battle`
-    // The battle board's chat shows it as it arrives (board or GM console).
+    // The battle board's chat shows it as it arrives, while it is on screen (not on the
+    // phone's other tabs, a closed tablet drawer or a folded chat panel).
+    if (chatOnScreen === row.campaign_id) return
     const here = currentPath().replace(/\/$/, '')
-    if (here === to || here === `/campaigns/${row.campaign_id}/gm/battle`) return
     // The dashboard lists party messages as they arrive; a secret is still called out.
     if (!secret && here === '/dashboard') return
     const started = session
@@ -182,5 +191,5 @@ export const useNotificationsStore = defineStore('notifications', () => {
     notices.value = []
   }
 
-  return { notices, dismiss, pause, resume, start, stop }
+  return { notices, dismiss, pause, resume, start, stop, setChatOnScreen }
 })

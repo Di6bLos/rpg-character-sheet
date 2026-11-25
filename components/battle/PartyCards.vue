@@ -12,7 +12,7 @@ import type { RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { heroTurnActions } from '~/utils/nimblePlay'
-import { deadBySaves, dyingLine, heroDown, hpClass } from '~/utils/roster'
+import { dyingLine, heroDead, heroDown, hpClass } from '~/utils/roster'
 import { pf2ePointsLine } from '~/utils/heroCardStats'
 
 const props = defineProps<{
@@ -43,10 +43,10 @@ const heroes = computed(() =>
 const toggles = computed(() => !props.compact && heroes.value.length > 0)
 const partyClosed = computed(() => right.state.value.split <= 0)
 
-/** Nimble: Wounds at max. 5e: three failed death saves (the DownStatus row says it). */
+/** Nimble: Wounds at max. 5e / PF2e: three failed death saves or Dying 4 (DownStatus row). */
 function isDead(r: RosterEntry) {
   const s = r.summary
-  if (basicDown(r)) return deadBySaves(s)
+  if (basicDown(r)) return heroDead(s)
   return !!s && (s.woundsMax ?? 0) > 0 && (s.wounds ?? 0) >= (s.woundsMax ?? 0)
 }
 
@@ -71,7 +71,7 @@ function basicDown(r: RosterEntry): boolean {
 /** A downed 5e / PF2e hero, for the card's accessible name: "Down, Death saves 1 success, …". */
 function downLabel(r: RosterEntry): string {
   if (!basicDown(r)) return ''
-  const tag = deadBySaves(r.summary) ? 'Dead' : 'Down'
+  const tag = heroDead(r.summary) ? 'Dead' : 'Down'
   return [tag, dyingLine(r.summary, true)].filter(Boolean).join(', ')
 }
 
@@ -131,12 +131,14 @@ function mana(r: RosterEntry): string {
 function armorOf(r: RosterEntry) {
   return heroArmor(r.summary?.ac, r.summary?.conditions, r.character_level)
 }
+/** "Armor" (Nimble) or "AC" (5e, PF2e), as each sheet names it. */
+const armorWord = computed(() => (features.value.nimbleHero ? 'Armor' : 'AC'))
 
 function label(r: RosterEntry): string {
   const name = r.character_name ?? r.display_name
   const acting = r.character_id === props.actingCharacterId ? 'acting' : ''
   const tempHp = r.summary?.tempHp
-  const guard = tempHp ? `${tempHp} temp HP` : `Armor ${armorOf(r) ?? 'unknown'}`
+  const guard = tempHp ? `${tempHp} temp HP` : `${armorWord.value} ${armorOf(r) ?? 'unknown'}`
   const p = pips(r)
   const actions = p ? `${p.total - p.used} of ${p.total} actions left` : ''
   const hp = r.summary?.hp === undefined ? 'HP unknown' : `${hpText(r)} HP`
@@ -236,7 +238,7 @@ function label(r: RosterEntry): string {
           <span class="pc__right">
             <b>{{ hpText(r) }}</b>
             <span v-if="r.summary?.tempHp">+{{ r.summary.tempHp }} temp</span>
-            <span v-else>Armor {{ armorOf(r) ?? '—' }}</span>
+            <span v-else>{{ armorWord }} {{ armorOf(r) ?? '—' }}</span>
             <span v-if="passive(r) !== null">Passive {{ passive(r) }}</span>
           </span>
         </button>

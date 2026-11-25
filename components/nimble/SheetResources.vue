@@ -1,5 +1,7 @@
 <script setup lang="ts">
 // Mana, the class resource (Rage, Combat Dice, Bursts of Speed…) and Concentration.
+// `only="resource"` (the battle board's hero column, which shows mana and the resource's
+// name and value itself): just the class resource's controls, without a panel of its own.
 import { classBySlug } from '~/data/nimble/classes'
 import type { NimbleSheet } from '~/types/sheets'
 import {
@@ -18,6 +20,9 @@ import {
   furyMax,
   isHollowOne,
 } from '~/utils/nimblePlay'
+
+const props = defineProps<{ only?: 'resource' }>()
+const inline = computed(() => props.only === 'resource')
 
 const MAX_COUNT = 12
 
@@ -103,8 +108,12 @@ function adjustCount(delta: number) {
 </script>
 
 <template>
-  <div class="stack" style="gap: 24px; min-width: 0">
-    <section v-if="hasMana && !hasSpells" class="panel stack mana" aria-labelledby="mana-h">
+  <div class="stack" :style="{ gap: inline ? '0' : '24px', minWidth: 0 }">
+    <section
+      v-if="hasMana && !hasSpells && !inline"
+      class="panel stack mana"
+      aria-labelledby="mana-h"
+    >
       <UiFold name="Mana" />
       <div class="panel-title" style="margin: 0">
         <h2 id="mana-h">Mana</h2>
@@ -118,12 +127,13 @@ function adjustCount(delta: number) {
         resource &&
         !(resource.kind === 'uses' && hasSpells && !moves.length && !linkedOptions.length)
       "
-      class="panel stack"
-      :class="{ 'is-raging': resource.kind === 'rage' && res.active }"
-      aria-labelledby="res-h"
+      class="stack"
+      :class="{ panel: !inline, 'is-raging': resource.kind === 'rage' && res.active && !inline }"
+      :aria-labelledby="inline ? undefined : 'res-h'"
+      :aria-label="inline ? resource.name : undefined"
     >
-      <UiFold :name="resource.name" />
-      <div class="panel-title" style="margin: 0">
+      <UiFold v-if="!inline" :name="resource.name" />
+      <div v-if="!inline" class="panel-title" style="margin: 0">
         <span class="title-help">
           <h2 id="res-h">{{ resource.name }}</h2>
           <UiHelp v-if="resource.desc" :label="`About ${resource.name}`" :text="resource.desc" />
@@ -364,7 +374,7 @@ function adjustCount(delta: number) {
       />
     </section>
 
-    <section v-if="!hasSpells" class="panel stack" aria-labelledby="conc-h">
+    <section v-if="!hasSpells && !inline" class="panel stack" aria-labelledby="conc-h">
       <UiFold name="Concentration" />
       <div class="title-help">
         <h2 id="conc-h">Concentration</h2>

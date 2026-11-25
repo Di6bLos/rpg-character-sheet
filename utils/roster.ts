@@ -32,31 +32,42 @@ export function heroDown(hp: number | undefined, hpMax: number | undefined): boo
   return (hpMax ?? 0) > 0 && hp !== undefined && hp <= 0
 }
 
+/** PF2e's Dying value at which the hero dies (Player Core p. 411; Doomed isn't tracked). */
+export const PF2E_DEAD_AT = 4
+
 /** PF2e's Dying value, when the hero is dying (the sheet keeps 0 otherwise). */
 function pf2eDying(s: HeroSummary | null | undefined): number {
   return typeof s?.dying === 'number' && s.dying > 0 ? s.dying : 0
 }
 
-/** A 5e hero dead by three failed death saves. */
-export function deadBySaves(s: HeroSummary | null | undefined): boolean {
-  return !pf2eDying(s) && (s?.deathSaves?.failures ?? 0) >= 3
+/** A downed 5e / PF2e hero who is dead: three failed death saves (5e) or Dying 4 (PF2e). */
+export function heroDead(s: HeroSummary | null | undefined): boolean {
+  const dying = pf2eDying(s)
+  if (dying) return dying >= PF2E_DEAD_AT
+  return (s?.deathSaves?.failures ?? 0) >= 3
 }
 
-/** A downed 5e / PF2e hero's short status: "Dying 2" (PF2e), "Dead" (5e) or "Down". */
+/** A 5e hero stabilised by three successful death saves (and not dead). */
+export function heroStable(s: HeroSummary | null | undefined): boolean {
+  return !pf2eDying(s) && !heroDead(s) && (s?.deathSaves?.successes ?? 0) >= 3
+}
+
+/** A downed 5e / PF2e hero's short status: "Dying 2" (PF2e), "Dead" or "Down". */
 export function downStatus(s: HeroSummary | null | undefined): string {
+  if (heroDead(s)) return 'Dead'
   const dying = pf2eDying(s)
-  if (dying) return `Dying ${dying}`
-  return deadBySaves(s) ? 'Dead' : 'Down'
+  return dying ? `Dying ${dying}` : 'Down'
 }
 
 /**
- * A downed 5e hero's death saves: "1 saved · 2 failed" (shown after "Down"), or worded for an
- * aria-label with `spoken`; empty when the sheet has none, the hero is dead by them, or PF2e's
- * Dying value says it instead.
+ * A downed 5e hero's death saves: "1 saved · 2 failed" (shown after "Down"), "Stable" at three
+ * successes, or worded for an aria-label with `spoken`; empty when the sheet has none, the
+ * hero is dead, or PF2e's Dying value says it instead.
  */
 export function deathSavesLine(s: HeroSummary | null | undefined, spoken = false): string {
   const ds = s?.deathSaves
-  if (!ds || pf2eDying(s) || deadBySaves(s)) return ''
+  if (!ds || pf2eDying(s) || heroDead(s)) return ''
+  if (heroStable(s)) return 'Stable'
   if (!spoken) return `${ds.successes} saved · ${ds.failures} failed`
   const won = `${ds.successes} ${ds.successes === 1 ? 'success' : 'successes'}`
   const lost = `${ds.failures} ${ds.failures === 1 ? 'failure' : 'failures'}`
@@ -64,10 +75,11 @@ export function deathSavesLine(s: HeroSummary | null | undefined, spoken = false
 }
 
 /**
- * What a downed 5e / PF2e hero is rolling: "1 saved · 2 failed" (5e) or "Dying 2" (PF2e);
- * empty when the sheet has neither.
+ * What a downed 5e / PF2e hero is rolling: "1 saved · 2 failed" or "Stable" (5e), "Dying 2"
+ * (PF2e); empty when the hero is dead or the sheet has neither.
  */
 export function dyingLine(s: HeroSummary | null | undefined, spoken = false): string {
+  if (heroDead(s)) return ''
   return pf2eDying(s) ? downStatus(s) : deathSavesLine(s, spoken)
 }
 

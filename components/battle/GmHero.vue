@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The GM's left column when a hero is picked on the initiative strip (or the encounter
 // grid): that hero's vitals, with the GM's HP and condition controls that reach the hero's
-// sheet (every system; `gmHeroControls`).
+// sheet (every system, each sheet with its own rules).
 // A party card still opens the full stats modal.
 import type { RosterEntry } from '~/types'
 

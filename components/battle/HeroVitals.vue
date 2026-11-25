@@ -1,18 +1,20 @@
 <script setup lang="ts">
 // A hero's vitals on the battle board: portrait and identity, HP (the GM's controls
 // send a change to the hero's own sheet through hero_hp_changes, applied there by
-// useHeroHpChanges), mana for the GM, Wounds, Armor / Speed / Init and conditions (the GM
+// useHeroHpChanges), mana for the GM, Wounds, Armor (AC off Nimble) / Speed / Init (PF2e:
+// Perception, what it rolls for Initiative) and conditions (the GM
 // adds and removes them through hero_condition_changes, applied by
 // useHeroConditionChanges). The stats modal's side and the GM's left column (a hero picked
 // on the initiative strip) both show it.
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
-// Every system's sheet applies the GM's changes with its own rules (`gmHeroControls`); only
-// Nimble conditions end on their own timing. Where Nimble shows the GM mana, PF2e
+// Every system's sheet applies the GM's changes with its own rules; only Nimble conditions
+// end on their own timing. Where Nimble shows the GM mana, PF2e
 // (`gmPoints`) shows hero and focus points.
 import type { HeroCard, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
+import { initiativeBonus, initiativeLabel } from '~/utils/heroCardStats'
 import { heroDown, hpTone } from '~/utils/roster'
 
 const props = defineProps<{
@@ -26,8 +28,10 @@ const slots = defineSlots<{ 'own-hp'?: () => unknown }>()
 
 const auth = useAuthStore()
 const features = useBattleFeatures()
-/** The GM's HP, mana and condition tools; read-only vitals where the sheet can't take them. */
-const controls = computed(() => props.gm && features.value.gmHeroControls)
+/** The GM's HP, mana and condition tools (every system: each sheet applies its own rules). */
+const controls = computed(() => props.gm)
+/** PF2e rolls Perception for Initiative; the others their Init. */
+const init = computed(() => initiativeBonus(props.card.system, props.card) ?? 0)
 
 const own = computed(() => !!props.entry && props.entry.user_id === auth.userId)
 /**
@@ -268,15 +272,15 @@ async function adjust(sign: 1 | -1) {
     <div class="hc__tiles">
       <div class="hc__tile">
         <b>{{ heroArmor(card.ac, card.conditions, card.level) }}</b>
-        <span>Armor</span>
+        <span>{{ features.nimbleHero ? 'Armor' : 'AC' }}</span>
       </div>
       <div class="hc__tile">
         <b>{{ card.speed || '—' }}</b>
         <span>Speed</span>
       </div>
       <div class="hc__tile">
-        <b>{{ sign(card.initMod) }}</b>
-        <span>Init</span>
+        <b>{{ sign(init) }}</b>
+        <span>{{ initiativeLabel(card.system) }}</span>
       </div>
     </div>
 

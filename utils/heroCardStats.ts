@@ -1,6 +1,6 @@
 // What the battle board's hero stats dialog shows for D&D 5e and Pathfinder 2e heroes,
 // worked out from `campaign_hero_card` (and the roster for the GM's party cards).
-import type { Dnd5eHeroCard, RosterEntry } from '~/types'
+import type { Dnd5eHeroCard, GameSystem, RosterEntry } from '~/types'
 import type { Dnd5eAbility, Pf2eRank, Pf2eSkill } from '~/types/sheets'
 import { abilityMod, sign } from '~/utils/dice'
 
@@ -86,4 +86,26 @@ export function deathSaveState(
   if (saves.failures >= 3) return 'Dead.'
   if (saves.successes >= 3) return 'Down: stable.'
   return ''
+}
+
+/**
+ * What a hero adds to their Initiative roll: PF2e rolls Perception (Player Core p. 436), the
+ * sheet's Perception save row, falling back to `initMod`; other systems roll Init.
+ */
+export function initiativeBonus(
+  system: GameSystem | null | undefined,
+  sheet: { initMod?: unknown; saves?: unknown } | null | undefined,
+): number | null {
+  if (system === 'pf2e' && Array.isArray(sheet?.saves)) {
+    const row = (sheet.saves as { label?: unknown; value?: unknown }[]).find(
+      (x) => x?.label === 'Perception',
+    )
+    if (typeof row?.value === 'number') return row.value
+  }
+  return typeof sheet?.initMod === 'number' ? sheet.initMod : null
+}
+
+/** The Initiative tile's label: "Perception" for PF2e, else "Init". */
+export function initiativeLabel(system: GameSystem | null | undefined): string {
+  return system === 'pf2e' ? 'Perception' : 'Init'
 }

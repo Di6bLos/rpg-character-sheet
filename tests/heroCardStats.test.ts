@@ -3,6 +3,8 @@ import {
   deathSaveState,
   dnd5eAbilityRows,
   featSource,
+  initiativeBonus,
+  initiativeLabel,
   oneLine,
   pf2ePointsLine,
   pf2eRankName,
@@ -79,5 +81,24 @@ describe('Key abilities text', () => {
     expect(oneLine('No full stop')).toBe('No full stop')
     expect(featSource({ type: 'Class', level: '2' })).toBe('Class 2')
     expect(featSource({ type: 'Skill', level: '' })).toBe('Skill')
+  })
+})
+
+describe('initiativeBonus / initiativeLabel', () => {
+  it('PF2e rolls Perception, falling back to initMod', () => {
+    const saves = [
+      { label: 'Fortitude', rank: 'T', value: 5 },
+      { label: 'Perception', rank: 'E', value: 7 },
+    ]
+    expect(initiativeBonus('pf2e', { initMod: 0, saves })).toBe(7)
+    expect(initiativeBonus('pf2e', { initMod: 2 })).toBe(2)
+    expect(initiativeLabel('pf2e')).toBe('Perception')
+  })
+
+  it('5e and Nimble roll Init', () => {
+    const saves = [{ label: 'Perception', rank: 'E', value: 7 }]
+    expect(initiativeBonus('dnd5e', { initMod: 3, saves })).toBe(3)
+    expect(initiativeBonus('nimble', {})).toBeNull()
+    expect(initiativeLabel('dnd5e')).toBe('Init')
   })
 })

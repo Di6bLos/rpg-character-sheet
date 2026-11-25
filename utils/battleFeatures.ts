@@ -13,15 +13,14 @@ export interface BattleFeatures {
   summons: boolean
   /** The GM's Nimble / classic initiative switch. */
   initiativeModes: boolean
-  /** The GM's HP and condition controls on a hero (every system; each applies its own rules). */
-  gmHeroControls: boolean
   /** PF2e hero and focus points on the GM's party cards and hero vitals (Nimble shows mana). */
   gmPoints: boolean
 }
 
 /**
- * Nimble's features (the hero editor, pips, summons, initiative modes); the GM's hero controls
- * for every system; PF2e's points. 5e and PF2e otherwise get the plain board.
+ * Nimble's features (the hero editor, pips, summons, initiative modes) and PF2e's points; 5e
+ * and PF2e otherwise get the plain board. The GM's HP and condition controls on a hero are
+ * on for every system (each sheet applies them with its own rules), so they have no flag.
  */
 export function battleFeatures(system: GameSystem): BattleFeatures {
   const on = system === 'nimble'
@@ -30,7 +29,6 @@ export function battleFeatures(system: GameSystem): BattleFeatures {
     pips: on,
     summons: on,
     initiativeModes: on,
-    gmHeroControls: true,
     gmPoints: system === 'pf2e',
   }
 }
@@ -42,9 +40,7 @@ export function battleFeatures(system: GameSystem): BattleFeatures {
  */
 export function conditionNames(system: GameSystem): string[] {
   if (system === 'dnd5e') return [...DND5E_CONDITIONS]
-  // PF2e's Dying and Wounded are numbers on the sheet (the HP pickups set them), so the
-  // GM's picker leaves those names out; the sheet's own chips still list them.
-  if (system === 'pf2e') return PF2E_CONDITIONS.filter((x) => x !== 'Dying' && x !== 'Wounded')
+  if (system === 'pf2e') return [...PF2E_CONDITIONS]
   return [...CONDITIONS, ...SPELL_STATUSES]
     .filter((x) => !AUTO_CONDITIONS.includes(x.name) && x.name !== 'Helped')
     .map((x) => x.name)

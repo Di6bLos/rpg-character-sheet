@@ -3,17 +3,22 @@
 // (D&D 5e, Pathfinder 2e): "Your turn", "<name> is acting" or "Not in combat", with the
 // round while the encounter runs. While the GM has seated the hero without an Initiative
 // ("–" on the strip: before the first turn or mid-encounter) it reads "Roll your
-// initiative", with a Roll initiative button that rolls d20 + the hero's Init, shows the
+// initiative", with a Roll initiative button that rolls d20 + the hero's Init (PF2e:
+// Perception; read from HeroScope's live sheet once loaded, else the roster), shows the
 // total with the Init in the dice tray and sends it to the tracker (`sendInitiative`); the
 // button goes once the row has a number. Rolled before the GM's first Next turn it reads
 // "Waiting for the GM to start" (the strip already marks its first token, so it never
 // says whose turn it is yet). A failed write reads "Initiative not sent", keeps the rolled
 // total and offers to resend it, as the Nimble turn bar does. With Manual dice on (account
-// menu, `profiles.own_dice`) a field takes the player's own total instead.
+// menu, `profiles.own_dice`) a field takes the player's own total instead. A dead hero
+// (three failed death saves, PF2e Dying 4) isn't offered the roll, and a player who can't
+// edit the hero (suspended) gets it disabled, as on the Nimble turn bar.
 // Compact (the phone's turn slot): inset 8px from the sides and the tab bar below.
 import type { useInitiative } from '~/composables/useInitiative'
 import { sendInitiative } from '~/composables/useSendInitiative'
 import { quietly, rollDie, showDice, showOutcome, sign } from '~/utils/dice'
+import { initiativeBonus } from '~/utils/heroCardStats'
+import { heroDead, heroDown } from '~/utils/roster'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -22,10 +27,31 @@ const props = defineProps<{
 }>()
 
 const { campaignId, roster } = useCampaignBoard()
+const system = useBattleSystem()
 const { touch } = useBoardLayout()
 const auth = useAuthStore()
 /** Manual dice: the player types the total they rolled. */
 const ownDice = computed(() => auth.profile?.own_dice ?? false)
+
+/** HeroScope's live sheet editor for this hero, once loaded. */
+const host = inject(BOARD_HERO, null)
+const editor = computed(() => {
+  const ed = host?.value
+  return ed && ed.draft.value.id === props.characterId ? ed : null
+})
+/** The hero's numbers: the live sheet once loaded, else the roster summary. */
+const hero = computed<Record<string, unknown> | null>(
+  () =>
+    (editor.value?.draft.value.sheet as Record<string, unknown> | undefined) ??
+    roster.value.find((r) => r.character_id === props.characterId)?.summary ??
+    null,
+)
+const dead = computed(() => {
+  const h = hero.value as Parameters<typeof heroDead>[0]
+  return heroDown(h?.hp, h?.hpMax) && heroDead(h)
+})
+/** Rolling needs the editor's say-so (a suspended player can't change the hero). */
+const canEdit = computed(() => editor.value?.canEdit.value ?? false)
 
 /** The hero's row on the tracker, if the GM has seated them. */
 const row = computed(() =>
@@ -33,7 +59,8 @@ const row = computed(() =>
 )
 const acting = computed(() => props.init.order.value.find((c) => c.id === props.init.turnId.value))
 const mine = computed(() => !!acting.value && acting.value.character_id === props.characterId)
-const canRoll = computed(() => !!row.value && row.value.initiative_rolled === false)
+/** Seated without an Initiative yet, and alive. */
+const canRoll = computed(() => !!row.value && row.value.initiative_rolled === false && !dead.value)
 const round = computed(() => (props.init.turnId.value ? `Round ${props.init.round.value}` : ''))
 
 const busy = ref(false)
@@ -47,7 +74,7 @@ const unsent = ref<number | null>(null)
  * GM's first Next turn, then whose turn it is.
  */
 const headline = computed(() => {
-  if (row.value && unsent.value !== null) return 'Initiative not sent'
+  if (canRoll.value && unsent.value !== null) return 'Initiative not sent'
   if (canRoll.value) return 'Roll your initiative'
   if (!acting.value) return row.value ? 'Waiting for the GM to start' : 'Not in combat'
   return mine.value ? 'Your turn' : `${acting.value.name} is acting`
@@ -59,8 +86,10 @@ function clear() {
 // A new hero (Playing as), a new or removed tracker row (the GM removed and re-added the
 // hero), or a fresh wait for Initiative starts with no result.
 watch([() => props.characterId, () => row.value?.id], () => clear())
+// The row got a number some other way (the GM typed it) while a total waited to be resent:
+// nothing is owed any more. A successful send keeps its "Sent" note.
 watch(canRoll, (now, before) => {
-  if (now && !before) clear()
+  if ((now && !before) || (!now && unsent.value !== null)) clear()
 })
 
 /**
@@ -92,7 +121,7 @@ async function send(total: number) {
 function roll() {
   if (unsent.value !== null) return send(unsent.value)
   who.value?.focus()
-  const mod = roster.value.find((r) => r.character_id === props.characterId)?.summary?.initMod ?? 0
+  const mod = initiativeBonus(system.value, hero.value) ?? 0
   const d20 = quietly(() => rollDie(20))
   const total = d20 + mod
   showDice({
@@ -144,18 +173,20 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
       label="Your Initiative total"
       action="Set"
       signed
-      :disabled="busy"
+      :disabled="busy || !canEdit"
       @submit="typed"
     />
     <button
       v-else-if="canRoll"
       type="button"
       class="btn btn--sm"
-      :disabled="busy"
+      :disabled="busy || !canEdit"
       :title="
-        unsent !== null
-          ? 'The initiative tracker didn\'t get your total: sends the same one again'
-          : undefined
+        !canEdit
+          ? 'You can\'t change this hero right now'
+          : unsent !== null
+            ? 'The initiative tracker didn\'t get your total: sends the same one again'
+            : undefined
       "
       @click="roll"
     >

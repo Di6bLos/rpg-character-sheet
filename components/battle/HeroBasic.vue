@@ -2,19 +2,22 @@
 // The player's hero on the battle board for systems without the sheet-editor hero column
 // (D&D 5e, Pathfinder 2e): a read-only card from the campaign roster: portrait, name,
 // class and level, HP with temp HP (DownStatus at 0: the death saves, PF2e's Dying value
-// or Dead; the bar's band from `hpTone`, as every HP bar), AC, Init and Passive
-// Perception, conditions and concentration, and a link to the full sheet, where
-// everything is changed. Compact (the phone's Hero tab): 44px link.
+// or Dead; the bar's band from `hpTone`, as every HP bar), AC, Init (PF2e: Perception, what
+// it rolls for Initiative) and Passive Perception, conditions and concentration, and a link
+// to the full sheet, where everything is changed (same tab: two open editors of one hero
+// would overwrite each other). Compact (the phone's Hero tab): 44px link.
 // While HeroScope has the hero's sheet editor (it applies the GM's HP and condition
 // changes), the numbers come from that live copy, with the GM's last change beneath HP.
 import type { RosterEntry } from '~/types'
 import { sign } from '~/utils/dice'
+import { initiativeBonus, initiativeLabel } from '~/utils/heroCardStats'
 import { heroDown, hpTone } from '~/utils/roster'
 
 const props = defineProps<{ entry: RosterEntry; compact?: boolean }>()
 
 const { campaignId } = useCampaignBoard()
 const { touch } = useBoardLayout()
+const system = useBattleSystem()
 
 type Summary = NonNullable<RosterEntry['summary']>
 /** The sheet fields the live copy overrides in the roster summary. */
@@ -29,6 +32,7 @@ const LIVE_KEYS = [
   'ac',
   'initMod',
   'passivePerception',
+  'saves',
 ] as const
 
 const host = inject(BOARD_HERO, null)
@@ -76,11 +80,12 @@ function pct(n: number, max: number): number {
   return max > 0 ? Math.min(100, Math.max(0, (n / max) * 100)) : 0
 }
 
+const init = computed(() => initiativeBonus(system.value, s.value))
 const tiles = computed(() => [
   { label: 'AC', value: s.value.ac != null ? String(s.value.ac) : '—', title: 'Armor Class' },
   {
-    label: 'Init',
-    value: s.value.initMod != null ? sign(s.value.initMod) : '—',
+    label: initiativeLabel(system.value),
+    value: init.value !== null ? sign(init.value) : '—',
     title: 'Added to your Initiative roll',
   },
   {
@@ -151,7 +156,7 @@ const tiles = computed(() => [
       v-if="entry.character_id"
       :to="`/character/${entry.character_id}?campaign=${campaignId}`"
       class="btn btn--ghost btn--sm hb__sheet"
-      >Open full sheet ↗</NuxtLink
+      >Open full sheet</NuxtLink
     >
   </section>
 </template>

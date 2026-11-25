@@ -1,19 +1,20 @@
 <script setup lang="ts">
 // A downed 5e / PF2e hero's one status line, the same wherever a hero shows (HeroBasic,
-// HeroVitals, the party cards, the roster): "Down · 1 saved · 2 failed" (5e death saves),
-// "Down · Dying 2" (PF2e), "Dead" (5e: three failed death saves), or just "Down". Words,
+// HeroVitals, the party cards, the roster): "Down · 1 saved · 2 failed" or "Down · Stable"
+// (5e death saves), "Down · Dying 2" (PF2e), "Dead" (three failed death saves, or PF2e
+// Dying 4), or just "Down". Words,
 // not only colour, carry it; the colour is `--danger-ink` (readable on the panel,
 // parchment included). Screen readers hear the death saves spelled out. Nimble's Wounds
 // and Dying keep their own display.
 import type { RosterEntry } from '~/types'
-import { deadBySaves, dyingLine } from '~/utils/roster'
+import { dyingLine, heroDead } from '~/utils/roster'
 
 const props = defineProps<{
   /** The hero's death saves (5e) and Dying value (PF2e), as the roster summary has them. */
   summary: Pick<NonNullable<RosterEntry['summary']>, 'deathSaves' | 'dying'> | null | undefined
 }>()
 
-const dead = computed(() => deadBySaves(props.summary))
+const dead = computed(() => heroDead(props.summary))
 const line = computed(() => dyingLine(props.summary))
 const spoken = computed(() => dyingLine(props.summary, true))
 </script>

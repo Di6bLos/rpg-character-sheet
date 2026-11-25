@@ -135,6 +135,43 @@ describe('GM hero HP changes, D&D 5e', () => {
     applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: 4, crit: false })
     expect(sheet.deathSaves).toEqual({ successes: 1, failures: 0 })
   })
+
+  it('dropping to 0 adds Unconscious, and healing from 0 removes it', () => {
+    const sheet = corin({ hp: 4, conditions: ['Prone'] })
+    applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -6, crit: false })
+    expect(sheet.conditions).toEqual(['Prone', 'Unconscious'])
+    applyHpChangeFor('dnd5e', sheet, 3, { id: 'b', amount: 2, crit: false })
+    expect(sheet.conditions).toEqual(['Prone'])
+  })
+
+  it('temp HP that soaks a hit at 0 fails no death save', () => {
+    const sheet = corin({ hp: 0, tempHp: 5, deathSaves: { successes: 1, failures: 1 } })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -4, crit: false })).toBe(
+      'GM: took 4 damage: 0/20 HP.',
+    )
+    expect(sheet.tempHp).toBe(1)
+    expect(sheet.deathSaves).toEqual({ successes: 1, failures: 1 })
+  })
+
+  it('a hit ends Stable: the successes start over', () => {
+    const sheet = corin({ hp: 0, deathSaves: { successes: 3, failures: 1 } })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -2, crit: false })).toBe(
+      'GM: took 2 damage: 0/20 HP. Death save failed (2/3).',
+    )
+    expect(sheet.deathSaves).toEqual({ successes: 0, failures: 2 })
+  })
+
+  it('the third failure says dead, and a dead hero cannot be healed', () => {
+    const sheet = corin({ hp: 0, deathSaves: { successes: 0, failures: 2 } })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -2, crit: false })).toBe(
+      'GM: took 2 damage: 0/20 HP. Death save failed (3/3): dead.',
+    )
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'b', amount: 10, crit: false })).toBe(
+      'GM: healing has no effect: the hero is dead.',
+    )
+    expect(sheet.hp).toBe(0)
+    expect(sheet.deathSaves).toEqual({ successes: 0, failures: 3 })
+  })
 })
 
 describe('GM hero HP changes, Pathfinder 2e', () => {
@@ -201,6 +238,43 @@ describe('GM hero HP changes, Pathfinder 2e', () => {
     expect(sheet.hp).toBe(20)
     expect(sheet.dying).toBe(0)
     expect(sheet.wounded).toBe(1)
+  })
+
+  it('dropping to 0 adds Unconscious, and healing from 0 removes it', () => {
+    const sheet = mira({ hp: 3, conditions: [] })
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -3, crit: false })
+    expect(sheet.conditions).toEqual(['Unconscious'])
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'b', amount: 1, crit: false })
+    expect(sheet.conditions).toEqual([])
+  })
+
+  it('temp HP that soaks a hit at 0 leaves Dying alone', () => {
+    const sheet = mira({ hp: 0, tempHp: 4, dying: 1 })
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -4, crit: true })
+    expect(sheet.tempHp).toBe(0)
+    expect(sheet.dying).toBe(1)
+  })
+
+  it('a stabilised hero (0 HP, Dying 0) who is hit starts again at 1 + Wounded', () => {
+    const sheet = mira({ hp: 0, dying: 0, wounded: 1 })
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -2, crit: false })).toBe(
+      'GM: took 2 damage: 0/20 HP. Dying 2.',
+    )
+    const crit = mira({ hp: 0, dying: 0, wounded: 1 })
+    applyHpChangeFor('pf2e', crit, 3, { id: 'b', amount: -2, crit: true })
+    expect(crit.dying).toBe(3)
+  })
+
+  it('Dying 4 is dead: it says so, and healing has no effect', () => {
+    const sheet = mira({ hp: 0, dying: 3 })
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -2, crit: false })).toBe(
+      'GM: took 2 damage: 0/20 HP. Dying 4: dead.',
+    )
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'b', amount: 10, crit: false })).toBe(
+      'GM: healing has no effect: the hero is dead.',
+    )
+    expect(sheet.hp).toBe(0)
+    expect(sheet.dying).toBe(4)
   })
 })
 

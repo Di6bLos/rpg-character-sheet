@@ -2,9 +2,9 @@
 // An encounter card's HP: the bar with numbers, then −5 / −N / amount / +N / +5, where N
 // is the amount typed (1 when empty). Emits the change; the card decides where it goes.
 // The default slot lands at the end of the bar's row (the card's action pips).
-// Compact (phone): 44px buttons and field, 8px apart. Readonly: the bar and numbers only.
+// Compact (phone): 44px buttons and field, 8px apart.
 // Down (a 5e / PF2e hero at 0 HP): "Down" in place of the numbers; "Dead" with `dead`
-// (a 5e hero with three failed death saves).
+// (three failed 5e death saves, or PF2e Dying 4).
 import { hpClass } from '~/utils/roster'
 
 const props = defineProps<{
@@ -14,7 +14,6 @@ const props = defineProps<{
   temp?: number
   slain: boolean
   compact?: boolean
-  readonly?: boolean
   down?: boolean
   dead?: boolean
 }>()
@@ -46,7 +45,7 @@ function stepTyped(sign: 1 | -1) {
     <slot />
   </div>
   <div
-    v-if="!slain && !readonly"
+    v-if="!slain"
     class="eh__quick"
     :class="{ 'eh__quick--compact': compact }"
     role="group"

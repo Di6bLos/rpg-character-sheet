@@ -189,15 +189,23 @@ export function useCampaignChat(campaignId: Ref<string>) {
     if (visible.value) markRead(thread.value)
   }
 
-  /** The chat panel calls this as it mounts and unmounts. */
+  const notifications = useNotificationsStore()
+  /** The chat panel calls this as it mounts and unmounts (and as it scrolls in or out of view). */
   function setVisible(on: boolean) {
     visible.value = on
+    notifications.setChatOnScreen(campaignId.value, on)
     if (on) markRead(thread.value)
   }
 
   onMounted(init)
   watch([campaignId, me], init)
+  watch(campaignId, (now, before) => {
+    if (!visible.value) return
+    notifications.setChatOnScreen(before, false)
+    notifications.setChatOnScreen(now, true)
+  })
   onBeforeUnmount(() => {
+    notifications.setChatOnScreen(campaignId.value, false)
     if (channel) void supabase.removeChannel(channel)
   })
 
