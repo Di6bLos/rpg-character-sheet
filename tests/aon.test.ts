@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   actionGlyph,
+  backgroundSkillText,
   cleanMarkdown,
   heritageAncestry,
   openBook,
@@ -213,5 +214,80 @@ describe('Golarion setting material', () => {
     expect(settingName('Weight of the World', deities)).toBeUndefined()
     expect(settingName('Setback', deities)).toBeUndefined()
     expect(settingName('Fireball', deities)).toBeUndefined()
+  })
+})
+
+describe('AoN background skill text', () => {
+  it('reads skills the field leaves out (The Hunted)', () => {
+    expect(backgroundSkillText("You''re trained in both the Stealth and Survival skills.")).toEqual(
+      { fixed: ['Stealth', 'Survival'], choices: [], deitySkill: false, lores: [] },
+    )
+  })
+
+  it('keeps a choice apart from what is trained outright', () => {
+    expect(
+      backgroundSkillText(
+        'You’re trained in your choice of the Arcana, Nature, Occultism, or Religion skill, and the Academia Lore skill.',
+      ),
+    ).toEqual({
+      fixed: ['Academia Lore'],
+      choices: [{ options: ['Arcana', 'Nature', 'Occultism', 'Religion'], count: 1 }],
+      deitySkill: false,
+      lores: [],
+    })
+    expect(
+      backgroundSkillText(
+        "You're trained in your choice of either the Nature or the Occultism skill, as well as a Lore skill related to the terrain (such as Cave Lore or Desert Lore).",
+      ),
+    ).toEqual({
+      fixed: [],
+      choices: [{ options: ['Nature', 'Occultism'], count: 1 }],
+      deitySkill: false,
+      lores: ['Lore related to the terrain'],
+    })
+    expect(
+      backgroundSkillText(
+        "You're trained in the Society skill, and the Genealogy Lore skill or Heraldry Lore skill.",
+      ).choices,
+    ).toEqual([{ options: ['Genealogy Lore', 'Heraldry Lore'], count: 1 }])
+  })
+
+  it('counts "four of the following" and leaves "a skill of your choice" open', () => {
+    expect(
+      backgroundSkillText(
+        "You're trained in four of the following: Plane of Air Lore, Plane of Earth Lore, Plane of Fire Lore, Plane of Metal Lore, Plane of Water Lore, or Plane of Wood Lore.",
+      ).choices,
+    ).toEqual([
+      { options: expect.arrayContaining(['Plane of Air Lore', 'Plane of Wood Lore']), count: 4 },
+    ])
+    expect(
+      backgroundSkillText(
+        "You''re trained in the First World Lore skill and a skill of your choice.",
+      ),
+    ).toEqual({
+      fixed: ['First World Lore'],
+      choices: [{ options: [], count: 1 }],
+      deitySkill: false,
+      lores: [],
+    })
+  })
+
+  it('leaves Lores the player names as one entry each (Reborn Soul)', () => {
+    expect(
+      backgroundSkillText(
+        'You become trained in two Lore skills, which you and your GM choose from Lore skills associated with your past life.',
+      ).lores,
+    ).toEqual([
+      'Lore which you and your GM choose from Lore skills associated with your past life',
+      'Lore which you and your GM choose from Lore skills associated with your past life',
+    ])
+  })
+
+  it('flags the deity’s skill for the builder to fill in (Raised by Belief)', () => {
+    expect(
+      backgroundSkillText(
+        'You’re trained in your deity’s associated skill, and you gain Assurance with that skill.',
+      ),
+    ).toEqual({ fixed: [], choices: [], deitySkill: true, lores: [] })
   })
 })

@@ -11,6 +11,8 @@ import {
   type Pf2eBuildData,
   ancestryBoostPlan,
   backgroundBoostSlots,
+  creationFocusSpells,
+  focusChoice,
   deityOptions,
   emptyCreation,
   featOptions,
@@ -72,14 +74,16 @@ export function autoCreation(
   for (const ch of subclassChoices(cls))
     c.subclasses[ch.key] = ch.options.slice(0, ch.count.min).map((o) => o.id)
   const { subclassPicks } = resolve(c, data)
-  if (needsDeity(cls, subclassPicks)) c.deity = deityOptions(data)[0]!.id
+  if (needsDeity(cls, subclassPicks) || background.deitySkill) c.deity = deityOptions(data)[0]!.id
   c.backgroundBoosts = fillSlots(backgroundBoostSlots(background, resolve(c, data).deity))
   c.keyAttribute = keyAttributeOptions(cls, subclassPicks)[0]!
   c.freeBoosts = pickFour(c.keyAttribute)
   const plan2 = skillPlan(c, data)
   const picks: string[] = []
   for (const g of plan2.groups)
-    picks.push(...g.options.filter((o) => !plan2.fixed.includes(o)).slice(0, g.count))
+    picks.push(
+      ...g.options.filter((o) => !plan2.fixed.includes(o) && !picks.includes(o)).slice(0, g.count),
+    )
   picks.push(
     ...PF2E_SKILL_NAMES.filter((s) => !plan2.fixed.includes(s) && !picks.includes(s)).slice(
       0,
@@ -90,7 +94,10 @@ export function autoCreation(
   c.lores = plan2.lores.map(() => 'Local')
   for (const slot of featSlots(resolve(c, data).cls))
     c.feats[slot] = featOptions(slot, c, data)[0]!.id
+  if (spellcastingPlan(c, data)?.traditionChoice) c.tradition = 'Arcane'
   const casting = spellcastingPlan(c, data)
+  const choice = focusChoice(c, data)
+  if (choice) c.focus = [...creationFocusSpells(c, data), choice.options[0]!].map((s) => s.id)
   if (casting) {
     c.spells = {
       cantrips: spellOptions('cantrip', c, data)
