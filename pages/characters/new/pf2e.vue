@@ -171,14 +171,20 @@ const ancestryOptions = computed(() =>
         `HP ${a.hp}`,
         a.size.join('/'),
         `Speed ${a.speed} ft`,
-        `Boosts ${a.boosts.join(', ')}`,
-        a.flaws.length ? `Flaw ${a.flaws.join(', ')}` : '',
+        boostLine(ancestryBoostPlan(a, false)),
       ]
         .filter(Boolean)
         .join(' · '),
     ),
   ),
 )
+/** "+CON +WIS +1 free · −CHA". */
+function boostLine(plan: ReturnType<typeof ancestryBoostPlan>) {
+  const boosts = [...plan.fixed.map((a) => `+${a}`), plan.free ? `+${plan.free} free` : '']
+  return [boosts.filter(Boolean).join(' '), plan.flaws.map((a) => `−${a}`).join(' ')]
+    .filter(Boolean)
+    .join(' · ')
+}
 const heritageOptions = computed(() => {
   const all = data.value?.heritages ?? []
   const own = all.filter((h) => h.ancestry && h.ancestry === ancestry.value?.slug)
@@ -202,7 +208,12 @@ const boostSummary = computed(() => {
 // --- Background -------------------------------------------------------------
 const backgroundOptions = computed(() =>
   (data.value?.backgrounds ?? []).map((b) =>
-    opt(b, [listOr(b.boosts), b.skills.join(', '), b.feats.join(', ')].filter(Boolean).join(' · ')),
+    opt(
+      b,
+      [listOr(b.boosts), b.skills.join(', '), b.feats.join(', '), b.source.book]
+        .filter(Boolean)
+        .join(' · '),
+    ),
   ),
 )
 const bgFirst = computed({
@@ -242,7 +253,7 @@ watch(
   () => c.value.class,
   (id) => {
     if (id)
-      void nextTick(() => classDetail.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+      void nextTick(() => classDetail.value?.scrollIntoView({ behavior: motion(), block: 'start' }))
   },
 )
 const deityCards = computed(() =>
@@ -308,8 +319,19 @@ function toggleFree(skill: string) {
     c.value.skills = [...c.value.skills, skill]
 }
 const slots = computed(() => featSlots(cls.value))
+const ACTION_NAME: Record<string, string> = {
+  '◆': '1 action',
+  '◆◆': '2 actions',
+  '◆◆◆': '3 actions',
+  '↺': 'reaction',
+  '◇': 'free action',
+}
 const featMeta = (f: Pf2eFeatDef) =>
-  [actionGlyph(f.actions), f.traits.join(', '), f.prerequisites ? `Needs ${f.prerequisites}` : '']
+  [
+    ACTION_NAME[actionGlyph(f.actions)] ?? actionGlyph(f.actions),
+    f.traits.join(', '),
+    f.prerequisites ? `Needs ${f.prerequisites}` : '',
+  ]
     .filter(Boolean)
     .join(' · ')
 const featCards = computed(
@@ -406,16 +428,24 @@ const built = computed(() => {
   return buildPf2eSheet(c.value, data.value)
 })
 
+/** Smooth scrolling unless the reader asked for reduced motion. */
+const motion = (): ScrollBehavior =>
+  import.meta.client && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+
+/** To the top of the step, where its error shows. */
+const toTop = () => import.meta.client && window.scrollTo({ top: 0, behavior: motion() })
+
 function go(to: number) {
   for (let i = 0; i < to; i++)
     if (stepErrors.value[i]) {
       step.value = i
       showErrors.value = true
+      toTop()
       return
     }
   showErrors.value = false
   step.value = to
-  if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
+  toTop()
 }
 
 async function create() {
@@ -423,6 +453,7 @@ async function create() {
   if (stepErrors.value.some(Boolean) || !built.value) {
     const first = stepErrors.value.findIndex(Boolean)
     if (first >= 0 && first < STEPS.length - 1) step.value = first
+    toTop()
     return
   }
   creating.value = true
@@ -471,12 +502,13 @@ async function create() {
               :aria-label="`Step ${i + 1} of ${STEPS.length}: ${s}${i < step && !stepErrors[i] ? ', done' : ''}`"
               @click="go(i)"
             >
-              <span class="steps__n">{{ i < step && !stepErrors[i] ? '✓' : i + 1 }}</span>
+              <span class="steps__n">{{ i + 1 }}</span>
               <span class="steps__label">{{ s }}</span>
             </button>
           </li>
         </ol>
       </nav>
+      <p v-if="actionError" class="step-error" role="alert">{{ actionError }}</p>
 
       <!-- 1 · Ancestry -------------------------------------------------- -->
       <section v-if="step === 0" class="section stack" aria-labelledby="anc-h">
@@ -485,11 +517,6 @@ async function create() {
         </div>
         <Pf2eOptionCards v-model="ancestryPick" :options="ancestryOptions" label="Ancestries" />
         <template v-if="ancestry">
-          <div class="section-head">
-            <h3>{{ ancestry.name }} heritage</h3>
-            <UiSwitch v-model="showVersatile" label="Show versatile heritages" />
-          </div>
-          <Pf2eOptionCards v-model="heritagePick" :options="heritageOptions" label="Heritages" />
           <div class="panel stack">
             <h3>Ancestry boosts</h3>
             <UiSwitch
@@ -505,6 +532,11 @@ async function create() {
               :locked="boostPlan.fixed"
             />
           </div>
+          <div class="section-head">
+            <h3>{{ ancestry.name }} heritage</h3>
+            <UiSwitch v-model="showVersatile" label="Show versatile heritages" />
+          </div>
+          <Pf2eOptionCards v-model="heritagePick" :options="heritageOptions" label="Heritages" />
         </template>
       </section>
 
@@ -513,7 +545,10 @@ async function create() {
         <div class="section-head">
           <h2 id="bg-h">Choose your background</h2>
         </div>
-        <div v-if="background" class="panel stack">
+        <p v-if="!background" class="panel small muted">
+          Pick a background below, then choose its two attribute boosts here.
+        </p>
+        <div v-else class="panel stack">
           <h3>{{ background.name }} boosts</h3>
           <Pf2eBoostPicker
             v-model="bgFirst"
@@ -583,17 +618,6 @@ async function create() {
             <p class="small muted">Level 1: {{ cls.advancement[0]?.features.join(', ') }}</p>
           </article>
 
-          <template v-if="needsDeity(cls)">
-            <div class="section-head"><h3>Deity</h3></div>
-            <Pf2eOptionCards v-model="deityPick" :options="deityCards" label="Deities" />
-            <p class="small muted cup">
-              Deities use trademarks and/or copyrights owned by Paizo Inc., used under Paizo's
-              Community Use Policy (paizo.com/licenses/communityuse). We are expressly prohibited
-              from charging you to use or access this content. Lantern is not published, endorsed,
-              or specifically approved by Paizo.
-            </p>
-          </template>
-
           <template v-for="ch in choices" :key="ch.key">
             <div class="section-head">
               <h3>
@@ -628,6 +652,17 @@ async function create() {
               @update:model-value="setSubclass(ch.key, $event)"
             />
           </template>
+
+          <template v-if="needsDeity(cls)">
+            <div class="section-head"><h3>Deity</h3></div>
+            <Pf2eOptionCards v-model="deityPick" :options="deityCards" label="Deities" />
+            <p class="small muted cup">
+              Deities use trademarks and/or copyrights owned by Paizo Inc., used under Paizo's
+              Community Use Policy (paizo.com/licenses/communityuse). We are expressly prohibited
+              from charging you to use or access this content. Lantern is not published, endorsed,
+              or specifically approved by Paizo.
+            </p>
+          </template>
         </template>
       </section>
 
@@ -647,23 +682,23 @@ async function create() {
               <thead>
                 <tr>
                   <th scope="col">Attribute</th>
+                  <th scope="col">Modifier</th>
                   <th scope="col">Ancestry</th>
                   <th scope="col">Background</th>
                   <th scope="col">Class</th>
                   <th scope="col">Free</th>
-                  <th scope="col">Modifier</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="r in breakdown" :key="r.a">
                   <th scope="row">{{ r.a }}</th>
+                  <td>
+                    <strong>{{ sign(r.total) }}</strong>
+                  </td>
                   <td>{{ r.ancestry ? sign(r.ancestry) : '' }}</td>
                   <td>{{ r.background ? sign(r.background) : '' }}</td>
                   <td>{{ r.cls ? '+1' : '' }}</td>
                   <td>{{ r.free ? '+1' : '' }}</td>
-                  <td>
-                    <strong>{{ sign(r.total) }}</strong>
-                  </td>
                 </tr>
               </tbody>
             </table>
@@ -689,7 +724,7 @@ async function create() {
             role="radiogroup"
             :aria-label="`Choose ${listOr(g.options)}`"
           >
-            <span class="small">Choose one:</span>
+            <strong class="small">Choose one</strong>
             <button
               v-for="o in g.options"
               :key="o"
@@ -704,7 +739,9 @@ async function create() {
               {{ o }}
             </button>
           </div>
-          <p class="small">Choose {{ plan.free }} more ({{ freePicks.length }}/{{ plan.free }})</p>
+          <p class="small">
+            <strong>Free skills</strong>: {{ freePicks.length }} of {{ plan.free }} chosen
+          </p>
           <div class="skill-grid" role="group" aria-label="Free trained skills">
             <label v-for="s in PF2E_SKILL_NAMES" :key="s" class="skill-pick">
               <input
@@ -839,7 +876,12 @@ async function create() {
             <div class="stack" style="gap: 8px">
               <h4 class="caps">Feats &amp; features</h4>
               <p v-for="f in built.feats" :key="`${f.type}-${f.name}`" class="small">
-                <strong>{{ f.name }}</strong> {{ f.action }} <span class="muted">{{ f.type }}</span>
+                <strong>{{ f.name }}</strong>
+                <template v-if="f.action">
+                  <span aria-hidden="true"> {{ f.action }}</span>
+                  <span class="sr-only">({{ ACTION_NAME[f.action] ?? f.action }})</span>
+                </template>
+                <span class="muted"> {{ f.type }}</span>
               </p>
             </div>
           </div>
@@ -854,7 +896,7 @@ async function create() {
           Back
         </button>
         <div class="grow actions__status" aria-live="polite">
-          <span v-if="actionError" class="actions__error" role="alert">{{ actionError }}</span>
+          <span v-if="actionError" class="actions__error">{{ actionError }}</span>
           <span v-else-if="selectionSummary" class="actions__summary">{{ selectionSummary }}</span>
         </div>
         <button v-if="step < STEPS.length - 1" type="button" class="btn" @click="go(step + 1)">
@@ -936,6 +978,8 @@ async function create() {
     gap: 6px;
 
     button {
+      min-width: 44px;
+      justify-content: center;
       padding: 0 6px;
     }
 
@@ -990,8 +1034,6 @@ async function create() {
 }
 
 .attrs {
-  max-width: 640px;
-
   td,
   th {
     text-align: center;
@@ -1028,6 +1070,10 @@ async function create() {
   min-height: 36px;
   font-size: 14px;
 
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
+
   input {
     accent-color: var(--accent);
     width: 18px;
@@ -1057,6 +1103,10 @@ async function create() {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 20px 28px;
+
+  h4:not(:first-child) {
+    margin-top: 10px;
+  }
 }
 
 .actions {
@@ -1079,6 +1129,16 @@ async function create() {
 }
 
 .actions__error {
+  color: var(--danger-text);
+  font-weight: 600;
+  white-space: normal;
+}
+
+.step-error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: min(var(--radius-panel), 10px);
+  border: 1px solid var(--danger-text);
   color: var(--danger-text);
   font-weight: 600;
 }

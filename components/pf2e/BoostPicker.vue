@@ -87,7 +87,8 @@ const blocked = (a: Pf2eAttr) =>
   }
 
   &:disabled {
-    opacity: 0.4;
+    opacity: 0.55;
+    border-style: dotted;
     cursor: not-allowed;
   }
 

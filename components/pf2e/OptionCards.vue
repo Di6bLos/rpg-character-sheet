@@ -53,7 +53,15 @@ function summary(text = '') {
   const para = text
     .split(/\n\s*\n/)
     .map((p) => p.trim())
-    .find((p) => p && !p.startsWith('**') && !p.startsWith('#') && p !== '---')
+    .find(
+      (p) =>
+        p &&
+        !p.startsWith('**') &&
+        !p.startsWith('#') &&
+        p !== '---' &&
+        // AoN's own notes ("Nethys Note: no description…") belong in the full text only.
+        !/^_?(Nethys Note|Note from Nethys)/.test(p),
+    )
   const plain = (para ?? '').replace(/[*_#]/g, '').replace(/\s+/g, ' ')
   return plain.length > 180 ? `${plain.slice(0, 177).trimEnd()}…` : plain
 }
@@ -110,7 +118,9 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
           <span v-else-if="o.text" class="option__sum">{{ summary(o.text) }}</span>
         </button>
         <details v-if="o.text" class="option__text">
-          <summary>Rules text</summary>
+          <summary>
+            Rules text<span class="sr-only">: {{ o.name }}</span>
+          </summary>
           <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
           <div class="option__body" v-html="loreHtml(o.text)" />
         </details>
@@ -249,6 +259,10 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
     min-height: 32px;
     display: flex;
     align-items: center;
+
+    @media (pointer: coarse) {
+      min-height: 44px;
+    }
   }
 }
 
