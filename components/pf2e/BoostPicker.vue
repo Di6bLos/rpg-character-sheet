@@ -13,8 +13,15 @@ const props = withDefaults(
     locked?: Pf2eAttr[]
     /** Attributes this set can't take (the other boost of a background). */
     taken?: Pf2eAttr[]
+    /** Where the locked boosts come from, said on the chip: "from ancestry". */
+    lockedLabel?: string
   }>(),
-  { allowed: () => PF2E_ATTRS, locked: () => [], taken: () => [] },
+  {
+    allowed: () => PF2E_ATTRS,
+    locked: () => [],
+    taken: () => [],
+    lockedLabel: 'given by this choice',
+  },
 )
 const model = defineModel<Pf2eAttr[]>({ required: true })
 
@@ -47,10 +54,20 @@ const blocked = (a: Pf2eAttr) =>
       :disabled="!locked.includes(a) && blocked(a) && !model.includes(a)"
       :aria-disabled="locked.includes(a) || undefined"
       :class="{ 'boost--locked': locked.includes(a) }"
-      :title="locked.includes(a) ? 'Given by this choice' : undefined"
+      :title="locked.includes(a) ? lockedLabel : undefined"
       @click="toggle(a)"
     >
-      {{ a }}
+      <svg
+        v-if="locked.includes(a)"
+        class="boost__lock"
+        viewBox="0 0 16 16"
+        width="11"
+        height="11"
+        aria-hidden="true"
+      >
+        <path fill="currentColor" d="M4 7V5a4 4 0 1 1 8 0v2h1v8H3V7h1Zm2 0h4V5a2 2 0 1 0-4 0v2Z" />
+      </svg>
+      {{ a }}<span v-if="locked.includes(a)" class="sr-only">, {{ lockedLabel }}</span>
     </button>
   </div>
 </template>
@@ -95,6 +112,11 @@ const blocked = (a: Pf2eAttr) =>
   &.boost--locked {
     cursor: default;
     border-style: dashed;
+  }
+
+  .boost__lock {
+    margin-right: 3px;
+    vertical-align: -1px;
   }
 
   @media (pointer: coarse) {
