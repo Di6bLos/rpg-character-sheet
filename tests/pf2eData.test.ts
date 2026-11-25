@@ -122,7 +122,7 @@ describe('pf2e data', () => {
     expect(data.feats.find((f) => f.id === byName('Fighter').dedication)?.name).toBe(
       'Fighter Dedication',
     )
-    // Player Core p. 159, Player Core 2 p. 193: Advanced Warden is a 6th-level Beastmaster feat.
+    // Player Core p. 159, Player Core 2 p. 188: Advanced Warden is a 6th-level Beastmaster feat.
     expect(data.feats.find((f) => f.name === 'Advanced Warden')?.archetypeLevels).toEqual({
       Beastmaster: 6,
     })

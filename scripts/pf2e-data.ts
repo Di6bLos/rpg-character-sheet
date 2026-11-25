@@ -524,7 +524,10 @@ const archetypes: Pf2eArchetypeDef[] = latest(of('archetype'))
       text: archetypeText(rest.text, list(d.archetype_category)),
       level: d.level ?? dedication?.level ?? 2,
       categories: list(d.archetype_category),
-      ...opt('prerequisites', typeof d.prerequisite === 'string' ? d.prerequisite : stats.Prerequisites),
+      ...opt(
+        'prerequisites',
+        typeof d.prerequisite === 'string' ? d.prerequisite : stats.Prerequisites,
+      ),
       ...opt('dedication', dedication?.id),
     }
   })

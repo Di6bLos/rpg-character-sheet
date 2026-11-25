@@ -148,8 +148,8 @@ const featCards = computed(() => {
       const others = Object.entries(picks.value.feats)
         .filter(([k]) => k !== slot.key)
         .map(([, id]) => id)
-      const cards = levelFeatOptions(slot.kind, sheet.value, level.value, d).map((f) => {
-        const { unmet, unknown } = featPrerequisites(f, projected.value, d)
+      const cards = levelFeatOptions(slot, sheet.value, level.value, d).map((f) => {
+        const { unmet, unknown } = featPrerequisites(f, projected.value, d, others)
         const why = others.includes(f.id)
           ? 'Picked for another slot'
           : unmet.length
@@ -180,13 +180,31 @@ function setFeat(key: string, ids: string[]) {
   picks.value.feats = feats
 }
 const FEAT_HELP: Record<string, (lvl: number) => string> = {
-  class: (lvl) => `Any ${sheet.value.class.toLowerCase()} feat of level ${lvl} or lower.`,
+  class: (lvl) =>
+    `Any ${sheet.value.class.toLowerCase()} feat of level ${lvl} or lower, or an archetype's dedication or feats.`,
   ancestry: (lvl) =>
     `Any ${sheet.value.lineage.toLowerCase()} or heritage feat of level ${lvl} or lower.`,
   skill: (lvl) =>
     `Any skill feat of level ${lvl} or lower; you need the rank its prerequisites name.`,
   general: (lvl) => `Any general feat, skill feats included, of level ${lvl} or lower.`,
 }
+
+/** The free archetype variant (GM Core p. 84), kept on the hero from the level it's changed. */
+const freeArchetype = computed({
+  get: () => picks.value.freeArchetype ?? !!sheet.value.creation?.freeArchetype,
+  set: (on: boolean) => (picks.value.freeArchetype = on),
+})
+// Feats picked for slots the level no longer has (the free archetype turned off) are dropped.
+watch(
+  () => plan.value?.feats.map((f) => f.key).join(),
+  () => {
+    if (!plan.value) return
+    const keys = new Set(plan.value.feats.map((f) => f.key))
+    picks.value.feats = Object.fromEntries(
+      Object.entries(picks.value.feats).filter(([k]) => keys.has(k)),
+    )
+  },
+)
 
 // --- Choices and spells -------------------------------------------------------------
 const listPick = (where: 'choices' | 'spells', key: string) => picks.value[where][key] ?? []
@@ -353,8 +371,8 @@ defineExpose({ problems, progress, commit, jump })
             {{ rankWord(p.from) }} → <strong>{{ rankWord(p.to) }}</strong>
           </dd>
         </div>
-        <div v-for="s in plan.slots" :key="`slot-${s.rank}`">
-          <dt>Rank {{ s.rank }} slots</dt>
+        <div v-for="s in plan.slots" :key="`slot-${s.archetype ?? ''}${s.rank}`">
+          <dt>Rank {{ s.rank }} slots{{ s.archetype ? ` (${s.archetype} archetype)` : '' }}</dt>
           <dd>
             {{ s.from }} → <strong>{{ s.to }}</strong>
           </dd>
@@ -388,6 +406,12 @@ defineExpose({ problems, progress, commit, jump })
         <li v-for="n in plan.notes" :key="n">{{ n }}</li>
       </ul>
     </section>
+
+    <UiSwitch
+      v-model="freeArchetype"
+      small
+      label="Free archetype: an archetype feat at every even level (GM Core p. 84)"
+    />
 
     <nav v-if="sections.length > 1" class="jumps" aria-label="Choices at this level">
       <button
@@ -435,7 +459,7 @@ defineExpose({ problems, progress, commit, jump })
       <details v-if="c.feature" class="gain-card" open>
         <summary>
           <strong>{{ c.feature.name }}</strong>
-          <small>{{ sheet.class }}</small>
+          <small>{{ c.feature.from ?? sheet.class }}</small>
         </summary>
         <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
         <div class="gain-card__body" v-html="loreHtml(c.feature.text)" />
@@ -459,7 +483,7 @@ defineExpose({ problems, progress, commit, jump })
       :aria-labelledby="`${sectionId(`feat:${slot.key}`)}-h`"
     >
       <h3 :id="`${sectionId(`feat:${slot.key}`)}-h`" tabindex="-1">{{ slot.label }}</h3>
-      <p class="help">{{ FEAT_HELP[slot.kind]?.(level) }}</p>
+      <p class="help">{{ slot.help ?? FEAT_HELP[slot.kind]?.(level) }}</p>
       <Pf2eOptionCards
         :model-value="featPick(slot.key)"
         :options="featCards[slot.key] ?? []"

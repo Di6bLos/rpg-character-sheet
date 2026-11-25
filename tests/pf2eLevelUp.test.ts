@@ -347,7 +347,11 @@ describe('pf2e level-up: feats and prerequisites', () => {
 
   it('offers feats of the slot and level the hero has not taken', () => {
     const options = levelFeatOptions('class', s, 2, data)
-    expect(options.every((f) => f.level <= 2 && f.classes.includes('Fighter'))).toBe(true)
+    // Class feats first, then the dedications a class feat can take (Player Core p. 215).
+    const own = options.filter((f) => f.classes.includes('Fighter'))
+    expect(options.slice(0, own.length)).toEqual(own)
+    expect(options.every((f) => f.level <= 2)).toBe(true)
+    expect(options.slice(own.length).every((f) => f.traits.includes('Dedication'))).toBe(true)
     expect(options.map((f) => f.name)).not.toContain('Sudden Charge')
     expect(levelFeatOptions('general', s, 3, data).some((f) => f.name === 'Toughness')).toBe(true)
   })

@@ -3,7 +3,8 @@
 // subclass's later benefits, proficiency increases, feat slots, skill increases, attribute
 // boosts, spell slots and spells), what the picks still need (`pf2eLevelProblems`) and writing a
 // level onto the sheet (`applyPf2eLevel`). Proficiency increases are read from the features'
-// text the way `utils/pf2eBuild.ts` reads the 1st-level lines.
+// text the way `utils/pf2eBuild.ts` reads the 1st-level lines. Archetypes (Player Core pp.
+// 215–216) come from `utils/pf2eArchetypes.ts`.
 import type {
   Pf2eClassDef,
   Pf2eFeatDef,
@@ -13,6 +14,7 @@ import type {
 } from '~/data/pf2e/types'
 import type {
   Pf2eAttr,
+  Pf2eFeat,
   Pf2eLevelInput,
   Pf2eRank,
   Pf2eSheet,
@@ -20,6 +22,23 @@ import type {
   Pf2eStrike,
 } from '~/types/sheets'
 import { recordLevel } from '~/utils/levelHistory'
+import {
+  applyArchetypeCasting,
+  archetypeFeatOptions,
+  dedicationArchetype,
+  dedicationLock,
+  archetypeCastingPlan,
+  dedicationNotes,
+  featSkillChoices,
+  featSkillRanks,
+  freeArchetypeSlot,
+  grantedFeat,
+  heroArchetypes,
+  isDedication,
+  lockClause,
+  tagArchetype,
+  trainsSkills,
+} from '~/utils/pf2eArchetypes'
 import {
   GENERIC_FEATURE,
   PF2E_ATTRS,
@@ -373,8 +392,23 @@ export function profileAt(
   for (const o of ctx.picks)
     for (const part of laterParts(o))
       if (part.level <= level) for (const g of readGrants(part.text, rc(o.name))) applyGrant(p, g)
+  // Archetype feats (Player Core p. 215): Fighter Dedication's martial weapons, the skills a
+  // dedication trains and the ones picked in their place.
+  for (const e of sheet.feats) {
+    const at = Number(e.level) || 1
+    const def = e.archetype && at <= level ? data.feats.find((f) => f.id === e.id) : undefined
+    if (!def) continue
+    for (const part of gatedParts(def.text.split(LEADS_TO)[0] ?? '', at))
+      if (part.level <= level && !trainsSkills(part.text))
+        for (const g of readGrants(part.text, rc(def.name))) applyGrant(p, g)
+    for (const skill of featSkillRanks(def, choices))
+      p.skills[skill] = higher(p.skills[skill] ?? 'U', 'T')
+  }
   return p
 }
+
+/** A feat's "## X leads to..." list, which names feats rather than granting anything. */
+const LEADS_TO = /\n#+ [^\n]* leads to\.\.\./
 
 const weaponFits = (r: WeaponRule, w: Pick<Pf2eWeaponDef, 'name' | 'category' | 'group'>) =>
   !!r.names?.includes(w.name) ||
@@ -408,11 +442,16 @@ const strikeWeapon = (s: Pf2eStrike, data: Pf2eBuildData) =>
 
 // --- Feats ----------------------------------------------------------------------
 
-export type Pf2eLevelFeatKind = 'class' | 'skill' | 'general' | 'ancestry'
+/** `archetype`: the free archetype slot; `granted`: the feat another feat grants (Basic Maneuver). */
+export type Pf2eLevelFeatKind = 'class' | 'skill' | 'general' | 'ancestry' | 'archetype' | 'granted'
 export interface Pf2eFeatSlotPlan {
   key: string
   kind: Pf2eLevelFeatKind
   label: string
+  /** What the slot takes, when the kind alone doesn't say it. */
+  help?: string
+  /** A granted feat: a feat of this class up to this level, from that feat. */
+  grant?: { className: string; maxLevel: number; from: string }
 }
 
 /** The feat slots a level's table row lists (Player Core p. 29): class, skill, general, ancestry. */
@@ -451,28 +490,37 @@ const featNames = (sheet: Pf2eSheet) => new Set(sheet.feats.map((f) => norm(f.na
 /**
  * Feats a slot can take at a level: of the slot's list (the class's, the ancestry's and its
  * versatile heritage's, skill or general feats), of that level or lower, not taken already
- * unless the feat says it can be taken more than once.
+ * unless the feat says it can be taken more than once. A class slot from 2nd level can also
+ * take a dedication or the feats of the hero's archetypes (Player Core p. 215), listed after
+ * the class's own; the free archetype slot takes only those (GM Core p. 84); a granted slot,
+ * the class feats its feat names.
  */
 export function levelFeatOptions(
-  kind: Pf2eLevelFeatKind,
+  slot: Pf2eLevelFeatKind | Pf2eFeatSlotPlan,
   sheet: Pf2eSheet,
   level: number,
   data: Pf2eBuildData,
 ): Pf2eFeatDef[] {
   const ctx = pf2eContext(sheet, data)
   if (!ctx) return []
+  const kind = typeof slot === 'string' ? slot : slot.kind
+  if (kind === 'archetype') return archetypeFeatOptions(sheet, level, data)
+  const grant = typeof slot === 'string' ? undefined : slot.grant
+  if (kind === 'granted' && !grant) return []
   const lists = [ctx.ancestry?.name, ...heritageFeatLists(ctx.heritage)].filter(Boolean)
   const have = featNames(sheet)
-  return uniqueNames(
+  const own = uniqueNames(
     data.feats.filter((f) => {
-      if (f.level > level) return false
+      if (f.level > (grant?.maxLevel ?? level)) return false
       if (have.has(norm(f.name)) && !/more than once/i.test(f.text)) return false
+      if (grant) return f.classes.includes(grant.className) && !isDedication(f)
       if (kind === 'class') return f.classes.includes(ctx.cls.name)
       if (kind === 'ancestry') return f.ancestries.some((a) => lists.includes(a))
       if (kind === 'skill') return f.skill
       return f.general
     }),
   )
+  return kind === 'class' ? uniqueNames([...own, ...archetypeFeatOptions(sheet, level, data)]) : own
 }
 
 /**
@@ -482,12 +530,20 @@ export function levelFeatOptions(
  * ones it can't tell (left to the player and GM).
  */
 export function featPrerequisites(
-  f: Pick<Pf2eFeatDef, 'prerequisites'>,
+  f: Pick<Pf2eFeatDef, 'prerequisites'> & Partial<Pick<Pf2eFeatDef, 'name' | 'traits'>>,
   sheet: Pf2eSheet,
   data?: Pick<Pf2eBuildData, 'feats' | 'classes'>,
+  pending: string[] = [],
 ) {
   const unmet: string[] = []
   const unknown: string[] = []
+  // A dedication waits until the last one has two more feats (Player Core p. 215); `pending`
+  // are the feats picked in the level's other slots.
+  const lock =
+    data && f.name && f.traits && isDedication({ name: f.name, traits: f.traits })
+      ? dedicationLock(sheet, data, pending)
+      : null
+  if (lock) unmet.push(lockClause(lock))
   if (!f.prerequisites) return { unmet, unknown }
   const names = new Set<string>()
   for (const x of sheet.feats) {
@@ -548,13 +604,18 @@ export interface Pf2eSpellPick {
   cantrip?: boolean
   /** List casters (cleric, druid) prepare from their whole list; adding spells is optional. */
   optional?: boolean
+  /** For an archetype's spellcasting (Player Core p. 215), of its tradition. */
+  archetype?: string
+  tradition?: string
+  /** Only spells of `rank` itself ("two common spells of that rank"). */
+  exact?: boolean
 }
 
 export interface Pf2eChoicePlan {
   key: string
   label: string
-  /** The class feature that asks for it, shown above the options. */
-  feature?: { name: string; text: string }
+  /** The class feature (or archetype feat) that asks for it, shown above the options. */
+  feature?: { name: string; text: string; from?: string }
   options: { id: string; name: string; text?: string }[]
   count: number
 }
@@ -572,7 +633,8 @@ export interface Pf2eLevelPlan {
   /** Skills to train from an Intelligence increase. */
   trained: number
   boosts: number
-  slots: { rank: number; from: number; to: number }[]
+  /** Spell slots by rank; `archetype` for a multiclass archetype's own (Player Core p. 215). */
+  slots: { rank: number; from: number; to: number; archetype?: string }[]
   font?: { from: number; to: number }
   spells: Pf2eSpellPick[]
   /** Spells the level adds by itself (a bloodline's sorcerous gift). */
@@ -580,6 +642,81 @@ export interface Pf2eLevelPlan {
   focus: Pf2eSpellRef[]
   choices: Pf2eChoicePlan[]
   notes: string[]
+}
+
+/**
+ * The level's feat slots: the table's, the free archetype slot at even levels (GM Core p. 84),
+ * and a slot for each feat a picked feat grants (Basic Maneuver's fighter feat).
+ */
+function planFeatSlots(
+  cls: Pf2eClassDef,
+  level: number,
+  pending: Pf2eLevelInput,
+  data: Pf2eBuildData,
+  freeArchetype: boolean | undefined,
+): Pf2eFeatSlotPlan[] {
+  const slots = levelFeatSlots(cls, level)
+  if (freeArchetypeSlot(level, freeArchetype))
+    slots.push({
+      key: 'archetype',
+      kind: 'archetype',
+      label: 'Free archetype feat',
+      help: `A dedication or a feat of your archetypes, of level ${level} or lower (the free archetype variant, GM Core p. 84).`,
+    })
+  const classNames = data.classes.map((c) => c.name)
+  const granted = slots.flatMap((slot): Pf2eFeatSlotPlan[] => {
+    const f = data.feats.find((x) => x.id === pending.feats[slot.key])
+    const grant = f ? grantedFeat(f, level, classNames) : null
+    if (!grant) return []
+    return [
+      {
+        key: `${slot.key}:grant`,
+        kind: 'granted',
+        label: `${grant.className} feat from ${grant.from}`,
+        help: `A ${grant.className.toLowerCase()} feat of level ${grant.maxLevel} or lower. It counts as one feat with ${grant.from} for your dedication (Player Core p. 215).`,
+        grant,
+      },
+    ]
+  })
+  return [...slots, ...granted]
+}
+
+const featType = (slot: Pf2eFeatSlotPlan) =>
+  slot.grant
+    ? `${slot.grant.className} feat`
+    : `${slot.kind[0]!.toUpperCase()}${slot.kind.slice(1)} feat`
+
+/**
+ * The feat entries a level's picks add, each tagged with the archetype it's taken for and a
+ * granted feat with the feat that granted it (Player Core p. 215).
+ */
+function levelFeatEntries(
+  sheet: Pf2eSheet,
+  cls: Pf2eClassDef,
+  slots: Pf2eFeatSlotPlan[],
+  picks: Pf2eLevelInput,
+  level: number,
+  data: Pf2eBuildData,
+): Pf2eFeat[] {
+  const held = new Set(heroArchetypes(sheet.feats).map((a) => a.name))
+  const out: Pf2eFeat[] = []
+  for (const slot of slots) {
+    const f = data.feats.find((x) => x.id === picks.feats[slot.key])
+    if (!f) continue
+    const entry = featEntry(featType(slot), f, level)
+    if (!slot.grant) {
+      if (isDedication(f)) held.add(dedicationArchetype(f))
+      out.push(tagArchetype(entry, f, held, cls.name))
+      continue
+    }
+    const parent = out.find((e) => e.name === slot.grant!.from)
+    out.push({
+      ...entry,
+      via: slot.grant.from,
+      ...(parent?.archetype ? { archetype: parent.archetype } : {}),
+    })
+  }
+  return out
 }
 
 /** Empty picks for a level. */
@@ -725,9 +862,17 @@ export function pf2eLevelPlan(
   )
   const con = boosted.attrs.CON
   const retro = (con - sheet.attrs.CON) * (level - 1)
-  const pickedFeats = Object.values(pending.feats)
-    .map((id) => data.feats.find((f) => f.id === id))
+  const featSlotsNow = planFeatSlots(
+    cls,
+    level,
+    pending,
+    data,
+    pending.freeArchetype ?? ctx.creation.freeArchetype,
+  )
+  const pickedFeats = featSlotsNow
+    .map((slot) => data.feats.find((f) => f.id === pending.feats[slot.key]))
     .filter((f): f is Pf2eFeatDef => !!f)
+  const added = levelFeatEntries(sheet, cls, featSlotsNow, pending, level, data)
   const toughness =
     sheet.feats.filter((f) => TOUGHNESS.test(f.desc)).length +
     pickedFeats.filter((f) => TOUGHNESS.test(f.text)).length * level
@@ -847,9 +992,26 @@ export function pf2eLevelPlan(
       })
   }
 
+  // Archetype feats: the skills they train or leave to the player (Player Core pp. 216–223).
+  const trained = new Set(sheet.skills.filter((x) => x.rank !== 'U').map((x) => x.name))
+  const archetypeNotes: string[] = []
+  for (const e of added) {
+    const def = e.archetype ? data.feats.find((f) => f.id === e.id) : undefined
+    if (!def) continue
+    for (const c of featSkillChoices(def, trained))
+      choices.push({
+        key: c.key,
+        label: c.label,
+        feature: { name: def.name, text: c.help, from: `${e.archetype} archetype` },
+        options: c.options.map((o) => ({ id: o, name: o })),
+        count: Math.min(c.count, c.options.length),
+      })
+    if (e.dedication) archetypeNotes.push(...dedicationNotes(def))
+  }
+
   const choicesNow = { ...prior, ...pending.choices }
   const before = profileAt(sheet, level - 1, data, choicesNow)!
-  const after = profileAt(sheet, level, data, choicesNow)!
+  const after = profileAt({ ...sheet, feats: [...sheet.feats, ...added] }, level, data, choicesNow)!
   const proficiencies: Pf2eLevelPlan['proficiencies'] = []
   const diff = (label: string, from: Pf2eRank, to: Pf2eRank) => {
     if (rankAbove(to, from)) proficiencies.push({ label, from, to })
@@ -943,6 +1105,20 @@ export function pf2eLevelPlan(
       })
   }
 
+  // Archetype spellcasting: cantrips, slots by level, spells and rank (Player Core p. 215).
+  const archetypeCasting = archetypeCastingPlan(
+    sheet,
+    level,
+    data,
+    choicesNow,
+    added,
+    boosted.attrs,
+  )
+  choices.push(...archetypeCasting.choices)
+  slots.push(...archetypeCasting.slots)
+  spells.push(...archetypeCasting.spells)
+  proficiencies.push(...archetypeCasting.ranks)
+
   // Focus spells from the level's features, the subclass's later text and the feats picked.
   const have = new Set((sheet.focusSpells ?? []).map((f) => f.id))
   const focusDefs = [
@@ -976,6 +1152,7 @@ export function pf2eLevelPlan(
       notes.push(`${f.name}: make its choice on the sheet.`)
   if (intUp)
     notes.push('Intelligence went up: you also learn a new language (note it on the sheet).')
+  notes.push(...archetypeNotes)
 
   return {
     level,
@@ -988,7 +1165,7 @@ export function pf2eLevelPlan(
     },
     features,
     proficiencies,
-    feats: levelFeatSlots(cls, level),
+    feats: featSlotsNow,
     skillIncreases,
     skillMax: skillCap(level),
     trained: intUp ? 1 : 0,
@@ -1093,20 +1270,28 @@ export function pf2eLevelProblems(
   return out
 }
 
-/** Spells a pick can take: the tradition's common-or-better spells up to its rank, not known. */
+/**
+ * Spells a pick can take: the tradition's common-or-better spells up to its rank, not known.
+ * An archetype's pick uses its own tradition and list (Player Core p. 215).
+ */
 export function levelSpellOptions(pick: Pf2eSpellPick, sheet: Pf2eSheet, data: Pf2eBuildData) {
-  const sc = sheet.spellcasting
-  if (!sc) return []
+  const sc = pick.archetype
+    ? sheet.archetypeCasting?.find((e) => e.archetype === pick.archetype)
+    : sheet.spellcasting
+  const tradition = pick.tradition ?? sc?.tradition
+  if (!tradition) return []
   const known = new Set(
-    [...sc.spells, ...sc.cantrips]
+    [...(sc?.spells ?? []), ...(sc?.cantrips ?? [])]
       .filter((s) => pick.learnAt === undefined || s.rank === pick.learnAt)
       .map((s) => s.id),
   )
   return uniqueNames(
     data.spells.filter(
       (s) =>
-        s.traditions.includes(sc.tradition) &&
-        (pick.cantrip ? s.kind === 'cantrip' : s.kind === 'spell' && s.rank <= pick.rank) &&
+        s.traditions.includes(tradition) &&
+        (pick.cantrip
+          ? s.kind === 'cantrip'
+          : s.kind === 'spell' && (pick.exact ? s.rank === pick.rank : s.rank <= pick.rank)) &&
         !known.has(s.id),
     ),
   )
@@ -1140,6 +1325,8 @@ export function applyPf2eLevel(
   const plan = pf2eLevelPlan(sheet, level, data, picks)
   if (!plan) return
   recordLevel(sheet, level, undefined, picks)
+  if (picks.freeArchetype !== undefined && sheet.creation)
+    sheet.creation.freeArchetype = picks.freeArchetype
   const prev = level - 1
   const choices = Object.fromEntries(
     plan.choices
@@ -1177,13 +1364,9 @@ export function applyPf2eLevel(
           return o ? [featEntry(c.label, o, level)] : []
         }),
       ),
-    ...plan.feats.flatMap((slot) => {
-      const f = data.feats.find((x) => x.id === picks.feats[slot.key])
-      const type = `${slot.kind[0]!.toUpperCase()}${slot.kind.slice(1)} feat`
-      return f ? [featEntry(type, f, level)] : []
-    }),
   ]
-  sheet.feats = [...sheet.feats, ...entries]
+  const added = levelFeatEntries(sheet, ctx.cls, plan.feats, picks, level, data)
+  sheet.feats = [...sheet.feats, ...entries, ...added]
 
   const now = profileAt(sheet, level, data)!
   const lift = (stored: Pf2eRank, from: Pf2eRank, to: Pf2eRank) =>
@@ -1279,11 +1462,11 @@ export function applyPf2eLevel(
   if (sc) {
     sc.rank = lift(sc.rank, was.stats.spell, now.stats.spell)
     for (const s of plan.slots)
-      setSlotMax(sc, s.rank, (sc.slots[s.rank - 1]?.max ?? 0) + s.to - s.from)
+      if (!s.archetype) setSlotMax(sc, s.rank, (sc.slots[s.rank - 1]?.max ?? 0) + s.to - s.from)
     if (sc.font && plan.font) sc.font.max += plan.font.to - plan.font.from
     for (const g of plan.granted)
       if (!sc.spells.some((x) => x.id === g.id && x.rank === g.rank)) sc.spells.push({ ...g })
-    for (const p of plan.spells)
+    for (const p of plan.spells.filter((x) => !x.archetype))
       for (const id of (picks.spells[p.key] ?? []).slice(0, p.count)) {
         const def = data.spells.find((s) => s.id === id)
         if (!def) continue
@@ -1292,6 +1475,8 @@ export function applyPf2eLevel(
         else sc.spells.push(entry)
       }
   }
+
+  applyArchetypeCasting(sheet, plan, picks, data, added)
 
   // Focus spells and the pool (p. 298: one point per focus spell, up to 3).
   if (plan.focus.length) {

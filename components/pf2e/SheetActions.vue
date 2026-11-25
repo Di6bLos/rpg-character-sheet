@@ -489,7 +489,7 @@ const dmgPreview = (e: Entry) =>
         1 hour
       </button>
       <button
-        v-if="!sheet.spellcasting && !sheet.focusSpells?.length"
+        v-if="!sheet.spellcasting && !sheet.focusSpells?.length && !sheet.archetypeCasting?.length"
         type="button"
         class="btn btn--ghost btn--sm"
         :disabled="!canEdit"

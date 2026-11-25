@@ -91,6 +91,11 @@ const showVersatile = ref(false)
 const name = ref('')
 const creating = ref(false)
 const c = ref<Pf2eCreation>(emptyCreation())
+/** The free archetype variant (GM Core p. 84), which later level-ups read from the hero. */
+const freeArchetype = computed({
+  get: () => !!c.value.freeArchetype,
+  set: (on: boolean) => (c.value.freeArchetype = on),
+})
 
 const atCap = computed(() => store.loaded && store.characters.length >= MAX_CHARACTERS)
 
@@ -755,6 +760,10 @@ async function create() {
               Key attribute: <strong>{{ keyOptions[0] }}</strong> (+1)
             </p>
             <p class="small muted">Level 1: {{ levelOneFeatures(cls).join(', ') }}</p>
+            <UiSwitch
+              v-model="freeArchetype"
+              label="Free archetype: an archetype feat at every even level (GM Core p. 84)"
+            />
           </article>
 
           <template v-for="ch in choices" :key="ch.key">
