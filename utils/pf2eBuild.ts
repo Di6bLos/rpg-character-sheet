@@ -1139,7 +1139,7 @@ export function spellProblems(c: Pf2eCreation, data: Pf2eBuildData) {
 
 const featEntry = (
   type: string,
-  r: Pf2eRecord & { actions?: Pf2eActionCost },
+  r: Pf2eRecord & { actions?: Pf2eActionCost; frequency?: string; trigger?: string },
   level = 1,
 ): Pf2eFeat => ({
   type,
@@ -1147,7 +1147,40 @@ const featEntry = (
   action: actionGlyph(r.actions),
   name: r.name,
   desc: r.text,
+  id: r.id,
+  ...(r.frequency ? { frequency: r.frequency } : {}),
+  ...(r.trigger ? { trigger: r.trigger } : {}),
 })
+
+const GLYPH_COST: Record<string, Pf2eActionCost> = {
+  '◆': 1,
+  '◆◆': 2,
+  '◆◆◆': 3,
+  '↺': 'reaction',
+  '◇': 'free',
+}
+
+/**
+ * A class feature's action, which the feature itself doesn't record: the action it embeds
+ * ("## Reactive Strike ↺" with its Trigger line), or the feat of the same name it grants
+ * (Shield Block).
+ */
+function featureAction(f: { name: string; text: string }, data: Pf2eBuildData) {
+  const esc = f.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const glyph = new RegExp(`^#+ ${esc} ([◆↺◇]+)`, 'm').exec(f.text)?.[1]
+  if (glyph) {
+    const trigger = /^\*\*Trigger\*\* (.+)$/m.exec(f.text)?.[1]
+    return { actions: GLYPH_COST[glyph], ...(trigger ? { trigger } : {}) }
+  }
+  const feat = data.feats.find((x) => x.name === f.name && x.actions)
+  return feat
+    ? {
+        actions: feat.actions,
+        ...(feat.trigger ? { trigger: feat.trigger } : {}),
+        ...(feat.frequency ? { frequency: feat.frequency } : {}),
+      }
+    : {}
+}
 
 const GENERIC_FEATURE =
   /^(Ancestry and Background|Attribute Boosts|Initial Proficiencies|Skill Feats|General Feats|Skill Increases|Ancestry Feats|.+ Feats)$/i
@@ -1319,7 +1352,13 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
       ...cls.features
         .filter((f) => f.level === 1 && !GENERIC_FEATURE.test(f.name))
         .map((f) =>
-          featEntry('Class feature', { ...f, source: cls.source, rarity: 'common', traits: [] }),
+          featEntry('Class feature', {
+            ...f,
+            ...featureAction(f, data),
+            source: cls.source,
+            rarity: 'common',
+            traits: [],
+          }),
         ),
       ...subclassPicks.map((s) =>
         featEntry(

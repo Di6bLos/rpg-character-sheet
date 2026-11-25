@@ -328,15 +328,20 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Valued conditions (frightened, clumsy, off-guard…) on every number, dying, wounded, doomed, recovery checks, Heroic Recovery
 - [x] Shield Block (Hardness, broken threshold)
 - [ ] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
+- [ ] Incredible Initiative's +2 on initiative rolls (the sheet has no initiative roll yet)
 - [x] Spell slots (prepared and spontaneous), heightening, cantrips, divine font, focus spells and Refocus, daily preparations
 - [ ] Spell damage rolls and heightened effects from the spell text
 - [ ] Dice tray, target and odds rows
 
 ### 8.5 Abilities, spells and effects
 
-- [ ] Player Core classes
+- [x] Structured effect model (`data/pf2e/effects.ts`, `utils/pf2eEffects.ts`): modifiers, damage dice, temp HP, death and recovery changes; permanent, toggle and ally-given effects
+- [x] First wave: Rage, Sneak Attack, Precision edge, Courageous Anthem, Bless, Heroism, Toughness, Diehard, Fleet, Incredible Initiative (note)
+- [x] Abilities with an action get Use, daily frequencies tracked until daily preparations
+- [ ] Player Core classes: the rest of their numeric features and feats (weapon specialization, panache, hunt prey bonuses…)
 - [ ] Player Core 2 classes
 - [ ] Other classes, archetypes, ancestry feats
+- [ ] Spells that change numbers when cast on yourself, beyond the first wave
 
 ### 8.6 Battle board
 

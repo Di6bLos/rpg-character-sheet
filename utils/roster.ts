@@ -40,23 +40,29 @@ function pf2eDying(s: HeroSummary | null | undefined): number {
   return typeof s?.dying === 'number' && s.dying > 0 ? s.dying : 0
 }
 
-/** The summary's PF2e numbers on a sheet, for the sheet engine's own death rules. */
-function pf2eSheetOf(s: HeroSummary | null | undefined): Pf2eSheet {
+/**
+ * The summary's PF2e numbers on a sheet, for the sheet engine's own death rules: Dying,
+ * Doomed and the feats (Diehard), by `featNames` or, for a live sheet, its `feats`.
+ */
+function pf2eSheetOf(s: (HeroSummary & { feats?: unknown }) | null | undefined): Pf2eSheet {
+  const feats = Array.isArray(s?.feats) ? (s.feats as { name?: unknown }[]) : []
+  const names = s?.featNames ?? feats.map((f) => (typeof f?.name === 'string' ? f.name : ''))
   return {
     ...defaultSheet('pf2e'),
     dying: pf2eDying(s),
     doomed: typeof s?.doomed === 'number' && s.doomed > 0 ? s.doomed : 0,
+    feats: names.map((name) => ({ type: '', level: '', action: '', name, desc: '' })),
   }
 }
 
-/** The Dying value at which a PF2e hero dies, as the sheet has it: 4, less Doomed. */
+/** The Dying value at which a PF2e hero dies, as the sheet has it: 4 (5 with Diehard), less Doomed. */
 export function pf2eDeathAt(s: HeroSummary | null | undefined): number {
   return deathAt(pf2eSheetOf(s))
 }
 
 /**
  * A downed 5e / PF2e hero who is dead: three failed death saves (5e) or, PF2e, Dying at the
- * sheet engine's death value (4, less Doomed).
+ * sheet engine's death value (4, 5 with Diehard, less Doomed).
  */
 export function heroDead(s: HeroSummary | null | undefined): boolean {
   if (isDead(pf2eSheetOf(s))) return true

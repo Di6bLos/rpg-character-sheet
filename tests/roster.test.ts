@@ -108,6 +108,14 @@ describe('heroDead', () => {
     expect(pf2eDeathAt({})).toBe(4)
   })
 
+  it('gives a PF2e hero with Diehard one more Dying step, from the summary or a live sheet', () => {
+    expect(pf2eDeathAt({ featNames: ['Diehard'] })).toBe(5)
+    expect(heroDead({ dying: 4, featNames: ['Diehard'] })).toBe(false)
+    expect(heroDead({ dying: 4, featNames: ['Diehard'], doomed: 1 })).toBe(true)
+    const live = { dying: 4, feats: [{ name: 'Diehard' }] } as Parameters<typeof heroDead>[0]
+    expect(heroDead(live)).toBe(false)
+  })
+
   it('not below Dying 4 or three failures', () => {
     expect(heroDead({ deathSaves: { successes: 0, failures: 2 } })).toBe(false)
     expect(heroDead({ dying: 3 })).toBe(false)

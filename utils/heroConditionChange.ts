@@ -1,7 +1,8 @@
 import type { GameSystem, HeroConditionChange } from '~/types'
-import type { AnySheet, NimbleSheet } from '~/types/sheets'
+import type { AnySheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
 import { addCondition, removeCondition } from '~/utils/nimbleConditions'
 import { clearEffect } from '~/utils/nimbleEffects'
+import { endOnUnconscious } from '~/utils/pf2eEffects'
 
 type Change = Pick<HeroConditionChange, 'id' | 'condition' | 'add'> & { created_at?: string }
 
@@ -82,5 +83,10 @@ export function applyConditionChangeFor(
   change: Change,
 ): string {
   if (system === 'nimble') return applyConditionChange(sheet as NimbleSheet, change)
-  return applyPlainConditionChange(sheet, change)
+  const line = applyPlainConditionChange(sheet, change)
+  // PF2e, as the sheet's own toggle: falling unconscious ends Rage (Player Core 2 p. 72).
+  if (system !== 'pf2e' || !line || !change.add || change.condition.trim() !== 'Unconscious')
+    return line
+  const ended = endOnUnconscious(sheet as Pf2eSheet)
+  return ended ? `${line} ${ended}` : line
 }

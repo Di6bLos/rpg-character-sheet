@@ -7,6 +7,7 @@ import {
   lastPerCondition,
 } from '../utils/heroConditionChange'
 import { CONDITION_ENDS } from '../utils/nimbleConditions'
+import { toggleEffect } from '../utils/pf2eEffects'
 import { conditionValue } from '../utils/pf2ePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
 
@@ -108,6 +109,22 @@ describe('GM hero condition changes, D&D 5e and PF2e', () => {
     expect(sheet.conditionValues).toEqual({ Sickened: 1 })
     applyConditionChangeFor('pf2e', sheet, { id: 'b', condition: 'Frightened', add: true })
     expect(conditionValue(sheet, 'Frightened')).toBe(1)
+  })
+
+  it('a GM setting a PF2e hero Unconscious ends Rage, as the sheet does', () => {
+    const sheet = {
+      ...defaultSheet('pf2e'),
+      feats: [{ type: 'Class', level: '1', action: '', name: 'Rage', desc: '' }],
+    }
+    toggleEffect(sheet, 'Rage', 1)
+    expect(sheet.effects?.on).toEqual(['Rage'])
+    const line = applyConditionChangeFor('pf2e', sheet, {
+      id: 'a',
+      condition: 'Unconscious',
+      add: true,
+    })
+    expect(line).toMatch(/^GM: you are Unconscious\. Rage ends/)
+    expect(sheet.effects?.on).toEqual([])
   })
 
   it('copes with an old 5e sheet that has no conditions list', () => {

@@ -306,7 +306,7 @@ describe('pf2e casting (pp. 297–298)', () => {
       focusSpells: [ref('Counter Performance')],
       focus: { max: 1, current: 0, note: '' },
     }
-    expect(dailyPreparations(s)).toBe('Daily preparations: Focus Points restored.')
+    expect(dailyPreparations(s)).toBe('Daily preparations: Focus Points and daily abilities restored.')
     expect(s.focus.current).toBe(1)
   })
 

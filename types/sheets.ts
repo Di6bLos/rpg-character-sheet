@@ -150,6 +150,11 @@ export interface Pf2eFeat {
   action: string
   name: string
   desc: string
+  /** AoN id, for heroes made in the builder. */
+  id?: string
+  /** "once per day", "once per 10 minutes"… as the book puts it. */
+  frequency?: string
+  trigger?: string
 }
 
 export interface Pf2eSheet extends SheetCommon {
@@ -199,6 +204,18 @@ export interface Pf2eSheet extends SheetCommon {
   spellcasting?: Pf2eSpellcasting
   /** Focus spells the hero knows; `focus` holds the pool. */
   focusSpells?: Pf2eSpellRef[]
+  /**
+   * Effects from `data/pf2e/effects.ts`: toggles the hero has turned on (Rage) and effects
+   * from allies (Bless, Heroism +2), by name. `tempHp`: the temporary Hit Points a toggle
+   * gave (Rage), so they go when it ends.
+   */
+  effects?: {
+    on: string[]
+    given: { name: string; value?: number }[]
+    tempHp?: { from: string; amount: number }
+  }
+  /** Abilities with a daily frequency used since the last daily preparations, by name. */
+  used?: string[]
 }
 
 /** A spell from `data/pf2e`: its AoN id, name and lowest rank (cantrips are rank 1). */

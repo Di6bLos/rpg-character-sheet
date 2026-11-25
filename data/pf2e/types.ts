@@ -267,3 +267,67 @@ export interface Pf2eDeityDef extends Pf2eRecord {
   /** Spells a cleric of this deity adds to their list, by name. */
   clericSpells: string[]
 }
+
+/** What a modifier applies to. `checks` is every check and DC; `saves` every saving throw. */
+export type Pf2eSelector =
+  | 'ac'
+  | 'attack'
+  | 'damage'
+  | 'perception'
+  | 'fortitude'
+  | 'reflex'
+  | 'will'
+  | 'saves'
+  | 'skills'
+  | 'checks'
+  | 'speed'
+
+/**
+ * One structured piece of what an ability does, read by `utils/pf2eEffects.ts`. Hand-written
+ * per ability in `data/pf2e/effects.ts` from its rules text; anything the kinds can't say
+ * stays in `note` for the player.
+ */
+export type Pf2eEffect =
+  /** A bonus or penalty. `melee` limits it to melee Strikes; `agileHalf` halves it for agile ones. */
+  | {
+      kind: 'modifier'
+      selector: Pf2eSelector[]
+      value: number
+      type: 'status' | 'circumstance' | 'item' | 'untyped'
+      melee?: boolean
+      agileHalf?: boolean
+    }
+  /** Extra damage dice on Strikes while a condition holds (sneak attack on an off-guard foe). */
+  | {
+      kind: 'damageDice'
+      /** Dice by level: the last entry at or below the hero's level applies. */
+      dice: [level: number, dice: string][]
+      when: 'offGuard' | 'huntedPrey'
+      /** Which Strikes: agile, finesse or ranged (sneak attack). */
+      weapons?: 'agileFinesseRanged'
+      label: string
+    }
+  /** Temporary Hit Points when turned on: level + CON (Rage). */
+  | { kind: 'tempHp'; formula: 'levelPlusCon' }
+  /** The dying value at which the hero dies (Diehard: 5). */
+  | { kind: 'deathAt'; value: number }
+  /** Change to recovery check DCs (Toughness: −1). */
+  | { kind: 'recoveryDc'; value: number }
+
+export interface Pf2eEffectDef {
+  /** The feat, class feature, action or spell it belongs to, by name. */
+  name: string
+  source: Pf2eSource
+  /**
+   * `permanent`: on whenever the hero has the ability. `toggle`: the hero turns it on.
+   * `given`: an ally's effect on the hero (Bless), chosen from a list.
+   */
+  mode: 'permanent' | 'toggle' | 'given'
+  effects: Pf2eEffect[]
+  /** Values for a `given` effect that scales (Heroism +1/+2/+3); modifiers use the chosen one. */
+  values?: number[]
+  /** A toggle that ends when the hero falls unconscious (Rage). */
+  endsWhenUnconscious?: boolean
+  /** Rules the effect can't apply itself, shown while it's on. */
+  note?: string
+}

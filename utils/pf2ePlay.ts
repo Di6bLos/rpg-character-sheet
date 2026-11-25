@@ -3,6 +3,7 @@
 // (p. 401), and damage, Shield Block, knocked out, dying, wounded and doomed (pp. 269,
 // 406, 410–412). Pure functions on the sheet; the sheet panels call them and `say()` the result.
 import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import { baseDeathAt, effectMods, endOnUnconscious, recoveryDcChange } from '~/utils/pf2eEffects'
 
 const RANK_BONUS: Record<Pf2eRank, number> = { U: 0, T: 2, E: 4, M: 6, L: 8 }
 
@@ -62,6 +63,11 @@ export function stackMods(mods: Pf2eMod[]) {
 export interface Pf2eStatContext {
   kind: 'ac' | 'save' | 'perception' | 'classDc' | 'attack' | 'skill' | 'damage'
   attr?: Pf2eAttr
+  /** Strikes: melee, and agile (Rage's damage is halved for agile attacks). */
+  melee?: boolean
+  agile?: boolean
+  /** Strikes: their traits, lowercased (an agile trait halves Rage's damage too). */
+  traits?: string[]
   /** A Reflex save, for unconscious. */
   save?: 'Fortitude' | 'Reflex' | 'Will'
 }
@@ -196,9 +202,9 @@ export function conditionMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
   return mods
 }
 
-/** A number after conditions, with what changed it for its tooltip. */
+/** A number after conditions and active effects, with what changed it for its tooltip. */
 export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext) {
-  const { total, applied } = stackMods(conditionMods(s, ctx))
+  const { total, applied } = stackMods([...conditionMods(s, ctx), ...effectMods(s, ctx)])
   return {
     value: base + total,
     changed: total !== 0,
@@ -218,8 +224,8 @@ export const SAVE_ATTR: Record<string, Pf2eAttr> = {
 
 // --- Damage, dying, wounded, doomed ----------------------------------------------
 
-/** The dying value at which the hero dies: 4, less doomed (p. 443). */
-export const deathAt = (s: Pf2eSheet) => Math.max(0, 4 - (s.doomed ?? 0))
+/** The dying value at which the hero dies: 4 (5 with Diehard), less doomed (p. 443). */
+export const deathAt = (s: Pf2eSheet) => Math.max(0, baseDeathAt(s) - (s.doomed ?? 0))
 export const isDead = (s: Pf2eSheet) => s.dying >= deathAt(s) && (s.dying > 0 || deathAt(s) === 0)
 
 function addCondition(s: Pf2eSheet, name: string) {
@@ -231,7 +237,7 @@ function removeCondition(s: Pf2eSheet, name: string) {
 
 /** Raise dying (p. 411); returns the death line if that kills the hero. */
 function worsen(s: Pf2eSheet, by: number) {
-  s.dying = Math.min(4, s.dying + by)
+  s.dying = Math.min(baseDeathAt(s), s.dying + by)
   return isDead(s) ? ` Dying ${s.dying}: your hero dies.` : ` Dying ${s.dying}.`
 }
 
@@ -310,7 +316,9 @@ export function takeDamage(s: Pf2eSheet, amount: number, o: Pf2eDamageOptions = 
   const took = `Took ${fromTemp + left} damage${o.crit ? ' (crit)' : ''}: ${s.hp}/${s.hpMax} HP.`
   if (s.hp > 0 || fromTemp + left === 0) return [...notes, took].join(' ')
   addCondition(s, 'Unconscious')
-  return `${[...notes, took].join(' ')} Knocked out:${worsen(s, (o.crit ? 2 : 1) + s.wounded)}`
+  const ended = endOnUnconscious(s)
+  const out = `${[...notes, took].join(' ')} Knocked out:${worsen(s, (o.crit ? 2 : 1) + s.wounded)}`
+  return ended ? `${out} ${ended}` : out
 }
 
 /** Healing, recovery checks and Heroic Recovery can't bring back the dead (p. 411). */
@@ -330,6 +338,9 @@ export function heal(s: Pf2eSheet, amount: number): string {
   return `Healed ${s.hp - was}: ${s.hp}/${s.hpMax} HP.${note}`
 }
 
+/** The recovery check DC (p. 411): 10 + dying, 1 lower with Toughness (p. 263). */
+export const recoveryDc = (s: Pf2eSheet) => 10 + s.dying + recoveryDcChange(s)
+
 /**
  * Recovery check (p. 411): a flat check against DC 10 + dying at the start of your turn.
  * Critical success −2, success −1, failure +1, critical failure +2.
@@ -337,7 +348,7 @@ export function heal(s: Pf2eSheet, amount: number): string {
 export function recoveryCheck(s: Pf2eSheet, natural: number): string {
   if (isDead(s)) return DEAD
   if (s.dying <= 0) return 'Not dying: no recovery check.'
-  const dc = 10 + s.dying
+  const dc = recoveryDc(s)
   const d = degreeOf(natural, natural, dc)
   const head = `Recovery check: ${natural} vs DC ${dc}, ${d}.`
   if (d === 'critical failure' || d === 'failure')
