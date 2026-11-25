@@ -81,8 +81,14 @@ export const ACTION_GLYPH: Record<string, string> = {
   reaction: '↺',
   free: '◇',
 }
+/** Each part of a cost as its glyph: "1 to 3" → "◆ to ◆◆◆", "2 to 2 rounds" → "◆◆ to 2 rounds". */
 export const actionGlyph = (a?: Pf2eActionCost) =>
-  a === undefined ? '' : (ACTION_GLYPH[String(a)] ?? String(a))
+  a === undefined
+    ? ''
+    : String(a)
+        .split(/ (to|or) /)
+        .map((p) => ACTION_GLYPH[p] ?? p)
+        .join(' ')
 
 const byId = <T extends { id: string }>(list: T[], id?: string) =>
   id ? list.find((x) => x.id === id) : undefined
@@ -149,12 +155,9 @@ const WORD_COUNT: Record<string, number> = { one: 1, two: 2, three: 3 }
 export function ancestryBoostPlan(a: Pf2eAncestryDef, freeInstead: boolean) {
   if (freeInstead) return { fixed: [] as Pf2eAttr[], free: 2, flaws: [] as Pf2eAttr[] }
   const toAttr = (n: string) => ATTR_BY_NAME[n]
-  // Human and Orc list "Two free ability boosts" rather than two "Free" entries.
-  const free = (b: string) =>
-    b === 'Free' ? 1 : (WORD_COUNT[/^(\w+) free/i.exec(b)?.[1]?.toLowerCase() ?? ''] ?? 0)
   return {
     fixed: a.boosts.map(toAttr).filter((x): x is Pf2eAttr => !!x),
-    free: a.boosts.reduce((n, b) => n + free(b), 0),
+    free: a.boosts.filter((b) => b === 'Free').length,
     flaws: a.flaws.map(toAttr).filter((x): x is Pf2eAttr => !!x),
   }
 }
@@ -359,19 +362,10 @@ const SUBCLASS_RULES: Record<
   {
     skip?: string[]
     choices?: (Omit<Pf2eSubclassChoice, 'options'> & { kinds: string[]; maxLevel?: number })[]
-    /** Notes for a choice found on the class table, by its kind. */
-    notes?: Record<string, string>
   }
 > = {
   // Apparitions are chosen during daily preparations, not at creation (War of Immortals).
   Animist: { skip: ['Animist Apparition'] },
-  // The generated orders carry only their flavour text (a data gap), not their mechanics.
-  Druid: {
-    notes: {
-      'Druidic Order':
-        "Your order's skill, feat and order spell aren't in the rules data yet: add them on the sheet.",
-    },
-  },
   Commander: {
     skip: ['Commander Tactic'],
     choices: [
@@ -449,7 +443,6 @@ export function subclassChoices(cls: Pf2eClassDef): Pf2eSubclassChoice[] {
       label: shortKind(cls, k).replace(/^\w/, (x) => x.toUpperCase()),
       options: cls.subclasses.filter((s) => s.kind === k),
       count: { min: 1, max: 1 },
-      ...(rules.notes?.[k] ? { note: rules.notes[k] } : {}),
     }))
   const extra = (rules.choices ?? []).map(({ kinds: ks, maxLevel, ...rest }) => ({
     ...rest,
@@ -952,6 +945,19 @@ export function armorPenalties(
   return { check, speed: armorSpeed + shieldSpeed, notes }
 }
 
+/**
+ * Speeds as the sheet writes them: the land Speed (a heritage's own when it gives one, as an
+ * awakened animal's does) less armor and shields, never under 5 feet, then the other speeds the
+ * heritage grants ("20 ft, climb 20 ft").
+ */
+export function speedLine(ancestry: Pf2eAncestryDef, heritage?: Pf2eHeritageDef, penalty = 0) {
+  const land = heritage?.speeds?.land ?? ancestry.speed
+  const other = Object.entries(heritage?.speeds ?? {})
+    .filter(([k, v]) => k !== 'land' && v)
+    .map(([k, v]) => `${k} ${v} ft`)
+  return [land ? `${Math.max(5, land + penalty)} ft` : '', ...other].filter(Boolean).join(', ')
+}
+
 /** The level 1 sheet the choices make (Player Core Steps 3–10). */
 export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet {
   const { ancestry, heritage, background, cls, deity, subclassPicks: picked } = resolve(c, data)
@@ -1016,7 +1022,7 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
     ],
     initMod: perception,
     passivePerception: 10 + perception,
-    speed: `${Math.max(5, ancestry.speed + penalty.speed)} ft`,
+    speed: speedLine(ancestry, heritage, penalty.speed),
     skills: [
       ...PF2E_SKILLS.filter(([n]) => n !== 'Lore').map(([name, attr]) => {
         const rank: Pf2eRank = trained.includes(name) ? 'T' : 'U'
@@ -1055,6 +1061,7 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
     shield: shield
       ? {
           name: shield.name,
+          ac: shield.ac,
           hardness: shield.hardness,
           hp: shield.hp,
           hpMax: shield.hp,
@@ -1088,6 +1095,7 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
     notes: [
       `Languages: ${ancestry.languages.join(', ')}${extraLanguages ? ` (+${extraLanguages} of your choice)` : ''}`,
       ...penalty.notes,
+      ...[ancestry, heritage, ...picked].filter((r) => r.gap).map((r) => `${r.name}: ${r.gap}`),
     ].join('\n'),
     classSlug: cls.slug,
     creation: c,

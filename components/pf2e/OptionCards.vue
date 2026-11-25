@@ -15,6 +15,8 @@ export interface Pf2eOption {
   rarity?: string
   /** Why it can't be picked right now. */
   disabled?: string
+  /** What the rules data leaves out, to add on the sheet (a druidic order's mechanics). */
+  gap?: string
 }
 
 const props = withDefaults(
@@ -124,6 +126,7 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
             }}</span>
           </span>
           <span v-if="o.meta" class="option__meta">{{ o.meta }}</span>
+          <span v-if="o.gap" class="option__gap">{{ o.gap }}</span>
           <span v-if="o.disabled" class="option__why">{{ o.disabled }}</span>
           <span v-else-if="o.text" class="option__sum">{{ summary(o.text) }}</span>
         </button>
@@ -249,6 +252,12 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
 .option__sum {
   font-size: 13px;
   line-height: 1.45;
+  color: var(--panel-soft);
+}
+
+.option__gap {
+  font-size: 12px;
+  font-style: italic;
   color: var(--panel-soft);
 }
 

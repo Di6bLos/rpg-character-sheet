@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Pf2eCreation } from '../types/sheets'
 import {
+  actionGlyph,
   ancestryBoostPlan,
   armorPenalties,
   armorRank,
@@ -24,6 +25,7 @@ import {
   skillPlan,
   skillProblems,
   slotTaken,
+  speedLine,
   subclassChoices,
   trainedSkills,
   untrainedGear,
@@ -275,12 +277,18 @@ describe('pf2e background boosts the data leaves out (from the rules text)', () 
   const shape = (name: string) =>
     backgroundBoostSlots(bg(name)).map((s) => (s.allowed.length === 6 ? 'free' : s.allowed))
 
+  /** A background as the data gives it when the boosts are only in the text. */
+  const textOnly = (text: string) => ({ ...bg('Amnesiac'), boosts: [], text })
+
   it('reads "You gain N free attribute boosts"', () => {
     expect(shape('Amnesiac')).toEqual(['free', 'free', 'free'])
     expect(shape('Discarded Duplicate')).toEqual(['free', 'free', 'free'])
-    expect(shape('Banished Celestial')).toEqual(['free', 'free'])
-    expect(shape('Fated Rival')).toEqual(['free', 'free'])
-    expect(backgroundBoostSlots(bg('Fated Rival'))[0]!.note).toMatch(/GM chooses one/)
+    // Fated Rival's wording (a Golarion book, so not in the committed data).
+    const rival = textOnly(
+      'You gain two free attribute boosts; you choose one, and the GM chooses one to complement your rival.',
+    )
+    expect(backgroundBoostSlots(rival)).toHaveLength(2)
+    expect(backgroundBoostSlots(rival)[0]!.note).toMatch(/GM chooses one/)
   })
 
   it('reads "Choose … It must be to" and "Each boost has to be to"', () => {
@@ -292,10 +300,16 @@ describe('pf2e background boosts the data leaves out (from the rules text)', () 
   })
 
   it('leaves a sign or a deity not chosen yet free, with a note', () => {
-    const [sign] = backgroundBoostSlots(bg('Zodiac Bound'))
+    // Zodiac Bound's wording (a Golarion book, so not in the committed data).
+    const zodiac = textOnly(
+      'Choose two attribute boosts. One must be to the attribute tied to your sign, and one is a free attribute boost.',
+    )
+    const [sign, free] = backgroundBoostSlots(zodiac)
     expect(sign).toMatchObject({ label: "Your sign's attribute", note: expect.any(String) })
-    expect(shape('Zodiac Bound')).toEqual(['free', 'free'])
+    expect(sign!.allowed).toHaveLength(6)
+    expect(free!.allowed).toHaveLength(6)
     expect(shape('Raised by Belief')).toEqual(['free', 'free'])
+    expect(backgroundBoostSlots(bg('Raised by Belief'))[0]!.note).toMatch(/deity/)
     const sarenrae = named(data.deities, 'Sarenrae')
     expect(backgroundBoostSlots(bg('Raised by Belief'), sarenrae)[0]!.allowed).toEqual(
       sarenrae.attributes,
@@ -428,16 +442,29 @@ describe('pf2e skill text', () => {
     expect(backgroundSkills(bg('Noble')).groups).toEqual([
       { options: ['Genealogy Lore', 'Heraldry Lore'], count: 1 },
     ])
-    expect(backgroundSkills(bg('Weaver')).groups[0]!.options).toHaveLength(3)
-    expect(backgroundSkills(bg('Driver')).groups[0]!.options).toEqual([
+    expect(backgroundSkills(bg('Guard')).groups[0]!.options).toEqual(['Legal Lore', 'Warfare Lore'])
+    // AoN's doubled "Lore Lore", three options, a note after the name, a link.
+    const prose = (skills: string[]) => backgroundSkills({ ...bg('Guard'), skills })
+    expect(prose(['Driving Lore Lore or Piloting Lore']).groups[0]!.options).toEqual([
       'Driving Lore',
       'Piloting Lore',
     ])
-    expect(backgroundSkills(bg('Azlanti Researcher')).fixed).toContain('Azlant Lore')
+    expect(
+      prose(['Basket Weaving Lore or Tapestry Lore or Textile Lore.']).groups[0]!.options,
+    ).toHaveLength(3)
+    expect(prose(['Azlant Lore . Add Azlanti to your languages.']).fixed).toEqual(['Azlant Lore'])
+    expect(prose(['Mana Wastes Lore (or another similar Lore skill)']).fixed).toEqual([
+      'Mana Wastes Lore',
+    ])
+    expect(
+      prose(['Academia Lore or a Lore skill <a href="/x">associated with your school</a>']).lores,
+    ).toEqual([{ hint: 'Academia Lore or a Lore skill associated with your school' }])
     const bandit = backgroundSkills(bg('Bandit'))
     expect(bandit.fixed).toEqual(['Intimidation'])
     expect(bandit.lores).toEqual([{ hint: expect.stringMatching(/^Lore related to the terrain/) }])
-    expect(backgroundSkills(bg('Academic Scion')).lores).toHaveLength(1)
+    expect(backgroundSkills(bg('Saloon Entertainer')).lores).toEqual([
+      { hint: 'Lore of your choice' },
+    ])
   })
 
   it('needs the named Lore before the hero is done, then trains it', () => {
@@ -616,7 +643,35 @@ describe('pf2e feats from the class table and heritages', () => {
     expect(names).not.toContain('initial proficiencies')
   })
 
-  it('tells a druid that the order’s mechanics go on the sheet', () => {
-    expect(subclassChoices(cls('Druid'))[0]!.note).toMatch(/add them on the sheet/)
+  it('notes what the data leaves out (a druid’s order) on the sheet', () => {
+    const druid = cls('Druid')
+    const order = druid.subclasses.find((o) => o.gap)!
+    const c = withPicks('Druid', { 'Druidic Order': [order.id] })
+    expect(buildPf2eSheet(c, data).notes).toContain(`${order.name}: ${order.gap}`)
+  })
+})
+
+describe('pf2e data shapes after the setting cut', () => {
+  it('reads each part of a compound action cost', () => {
+    expect(actionGlyph(2)).toBe('◆◆')
+    expect(actionGlyph('1 to 3')).toBe('◆ to ◆◆◆')
+    expect(actionGlyph('free or 1')).toBe('◇ or ◆')
+    expect(actionGlyph('reaction or 2')).toBe('↺ or ◆◆')
+    expect(actionGlyph('2 to 2 rounds')).toBe('◆◆ to 2 rounds')
+  })
+
+  it('takes Speed from a heritage that gives one (awakened animals)', () => {
+    const animal = named(data.ancestries, 'Awakened Animal')
+    expect(speedLine(animal, named(data.heritages, 'Climbing Animal'))).toBe('20 ft, climb 20 ft')
+    expect(speedLine(animal, named(data.heritages, 'Swimming Animal'))).toBe('swim 30 ft')
+    const dwarf = named(data.ancestries, 'Dwarf')
+    expect(speedLine(dwarf, named(data.heritages, 'Rock Dwarf'), -10)).toBe('10 ft')
+    expect(speedLine(dwarf, undefined, -20)).toBe('5 ft')
+  })
+
+  it('puts the shield’s own AC bonus on the sheet', () => {
+    const buckler = named(data.shields, 'Buckler')
+    const s = buildPf2eSheet({ ...dwarfFighter(), shield: buckler.id }, data)
+    expect(s.shield).toMatchObject({ name: 'Buckler', ac: buckler.ac })
   })
 })

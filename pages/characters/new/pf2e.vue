@@ -193,6 +193,7 @@ const opt = (r: Pf2eRecord, meta?: string): Pf2eOption => ({
   meta,
   text: r.text,
   rarity: r.rarity,
+  gap: r.gap,
 })
 
 // --- Ancestry ---------------------------------------------------------------
@@ -201,9 +202,9 @@ const ancestryOptions = computed(() =>
     opt(
       a,
       [
-        `HP ${a.hp}`,
+        a.hp ? `HP ${a.hp}` : '',
         a.size.join('/'),
-        `Speed ${a.speed} ft`,
+        a.speed ? `Speed ${a.speed} ft` : '',
         boostLine(ancestryBoostPlan(a, false)),
       ]
         .filter(Boolean)
@@ -385,9 +386,15 @@ const ACTION_NAME: Record<string, string> = {
   '↺': 'reaction',
   '◇': 'free action',
 }
+/** Glyphs back to words, part by part: "◇ or ◆" → "free action or 1 action". */
+const glyphWords = (g: string) =>
+  g
+    .split(/ (to|or) /)
+    .map((p) => ACTION_NAME[p] ?? p)
+    .join(' ')
 const featMeta = (f: Pf2eFeatDef) =>
   [
-    ACTION_NAME[actionGlyph(f.actions)] ?? actionGlyph(f.actions),
+    glyphWords(actionGlyph(f.actions)),
     f.traits.join(', '),
     f.prerequisites ? `Needs ${f.prerequisites}` : '',
   ]
@@ -977,7 +984,7 @@ async function create() {
                 <strong>{{ f.name }}</strong>
                 <template v-if="f.action">
                   <span aria-hidden="true">{{ ` ${f.action}` }}</span>
-                  <span class="sr-only">({{ ACTION_NAME[f.action] ?? f.action }})</span>
+                  <span class="sr-only">({{ glyphWords(f.action) }})</span>
                 </template>
                 <span class="muted">{{ ` · ${f.type}` }}</span>
               </p>

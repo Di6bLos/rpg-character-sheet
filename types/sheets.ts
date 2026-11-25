@@ -153,7 +153,16 @@ export interface Pf2eSheet extends SheetCommon {
   attrs: Record<Pf2eAttr, number>
   acRank: Pf2eRank
   hpPerLevel: number
-  shield: { name: string; hardness: number; hp: number; hpMax: number; bt: number; raised: boolean }
+  shield: {
+    name: string
+    /** Its circumstance bonus to AC while raised (Buckler +1, most +2); absent means +2. */
+    ac?: number
+    hardness: number
+    hp: number
+    hpMax: number
+    bt: number
+    raised: boolean
+  }
   /** Fortitude, Reflex, Will, Perception, Class DC. */
   saves: Pf2eProficiency[]
   tempHp: number
