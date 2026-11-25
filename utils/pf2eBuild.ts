@@ -358,7 +358,7 @@ export function skillPlan(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSkillPlan {
     const extra = /skills equal to (\d+) plus your Intelligence modifier/.exec(body)
     if (extra) free += Math.max(0, Number(extra[1]) + int)
     else if (/determined by/.test(body)) continue
-    else if (/^your choice of /.test(body))
+    else if (body.startsWith('your choice of '))
       groups.push({ options: splitSkills(body.slice(15)), count: 1 })
     else if (/ and either /.test(body)) {
       const [must = '', rest = ''] = body.split(/ and either /)
