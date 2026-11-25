@@ -278,6 +278,8 @@ export interface Pf2eEffectDef {
   values?: number[]
   /** Only while this other effect is on (the ranger's edges need Hunt Prey). */
   requires?: string
+  /** A toggle that ends when the hero falls unconscious (Rage). */
+  endsWhenUnconscious?: boolean
   /** Rules the effect can't apply itself, shown while it's on. */
   note?: string
 }

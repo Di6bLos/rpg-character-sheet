@@ -194,9 +194,14 @@ export interface Pf2eSheet extends SheetCommon {
   focusSpells?: Pf2eSpellRef[]
   /**
    * Effects from `data/pf2e/effects.ts`: toggles the hero has turned on (Rage) and effects
-   * from allies (Bless, Heroism +2), by name.
+   * from allies (Bless, Heroism +2), by name. `tempHp`: the temporary Hit Points a toggle
+   * gave (Rage), so they go when it ends.
    */
-  effects?: { on: string[]; given: { name: string; value?: number }[] }
+  effects?: {
+    on: string[]
+    given: { name: string; value?: number }[]
+    tempHp?: { from: string; amount: number }
+  }
   /** Abilities with a daily frequency used since the last daily preparations, by name. */
   used?: string[]
 }

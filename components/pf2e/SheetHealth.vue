@@ -5,7 +5,15 @@
 import type { Pf2eSheet } from '~/types/sheets'
 import { rollDie } from '~/utils/dice'
 import { baseDeathAt } from '~/utils/pf2eEffects'
-import { deathAt, heal, heroicRecovery, isDead, recoveryCheck, takeDamage } from '~/utils/pf2ePlay'
+import {
+  deathAt,
+  heal,
+  heroicRecovery,
+  isDead,
+  recoveryCheck,
+  recoveryDc,
+  takeDamage,
+} from '~/utils/pf2ePlay'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -69,8 +77,8 @@ function adjust(k: Track, by: number) {
     <div v-else-if="dying" class="notice notice--error dying" role="alert">
       <span>
         <strong>Dying {{ sheet.dying }}</strong> — unconscious; you die at dying
-        {{ deathAt(sheet) }}. Roll a recovery check (DC {{ 10 + sheet.dying }}) at the start of your
-        turn.
+        {{ deathAt(sheet) }}. Roll a recovery check (DC {{ recoveryDc(sheet) }}) at the start of
+        your turn.
       </span>
       <span class="row" style="gap: 6px">
         <button type="button" class="btn btn--sm" :disabled="!canEdit" @click="recover">

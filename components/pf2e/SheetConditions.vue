@@ -3,9 +3,10 @@
 // readers), and a value stepper on valued ones that are on (frightened 2). What they do to
 // the numbers is `conditionMods` in utils/pf2ePlay.ts; the sheet shows the changed values.
 import type { Pf2eSheet } from '~/types/sheets'
+import { endOnUnconscious } from '~/utils/pf2eEffects'
 import { PF2E_CONDITION_DEFS, activeConditions, conditionValue } from '~/utils/pf2ePlay'
 
-const { draft, canEdit } = useSheet<Pf2eSheet>()
+const { draft, canEdit, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
 const implied = computed(() => {
   const on = activeConditions(sheet.value)
@@ -18,7 +19,12 @@ function toggle(name: string) {
   if (s.conditions.includes(name)) {
     s.conditions = s.conditions.filter((c) => c !== name)
     if (s.conditionValues) delete s.conditionValues[name]
-  } else s.conditions = [...s.conditions, name]
+    return
+  }
+  s.conditions = [...s.conditions, name]
+  // Falling unconscious ends Rage (Player Core 2 p. 72).
+  const ended = name === 'Unconscious' ? endOnUnconscious(s) : ''
+  if (ended) say(ended)
 }
 
 function step(name: string, by: number) {
