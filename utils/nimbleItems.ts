@@ -1,5 +1,3 @@
-import { ancestryBySlug } from '~/data/nimble/ancestries'
-import { backgroundBySlug } from '~/data/nimble/backgrounds'
 import { classBySlug } from '~/data/nimble/classes'
 import { ARMOR, GEAR, WEAPONS, armorByName, gearByName, weaponByName } from '~/data/nimble/core'
 import { MAGIC_ITEMS, SCROLL_RULES, WAND_RULES, magicItemByName } from '~/data/nimble/items'
@@ -12,8 +10,11 @@ import type {
   NimbleSheet,
 } from '~/types/sheets'
 import { parseDice, rollDie, sign, type Rng } from '~/utils/dice'
-import { abilityArmor } from '~/utils/nimbleArmor'
-import { abilityBaseName, classFlagAt, classMeleeDamage, weaponAttack } from '~/utils/nimbleBuild'
+import { classMeleeDamage, weaponAttack } from '~/utils/nimbleBuild'
+import { adoptStartingWorn, armorPiece, armorValue, wornArmor } from '~/utils/nimbleWornArmor'
+
+export { armorPiece, armorValue, wornArmor }
+export type { ArmorPiece } from '~/utils/nimbleWornArmor'
 
 export const SPELL_SCROLL = 'Spell Scroll'
 
@@ -240,24 +241,6 @@ export function itemAttack(
   }
 }
 
-export function armorValue(formula: string, stats: NimbleSheet['stats']): number | null {
-  const cap = Number(/\(max (\d+)\)/.exec(formula)?.[1] ?? Number.POSITIVE_INFINITY)
-  const terms = formula
-    .replace(/\(.*?\)/g, '')
-    .replace(/\s+/g, '')
-    .split('+')
-    .filter(Boolean)
-  if (!terms.length) return null
-  let total = 0
-  for (const t of terms) {
-    if (/^\d+$/.test(t)) total += Number(t)
-    else if (t === 'STR' || t === 'DEX' || t === 'INT' || t === 'WIL')
-      total += Math.min(cap, stats[t])
-    else return null
-  }
-  return total
-}
-
 function shown(formula: string, stats: NimbleSheet['stats']): string {
   const value = armorValue(formula, stats)
   if (value === null) return formula
@@ -283,112 +266,6 @@ export function itemStat(sheet: NimbleSheet, item: InventoryItem, level: number)
   return `Armor ${value ?? formula}`
 }
 
-/** An invention worn as armor says so in its ability text (Armor Prototype: "Armor: INT+DEX."). */
-const INVENTION_ARMOR = /^Armor: ([\dA-Z+]+)\./
-
-export interface ArmorPiece {
-  shield: boolean
-  /** "6+DEX (max 2)", "+2", "INT+DEX". */
-  formula: string
-  /** Cloth, Leather, Mail, Plate, Shield; Custom, Magic or Invention otherwise. */
-  kind: string
-  /** STR the book lists as required (Req. N STR). */
-  str: number
-}
-
-/** What an item gives when worn: book, custom or magic armor or a shield, or an armor invention. */
-export function armorPiece(sheet: NimbleSheet, item: InventoryItem): ArmorPiece | null {
-  const book = armorByName(item.name)
-  if (book)
-    return {
-      shield: book.kind === 'Shield',
-      formula: book.armor,
-      kind: book.kind,
-      str: book.str ?? 0,
-    }
-  const c = item.custom
-  if ((c?.kind === 'armor' || c?.kind === 'shield') && c.armor?.trim())
-    return {
-      shield: c.kind === 'shield',
-      formula: c.armor,
-      kind: c.kind === 'shield' ? 'Shield' : 'Custom',
-      str: 0,
-    }
-  const magic = magicItemByName(item.name)
-  if (magic?.armor)
-    return {
-      shield: magic.kind === 'shield',
-      formula: magic.armor,
-      kind: magic.kind === 'shield' ? 'Shield' : 'Magic',
-      str: 0,
-    }
-  const formula = sheet.abilities
-    .filter((a) => abilityBaseName(a.name) === item.name)
-    .map((a) => INVENTION_ARMOR.exec(a.desc)?.[1])
-    .findLast(Boolean)
-  return formula ? { shield: false, formula, kind: 'Invention', str: 0 } : null
-}
-
-/** Whether the class is trained in this kind of armor ("Mail Armor, Shields", "All Armor"). */
-function proficient(training: string, kind: string): boolean {
-  if (/\bAll\b/.test(training)) return true
-  if (kind === 'Shield') return /\bShields?\b/.test(training)
-  if (kind === 'Invention') return /\bInventions?\b/.test(training)
-  return new RegExp(`\\b${kind}\\b`).test(training)
-}
-
-/**
- * The hero's Armor from what they wear (Core p. 33): the worn armor's formula, or DEX
- * unarmored (Zephyr: DEX+STR, doubled by Iron Defense); plus a worn shield and the
- * ancestry, background and ability armor. Notes an unmet STR requirement and armor
- * the class isn't trained in (Defend then costs 1 more action).
- */
-export function wornArmor(
-  sheet: NimbleSheet,
-  level: number,
-): { value: number; parts: string[]; notes: string[] } {
-  const cls = classBySlug(sheet.classSlug)
-  const worn = sheet.inventory
-    .filter((i) => i.worn)
-    .flatMap((item) => {
-      const piece = armorPiece(sheet, item)
-      return piece ? [{ item, piece }] : []
-    })
-  const body = worn.find((w) => !w.piece.shield)
-  const shield = worn.find((w) => w.piece.shield)
-  const parts: string[] = []
-  const notes: string[] = []
-  let value: number
-  if (body) {
-    value = armorValue(body.piece.formula, sheet.stats) ?? 0
-    parts.push(`${body.item.name} ${value}`)
-  } else {
-    const str = cls?.armorCalc.addStr ? sheet.stats.STR : 0
-    value = sheet.stats.DEX + str
-    if (cls && classFlagAt(cls, level, 'armorDoubled')) value *= 2
-    parts.push(`unarmored ${value}`)
-  }
-  if (shield) {
-    const bonus = armorValue(shield.piece.formula, sheet.stats) ?? 0
-    value += bonus
-    parts.push(`${shield.item.name} +${bonus}`)
-  }
-  const extra =
-    (ancestryBySlug(sheet.ancestrySlug)?.armor ?? 0) +
-    (backgroundBySlug(sheet.backgroundSlug)?.armor ?? 0) +
-    abilityArmor(sheet)
-  if (extra) {
-    value += extra
-    parts.push(`${sign(extra)} ancestry, background and abilities`)
-  }
-  for (const { item, piece } of worn) {
-    if (piece.str > sheet.stats.STR) notes.push(`${item.name} needs ${piece.str} STR.`)
-    if (cls && !proficient(cls.armor, piece.kind))
-      notes.push(`Not trained in ${item.name}: Defend costs 1 more action.`)
-  }
-  return { value, parts, notes }
-}
-
 /**
  * Puts on or takes off armor or a shield: one of each is worn at a time, and the
  * hero's Armor is worked out again from what they now wear.
@@ -396,7 +273,12 @@ export function wornArmor(
 export function wearItem(sheet: NimbleSheet, item: InventoryItem, level: number): string {
   const piece = armorPiece(sheet, item)
   if (!piece) return ''
+  // What the click means is decided first; then a sheet from before Equip, whose Armor
+  // assumed its starting armor and shield are on, gets them marked worn.
   const on = !item.worn
+  const at = sheet.inventory.indexOf(item)
+  adoptStartingWorn(sheet)
+  item = sheet.inventory[at] ?? item
   sheet.inventory = sheet.inventory.map((i) => {
     if (i === item) return { ...i, worn: on }
     const other = armorPiece(sheet, i)

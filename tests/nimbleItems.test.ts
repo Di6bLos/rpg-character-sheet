@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import { WEAPONS } from '../data/nimble/core'
 import type { InventoryItem, NimbleSheet } from '../types/sheets'
-import { build } from '../utils/nimbleAutoBuild'
+import { ancestryBySlug } from '../data/nimble/ancestries'
+import { build, levelTo } from '../utils/nimbleAutoBuild'
+import { restoreLevel } from '../utils/levelHistory'
 import {
   SPELL_SCROLL,
   armorPiece,
@@ -160,10 +162,11 @@ describe('equipping armor', () => {
     const sheet: NimbleSheet = {
       ...hero(),
       classSlug: 'commander',
+      // Everything taken off: `worn: false` records it (a sheet from before Equip has no flag).
       inventory: [
-        { name: 'Rusty Mail', qty: '1' },
-        { name: 'Chain Shirt', qty: '1' },
-        { name: 'Iron Shield', qty: '1' },
+        { name: 'Rusty Mail', qty: '1', worn: false },
+        { name: 'Chain Shirt', qty: '1', worn: false },
+        { name: 'Iron Shield', qty: '1', worn: false },
         { name: 'Rope', qty: '1' },
       ],
     }
@@ -205,5 +208,63 @@ describe('equipping armor', () => {
     const sheet: NimbleSheet = { ...hero(), classSlug: 'zephyr', inventory: [] }
     expect(wornArmor(sheet, 1).value).toBe(5)
     expect(wornArmor(sheet, 13).value).toBe(10)
+  })
+})
+
+describe('equipped Armor stays in step (PR #56 review)', () => {
+  const cls = (slug: string) => NIMBLE_CLASSES.find((c) => c.slug === slug)!
+
+  it('works Armor out from worn gear again after level-ups', () => {
+    const s = build(cls('hunter'))
+    s.inventory.push({ name: 'Rusty Plate', qty: '1', worn: false })
+    wearItem(s, s.inventory.at(-1)!, 1)
+    levelTo(s, 13, 'shadowpath')
+    expect(s.ac).toBe(wornArmor(s, 13).value)
+    expect(s.ac).toBe(10)
+  })
+
+  it('doubles a Zephyr’s whole unarmored Armor at Iron Defense, built or levelled the same way', () => {
+    const s = build(cls('zephyr'), ancestryBySlug('turtlefolk')!)
+    levelTo(s, 13, 'pain')
+    expect(s.ac).toBe(wornArmor(s, 13).value)
+  })
+
+  it('keeps Armor on worn gear when a level is undone', () => {
+    const s = build(cls('mage'))
+    levelTo(s, 5, 'control')
+    s.inventory.push({ name: 'Half Plate', qty: '1', worn: false })
+    wearItem(s, s.inventory.at(-1)!, 5)
+    restoreLevel(s, 4)
+    expect(s.ac).toBe(wornArmor(s, 4).value)
+  })
+
+  it('does not ask for STR when the armor has no requirement', () => {
+    const s = build(cls('mage'))
+    expect(s.stats.STR).toBeLessThan(0)
+    expect(wornArmor(s, 1).notes).toEqual([])
+  })
+
+  it('keeps the starting armor on when a sheet from before Equip puts on its shield first', () => {
+    const s = build(cls('oathsworn'))
+    const before = s.ac
+    s.inventory = s.inventory.map(({ worn: _worn, ...i }) => i)
+    const shield = s.inventory.find((i) => armorPiece(s, i)?.shield)!
+    expect(wearItem(s, shield, 1)).toMatch(/^Wearing/)
+    expect(s.ac).toBe(before)
+    expect(s.inventory.filter((i) => i.worn).length).toBe(2)
+  })
+
+  it('gives custom armor no training note and flags a formula it can’t read', () => {
+    const s = build(cls('mage'))
+    s.inventory.push({
+      name: 'Odd Coat',
+      qty: '1',
+      worn: false,
+      custom: { kind: 'armor', armor: '5 + DEX/2' } as InventoryItem['custom'],
+    })
+    wearItem(s, s.inventory.at(-1)!, 1)
+    const notes = wornArmor(s, 1).notes
+    expect(notes.some((n) => n.startsWith('Not trained'))).toBe(false)
+    expect(notes.some((n) => n.startsWith("Can't read Odd Coat"))).toBe(true)
   })
 })

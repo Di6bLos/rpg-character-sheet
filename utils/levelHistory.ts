@@ -1,6 +1,7 @@
 // Level history: a copy of the sheet taken before every level-up, so lowering a
 // character's level removes exactly what the higher levels granted.
-import type { AnySheet, LevelHistoryEntry, NimbleLevelInput } from '~/types/sheets'
+import type { AnySheet, LevelHistoryEntry, NimbleLevelInput, NimbleSheet } from '~/types/sheets'
+import { syncWornArmor } from '~/utils/nimbleWornArmor'
 
 /**
  * Play state that belongs to the table rather than the level: kept as it is when
@@ -137,6 +138,8 @@ export function restoreLevel(sheet: AnySheet, target: number): boolean {
 
   applySnapshot(sheet, entry.before)
   sheet.levelHistory = history.filter((e) => e.level <= target)
+  // The inventory (and what's worn) is play state the snapshot keeps; Armor follows it.
+  if (isNimble(sheet)) syncWornArmor(sheet, target)
   return true
 }
 
@@ -147,7 +150,10 @@ export function restoreLevel(sheet: AnySheet, target: number): boolean {
 export function restoreBuild(sheet: AnySheet, built: AnySheet): void {
   applySnapshot(sheet, snapshot(built))
   sheet.levelHistory = []
+  if (isNimble(sheet)) syncWornArmor(sheet, 1)
 }
+
+const isNimble = (s: AnySheet): s is NimbleSheet => 'stats' in s && 'abilities' in s
 
 function applySnapshot(sheet: AnySheet, snap: Loose) {
   const loose = sheet as unknown as Loose
