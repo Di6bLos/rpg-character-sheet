@@ -18,7 +18,7 @@ import type {
  */
 export const NIMBLE_RULES_VERSION = 4
 
-const PF2E_SKILLS: [string, Pf2eAttr][] = [
+export const PF2E_SKILLS: [string, Pf2eAttr][] = [
   ['Acrobatics', 'DEX'],
   ['Arcana', 'INT'],
   ['Athletics', 'STR'],

@@ -158,7 +158,16 @@ export interface Pf2eSheet extends SheetCommon {
   attrs: Record<Pf2eAttr, number>
   acRank: Pf2eRank
   hpPerLevel: number
-  shield: { name: string; hardness: number; hp: number; hpMax: number; bt: number; raised: boolean }
+  shield: {
+    name: string
+    /** Its circumstance bonus to AC while raised (Buckler +1, most +2); absent means +2. */
+    ac?: number
+    hardness: number
+    hp: number
+    hpMax: number
+    bt: number
+    raised: boolean
+  }
   /** Fortitude, Reflex, Will, Perception, Class DC. */
   saves: Pf2eProficiency[]
   tempHp: number
@@ -172,6 +181,42 @@ export interface Pf2eSheet extends SheetCommon {
   feats: Pf2eFeat[]
   bulkLimit: number
   coins: { gp: number; sp: number; cp: number }
+  /**
+   * Class slug from `data/pf2e` for heroes made in the builder; absent on hand-made
+   * sheets, which keep the free-text editing.
+   */
+  classSlug?: string
+  /** What the builder was given (AoN ids), so the build can be read back or redone. */
+  creation?: Pf2eCreation
+}
+
+/** The choices a Pathfinder 2e hero was built from (Player Core pp. 22–27); ids are AoN ids. */
+export interface Pf2eCreation {
+  ancestry: string
+  heritage: string
+  background: string
+  class: string
+  deity?: string
+  /** Alternate Ancestry Boosts (Player Core p. 23): two free boosts instead of the listed ones and flaws. */
+  freeAncestryBoosts: boolean
+  /** The ancestry's free boosts (both of them with `freeAncestryBoosts`). */
+  ancestryBoosts: Pf2eAttr[]
+  /** One of the background's two attributes, then its free boost. */
+  backgroundBoosts: Pf2eAttr[]
+  keyAttribute: Pf2eAttr
+  /** The four free boosts of Step 6. */
+  freeBoosts: Pf2eAttr[]
+  /** Subclass choice key → option ids (a muse, three ikons…). */
+  subclasses: Record<string, string[]>
+  /** Skills the player chose to be trained in. */
+  skills: string[]
+  /** Names for the Lore skills a background leaves to the player, in its order ("Desert"). */
+  lores?: string[]
+  /** Feat slot (`ancestry`, `class`, `skill`) → feat id. */
+  feats: Record<string, string>
+  armor?: string
+  shield?: string
+  weapons: string[]
 }
 
 // --- Nimble ---------------------------------------------------------------

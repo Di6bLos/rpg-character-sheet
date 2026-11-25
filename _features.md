@@ -314,8 +314,10 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 
 ### 8.3 Builder and level-up
 
-- [ ] `utils/pf2eBuild.ts`: build, level plan, level-up, choices
-- [ ] `/characters/new/pf2e` builder
+- [x] `utils/pf2eBuild.ts`: level 1 build and its choices (boosts, skills, subclasses, deity, feats, gear)
+- [x] `/characters/new/pf2e` builder
+- [ ] Spells and focus spells at creation (needs spell fields on the sheet, 8.4)
+- [ ] Level plan and level-up in `utils/pf2eBuild.ts`
 - [ ] Data-driven level-up in `LevelUpDialog` for PF2e sheets with a `classSlug`
 - [ ] Golden level tables after a `rules-auditor` pass per class
 
