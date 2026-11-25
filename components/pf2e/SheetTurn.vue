@@ -3,13 +3,15 @@
 // initiative bonuses like Incredible Initiative, once an encounter), then Start turn and End
 // turn one at a time, the actions and reaction left in words and pips, and which attack the
 // next Strike is for the multiple attack penalty. Its results show here. Rules in
-// utils/pf2eActions.ts; abilities spend from it in the Actions panel.
+// utils/pf2eActions.ts; abilities spend from it in the Actions panel. In a campaign the roll
+// goes to the GM's initiative tracker (`useSendInitiative`), as the board's turn bar sends it.
 import type { Pf2eSheet } from '~/types/sheets'
 import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import { endPf2eEncounter, endPf2eTurn, newTurn, startPf2eTurn } from '~/utils/pf2eActions'
 import { initiativeCheck } from '~/utils/pf2ePlay'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
+const sendInitiative = useSendInitiative()
 const { claim, resultIn } = useResultOwner()
 const sheet = computed(() => draft.value.sheet)
 const turn = computed(() => sheet.value.turn)
@@ -47,6 +49,9 @@ function rollInitiative() {
     const line = `Initiative: ${r.total} (${r.d20} ${sign(initiative.value.value)}${nat})${note}`
     showOutcome({ label: 'Initiative', total: r.total, detail: line })
     say(line)
+    void sendInitiative(r.total).then(
+      ({ note: sent }) => sent && claim('turn:init', () => say(`${line}${sent}`)),
+    )
   })
 }
 

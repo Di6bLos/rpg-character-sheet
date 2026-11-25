@@ -30,6 +30,14 @@ function toggleCondition(name: string, on: boolean) {
   void props.init.setConditions(row, on ? [...list, name] : list.filter((x) => x !== name))
 }
 
+/** PF2e persistent damage on a creature: a condition chip like "1d6 persistent fire". */
+function addPersistent(type: string, dice: string | null) {
+  const row = c.value
+  if (!row || !dice) return
+  const list = (row.conditions ?? []).filter((x) => !x.endsWith(` persistent ${type}`))
+  void props.init.setConditions(row, [...list, `${dice} persistent ${type}`])
+}
+
 const KIND = { pc: 'Hero', npc: 'NPC', monster: 'Monster', summon: 'Summon' } as const
 const sub = computed(() => {
   const n = npc.value
@@ -149,6 +157,7 @@ function onMax(event: Event) {
         :conditions="c.conditions ?? []"
         note="Conditions on creatures stay until you remove them; the party sees them on the initiative strip."
         @toggle="toggleCondition"
+        @persistent="addPersistent"
       />
 
       <template v-if="npc">

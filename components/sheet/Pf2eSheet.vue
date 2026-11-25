@@ -4,6 +4,7 @@ import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import {
   type Pf2eStatContext,
   SAVE_ATTR,
+  acNow as acAfter,
   adjusted,
   degreeOf,
   heal,
@@ -63,8 +64,8 @@ function stepHp(by: number) {
   if (sheet.value.dying !== dyingBefore) say(message)
 }
 
-/** AC after conditions (off-guard, clumsy, frightened…). */
-const acNow = computed(() => adjusted(sheet.value, ac.value, { kind: 'ac' }))
+/** AC after conditions (off-guard, clumsy, frightened…), a raised shield; petrified is 9. */
+const acNow = computed(() => acAfter(sheet.value))
 
 const saveContext = (label: string): Pf2eStatContext =>
   label === 'Perception'

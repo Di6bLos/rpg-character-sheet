@@ -8,7 +8,8 @@ import {
   takeDamage as pf2eTakeDamage,
 } from '~/utils/pf2ePlay'
 
-type Change = Pick<HeroHpChange, 'id' | 'amount' | 'crit'>
+type Change = Pick<HeroHpChange, 'id' | 'amount' | 'crit'> &
+  Partial<Pick<HeroHpChange, 'damage_type' | 'spell' | 'shield_block'>>
 
 /**
  * The rows not applied yet, oldest first, marking them taken: the initial load and
@@ -118,10 +119,12 @@ export function applyDnd5eHpChange(sheet: Dnd5eSheet, change: Change): string {
 }
 
 /**
- * Pathfinder 2e, with the sheet's own engine (utils/pf2ePlay.ts takeDamage / heal): temp HP
- * first, knocked out at 0 with Dying 1 + Wounded (2 + Wounded on a crit), Dying raised while
- * down, massive damage, Doomed lowering the Dying value that kills; healing a dying hero ends
- * Dying and raises Wounded, and the dead can't be healed.
+ * Pathfinder 2e, with the sheet's own engine (utils/pf2ePlay.ts takeDamage / heal): the GM's
+ * damage type and "from a spell" go through the hero's immunities, weaknesses and resistances,
+ * and Shield Block through `shieldBlockProblem` (it says why it can't); then temp HP, knocked
+ * out at 0 with Dying 1 + Wounded (2 + Wounded on a crit), Dying raised while down, massive
+ * damage, Doomed lowering the Dying value that kills; healing a dying hero ends Dying and
+ * raises Wounded, and the dead can't be healed.
  */
 export function applyPf2eHpChange(sheet: Pf2eSheet, change: Change): string {
   const n = Math.abs(Math.floor(change.amount))
@@ -131,17 +134,25 @@ export function applyPf2eHpChange(sheet: Pf2eSheet, change: Change): string {
   sheet.wounded = Math.max(0, sheet.wounded ?? 0)
   if (!Array.isArray(sheet.conditions)) sheet.conditions = []
   if (change.amount < 0) {
-    const line = pf2eTakeDamage(sheet, n, { crit: change.crit })
+    const line = pf2eTakeDamage(sheet, n, {
+      crit: change.crit,
+      ...(change.damage_type ? { type: change.damage_type } : {}),
+      ...(change.spell ? { spell: true } : {}),
+      ...(change.shield_block ? { shieldBlock: true } : {}),
+    })
     // While dying the engine only says the new Dying value; the GM's line says the hit too.
-    return line.startsWith('Took ') ? gmLine(line) : `${tookLine(n, change.crit, sheet)} ${line}`
+    return /\bTook \d/.test(line) ? gmLine(line) : `${tookLine(n, change.crit, sheet)} ${line}`
   }
   if (pf2eIsDead(sheet)) return DEAD_HEAL
   return gmLine(pf2eHeal(sheet, n))
 }
 
-/** The engine's line as the GM's: "Took 5 damage…" reads "GM: took 5 damage…". */
+/**
+ * The engine's line as the GM's: "Took 5 damage…" reads "GM: took 5 damage…"; a line that
+ * starts with a note ("Steel Shield blocks 5…", "Resistance…") keeps its capital.
+ */
 function gmLine(line: string) {
-  return `GM: ${line.charAt(0).toLowerCase()}${line.slice(1)}`
+  return `GM: ${/^(?:Took|Healed) /.test(line) ? `${line.charAt(0).toLowerCase()}${line.slice(1)}` : line}`
 }
 
 /** Applies a GM's HP change with the hero's own system's rules. */

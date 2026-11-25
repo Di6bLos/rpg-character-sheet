@@ -304,6 +304,14 @@ export interface Pf2eSheet extends SheetCommon {
   /** Values of valued conditions in `conditions` (frightened 2); absent means 1. */
   conditionValues?: Record<string, number>
   /**
+   * Saved by the sheet editor for the battle board (`acParts` in utils/pf2ePlay.ts): the AC
+   * modifiers not from conditions or the raised shield, and the conditions effects give.
+   */
+  acParts?: {
+    mods: { value: number; type: 'status' | 'circumstance' | 'item' | 'untyped'; source: string }[]
+    given: Record<string, number>
+  }
+  /**
    * Persistent damage conditions (Player Core p. 445), one per damage type: the dice or
    * amount taken at the end of each turn, and the round of its last assisted recovery.
    */
@@ -384,7 +392,11 @@ export interface Pf2eSheet extends SheetCommon {
     finisher?: boolean
     /** The initiative rolled this encounter (one roll, p. 434), kept until it ends. */
     initiative?: number
+    /** The GM tracker's round whose turn the tracker started for the hero (board turn steps). */
+    trackerRound?: number
   }
+  /** The GM's tracker seat (combatant id) the sheet last joined, as Nimble's `gmCombatant`. */
+  gmCombatant?: string
 }
 
 /** A spell from `data/pf2e`: its AoN id, name and lowest rank (cantrips are rank 1). */

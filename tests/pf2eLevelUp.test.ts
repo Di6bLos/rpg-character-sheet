@@ -413,6 +413,18 @@ describe('pf2e level-up: feats and prerequisites', () => {
     const plan = pf2eLevelPlan(at4, 5, data, { ...autoLevelPicks(at4, 5, data, BOOSTS) })!
     expect(plan.hp).toEqual({ cls: 10, con: 3, retro: 4, feats: 0, total: 17 })
   })
+
+  it('a hero at 0 HP gains max HP only: a dying hero doesn’t heal by levelling', () => {
+    const s = levelTo(buildPf2eSheet(dwarfFighter(), data), 4)
+    const up = structuredClone(s)
+    s.hp = 0
+    s.dying = 1
+    applyPf2eLevel(s, 5, autoLevelPicks(s, 5, data, BOOSTS), data)
+    applyPf2eLevel(up, 5, autoLevelPicks(up, 5, data, BOOSTS), data)
+    expect(s.hpMax).toBe(up.hpMax)
+    expect([s.hp, s.dying]).toEqual([0, 1])
+    expect(up.hp).toBe(up.hpMax)
+  })
 })
 
 describe('pf2e level-up: going back', () => {

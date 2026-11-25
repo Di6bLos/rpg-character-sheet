@@ -21,14 +21,27 @@ export function useSendHeroHp() {
   /** For the UI only: a change from this caller is still on its way. */
   const sending = computed(() => inFlight.value > 0)
 
-  /** `amount` < 0 is damage (with `crit`), > 0 healing. False when it failed. */
-  async function send(characterId: string, name: string, amount: number, crit = false) {
+  /**
+   * `amount` < 0 is damage (with `crit`, and for PF2e its `typed` type, spell and Shield
+   * Block), > 0 healing. False when it failed.
+   */
+  async function send(
+    characterId: string,
+    name: string,
+    amount: number,
+    crit = false,
+    typed: { type?: string; spell?: boolean; shieldBlock?: boolean } = {},
+  ) {
     if (!amount) return false
+    const hurt = amount < 0
     const row = {
       campaign_id: campaignId.value,
       character_id: characterId,
       amount,
-      crit: amount < 0 && crit,
+      crit: hurt && crit,
+      ...(hurt && typed.type ? { damage_type: typed.type } : {}),
+      ...(hurt && typed.spell ? { spell: true } : {}),
+      ...(hurt && typed.shieldBlock ? { shield_block: true } : {}),
     }
     inFlight.value++
     try {

@@ -14,12 +14,15 @@
 // menu, `profiles.own_dice`) a field takes the player's own total instead. A dead hero
 // (three failed death saves, PF2e Dying at the sheet's death value) isn't offered the roll,
 // and a player who can't edit the hero (suspended) gets it disabled, as on the Nimble turn bar.
+// PF2e keeps one Initiative an encounter on the sheet (`turn.initiative`): one the sheet
+// already rolled is sent as it is ("Send initiative 17"), and a roll here is saved there.
 // Compact (the phone's turn slot): inset 8px from the sides and the tab bar below.
 import type { useInitiative } from '~/composables/useInitiative'
 import { sendInitiative } from '~/composables/useSendInitiative'
 import { quietly, rollDie, showDice, showOutcome, sign } from '~/utils/dice'
 import type { Pf2eSheet } from '~/types/sheets'
 import { initiativeBonus } from '~/utils/heroCardStats'
+import { newTurn } from '~/utils/pf2eActions'
 import { initiativeCheck } from '~/utils/pf2ePlay'
 import { heroDead, heroDown } from '~/utils/roster'
 
@@ -121,6 +124,20 @@ async function send(total: number) {
     who.value?.focus()
 }
 
+/** PF2e: the Initiative the live sheet already rolled this encounter, to send as it is. */
+const sheetInitiative = computed(() => {
+  const sheet = editor.value?.draft.value.sheet
+  return system.value === 'pf2e' && sheet ? ((sheet as Pf2eSheet).turn?.initiative ?? null) : null
+})
+
+/** PF2e: the total goes on the live sheet too, so it won't roll another this encounter. */
+function keepOnSheet(total: number) {
+  const sheet = editor.value?.draft.value.sheet
+  if (system.value !== 'pf2e' || !sheet) return
+  const s = sheet as Pf2eSheet
+  ;(s.turn ??= newTurn()).initiative = total
+}
+
 /**
  * What the roll adds: a loaded PF2e sheet's Perception after conditions and initiative
  * bonuses, as its own turn tracker rolls it; else the roster's Init (PF2e: Perception).
@@ -133,6 +150,7 @@ function initiativeMod(): number {
 
 function roll() {
   if (unsent.value !== null) return send(unsent.value)
+  if (sheetInitiative.value !== null) return send(sheetInitiative.value)
   who.value?.focus()
   const mod = initiativeMod()
   const d20 = quietly(() => rollDie(20))
@@ -155,6 +173,7 @@ function roll() {
     total,
     detail: `Initiative ${total} (d20 ${d20} ${sign(mod)}).`,
   })
+  keepOnSheet(total)
   return send(total)
 }
 
@@ -163,6 +182,7 @@ function typed(values: number[]) {
   const total = values[0]
   if (total === undefined) return
   who.value?.focus()
+  keepOnSheet(total)
   return send(total)
 }
 
@@ -203,7 +223,13 @@ const sub = computed(() => [round.value, result.value].filter(Boolean).join(' ·
       "
       @click="roll"
     >
-      {{ unsent !== null ? 'Resend initiative' : 'Roll initiative' }}
+      {{
+        unsent !== null
+          ? 'Resend initiative'
+          : sheetInitiative !== null
+            ? `Send initiative ${sheetInitiative}`
+            : 'Roll initiative'
+      }}
     </button>
   </section>
 </template>

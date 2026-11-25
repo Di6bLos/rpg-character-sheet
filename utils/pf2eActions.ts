@@ -99,7 +99,7 @@ export function startPf2eTurn(s: Pf2eSheet): string {
     notes.push('Your shield lowers.')
   }
   const cantAct =
-    isDead(s) || s.conditions.includes('Paralyzed') || s.conditions.includes('Unconscious')
+    isDead(s) || ['Paralyzed', 'Petrified', 'Unconscious'].some((c) => s.conditions.includes(c))
   let actions = 3 + (s.conditions.includes('Quickened') ? 1 : 0)
   // Stunned with a duration instead of a value takes every action while it lasts (p. 446).
   const stunnedFor = s.conditions.includes('Stunned') && s.conditionValues?.Stunned === undefined

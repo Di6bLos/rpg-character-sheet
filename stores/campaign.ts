@@ -11,6 +11,7 @@ import type {
   RosterEntry,
 } from '~/types'
 import { safeFileName } from '~/utils/format'
+import { acFromParts } from '~/utils/pf2ePlay'
 
 type CampaignRow = Campaign & {
   campaign_members: (Pick<CampaignMember, 'user_id' | 'role' | 'character_id' | 'last_read_at'> & {
@@ -168,6 +169,9 @@ export const useCampaignStore = defineStore('campaign', () => {
     const { data, error } = await supabase.rpc('campaign_roster', { p_campaign: campaignId })
     if (error) throw error
     const rows = (data ?? []) as RosterEntry[]
+    // A PF2e hero's AC now: the AC parts the sheet saved, with the conditions and shield.
+    for (const r of rows)
+      if (r.character_system === 'pf2e' && r.summary) r.summary.acNow = acFromParts(r.summary)
     // Kept out of usage-analytics click labels.
     rememberNames(rows.flatMap((r) => [r.display_name, r.handle, r.character_name]))
     return rows

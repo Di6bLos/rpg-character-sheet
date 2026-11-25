@@ -3,7 +3,10 @@ import { supabase } from '~/lib/supabase'
 import type { HeroHpChange } from '~/types'
 import { applyHpChangeFor, freshChanges } from '~/utils/heroHpChange'
 
-type Row = Pick<HeroHpChange, 'id' | 'amount' | 'crit' | 'created_at'>
+type Row = Pick<
+  HeroHpChange,
+  'id' | 'amount' | 'crit' | 'damage_type' | 'spell' | 'shield_block' | 'created_at'
+>
 
 /**
  * Picks up HP changes the GM sent this hero (`hero_hp_changes`, from the battle
@@ -54,7 +57,7 @@ export function useHeroHpChanges() {
   async function catchUp(id: string) {
     const { data } = await supabase
       .from('hero_hp_changes')
-      .select('id, amount, crit, created_at')
+      .select('id, amount, crit, damage_type, spell, shield_block, created_at')
       .eq('character_id', id)
       .order('created_at')
     await take((data ?? []) as Row[])

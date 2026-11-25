@@ -2,14 +2,18 @@
 // A creature's or hero's conditions, as the hero column has them: the active ones as
 // chips (hover for what they do, click to remove) and + Add, which opens a picker of the
 // campaign system's conditions (`conditionNames`; tap to toggle). Nimble's adds its spell
-// statuses as a second group and says what each active one does; 5e and PF2e list names
-// only, PF2e's valued ones with their value ("Frightened 2"). Nimble leaves out Bloodied,
-// Dying and Wounded: HP shows those; PF2e leaves out Dying, Wounded and Doomed, numbers on
-// the sheet. The caller applies
-// each toggle: the stat block writes the combatant, the hero vitals send it to the hero's sheet.
+// statuses as a second group and says what each active one does; 5e lists names only,
+// PF2e its conditions with their effect on hover (Player Core pp. 442–447), the valued ones
+// with their value ("Frightened 2"). Nimble leaves out Bloodied, Dying and Wounded: HP shows
+// those; PF2e leaves out Dying, Wounded and Doomed, numbers on the sheet. PF2e's Persistent
+// damage takes an amount and a type (Player Core p. 445): it emits `persistent`, and a hero's
+// (`persistent` given) show as chips that end it. The caller applies each toggle: the stat
+// block writes the combatant, the hero vitals send it to the hero's sheet.
 import { CONDITIONS } from '~/data/nimble/core'
 import { conditionNames } from '~/utils/battleFeatures'
 import { SPELL_STATUSES } from '~/utils/nimbleConditions'
+import { PF2E_DAMAGE_TYPES, persistentAmount } from '~/utils/pf2eDamage'
+import { PF2E_CONDITION_DEFS } from '~/utils/pf2ePlay'
 import { conditionLabels } from '~/utils/roster'
 
 const props = defineProps<{
@@ -22,8 +26,14 @@ const props = defineProps<{
   note: string
   /** PF2e values of valued conditions (frightened 2), shown on their chips. */
   values?: Record<string, number> | null
+  /** A PF2e hero's persistent damage, one per type, each a chip that ends it. */
+  persistent?: { dice: string; type: string }[]
 }>()
-const emit = defineEmits<{ toggle: [name: string, on: boolean] }>()
+const emit = defineEmits<{
+  toggle: [name: string, on: boolean]
+  /** PF2e persistent damage of a type: its amount, or null to end it. */
+  persistent: [type: string, dice: string | null]
+}>()
 
 const system = useBattleSystem()
 const SPELL_NAMES = new Set(SPELL_STATUSES.map((s) => s.name))
@@ -34,11 +44,16 @@ const NIMBLE_DESC = new Map(
     .filter((x) => NIMBLE_NAMES.has(x.name))
     .map((x) => [x.name, x.desc]),
 )
+const PF2E_DESC = new Map(PF2E_CONDITION_DEFS.map((d) => [d.name, d.effect]))
 const nimble = computed(() => system.value === 'nimble')
+const pf2e = computed(() => system.value === 'pf2e')
+/** What a condition does, for its chip's title: Nimble's and PF2e's; 5e's have none here. */
+const descOf = (name: string) =>
+  nimble.value ? (NIMBLE_DESC.get(name) ?? '') : pf2e.value ? (PF2E_DESC.get(name) ?? '') : ''
 const choices = computed(() =>
   conditionNames(system.value).map((name) => ({
     name,
-    desc: nimble.value ? (NIMBLE_DESC.get(name) ?? '') : '',
+    desc: descOf(name),
     spell: nimble.value && SPELL_NAMES.has(name),
   })),
 )
@@ -51,9 +66,19 @@ const active = computed(() =>
   props.conditions.map((n) => ({
     name: n,
     label: conditionLabels([n], system.value, props.values)[0] ?? n,
-    desc: nimble.value ? (NIMBLE_DESC.get(n) ?? '') : '',
+    desc: descOf(n),
   })),
 )
+
+// --- PF2e persistent damage -----------------------------------------------------------
+const pDice = ref('')
+const pType = ref('fire')
+const pAmount = computed(() => persistentAmount(pDice.value))
+function addPersistent() {
+  if (!pAmount.value) return
+  emit('persistent', pType.value, pAmount.value)
+  pDice.value = ''
+}
 
 function toggle(name: string) {
   emit('toggle', name, !props.conditions.includes(name))
@@ -65,7 +90,10 @@ const { touch } = useBoardLayout()
 // The picker is for one creature: close it when another is shown.
 watch(
   () => props.subject,
-  () => (addOpen.value = false),
+  () => {
+    addOpen.value = false
+    pDice.value = ''
+  },
 )
 </script>
 
@@ -82,7 +110,7 @@ watch(
         + Add
       </button>
     </div>
-    <div v-if="active.length" class="cond__chips">
+    <div v-if="active.length || persistent?.length" class="cond__chips">
       <button
         v-for="a in active"
         :key="a.name"
@@ -93,6 +121,17 @@ watch(
         @click="toggle(a.name)"
       >
         {{ a.label }} <span aria-hidden="true">×</span>
+      </button>
+      <button
+        v-for="p in persistent ?? []"
+        :key="`persistent-${p.type}`"
+        type="button"
+        class="cond__chip"
+        :title="`${p.dice} persistent ${p.type} damage at the end of each turn. Click to end it.`"
+        :aria-label="`End ${p.dice} persistent ${p.type} damage`"
+        @click="emit('persistent', p.type, null)"
+      >
+        {{ p.dice }} persistent {{ p.type }} <span aria-hidden="true">×</span>
       </button>
     </div>
     <p v-else class="cond__none">No conditions</p>
@@ -126,6 +165,22 @@ watch(
             {{ o.name }}
           </button>
         </div>
+        <form v-if="pf2e" class="pick__persist" @submit.prevent="addPersistent">
+          <span class="pick__group">Persistent damage</span>
+          <label class="sr-only" :for="`persist-dice-${subject}`">Amount</label>
+          <input
+            :id="`persist-dice-${subject}`"
+            v-model="pDice"
+            class="input pick__dice"
+            placeholder="1d6"
+            autocomplete="off"
+          />
+          <label class="sr-only" :for="`persist-type-${subject}`">Damage type</label>
+          <select :id="`persist-type-${subject}`" v-model="pType" class="input pick__ptype">
+            <option v-for="t in PF2E_DAMAGE_TYPES" :key="t" :value="t">{{ t }}</option>
+          </select>
+          <button type="submit" class="btn btn--sm" :disabled="!pAmount">Add</button>
+        </form>
         <div v-if="nimble && active.length" class="tile pick__active">
           <p v-for="a in active" :key="a.name" class="pick__line">
             <strong>{{ a.name }}.</strong> {{ a.desc }}
@@ -234,6 +289,23 @@ watch(
 
 .pick__active {
   gap: 8px;
+}
+
+.pick__persist {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.pick__dice {
+  width: 80px;
+}
+
+.pick__ptype {
+  flex: 1 1 120px;
+  min-width: 0;
+  text-transform: capitalize;
 }
 
 .pick__line {

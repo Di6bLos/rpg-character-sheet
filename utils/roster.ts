@@ -1,6 +1,7 @@
 import type { GameSystem, RosterEntry } from '~/types'
 import type { Pf2eSheet } from '~/types/sheets'
-import { PF2E_CONDITION_DEFS, deathAt, isDead } from '~/utils/pf2ePlay'
+import { heroArmor } from '~/utils/nimbleConditions'
+import { PF2E_CONDITION_DEFS, acFromParts, deathAt, isDead } from '~/utils/pf2ePlay'
 import { defaultSheet } from '~/utils/sheetDefaults'
 
 export interface AuthorLabel {
@@ -138,4 +139,15 @@ export function conditionLabels(
 ): string[] {
   if (system !== 'pf2e') return [...conditions]
   return conditions.map((n) => (PF2E_VALUED.has(n) ? `${n} ${Math.max(1, values?.[n] ?? 1)}` : n))
+}
+
+/**
+ * A seated hero's AC or Armor on the board from the roster: PF2e's AC now (the sheet's saved AC
+ * parts with the conditions and a raised shield, `acFromParts`), Nimble's Armor with its
+ * statuses, 5e's AC.
+ */
+export function rosterAc(entry: RosterEntry | null | undefined): number | undefined {
+  const s = entry?.summary
+  if (entry?.character_system === 'pf2e') return s?.acNow ?? acFromParts(s ?? {})
+  return heroArmor(s?.ac, s?.conditions, entry?.character_level)
 }

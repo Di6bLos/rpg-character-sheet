@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { Pf2eSheet } from '../types/sheets'
+import { cantAct } from '../utils/pf2eActions'
+import { toggleEffect } from '../utils/pf2eEffects'
 import {
+  PF2E_CONDITION_DEFS,
+  acFromParts,
+  acNow,
+  acParts,
+  activeConditions,
   adjusted,
   conditionMods,
   deathAt,
@@ -286,5 +293,94 @@ describe('pf2e initiative (Player Core p. 436)', () => {
     })
     expect(initiativeCheck(s).value).toBe(5)
     expect(initiativeCheck(hero({ saves: [] })).value).toBe(0)
+  })
+})
+
+describe('pf2e conditions the GM can set from the board (Player Core pp. 442–447)', () => {
+  const def = (name: string) => PF2E_CONDITION_DEFS.find((d) => d.name === name)
+  const shield = { name: 'Steel Shield', ac: 2, hardness: 5, hp: 20, hpMax: 20, bt: 10 }
+
+  it('defines controlled, petrified and the awareness states, observed the default', () => {
+    for (const name of ['Controlled', 'Petrified', 'Observed', 'Undetected', 'Unnoticed'])
+      expect(def(name)?.effect, name).toBeTruthy()
+    expect(['Observed', 'Hidden', 'Undetected', 'Unnoticed'].every((n) => def(n)?.awareness)).toBe(
+      true,
+    )
+    expect(def('Observed')?.effect).toMatch(/default/)
+  })
+
+  it('petrified stops every action and makes the hero an object with AC 9 (p. 445)', () => {
+    const s = hero({ ac: 18, conditions: ['Petrified'] })
+    expect(cantAct(s)).toBe('You can’t act while petrified.')
+    expect(acNow(s).value).toBe(9)
+    expect(acFromParts({ ...s, acParts: acParts(s) })).toBe(9)
+  })
+
+  it('controlled leaves the hero acting, as the controller says (p. 442)', () => {
+    expect(cantAct(hero({ conditions: ['Controlled'] }))).toBe('')
+  })
+
+  it('unnoticed is undetected too, and awareness states change none of the hero’s numbers', () => {
+    const s = hero({ ac: 18, conditions: ['Unnoticed'] })
+    expect(activeConditions(s).has('Undetected')).toBe(true)
+    expect(conditionMods(s, { kind: 'ac' })).toEqual([])
+    expect(conditionMods(hero({ conditions: ['Observed'] }), { kind: 'attack' })).toEqual([])
+  })
+
+  it('AC now counts a raised, unbroken shield’s own bonus and off-guard (pp. 274, 444)', () => {
+    const s = hero({ ac: 18, shield: { ...shield, raised: true } })
+    expect(acNow(s).value).toBe(20)
+    s.conditions = ['Off-guard']
+    expect(acNow(s).value).toBe(18)
+    s.shield.hp = 10
+    expect(acNow(s).value).toBe(16)
+  })
+
+  it('the board’s AC from the roster matches the sheet’s, whatever changed', () => {
+    const cases: [string, (s: Pf2eSheet) => void][] = [
+      ['plain', () => {}],
+      ['raised shield', (s) => (s.shield.raised = true)],
+      ['off-guard and raised', (s) => ((s.shield.raised = true), (s.conditions = ['Off-guard']))],
+      ['prone gives off-guard', (s) => (s.conditions = ['Prone'])],
+      [
+        'frightened 2',
+        (s) => ((s.conditions = ['Frightened']), (s.conditionValues = { Frightened: 2 })),
+      ],
+      [
+        'the Shield spell and a raised shield',
+        (s) => ((s.shield.raised = true), toggleEffect(s, 'Shield', 1)),
+      ],
+      [
+        'Enlarge’s clumsy 1 and clumsy 2',
+        (s) => {
+          toggleEffect(s, 'Enlarge', 3)
+          s.conditions = ['Clumsy']
+          s.conditionValues = { Clumsy: 2 }
+        },
+      ],
+      ['unconscious', (s) => (s.conditions = ['Unconscious'])],
+    ]
+    const seen: number[] = []
+    for (const [label, set] of cases) {
+      const s = hero({ ac: 18, shield: { ...shield, raised: false } })
+      set(s)
+      const summary = {
+        ac: s.ac,
+        acParts: acParts(s),
+        conditions: s.conditions,
+        conditionValues: s.conditionValues,
+        shield: s.shield,
+      }
+      expect(acFromParts(summary), label).toBe(acNow(s).value)
+      seen.push(acNow(s).value)
+    }
+    expect(seen).toEqual([18, 20, 18, 16, 16, 20, 16, 12])
+  })
+
+  it('without saved parts, conditions and the shield still count on the board', () => {
+    expect(
+      acFromParts({ ac: 18, conditions: ['Off-guard'], shield: { ...shield, raised: true } }),
+    ).toBe(18)
+    expect(acFromParts({ conditions: [] })).toBeUndefined()
   })
 })

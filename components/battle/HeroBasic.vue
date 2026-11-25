@@ -9,9 +9,11 @@
 // While HeroScope has the hero's sheet editor (it applies the GM's HP and condition
 // changes), the numbers come from that live copy, with the GM's last change beneath HP.
 import type { RosterEntry } from '~/types'
+import type { Pf2eSheet } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { initiativeBonus, initiativeLabel } from '~/utils/heroCardStats'
-import { conditionLabels, heroDown, hpTone } from '~/utils/roster'
+import { acNow } from '~/utils/pf2ePlay'
+import { conditionLabels, heroDown, hpTone, rosterAc } from '~/utils/roster'
 
 const props = defineProps<{ entry: RosterEntry; compact?: boolean }>()
 
@@ -83,8 +85,14 @@ function pct(n: number, max: number): number {
 }
 
 const init = computed(() => initiativeBonus(system.value, s.value))
+/** PF2e: AC now (conditions, effects, a raised shield), from the live sheet once loaded. */
+const ac = computed(() => {
+  if (system.value !== 'pf2e') return s.value.ac
+  const sheet = editor.value?.draft.value.sheet as Pf2eSheet | undefined
+  return sheet ? acNow(sheet).value : rosterAc(props.entry)
+})
 const tiles = computed(() => [
-  { label: 'AC', value: s.value.ac != null ? String(s.value.ac) : '—', title: 'Armor Class' },
+  { label: 'AC', value: ac.value != null ? String(ac.value) : '—', title: 'Armor Class' },
   {
     label: initiativeLabel(system.value),
     value: init.value !== null ? sign(init.value) : '—',

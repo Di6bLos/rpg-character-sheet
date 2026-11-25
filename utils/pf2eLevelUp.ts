@@ -1615,9 +1615,10 @@ export function applyPf2eLevel(
   }
   sheet.bulkLimit += d('STR')
 
-  // Hit Points (p. 29): class HP + CON, every earlier level's CON too, Toughness.
+  // Hit Points (p. 29): class HP + CON, every earlier level's CON too, Toughness. A dying
+  // hero doesn't heal by levelling: at 0 HP the gain goes to max HP only.
   sheet.hpMax += plan.hp.total
-  sheet.hp += plan.hp.total
+  if (sheet.hp > 0) sheet.hp += plan.hp.total
 
   // Spellcasting.
   const sc = sheet.spellcasting
