@@ -8,7 +8,8 @@
 //
 //   npm run pf2e:bible -- [dataDir] [outDir]
 //   npm run pf2e:bible -- --orc [dataDir] [outDir]   (Remaster/ORC entries only, without the
-//     Golarion lore files: what may be shared, e.g. the library PDFs; default out pf2e-orc/)
+//     Golarion lore files, legacy sources or deity stat lines: what may be shared, e.g. the
+//     library PDFs; default out pf2e-orc/. Exits non-zero if any of those would still be written.)
 
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -19,9 +20,11 @@ import {
   heritageAncestry,
   legacyBooks,
   loadAon,
+  orcProblems,
   page,
   remaster,
   slug,
+  withoutDeities,
   withoutLegacy,
 } from './lib/aon'
 
@@ -77,7 +80,7 @@ function edition(d: Doc) {
 function entry(d: Doc, h: number) {
   placed.add(d.id)
   const cleaned = cleanMarkdown(d.markdown ?? '', h, byId, embed, new Set([d.id]))
-  const body = ORC_ONLY ? withoutLegacy(cleaned, LEGACY_BOOKS) : cleaned
+  const body = ORC_ONLY ? withoutDeities(withoutLegacy(cleaned, LEGACY_BOOKS)) : cleaned
   const [first = '', ...rest] = body.split('\n')
   const head = first.startsWith('#') ? first : `${'#'.repeat(h)} ${d.name}`
   const tail = first.startsWith('#') ? rest : [first, ...rest]
@@ -86,10 +89,15 @@ function entry(d: Doc, h: number) {
 
 const written: { file: string; title: string; entries: number }[] = []
 
+/** What the ORC set would leak (legacy sources, deity lines), by file; the build fails on any. */
+const leaks: string[] = []
+
 function write(file: string, title: string, parts: string[], entries: number, intro = '') {
   const path = join(OUT, file)
   mkdirSync(join(path, '..'), { recursive: true })
-  writeFileSync(path, `# ${title}\n\n${intro ? `${intro}\n\n` : ''}${parts.join('\n')}`)
+  const md = `# ${title}\n\n${intro ? `${intro}\n\n` : ''}${parts.join('\n')}`
+  if (ORC_ONLY) for (const l of orcProblems(md, LEGACY_BOOKS)) leaks.push(`${file}: ${l}`)
+  writeFileSync(path, md)
   written.push({ file, title, entries })
 }
 
@@ -604,4 +612,11 @@ for (const c of classNames) {
   }
   writeFileSync(join(OUT, 'README.md'), lines.join('\n'))
   console.log(`${written.length} files, ${placed.size}/${docs.length} entries placed → ${OUT}`)
+}
+
+if (leaks.length) {
+  console.error(
+    `ORC set leaks ${leaks.length} line(s) it must not share:\n${leaks.slice(0, 20).join('\n')}`,
+  )
+  process.exit(1)
 }
