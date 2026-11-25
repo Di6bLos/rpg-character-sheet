@@ -6,6 +6,7 @@ import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eSheet, Pf2eSlotRank, Pf2eSpellRef, Pf2eSpellcasting } from '~/types/sheets'
 import { type Rng, rollDie } from '~/utils/dice'
 import { setGiven, toggleEffect } from '~/utils/pf2eEffects'
+import { itemsDailyPrep } from '~/utils/pf2eInventory'
 import { adjusted, conditionValue, proficiency } from '~/utils/pf2ePlay'
 import { type Pf2eCastRoll, castRolls, effectValue, spellRules } from '~/utils/pf2eSpellRules'
 
@@ -140,7 +141,10 @@ export function refocus(s: Pf2eSheet): string {
   return `Refocused: ${s.focus.current}/${s.focus.max} Focus Points.`
 }
 
-/** Daily preparations: slots, divine font and the focus pool come back. */
+/**
+ * Daily preparations: slots, divine font and the focus pool come back; wands can be cast again
+ * and staves wait to be prepared (`itemsDailyPrep`).
+ */
 export function dailyPreparations(s: Pf2eSheet): string {
   const sc = s.spellcasting
   if (sc) {
@@ -152,6 +156,7 @@ export function dailyPreparations(s: Pf2eSheet): string {
   }
   s.focus.current = s.focus.max
   s.used = []
+  itemsDailyPrep(s)
   return `Daily preparations: ${sc ? 'spell slots, ' : ''}Focus Points and daily abilities restored.`
 }
 

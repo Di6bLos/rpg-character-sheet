@@ -226,8 +226,16 @@ export const GOLARION_NAMES = [
   'Jassim',
 ]
 
-/** Records whose name matches a deity or Golarion name by accident: "Set" in Set-up Strike, a spell named like a philosophy. */
-export const NOT_SETTING = new Set(['Set-up Strike', 'Weight of the World'])
+/**
+ * Records whose name matches a deity or Golarion name by accident: "Set" in Set-up Strike and
+ * a writing set (Player Core p. 292), a spell named like a philosophy.
+ */
+export const NOT_SETTING = new Set([
+  'Set-up Strike',
+  'Weight of the World',
+  'Writing Set',
+  'Writing Set (Extra Ink and Paper)',
+])
 
 const nameRe = (names: string[]) =>
   new RegExp(

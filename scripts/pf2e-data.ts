@@ -23,6 +23,8 @@ import type {
   Pf2eDeityDef,
   Pf2eFeatDef,
   Pf2eHeritageDef,
+  Pf2eItemDef,
+  Pf2eItemKind,
   Pf2eRarity,
   Pf2eRecord,
   Pf2eShieldDef,
@@ -53,6 +55,19 @@ import {
   stripLinks,
   withoutLegacy,
 } from './lib/aon'
+import {
+  bombNumbers,
+  itemActivations,
+  itemBonuses,
+  itemDuration,
+  itemGrades,
+  itemHealing,
+  runeNumbers,
+  spellRankIn,
+  staffSpells,
+  withLowerSpells,
+  withoutActivations,
+} from './lib/aonItems'
 
 const ROOT = join(import.meta.dirname, '..')
 const DATA = process.argv[2] ?? join(ROOT, '.local', 'pf2e', 'aon')
@@ -571,6 +586,129 @@ const shields: Pf2eShieldDef[] = latest(of('shield')).map((d) => ({
   speedPenalty: feet(d.speed_penalty),
 }))
 
+// --- Other equipment (GM Core chapter 11, Player Core pp. 287–295) -------------
+/** AoN's item categories → the sets they go in and what each item is. */
+const ITEM_SETS: Record<string, (d: AonDoc) => Pf2eItemKind | undefined> = {
+  gear: (d) => (d.item_category === 'Adventuring Gear' ? 'gear' : undefined),
+  consumables: (d) =>
+    (
+      ({
+        Potions: 'potion',
+        'Alchemical Elixirs': 'elixir',
+        Scrolls: 'scroll',
+        Talismans: 'talisman',
+        'Magical Ammunition': 'ammunition',
+        'Alchemical Ammunition': 'ammunition',
+        Oils: 'oil',
+        'Alchemical Bombs': 'bomb',
+      }) as Record<string, Pf2eItemKind>
+    )[String(d.item_subcategory ?? '')],
+  magicItems: (d) =>
+    d.item_category === 'Held Items'
+      ? 'held'
+      : d.item_category === 'Worn Items' && d.item_subcategory === 'Other Worn Items'
+        ? 'worn'
+        : undefined,
+  runes: (d) =>
+    d.item_category === 'Runes' &&
+    /^(?:Fundamental|Weapon Property|Armor Property)/.test(String(d.item_subcategory ?? ''))
+      ? 'rune'
+      : undefined,
+  staves: (d) => (d.item_category === 'Staves' && !d.item_subcategory ? 'staff' : undefined),
+  wands: (d) => (d.item_category === 'Wands' ? 'wand' : undefined),
+}
+
+const spellKey = (n: string) => straight(n).toLowerCase()
+const spellNames = new Map(spells.map((s) => [spellKey(s.name), s.name]))
+/**
+ * A staff's spells by their names in the data (the book prints them in lowercase); a limit in
+ * brackets stays ("Elemental Form (air only)"). A name the data doesn't have (a legacy spell
+ * a reprinted staff still lists) stays as printed.
+ */
+const namedSpells = (list: { rank: number; names: string[] }[]) =>
+  list.map(({ rank, names }) => ({
+    rank,
+    names: names.map((n) => {
+      const [, spell = n, limit = ''] = /^(.*?)(\s*\([^)]*\))?$/.exec(n.trim()) ?? []
+      const named = spellNames.get(spellKey(spell))
+      return named ? `${named}${limit}` : n
+    }),
+  }))
+
+/**
+ * One record per item the hero can own: each grade of an item printed with several (its text
+ * is the item's own followed by the grade's), else the item itself; an entry without a Price
+ * (a family's summary page) is left out. Staff types keep their lower types' spells.
+ */
+function itemSet(kindOf: (d: AonDoc) => Pf2eItemKind | undefined): Pf2eItemDef[] {
+  const docs = current.filter((d) => d.category === 'equipment' && kindOf(d))
+  const owned = latest(
+    docs.filter((d) =>
+      d.item_parent_id ? true : !list(d.item_child_id).length && d.price !== undefined,
+    ),
+  )
+  const staffLists = new Map<string, { rank: number; names: string[] }[]>()
+  // In level order, so each staff type keeps the spells of the ones below it.
+  return [...owned]
+    .sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+    .map((d) => {
+      const parent = d.item_parent_id ? byId.get(String(d.item_parent_id)) : undefined
+      const kind = kindOf(d)!
+      const { stats, text: whole } = record(parent ?? d)
+      const { text: own, grades } = itemGrades(whole)
+      const grade = parent ? (grades.find((g) => g.name === d.name)?.text ?? '') : ''
+      const text = [own, grade].filter(Boolean).join('\n\n')
+      const usage = String(d.usage ?? parent?.usage ?? stats.Usage ?? '') || undefined
+      const sub = String(d.item_subcategory ?? '')
+      const numbers: Partial<Pf2eItemDef> = {}
+      const healing = itemHealing(grade) ?? itemHealing(own)
+      if (healing) numbers.healing = healing
+      if (kind === 'bomb') {
+        const bomb = bombNumbers(grade) ?? bombNumbers(own)
+        if (bomb) numbers.bomb = bomb
+      } else if (kind !== 'rune') {
+        // A permanent item's activations aren't constant bonuses (Bracers of Missile
+        // Deflection's +2 is against the triggering attack only).
+        const consumable = d.trait?.includes('Consumable')
+        const bonuses = consumable
+          ? itemBonuses(own, grade)
+          : itemBonuses(withoutActivations(own), withoutActivations(grade))
+        if (bonuses.length) numbers.bonuses = bonuses
+      }
+      if (['potion', 'elixir', 'oil', 'talisman', 'ammunition'].includes(kind)) {
+        const duration = itemDuration(own, grade)
+        if (duration) numbers.duration = duration
+      }
+      if (kind === 'rune') numbers.rune = runeNumbers(d.name, sub, usage ?? '', text)
+      if (kind === 'scroll' || kind === 'wand') {
+        const rank = spellRankIn(d.name)
+        if (rank) numbers.spellRank = rank
+      }
+      if (kind === 'staff') {
+        const key = String(parent?.id ?? d.id)
+        const all = withLowerSpells(staffLists.get(key) ?? [], staffSpells(grade || own))
+        staffLists.set(key, all)
+        numbers.spells = namedSpells(all)
+      }
+      return {
+        ...base(d),
+        text,
+        kind,
+        ...opt('parent', parent?.id),
+        level: d.level ?? 0,
+        price: num(d.price),
+        bulk: num(d.bulk ?? parent?.bulk),
+        ...opt('usage', usage),
+        activations: itemActivations(stats, text),
+        ...numbers,
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+}
+const itemSets = Object.fromEntries(
+  Object.entries(ITEM_SETS).map(([name, kindOf]) => [name, itemSet(kindOf)]),
+)
+
 // --- Rules references -------------------------------------------------------
 const conditions: Pf2eConditionDef[] = latest(of('condition')).map((d) => {
   const b = base(d)
@@ -624,6 +762,7 @@ const sets: Record<string, { id: string; source: { book: string } }[]> = {
   weapons,
   armor,
   shields,
+  ...itemSets,
   conditions,
   actions,
   traits,
