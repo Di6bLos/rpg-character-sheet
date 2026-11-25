@@ -133,44 +133,46 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
         </span>
         <span v-if="row.stat" class="stat">{{ row.stat }}</span>
         <span v-if="row.tag" class="tag">{{ row.tag }}</span>
-        <button
-          v-if="row.weapon && canEdit"
-          type="button"
-          class="equip"
-          :aria-pressed="row.equipped"
-          :aria-label="`${row.equipped ? 'Unequip' : 'Equip'} ${row.item.name} as an attack`"
-          @click="toggleEquip(row.item)"
-        >
-          {{ row.equipped ? 'Equipped' : 'Equip' }}
-        </button>
-        <button
-          type="button"
-          class="size"
-          :aria-label="`${row.item.name}: ${row.sizeLabel}. Change size`"
-          :disabled="!canEdit"
-          @click="cycleSize(row.item)"
-        >
-          {{ row.sizeLabel }}
-        </button>
-        <button
-          type="button"
-          class="step step--xs"
-          :aria-label="`One fewer ${row.item.name}`"
-          :disabled="!canEdit"
-          @click="adjust(row.item, -1)"
-        >
-          −
-        </button>
-        <span class="items__qty">{{ row.qty }}</span>
-        <button
-          type="button"
-          class="step step--xs"
-          :aria-label="`One more ${row.item.name}`"
-          :disabled="!canEdit"
-          @click="adjust(row.item, 1)"
-        >
-          +
-        </button>
+        <span class="items__actions">
+          <button
+            v-if="row.weapon && canEdit"
+            type="button"
+            class="equip"
+            :aria-pressed="row.equipped"
+            :aria-label="`${row.equipped ? 'Unequip' : 'Equip'} ${row.item.name} as an attack`"
+            @click="toggleEquip(row.item)"
+          >
+            {{ row.equipped ? 'Equipped' : 'Equip' }}
+          </button>
+          <button
+            type="button"
+            class="size"
+            :aria-label="`${row.item.name}: ${row.sizeLabel}. Change size`"
+            :disabled="!canEdit"
+            @click="cycleSize(row.item)"
+          >
+            {{ row.sizeLabel }}
+          </button>
+          <button
+            type="button"
+            class="step step--xs"
+            :aria-label="`One fewer ${row.item.name}`"
+            :disabled="!canEdit"
+            @click="adjust(row.item, -1)"
+          >
+            −
+          </button>
+          <span class="items__qty">{{ row.qty }}</span>
+          <button
+            type="button"
+            class="step step--xs"
+            :aria-label="`One more ${row.item.name}`"
+            :disabled="!canEdit"
+            @click="adjust(row.item, 1)"
+          >
+            +
+          </button>
+        </span>
       </li>
     </ul>
     <p v-if="!items.length" class="empty">Nothing carried yet.</p>
@@ -338,18 +340,26 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
 
   li {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 0 8px;
     min-height: 44px;
     border-bottom: 1px solid var(--track);
   }
 }
 
 .items__name {
-  flex: 1 1 auto;
+  flex: 1 1 6rem;
   min-width: 0;
   font-size: 14px;
   overflow-wrap: anywhere;
+}
+
+.items__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .items__qty {
