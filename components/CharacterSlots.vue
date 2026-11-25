@@ -40,7 +40,14 @@ async function loadCampaigns() {
   campaignByCharacter.value = map
 }
 
+const route = useRoute()
+
 onMounted(async () => {
+  // The PF2e builder's "start a blank sheet" link lands here with `?blank=pf2e`.
+  if (route.query.blank === 'pf2e') {
+    openBlank('pf2e')
+    void navigateTo({ query: {} }, { replace: true })
+  }
   try {
     await Promise.all([store.fetchMine(), loadCampaigns()])
   } catch (err) {
@@ -54,11 +61,16 @@ function nimbleClass(c: (typeof store.characters)[number]): string {
 }
 
 function start(system: GameSystem) {
-  // Nimble heroes are built from class data in a dedicated flow.
-  if (system === 'nimble') {
-    void navigateTo('/characters/new/nimble')
+  // Nimble and PF2e heroes are built from class data in a dedicated flow; the PF2e builder
+  // links back here for a blank sheet.
+  if (system === 'nimble' || system === 'pf2e') {
+    void navigateTo(`/characters/new/${system}`)
     return
   }
+  openBlank(system)
+}
+
+function openBlank(system: GameSystem) {
   newSystem.value = system
   newName.value = ''
   createOpen.value = true
@@ -144,15 +156,6 @@ async function create() {
           {{ systemLabel(newSystem) }}
         </span>
       </template>
-      <div v-if="newSystem === 'pf2e'" class="stack builder-offer">
-        <p class="small">
-          Build a level 1 hero step by step from the Player Core rules, or start a blank sheet you
-          fill in yourself.
-        </p>
-        <NuxtLink to="/characters/new/pf2e" class="btn" @click="createOpen = false">
-          Open the hero builder
-        </NuxtLink>
-      </div>
       <form class="stack" @submit.prevent="create">
         <div class="field">
           <label for="new-char-name">Character name</label>
@@ -184,12 +187,6 @@ async function create() {
 </template>
 
 <style scoped lang="scss">
-.builder-offer {
-  padding-bottom: 14px;
-  margin-bottom: 14px;
-  border-bottom: 1px solid var(--line);
-}
-
 .slots {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr));
