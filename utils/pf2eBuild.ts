@@ -504,6 +504,12 @@ export const needsDeity = (cls: Pf2eClassDef, picks: Pf2eSubclassOption[] = []) 
   /\bdeity\b/i.test(levelOneFeatures(cls).join(', ')) ||
   picks.some((p) => /\byour deity's\b/i.test(levelOneText(p.text)))
 
+/** Whether the build needs a deity: the class or its choices, or a background that serves one. */
+export function wantsDeity(c: Pf2eCreation, data: Pf2eBuildData) {
+  const { cls, background, subclassPicks } = resolve(c, data)
+  return (!!cls && needsDeity(cls, subclassPicks)) || !!background?.deitySkill
+}
+
 /** Deities a cleric or champion can follow: those that grant a divine font. */
 export const deityOptions = (data: Pf2eBuildData) =>
   data.deities.filter((d) => d.divineFont.length > 0)
@@ -590,12 +596,14 @@ const cleanEntry = (s: string) =>
     .trim()
 
 /**
- * A background's skills: plain names are trained; "Genealogy Lore or Heraldry Lore" is a
- * choice; prose like "Lore related to the terrain you worked in" is a Lore the player names.
+ * A background's skills: plain names are trained; "Genealogy Lore or Heraldry Lore" and the
+ * data's `skillChoices` are choices (one with no options is a free pick of any skill); prose
+ * like "Lore related to the terrain you worked in" is a Lore the player names.
  */
 export function backgroundSkills(b: Pf2eBackgroundDef) {
   const fixed: string[] = []
-  const groups: Pf2eSkillPlan['groups'] = []
+  const groups: Pf2eSkillPlan['groups'] = (b.skillChoices ?? []).filter((g) => g.options.length)
+  const free = (b.skillChoices ?? []).reduce((n, g) => n + (g.options.length ? 0 : g.count), 0)
   const lores: Pf2eSkillPlan['lores'] = []
   for (const entry of b.skills) {
     const clean = cleanEntry(entry)
@@ -606,7 +614,7 @@ export function backgroundSkills(b: Pf2eBackgroundDef) {
     else if (either.length === 1 && named(head)) fixed.push(head)
     else lores.push({ hint: clean.replace(/\.$/, '') })
   }
-  return { fixed, groups, lores }
+  return { fixed, groups, lores, free }
 }
 
 /** A Lore the player named, as the sheet writes it: "desert" → "Desert Lore". */
@@ -633,10 +641,10 @@ export function skillPlan(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSkillPlan {
   const int = attributeMods(c, data).INT
   const bg = background
     ? backgroundSkills(background)
-    : { fixed: [], groups: [], lores: [] as Pf2eSkillPlan['lores'] }
+    : { fixed: [], groups: [], lores: [] as Pf2eSkillPlan['lores'], free: 0 }
   const fixed: string[] = [...new Set(bg.fixed)]
   const groups: Pf2eSkillPlan['groups'] = [...bg.groups]
-  let free = 0
+  let free = bg.free
   const add = (s: string) => {
     if (fixed.includes(s)) free++
     else fixed.push(s)
@@ -657,6 +665,8 @@ export function skillPlan(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSkillPlan {
   if (cls) classLores(cls).forEach(add)
   if (cls && deity && needsDeity(cls, subclassPicks))
     for (const s of deity.skill.slice(0, 1)) add(s)
+  // Raised by Belief: "You're trained in your deity's associated skill".
+  if (deity && background?.deitySkill) for (const s of deity.skill.slice(0, 1)) add(s)
   for (const o of subclassPicks) {
     o.skills.forEach(add)
     // "You're trained in Society and one of the following skills of your choice: Arcana, …"
@@ -682,7 +692,12 @@ export function skillProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   let left = [...picks]
   for (const g of plan.groups) {
     const hit = left.filter((s) => g.options.includes(s)).slice(0, g.count)
-    if (hit.length < g.count) out.push(`Choose ${g.options.join(' or ')}`)
+    if (hit.length < g.count)
+      out.push(
+        g.count > 1
+          ? `Choose ${g.count} of ${g.options.join(', ')}`
+          : `Choose ${g.options.join(' or ')}`,
+      )
     left = left.filter((s) => !hit.includes(s))
   }
   if (left.length !== plan.free)
@@ -866,7 +881,7 @@ function strike(
 
 /** What is missing, by builder step: ancestry, background, class, attributes, skills & feats, gear. */
 export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
-  const { ancestry, heritage, background, cls, deity, subclassPicks } = resolve(c, data)
+  const { ancestry, heritage, background, cls, deity } = resolve(c, data)
   const ancestryStep = [
     ancestry ? '' : 'Choose an ancestry',
     heritage ? '' : 'Choose a heritage',
@@ -884,7 +899,7 @@ export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
             : `Choose ${ch.count.min}–${ch.count.max} for ${ch.label.toLowerCase()}`,
         )
     }
-    if (needsDeity(cls, subclassPicks) && !deity) classStep.push('Choose a deity')
+    if (wantsDeity(c, data) && !deity) classStep.push('Choose a deity')
   }
   const trait = classFeatTrait(cls)
   const featStep = [

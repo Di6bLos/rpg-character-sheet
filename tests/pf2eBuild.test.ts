@@ -444,7 +444,8 @@ describe('pf2e skill text', () => {
     ])
     expect(backgroundSkills(bg('Guard')).groups[0]!.options).toEqual(['Legal Lore', 'Warfare Lore'])
     // AoN's doubled "Lore Lore", three options, a note after the name, a link.
-    const prose = (skills: string[]) => backgroundSkills({ ...bg('Guard'), skills })
+    const prose = (skills: string[]) =>
+      backgroundSkills({ ...bg('Guard'), skills, skillChoices: undefined })
     expect(prose(['Driving Lore Lore or Piloting Lore']).groups[0]!.options).toEqual([
       'Driving Lore',
       'Piloting Lore',
@@ -681,5 +682,47 @@ describe('pf2e data shapes after the setting cut', () => {
     const buckler = named(data.shields, 'Buckler')
     const s = buildPf2eSheet({ ...dwarfFighter(), shield: buckler.id }, data)
     expect(s.shield).toMatchObject({ name: 'Buckler', ac: buckler.ac })
+  })
+})
+
+describe('pf2e background skill choices from the data', () => {
+  it('offers a scholar’s choice instead of training all four', () => {
+    const c = autoCreation(cls('Fighter'), data, 'Scholar')
+    const plan = skillPlan(c, data)
+    expect(plan.fixed).toContain('Academia Lore')
+    expect(plan.groups).toContainEqual({
+      options: ['Arcana', 'Nature', 'Occultism', 'Religion'],
+      count: 1,
+    })
+    expect(plan.fixed).not.toContain('Arcana')
+  })
+
+  it('trains the hunted in Stealth and Survival', () => {
+    expect(skillPlan(autoCreation(cls('Wizard'), data, 'The Hunted'), data).fixed).toEqual(
+      expect.arrayContaining(['Stealth', 'Survival']),
+    )
+  })
+
+  it('takes several from a choice of several (Concordance Researcher picks four)', () => {
+    const c = autoCreation(cls('Wizard'), data, 'Concordance Researcher')
+    const group = skillPlan(c, data).groups.find((g) => g.count === 4)!
+    expect(group.options).toHaveLength(6)
+    expect(skillProblems(c, data)).toEqual([])
+    c.skills = c.skills.filter((s) => !group.options.includes(s)).concat(group.options[0]!)
+    expect(skillProblems(c, data)).toContain(`Choose 4 of ${group.options.join(', ')}`)
+  })
+
+  it('makes "a skill of your choice" one more free skill (The Returned)', () => {
+    const c = autoCreation(cls('Fighter'), data, 'The Returned')
+    const plain = autoCreation(cls('Fighter'), data, 'The Hunted')
+    expect(skillPlan(c, data).free).toBe(skillPlan(plain, data).free + 1)
+  })
+
+  it('asks Raised by Belief for a deity and trains its skill', () => {
+    const c = autoCreation(cls('Fighter'), data, 'Raised by Belief')
+    const deity = resolve(c, data).deity!
+    expect(deity).toBeDefined()
+    expect(skillPlan(c, data).fixed).toContain(deity.skill[0])
+    expect(creationProblems({ ...c, deity: undefined }, data).class).toEqual(['Choose a deity'])
   })
 })
