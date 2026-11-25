@@ -755,4 +755,26 @@ describe('pf2e ability rules: review fixes', () => {
     expect(lines.join(' ')).not.toMatch(/Perception|\(\d+/)
     expect(usedAction('You can Seek the hidden door.', checks)).toBe('Seek')
   })
+
+  it('reads Hammer Quake, Spell Swipe and Rejoin in Flight as Strikes, and Wing Buffet as 2 attacks', () => {
+    expect(ability('Hammer Quake').strike).toMatchObject({ count: 1, mapCount: 3 })
+    expect(ability('Spell Swipe').strike).toMatchObject({
+      count: 2,
+      mapCount: 2,
+      melee: true,
+      sameMap: true,
+    })
+    // "the penalty doesn't increase until after you've made both attacks": both at the
+    // current penalty, then counted as two.
+    const rejoin = ability('Mated Birds in Paired Flight').strike!
+    expect(rejoin).toMatchObject({ count: 2, mapCount: 2, sameMap: true })
+    expect(strikeCountAs(rejoin)).toBe(0)
+    const wing = readAbility(find(feats, 'Wing Buffet'))
+    expect(wing.check).toMatchObject({ skills: ['Athletics'], attack: true, mapCount: 2 })
+    const s = hero([])
+    s.skills = [{ name: 'Athletics', attr: 'STR', rank: 'T', value: 5 }]
+    startPf2eTurn(s)
+    resolveUse(s, wing, { name: 'Wing Buffet', level: 1, rng: () => 0.5 })
+    expect(s.turn?.attacks).toBe(2)
+  })
 })

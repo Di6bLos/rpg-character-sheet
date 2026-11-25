@@ -477,7 +477,7 @@ export function resolveUse(s: Pf2eSheet, r: Pf2eAbilityRules, o: Pf2eUseOptions)
       const attack = !!check.attack
       const penalty = attack ? mapPenalties(s, false)[mapIndex(s)] : 0
       const bonus = choice.bonus - penalty
-      if (attack) attacked(s)
+      if (attack) attacked(s, check.mapCount ?? 1)
       const tier = check.tiers?.find((x) => x.rank === o.tier) ?? check.tiers?.[0]
       const dc = tier?.dc ?? check.dc ?? o.dc ?? null
       const roll = o.rng ? rollCheck(bonus, o.rng) : rollCheck(bonus)

@@ -79,6 +79,8 @@ export interface Pf2eCheckRule {
   tiers?: { rank: Pf2eRank; dc: number; bonus: number }[]
   /** Has the attack trait: the multiple attack penalty applies and it counts (p. 418). */
   attack?: boolean
+  /** Attacks it counts as when its text says more than one (Wing Buffet: 2). */
+  mapCount?: number
 }
 
 /** Dice the ability rolls, at a level: `diceAt` gives the expression. */
@@ -295,7 +297,10 @@ export const PF2E_RULE_PATTERNS = {
     /^(?:You )?(?:spend|spending|take|takes) (1 minute|10 minutes|1 hour|(?:\d+|one|two|several) (?:minutes|hours|days))\b/i,
   strike:
     /\b(?:[Mm]ake|[Aa]ttempt) (a|an|one|two|three) (?:single )?(?:(melee|ranged|unarmed|weapon|thrown|dynamo|slashing|piercing|bludgeoning)(?: or (?:melee|ranged|unarmed|weapon|thrown|dynamo|slashing|piercing|bludgeoning))? )*(?:weapon )?Strikes?\b|\bStrike (twice|two times)\b/,
-  sameMap: /\beach using your current multiple attack penalty\b/i,
+  sameMap:
+    /\beach using your current multiple attack penalty\b|\bthe penalty doesn(?:'|’)t increase until (?:after )?(?:you(?:'|’)ve made |you make )?both\b/i,
+  strikeMay: /\byou can Strike (?:that|the|an?|one)\b/,
+  strikeSeparate: /\broll separate Strikes to attack (two|three) creatures\b/i,
   twoWeapons: /\bone with each of your two (?:melee )?weapons\b/i,
   secondPenalty:
     /\bIf the second Strike is made with a weapon that doesn(?:'|’)t have the agile trait, it takes a [–−-](\d+) penalty/i,
@@ -839,7 +844,11 @@ function readCheck(text: string, traits: string[]): Pf2eCheckRule | undefined {
     const fixed = P.fixedDc.exec(sentence)
     if (fixed) rule.dc = Number(fixed[1])
   }
-  if (traits.some((t) => t.toLowerCase() === 'attack')) rule.attack = true
+  if (traits.some((t) => t.toLowerCase() === 'attack')) {
+    rule.attack = true
+    const counted = P.mapCounted.exec(text)
+    if (counted) rule.mapCount = num(counted[1]!)
+  }
   if (P.sameDcAsTreatWounds.test(text)) rule.tiers = TREAT_WOUNDS_TIERS
   return rule
 }
@@ -863,10 +872,13 @@ function readTiers(raw: string): Pf2eCheckRule['tiers'] {
 }
 
 function readStrike(text: string): Pf2eStrikeRule | undefined {
-  const m = P.strike.exec(text)
+  // "you can Strike that enemy" (Hammer Quake); "roll separate Strikes to attack two
+  // creatures" (Spell Swipe, which Spellstrikes in melee).
+  const separate = P.strikeSeparate.exec(text)
+  const m = P.strike.exec(text) ?? P.strikeMay.exec(text) ?? separate
   if (!m) return undefined
-  const kinds = m[0].toLowerCase()
-  const count = m[3] ? 2 : m[1] ? num(m[1]) : 1
+  const kinds = (separate ? 'melee' : m[0]).toLowerCase()
+  const count = separate ? num(separate[1]!) : m[3] ? 2 : m[1] ? num(m[1]) : 1
   const before = text.slice(0, m.index)
   const twice = P.strideTwice.exec(before)
   const strides = twice ? num(twice[1]!) : P.strideOnce.test(before) ? 1 : 0
