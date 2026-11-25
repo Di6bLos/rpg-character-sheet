@@ -324,7 +324,9 @@ export function closedTitlesIn(text: string, closed: Set<string>) {
       .filter((t) => !TITLE_WORDS.has(t) && !openBook(t))
       .sort((a, b) => b.length - a.length)
       .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    re = new RegExp(`(?<![\\w])(${titles.join('|')})(?![\\w]| \\(Remastered\\))`, 'g')
+    // Letters and digits bound a title, not underscores: an italic title ("_Lost Omens Tian Xia
+    // Character Guide_") is still a citation.
+    re = new RegExp(`(?<![A-Za-z0-9])(${titles.join('|')})(?![A-Za-z0-9]| \\(Remastered\\))`, 'g')
     titleRes.set(closed, re)
   }
   // "Lost Omens" alone counts as the line's name ("Lost Omens: Draconic Codex", "Lost Omens
@@ -338,12 +340,18 @@ export function closedTitlesIn(text: string, closed: Set<string>) {
   return [...new Set(hits.map((m) => m[1]!))]
 }
 
-/** A section's lead: its first line of prose, past stat lines, rules and tables. */
+/**
+ * A section's lead: the first sentence of its first line of prose, past stat lines, rules and
+ * tables ("The dragons from Lost Omens: Draconic Codex use…"). A pointer to another book
+ * further on (Spellshot's "You can find more information… in Guns & Gears") isn't one.
+ */
 const leadOf = (block: string[]) =>
-  block.find((l) => {
-    const t = l.trim()
-    return t !== '' && t !== '---' && !t.startsWith('**') && !t.startsWith('|')
-  }) ?? ''
+  (
+    block.find((l) => {
+      const t = l.trim()
+      return t !== '' && t !== '---' && !t.startsWith('**') && !t.startsWith('|')
+    }) ?? ''
+  ).split(/(?<=[.!?])\s+(?=[A-Z])/)[0] ?? ''
 
 /** Whether an entry's lead, its first line of prose, names a closed book (Monster Core Dragons). */
 export function leadNamesClosed(md: string, closed: Set<string>) {

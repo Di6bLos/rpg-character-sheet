@@ -270,6 +270,8 @@ describe('closed books named in open text', () => {
       'Grand Bazaar',
     ])
     expect(closedTitlesIn('Treasure Vault (Remastered) pg. 30', CLOSED)).toEqual([])
+    // An italic title is a citation too (Monster Core's mountain oni).
+    expect(closedTitlesIn('which appears in _Draconic Codex_.', CLOSED)).toEqual(['Draconic Codex'])
     expect(closedTitlesIn('Legends say Aroden…, throughout the Impossible Lands', CLOSED)).toEqual(
       [],
     )

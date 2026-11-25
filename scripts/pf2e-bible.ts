@@ -94,10 +94,15 @@ const byName = (a: Doc, b: Doc) =>
   a.name.localeCompare(b.name) || Number(remaster(b)) - Number(remaster(a))
 const byLevel = (a: Doc, b: Doc) => (a.level ?? 0) - (b.level ?? 0) || byName(a, b)
 
+/** A legacy name the ORC set doesn't print: a closed archetype or its dedication (Drow Shootist). */
+const closedName = (n: string) =>
+  ORC_ONLY && CLOSED_ARCHETYPES.has(n.replace(/ Dedication$/, '').trim())
+
 function edition(d: Doc) {
   const tag = remaster(d) ? 'Remaster (ORC)' : 'Legacy (OGL)'
+  const legacy = (d.legacy_name ?? []).filter((n) => !closedName(n))
   const later = d.remaster_name?.length ? ` · remastered as ${d.remaster_name.join(', ')}` : ''
-  const earlier = d.legacy_name?.length ? ` · replaces legacy ${d.legacy_name.join(', ')}` : ''
+  const earlier = legacy.length ? ` · replaces legacy ${legacy.join(', ')}` : ''
   return `_${tag}${later}${earlier}_`
 }
 
