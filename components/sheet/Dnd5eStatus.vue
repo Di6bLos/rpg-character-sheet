@@ -3,7 +3,8 @@
 // player edits them here, and the GM's battle board changes reach them through the
 // hero_hp_changes / hero_condition_changes pickups. Chips toggle as on the PF2e sheet;
 // colours come from the theme's variables; a theme off the panel palette (Cursed's
-// parchment) sets the --d5-* properties on it.
+// parchment) sets the --d5-* properties on it. On a touch screen the field and chips are
+// 44px targets, 8px apart.
 import type { Dnd5eSheet } from '~/types/sheets'
 import { DND5E_CONDITIONS } from '~/utils/sheetDefaults'
 
@@ -134,6 +135,21 @@ function toggle(name: string) {
 
   &:disabled {
     cursor: default;
+  }
+}
+
+@media (pointer: coarse) {
+  .d5-status__input,
+  .d5-status__chip {
+    min-height: 44px;
+  }
+
+  .d5-status__chip {
+    padding: 0 14px;
+  }
+
+  .d5-status .chips {
+    gap: 8px;
   }
 }
 </style>

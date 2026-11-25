@@ -21,8 +21,11 @@ const combat = computed(() => [
   { label: 'Armor Class', value: String(sheet.value.ac) },
   { label: 'Initiative', value: sign(sheet.value.initMod) },
   { label: 'Speed', value: sheet.value.speed },
+])
+/** Under the ability scores, so that panel isn't half empty beside Combat. */
+const training = computed(() => [
   { label: 'Proficiency', value: sign(sheet.value.profBonus) },
-  { label: 'Passive Perc.', value: String(sheet.value.passivePerception) },
+  { label: 'Passive Perception', value: String(sheet.value.passivePerception) },
 ])
 
 function sign(n: number) {
@@ -85,6 +88,12 @@ function sign(n: number) {
           <div class="caps">{{ s.k }}</div>
           <div class="stat__big">{{ s.mod }}</div>
           <div class="stat__small">{{ s.score }}</div>
+        </div>
+      </div>
+      <div class="combat combat--two">
+        <div v-for="t in training" :key="t.label" class="tile">
+          <div class="tile__label">{{ t.label }}</div>
+          <div class="tile__value">{{ t.value }}</div>
         </div>
       </div>
     </section>
@@ -314,7 +323,7 @@ function sign(n: number) {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -366,6 +375,10 @@ function sign(n: number) {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
+
+  &--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .sheet-tabs {
