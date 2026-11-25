@@ -3,20 +3,28 @@
 // conditions, cantrips (heightened to half the level), slots by rank — spontaneous casters
 // pick the slot to cast from (only signature spells heighten), prepared casters fill each
 // slot — a cleric's divine font, focus
-// spells and Refocus, daily preparations, and adding or removing spells. Rules text comes
-// from `data/pf2e` (fetched when the panel opens); rules in utils/pf2eSpells.ts.
+// spells and Refocus, daily preparations, and adding or removing spells. Casting rolls what the
+// spell rolls at the rank it goes off (utils/pf2eSpellRules.ts): a spell attack against the
+// Target AC with the chosen MAP, or the DC and damage for each save result, healing the hero can
+// take, and a buff it can turn on. Rules text comes from `data/pf2e` (fetched when the panel
+// opens); rules in utils/pf2eSpells.ts.
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
 import { rollAttack, sign } from '~/utils/dice'
 import { actionGlyph } from '~/utils/pf2eBuild'
+import { heal } from '~/utils/pf2ePlay'
 import {
   castCantrip,
+  castEffect,
   castFocus,
   castFont,
   castPrepared,
   castSpontaneous,
+  castWentOff,
   dailyPreparations,
+  effectOnSelf,
+  focusNumbers,
   heightenedRank,
   highestRank,
   refocus,
@@ -24,6 +32,7 @@ import {
   spellNumbers,
   spontaneousRank,
 } from '~/utils/pf2eSpells'
+import { defaultActions, spellRules } from '~/utils/pf2eSpellRules'
 import { loreHtml } from '~/utils/loreText'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
@@ -45,6 +54,8 @@ const cantripIds = computed(
 )
 
 const numbers = computed(() => (sc.value ? spellNumbers(sheet.value, sc.value, level.value) : null))
+/** Focus-only heroes cast with their class DC. */
+const castNumbers = computed(() => numbers.value ?? focusNumbers(sheet.value))
 const ranks = computed(() =>
   (sc.value?.slots ?? [])
     .map((r, i) => ({ rank: i + 1, ...r }))
@@ -73,6 +84,100 @@ const fontRank = computed(() => (sc.value ? highestRank(sc.value) : 0))
 
 function run(message: string) {
   if (canEdit.value) say(message)
+}
+
+// --- What a cast rolls ---------------------------------------------------------------
+/** The target's AC for spell attacks, and which attack this is for MAP (p. 402). */
+const targetAc = ref<number | null>(null)
+const attackNumber = ref(0)
+const knownIds = computed(() => [
+  ...(sc.value?.cantrips ?? []),
+  ...(sc.value?.spells ?? []),
+  ...(sheet.value.focusSpells ?? []),
+])
+const hasAttackSpell = computed(() =>
+  knownIds.value.some((s) => {
+    const def = byId.value.get(s.id)
+    return def ? spellRules(def).attack : false
+  }),
+)
+/** Per spell: the action version and a melee spell attack. */
+const actionsFor = ref<Record<string, number | undefined>>({})
+const meleeFor = ref<Record<string, boolean>>({})
+const actionsOf = (def: Pf2eSpellDef) => actionsFor.value[def.id] ?? defaultActions(spellRules(def))
+
+/** What the last cast left to apply: healing, temporary HP, a buff cast on a target. */
+const lastCast = ref<{
+  def: Pf2eSpellDef
+  rank: number
+  healing?: number
+  temp?: number
+  offer?: string
+} | null>(null)
+
+/** Says the cast line; if it went off, rolls what the spell rolls at that rank. */
+function cast(message: string, def: Pf2eSpellDef | undefined, rank: number) {
+  if (!canEdit.value) return
+  lastCast.value = null
+  if (!def || !castWentOff(message)) return say(message)
+  const r = castEffect(sheet.value, def, rank, level.value, {
+    actions: actionsOf(def),
+    melee: !!meleeFor.value[def.id],
+    attackNumber: attackNumber.value,
+    targetAc: targetAc.value,
+  })
+  say(`${message} ${r.text}`.trim())
+  const effect = spellRules(def).effect
+  const offer = effect && !effect.self ? effect.def.name : undefined
+  if (r.healing || r.temp || offer)
+    lastCast.value = { def, rank, healing: r.healing, temp: r.temp, offer }
+}
+
+function castFromSlot(s: Pf2eSpellRef) {
+  const slot = castRank(s)
+  cast(castSpontaneous(sheet.value, s, slot), byId.value.get(s.id), spontaneousRank(s, slot))
+}
+
+function castFromPrepared(rank: number, index: number, id: string | null) {
+  cast(castPrepared(sheet.value, rank, index), id ? byId.value.get(id) : undefined, rank)
+}
+
+const fontDef = computed(() =>
+  sc.value?.font
+    ? spells.value.find(
+        (x) => x.kind === 'spell' && x.name.toLowerCase() === sc.value!.font!.spell.toLowerCase(),
+      )
+    : undefined,
+)
+function castFromFont() {
+  const rank = fontRank.value
+  cast(castFont(sheet.value), fontDef.value, rank)
+}
+
+function healSelf() {
+  const last = lastCast.value
+  if (!canEdit.value || !last?.healing) return
+  say(`${last.def.name}: ${heal(sheet.value, last.healing)}`)
+  lastCast.value = { ...last, healing: undefined }
+}
+
+/** Temporary Hit Points don't stack: the hero keeps the higher (p. 410). */
+function tempSelf() {
+  const last = lastCast.value
+  if (!canEdit.value || !last?.temp) return
+  const before = sheet.value.tempHp
+  sheet.value.tempHp = Math.max(before, last.temp)
+  say(
+    `${last.def.name}: ${sheet.value.tempHp > before ? `${sheet.value.tempHp} temporary HP` : `you keep your ${before} temporary HP`}.`,
+  )
+  lastCast.value = { ...last, temp: undefined }
+}
+
+function buffSelf() {
+  const last = lastCast.value
+  if (!canEdit.value || !last?.offer) return
+  say(`${last.def.name}: ${effectOnSelf(sheet.value, last.def, last.rank, level.value)}`)
+  lastCast.value = { ...last, offer: undefined }
 }
 
 /** Spells known (repertoire or list) that fit a prepared slot of this rank. */
@@ -166,6 +271,64 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
       </div>
     </div>
 
+    <div v-if="hasAttackSpell" class="target row">
+      <label class="small">
+        Target AC
+        <input
+          v-model.number="targetAc"
+          class="input input--sm ac"
+          type="number"
+          min="0"
+          max="60"
+          placeholder="?"
+        />
+      </label>
+      <label class="small">
+        Spell attack
+        <select v-model.number="attackNumber" class="input input--sm">
+          <option :value="0">1st this turn ({{ sign(castNumbers.attack.value) }})</option>
+          <option :value="1">2nd (MAP −5: {{ sign(castNumbers.attack.value - 5) }})</option>
+          <option :value="2">3rd (MAP −10: {{ sign(castNumbers.attack.value - 10) }})</option>
+        </select>
+      </label>
+    </div>
+
+    <div
+      v-if="lastCast && (lastCast.healing || lastCast.temp || lastCast.offer)"
+      class="last-cast"
+      role="status"
+    >
+      <span class="small">{{ lastCast.def.name }}:</span>
+      <button
+        v-if="lastCast.healing"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit"
+        @click="healSelf"
+      >
+        Heal yourself {{ lastCast.healing }} HP
+      </button>
+      <button
+        v-if="lastCast.temp"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit"
+        @click="tempSelf"
+      >
+        Gain {{ lastCast.temp }} temporary HP
+      </button>
+      <button
+        v-if="lastCast.offer"
+        type="button"
+        class="btn btn--sm"
+        :disabled="!canEdit"
+        @click="buffSelf"
+      >
+        {{ lastCast.offer }} on yourself
+      </button>
+      <button type="button" class="x" aria-label="Dismiss" @click="lastCast = null">×</button>
+    </div>
+
     <!-- Cantrips -->
     <div v-if="sc" class="group">
       <h3 class="caps">Cantrips · rank {{ heightenedRank(level) }}</h3>
@@ -178,11 +341,18 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
         >
           {{ s.name }} <small>{{ actionGlyph(byId.get(s.id)?.actions) }}</small>
         </button>
+        <Pf2eSpellCastOptions
+          v-if="byId.get(s.id)"
+          v-model:actions="actionsFor[s.id]"
+          v-model:melee="meleeFor[s.id]"
+          :spell="byId.get(s.id)!"
+          :rank="heightenedRank(level)"
+        />
         <button
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit"
-          @click="run(castCantrip(sheet, s, level))"
+          @click="cast(castCantrip(sheet, s, level), byId.get(s.id), heightenedRank(level))"
         >
           Cast
         </button>
@@ -281,11 +451,18 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
               }}
             </option>
           </select>
+          <Pf2eSpellCastOptions
+            v-if="byId.get(s.id)"
+            v-model:actions="actionsFor[s.id]"
+            v-model:melee="meleeFor[s.id]"
+            :spell="byId.get(s.id)!"
+            :rank="spontaneousRank(s, castRank(s))"
+          />
           <button
             type="button"
             class="btn btn--ghost btn--sm"
             :disabled="!canEdit || !castRanks(s).length"
-            @click="run(castSpontaneous(sheet, s, castRank(s)))"
+            @click="castFromSlot(s)"
           >
             Cast
           </button>
@@ -326,11 +503,18 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
               {{ o.name }}{{ o.rank < r.rank ? ` (heightened)` : '' }}
             </option>
           </select>
+          <Pf2eSpellCastOptions
+            v-if="p.id && byId.get(p.id)"
+            v-model:actions="actionsFor[p.id]"
+            v-model:melee="meleeFor[p.id]"
+            :spell="byId.get(p.id)!"
+            :rank="r.rank"
+          />
           <button
             type="button"
             class="btn btn--ghost btn--sm"
             :disabled="!canEdit || !p.id || p.cast"
-            @click="run(castPrepared(sheet, r.rank, i))"
+            @click="castFromPrepared(r.rank, i, p.id)"
           >
             Cast
           </button>
@@ -381,10 +565,17 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             ? 'Your divine font casts at your highest slot rank: add slots first'
             : undefined
         "
-        @click="run(castFont(sheet))"
+        @click="castFromFont"
       >
         Cast {{ sc.font.spell }}{{ fontRank ? ` · rank ${fontRank}` : '' }}
       </button>
+      <Pf2eSpellCastOptions
+        v-if="fontDef && fontRank"
+        v-model:actions="actionsFor[fontDef.id]"
+        v-model:melee="meleeFor[fontDef.id]"
+        :spell="fontDef"
+        :rank="fontRank"
+      />
     </div>
 
     <!-- Focus spells -->
@@ -424,11 +615,24 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             }}{{ cantripIds.has(s.id) ? ' · cantrip' : '' }}</small
           >
         </button>
+        <Pf2eSpellCastOptions
+          v-if="byId.get(s.id)"
+          v-model:actions="actionsFor[s.id]"
+          v-model:melee="meleeFor[s.id]"
+          :spell="byId.get(s.id)!"
+          :rank="heightenedRank(level)"
+        />
         <button
           type="button"
           class="btn btn--ghost btn--sm"
           :disabled="!canEdit || (!cantripIds.has(s.id) && sheet.focus.current < 1)"
-          @click="run(castFocus(sheet, s, level, cantripIds.has(s.id)))"
+          @click="
+            cast(
+              castFocus(sheet, s, level, cantripIds.has(s.id)),
+              byId.get(s.id),
+              heightenedRank(level),
+            )
+          "
         >
           Cast
         </button>
@@ -643,14 +847,46 @@ button.head__tile {
 }
 
 .input--sm {
+  width: auto;
   min-height: 34px;
   padding: 4px 8px;
   font-size: 13px;
 }
 
+select.input--sm {
+  flex: 0 0 auto;
+  padding-right: 30px;
+}
+
 .pool {
   width: 60px;
   margin-left: 6px;
+}
+
+.target {
+  flex-wrap: wrap;
+  gap: 12px;
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+}
+
+.ac {
+  width: 64px;
+}
+
+.last-cast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--track);
 }
 
 .adder {
