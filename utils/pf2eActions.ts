@@ -21,7 +21,15 @@ import {
 } from '~/utils/pf2eAbilityRules'
 import { bravado, finisherBlock, spendFinisher } from '~/utils/pf2eClassActions'
 import { pf2eEffectDef, endPf2eEffects, mapPenalties, toggleEffect } from '~/utils/pf2eEffects'
-import { adjusted, conditionValue, degreeOf, heal, isDead, takePersistent } from '~/utils/pf2ePlay'
+import {
+  activeConditions,
+  adjusted,
+  conditionValue,
+  degreeOf,
+  heal,
+  isDead,
+  takePersistent,
+} from '~/utils/pf2ePlay'
 
 type Turn = NonNullable<Pf2eSheet['turn']>
 
@@ -52,6 +60,17 @@ function setCondition(s: Pf2eSheet, name: string, value: number) {
   }
   if (!s.conditions.includes(name)) s.conditions = [...s.conditions, name]
   s.conditionValues = { ...s.conditionValues, [name]: value }
+}
+
+/** Conditions that keep the hero from acting at all, reactions and free actions too (pp. 444–446). */
+const CANT_ACT = ['Paralyzed', 'Petrified', 'Unconscious', 'Stunned']
+
+/** Why the hero can't act at all (dead, or one of `CANT_ACT`), or ''. */
+export function cantAct(s: Pf2eSheet): string {
+  if (isDead(s)) return 'Your hero is dead.'
+  const on = activeConditions(s)
+  const stopped = CANT_ACT.find((c) => on.has(c))
+  return stopped ? `You can’t act while ${stopped.toLowerCase()}.` : ''
 }
 
 /** Uses that come back at the start of your turn: once per turn and once per round. */
@@ -313,7 +332,8 @@ export function blockedReason(
   r: Pf2eAbilityRules,
   opts: { name: string; target?: string; actions?: number } = { name: r.name },
 ): string {
-  if (isDead(s)) return 'Your hero is dead.'
+  const stopped = cantAct(s)
+  if (stopped) return stopped
   if (r.frequency && usesLeft(s, opts.name, r.frequency, opts.target) <= 0)
     return `Used: ${frequencyLabel(r.frequency).toLowerCase()}`
   const t = s.turn

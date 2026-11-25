@@ -14,8 +14,8 @@ import { type Rng, rollDie } from '~/utils/dice'
 import { setGiven, toggleEffect } from '~/utils/pf2eEffects'
 import { itemsDailyPrep } from '~/utils/pf2eInventory'
 import { readCost } from '~/utils/pf2eAbilityRules'
-import { attacked, inEncounter } from '~/utils/pf2eActions'
-import { activeConditions, adjusted, conditionValue, isDead, proficiency } from '~/utils/pf2ePlay'
+import { attacked, cantAct, inEncounter } from '~/utils/pf2eActions'
+import { adjusted, conditionValue, proficiency } from '~/utils/pf2ePlay'
 import { type Pf2eCastRoll, castRolls, effectValue, spellRules } from '~/utils/pf2eSpellRules'
 
 /** Cantrips and focus spells heighten to half your level, rounded up (p. 298). */
@@ -209,19 +209,14 @@ export function dailyPreparations(s: Pf2eSheet): string {
   return `Daily preparations: ${slots ? 'spell slots, ' : ''}Focus Points and daily abilities restored.`
 }
 
-/** Conditions that keep the hero from acting at all, Cast a Spell included (pp. 444–446). */
-const CANT_ACT = ['Paralyzed', 'Petrified', 'Unconscious', 'Stunned']
-
 /**
  * Why the hero can't cast this spell now, or '' (Player Core pp. 302, 436): dead, or a
  * condition that keeps them from acting; on their turn, fewer actions left than it costs; a
  * reaction spell once the reaction is spent in an encounter.
  */
 export function castBlocked(s: Pf2eSheet, spell: Pf2eSpellDef | undefined, actions?: number) {
-  if (isDead(s)) return 'Your hero is dead.'
-  const on = activeConditions(s)
-  const stopped = CANT_ACT.find((c) => on.has(c))
-  if (stopped) return `You can’t act while ${stopped.toLowerCase()}.`
+  const stopped = cantAct(s)
+  if (stopped) return stopped
   const cost = readCost(spell?.actions)
   const t = s.turn
   if (cost?.kind === 'reaction' && t && inEncounter(s) && !t.reaction)

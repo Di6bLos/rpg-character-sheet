@@ -722,4 +722,20 @@ describe('pf2e ability rules: review fixes', () => {
       expect([6, 9, 20].map((l) => diceAt(damage[0]!, l))).toEqual(['4d6', '7d6', '18d6'])
     }
   })
+
+  it('a hero who can’t act can’t use anything, reactions and free actions included (pp. 444–446)', () => {
+    const reaction = readAbility(find(feats, 'Reactive Shield'))
+    const strike = action('Strike')
+    const free = action('Release')
+    expect(free.cost).toEqual({ kind: 'free' })
+    for (const c of ['Unconscious', 'Paralyzed', 'Petrified', 'Stunned']) {
+      const s = hero([])
+      s.conditions = [c]
+      const why = `You can’t act while ${c.toLowerCase()}.`
+      for (const r of [reaction, strike, free]) expect(blockedReason(s, r)).toBe(why)
+    }
+    const dead = hero([], { dying: 4 })
+    expect(blockedReason(dead, reaction)).toBe('Your hero is dead.')
+    expect(blockedReason(hero([]), reaction)).toBe('')
+  })
 })
