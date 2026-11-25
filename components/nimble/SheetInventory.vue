@@ -2,6 +2,7 @@
 // Inventory with Nimble's slot limit (10 + STR), coins and notes.
 import type { CustomItem, InventoryItem, NimbleSheet, NimbleStat } from '~/types/sheets'
 import {
+  armorPiece,
   bookItem,
   catalog,
   customItem,
@@ -9,6 +10,8 @@ import {
   itemAttack,
   itemStat,
   itemSummary,
+  wearItem,
+  wornArmor,
 } from '~/utils/nimbleItems'
 import { inventorySlots, itemSlots } from '~/utils/nimblePlay'
 
@@ -16,7 +19,7 @@ const MAX_COINS = 999_999
 const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
 const RARITIES = ['Uncommon', 'Rare', 'Very Rare', 'Legendary']
 
-const { draft, canEdit } = useSheet<NimbleSheet>()
+const { draft, canEdit, say } = useSheet<NimbleSheet>()
 const sheet = computed(() => draft.value.sheet)
 
 const slots = computed(() => inventorySlots(sheet.value))
@@ -39,6 +42,7 @@ const items = computed(() =>
       weapon: isWeapon(item),
       stat: itemStat(sheet.value, item, draft.value.level),
       equipped: sheet.value.attacks.some((a) => a.name === item.name),
+      armor: armorPiece(sheet.value, item),
       size,
       sizeLabel: SLOT_LABELS[size] ?? `${size} slots`,
     }
@@ -48,8 +52,17 @@ const items = computed(() =>
 function adjust(item: InventoryItem, delta: number) {
   if (!canEdit.value) return
   const next = (Number.parseInt(item.qty, 10) || 0) + delta
-  if (next <= 0) sheet.value.inventory = sheet.value.inventory.filter((i) => i !== item)
-  else item.qty = String(next)
+  if (next > 0) {
+    item.qty = String(next)
+    return
+  }
+  sheet.value.inventory = sheet.value.inventory.filter((i) => i !== item)
+  if (item.worn) sheet.value.ac = wornArmor(sheet.value, draft.value.level).value
+}
+
+/** Wears or takes off armor or a shield; the hero's Armor follows what they wear. */
+function wear(item: InventoryItem) {
+  if (canEdit.value) say(wearItem(sheet.value, item, draft.value.level))
 }
 
 /** Cycles small → 1 slot → 2 slots. */
@@ -142,6 +155,16 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
           @click="toggleEquip(row.item)"
         >
           {{ row.equipped ? 'Equipped' : 'Equip' }}
+        </button>
+        <button
+          v-if="row.armor && canEdit"
+          type="button"
+          class="equip"
+          :aria-pressed="!!row.item.worn"
+          :aria-label="`${row.item.worn ? 'Take off' : 'Equip'} ${row.item.name} as ${row.armor.shield ? 'a shield' : 'armor'}`"
+          @click="wear(row.item)"
+        >
+          {{ row.item.worn ? 'Equipped' : 'Equip' }}
         </button>
         <button
           type="button"

@@ -171,10 +171,15 @@ export function summonModifiers(
 }
 
 /** Switches to another summon option of the same pool, keeping its name and image. */
-export function switchSummonOption(sheet: NimbleSheet, from: string, to: string): string {
+export function switchSummonOption(
+  sheet: NimbleSheet,
+  from: string,
+  to: string,
+  level: number,
+): string {
   const fromDef = summonBySource(from)
   const toDef = summonBySource(to)
-  if (!fromDef || !toDef || !swapPoolOption(sheet, from, to)) return ''
+  if (!fromDef || !toDef || !swapPoolOption(sheet, from, to, level)) return ''
   const look = sheet.summonLooks[fromDef.id]
   if (look) {
     const looks = { ...sheet.summonLooks }
