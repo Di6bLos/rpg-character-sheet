@@ -2,9 +2,10 @@
 // `data/pf2e/types.ts`) from the Archives of Nethys data in `.local/pf2e/aon/`. Remaster (ORC)
 // entries from the open rulebooks only (`OPEN_BOOKS` in `scripts/lib/aon.ts`): legacy (OGL)
 // entries, Golarion setting books (Lost Omens, Adventure Paths…), entries named for a deity or
-// Golarion proper noun, the sections of those books AoN inlines and the deity lists on weapons
-// and spells are left out. Deities themselves are Paizo Reserved Material, kept under Paizo's
-// Community Use Policy (the user's one exception). Also writes `data/pf2e/NOTICE.md` with the ORC and
+// Golarion proper noun, the feats of setting archetypes (and those archetypes' names on other
+// feats), the sections of those books AoN inlines and the deity lists on weapons and spells
+// are left out. Deities themselves are Paizo Reserved Material, kept under Paizo's Community
+// Use Policy (the user's one exception). Also writes `data/pf2e/NOTICE.md` with the ORC and
 // Community Use notices and the books used.
 //
 //   npm run pf2e:data -- [dataDir]
@@ -37,6 +38,8 @@ import {
   backgroundSkillText,
   classOfType,
   cleanMarkdown,
+  closedArchetypeFeat,
+  closedArchetypes,
   heritageAncestry,
   closedBooks,
   legacyBooks,
@@ -67,6 +70,8 @@ const LEGACY = legacyBooks(all)
 const CLOSED = closedBooks(all)
 /** Every deity name AoN has, to leave out entries named for one (Achaekek's Clutch). */
 const DEITY_NAMES = all.filter((d) => d.category === 'deity').map((d) => d.name)
+/** Setting and legacy-only archetypes: their own feats go, other feats drop their names. */
+const CLOSED_ARCHETYPES = closedArchetypes(all, DEITY_NAMES)
 const docs = all.filter(remaster)
 const byId = new Map(docs.map((d) => [d.id, d]))
 /**
@@ -78,7 +83,8 @@ const current = docs.filter(
   (d) =>
     !d.exclude_from_search &&
     !list(d.remaster_id).length &&
-    (d.category === 'deity' || shareable(d, DEITY_NAMES)),
+    (d.category === 'deity' || shareable(d, DEITY_NAMES)) &&
+    !closedArchetypeFeat(d, CLOSED_ARCHETYPES),
 )
 const of = (...cats: string[]) =>
   current
@@ -456,7 +462,7 @@ const feats: Pf2eFeatDef[] = latest(of('feat'), featKey).map((d) => {
     ...opt('duration', stats.Duration),
     classes: traits.filter((t) => classNames.includes(t)),
     ancestries: traits.filter((t) => featLists.has(t)),
-    archetypes: list(d.archetype),
+    archetypes: list(d.archetype).filter((a) => !CLOSED_ARCHETYPES.has(a)),
     general: traits.includes('General'),
     skill: traits.includes('Skill'),
   }
