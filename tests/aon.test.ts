@@ -87,6 +87,9 @@ describe('cleanMarkdown', () => {
         '**_Nethys Note: This page contains HUGE SPOILERS for the Season of Ghosts Adventure Path. _**Nindorus are fiends.',
       ),
     ).toBe('Nindorus are fiends.')
+    expect(
+      clean('_**Nethys Note: This deity entry contains spoilers for Season of Ghosts.**_Text'),
+    ).toBe('Text')
     expect(clean('**_Nethys Note: This feat was printed with two actions._**')).toContain(
       'printed with two actions',
     )

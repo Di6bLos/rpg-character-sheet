@@ -18,11 +18,10 @@ import {
   type AonDoc as Doc,
   classOfType as typeOf,
   cleanMarkdown,
+  closedBooks,
   heritageAncestry,
-  legacyBooks,
   loadAon,
   located,
-  openBook,
   orcProblems,
   page,
   remaster,
@@ -62,14 +61,8 @@ const DEITIES = everything.filter((d) => d.category === 'deity').map((d) => d.na
 const docs = everything.filter(
   (d) => !ORC_ONLY || (remaster(d) && !LORE.has(d.category) && shareable(d, DEITIES)),
 )
-/**
- * Books the ORC set leaves out wherever they're cited: legacy (OGL) books, and every book that
- * isn't an open rulebook (`OPEN_BOOKS`), whose sections AoN sometimes inlines into rulebook pages.
- */
-const CLOSED_BOOKS = legacyBooks(everything)
-for (const d of everything)
-  for (const b of [d.primary_source, ...(d.category === 'source' ? [d.name] : [])])
-    if (b && !openBook(b)) CLOSED_BOOKS.add(b.trim())
+/** Legacy and setting books, left out of the ORC set wherever they're cited. */
+const CLOSED_BOOKS = closedBooks(everything)
 const byId = new Map(docs.map((d) => [d.id, d]))
 const placed = new Set<string>()
 /** Entries already printed inside another (`<document>`), so book order doesn't repeat them. */

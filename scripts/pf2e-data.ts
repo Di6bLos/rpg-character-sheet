@@ -1,8 +1,10 @@
 // Writes the committed Pathfinder 2e rules data (`data/pf2e/generated/*.json`, typed in
 // `data/pf2e/types.ts`) from the Archives of Nethys data in `.local/pf2e/aon/`. Remaster (ORC)
-// entries only: legacy (OGL) entries and the legacy sections AoN inlines are left out, and so
-// are the deity lists on weapons and spells. Deities themselves are Paizo Reserved Material,
-// kept under Paizo's Community Use Policy. Also writes `data/pf2e/NOTICE.md` with the ORC and
+// entries from the open rulebooks only (`OPEN_BOOKS` in `scripts/lib/aon.ts`): legacy (OGL)
+// entries, Golarion setting books (Lost Omens, Adventure Paths…), entries named for a deity or
+// Golarion proper noun, the sections of those books AoN inlines and the deity lists on weapons
+// and spells are left out. Deities themselves are Paizo Reserved Material, kept under Paizo's
+// Community Use Policy (the user's one exception). Also writes `data/pf2e/NOTICE.md` with the ORC and
 // Community Use notices and the books used.
 //
 //   npm run pf2e:data -- [dataDir]
@@ -35,11 +37,13 @@ import {
   classOfType,
   cleanMarkdown,
   heritageAncestry,
+  closedBooks,
   legacyBooks,
   loadAon,
   located,
   page,
   remaster,
+  shareable,
   slug,
   stripLinks,
   withoutLegacy,
@@ -57,6 +61,10 @@ const list = (v: unknown) =>
 
 const all = loadAon(DATA)
 const LEGACY = legacyBooks(all)
+/** Legacy and Golarion setting books: their sections are cut from every entry but a deity's. */
+const CLOSED = closedBooks(all)
+/** Every deity name AoN has, to leave out entries named for one (Achaekek's Clutch). */
+const DEITY_NAMES = all.filter((d) => d.category === 'deity').map((d) => d.name)
 const docs = all.filter(remaster)
 const byId = new Map(docs.map((d) => [d.id, d]))
 /**
@@ -64,7 +72,12 @@ const byId = new Map(docs.map((d) => [d.id, d]))
  * (`exclude_from_search`), and not entries a newer remastered version replaced (`remaster_id`:
  * Rage of Elements' Arms of Nature by Divine Mysteries'). `byId` keeps them for inlined sections.
  */
-const current = docs.filter((d) => !d.exclude_from_search && !list(d.remaster_id).length)
+const current = docs.filter(
+  (d) =>
+    !d.exclude_from_search &&
+    !list(d.remaster_id).length &&
+    (d.category === 'deity' || shareable(d, DEITY_NAMES)),
+)
 const of = (...cats: string[]) =>
   current
     .filter((d) => cats.includes(d.category))
@@ -127,7 +140,10 @@ const rank = (v: unknown) => RANK[String(v)] ?? 'U'
 
 /** Splits an entry's markdown into its stat lines (`**Key** value`) and its rules text. */
 function parts(d: AonDoc) {
-  const md = withoutLegacy(cleanMarkdown(d.markdown ?? '', 1, byId), LEGACY)
+  const md = withoutLegacy(
+    cleanMarkdown(d.markdown ?? '', 1, byId),
+    d.category === 'deity' ? LEGACY : CLOSED,
+  )
   const lines = md.split('\n')
   if (lines[0]?.startsWith('# ')) lines.shift()
   const rule = lines.indexOf('---')
@@ -580,7 +596,8 @@ const sets: Record<string, { id: string; source: { book: string } }[]> = {
 mkdirSync(OUT, { recursive: true })
 const books = new Set<string>()
 for (const [name, rows] of Object.entries(sets)) {
-  for (const r of rows) books.add(r.source.book)
+  // Deities aren't ORC Licensed Material; their books are named in the Community Use line.
+  if (name !== 'deities') for (const r of rows) books.add(r.source.book)
   writeFileSync(
     join(OUT, `${name}.json`),
     `[\n${rows.map((r) => JSON.stringify(r)).join(',\n')}\n]\n`,
@@ -595,9 +612,9 @@ The files in \`generated/\` contain Licensed Material from Paizo Inc. under the 
 
 **Attribution:** this data is based on the following Licensed Material, each © Paizo Inc.: ${[...books].filter(Boolean).sort().join('; ')}.
 
-**Reserved Material:** Paizo's trademarks and setting material (such as Golarion's deities, nations, organizations and characters) are Reserved Material and are not licensed under the ORC License.
+**Reserved Material:** Paizo's trademarks and setting material (such as Golarion's deities, nations, organizations and characters) are Reserved Material and are not licensed under the ORC License. Entries from Golarion setting books (the Lost Omens line, Adventure Paths, adventures, Society scenarios) and entries named for Golarion's deities, places or organizations are left out; such names appear only where an open rulebook's rules text mentions them.
 
-**Community Use:** \`deities.json\` and the setting names in the rules text use trademarks and/or copyrights owned by Paizo Inc., used under Paizo's Community Use Policy (paizo.com/licenses/communityuse). We are expressly prohibited from charging you to use or access this content. Lantern is not published, endorsed, or specifically approved by Paizo. For more information about Paizo Inc. and Paizo products, visit paizo.com.
+**Community Use:** \`deities.json\` uses trademarks and/or copyrights owned by Paizo Inc., used under Paizo's Community Use Policy (paizo.com/licenses/communityuse); the deities come from ${[...new Set(deities.map((d) => d.source.book))].sort().join('; ')}. We are expressly prohibited from charging you to use or access this content. Lantern is not published, endorsed, or specifically approved by Paizo. For more information about Paizo Inc. and Paizo products, visit paizo.com.
 
 Lantern is not published, endorsed or specifically approved by Paizo Inc. Text gathered from Archives of Nethys (2e.aonprd.com) and generated by \`scripts/pf2e-data.ts\`. Legacy (OGL) material and book art are not included.
 `,

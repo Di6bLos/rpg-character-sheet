@@ -114,6 +114,6 @@ The bible's `rules/03-gm-core.md` has the full tables: Perception, saves, skills
 
 ## How the repo encodes it
 
-- **Data**: `data/pf2e/` holds the Remaster rules data generated from the AoN data (`npm run pf2e:data`; types in `data/pf2e/types.ts`, loaded with `loadPf2e`). It covers classes, ancestries, heritages, backgrounds, feats, spells, weapons, armor, shields, conditions, actions and traits. It includes ORC content only, without deity lists, with the notice in `data/pf2e/NOTICE.md`.
+- **Data**: `data/pf2e/` holds the Remaster rules data generated from the AoN data (`npm run pf2e:data`; types in `data/pf2e/types.ts`, loaded with `loadPf2e`). It covers classes, ancestries, heritages, backgrounds, feats, spells, weapons, armor, shields, conditions, actions and traits. It includes ORC content from the open rulebooks only (no Golarion setting material, see `licensing.md`), without deity lists, plus the deities under the Community Use Policy, with the notice in `data/pf2e/NOTICE.md`.
 - **Sheet**: the app still has a hand-edited sheet (`Pf2eSheet` in `types/sheets.ts`, `components/sheet/Pf2eSheet.vue`). The builder and the play engine come next (`add-game-system` checklist, `_features.md` Phase 8).
 - **Automation**: abilities and spells will use structured effect data on each feat and spell, not regexes over rules text.

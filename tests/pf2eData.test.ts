@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type Pf2eData, loadPf2e } from '../data/pf2e'
+import { openBook, settingName } from '../scripts/lib/aon'
 
 const dir = join(import.meta.dirname, '..', 'data', 'pf2e', 'generated')
 const load = <K extends keyof Pf2eData>(set: K): Pf2eData[K] =>
@@ -67,9 +68,27 @@ describe('pf2e data', () => {
         expect(JSON.stringify(r), r.id).not.toMatch(/more recent version/i)
   })
 
+  // The user's licensing call: deities are the one Reserved Material kept (Community Use
+  // Policy); nothing else comes from a Golarion setting book or is named for its deities,
+  // places or organizations. See .claude/skills/rpg-rules/references/licensing.md.
+  it('keeps Golarion setting material out, deities aside', () => {
+    const deityNames = data.deities.map((d) => d.name)
+    const { deities: _deities, ...rest } = data
+    const records = [...Object.values(rest).flat(), ...subclasses] as Pf2eData['traits']
+    for (const r of records) {
+      expect(openBook(r.source.book), `${r.name}: ${r.source.book}`).toBe(true)
+      expect(settingName(r.name, deityNames), r.name).toBeUndefined()
+    }
+    for (const c of data.classes)
+      for (const f of c.features) expect(settingName(f.name, deityNames), f.name).toBeUndefined()
+    expect(data.deities.length).toBeGreaterThan(0)
+  })
+
   it('has rules text for every trait, spoiler notes aside', () => {
     for (const t of data.traits) expect(t.text, t.name).not.toBe('')
-    expect(data.traits.find((t) => t.name === 'Nindoru')?.text).toMatch(/^Nindorus are/)
+    for (const rows of Object.values(data))
+      for (const r of rows as Pf2eData['traits'])
+        expect(r.text, r.name).not.toMatch(/Nethys Note:[^*]*spoilers/i)
   })
 
   it('cites a printed page, except a few web-only articles', () => {
@@ -192,21 +211,15 @@ describe('pf2e data', () => {
   it('links heritages to ancestries that exist', () => {
     const slugs = new Set(data.ancestries.map((a) => a.slug))
     for (const h of data.heritages) if (h.ancestry) expect(slugs, h.name).toContain(h.ancestry)
-    // Only heritages of ancestries printed in legacy books alone (Kitsune, Nagaji, Poppet,
-    // Skeleton) have no ancestry in the ORC data.
-    expect(data.heritages.filter((h) => !h.ancestry && !h.versatile).map((h) => h.name)).toEqual([
-      'Palace Echoes Kitsune',
-      'Shifting Skeleton',
-      'Shimmertongue Nagaji',
-      'Tsukumogami Poppet',
-    ])
+    expect(data.heritages.filter((h) => !h.ancestry && !h.versatile).map((h) => h.name)).toEqual([])
     const of = (name: string) => data.heritages.find((h) => h.name === name)?.ancestry
+    // Its name says no ancestry; it prints two pages after Awakened Animal.
     expect(of('Climbing Animal')).toBe('awakened-animal')
-    expect(of('Shadow of the Smith')).toBe('wayang')
-    expect(of('Respite of Loam and Leaf')).toBe('yaksha')
-    expect(of('Born of Item')).toBe('yaoguai')
-    expect(of('Dijiang')).toBe('sprite')
-    expect(of('House Drake')).toBe('dragonet')
+    for (const a of data.ancestries)
+      expect(
+        data.heritages.some((h) => h.ancestry === a.slug),
+        a.name,
+      ).toBe(true)
   })
 
   // The builder reads a background without listed boosts from its text: "You gain N free
@@ -253,17 +266,15 @@ describe('pf2e data', () => {
     for (const s of data.spells.filter((x) => x.kind === 'focus'))
       for (const [field, cls] of Object.entries(owner))
         if (s[field as keyof typeof owner]?.length) expect(s.classes, s.name).toContain(cls)
-    for (const name of ['Practice Makes Perfect', 'Serrate', 'Arms of Nature', 'Wood Walk'])
-      expect(
-        data.spells.find((s) => s.name.toLowerCase() === name.toLowerCase())?.classes,
-        name,
-      ).toEqual(['Cleric'])
+    expect(
+      data.spells.filter((s) => s.kind === 'focus' && s.domains?.length).length,
+    ).toBeGreaterThan(0)
   })
 
   it('reads heightening as printed: a step, fixed ranks, or both', () => {
     const spell = (name: string) => data.spells.find((s) => s.name === name)
     expect(spell('Fireball')?.heightened).toEqual({ step: 1, ranks: [] })
-    expect(spell('Zenith Star')?.heightened).toEqual({ step: 1, ranks: [4] })
+    expect(spell('Aerial Form')?.heightened).toEqual({ ranks: [5, 6] })
     expect(spell('Glimpse Weakness')?.ampHeightened).toEqual({ step: 2, ranks: [] })
     for (const s of data.spells)
       for (const r of s.heightened?.ranks ?? []) expect(r).toBeGreaterThan(s.rank)
@@ -274,7 +285,7 @@ describe('pf2e data', () => {
     for (const r of [...data.spells, ...data.feats, ...data.actions])
       expect(String(r.actions ?? ''), r.name).not.toMatch(/Action/)
     expect(data.actions.find((a) => a.name === 'Quick Tincture')?.cost).toBe('1 versatile vial')
-    expect(data.feats.find((f) => f.name === 'Stasian Smash')?.access).toBe('You are from Ustalav.')
+    expect(data.feats.find((f) => f.name === 'Clan Pistol')?.access).toMatch(/^You are from/)
     expect(data.spells.find((s) => s.name === 'Raise Dead')?.cost).toMatch(/gemstones/)
   })
 
@@ -311,12 +322,13 @@ describe('pf2e data', () => {
       favoredWeapons: ['Scimitar'],
       domains: expect.arrayContaining(['Fire', 'Healing', 'Sun', 'Truth']),
     })
-    // Some remastered deities still list spells only printed in legacy books.
+    // Deities also list spells printed only in legacy or Golarion setting books, which the data
+    // leaves out (39 of 292 names today).
     const spellNames = new Set(data.spells.map((s) => s.name))
     const legacyOnly = new Set(
       data.deities.flatMap((d) => d.clericSpells).filter((s) => !spellNames.has(s)),
     )
-    expect(legacyOnly.size).toBeLessThan(25)
+    expect(legacyOnly.size).toBeLessThan(50)
     for (const d of data.deities.filter((x) => x.divineFont.length))
       expect(d.domains.length, d.name).toBeGreaterThan(0)
   })

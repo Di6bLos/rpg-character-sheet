@@ -259,6 +259,18 @@ export function settingName(name: string, deities: string[]) {
 export const shareable = (d: AonDoc, deities: string[]) =>
   openBook(d.primary_source) && !settingName(d.name, deities)
 
+/**
+ * Books a shareable output leaves out wherever they're cited: legacy (OGL) books, and every
+ * book that isn't an open rulebook, whose sections AoN sometimes inlines into rulebook pages.
+ */
+export function closedBooks(docs: AonDoc[]) {
+  const books = legacyBooks(docs)
+  for (const d of docs)
+    for (const b of [d.primary_source, ...(d.category === 'source' ? [d.name] : [])])
+      if (b && !openBook(b)) books.add(b.trim())
+  return books
+}
+
 /** AoN's action names → glyphs; ranges ("Single Action to Three Actions") are built from these. */
 export const ACTIONS: Record<string, string> = {
   'Single Action': '◆',
@@ -390,7 +402,7 @@ export function cleanMarkdown(
     actionGlyph(a) ? `${sp}${actionGlyph(a)}` : '',
   )
   // AoN's own spoiler warnings ("Nethys Note: This page contains HUGE SPOILERS…") are not book text.
-  s = s.replace(/\*\*_Nethys Note:[^*]*?spoilers[^*]*?_\*\*/gi, '')
+  s = s.replace(/(?:\*\*_|_\*\*)Nethys Note:[^*]*?spoilers[^*]*?(?:_\*\*|\*\*_)/gi, '')
   s = s.replace(/<sup>\s*([^<]*?)\s*<\/sup>/g, (_, mark: string) => footnote(mark))
   s = s.replace(/<table[\s\S]*?<\/table>/g, table)
   s = s
