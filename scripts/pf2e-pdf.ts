@@ -18,6 +18,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { sourceBooks } from './lib/aon'
 
 const ROOT = join(import.meta.dirname, '..')
 const [bibleArg, outArg] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
@@ -210,25 +211,20 @@ const PROFILE = join(WORK, 'chrome')
 process.on('exit', () => rmSync(WORK, { recursive: true, force: true }))
 const today = new Date().toISOString().slice(0, 10)
 const report: string[] = []
+const oversized: string[] = []
 
 for (const v of VOLUMES.filter((x) => !ONLY || ONLY.includes(x.slug))) {
   const parts = v.parts.filter((p) => existsSync(join(BIBLE, p)))
   if (!parts.length) continue
   const chapters = parts.map((p) => readFileSync(join(BIBLE, p), 'utf8'))
   const titles = chapters.map((c) => /^# (.*)$/m.exec(c)?.[1] ?? 'Untitled')
-  const books = [
-    ...new Set(
-      chapters.flatMap((c) =>
-        [...c.matchAll(/^\*\*Source\*\* (.+?) pg\./gm)].map((m) => m[1]!.trim()),
-      ),
-    ),
-  ].sort()
+  const books = [...new Set(chapters.flatMap((c) => c.split('\n').flatMap(sourceBooks)))].sort()
   const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Pathfinder 2e Remaster: ${esc(v.title)}</title><style>${CSS}</style></head><body>
 <div class="cover"><h1>${esc(v.title)}</h1><p class="sub">Pathfinder Second Edition Remaster rules reference</p><p class="sub">Compiled for Lantern · ${today}</p></div>
 <div class="notice"><h2>Notice</h2>
 <p>This compilation contains Licensed Material from Paizo Inc. under the ORC License, located at the Library of Congress at TX 9-307-067 and available online at various locations including paizo.com/orclicense and azoralaw.com/orclicense. All warranties are disclaimed as set forth therein.</p>
 <p><b>Attribution:</b> This compilation is based on the following Licensed Material, each © Paizo Inc.: ${books.map(esc).join('; ')}.</p>
-<p><b>Reserved Material:</b> Paizo's trademarks and setting material (for example the names of deities, nations, organizations and characters of Golarion) are Reserved Material and are not licensed under the ORC License. They appear here only where the rules text names them.</p>
+<p><b>Reserved Material:</b> Paizo's trademarks and setting material (for example the names of deities, nations, organizations and characters of Golarion) are Reserved Material and are not licensed under the ORC License. Entries from Golarion setting books and entries named for its deities, places or organizations are left out; such names appear only where the rules text mentions them.</p>
 <p>Lantern is not published, endorsed or specifically approved by Paizo Inc. Text gathered from Archives of Nethys (2e.aonprd.com). Legacy (OGL) material and book art are not included.</p>
 <p>Actions: ◆ one action, ◆◆ two, ◆◆◆ three, ↺ reaction, ◇ free action.</p></div>
 <div class="toc"><h2>Contents</h2><ol>${titles.map((t) => `<li>${esc(t)}</li>`).join('')}</ol></div>
@@ -254,5 +250,10 @@ ${chapters.map(html).join('\n')}
   const line = `${v.slug}: ${parts.length} chapters, ${(size / 1048576).toFixed(1)} MB${size > MAX_BYTES ? '  OVER 50 MB' : ''}`
   report.push(line)
   console.log(line)
+  if (size > MAX_BYTES) oversized.push(v.slug)
 }
 if (!ONLY) writeFileSync(join(OUT, 'README.txt'), `${report.join('\n')}\n`)
+if (oversized.length) {
+  console.error(`Over the library's 50 MB limit, split them: ${oversized.join(', ')}`)
+  process.exit(1)
+}

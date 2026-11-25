@@ -7,8 +7,10 @@
 // Rage of Elements on) or Legacy (OGL) and what replaced it.
 //
 //   npm run pf2e:bible -- [dataDir] [outDir]
-//   npm run pf2e:bible -- --orc [dataDir] [outDir]   (Remaster/ORC entries only, without the
-//     Golarion lore files: what may be shared, e.g. the library PDFs; default out pf2e-orc/)
+//   npm run pf2e:bible -- --orc [dataDir] [outDir]   (what may be shared, e.g. the library
+//     PDFs; default out pf2e-orc/: Remaster entries from the open rulebooks only (`OPEN_BOOKS`
+//     in scripts/lib/aon.ts), none named for a deity or Golarion proper noun, no lore files,
+//     setting or legacy sources or deity stat lines. Exits non-zero if any would still be written.)
 
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -16,12 +18,16 @@ import {
   type AonDoc as Doc,
   classOfType as typeOf,
   cleanMarkdown,
+  closedBooks,
   heritageAncestry,
-  legacyBooks,
   loadAon,
+  located,
+  orcProblems,
   page,
   remaster,
+  shareable,
   slug,
+  withoutDeities,
   withoutLegacy,
 } from './lib/aon'
 
@@ -50,8 +56,13 @@ const CORE = [
 ]
 
 const everything = loadAon(DATA)
-const docs = everything.filter((d) => !ORC_ONLY || (remaster(d) && !LORE.has(d.category)))
-const LEGACY_BOOKS = legacyBooks(everything)
+/** Every deity name AoN has, to spot entries named for one (Achaekek's Clutch). */
+const DEITIES = everything.filter((d) => d.category === 'deity').map((d) => d.name)
+const docs = everything.filter(
+  (d) => !ORC_ONLY || (remaster(d) && !LORE.has(d.category) && shareable(d, DEITIES)),
+)
+/** Legacy and setting books, left out of the ORC set wherever they're cited. */
+const CLOSED_BOOKS = closedBooks(everything)
 const byId = new Map(docs.map((d) => [d.id, d]))
 const placed = new Set<string>()
 /** Entries already printed inside another (`<document>`), so book order doesn't repeat them. */
@@ -77,7 +88,7 @@ function edition(d: Doc) {
 function entry(d: Doc, h: number) {
   placed.add(d.id)
   const cleaned = cleanMarkdown(d.markdown ?? '', h, byId, embed, new Set([d.id]))
-  const body = ORC_ONLY ? withoutLegacy(cleaned, LEGACY_BOOKS) : cleaned
+  const body = ORC_ONLY ? withoutDeities(withoutLegacy(cleaned, CLOSED_BOOKS)) : cleaned
   const [first = '', ...rest] = body.split('\n')
   const head = first.startsWith('#') ? first : `${'#'.repeat(h)} ${d.name}`
   const tail = first.startsWith('#') ? rest : [first, ...rest]
@@ -86,10 +97,15 @@ function entry(d: Doc, h: number) {
 
 const written: { file: string; title: string; entries: number }[] = []
 
+/** What the ORC set would leak (legacy sources, deity lines), by file; the build fails on any. */
+const leaks: string[] = []
+
 function write(file: string, title: string, parts: string[], entries: number, intro = '') {
   const path = join(OUT, file)
   mkdirSync(join(path, '..'), { recursive: true })
-  writeFileSync(path, `# ${title}\n\n${intro ? `${intro}\n\n` : ''}${parts.join('\n')}`)
+  const md = `# ${title}\n\n${intro ? `${intro}\n\n` : ''}${parts.join('\n')}`
+  if (ORC_ONLY) for (const l of orcProblems(md, CLOSED_BOOKS)) leaks.push(`${file}: ${l}`)
+  writeFileSync(path, md)
   written.push({ file, title, entries })
 }
 
@@ -304,7 +320,7 @@ for (const c of classNames) {
       versatileStubs.push(h)
       continue
     }
-    const a = heritageAncestry(h.name, names)
+    const a = heritageAncestry(located(h), ancestries.map(located))
     if (!a) unmatched.push(h)
     else grouped.set(a, [...(grouped.get(a) ?? []), h])
   }
@@ -604,4 +620,11 @@ for (const c of classNames) {
   }
   writeFileSync(join(OUT, 'README.md'), lines.join('\n'))
   console.log(`${written.length} files, ${placed.size}/${docs.length} entries placed → ${OUT}`)
+}
+
+if (leaks.length) {
+  console.error(
+    `ORC set leaks ${leaks.length} line(s) it must not share:\n${leaks.slice(0, 20).join('\n')}`,
+  )
+  process.exit(1)
 }
