@@ -2,7 +2,7 @@
 // The PF2e sheet's Inventory panel: Bulk against the encumbered and overloaded limits, which
 // give and take the encumbered condition (Player Core p. 269); worn, held and stowed items;
 // investing up to 10 (GM Core p. 219); coins; items added from the data (`ItemPicker`) or by
-// name; runes etched on weapons and armor (`RuneEtch`, GM Core pp. 224–225); and using items
+// name; runes etched on weapons, armor and staves (`RuneEtch`, GM Core pp. 224–225, 278); and using items
 // (GM Core p. 220): consumables spend one and do what they do, scrolls and wands cast their
 // spell, staves are prepared and spend charges (pp. 262, 278, 282). Rules in
 // utils/pf2eInventory.ts and utils/pf2eItemUse.ts; results show under the panel.
@@ -89,7 +89,8 @@ const rows = computed(() =>
       consumable: !!kind && CONSUMABLE.has(kind),
       castable: (kind === 'scroll' || kind === 'wand') && !!st.spell,
       staff: kind === 'staff',
-      runes: kind === 'weapon' || kind === 'armor',
+      // Staves are staff weapons and take fundamental runes (GM Core p. 278).
+      runes: kind === 'weapon' || kind === 'armor' || kind === 'staff',
       invest: needsInvesting(st),
     }
   }),
@@ -304,6 +305,9 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
       >
       <span v-if="bulk.light"
         >Light items <strong>{{ bulk.light }}</strong></span
+      >
+      <span v-if="bulk.backpack" title="A worn backpack: its first 2 Bulk don't count"
+        >Backpack <strong>−{{ bulk.backpack }} Bulk</strong></span
       >
       <span v-if="bulk.coins"
         >Coins <strong>{{ bulk.coins }} Bulk</strong></span

@@ -7,6 +7,7 @@ import type {
   Pf2eItemDamage,
   Pf2eItemKind,
   Pf2eItemNumbers,
+  Pf2eRuneVsDamage,
 } from '~/data/pf2e/types'
 
 export interface SheetCommon {
@@ -82,8 +83,10 @@ export interface Pf2eItemState extends Pf2eItemNumbers {
   carry: 'worn' | 'held' | 'stowed'
   usage?: string
   traits?: string[]
-  /** Invested today (GM Core p. 219: at most 10). */
+  /** Invested now (GM Core p. 219). */
   invested?: boolean
+  /** Invested since daily preparations, even if taken off since: it counts against the 10. */
+  investedToday?: boolean
   activations?: Pf2eActivation[]
   /** Armor's category (light, medium, heavy, unarmored) and a weapon's melee or ranged, for runes. */
   category?: string
@@ -96,6 +99,8 @@ export interface Pf2eItemState extends Pf2eItemNumbers {
   wand?: { cast: boolean; overcharged: boolean; broken: boolean }
   /** The spell in a scroll or wand, at the item's rank. */
   spell?: { id: string; name: string; rank: number }
+  /** An item that grants Shield Block while held, as its text says (Scale of Igroon). */
+  shieldBlock?: boolean
 }
 
 export interface Pf2eItemRunes {
@@ -113,7 +118,13 @@ export interface Pf2ePropertyRune {
   name: string
   level: number
   damage?: Pf2eItemDamage
+  /** Persistent damage on a hit (wounding), a condition the target tracks. */
+  persistent?: Pf2eItemDamage
+  /** Damage against some foes only (vitalizing against undead). */
+  vs?: Pf2eRuneVsDamage[]
   crit?: string
+  /** Keen: a natural 19 that hits is a critical hit (GM Core p. 237). */
+  keen?: boolean
 }
 
 export type CustomItemEffectKind =

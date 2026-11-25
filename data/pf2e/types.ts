@@ -564,6 +564,8 @@ export interface Pf2eEffectDef {
   note?: string
   /** A toggle that ends by itself, by the turn steps. */
   ends?: Pf2eEnds
+  /** A consumable's effect: rounds of its duration left (10 a minute), counted by the turn steps. */
+  rounds?: number
   /** Read from the ability's text by utils/pf2eAbilityRules.ts rather than written here. */
   derived?: boolean
 }

@@ -7,7 +7,7 @@ import type { Pf2eEffectDef, Pf2eSpellDef } from '~/data/pf2e/types'
 import type { InventoryItem, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { type Rng, parseDice, rollAttack, rollDice, rollDie, sign } from '~/utils/dice'
 import { attacked, mapIndex } from '~/utils/pf2eActions'
-import { toggleEffect } from '~/utils/pf2eEffects'
+import { durationRounds, toggleEffect } from '~/utils/pf2eEffects'
 import { highestSlot, spendOne, spendStaff, useWand } from '~/utils/pf2eInventory'
 import { adjusted, degreeOf, heal, proficiency, strikeResult } from '~/utils/pf2ePlay'
 import { type Pf2eBuildData, higher } from '~/utils/pf2eBuild'
@@ -87,14 +87,16 @@ export interface Pf2eItemUseOptions {
 }
 
 /**
- * An elixir's or potion's bonuses as an effect the hero has on until it ends (data/pf2e
- * effects engine): bonuses that hold only sometimes and the duration go in its note; one
- * that lasts a minute ends with the turn steps' "a minute passes".
+ * An elixir's or potion's effect the hero has on until it ends (data/pf2e effects engine): its
+ * bonuses, those that hold only sometimes and the duration in its note. Whatever duration it
+ * lists ends by itself: its rounds count down with the turn steps (`passItemTime`). One with
+ * neither bonuses nor a duration is no effect.
  */
 export function consumableEffect(item: InventoryItem): Pf2eEffectDef | undefined {
   const st = item.pf2e
   const always = (st?.bonuses ?? []).filter((b) => !b.when)
-  if (!st || !always.length) return undefined
+  const rounds = durationRounds(st?.duration)
+  if (!st || (!always.length && !rounds)) return undefined
   const sometimes = (st.bonuses ?? []).filter((b) => b.when).map((b) => b.when)
   return {
     name: item.name,
@@ -108,7 +110,7 @@ export function consumableEffect(item: InventoryItem): Pf2eEffectDef | undefined
       ...(b.skills ? { skills: b.skills } : {}),
     })),
     note: [st.duration ? `Lasts ${st.duration}.` : '', ...sometimes].filter(Boolean).join(' '),
-    ...(st.duration === '1 minute' ? { ends: 'minute' as const } : {}),
+    ...(rounds ? { rounds } : {}),
   }
 }
 
@@ -123,15 +125,17 @@ function throwBomb(s: Pf2eSheet, item: InventoryItem, o: Pf2eItemUseOptions): st
   const b = st.bomb!
   const rank = o.bombRank ?? 'T'
   const base = proficiency(rank, o.level) + s.attrs.DEX
-  const attack = adjusted(s, base, {
-    kind: 'attack',
-    attr: 'DEX',
-    traits: ['thrown', 'splash'],
-    level: o.level,
-  })
+  // The bomb's item bonus stacks like any other: only the highest item bonus counts (p. 400).
+  const own = b.attack ? [{ value: b.attack, type: 'item' as const, source: item.name }] : []
+  const attack = adjusted(
+    s,
+    base,
+    { kind: 'attack', attr: 'DEX', traits: ['thrown', 'splash'], level: o.level },
+    own,
+  )
   const step = mapIndex(s)
   const penalty = [0, 5, 10][step] ?? 0
-  const bonus = attack.value + (b.attack ?? 0) - penalty
+  const bonus = attack.value - penalty
   const r = rollAttack(bonus, o.rng)
   attacked(s)
   const ac = o.targetAc
@@ -178,7 +182,14 @@ export function useConsumable(s: Pf2eSheet, index: number, o: Pf2eItemUseOptions
   const effect = consumableEffect(item)
   if (effect) {
     const effects = (s.effects ??= { on: [], given: [] })
-    if (effects.on.includes(effect.name)) parts.push(`${effect.name} is already on.`)
+    const had = effects.items?.find((d) => d.name === effect.name)
+    // Another dose of the same item doesn't stack: the newer one applies (Player Core p. 398), starting its duration over.
+    if (effects.on.includes(effect.name) && had) {
+      had.rounds = effect.rounds
+      parts.push(
+        `${effect.name} is already on: the new dose starts its duration over${st.duration ? ` (${st.duration})` : ''}.`,
+      )
+    } else if (effects.on.includes(effect.name)) parts.push(`${effect.name} is already on.`)
     else {
       effects.items = [...(effects.items ?? []).filter((d) => d.name !== effect.name), effect]
       parts.push(toggleEffect(s, effect.name, o.level))

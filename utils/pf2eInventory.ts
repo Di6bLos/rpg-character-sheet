@@ -45,7 +45,17 @@ export function stackBulk(item: InventoryItem): { whole: number; light: number }
   const st = itemState(item)
   const count = Math.max(0, st.count)
   const carriedArmor = st.kind === 'armor' && st.carry !== 'worn'
-  const one = carriedArmor ? (st.bulk < 1 ? 1 : st.bulk + 1) : st.bulk
+  // A backpack is negligible worn and light otherwise (Player Core p. 287).
+  const pack = /^backpack$/i.test(item.name.trim()) && item.pf2e
+  const one = pack
+    ? st.carry === 'worn'
+      ? 0
+      : 0.1
+    : carriedArmor
+      ? st.bulk < 1
+        ? 1
+        : st.bulk + 1
+      : st.bulk
   if (one <= 0) return { whole: 0, light: 0 }
   if (one < 1) return { whole: 0, light: count }
   return { whole: one * count, light: 0 }
@@ -55,20 +65,43 @@ export function stackBulk(item: InventoryItem): { whole: number; light: number }
 export const coinCount = (c: Pf2eSheet['coins']) =>
   (c.pp ?? 0) + (c.gp ?? 0) + (c.sp ?? 0) + (c.cp ?? 0)
 
+/** A worn backpack (Player Core p. 287): the first 2 Bulk of what's stowed in it don't count. */
+const BACKPACK_FREE = 2
+export const wornBackpack = (s: Pf2eSheet) =>
+  s.inventory.some((i) => /^backpack$/i.test(i.name.trim()) && i.pf2e?.carry === 'worn')
+
 /**
  * The hero's Bulk (p. 269): whole Bulk, plus 1 per ten light items, plus 1 per thousand
- * coins, fractions dropped; negligible items count for nothing.
+ * coins, fractions dropped; negligible items count for nothing. A worn backpack takes the
+ * first 2 Bulk of stowed items off (p. 287), whole Bulk first, then ten light items a Bulk.
  */
 export function totalBulk(s: Pf2eSheet) {
   let whole = 0
   let light = 0
+  let stowedWhole = 0
+  let stowedLight = 0
   for (const item of s.inventory) {
     const b = stackBulk(item)
     whole += b.whole
     light += b.light
+    if (itemState(item).carry === 'stowed') {
+      stowedWhole += b.whole
+      stowedLight += b.light
+    }
   }
+  let free = wornBackpack(s) ? BACKPACK_FREE : 0
+  const cutWhole = Math.min(free, Math.floor(stowedWhole))
+  free -= cutWhole
+  const cutLight = Math.min(free * 10, stowedLight)
+  whole -= cutWhole
+  light -= cutLight
   const coins = Math.floor(coinCount(s.coins) / 1000)
-  return { bulk: whole + Math.floor(light / 10) + coins, light, coins }
+  return {
+    bulk: whole + Math.floor(light / 10) + coins,
+    light,
+    coins,
+    backpack: cutWhole + cutLight / 10,
+  }
 }
 
 /**
@@ -81,12 +114,13 @@ export function bulkLimits(s: Pf2eSheet) {
 }
 
 export function bulkState(s: Pf2eSheet) {
-  const { bulk, light, coins } = totalBulk(s)
+  const { bulk, light, coins, backpack } = totalBulk(s)
   const { encumbered, max } = bulkLimits(s)
   return {
     bulk,
     light,
     coins,
+    backpack,
     limit: encumbered,
     max,
     encumbered: bulk > encumbered,
@@ -124,7 +158,8 @@ export type Pf2eOwnable =
 
 /**
  * A new inventory entry from a data record, with the numbers the sheet uses copied onto it.
- * Armor starts worn; a scroll or wand holds the `spell` chosen for it.
+ * Armor and a backpack start worn; a scroll or wand holds the `spell` chosen for it, or the
+ * one a specific wand casts.
  */
 export function itemFromDef(o: Pf2eOwnable, count = 1, spell?: Pf2eSpellDef): InventoryItem {
   const d = o.def
@@ -162,11 +197,13 @@ export function itemFromDef(o: Pf2eOwnable, count = 1, spell?: Pf2eSpellDef): In
       ...(spellRank ? { spellRank } : {}),
       ...(i.kind === 'wand' ? { wand: { cast: false, overcharged: false, broken: false } } : {}),
     }
-    if (/^worn\b/i.test(i.usage ?? '')) st.carry = 'worn'
+    if (/^worn\b/i.test(i.usage ?? '') || /^backpack$/i.test(d.name)) st.carry = 'worn'
     if (spell && spellRank) {
       st.spell = { id: spell.id, name: spell.name, rank: spellRank }
-      name =
-        i.kind === 'scroll'
+      // A specific wand keeps its own name (Wand of Smoldering Fireballs).
+      name = i.castsSpell
+        ? d.name
+        : i.kind === 'scroll'
           ? `Scroll of ${spell.name} (rank ${spellRank})`
           : `${d.name.replace(/\s*\(\d+(?:st|nd|rd|th)-rank Spell\)$/i, '')} of ${spell.name} (rank ${spellRank})`
     }
@@ -187,23 +224,33 @@ const hasRunes = (st: Pf2eItemState) =>
 export const needsInvesting = (st: Pf2eItemState) =>
   !!st.traits?.includes('Invested') || (st.kind === 'armor' && hasRunes(st))
 
+/**
+ * Investments used today (GM Core p. 219): items invested now, and those invested since daily
+ * preparations and taken off again, which still count against the 10.
+ */
 export const investedCount = (s: Pf2eSheet) =>
-  s.inventory.filter((i) => i.pf2e?.invested && needsInvesting(i.pf2e)).length
+  s.inventory.filter((i) => (i.pf2e?.invested || i.pf2e?.investedToday) && needsInvesting(i.pf2e))
+    .length
 
-/** Invests or stops investing an item: it must be worn, and the eleventh is refused. */
+/**
+ * Invests or stops investing an item: it must be worn, and the eleventh investment of the day
+ * is refused. Stopping doesn't give the investment back until daily preparations.
+ */
 export function setInvested(s: Pf2eSheet, index: number, on: boolean): string {
   const item = s.inventory[index]
   const st = item?.pf2e
   if (!item || !st || !needsInvesting(st)) return `${item?.name ?? 'That'} isn't invested.`
   if (!on) {
+    if (st.invested) st.investedToday = true
     st.invested = false
-    return `${item.name} is no longer invested.`
+    return `${item.name} is no longer invested; it still counts today (${investedCount(s)}/${INVEST_LIMIT}).`
   }
   if (st.invested) return `${item.name} is already invested.`
   if (st.carry !== 'worn') return `Wear ${item.name} to invest it.`
-  if (investedCount(s) >= INVEST_LIMIT)
-    return `You already have ${INVEST_LIMIT} invested items today (GM Core p. 219).`
+  if (!st.investedToday && investedCount(s) >= INVEST_LIMIT)
+    return `You've already invested ${INVEST_LIMIT} items today; more after your daily preparations (GM Core p. 219).`
   st.invested = true
+  st.investedToday = true
   return `Invested ${item.name} (${investedCount(s)}/${INVEST_LIMIT}).`
 }
 
@@ -215,15 +262,19 @@ export const itemActive = (st: Pf2eItemState) =>
 
 export const noRunes = () => ({ potency: 0, striking: 0, resilient: 0, property: [] })
 
-const FUNDAMENTAL_WORDS: Record<string, string[]> = {
-  striking: ['', 'striking', 'greater striking', 'major striking'],
-  resilient: ['', 'resilient', 'greater resilient', 'major resilient'],
+export const FUNDAMENTAL_WORDS: Record<string, string[]> = {
+  striking: ['', 'striking', 'greater striking', 'major striking', 'mythic striking'],
+  resilient: ['', 'resilient', 'greater resilient', 'major resilient', 'mythic resilient'],
 }
 
-/** A rune's family, without its grade ("Flaming (Greater)" → flaming). */
-const runeFamily = (name: string) =>
+/**
+ * A rune's family, without its grade, whichever way the name puts it ("Flaming (Greater)" and
+ * "Greater Impactful" → flaming, impactful): one rune of a family at a time.
+ */
+export const runeFamily = (name: string) =>
   name
     .replace(/\s*\((?:Greater|Major|Lesser|Moderate|True)\)\s*$/i, '')
+    .replace(/^(?:Greater|Major|Lesser|Moderate|True)\s+/i, '')
     .trim()
     .toLowerCase()
 
@@ -236,9 +287,12 @@ const runeFamily = (name: string) =>
 export function runeProblem(st: Pf2eItemState, rune: Pf2eItemDef): string | undefined {
   const r = rune.rune
   if (!r) return `${rune.name} isn't a rune.`
-  const isWeapon = st.kind === 'weapon'
+  // A staff is a staff weapon that takes fundamental runes only (GM Core p. 278).
+  const staff = st.kind === 'staff'
+  const isWeapon = st.kind === 'weapon' || staff
   const isArmor = st.kind === 'armor'
   if (r.onto === 'weapon' && !isWeapon) return 'Weapon runes go on weapons.'
+  if (staff && r.slot === 'property') return 'A staff takes fundamental runes only.'
   if (r.onto === 'armor' && !isArmor) return 'Armor runes go on armor.'
   const usage = r.usage.toLowerCase()
   if (/\bmelee weapon\b/.test(usage) && st.ranged) return 'Only on a melee weapon.'
@@ -280,12 +334,35 @@ export function etchRune(item: InventoryItem, rune: Pf2eItemDef): string {
         name: rune.name,
         level: rune.level,
         ...(r.damage ? { damage: r.damage } : {}),
+        ...(r.persistent ? { persistent: r.persistent } : {}),
+        ...(r.vs ? { vs: r.vs } : {}),
         ...(r.crit ? { crit: r.crit } : {}),
+        ...(r.keen ? { keen: true } : {}),
       },
     ]
   } else runes[r.slot] = r.value ?? 0
   st.level = Math.max(st.level ?? 0, rune.level)
   return `Etched ${rune.name} on ${item.name}: ${runedName(item)}.`
+}
+
+/**
+ * What etching a rune costs (GM Core p. 223): its Price, or, upgrading a rune of the same kind
+ * (a +1 potency rune to +2, Flaming to Flaming (Greater)), the difference between the two.
+ */
+export function runeCost(st: Pf2eItemState, rune: Pf2eItemDef, runes: Pf2eItemDef[]): number {
+  const r = rune.rune
+  if (!r) return rune.price
+  const now = st.runes ?? noRunes()
+  const old =
+    r.slot === 'property'
+      ? runes.find(
+          (d) =>
+            d.id === now.property.find((p) => runeFamily(p.name) === runeFamily(rune.name))?.id,
+        )
+      : runes.find(
+          (d) => d.rune?.slot === r.slot && d.rune.onto === r.onto && d.rune.value === now[r.slot],
+        )
+  return Math.max(0, rune.price - (old?.price ?? 0))
 }
 
 /**
@@ -325,11 +402,13 @@ export const wornArmor = (s: Pf2eSheet) =>
   s.inventory.find((i) => i.pf2e?.kind === 'armor' && i.pf2e.carry === 'worn')
 
 /**
- * The weapon item a Strike is made with: the one of the same name, preferring a held one,
- * then one with runes.
+ * The weapon item a Strike is made with (a staff is a staff weapon, GM Core p. 278): the one
+ * of the same name, preferring a held one, then one with runes.
  */
 export function strikeItem(s: Pf2eSheet, strike: string) {
-  const named = s.inventory.filter((i) => i.pf2e?.kind === 'weapon' && i.name === strike)
+  const named = s.inventory.filter(
+    (i) => (i.pf2e?.kind === 'weapon' || i.pf2e?.kind === 'staff') && i.name === strike,
+  )
   return (
     named.find((i) => i.pf2e?.carry === 'held' && i.pf2e.runes) ??
     named.find((i) => i.pf2e?.runes) ??
@@ -352,14 +431,12 @@ export function strikeRunes(s: Pf2eSheet, strike: string) {
 export function runeMods(s: Pf2eSheet, kind: string, weapon?: string): ItemMod[] {
   if (kind === 'attack' && weapon) {
     const p = strikeRunes(s, weapon)?.potency ?? 0
-    return p ? [{ value: p, type: 'item', source: `+${p} weapon potency` }] : []
+    return p ? [{ value: p, type: 'item', source: 'weapon potency' }] : []
   }
   const armor = wornArmor(s)?.pf2e
   if (!armor?.runes) return []
   if (kind === 'ac' && armor.runes.potency)
-    return [
-      { value: armor.runes.potency, type: 'item', source: `+${armor.runes.potency} armor potency` },
-    ]
+    return [{ value: armor.runes.potency, type: 'item', source: 'armor potency' }]
   if (kind === 'save' && armor.runes.resilient && armor.invested)
     return [
       {
@@ -528,7 +605,8 @@ export function useWand(
 
 /**
  * Daily preparations for items: wands can be cast again (a broken one stays broken until
- * Repaired) and staves lose yesterday's charges until prepared anew (GM Core pp. 278, 282).
+ * Repaired), staves lose yesterday's charges until prepared anew (GM Core pp. 278, 282), and
+ * the day's 10 investments start over with what is still invested (p. 219).
  */
 export function itemsDailyPrep(s: Pf2eSheet) {
   for (const item of s.inventory) {
@@ -538,6 +616,7 @@ export function itemsDailyPrep(s: Pf2eSheet) {
       st.wand.overcharged = false
     }
     if (st?.kind === 'staff') st.charges = 0
+    if (st) delete st.investedToday
   }
 }
 

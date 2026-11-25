@@ -623,6 +623,29 @@ function endToggle(s: Pf2eSheet, name: string) {
   return `${name} ends: you lose its ${lost} remaining temporary Hit Points.`
 }
 
+/** Rounds in a duration as an item prints it ("3 rounds", "10 minutes", "24 hours"; p. 418). */
+export function durationRounds(duration: string | undefined): number | undefined {
+  const m = /^(\d+) (round|minute|hour|day)s?$/i.exec((duration ?? '').trim())
+  if (!m) return undefined
+  const per = { round: 1, minute: 10, hour: 600, day: 14400 }[m[2]!.toLowerCase() as 'round']
+  return Number(m[1]) * per
+}
+
+/**
+ * Time passing for the effects of consumables the hero used (an elixir's 1 hour), in rounds: a
+ * turn starting is a round, the turn steps' 1 minute, 10 minutes and 1 hour are 10, 100 and
+ * 600; each ends when its time runs out (GM Core p. 220). Returns what ended.
+ */
+export function passItemTime(s: Pf2eSheet, rounds: number): string[] {
+  const out: string[] = []
+  for (const def of s.effects?.items ?? []) {
+    if (def.rounds === undefined || !s.effects?.on.includes(def.name)) continue
+    def.rounds -= rounds
+    if (def.rounds <= 0) out.push(endToggle(s, def.name))
+  }
+  return out
+}
+
 /**
  * Turns one of the hero's toggles on or off; Rage's temp HP don't stack with others. `value`
  * is a spell's number at the rank it was cast (Competitive Edge +2 at 7th, False Vitality's

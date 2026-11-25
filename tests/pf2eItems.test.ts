@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Pf2eSheet } from '../types/sheets'
-import { activeEffects, speedNow } from '../utils/pf2eEffects'
+import { endPf2eEncounter, startPf2eTurn, timePasses } from '../utils/pf2eActions'
+import { runeDamageNotes, traitsInHands, versatileType } from '../utils/pf2eDamage'
+import { activeEffects, durationRounds, speedNow } from '../utils/pf2eEffects'
 import {
   INVEST_LIMIT,
   bulkState,
@@ -8,6 +10,8 @@ import {
   itemFromDef,
   itemsDailyPrep,
   prepareStaff,
+  runeCost,
+  runeFamily,
   runeProblem,
   runedName,
   setInvested,
@@ -18,7 +22,7 @@ import {
   useWand,
 } from '../utils/pf2eInventory'
 import { castFromItem, pay, useConsumable } from '../utils/pf2eItemUse'
-import { adjusted } from '../utils/pf2ePlay'
+import { adjusted, degreeOf } from '../utils/pf2ePlay'
 import { dailyPreparations, slotsFor } from '../utils/pf2eSpells'
 import { defaultSheet } from '../utils/sheetDefaults'
 import { loadSet, named } from './helpers/pf2e'
@@ -94,6 +98,25 @@ describe('pf2e Bulk (Player Core p. 269)', () => {
     expect(s.conditions).not.toContain('Encumbered')
   })
 
+  // Player Core p. 287: a worn backpack is negligible and its first 2 Bulk don't count.
+  it('takes the first 2 Bulk of stowed items off while a backpack is worn', () => {
+    const s = hero()
+    const pack = itemFromDef({ set: 'item', def: item(gear, 'Backpack') })
+    expect(pack.pf2e?.carry).toBe('worn')
+    const sword = itemFromDef({ set: 'weapons', def: item(weapons, 'Greatsword') }, 2)
+    sword.pf2e!.carry = 'stowed'
+    s.inventory.push(sword, itemFromDef({ set: 'item', def: item(gear, 'Rope') }, 5))
+    expect(totalBulk(s).bulk).toBe(4)
+    s.inventory.push(pack)
+    expect(totalBulk(s)).toMatchObject({ bulk: 2, backpack: 2 })
+    // Held items don't go in the pack; carried, the pack itself is light.
+    sword.pf2e!.carry = 'held'
+    expect(totalBulk(s)).toMatchObject({ bulk: 4, backpack: 0.5 })
+    pack.pf2e!.carry = 'stowed'
+    expect(totalBulk(s).bulk).toBe(4)
+    expect(totalBulk(s).light).toBe(6)
+  })
+
   it("leaves an encumbered the player set when the Bulk wasn't what gave it", () => {
     const s = hero({ conditions: ['Encumbered'] })
     expect(syncEncumbered(s)).toBeUndefined()
@@ -108,10 +131,15 @@ describe('pf2e investing (GM Core p. 219)', () => {
     for (let i = 0; i < INVEST_LIMIT + 1; i++)
       s.inventory.push(itemFromDef({ set: 'item', def: boots }))
     for (let i = 0; i < INVEST_LIMIT; i++) expect(setInvested(s, i, true)).toMatch(/^Invested/)
-    expect(setInvested(s, INVEST_LIMIT, true)).toMatch(/already have 10 invested/)
+    expect(setInvested(s, INVEST_LIMIT, true)).toMatch(/already invested 10 items today/)
     expect(s.inventory[INVEST_LIMIT]!.pf2e!.invested).toBeFalsy()
-    expect(setInvested(s, 0, false)).toMatch(/no longer invested/)
-    expect(setInvested(s, INVEST_LIMIT, true)).toMatch(/^Invested/)
+    // Taking one off doesn't give the investment back until daily preparations.
+    expect(setInvested(s, 0, false)).toMatch(/no longer invested; it still counts today/)
+    expect(setInvested(s, INVEST_LIMIT, true)).toMatch(/already invested 10/)
+    expect(setInvested(s, 0, true)).toMatch(/^Invested/)
+    setInvested(s, 0, false)
+    itemsDailyPrep(s)
+    expect(setInvested(s, INVEST_LIMIT, true)).toMatch(/^Invested .*\(10\/10\)/)
   })
 
   it('applies an invested item’s bonuses only while invested (boots of bounding, p. 286)', () => {
@@ -136,7 +164,7 @@ describe('pf2e runes (GM Core pp. 224–237)', () => {
     expect(etchRune(sword, item(runes, 'Weapon Potency (+1)'))).toMatch(/\+1 longsword/i)
     expect(etchRune(sword, item(runes, 'Striking'))).toMatch(/\+1 striking Longsword/)
     const atk = adjusted(s, 7, { kind: 'attack', attr: 'STR', weapon: 'Longsword' })
-    expect(atk).toMatchObject({ value: 8, changed: true, note: '+1 +1 weapon potency' })
+    expect(atk).toMatchObject({ value: 8, changed: true, note: '+1 weapon potency' })
     expect(adjusted(s, 7, { kind: 'attack', attr: 'STR', weapon: 'Dagger' }).value).toBe(7)
     expect(strikeRunes(s, 'Longsword')).toMatchObject({ potency: 1, striking: 1 })
   })
@@ -163,6 +191,66 @@ describe('pf2e runes (GM Core pp. 224–237)', () => {
     expect(strikeRunes(s, 'Longsword')?.property[0]).toMatchObject({
       damage: { dice: '1d6', type: 'fire' },
     })
+  })
+
+  // GM Core p. 223: upgrading costs the difference in Price; one rune of a family at a time.
+  it('charges the price difference to upgrade a rune, whichever way its grade is named', () => {
+    const sword = longsword()
+    const plus1 = named(runes, 'Weapon Potency (+1)')
+    const plus2 = named(runes, 'Weapon Potency (+2)')
+    expect(runeCost(sword.pf2e!, plus1, runes)).toBe(plus1.price)
+    etchRune(sword, plus1)
+    expect(runeCost(sword.pf2e!, plus2, runes)).toBe(plus2.price - plus1.price)
+    etchRune(sword, plus2)
+    const impactful = named(runes, 'Impactful')
+    const greater = named(runes, 'Greater Impactful')
+    expect(runeFamily(greater.name)).toBe(runeFamily(impactful.name))
+    etchRune(sword, impactful)
+    expect(runeCost(sword.pf2e!, greater, runes)).toBe(greater.price - impactful.price)
+    etchRune(sword, greater)
+    expect(sword.pf2e!.runes!.property.map((p) => p.name)).toEqual(['Greater Impactful'])
+  })
+
+  // GM Core p. 278: a staff is a staff weapon that takes fundamental runes, not property runes.
+  it('etches fundamental runes on a staff, and its Strike uses them', () => {
+    const s = hero()
+    const staff = itemFromDef({ set: 'item', def: item(staves, 'Staff of Fire') })
+    staff.pf2e!.carry = 'held'
+    s.inventory.push(staff)
+    expect(etchRune(staff, item(runes, 'Weapon Potency (+1)'))).toMatch(/Etched/)
+    expect(etchRune(staff, item(runes, 'Striking'))).toMatch(/Etched/)
+    expect(runeProblem(staff.pf2e!, item(runes, 'Flaming'))).toMatch(/fundamental runes only/)
+    expect(strikeRunes(s, 'Staff of Fire')).toMatchObject({ potency: 1, striking: 1 })
+  })
+
+  it('carries a rune’s persistent damage, its damage against some foes and keen to the Strike', () => {
+    const s = hero()
+    const sword = longsword()
+    s.inventory.push(sword)
+    etchRune(sword, item(runes, 'Weapon Potency (+2)'))
+    etchRune(sword, item(runes, 'Wounding'))
+    etchRune(sword, item(runes, 'Keen'))
+    const property = strikeRunes(s, 'Longsword')!.property
+    expect(property.find((p) => p.name === 'Keen')?.keen).toBe(true)
+    expect(runeDamageNotes(property)).toEqual(['+1d6 persistent bleed (Wounding)'])
+    expect(
+      runeDamageNotes([{ name: 'Vitalizing', vs: named(runes, 'Vitalizing').rune!.vs }]),
+    ).toEqual(['+1d6 persistent vitality against undead (Vitalizing)'])
+    expect(runeDamageNotes([{ name: 'Holy', vs: named(runes, 'Holy').rune!.vs }])).toEqual([
+      '2d4 spirit against an unholy target instead (Holy)',
+    ])
+    // Keen (GM Core p. 237): a natural 19 that hits is a critical hit; a miss stays a miss.
+    expect(degreeOf(20, 19, 18, true)).toBe('critical success')
+    expect(degreeOf(20, 19, 18)).toBe('success')
+    expect(degreeOf(17, 19, 18, true)).toBe('failure')
+  })
+
+  // Player Core pp. 282–283; Guns & Gears (Remastered) p. 158.
+  it('reads two-hand, fatal aim and versatile off the weapon’s traits', () => {
+    expect(traitsInHands(['Concussive', 'Fatal Aim d12'], true)).toContain('Fatal d12')
+    expect(traitsInHands(['Concussive', 'Fatal Aim d12'], false)).not.toContain('Fatal d12')
+    expect(versatileType(named(weapons, 'Gladius').traits)).toBe('Slashing')
+    expect(versatileType(named(weapons, 'Club').traits)).toBeUndefined()
   })
 
   it('adds armor potency to AC, and resilient to saves only while invested', () => {
@@ -211,6 +299,73 @@ describe('pf2e consumables (GM Core pp. 244–262)', () => {
     expect(s.effects?.on).toContain('Eagle-Eye Elixir (Lesser)')
     expect(activeEffects(s).map((a) => a.def.name)).toContain('Eagle-Eye Elixir (Lesser)')
     expect(adjusted(s, 5, { kind: 'perception', attr: 'WIS' }).value).toBe(6)
+  })
+
+  // Any listed duration ends by itself, counted in rounds (10 a minute).
+  it('ends a consumable’s effect when its duration runs out, and a new dose starts it over', () => {
+    expect(durationRounds('3 rounds')).toBe(3)
+    expect(durationRounds('10 minutes')).toBe(100)
+    expect(durationRounds('24 hours')).toBe(14400)
+    const s = hero()
+    const elixir = item(consumables, 'Eagle-Eye Elixir (Lesser)')
+    s.inventory.push(itemFromDef({ set: 'item', def: elixir }, 2))
+    useConsumable(s, 0, { level: 1 })
+    expect(timePasses(s, '10min')).not.toMatch(/Eagle-Eye Elixir \(Lesser\) ends/)
+    for (let i = 0; i < 4; i++) timePasses(s, '10min')
+    expect(s.effects?.items?.[0]?.rounds).toBe(100)
+    expect(useConsumable(s, 0, { level: 1 })).toMatch(
+      /new dose starts its duration over \(1 hour\)/,
+    )
+    expect(s.effects?.items?.[0]?.rounds).toBe(600)
+    for (let i = 0; i < 5; i++) timePasses(s, '10min')
+    expect(timePasses(s, '10min')).toMatch(/Eagle-Eye Elixir \(Lesser\) ends/)
+    expect(s.effects?.on).not.toContain('Eagle-Eye Elixir (Lesser)')
+  })
+
+  it('counts a round per turn, a minute for an encounter, and ends all at daily preparations', () => {
+    const s = hero()
+    const three = itemFromDef({ set: 'item', def: item(consumables, 'Eagle-Eye Elixir (Lesser)') })
+    three.name = 'Quick Draught'
+    three.pf2e!.duration = '3 rounds'
+    s.inventory.push(three)
+    useConsumable(s, 0, { level: 1 })
+    startPf2eTurn(s)
+    startPf2eTurn(s)
+    startPf2eTurn(s)
+    expect(s.effects?.on).toContain('Quick Draught')
+    expect(startPf2eTurn(s)).toMatch(/Quick Draught ends/)
+    const minute = itemFromDef({ set: 'item', def: item(consumables, 'Eagle-Eye Elixir (Lesser)') })
+    minute.pf2e!.duration = '1 minute'
+    s.inventory.push(minute)
+    useConsumable(s, 0, { level: 1 })
+    expect(endPf2eEncounter(s)).toMatch(/Eagle-Eye Elixir \(Lesser\) ends/)
+    const day = itemFromDef({ set: 'item', def: item(consumables, 'Eagle-Eye Elixir (Lesser)') })
+    day.pf2e!.duration = '24 hours'
+    s.inventory.push(day)
+    useConsumable(s, 0, { level: 1 })
+    expect(dailyPreparations(s)).toMatch(/ends/)
+    expect(s.effects?.on).toEqual([])
+  })
+
+  // An item bonus doesn't stack with another item bonus (Player Core p. 400).
+  it('stacks a bomb’s item bonus with the hero’s other item bonuses, the highest counting', () => {
+    const s = hero({ attrs: { STR: 0, DEX: 3, CON: 0, INT: 0, WIS: 0, CHA: 0 } })
+    s.inventory.push(
+      itemFromDef({ set: 'item', def: item(consumables, "Alchemist's Fire (Moderate)") }),
+      {
+        name: 'Lucky Charm',
+        qty: '—',
+        pf2e: {
+          count: 1,
+          bulk: 0,
+          carry: 'held',
+          bonuses: [{ value: 2, type: 'item', selector: 'attack' }],
+        },
+      },
+    )
+    // Trained at 3rd level (+5) and DEX +3: +8, then the charm's +2, not the bomb's +1 as well.
+    const text = useConsumable(s, 0, { level: 3, targetAc: 15, bombRank: 'T', rng: low })
+    expect(text).toMatch(/\(attack 1, \+10\)/)
   })
 
   it('throws a bomb as a Strike: lesser alchemist’s fire 1d8 fire plus 1 splash on a hit', () => {

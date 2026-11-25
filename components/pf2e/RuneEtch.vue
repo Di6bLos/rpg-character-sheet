@@ -3,11 +3,19 @@
 // (fetched when the dialog opens), each with the reason it can't go on (`runeProblem`: the
 // wrong item, a melee-only rune on a ranged weapon, more property runes than the potency
 // holds, an equal or stronger rune already there), the runes on it with a Remove, and the
-// price paid from the coins when asked.
+// price paid from the coins when asked: an upgrade costs the difference (GM Core p. 223).
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eItemDef } from '~/data/pf2e/types'
 import type { InventoryItem } from '~/types/sheets'
-import { activeProperty, etchRune, removeRune, runeProblem, runedName } from '~/utils/pf2eInventory'
+import {
+  FUNDAMENTAL_WORDS,
+  activeProperty,
+  etchRune,
+  removeRune,
+  runeCost,
+  runeProblem,
+  runedName,
+} from '~/utils/pf2eInventory'
 import { priceLabel } from '~/utils/pf2eItemUse'
 
 const props = defineProps<{ item: InventoryItem; level: number; coinsCp: number }>()
@@ -39,8 +47,9 @@ const options = computed(() =>
     .filter((r) => higherLevel.value || r.level <= props.level)
     .map((r) => {
       const problem = st.value ? runeProblem(st.value, r) : 'Not a rune item.'
-      const short = payFor.value && r.price > props.coinsCp ? 'Not enough coins.' : ''
-      return { r, problem: problem ?? short }
+      const cost = st.value ? runeCost(st.value, r, runes.value) : r.price
+      const short = payFor.value && cost > props.coinsCp ? 'Not enough coins.' : ''
+      return { r, cost, problem: problem ?? short }
     })
     .sort((a, b) => Number(!!a.problem) - Number(!!b.problem) || a.r.level - b.r.level),
 )
@@ -54,7 +63,7 @@ const current = computed(() => {
       ? [
           {
             key: 'striking',
-            label: ['', 'Striking', 'Greater striking', 'Major striking'][r.striking] ?? '',
+            label: capital(FUNDAMENTAL_WORDS.striking![r.striking] ?? ''),
           },
         ]
       : []),
@@ -62,7 +71,7 @@ const current = computed(() => {
       ? [
           {
             key: 'resilient',
-            label: ['', 'Resilient', 'Greater resilient', 'Major resilient'][r.resilient] ?? '',
+            label: capital(FUNDAMENTAL_WORDS.resilient![r.resilient] ?? ''),
           },
         ]
       : []),
@@ -73,9 +82,12 @@ const current = computed(() => {
   ]
 })
 
-function etch(r: Pf2eItemDef) {
+const capital = (w: string) => w.charAt(0).toUpperCase() + w.slice(1)
+
+/** Upgrading a rune costs the difference in Price (GM Core p. 223). */
+function etch(r: Pf2eItemDef, cost: number) {
   const message = etchRune(props.item, r)
-  emit('etched', message, message.startsWith('Etched') && payFor.value ? r.price : 0)
+  emit('etched', message, message.startsWith('Etched') && payFor.value ? cost : 0)
 }
 function remove(key: string) {
   removeRune(props.item, key)
@@ -109,9 +121,14 @@ function remove(key: string) {
           <span class="stack" style="gap: 2px">
             <strong>{{ o.r.name }}</strong>
             <span class="small muted">
-              Item {{ o.r.level }} · {{ priceLabel(o.r.price) }} · {{ o.r.rune?.usage }}
+              Item {{ o.r.level }} · {{ priceLabel(o.r.price) }}
+              <template v-if="o.cost !== o.r.price">(upgrade {{ priceLabel(o.cost) }})</template>
+              · {{ o.r.rune?.usage }}
               <template v-if="o.r.rune?.damage">
                 · +{{ o.r.rune.damage.dice }} {{ o.r.rune.damage.type }}
+              </template>
+              <template v-if="o.r.rune?.persistent">
+                · +{{ o.r.rune.persistent.dice }} persistent {{ o.r.rune.persistent.type }}
               </template>
             </span>
             <span v-if="o.problem" class="small muted">{{ o.problem }}</span>
@@ -121,7 +138,7 @@ function remove(key: string) {
             class="btn btn--sm"
             :disabled="!!o.problem"
             :aria-label="`Etch ${o.r.name}`"
-            @click="etch(o.r)"
+            @click="etch(o.r, o.cost)"
           >
             Etch
           </button>
