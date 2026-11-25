@@ -183,6 +183,35 @@ function jump(id: string) {
     ?.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' })
 }
 
+// The nav's band paints the panel's background (Cursed's parchment is a gradient across the
+// whole panel), sized and placed like the panel's own so the two line up as content scrolls.
+const navEl = ref<HTMLElement | null>(null)
+const bandStyle = ref<Record<string, string>>({})
+function alignBand() {
+  const nav = navEl.value
+  const panel = nav?.closest<HTMLElement>('.dialog__body')
+  if (!nav || !panel) return
+  const p = panel.getBoundingClientRect()
+  const n = nav.getBoundingClientRect()
+  bandStyle.value = {
+    backgroundSize: `${p.width}px ${p.height}px`,
+    backgroundPosition: `${p.left - n.left}px ${p.top - n.top}px`,
+  }
+}
+let bandObserver: ResizeObserver | null = null
+watch(navEl, (nav, old) => {
+  bandObserver?.disconnect()
+  old?.parentElement?.removeEventListener('scroll', alignBand)
+  const panel = nav?.closest<HTMLElement>('.dialog__body')
+  if (!nav || !panel) return
+  nav.parentElement?.addEventListener('scroll', alignBand, { passive: true })
+  panel.addEventListener('animationend', alignBand, { once: true })
+  bandObserver = new ResizeObserver(alignBand)
+  bandObserver.observe(panel)
+  alignBand()
+})
+onBeforeUnmount(() => bandObserver?.disconnect())
+
 const toolbarEl = ref<HTMLElement | null>(null)
 const toolbarStuck = useStuck(toolbarEl)
 </script>
@@ -266,7 +295,13 @@ const toolbarStuck = useStuck(toolbarEl)
           <span v-for="f in reading.facts" :key="f">{{ f }}</span>
         </p>
       </template>
-      <nav v-if="reading" class="class-nav" aria-label="Class sections">
+      <nav
+        v-if="reading"
+        ref="navEl"
+        class="class-nav"
+        :style="bandStyle"
+        aria-label="Class sections"
+      >
         <button
           v-for="sec in sections"
           :key="sec.id"
@@ -417,21 +452,23 @@ const toolbarStuck = useStuck(toolbarEl)
   z-index: 1;
   flex: none;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin: 0 -4px -20px;
   padding: 4px 4px 10px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  // The panel's own parchment (Cursed) or colour, with the sticky bars' divider.
   background: var(--panel-bg);
-  border-bottom: 1px solid var(--line);
+  background-repeat: no-repeat;
+  box-shadow: 0 1px 0 var(--line);
+}
 
-  &::-webkit-scrollbar {
-    display: none;
-  }
-
-  .chip {
-    flex: none;
-  }
+// Cursed's panel darkens towards its edges (an inset shadow the band covers): carry a little
+// of that vignette across the band's sides.
+:root[data-theme='cursed'] .class-nav {
+  box-shadow:
+    inset 16px 0 20px -14px rgba(70, 35, 10, 0.18),
+    inset -16px 0 20px -14px rgba(70, 35, 10, 0.18),
+    0 1px 0 var(--line);
 }
 
 .read__sigil {
