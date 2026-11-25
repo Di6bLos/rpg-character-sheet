@@ -84,6 +84,27 @@ describe('pf2e data', () => {
     expect(data.deities.length).toBeGreaterThan(0)
   })
 
+  // A setting archetype (Hellknight, Red Mantis Assassin, Aldori Duelist) has no feats of its
+  // own in the data, so a feat that still names one, or names a Golarion noun, fails here.
+  it('names only archetypes that are in the data themselves', () => {
+    const deityNames = data.deities.map((d) => d.name)
+    const own = new Set(
+      data.feats
+        .filter((f) => f.traits.includes('Archetype') || f.traits.includes('Mythic'))
+        .flatMap((f) => f.archetypes),
+    )
+    for (const f of data.feats)
+      for (const a of f.archetypes) {
+        expect(own, `${f.name}: ${a}`).toContain(a)
+        expect(settingName(a, deityNames), `${f.name}: ${a}`).toBeUndefined()
+      }
+    for (const a of ['Hellknight', 'Red Mantis Assassin', 'Aldori Duelist', 'Eagle Knight'])
+      expect(
+        data.feats.some((f) => f.archetypes.includes(a)),
+        a,
+      ).toBe(false)
+  })
+
   it('has rules text for every trait, spoiler notes aside', () => {
     for (const t of data.traits) expect(t.text, t.name).not.toBe('')
     for (const rows of Object.values(data))
