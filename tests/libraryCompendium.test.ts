@@ -324,6 +324,7 @@ describe('PF2e classes', () => {
     const muse = pf2eClassMatch(bard, ['muse'])
     expect(muse?.whole).toBe(false)
     expect(muse?.subclasses.length).toBeGreaterThan(0)
+    expect(muse?.hits.some((h) => h.startsWith('Bard Muse: '))).toBe(true)
     expect(pf2eClassMatch(bard, ['zzzqqq'])).toBeNull()
   })
 })
@@ -351,7 +352,7 @@ describe('Nimble classes', () => {
     const berserker = NIMBLE_CLASSES.find((c) => c.slug === 'berserker')!
     const hit = nimbleClassMatch(berserker, searchTerms('death blow'))
     expect(hit?.whole).toBe(false)
-    expect(hit?.count).toBeGreaterThan(0)
+    expect(hit?.hits).toContain('Savage Arsenal: Death Blow')
     expect(nimbleClassMatch(berserker, ['zzzqqq'])).toBeNull()
   })
 })

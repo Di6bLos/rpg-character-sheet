@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// One Pathfinder 2e class in Library → Classes: initial proficiencies, the advancement table,
-// features by level, its subclass options by kind, and spell slots for casters. During a
-// search only the matching features and options show, opened.
+// One Pathfinder 2e class in the Library → Classes modal: initial proficiencies, the
+// advancement table, features by level, its subclass options by kind, and spell slots for
+// casters. The features and options a search matched start open.
 import type { Pf2eClassDef, Pf2eSubclassOption } from '~/data/pf2e/types'
 import {
   byKind,
@@ -16,10 +16,14 @@ import { RANK_NAME } from '~/utils/pf2eLevelUp'
 import { PF2E_ATTR_NAME } from '~/utils/pf2eBuild'
 import { loreHtml } from '~/utils/loreText'
 
-const props = defineProps<{ cls: Pf2eClassDef; match: Pf2eClassMatch; searching: boolean }>()
+const props = defineProps<{ cls: Pf2eClassDef; match: Pf2eClassMatch | null }>()
 
-const whole = computed(() => props.match.whole)
-const openHits = computed(() => props.searching && !whole.value)
+const hitIds = computed(() => {
+  const m = props.match
+  return new Set(m && !m.whole ? [...m.features, ...m.subclasses].map((x) => x.id) : [])
+})
+const hit = (item: { id: string }) => hitIds.value.has(item.id)
+const id = (part: string) => `cls-${props.cls.slug}-${part}`
 
 const facts = computed(() => {
   const c = props.cls
@@ -40,8 +44,8 @@ const facts = computed(() => {
 
 const summary = computed(() => classSummary(props.cls.text))
 const advancement = computed(() => pf2eAdvancement(props.cls))
-const levels = computed(() => byLevel(props.match.features))
-const kinds = computed(() => byKind(props.match.subclasses))
+const levels = computed(() => byLevel(props.cls.features))
+const kinds = computed(() => byKind(props.cls.subclasses))
 const slots = computed(() => spellSlotTable(props.cls))
 
 const ordinal = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`
@@ -70,7 +74,8 @@ const html = (md: string) => loreHtml(md, { headingBase: 5 })
 
 <template>
   <div class="cbody">
-    <template v-if="whole">
+    <section :id="id('overview')" class="cbody__section">
+      <h3 class="sr-only">Overview</h3>
       <p v-if="summary" class="cbody__summary">{{ summary }}</p>
       <dl class="cbody__facts">
         <div v-for="f in facts" :key="f.label">
@@ -79,7 +84,9 @@ const html = (md: string) => loreHtml(md, { headingBase: 5 })
         </div>
       </dl>
       <p v-if="cls.gap" class="notice">{{ cls.gap }}</p>
+    </section>
 
+    <section :id="id('advancement')" class="cbody__section">
       <h3>Advancement</h3>
       <div class="table-wrap" tabindex="0" role="region" :aria-label="`${cls.name} advancement`">
         <table class="table table--rules">
@@ -97,41 +104,50 @@ const html = (md: string) => loreHtml(md, { headingBase: 5 })
           </tbody>
         </table>
       </div>
-    </template>
+    </section>
 
-    <template v-if="levels.length">
+    <section v-if="levels.length" :id="id('features')" class="cbody__section">
       <h3>Class features</h3>
-      <section v-for="g in levels" :key="g.level" class="cbody__level">
+      <template v-for="g in levels" :key="g.level">
         <h4>Level {{ g.level }}</h4>
-        <LibraryFold v-for="f in g.items" :key="f.id" :title="f.name" :open="openHits">
+        <LibraryFold
+          v-for="f in g.items"
+          :key="f.id"
+          :title="f.name"
+          :open="hit(f)"
+          :class="{ 'is-hit': hit(f) }"
+        >
           <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
           <div v-html="html(f.text)" />
         </LibraryFold>
-      </section>
-    </template>
-
-    <section v-for="k in kinds" :key="k.kind">
-      <h3>{{ k.kind }}</h3>
-      <LibraryFold
-        v-for="o in k.items"
-        :key="o.id"
-        :title="o.name"
-        :meta="optionMeta(o)"
-        :open="openHits"
-      >
-        <ul v-if="optionFacts(o).length" class="cbody__chips">
-          <li v-for="f in optionFacts(o)" :key="f.label">
-            <strong>{{ f.label }}:</strong> {{ f.value }}
-          </li>
-        </ul>
-        <p v-if="o.gap" class="notice">{{ o.gap }}</p>
-        <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
-        <div v-html="html(o.text)" />
-        <p class="cbody__source">{{ sourceLabel(o.source) }}</p>
-      </LibraryFold>
+      </template>
     </section>
 
-    <template v-if="whole && slots">
+    <section v-if="kinds.length" :id="id('options')" class="cbody__section">
+      <template v-for="k in kinds" :key="k.kind">
+        <h3>{{ k.kind }}</h3>
+        <LibraryFold
+          v-for="o in k.items"
+          :key="o.id"
+          :title="o.name"
+          :meta="optionMeta(o)"
+          :open="hit(o)"
+          :class="{ 'is-hit': hit(o) }"
+        >
+          <ul v-if="optionFacts(o).length" class="cbody__chips">
+            <li v-for="f in optionFacts(o)" :key="f.label">
+              <strong>{{ f.label }}:</strong> {{ f.value }}
+            </li>
+          </ul>
+          <p v-if="o.gap" class="notice">{{ o.gap }}</p>
+          <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+          <div v-html="html(o.text)" />
+          <p class="cbody__source">{{ sourceLabel(o.source) }}</p>
+        </LibraryFold>
+      </template>
+    </section>
+
+    <section v-if="slots" :id="id('spells')" class="cbody__section">
       <h3>Spell slots</h3>
       <p class="small muted">Spells per day by level: cantrips, then slots for each rank.</p>
       <div class="table-wrap" tabindex="0" role="region" :aria-label="`${cls.name} spell slots`">
@@ -152,6 +168,6 @@ const html = (md: string) => loreHtml(md, { headingBase: 5 })
           </tbody>
         </table>
       </div>
-    </template>
+    </section>
   </div>
 </template>

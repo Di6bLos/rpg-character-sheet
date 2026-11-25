@@ -480,31 +480,37 @@ export function nimbleLevelGroups(
     .sort((a, b) => a.level - b.level)
 }
 
-// --- Class search --------------------------------------------------------------------
+// --- Class search ---------------------------------------------------------------------
 
 export interface Pf2eClassMatch {
-  /** The class's own name matched (or there's no search): show all of it. */
+  /** The class's own name matched (or there's no search): nothing in it is singled out. */
   whole: boolean
   features: Pf2eClassFeature[]
   subclasses: Pf2eSubclassOption[]
+  /** Why it matched, for the index card: "Feature: Sneak Attack", "Rogue Racket: Thief". */
+  hits: string[]
 }
 
-/** What a class shows for a search; null when nothing in it matches. */
+/** What in a class matches a search; null when nothing in it does. */
 export function pf2eClassMatch(cls: Pf2eClassDef, terms: string[]): Pf2eClassMatch | null {
   if (matchesAll(terms, cls.name))
-    return { whole: true, features: cls.features, subclasses: cls.subclasses }
+    return { whole: true, features: cls.features, subclasses: cls.subclasses, hits: [] }
   const features = cls.features.filter((f) => matchesAll(terms, f.name, f.text))
   const subclasses = cls.subclasses.filter((o) => matchesAll(terms, o.kind, o.name, o.text))
-  return features.length || subclasses.length ? { whole: false, features, subclasses } : null
+  const hits = [
+    ...features.map((f) => `Feature: ${f.name}`),
+    ...subclasses.map((o) => `${o.kind}: ${o.name}`),
+  ]
+  return hits.length ? { whole: false, features, subclasses, hits } : null
 }
 
 export interface NimbleClassMatch {
   whole: boolean
-  /** Whether an ability (a feature, pool option or subclass feature) shows. */
+  /** Whether an ability (a feature, pool option or subclass feature) matched. */
   shows: (a: AbilityDef) => boolean
   /** Subclasses whose name or any ability matched. */
   subclasses: Set<string>
-  count: number
+  hits: string[]
 }
 
 const subclassAbilities = (s: SubclassDef) => [
@@ -518,20 +524,27 @@ export function nimbleClassMatch(cls: ClassDef, terms: string[]): NimbleClassMat
       whole: true,
       shows: () => true,
       subclasses: new Set(cls.subclasses.map((s) => s.slug)),
-      count: 0,
+      hits: [],
     }
   const hit = (a: AbilityDef) => matchesAll(terms, a.name, a.desc)
-  const all = [
-    cls.swapRule,
-    ...Object.values(cls.levels).flatMap((l) => l?.abilities ?? []),
-    ...cls.pools.flatMap((p) => p.options),
-    ...cls.subclasses.flatMap(subclassAbilities),
+  const named = (label: string, list: AbilityDef[]) =>
+    list.filter(hit).map((a) => `${label}: ${a.name}`)
+  const hits = [
+    ...named('Feature', [
+      cls.swapRule,
+      ...Object.values(cls.levels).flatMap((l) => l?.abilities ?? []),
+    ]),
+    ...cls.pools.flatMap((p) => named(p.name, p.options)),
+    ...cls.subclasses.flatMap((s) =>
+      matchesAll(terms, s.name, s.tagline)
+        ? [`Subclass: ${s.name}`]
+        : named(s.name, subclassAbilities(s)),
+    ),
   ]
   const subclasses = new Set(
     cls.subclasses
       .filter((s) => matchesAll(terms, s.name, s.tagline) || subclassAbilities(s).some(hit))
       .map((s) => s.slug),
   )
-  const count = all.filter(hit).length
-  return count || subclasses.size ? { whole: false, shows: hit, subclasses, count } : null
+  return hits.length ? { whole: false, shows: hit, subclasses, hits: [...new Set(hits)] } : null
 }

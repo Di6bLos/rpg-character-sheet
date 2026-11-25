@@ -1,17 +1,20 @@
 <script setup lang="ts">
-// Library → Classes: every class of a game system as a folding section (closed until opened),
-// with its advancement table, features by level, subclasses and options, and spell slots.
-// The search narrows the list to the classes, features and options that match and opens them.
-// `?tab=classes&system=pf2e&class=bard` opens and scrolls to that class; opening a class puts
-// it in the URL so the link can be shared.
+// Library → Classes: an index of every class of a game system (name, key stat, HP, source;
+// Nimble classes with their sigil) that the search narrows, saying what matched ("Feature:
+// Sneak Attack"). A class opens in a modal with its summary, advancement table, features by
+// level, subclasses and options, and spell slots, under a sticky section nav. The open class
+// is in the URL (?tab=classes&system=pf2e&class=rogue&q=sneak), so a link opens it, with what
+// the search matched opened and scrolled to.
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eClassDef } from '~/data/pf2e/types'
 import { NIMBLE_CLASSES } from '~/data/nimble/classes'
+import type { ClassDef } from '~/data/nimble/types'
 import type { RulesSystem } from '~/data/rules'
 import type { GameSystem } from '~/types'
 import {
   COMPENDIUM_SYSTEMS,
   NIMBLE_CLASS_SOURCES,
+  classSummary,
   nimbleClassMatch,
   pf2eClassMatch,
   searchTerms,
@@ -68,92 +71,117 @@ const loading = computed(() => pf2e.value && !pf2eClasses.value && !failed.value
 interface ClassEntry {
   slug: string
   name: string
+  blurb: string
   facts: string[]
   sigil: boolean
-  pf2e?: { cls: Pf2eClassDef; match: Pf2eClassMatch }
-  nimble?: { cls: (typeof NIMBLE_CLASSES)[number]; match: NimbleClassMatch }
+  /** What the search matched inside the class (empty when its name matched). */
+  hits: string[]
+  pf2e?: { cls: Pf2eClassDef; match: Pf2eClassMatch | null }
+  nimble?: { cls: ClassDef; match: NimbleClassMatch | null }
 }
 
-const entries = computed<ClassEntry[]>(() => {
-  if (pf2e.value)
-    return (pf2eClasses.value ?? []).flatMap((cls) => {
-      const match = pf2eClassMatch(cls, terms.value)
-      if (!match) return []
-      return [
-        {
-          slug: cls.slug,
-          name: cls.name,
-          facts: [
-            `Key ${cls.keyAttributes.map((a) => PF2E_ATTR_NAME[a]).join(' or ')}`,
-            `${cls.hp} HP + Con per level`,
-            sourceLabel(cls.source),
-          ],
-          sigil: false,
-          pf2e: { cls, match },
-        },
-      ]
-    })
-  return NIMBLE_CLASSES.flatMap((cls) => {
-    const match = nimbleClassMatch(cls, terms.value)
-    if (!match) return []
-    return [
-      {
-        slug: cls.slug,
-        name: cls.name,
-        facts: [
-          `Key ${cls.keyStats.join(', ')}`,
-          `${cls.startingHp} HP, d${cls.hitDie} Hit Dice`,
-          NIMBLE_CLASS_SOURCES[cls.slug] ?? '',
-        ].filter(Boolean),
-        sigil: true,
-        nimble: { cls, match },
-      },
-    ]
-  })
-})
-const total = computed(() =>
-  pf2e.value ? (pf2eClasses.value?.length ?? 0) : NIMBLE_CLASSES.length,
-)
-
-// --- Opening -------------------------------------------------------------------------
-const linked = () => (typeof route.query.class === 'string' ? route.query.class : '')
-const opened = reactive(new Set<string>(linked() ? [linked()] : []))
-/** Classes folded by hand during a search (a search opens every class it finds). */
-const foldedInSearch = reactive(new Set<string>())
-watch(term, () => foldedInSearch.clear())
-
-const isOpen = (slug: string) => (searching.value ? !foldedInSearch.has(slug) : opened.has(slug))
-
-function onToggle(slug: string, event: Event) {
-  const open = (event.target as HTMLDetailsElement).open
-  if (open === isOpen(slug)) return
-  if (searching.value) {
-    if (open) foldedInSearch.delete(slug)
-    else foldedInSearch.add(slug)
-    return
+function pf2eEntry(cls: Pf2eClassDef, match: Pf2eClassMatch | null): ClassEntry {
+  return {
+    slug: cls.slug,
+    name: cls.name,
+    blurb: classSummary(cls.text),
+    facts: [
+      `Key ${cls.keyAttributes.map((a) => PF2E_ATTR_NAME[a]).join(' or ')}`,
+      `${cls.hp} HP + Con per level`,
+      sourceLabel(cls.source),
+    ],
+    sigil: false,
+    hits: match?.hits ?? [],
+    pf2e: { cls, match },
   }
-  if (open) opened.add(slug)
-  else opened.delete(slug)
-  const now = open ? slug : linked() === slug ? undefined : linked() || undefined
-  // Opened by hand, it's already in view: the link shouldn't scroll it.
-  if (open) scrolled.value = slug
-  if (now !== (linked() || undefined))
-    void router.replace({ query: { ...route.query, tab: 'classes', class: now } })
 }
 
-/** A linked class opens and scrolls into view once its system's classes are on the page. */
-const scrolled = ref('')
-watch(
-  [() => linked(), entries],
-  async ([slug]) => {
-    if (!slug || scrolled.value === slug || !entries.value.some((e) => e.slug === slug)) return
-    opened.add(slug)
-    scrolled.value = slug
-    await nextTick()
-    document.getElementById(`class-${slug}`)?.scrollIntoView({ block: 'start' })
-  },
-  { immediate: true, flush: 'post' },
+function nimbleEntry(cls: ClassDef, match: NimbleClassMatch | null): ClassEntry {
+  return {
+    slug: cls.slug,
+    name: cls.name,
+    blurb: cls.tagline,
+    facts: [
+      `Key ${cls.keyStats.join(', ')}`,
+      `${cls.startingHp} HP, d${cls.hitDie} Hit Dice`,
+      NIMBLE_CLASS_SOURCES[cls.slug] ?? '',
+    ].filter(Boolean),
+    sigil: true,
+    hits: match?.hits ?? [],
+    nimble: { cls, match },
+  }
+}
+
+/** Every class with what the search matched in it; null matches drop out of the index. */
+const all = computed<{ entry: ClassEntry; matched: boolean }[]>(() =>
+  pf2e.value
+    ? (pf2eClasses.value ?? []).map((cls) => {
+        const match = searching.value ? pf2eClassMatch(cls, terms.value) : null
+        return { entry: pf2eEntry(cls, match), matched: !searching.value || !!match }
+      })
+    : NIMBLE_CLASSES.map((cls) => {
+        const match = searching.value ? nimbleClassMatch(cls, terms.value) : null
+        return { entry: nimbleEntry(cls, match), matched: !searching.value || !!match }
+      }),
 )
+const entries = computed(() => all.value.filter((x) => x.matched).map((x) => x.entry))
+const total = computed(() => all.value.length)
+
+const HITS_SHOWN = 3
+
+// --- The open class --------------------------------------------------------------------
+const reading = computed(() => {
+  const slug = route.query.class
+  return typeof slug === 'string' ? all.value.find((x) => x.entry.slug === slug)?.entry : undefined
+})
+function readClass(slug?: string) {
+  void router.replace({ query: { ...route.query, class: slug } })
+}
+const readingOpen = computed({
+  get: () => !!reading.value,
+  set: (open) => {
+    if (!open) readClass()
+  },
+})
+
+/** A class opened from a search scrolls to the first thing that matched. */
+watch(
+  () => reading.value?.slug,
+  async (slug) => {
+    if (!slug || !reading.value?.hits.length) return
+    await nextTick()
+    await nextTick()
+    document
+      .querySelector('dialog[open] .fold.is-hit, dialog[open] .cbody__ability.is-hit')
+      ?.scrollIntoView({ block: 'start' })
+  },
+  { flush: 'post' },
+)
+
+/** The jump links pinned over the open class: only the sections it has. */
+const sections = computed(() => {
+  const e = reading.value
+  if (!e) return []
+  const id = (part: string) => `cls-${e.slug}-${part}`
+  const c = e.pf2e?.cls
+  const n = e.nimble?.cls
+  return [
+    { id: id('overview'), label: 'Overview' },
+    { id: id('advancement'), label: 'Advancement' },
+    ...(!c || c.features.length ? [{ id: id('features'), label: 'Features' }] : []),
+    ...(c?.subclasses.length || n?.pools.length || n?.subclasses.length
+      ? [{ id: id('options'), label: 'Options' }]
+      : []),
+    ...(c?.spellSlots?.length ? [{ id: id('spells'), label: 'Spells' }] : []),
+  ]
+})
+// Buttons rather than #hash links, so the router doesn't see them.
+function jump(id: string) {
+  const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  document
+    .getElementById(id)
+    ?.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' })
+}
 
 const toolbarEl = ref<HTMLElement | null>(null)
 const toolbarStuck = useStuck(toolbarEl)
@@ -185,7 +213,7 @@ const toolbarStuck = useStuck(toolbarEl)
       <template v-else-if="searching">
         {{ entries.length }} of {{ total }} classes match “{{ term.trim() }}”
       </template>
-      <template v-else>{{ total }} classes. Open one to read its levels and options.</template>
+      <template v-else>{{ total }} classes</template>
     </p>
 
     <p v-if="failed" class="notice notice--error" role="alert">
@@ -194,59 +222,73 @@ const toolbarStuck = useStuck(toolbarEl)
     </p>
     <div v-else-if="loading" class="spinner" role="status" aria-label="Loading classes" />
 
-    <div v-else class="list">
-      <details
-        v-for="e in entries"
-        :id="`class-${e.slug}`"
-        :key="e.slug"
-        class="panel cls"
-        :open="isOpen(e.slug)"
-        @toggle="onToggle(e.slug, $event)"
-      >
-        <summary class="cls__head">
-          <span v-if="e.sigil" class="cls__sigil"><NimbleSigil :slug="e.slug" :size="44" /></span>
-          <span class="cls__title">
-            <h2>{{ e.name }}</h2>
-            <span class="cls__facts">
-              <span v-for="f in e.facts" :key="f">{{ f }}</span>
-            </span>
-          </span>
-          <svg
-            class="chev"
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
+    <template v-else>
+      <ul class="grid" :aria-label="`${sys?.label ?? ''} classes`">
+        <li v-for="e in entries" :key="e.slug">
+          <button
+            type="button"
+            class="panel ccard"
+            aria-haspopup="dialog"
+            @click="readClass(e.slug)"
           >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </summary>
-        <div v-if="isOpen(e.slug)" class="cls__body">
-          <LibraryClassPf2e
-            v-if="e.pf2e"
-            :cls="e.pf2e.cls"
-            :match="e.pf2e.match"
-            :searching="searching"
-          />
-          <LibraryClassNimble
-            v-else-if="e.nimble"
-            :cls="e.nimble.cls"
-            :match="e.nimble.match"
-            :searching="searching"
-          />
-        </div>
-      </details>
+            <span v-if="e.sigil" class="ccard__sigil"
+              ><NimbleSigil :slug="e.slug" :size="48"
+            /></span>
+            <span class="ccard__main">
+              <strong class="ccard__name">{{ e.name }}</strong>
+              <span class="ccard__facts">
+                <span v-for="f in e.facts" :key="f">{{ f }}</span>
+              </span>
+              <span v-if="!e.hits.length" class="ccard__blurb">{{ e.blurb }}</span>
+              <span v-else class="ccard__hits">
+                <span v-for="h in e.hits.slice(0, HITS_SHOWN)" :key="h">{{ h }}</span>
+                <span v-if="e.hits.length > HITS_SHOWN" class="muted"
+                  >and {{ e.hits.length - HITS_SHOWN }} more</span
+                >
+              </span>
+            </span>
+          </button>
+        </li>
+      </ul>
       <p v-if="!entries.length" class="empty">
         Nothing in the {{ sys?.label }} classes matches “{{ term.trim() }}”.
       </p>
-    </div>
+    </template>
 
     <LibraryNotice v-if="sys" :text="sys.attribution" />
+
+    <UiDialog v-model="readingOpen" :title="reading?.name ?? ''" width="960px" sheet>
+      <template #eyebrow>
+        <p v-if="reading" class="read__eyebrow">
+          <span v-if="reading.sigil" class="read__sigil"
+            ><NimbleSigil :slug="reading.slug" :size="28"
+          /></span>
+          <span v-for="f in reading.facts" :key="f">{{ f }}</span>
+        </p>
+      </template>
+      <nav v-if="reading" class="class-nav" aria-label="Class sections">
+        <button
+          v-for="sec in sections"
+          :key="sec.id"
+          type="button"
+          class="chip"
+          @click="jump(sec.id)"
+        >
+          {{ sec.label }}
+        </button>
+      </nav>
+      <div v-if="reading" class="cls__body">
+        <LibraryClassPf2e v-if="reading.pf2e" :cls="reading.pf2e.cls" :match="reading.pf2e.match" />
+        <LibraryClassNimble
+          v-else-if="reading.nimble"
+          :cls="reading.nimble.cls"
+          :match="reading.nimble.match"
+        />
+      </div>
+      <template #actions>
+        <button type="button" class="btn btn--ghost" @click="readClass()">Close</button>
+      </template>
+    </UiDialog>
   </div>
 </template>
 
@@ -276,83 +318,128 @@ const toolbarStuck = useStuck(toolbarEl)
   margin: 0;
 }
 
-.list {
-  display: flex;
-  flex-direction: column;
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 12px;
-}
-
-.cls {
+  margin: 0;
   padding: 0;
-  scroll-margin-top: calc(var(--subnav-h, 0px) + 84px);
-
-  &[open] > .cls__head .chev {
-    transform: rotate(180deg);
-  }
-}
-
-.cls__head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 64px;
-  padding: 12px 20px;
-  cursor: pointer;
   list-style: none;
 
-  &::-webkit-details-marker {
-    display: none;
-  }
-
-  &:hover h2 {
-    color: var(--accent-text);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--accent-text);
-    outline-offset: -2px;
-    border-radius: inherit;
+  li {
+    display: flex;
   }
 }
 
-.cls__sigil {
+.ccard {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  min-height: 44px;
+  padding: 16px 18px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--accent);
+  }
+
+  &:hover .ccard__name {
+    color: var(--accent-text);
+  }
+}
+
+.ccard__sigil {
   flex: none;
   display: grid;
   place-items: center;
   color: var(--page-text);
 }
 
-.cls__title {
+.ccard__main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
-  flex: 1;
-
-  h2 {
-    margin: 0;
-    font-size: 22px;
-  }
 }
 
-.cls__facts {
+.ccard__name {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.ccard__facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 14px;
+  gap: 2px 12px;
   font-size: 13px;
   color: var(--page-muted);
 }
 
-.chev {
-  flex: none;
+.ccard__blurb {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--page-soft);
+}
+
+.ccard__hits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+  font-size: 13px;
   color: var(--accent-text);
-  transition: transform 0.15s;
+  overflow-wrap: anywhere;
+}
+
+.read__eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--page-muted);
+}
+
+.class-nav {
+  position: sticky;
+  top: -4px;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  gap: 6px;
+  margin: 0 -4px -20px;
+  padding: 4px 4px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--line);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex: none;
+  }
+}
+
+.read__sigil {
+  display: inline-grid;
+  color: var(--page-text);
 }
 
 .cls__body {
-  padding: 4px 20px 20px;
-  border-top: 1px solid var(--line);
-
   // The class bodies (ClassPf2e, ClassNimble) share these.
   :deep(h3) {
     margin: 22px 0 10px;
@@ -433,6 +520,20 @@ const toolbarStuck = useStuck(toolbarEl)
     color: var(--page-soft);
   }
 
+  :deep(.cbody__section) {
+    scroll-margin-top: 64px;
+  }
+
+  :deep(.cbody__section > h3:first-child),
+  :deep(.cbody__section > .cbody__summary:nth-child(2)) {
+    margin-top: 18px;
+  }
+
+  :deep(.fold.is-hit) {
+    border-color: var(--accent);
+    scroll-margin-top: 64px;
+  }
+
   :deep(.cbody__ability) {
     margin: 0 0 8px;
     padding-left: 10px;
@@ -463,16 +564,6 @@ const toolbarStuck = useStuck(toolbarEl)
 @media (max-width: 860px) {
   .search {
     flex: 1 1 100%;
-  }
-}
-
-@media (max-width: 640px) {
-  .cls__head {
-    padding: 10px 14px;
-  }
-
-  .cls__body {
-    padding: 4px 14px 16px;
   }
 }
 </style>
