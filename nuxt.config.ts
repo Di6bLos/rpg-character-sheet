@@ -1,4 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { dropAmbiguousImports } from './scripts/lib/autoImports'
+
 const fonts =
   'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=UnifrakturMaguntia&family=Cormorant+Garamond:wght@600;700&family=Crimson+Pro:wght@400;600&family=Cinzel+Decorative:wght@700&family=Alegreya+Sans:wght@400;500;700&family=IM+Fell+English&family=IM+Fell+English+SC&family=Spectral:wght@400;600&display=swap'
 
@@ -73,5 +75,11 @@ export default defineNuxtConfig({
 
   imports: {
     dirs: ['stores', 'composables'],
+  },
+
+  hooks: {
+    'imports:extend': (imports) => {
+      dropAmbiguousImports(imports)
+    },
   },
 })

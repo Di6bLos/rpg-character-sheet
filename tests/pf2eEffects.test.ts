@@ -175,6 +175,7 @@ describe('pf2e effects, second wave', () => {
   it('applies the ranger’s edges only while hunting prey (Player Core p. 154)', () => {
     const s = hero(['Hunt Prey', 'Flurry', 'Outwit'])
     expect(mapPenalties(s, false)).toEqual([0, 5, 10])
+    expect(mapPenalties(s, true)).toEqual([0, 4, 8])
     expect(adjusted(s, 5, { kind: 'skill', attr: 'CHA', skill: 'Deception' }).value).toBe(5)
     toggleEffect(s, 'Hunt Prey', 1)
     expect(mapPenalties(s, false)).toEqual([0, 3, 6])

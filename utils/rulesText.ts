@@ -6,6 +6,7 @@
 //   {{nimble-conditions}}, {{nimble-reactions}}, {{nimble-armor}}, {{nimble-weapons}}
 //                                  the tables in data/nimble/core.ts
 import { ARMOR, CONDITIONS, REACTIONS, WEAPONS } from '~/data/nimble/core'
+import type { WeaponDef } from '~/data/nimble/types'
 import type { Pf2eActionCost, Pf2eActionDef, Pf2eConditionDef } from '~/data/pf2e/types'
 
 /** The PF2e data sets a topic's placeholders need, fetched by the caller. */
@@ -113,12 +114,21 @@ const nimbleArmor = () =>
     ARMOR.map((a) => [a.name, a.kind, a.armor, a.str ? String(a.str) : '–', a.cost ?? '–']),
   )
 
+/** An unarmed strike rolls 1d4 to hit but deals a flat 1+STR (Core p. 34). */
+const weaponDamage = (w: WeaponDef) =>
+  w.name === 'Unarmed Strike'
+    ? `roll ${w.dice}; on a hit 1+${w.stat} ${w.type.toLowerCase()}`
+    : `${w.dice}+${w.stat} ${w.type.toLowerCase()}`
+
+/** The Core weapons (pp. 34–35): the priced ones and unarmed strikes, not Artificer inventions. */
+const coreWeapon = (w: WeaponDef) => !!w.cost || w.name === 'Unarmed Strike'
+
 const nimbleWeapons = () =>
   table(
     ['Weapon', 'Damage', 'Properties', 'Cost'],
-    WEAPONS.map((w) => [
+    WEAPONS.filter(coreWeapon).map((w) => [
       w.name,
-      `${w.dice}+${w.stat} ${w.type.toLowerCase()}`,
+      weaponDamage(w),
       cell(w.props) || '–',
       w.cost ?? '–',
     ]),
@@ -190,6 +200,22 @@ export function rulesMatch(text: string, query: string): boolean {
 
 export function rulesTerms(query: string): string[] {
   return query.toLowerCase().split(/\s+/).filter(Boolean)
+}
+
+/**
+ * Loads every topic at once and keeps the ones that came back when others fail, so a search
+ * still shows what it found; `lost` are the ones that didn't load, with their errors.
+ */
+export async function loadTopics<T>(topics: T[], load: (topic: T) => Promise<string>) {
+  const results = await Promise.allSettled(topics.map(load))
+  const loaded: [T, string][] = []
+  const lost: { topic: T; error: unknown }[] = []
+  results.forEach((r, i) => {
+    const topic = topics[i] as T
+    if (r.status === 'fulfilled') loaded.push([topic, r.value])
+    else lost.push({ topic, error: r.reason })
+  })
+  return { loaded, lost }
 }
 
 /** A cite line: "_Player Core pp. 400–401._", "_Core p. 8; GM's Guide p. 24._". */

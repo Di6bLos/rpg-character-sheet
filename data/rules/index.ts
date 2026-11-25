@@ -88,7 +88,7 @@ export const RULES_SYSTEMS: RulesSystem[] = [
     label: 'Pathfinder 2e',
     sources: 'Player Core and GM Core (Remaster)',
     attribution:
-      'This page contains Licensed Material from Paizo Inc. (Player Core, GM Core) under the ORC License, available at paizo.com/orclicense. All warranties are disclaimed as set forth therein. Paizo trademarks and setting material are Reserved Material and are not included. Lantern is not published, endorsed or specifically approved by Paizo Inc.',
+      'This page contains Licensed Material from Paizo Inc. under the ORC License, located at the Library of Congress at TX 9-307-067 and available online at various locations including paizo.com/orclicense and azoralaw.com/orclicense. All warranties are disclaimed as set forth therein. Attribution: this page is based on the following Licensed Material, each © Paizo Inc.: Player Core; GM Core. Paizo’s trademarks and setting material are Reserved Material and are not included. Pathfinder is a registered trademark of Paizo Inc., named here only to say which game these rules are for; Lantern is not published, endorsed or specifically approved by Paizo Inc.',
     topics: [
       topic('pf2e', '01', 'core-rules', 'Core rules', 'Checks, degrees of success, DCs'),
       topic(

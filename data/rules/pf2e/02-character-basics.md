@@ -18,7 +18,7 @@ There are six: **Strength**, **Dexterity** and **Constitution** (physical), **In
 - An **attribute flaw** lowers a modifier by 1.
 - At 1st level no modifier can be higher than +4.
 
-_Player Core pp. 19, 227, 402._
+_Player Core pp. 17, 400._
 
 ## Building a 1st-level character
 

@@ -141,11 +141,6 @@ export function rollCheck(bonus: number, rng: Rng = Math.random): AttackRoll {
   return r
 }
 
-/** Pathfinder 2e multiple attack penalty for the 1st, 2nd and 3rd attack. */
-export function mapPenalties(agile: boolean): [number, number, number] {
-  return agile ? [0, 4, 8] : [0, 5, 10]
-}
-
 /** One roll as the dice tray throws it: every die in order, the Primary, what was dropped. */
 export interface ShownRoll {
   sides: number

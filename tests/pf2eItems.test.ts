@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { addedDice, runeDice } from '../composables/usePf2eStrikes'
 import type { Pf2eSheet } from '../types/sheets'
 import { endPf2eEncounter, startPf2eTurn, timePasses } from '../utils/pf2eActions'
 import { runeDamageNotes, traitsInHands, versatileType } from '../utils/pf2eDamage'
@@ -255,6 +256,19 @@ describe('pf2e runes (GM Core pp. 224–237)', () => {
     expect(traitsInHands(['Concussive', 'Fatal Aim d12'], false)).not.toContain('Fatal d12')
     expect(versatileType(named(weapons, 'Gladius').traits)).toBe('Slashing')
     expect(versatileType(named(weapons, 'Club').traits)).toBeUndefined()
+  })
+
+  it('keeps the flaming rune’s fire on a Strike that leaves its precision dice to another', () => {
+    const s = hero()
+    const sword = longsword()
+    s.inventory.push(sword)
+    etchRune(sword, item(runes, 'Weapon Potency (+1)'))
+    etchRune(sword, item(runes, 'Flaming'))
+    const fire = runeDice(s, 'Longsword')
+    expect(fire).toEqual([{ dice: '1d6', label: 'Flaming (fire)' }])
+    const sneak = [{ dice: '1d6', label: 'sneak attack' }]
+    expect(addedDice({ runeDice: fire, extra: sneak })).toEqual([...fire, ...sneak])
+    expect(addedDice({ runeDice: fire, extra: sneak }, true)).toEqual(fire)
   })
 
   it('adds armor potency to AC, and resilient to saves only while invested', () => {

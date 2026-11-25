@@ -315,7 +315,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Licensing: closed-book sections cut by their lead (Dragon Form's Draconic Codex table), closed dedications stripped from prerequisites, Pathfinder Society notes stripped, Pactmaster's Grace out; the data run and the ORC bible fail on any closed book title
   - Partial: property runes other than extra damage show their text (crit effects, resistances, activations); persistent damage from bombs and runes is said, not tracked (8.4); talismans, oils, ammunition and other activations spend one and say so; conditional item bonuses ("to High Jump", "against poisons") are shown, not applied; mutagen drawbacks, shield runes, specific magic weapons and armor, handwraps, precious materials and item crafting are not in yet
 - [x] Deities for clerics and champions (Reserved Material, under Paizo's Community Use Policy)
-- [ ] Structured effect model for feats and spells (with 8.5, where it is first used)
+- [x] Structured effect model for feats and spells (built in 8.5)
 
 ### 8.3 Builder and level-up
 
@@ -324,7 +324,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Spells and focus spells at creation
 - [x] Level plan and level-up (`utils/pf2eLevelUp.ts`: `pf2eLevelPlan`, `applyPf2eLevel`; going back a level and Reconfigure replay the recorded picks)
   - Choices the class data can't describe stay notes for the player: signature spells, Blessing of the Devoted, Gate's Threshold, inventor modifications, Divine Access, implement adept/paragon, choices inside feats (Canny Acumen, Domain Initiate)
-  - Not yet: archetype feats in class slots, swapping a repertoire spell, redoing level 1 through Reconfigure (the builder's steps live in its page)
+  - Not yet: swapping a repertoire spell, redoing level 1 through Reconfigure (the builder's steps live in its page)
 - [x] Data-driven level-up in `LevelUpDialog` for PF2e sheets with a `classSlug` (`components/pf2e/LevelUp.vue`)
 - [x] Review fixes: spellbook/familiar/dirge counts, wizard curriculum, sorcerer gifts, witch hex choice, bonus class feats at 1st, Raised by Belief's deity on the Background step, druidic orders (skill, feat, order spell), focus pool growth, bonus skill feats and increases (Skillful Lessons, Stylish Tricks), racket medium armor, animist apparition slots, stale Reconfigure picks flagged, hand-made feats and Strikes kept when lowering a level
 - [ ] Golden level tables after a `rules-auditor` pass per class

@@ -8,7 +8,14 @@ import { CONDITIONS, REACTIONS } from '../data/nimble/core'
 import { RULES_FILES, RULES_SYSTEMS, loadRulesFile, rulesSystem } from '../data/rules'
 import { settingName } from '../scripts/lib/aon'
 import { loreHtml } from '../utils/loreText'
-import { RULES_CITE, expandRules, rulesNeeds, rulesPlain, rulesSections } from '../utils/rulesText'
+import {
+  RULES_CITE,
+  expandRules,
+  loadTopics,
+  rulesNeeds,
+  rulesPlain,
+  rulesSections,
+} from '../utils/rulesText'
 
 const dir = join(import.meta.dirname, '..', 'data', 'pf2e', 'generated')
 const load = <K extends keyof Pf2eData>(set: K): Pf2eData[K] =>
@@ -57,6 +64,15 @@ describe('rules index', () => {
     expect(rulesSystem('pf2e')?.attribution).toContain('ORC License')
   })
 
+  it('shows the ORC notice in full, with the books it uses and the Pathfinder trademark', () => {
+    const notice = rulesSystem('pf2e')?.attribution ?? ''
+    expect(notice).toContain('located at the Library of Congress at TX 9-307-067')
+    expect(notice).toContain('paizo.com/orclicense and azoralaw.com/orclicense')
+    expect(notice).toContain('All warranties are disclaimed as set forth therein.')
+    expect(notice).toContain('each © Paizo Inc.: Player Core; GM Core')
+    expect(notice).toContain('Pathfinder is a registered trademark of Paizo Inc.')
+  })
+
   it('renders every topic, with every placeholder filled', () => {
     for (const [key, md] of topics) {
       expect(md, key).not.toMatch(/\{\{/)
@@ -76,6 +92,20 @@ describe('rules index', () => {
     const raw = await loadRulesFile('pf2e/05-conditions.md')
     expect(rulesNeeds(raw)).toEqual(['pf2eConditions'])
     expect(() => expandRules(raw)).toThrow(/not loaded/)
+  })
+})
+
+describe('loading topics', () => {
+  it('keeps the topics that loaded when another fails, so a search shows what it found', async () => {
+    const lostFile = new Error('Failed to fetch dynamically imported module')
+    const { loaded, lost } = await loadTopics(['combat', 'actions', 'conditions'], (slug) =>
+      slug === 'actions' ? Promise.reject(lostFile) : Promise.resolve(`## ${slug}`),
+    )
+    expect(loaded).toEqual([
+      ['combat', '## combat'],
+      ['conditions', '## conditions'],
+    ])
+    expect(lost).toEqual([{ topic: 'actions', error: lostFile }])
   })
 })
 
@@ -127,6 +157,13 @@ describe('PF2e rules', () => {
     )
   })
 
+  it('cites the pages its attribute and healing rules are on', () => {
+    const cite = (slug: string, title: string) =>
+      rulesSections(text('pf2e', slug)).find((s) => s.title === title)?.markdown
+    expect(cite('character-basics', 'Attribute modifiers')).toContain('_Player Core pp. 17, 400._')
+    expect(cite('healing-and-rest', 'Other healing')).toContain('pp. 407, 411, 445.')
+  })
+
   it('takes its conditions and actions from the data', () => {
     const conditions = text('pf2e', 'conditions')
     for (const c of pf2eConditions) expect(conditions, c.name).toContain(`| ${c.name}`)
@@ -155,6 +192,22 @@ describe('Nimble rules', () => {
     const rest = plain('nimble', 'healing-and-rest')
     expect(rest).toContain('heal 1 Wound')
     expect(plain('nimble', 'actions')).toContain('DC 12')
+  })
+
+  it('lists the Core weapons, an unarmed strike rolling 1d4 to hit for a flat 1+STR', () => {
+    const equipment = text('nimble', 'equipment')
+    expect(equipment).toMatch(/^\| Unarmed Strike \| roll 1d4; on a hit 1\+STR bludgeoning \|/m)
+    expect(equipment).toMatch(/^\| Longsword \| 1d8\+STR slashing \|/m)
+    expect(equipment).not.toContain('Thunder Gauntlets')
+  })
+
+  it('files Hampered once, as a Core p. 11 condition, and words Dazed and Restrained as it does', () => {
+    const conditions = text('nimble', 'conditions')
+    expect(conditions.match(/^\| Hampered /gm)).toHaveLength(1)
+    const main = rulesSections(conditions).find((s) => s.title === 'Conditions')?.markdown
+    expect(main).toMatch(/^\| Hampered /m)
+    expect(main).toMatch(/^\| Dazed \| Heroes lose 1 action; monsters take one less action/m)
+    expect(main).toMatch(/^\| Restrained \| Like Grappled, but from objects; ignores size\. \|/m)
   })
 
   it('reuses the conditions and reactions the app plays by', () => {
