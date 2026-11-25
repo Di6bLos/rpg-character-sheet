@@ -173,6 +173,25 @@ describe('loreHtml', () => {
     expect(html).toContain('<td>d</td><td>e</td>')
   })
 
+  it('needs a rule line with a pipe to make the first row a header, as GFM does', () => {
+    const html = loreHtml('| a |\n---')
+    expect(html).not.toContain('<thead>')
+    expect(html).toContain('<tbody><tr><td>a</td></tr></tbody>')
+    expect(loreHtml('| a |\n| --- |')).toContain('<thead><tr><th scope="col">a</th></tr></thead>')
+  })
+
+  it('keeps a body row of dashes', () => {
+    const html = loreHtml('| Level | Feat |\n| --- | --- |\n| 1 | Muse |\n| --- | --- |')
+    expect(html).toContain(
+      '<tbody><tr><td>1</td><td>Muse</td></tr><tr><td>---</td><td>---</td></tr>',
+    )
+  })
+
+  it('does not split a cell on a pipe inside inline code', () => {
+    const html = loreHtml('| Roll | Means |\n| --- | --- |\n| `a|b` | either |')
+    expect(html).toContain('<td><code>a|b</code></td><td>either</td>')
+  })
+
   it('escapes HTML before formatting', () => {
     const html = loreHtml('<img src=x onerror=alert(1)> **bold** and *it*')
     expect(html).not.toContain('<img')
