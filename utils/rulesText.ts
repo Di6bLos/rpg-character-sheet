@@ -6,6 +6,7 @@
 //   {{nimble-conditions}}, {{nimble-reactions}}, {{nimble-armor}}, {{nimble-weapons}}
 //                                  the tables in data/nimble/core.ts
 import { ARMOR, CONDITIONS, REACTIONS, WEAPONS } from '~/data/nimble/core'
+import type { WeaponDef } from '~/data/nimble/types'
 import type { Pf2eActionCost, Pf2eActionDef, Pf2eConditionDef } from '~/data/pf2e/types'
 
 /** The PF2e data sets a topic's placeholders need, fetched by the caller. */
@@ -113,12 +114,21 @@ const nimbleArmor = () =>
     ARMOR.map((a) => [a.name, a.kind, a.armor, a.str ? String(a.str) : '–', a.cost ?? '–']),
   )
 
+/** An unarmed strike rolls 1d4 to hit but deals a flat 1+STR (Core p. 34). */
+const weaponDamage = (w: WeaponDef) =>
+  w.name === 'Unarmed Strike'
+    ? `roll ${w.dice}; on a hit 1+${w.stat} ${w.type.toLowerCase()}`
+    : `${w.dice}+${w.stat} ${w.type.toLowerCase()}`
+
+/** The Core weapons (pp. 34–35): the priced ones and unarmed strikes, not Artificer inventions. */
+const coreWeapon = (w: WeaponDef) => !!w.cost || w.name === 'Unarmed Strike'
+
 const nimbleWeapons = () =>
   table(
     ['Weapon', 'Damage', 'Properties', 'Cost'],
-    WEAPONS.map((w) => [
+    WEAPONS.filter(coreWeapon).map((w) => [
       w.name,
-      `${w.dice}+${w.stat} ${w.type.toLowerCase()}`,
+      weaponDamage(w),
       cell(w.props) || '–',
       w.cost ?? '–',
     ]),

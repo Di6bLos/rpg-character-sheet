@@ -55,4 +55,4 @@ _Player Core p. 241._
 - **Bleed** damage ends on its own if you're healed to full HP.
 - The **wounded** condition ends after a successful Treat Wounds, or once you're at full HP and rest for 10 minutes.
 
-_Player Core pp. 407, 411._
+_Player Core pp. 407, 411, 445._

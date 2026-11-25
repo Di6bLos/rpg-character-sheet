@@ -384,14 +384,17 @@ export const CONDITIONS = [
     name: 'Charmed',
     desc: 'Sees the charmer as an ally; the charmer has advantage on social checks with you.',
   },
-  { name: 'Dazed', desc: 'Heroes lose 1 action on their next turn.' },
+  {
+    name: 'Dazed',
+    desc: 'Heroes lose 1 action; monsters take one less action on their next turn.',
+  },
   { name: 'Dying', desc: 'At 0 HP. Taking damage causes 2 Wounds, a crit 3.' },
   {
     name: 'Frightened',
     desc: 'Disadvantage while the source is nearby; speed halved moving toward it.',
   },
   { name: 'Grappled', desc: 'Can’t move. Attacks against you have advantage.' },
-  { name: 'Restrained', desc: 'Like Grappled, but from objects or spells; ignores size.' },
+  { name: 'Restrained', desc: 'Like Grappled, but from objects; ignores size.' },
   {
     name: 'Hampered',
     desc: 'Actions or movement reduced (Dazed, Grappled, Prone, difficult terrain).',
