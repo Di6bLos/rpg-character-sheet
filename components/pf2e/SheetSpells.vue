@@ -12,8 +12,10 @@
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
-import { rollAttack, sign } from '~/utils/dice'
+import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import { actionGlyph } from '~/utils/pf2eBuild'
+import { type Pf2eBloodMagic, bloodMagic } from '~/utils/pf2eClassActions'
+import { pf2eEffectDef, toggleEffect } from '~/utils/pf2eEffects'
 import { heal } from '~/utils/pf2ePlay'
 import {
   castCantrip,
@@ -88,8 +90,10 @@ function rollSpellAttack() {
   const n = numbers.value
   if (!n) return
   claim('spells-head', () => {
-    const r = rollAttack(n.attack.value)
-    say(`Spell attack: ${r.total} (${r.d20} ${sign(n.attack.value)})`)
+    const r = rollCheck(n.attack.value)
+    const line = `Spell attack: ${r.total} (${r.d20} ${sign(n.attack.value)})`
+    showOutcome({ label: 'Spell attack', total: r.total, detail: line })
+    say(line)
   })
 }
 
@@ -154,6 +158,8 @@ const lastCast = ref<{
   healing?: number
   temp?: number
   offer?: string
+  /** A sorcerer's blood magic from a bloodline or sorcerous gift spell (Player Core 2 p. 144). */
+  blood?: Pf2eBloodMagic
 } | null>(null)
 
 /**
@@ -181,11 +187,36 @@ function castIn(key: string, message: string, def: Pf2eSpellDef | undefined, ran
     targetAc: targetAc.value,
   })
   payCast(def)
-  say(`${message} ${r.text}`.trim())
+  const blood = bloodMagic(sheet.value, def.name, rank)
+  const target = blood?.damage ? ` Or a target takes ${blood.damage} damage.` : ''
+  const bloodLine = blood ? ` Blood magic, ${blood.name}: ${blood.text}${target}` : ''
+  say(`${message} ${r.text}${bloodLine}`.trim())
   const effect = spellRules(def).effect
   const offer = effect && !effect.self ? effect.def.name : undefined
-  if (r.healing || r.temp || offer)
-    lastCast.value = { key, def, rank, healing: r.healing, temp: r.temp, offer }
+  if (r.healing || r.temp || offer || blood?.toggles.length)
+    lastCast.value = {
+      key,
+      def,
+      rank,
+      healing: r.healing,
+      temp: r.temp,
+      offer,
+      ...(blood?.toggles.length ? { blood } : {}),
+    }
+}
+
+/** Takes the blood magic's effect on yourself (one of them, for Imperious Defense). */
+function bloodSelf(name: string) {
+  const last = lastCast.value
+  if (!canEdit.value || !last?.blood) return
+  const blood = last.blood
+  const tempHp = pf2eEffectDef(sheet.value, name)?.effects.some((e) => e.kind === 'tempHp')
+  claim(last.key, () =>
+    say(
+      `${blood.name}: ${toggleEffect(sheet.value, name, level.value, tempHp ? last.rank : undefined)}`,
+    ),
+  )
+  lastCast.value = { ...last, blood: undefined }
 }
 
 function castFromSlot(s: Pf2eSpellRef) {
@@ -427,6 +458,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           @heal="healSelf"
           @temp="tempSelf"
           @buff="buffSelf"
+          @blood="bloodSelf"
           @dismiss="lastCast = null"
         />
       </div>
@@ -554,6 +586,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             @heal="healSelf"
             @temp="tempSelf"
             @buff="buffSelf"
+            @blood="bloodSelf"
             @dismiss="lastCast = null"
           />
         </div>
@@ -609,6 +642,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             @heal="healSelf"
             @temp="tempSelf"
             @buff="buffSelf"
+            @blood="bloodSelf"
             @dismiss="lastCast = null"
           />
         </div>
@@ -685,6 +719,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           @heal="healSelf"
           @temp="tempSelf"
           @buff="buffSelf"
+          @blood="bloodSelf"
           @dismiss="lastCast = null"
         />
       </div>
@@ -775,6 +810,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           @heal="healSelf"
           @temp="tempSelf"
           @buff="buffSelf"
+          @blood="bloodSelf"
           @dismiss="lastCast = null"
         />
       </div>

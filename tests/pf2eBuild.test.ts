@@ -15,6 +15,7 @@ import {
   emptyCreation,
   featOptions,
   featSlots,
+  gearCost,
   gearOptions,
   keyAttributeOptions,
   levelOneText,
@@ -31,7 +32,7 @@ import {
   untrainedGear,
   weaponRank,
 } from '../utils/pf2eBuild'
-import { autoCreation, buildData as data, fillSlots, named } from './helpers/pf2e'
+import { autoCreation, buildData as data, fillSlots, loadSet, named } from './helpers/pf2e'
 
 const cls = (name: string) => named(data.classes, name)
 
@@ -560,6 +561,32 @@ describe('pf2e gear', () => {
     expect(creationProblems(c, data).gear).toEqual([
       'Not trained in Leather Armor, Longsword: pick something else',
     ])
+  })
+
+  it('sells level 0–1 gear and consumables too, with how many of each (no scrolls)', () => {
+    const items = { ...data, gear: loadSet('gear'), consumables: loadSet('consumables') }
+    const g = gearOptions(items)
+    const names = g.items.map((i) => i.name)
+    expect(names).toEqual(expect.arrayContaining(['Rope', 'Healing Potion (Minor)']))
+    expect(g.items.every((i) => i.level <= 1 && i.kind !== 'scroll')).toBe(true)
+    const c = dwarfFighter()
+    const potion = named(items.consumables, 'Healing Potion (Minor)')
+    c.items = [{ id: potion.id, count: 2 }]
+    // 15 gp − chain mail 6 gp − longsword 1 gp − 2 × 4 gp (GM Core p. 259)
+    expect(gearCost(c, items)).toBe(1500)
+    const s = buildPf2eSheet(c, items)
+    expect(s.coins).toEqual({ gp: 0, sp: 0, cp: 0 })
+    expect(s.inventory.find((i) => i.name === potion.name)?.pf2e).toMatchObject({
+      count: 2,
+      healing: '1d8',
+    })
+    expect(s.inventory.find((i) => i.name === 'Chain Mail')?.pf2e).toMatchObject({
+      kind: 'armor',
+      carry: 'worn',
+      category: 'medium',
+    })
+    c.items = [{ id: potion.id, count: 3 }]
+    expect(creationProblems(c, items).gear).toEqual(['That gear costs 19 gp; you have 15 gp'])
   })
 
   it('puts ammunition in the pack, without a proficiency or a Strike', () => {

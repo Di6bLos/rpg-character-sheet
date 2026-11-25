@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Pathfinder 2e hero builder, in Player Core's order (pp. 22–27): ancestry → background →
-// class → attributes → skills & feats → gear → review. The rules data is fetched on open
+// Pathfinder 2e hero builder (Player Core pp. 22–27), class first like the Nimble builder:
+// class → ancestry → background → attributes → skills & feats → spells → gear → review. The rules data is fetched on open
 // (`loadPf2e`); `utils/pf2eBuild.ts` checks each step and builds the level 1 sheet.
 import type { Pf2eOption } from '~/components/pf2e/OptionCards.vue'
 import { type Pf2eData, loadPf2e } from '~/data/pf2e'
@@ -56,9 +56,9 @@ const store = useCharacterStore()
 const snackbar = useSnackbarStore()
 
 const STEPS = [
+  'Class',
   'Ancestry',
   'Background',
-  'Class',
   'Attributes',
   'Skills & feats',
   'Spells',
@@ -76,6 +76,8 @@ const SETS = [
   'armor',
   'shields',
   'spells',
+  'gear',
+  'consumables',
 ] as const
 const FEAT_LABEL: Record<Pf2eFeatSlot, string> = {
   ancestry: 'Ancestry feat',
@@ -494,6 +496,33 @@ const weaponPick = computed({
   get: () => c.value.weapons,
   set: (v: string[]) => (c.value.weapons = v),
 })
+/** Other gear and consumables: picked as cards, with how many of each below. */
+const itemCards = computed(() =>
+  (gear.value?.items ?? []).map((i) =>
+    opt(
+      i,
+      [`${i.kind}`, `Bulk ${i.bulk === 0 ? '—' : i.bulk < 1 ? 'L' : i.bulk}`, price(i.price)].join(
+        ' · ',
+      ),
+    ),
+  ),
+)
+const itemPick = computed({
+  get: () => (c.value.items ?? []).map((p) => p.id),
+  set: (ids: string[]) =>
+    (c.value.items = ids.map((id) => c.value.items?.find((p) => p.id === id) ?? { id, count: 1 })),
+})
+const pickedItems = computed(() =>
+  (c.value.items ?? []).flatMap((p) => {
+    const def = gear.value?.items.find((i) => i.id === p.id)
+    return def ? [{ ...p, name: def.name, price: def.price }] : []
+  }),
+)
+function stepItem(id: string, by: number) {
+  c.value.items = (c.value.items ?? []).map((p) =>
+    p.id === id ? { ...p, count: Math.max(1, Math.min(99, p.count + by)) } : p,
+  )
+}
 
 // --- Spells -------------------------------------------------------------------
 const casting = computed(() => (data.value ? spellcastingPlan(c.value, data.value) : null))
@@ -541,12 +570,12 @@ const stepErrors = computed<string[]>(() => {
   const p = problems.value
   if (!p) return STEPS.map(() => 'Loading the rules…')
   return [
+    p.class[0] ?? '',
     p.ancestry[0] ??
       (boostPlan.value && c.value.ancestryBoosts.length !== boostPlan.value.free
         ? 'Choose your free ancestry boosts'
         : ''),
     p.background[0] ?? '',
-    p.class[0] ?? '',
     p.attributes[0] ?? '',
     p.skills[0] ?? '',
     p.spells[0] ?? '',
@@ -615,7 +644,10 @@ async function create() {
       <div>
         <NuxtLink to="/characters" class="back small">← Characters</NuxtLink>
         <h1>New Pathfinder 2e hero</h1>
-        <p>Build a level 1 hero step by step from the Player Core rules.</p>
+        <p>
+          Build a level 1 hero step by step from the Player Core rules, or
+          <NuxtLink to="/characters?blank=pf2e">start a blank sheet</NuxtLink> you fill in yourself.
+        </p>
       </div>
       <span class="badge badge--pf2e">Pathfinder 2e</span>
     </header>
@@ -650,8 +682,8 @@ async function create() {
       </nav>
       <p v-if="actionError" class="step-error" role="alert">{{ actionError }}</p>
 
-      <!-- 1 · Ancestry -------------------------------------------------- -->
-      <section v-if="step === 0" class="section stack" aria-labelledby="anc-h">
+      <!-- 2 · Ancestry -------------------------------------------------- -->
+      <section v-if="step === 1" class="section stack" aria-labelledby="anc-h">
         <div class="section-head">
           <h2 id="anc-h">Choose your ancestry</h2>
         </div>
@@ -685,8 +717,8 @@ async function create() {
         </template>
       </section>
 
-      <!-- 2 · Background ------------------------------------------------ -->
-      <section v-else-if="step === 1" class="section stack" aria-labelledby="bg-h">
+      <!-- 3 · Background ------------------------------------------------ -->
+      <section v-else-if="step === 2" class="section stack" aria-labelledby="bg-h">
         <div class="section-head">
           <h2 id="bg-h">Choose your background</h2>
         </div>
@@ -714,8 +746,8 @@ async function create() {
         />
       </section>
 
-      <!-- 3 · Class ---------------------------------------------------- -->
-      <section v-else-if="step === 2" class="section stack" aria-labelledby="cls-h">
+      <!-- 1 · Class ---------------------------------------------------- -->
+      <section v-else-if="step === 0" class="section stack" aria-labelledby="cls-h">
         <div class="section-head">
           <h2 id="cls-h">Choose your class</h2>
         </div>
@@ -1056,8 +1088,8 @@ async function create() {
           </span>
         </div>
         <p class="small muted">
-          Pick armor, a shield and weapons with your starting 15 gp; the rest of your gear can be
-          added on the sheet.
+          Pick armor, a shield, weapons and other gear with your starting 15 gp; anything else can
+          be added on the sheet.
         </p>
         <h3>Armor</h3>
         <Pf2eOptionCards v-model="armorPick" :options="armorCards" label="Armor" />
@@ -1076,6 +1108,40 @@ async function create() {
           multiple
           :max="4"
         />
+        <h3>Gear and consumables</h3>
+        <Pf2eOptionCards
+          v-model="itemPick"
+          :options="itemCards"
+          label="Gear and consumables"
+          multiple
+        />
+        <ul v-if="pickedItems.length" class="counts" aria-label="How many of each">
+          <li v-for="p in pickedItems" :key="p.id">
+            <span
+              >{{ p.name }} <span class="small muted">{{ price(p.price * p.count) }}</span></span
+            >
+            <span class="row" style="gap: 6px; flex-wrap: nowrap">
+              <button
+                type="button"
+                class="step step--sm"
+                :aria-label="`One fewer ${p.name}`"
+                :disabled="p.count <= 1"
+                @click="stepItem(p.id, -1)"
+              >
+                −
+              </button>
+              <strong aria-live="polite">{{ p.count }}</strong>
+              <button
+                type="button"
+                class="step step--sm"
+                :aria-label="`One more ${p.name}`"
+                @click="stepItem(p.id, 1)"
+              >
+                +
+              </button>
+            </span>
+          </li>
+        </ul>
       </section>
 
       <!-- 8 · Review ---------------------------------------------------- -->
@@ -1144,7 +1210,14 @@ async function create() {
               </p>
               <h4 class="caps">Gear</h4>
               <p class="small">
-                {{ built.inventory.map((i) => i.name).join(', ') || 'None yet' }} ·
+                {{
+                  built.inventory
+                    .map((i) =>
+                      (i.pf2e?.count ?? 1) > 1 ? `${i.pf2e!.count} × ${i.name}` : i.name,
+                    )
+                    .join(', ') || 'None yet'
+                }}
+                ·
                 {{ built.coins.gp }} gp {{ built.coins.sp }} sp {{ built.coins.cp }} cp left
               </p>
               <p v-for="(n, i) in built.notes.split('\n')" :key="i" class="small">{{ n }}</p>
@@ -1433,6 +1506,22 @@ async function create() {
 .over {
   color: var(--danger-text);
   font-weight: 700;
+}
+
+.counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--track);
+    font-size: 14px;
+  }
 }
 
 .hero-name {

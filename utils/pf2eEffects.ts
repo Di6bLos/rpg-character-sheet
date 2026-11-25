@@ -16,6 +16,7 @@ import type {
 } from '~/data/pf2e/types'
 import type { Pf2eAttr, Pf2eFeat, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { type Pf2eAbilityRules, amountAt, readAbility } from '~/utils/pf2eAbilityRules'
+import { inventoryEffects } from '~/utils/pf2eInventory'
 import type { Pf2eMod, Pf2eStatContext } from '~/utils/pf2ePlay'
 
 const BY_NAME = new Map(PF2E_EFFECTS.map((e) => [e.name, e]))
@@ -163,9 +164,16 @@ function sheetDerived(s: Pf2eSheet): Pf2eEffectDef[] {
   )
 }
 
-/** A def by name: written ones first, then the hero's derived ones. */
+/** Effects of items: a used consumable's (an elixir's bonus) and worn or held items' bonuses. */
+const itemEffects = (s: Pf2eSheet) => [...(s.effects?.items ?? []), ...inventoryEffects(s)]
+
+/** A def by name: written ones first, then the hero's derived ones and their items'. */
 export function pf2eEffectDef(s: Pf2eSheet, name: string): Pf2eEffectDef | undefined {
-  return BY_NAME.get(name) ?? sheetDerived(s).find((d) => d.name === name)
+  return (
+    BY_NAME.get(name) ??
+    sheetDerived(s).find((d) => d.name === name) ??
+    itemEffects(s).find((d) => d.name === name)
+  )
 }
 
 /** Effects allies can give the hero, to pick from. */
@@ -182,13 +190,22 @@ export function abilityNames(s: Pf2eSheet) {
   ])
 }
 
+/** Whether the hero has the ability an entry names in `has` (of that kind, when it says). */
+const hasAbility = (s: Pf2eSheet, has: NonNullable<Pf2eEffectDef['has']>) =>
+  s.feats.some(
+    (f) => f.name === has.name && (!has.type || f.type.toLowerCase() === has.type.toLowerCase()),
+  )
+
 /** The hero's own effects: permanent ones and toggles they can turn on, written or derived. */
 export function ownEffects(s: Pf2eSheet): Pf2eEffectDef[] {
   const names = abilityNames(s)
   for (const f of s.feats) for (const e of featRules(f).embedded) names.add(e.name)
   return [
-    ...PF2E_EFFECTS.filter((e) => e.mode !== 'given' && names.has(e.name)),
+    ...PF2E_EFFECTS.filter(
+      (e) => e.mode !== 'given' && (e.has ? hasAbility(s, e.has) : names.has(e.name)),
+    ),
     ...sheetDerived(s),
+    ...itemEffects(s),
   ]
 }
 
@@ -272,6 +289,7 @@ export function effectMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
     if (!e.selector.some((x) => want.includes(x))) return []
     if (e.melee && !ctx.melee) return []
     if (e.weapons === 'agileFinesse' && !agileOrFinesse) return []
+    if (e.weapons === 'unarmed' && !traits.includes('unarmed')) return []
     if (e.skills && (ctx.kind !== 'skill' || !e.skills.includes(ctx.skill ?? ''))) return []
     if (e.actions && !e.actions.some((a) => a.toLowerCase() === ctx.action?.toLowerCase()))
       return []
@@ -465,11 +483,16 @@ export function shiftedDegree(
   return better ? { degree: hit.effect.to, by: hit.active.def.name, notes } : { degree, notes }
 }
 
-/** The hero's resistances from active effects, at their level (Guardian's Armor: physical 1 + ½ level). */
+/**
+ * The hero's resistances from active effects, at their level (Guardian's Armor: physical 1 + ½
+ * level); a toggle's own value when it was set on use (Selfish Shield with Relentless Reaction).
+ */
 export function resistancesNow(s: Pf2eSheet, level: number) {
   return allOf(s, 'resistance').map(({ effect, active }) => ({
     type: effect.type,
-    value: amountAt(effect.amount, level, s.attrs.CON, effect.min ?? 0) + (effect.add ?? 0),
+    value:
+      active.value ??
+      amountAt(effect.amount, level, s.attrs.CON, effect.min ?? 0) + (effect.add ?? 0),
     source: active.def.name,
   }))
 }
@@ -590,6 +613,7 @@ function endToggle(s: Pf2eSheet, name: string) {
   const effects = (s.effects ??= { on: [], given: [] })
   effects.on = effects.on.filter((n) => n !== name)
   if (effects.values) delete effects.values[name]
+  if (effects.items) effects.items = effects.items.filter((d) => d.name !== name)
   const temp = effects.tempHp
   if (temp?.from !== name) return `${name} ends.`
   delete effects.tempHp
