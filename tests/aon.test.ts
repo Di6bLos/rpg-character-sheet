@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   actionGlyph,
   cleanMarkdown,
+  heritageAncestry,
   orcProblems,
   sourceBooks,
   table,
@@ -151,5 +152,27 @@ describe('legacy sources in the ORC set', () => {
     expect(orcProblems('**Source** Player Core pg. 1, Core Rulebook pg. 2', LEGACY)).toHaveLength(1)
     expect(orcProblems('**Deities**\nGozreh', LEGACY)).toHaveLength(1)
     expect(orcProblems('**Source** Player Core pg. 1\nText', LEGACY)).toEqual([])
+  })
+})
+
+describe('heritageAncestry', () => {
+  const ancestries = [
+    { name: 'Awakened Animal', book: 'Howl of the Wild', page: 22 },
+    { name: 'Centaur', book: 'Howl of the Wild', page: 28 },
+    { name: 'Elf', book: 'Player Core', page: 46 },
+    { name: 'Sprite', book: 'Feybound', page: 80 },
+  ]
+  const at = (name: string, book: string, page: number) =>
+    heritageAncestry({ name, book, page }, ancestries)
+
+  it('reads the ancestry from the name first', () => {
+    expect(at('Ancient Elf', 'Player Core', 48)).toBe('Elf')
+    expect(at('Dijiang', 'Tian Xia Character Guide', 46)).toBe('Sprite')
+  })
+
+  it('falls back to the ancestry printed a few pages before it in the same book', () => {
+    expect(at('Climbing Animal', 'Howl of the Wild', 24)).toBe('Awakened Animal')
+    expect(at('Climbing Animal', 'Another Book', 24)).toBeUndefined()
+    expect(at('Far Away', 'Howl of the Wild', 60)).toBeUndefined()
   })
 })

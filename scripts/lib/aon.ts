@@ -287,25 +287,58 @@ export function orcProblems(md: string, legacy: Set<string>) {
     .filter((l) => sourceBooks(l).some((b) => legacy.has(b)) || DEITY_STAT.test(l))
 }
 
+/**
+ * Heritages whose name doesn't say their ancestry: the legacy half-elf and half-orc (full,
+ * non-ORC bible only), rat heritages, and Dijiang, a sprite heritage (Tian Xia Character
+ * Guide p. 46, beside Gandharva, Kanchil and Leungli Sprite; Sprite's Spark names it).
+ */
 const HERITAGE_ALIASES: [RegExp, string][] = [
   [/^Half-(Elf|Orc)$/, 'Human'],
   [/\bRat\b/, 'Ratfolk'],
+  [/^Dijiang$/, 'Sprite'],
 ]
 
+/** An entry's name with the book and printed page it starts on. */
+export interface Placed {
+  name: string
+  book: string
+  page: number
+}
+
+export const located = (d: AonDoc): Placed => ({
+  name: d.name,
+  book: d.primary_source ?? '',
+  page: page(d),
+})
+
+/** How far past its ancestry's first page a heritage may print and still be the ancestry's own. */
+const HERITAGE_PAGES = 6
+
 /**
- * The ancestry a heritage belongs to, from its name (AoN stores no link): an alias, then
- * the ancestry the name ends with, then one it names. `ancestries` are ancestry names.
+ * The ancestry a heritage belongs to (AoN stores no link): an alias, then the ancestry the
+ * name ends with, then one it names; failing those, the ancestry printed just before it in
+ * the same book, within a few pages (Climbing Animal → Awakened Animal, Shadow of the Smith →
+ * Wayang, House Drake → Dragonet).
  */
-export function heritageAncestry(heritage: string, ancestries: string[]) {
-  const names = [...ancestries].sort((a, b) => b.length - a.length)
-  const alias = HERITAGE_ALIASES.find(([re, a]) => re.test(heritage) && names.includes(a))
+export function heritageAncestry(heritage: Placed, ancestries: Placed[]) {
+  const names = [...new Set(ancestries.map((a) => a.name))].sort((a, b) => b.length - a.length)
+  const name = heritage.name
+  const alias = HERITAGE_ALIASES.find(([re, a]) => re.test(name) && names.includes(a))
   if (alias) return alias[1]
-  const words = heritage.split(/[\s-]+/)
-  return (
-    names.find((n) => heritage.endsWith(n)) ??
+  const words = name.split(/[\s-]+/)
+  const named =
+    names.find((n) => name.endsWith(n)) ??
     names.find((n) => words.includes(n)) ??
-    names.find((n) => heritage.includes(n))
-  )
+    names.find((n) => name.includes(n))
+  if (named) return named
+  return ancestries
+    .filter(
+      (a) =>
+        a.book === heritage.book &&
+        heritage.page >= a.page &&
+        heritage.page - a.page <= HERITAGE_PAGES,
+    )
+    .sort((a, b) => b.page - a.page)[0]?.name
 }
 
 /** Subclass types whose name doesn't start with their class's. */

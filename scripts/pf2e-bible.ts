@@ -20,6 +20,7 @@ import {
   heritageAncestry,
   legacyBooks,
   loadAon,
+  located,
   orcProblems,
   page,
   remaster,
@@ -312,7 +313,7 @@ for (const c of classNames) {
       versatileStubs.push(h)
       continue
     }
-    const a = heritageAncestry(h.name, names)
+    const a = heritageAncestry(located(h), ancestries.map(located))
     if (!a) unmatched.push(h)
     else grouped.set(a, [...(grouped.get(a) ?? []), h])
   }
