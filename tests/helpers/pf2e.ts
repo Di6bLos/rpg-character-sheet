@@ -10,11 +10,12 @@ import {
   PF2E_SKILL_NAMES,
   type Pf2eBuildData,
   ancestryBoostPlan,
-  backgroundBoostOptions,
+  backgroundBoostSlots,
   deityOptions,
   emptyCreation,
   featOptions,
   featSlots,
+  keyAttributeOptions,
   needsDeity,
   resolve,
   skillPlan,
@@ -43,24 +44,35 @@ export const named = <T extends { name: string }>(list: T[], name: string) => {
   return found
 }
 
+/** The first valid boost for each of a background's slots, each to a different attribute. */
+export function fillSlots(slots: ReturnType<typeof backgroundBoostSlots>): Pf2eAttr[] {
+  const out: Pf2eAttr[] = []
+  for (const s of slots) out.push(s.allowed.find((a) => !out.includes(a))!)
+  return out
+}
+
 /** A human with the first valid pick for everything else. */
-export function autoCreation(cls: Pf2eClassDef, data = buildData): Pf2eCreation {
+export function autoCreation(
+  cls: Pf2eClassDef,
+  data = buildData,
+  backgroundName = 'Acolyte',
+): Pf2eCreation {
   const c = emptyCreation()
   const human = named(data.ancestries, 'Human')
   c.ancestry = human.id
   c.heritage = data.heritages.find((h) => h.ancestry === 'human')!.id
-  const background = named(data.backgrounds, 'Acolyte')
+  const background = named(data.backgrounds, backgroundName)
   c.background = background.id
   c.class = cls.id
-  c.keyAttribute = cls.keyAttributes[0]!
   const plan = ancestryBoostPlan(human, false)
   c.ancestryBoosts = PF2E_ATTRS.filter((a) => !plan.fixed.includes(a)).slice(0, plan.free)
-  const first = backgroundBoostOptions(background)[0]!
-  c.backgroundBoosts = [first, PF2E_ATTRS.find((a) => a !== first)!]
-  c.freeBoosts = pickFour(c.keyAttribute)
-  if (needsDeity(cls)) c.deity = deityOptions(data)[0]!.id
   for (const ch of subclassChoices(cls))
     c.subclasses[ch.key] = ch.options.slice(0, ch.count.min).map((o) => o.id)
+  const { subclassPicks } = resolve(c, data)
+  if (needsDeity(cls, subclassPicks)) c.deity = deityOptions(data)[0]!.id
+  c.backgroundBoosts = fillSlots(backgroundBoostSlots(background, resolve(c, data).deity))
+  c.keyAttribute = keyAttributeOptions(cls, subclassPicks)[0]!
+  c.freeBoosts = pickFour(c.keyAttribute)
   const plan2 = skillPlan(c, data)
   const picks: string[] = []
   for (const g of plan2.groups)
@@ -72,6 +84,7 @@ export function autoCreation(cls: Pf2eClassDef, data = buildData): Pf2eCreation 
     ),
   )
   c.skills = picks
+  c.lores = plan2.lores.map(() => 'Local')
   for (const slot of featSlots(resolve(c, data).cls))
     c.feats[slot] = featOptions(slot, c, data)[0]!.id
   return c

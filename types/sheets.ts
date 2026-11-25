@@ -196,6 +196,8 @@ export interface Pf2eCreation {
   subclasses: Record<string, string[]>
   /** Skills the player chose to be trained in. */
   skills: string[]
+  /** Names for the Lore skills a background leaves to the player, in its order ("Desert"). */
+  lores?: string[]
   /** Feat slot (`ancestry`, `class`, `skill`) → feat id. */
   feats: Record<string, string>
   armor?: string
