@@ -1,6 +1,12 @@
 // Level history: a copy of the sheet taken before every level-up, so lowering a
 // character's level removes exactly what the higher levels granted.
-import type { AnySheet, LevelHistoryEntry, NimbleLevelInput, NimbleSheet } from '~/types/sheets'
+import type {
+  AnySheet,
+  LevelHistoryEntry,
+  NimbleLevelInput,
+  NimbleSheet,
+  Pf2eLevelInput,
+} from '~/types/sheets'
 import { syncWornArmor } from '~/utils/nimbleWornArmor'
 
 /**
@@ -47,11 +53,22 @@ const PLAY_STATE = new Set([
   'initiative',
   'gmCombatant',
   'effects',
+  'used',
+  'turn',
+  'doomed',
+  'conditionValues',
   'languages',
   'heightWeight',
 ])
 
 type Loose = Record<string, unknown>
+
+/**
+ * Fields a level-up can add to a sheet that didn't have them (PF2e: the sheet's level, partial
+ * boosts, level-up choices, a first focus spell): gone again when a snapshot without them is
+ * restored.
+ */
+const ADDED_BY_LEVELS = ['level', 'partialBoosts', 'levelChoices', 'focusSpells']
 
 /**
  * Play state nested inside objects whose other fields depend on the level: the
@@ -96,11 +113,20 @@ function snapshot(sheet: AnySheet): Loose {
   return JSON.parse(JSON.stringify(out)) as Loose
 }
 
-/** Records the sheet before it reaches `level`. Call before applying the level-up. */
-export function recordLevel(sheet: AnySheet, level: number, nimble?: NimbleLevelInput): void {
+/**
+ * Records the sheet before it reaches `level`, with what was picked (Nimble or PF2e) so
+ * Reconfigure can replay it. Call before applying the level-up.
+ */
+export function recordLevel(
+  sheet: AnySheet,
+  level: number,
+  nimble?: NimbleLevelInput,
+  pf2e?: Pf2eLevelInput,
+): void {
   const history = (sheet.levelHistory ?? []).filter((e) => e.level < level)
   const entry: LevelHistoryEntry = { level, before: snapshot(sheet) }
   if (nimble) entry.nimble = JSON.parse(JSON.stringify(nimble)) as NimbleLevelInput
+  if (pf2e) entry.pf2e = JSON.parse(JSON.stringify(pf2e)) as Pf2eLevelInput
   history.push(entry)
   sheet.levelHistory = history
 }
@@ -168,6 +194,7 @@ function applySnapshot(sheet: AnySheet, snap: Loose) {
   const live = liveFields(loose)
   const before = JSON.parse(JSON.stringify(snap)) as Loose
 
+  for (const k of ADDED_BY_LEVELS) if (!(k in before)) delete loose[k]
   Object.assign(loose, before)
 
   sheet.hp = Math.min(sheet.hp, sheet.hpMax)

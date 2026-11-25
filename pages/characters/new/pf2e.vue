@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Pathfinder 2e hero builder, in Player Core's order (pp. 22–27): ancestry → background →
-// class → attributes → skills & feats → gear → review. The rules data is fetched on open
+// Pathfinder 2e hero builder (Player Core pp. 22–27), class first like the Nimble builder:
+// class → ancestry → background → attributes → skills & feats → spells → gear → review. The rules data is fetched on open
 // (`loadPf2e`); `utils/pf2eBuild.ts` checks each step and builds the level 1 sheet.
 import type { Pf2eOption } from '~/components/pf2e/OptionCards.vue'
 import { type Pf2eData, loadPf2e } from '~/data/pf2e'
@@ -14,7 +14,8 @@ import {
   STARTING_CP,
   type Pf2eBuildData,
   type Pf2eFeatSlot,
-  actionGlyph,
+  actionWords,
+  glyphWords,
   ancestryBoostPlan,
   armorRank,
   attributeMods,
@@ -55,9 +56,9 @@ const store = useCharacterStore()
 const snackbar = useSnackbarStore()
 
 const STEPS = [
+  'Class',
   'Ancestry',
   'Background',
-  'Class',
   'Attributes',
   'Skills & feats',
   'Spells',
@@ -404,25 +405,8 @@ function setLore(i: number, value: string) {
   lores[i] = value
   c.value.lores = Array.from(lores, (x) => x ?? '')
 }
-const ACTION_NAME: Record<string, string> = {
-  '◆': '1 action',
-  '◆◆': '2 actions',
-  '◆◆◆': '3 actions',
-  '↺': 'reaction',
-  '◇': 'free action',
-}
-/** Glyphs back to words, part by part: "◇ or ◆" → "free action or 1 action". */
-const glyphWords = (g: string) =>
-  g
-    .split(/ (to|or) /)
-    .map((p) => ACTION_NAME[p] ?? p)
-    .join(' ')
 const featMeta = (f: Pf2eFeatDef) =>
-  [
-    glyphWords(actionGlyph(f.actions)),
-    f.traits.join(', '),
-    f.prerequisites ? `Needs ${f.prerequisites}` : '',
-  ]
+  [actionWords(f.actions), f.traits.join(', '), f.prerequisites ? `Needs ${f.prerequisites}` : '']
     .filter(Boolean)
     .join(' · ')
 const featCards = computed(
@@ -516,9 +500,7 @@ watch(
   },
 )
 const spellMeta = (s: Pf2eSpellDef) =>
-  [ACTION_NAME[actionGlyph(s.actions)] ?? actionGlyph(s.actions), s.traits.join(', ')]
-    .filter(Boolean)
-    .join(' · ')
+  [actionWords(s.actions), s.traits.join(', ')].filter(Boolean).join(' · ')
 const cantripCards = computed(() =>
   data.value ? spellOptions('cantrip', c.value, data.value).map((s) => opt(s, spellMeta(s))) : [],
 )
@@ -554,12 +536,12 @@ const stepErrors = computed<string[]>(() => {
   const p = problems.value
   if (!p) return STEPS.map(() => 'Loading the rules…')
   return [
+    p.class[0] ?? '',
     p.ancestry[0] ??
       (boostPlan.value && c.value.ancestryBoosts.length !== boostPlan.value.free
         ? 'Choose your free ancestry boosts'
         : ''),
     p.background[0] ?? '',
-    p.class[0] ?? '',
     p.attributes[0] ?? '',
     p.skills[0] ?? '',
     p.spells[0] ?? '',
@@ -628,7 +610,10 @@ async function create() {
       <div>
         <NuxtLink to="/characters" class="back small">← Characters</NuxtLink>
         <h1>New Pathfinder 2e hero</h1>
-        <p>Build a level 1 hero step by step from the Player Core rules.</p>
+        <p>
+          Build a level 1 hero step by step from the Player Core rules, or
+          <NuxtLink to="/characters?blank=pf2e">start a blank sheet</NuxtLink> you fill in yourself.
+        </p>
       </div>
       <span class="badge badge--pf2e">Pathfinder 2e</span>
     </header>
@@ -663,8 +648,8 @@ async function create() {
       </nav>
       <p v-if="actionError" class="step-error" role="alert">{{ actionError }}</p>
 
-      <!-- 1 · Ancestry -------------------------------------------------- -->
-      <section v-if="step === 0" class="section stack" aria-labelledby="anc-h">
+      <!-- 2 · Ancestry -------------------------------------------------- -->
+      <section v-if="step === 1" class="section stack" aria-labelledby="anc-h">
         <div class="section-head">
           <h2 id="anc-h">Choose your ancestry</h2>
         </div>
@@ -698,8 +683,8 @@ async function create() {
         </template>
       </section>
 
-      <!-- 2 · Background ------------------------------------------------ -->
-      <section v-else-if="step === 1" class="section stack" aria-labelledby="bg-h">
+      <!-- 3 · Background ------------------------------------------------ -->
+      <section v-else-if="step === 2" class="section stack" aria-labelledby="bg-h">
         <div class="section-head">
           <h2 id="bg-h">Choose your background</h2>
         </div>
@@ -727,8 +712,8 @@ async function create() {
         />
       </section>
 
-      <!-- 3 · Class ---------------------------------------------------- -->
-      <section v-else-if="step === 2" class="section stack" aria-labelledby="cls-h">
+      <!-- 1 · Class ---------------------------------------------------- -->
+      <section v-else-if="step === 0" class="section stack" aria-labelledby="cls-h">
         <div class="section-head">
           <h2 id="cls-h">Choose your class</h2>
         </div>

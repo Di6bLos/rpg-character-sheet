@@ -13,14 +13,21 @@ const props = withDefaults(
 
 const open = defineModel<boolean>({ required: true })
 const el = ref<HTMLDialogElement | null>(null)
+const heading = ref<HTMLElement | null>(null)
 const titleId = useId()
 
 watch(
   [open, el],
-  ([isOpen, dialog]) => {
+  async ([isOpen, dialog]) => {
     if (!dialog) return
-    if (isOpen && !dialog.open) dialog.showModal()
-    else if (!isOpen && dialog.open) dialog.close()
+    if (isOpen && !dialog.open) {
+      dialog.showModal()
+      // The body renders after showModal, so the browser focuses the <dialog> itself: move
+      // focus to the title unless something inside took it.
+      await nextTick()
+      const active = document.activeElement
+      if (!active || active === dialog || !dialog.contains(active)) heading.value?.focus()
+    } else if (!isOpen && dialog.open) dialog.close()
   },
   { immediate: true },
 )
@@ -50,7 +57,7 @@ function onBackdrop(event: MouseEvent) {
       <header class="dialog__head">
         <div class="grow">
           <slot name="eyebrow" />
-          <h2 :id="titleId">{{ title }}</h2>
+          <h2 :id="titleId" ref="heading" tabindex="-1">{{ title }}</h2>
         </div>
         <button
           type="button"
@@ -119,6 +126,10 @@ function onBackdrop(event: MouseEvent) {
 
   h2 {
     font-size: 24px;
+
+    &:focus {
+      outline: none;
+    }
   }
 }
 

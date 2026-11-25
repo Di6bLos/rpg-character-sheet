@@ -1,6 +1,6 @@
 // Pathfinder 2e character creation (Player Core pp. 22–27) from the generated rules data in
 // `data/pf2e/`: what a level 1 hero has to choose, what is still missing, and the sheet the
-// choices make. Level-ups come later (`_features.md` Phase 8.3).
+// choices make. Level-ups are `utils/pf2eLevelUp.ts`.
 import type { Pf2eData } from '~/data/pf2e'
 import type {
   Pf2eActionCost,
@@ -53,7 +53,7 @@ const ATTR_BY_NAME: Record<string, Pf2eAttr> = {
   Wisdom: 'WIS',
   Charisma: 'CHA',
 }
-const ATTR_NAME = Object.fromEntries(
+export const PF2E_ATTR_NAME = Object.fromEntries(
   Object.entries(ATTR_BY_NAME).map(([name, a]) => [a, name]),
 ) as Record<Pf2eAttr, string>
 const SKILL_ATTR = new Map(PF2E_SKILLS.filter(([n]) => n !== 'Lore'))
@@ -91,16 +91,33 @@ export const actionGlyph = (a?: Pf2eActionCost) =>
         .map((p) => ACTION_GLYPH[p] ?? p)
         .join(' ')
 
+const ACTION_NAME: Record<string, string> = {
+  '◆': '1 action',
+  '◆◆': '2 actions',
+  '◆◆◆': '3 actions',
+  '↺': 'reaction',
+  '◇': 'free action',
+}
+/** Glyphs back to words, part by part: "◇ or ◆" → "free action or 1 action". */
+export const glyphWords = (g: string) =>
+  g
+    .split(/ (to|or) /)
+    .map((p) => ACTION_NAME[p] ?? p)
+    .join(' ')
+/** A cost in words, for screen readers and meta lines: "2 actions", "reaction". */
+export const actionWords = (a?: Pf2eActionCost) => glyphWords(actionGlyph(a))
+
 const byId = <T extends { id: string }>(list: T[], id?: string) =>
   id ? list.find((x) => x.id === id) : undefined
 const present = <T>(x: T | undefined): x is T => x !== undefined
 /** Bulk as the sheet writes it: L for light items. */
 const bulkLabel = (b: number) => (b > 0 && b < 1 ? 'L' : String(b))
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'")
-const higher = (a: Pf2eRank, b: Pf2eRank) =>
+export const higher = (a: Pf2eRank, b: Pf2eRank) =>
   RANK_ORDER.indexOf(a) >= RANK_ORDER.indexOf(b) ? a : b
 /** Rules text as one line of plain words: no markdown emphasis, straight apostrophes. */
-const plain = (s: string) => s.replace(/[*_]/g, '').replace(/[’]/g, "'").replace(/\s+/g, ' ').trim()
+export const plain = (s: string) =>
+  s.replace(/[*_]/g, '').replace(/[’]/g, "'").replace(/\s+/g, ' ').trim()
 /** Attributes named in a text, in the order it names them. */
 const attrsIn = (s: string) =>
   [...s.matchAll(/\b(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\b/g)]
@@ -208,7 +225,7 @@ export function backgroundBoostSlots(b: Pf2eBackgroundDef, deity?: Pf2eDeityDef)
     const each = /^(?:It|Each boost) (?:must|has to) be to ([^.]+)/i.exec(rule)
     if (each) {
       const allowed = attrsIn(each[1]!)
-      const label = listOr(allowed.map((a) => ATTR_NAME[a]))
+      const label = listOr(allowed.map((a) => PF2E_ATTR_NAME[a]))
       return Array.from({ length: n }, () => ({ label, allowed }))
     }
     const one = /^One must be to (.+?),? and (?:the other|one) is a free/i.exec(rule)
@@ -216,7 +233,7 @@ export function backgroundBoostSlots(b: Pf2eBackgroundDef, deity?: Pf2eDeityDef)
       const what = one[1]!
       const named = attrsIn(what)
       const first: Pf2eBoostSlot = named.length
-        ? { label: listOr(named.map((a) => ATTR_NAME[a])), allowed: named }
+        ? { label: listOr(named.map((a) => PF2E_ATTR_NAME[a])), allowed: named }
         : /deity/i.test(what) && deity?.attributes.length
           ? { label: `${deity.name}'s divine attribute`, allowed: deity.attributes }
           : {
@@ -424,7 +441,7 @@ const SUBCLASS_RULES: Record<
 }
 
 /** A subclass kind without its class's name: "Rogue Racket" → "racket". */
-const shortKind = (cls: Pf2eClassDef, kind: string) =>
+export const shortKind = (cls: Pf2eClassDef, kind: string) =>
   norm(kind.startsWith(`${cls.name} `) ? kind.slice(cls.name.length + 1) : kind)
 
 /** The subclass choices a class makes at 1st level (a muse, a racket, five tactics…). */
@@ -473,7 +490,7 @@ export function levelOneText(text: string) {
  * What "You're trained in…" lines in the 1st-level choices add: armor and weapon categories,
  * plus saves they raise ("you have expert proficiency in Fortitude saves": a warpriest).
  */
-function subclassTraining(picks: Pf2eSubclassOption[]) {
+export function subclassTraining(picks: Pf2eSubclassOption[]) {
   const armor = new Set<string>()
   const weapons = new Set<string>()
   const expertSaves = new Set<string>()
@@ -804,7 +821,7 @@ export function spellOptions(which: 'cantrip' | 'spell', c: Pf2eCreation, data: 
   )
 }
 
-const spellNamed = (text: string, name: string) =>
+export const spellNamed = (text: string, name: string) =>
   new RegExp(`\\b${name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text)
 
 /** The class's focus spells and class cantrips up to 1st rank, once each. */
@@ -898,7 +915,7 @@ export function focusPool(c: Pf2eCreation, data: Pf2eBuildData) {
 
 // --- Proficiencies --------------------------------------------------------------
 
-interface WeaponRule {
+export interface WeaponRule {
   rank: Pf2eRank
   categories: string[]
   groups?: string[]
@@ -909,7 +926,7 @@ interface WeaponRule {
  * The class's weapon proficiencies, from lines like "Expert in simple and martial weapons",
  * plus what the 1st-level choices train (a reaper's martial weapons, an avenger's favored one).
  */
-function weaponRules(
+export function weaponRules(
   cls: Pf2eClassDef,
   deity?: Pf2eDeityDef,
   picks: Pf2eSubclassOption[] = [],
@@ -986,7 +1003,7 @@ export const GEAR_MAX_LEVEL = 1
 export const isAmmunition = (w: Pf2eWeaponDef) => w.category === 'Ammunition'
 
 /** One record per name (the data repeats a few reprints), in data order. */
-const uniqueNames = <T extends { name: string }>(list: T[]) =>
+export const uniqueNames = <T extends { name: string }>(list: T[]) =>
   list.filter((x, i) => list.findIndex((y) => y.name === x.name) === i)
 
 /** What the Gear step sells: level 0–1 items, no unarmed attacks (every hero has a fist). */
@@ -1023,6 +1040,30 @@ export function gearCost(c: Pf2eCreation, data: Pf2eBuildData) {
   return items.reduce((sum, i) => sum + (i?.price ?? 0), 0)
 }
 
+/**
+ * What a Strike adds from attributes: DEX to ranged attacks, the better of STR and DEX with
+ * finesse, else STR; STR to melee and thrown damage, half of a positive STR with propulsive.
+ */
+export function strikeAttributes(
+  traits: string[],
+  ranged: boolean,
+  mods: Record<Pf2eAttr, number>,
+) {
+  const finesse = traits.includes('Finesse')
+  const thrown = traits.some((t) => t.startsWith('Thrown'))
+  const propulsive = traits.includes('Propulsive')
+  const attr: Pf2eAttr = ranged || (finesse && mods.DEX > mods.STR) ? 'DEX' : 'STR'
+  const damage =
+    !ranged || thrown
+      ? mods.STR
+      : propulsive
+        ? mods.STR > 0
+          ? Math.floor(mods.STR / 2)
+          : mods.STR
+        : 0
+  return { attr, attack: mods[attr], damage }
+}
+
 function strike(
   name: string,
   traits: string[],
@@ -1032,27 +1073,15 @@ function strike(
   rank: Pf2eRank,
   mods: Record<Pf2eAttr, number>,
 ): Pf2eStrike {
-  const finesse = traits.includes('Finesse')
-  const thrown = traits.some((t) => t.startsWith('Thrown'))
-  const attr = ranged ? mods.DEX : finesse ? Math.max(mods.STR, mods.DEX) : mods.STR
-  const propulsive = traits.includes('Propulsive')
-  const dmgMod =
-    !ranged || thrown
-      ? mods.STR
-      : propulsive
-        ? mods.STR > 0
-          ? Math.floor(mods.STR / 2)
-          : mods.STR
-        : 0
-  const attrName: Pf2eAttr = ranged || (finesse && mods.DEX > mods.STR) ? 'DEX' : 'STR'
+  const { attr, attack, damage } = strikeAttributes(traits, ranged, mods)
   return {
     name,
-    bonus: proficiency(rank) + attr,
+    bonus: proficiency(rank) + attack,
     agile: traits.includes('Agile'),
-    attr: attrName,
+    attr,
     ranged,
     rank,
-    dmg: dmgMod ? `${die}${dmgMod > 0 ? '+' : ''}${dmgMod}` : die,
+    dmg: damage ? `${die}${damage > 0 ? '+' : ''}${damage}` : die,
     type: types.join('/'),
     traits: traits.join(', '),
   }
@@ -1138,7 +1167,7 @@ export function spellProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   return out
 }
 
-const featEntry = (
+export const featEntry = (
   type: string,
   r: Pf2eRecord & { actions?: Pf2eActionCost; frequency?: string; trigger?: string },
   level = 1,
@@ -1166,7 +1195,7 @@ const GLYPH_COST: Record<string, Pf2eActionCost> = {
  * ("## Reactive Strike ↺" with its Trigger line), or the feat of the same name it grants
  * (Shield Block).
  */
-function featureAction(f: { name: string; text: string }, data: Pf2eBuildData) {
+export function featureAction(f: { name: string; text: string }, data: Pf2eBuildData) {
   const esc = f.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const glyph = new RegExp(`^#+ ${esc} ([◆↺◇]+)`, 'm').exec(f.text)?.[1]
   if (glyph) {
@@ -1183,7 +1212,7 @@ function featureAction(f: { name: string; text: string }, data: Pf2eBuildData) {
     : {}
 }
 
-const GENERIC_FEATURE =
+export const GENERIC_FEATURE =
   /^(Ancestry and Background|Attribute Boosts|Initial Proficiencies|Skill Feats|General Feats|Skill Increases|Ancestry Feats|.+ Feats)$/i
 
 /**

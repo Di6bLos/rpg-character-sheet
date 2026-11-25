@@ -153,6 +153,26 @@ describe('lore-master context', () => {
 })
 
 describe('loreHtml', () => {
+  it('renders a markdown table with a header row, escaping cells', () => {
+    const html = loreHtml(
+      'Features:\n\n| Your Level | Class Features |\n| --- | --- |\n| 1 | Muse, **spell repertoire** |\n| 2 | Bard feat <b> |\n\nAfter.',
+    )
+    expect(html).toContain(
+      '<thead><tr><th scope="col">Your Level</th><th scope="col">Class Features</th></tr></thead>',
+    )
+    expect(html).toContain('<td>1</td><td>Muse, <strong>spell repertoire</strong></td>')
+    expect(html).toContain('<td>Bard feat &lt;b&gt;</td>')
+    expect(html).not.toContain('---')
+    expect(html).toMatch(/<\/table><\/div><p>After\.<\/p>$/)
+  })
+
+  it('keeps an escaped pipe inside a cell and renders a table without a header', () => {
+    const html = loreHtml('| a \\| b | c |\n| d | e |')
+    expect(html).not.toContain('<thead>')
+    expect(html).toContain('<td>a | b</td><td>c</td>')
+    expect(html).toContain('<td>d</td><td>e</td>')
+  })
+
   it('escapes HTML before formatting', () => {
     const html = loreHtml('<img src=x onerror=alert(1)> **bold** and *it*')
     expect(html).not.toContain('<img')

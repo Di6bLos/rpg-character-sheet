@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { classBySlug } from '~/data/nimble/classes'
-import type { Dnd5eSheet, NimbleLevelInput, NimbleSheet, Pf2eSheet } from '~/types/sheets'
+import type {
+  Dnd5eSheet,
+  NimbleLevelInput,
+  NimbleSheet,
+  Pf2eLevelInput,
+  Pf2eSheet,
+} from '~/types/sheets'
 import { abilityMod, rollDie, sign } from '~/utils/dice'
 import { LEVEL_UP_RULES, MAX_LEVEL, averageHp, canBump, hpGain, pointsUsed } from '~/utils/levelUp'
 import { recordLevel } from '~/utils/levelHistory'
@@ -15,7 +21,8 @@ import { systemLabel } from '~/utils/systems'
 
 const open = defineModel<boolean>({ required: true })
 const props = defineProps<{
-  previous?: NimbleLevelInput
+  /** A level's recorded picks to start from (Reconfigure): Nimble's or PF2e's. */
+  previous?: NimbleLevelInput | Pf2eLevelInput
   progress?: string
 }>()
 const { draft, saveNow } = useSheet()
@@ -55,7 +62,7 @@ watch(open, (isOpen) => {
   skillPoint.value = ''
   showErrors.value = false
   const was = props.previous
-  if (!was) return
+  if (!was || !('hpGain' in was)) return
   hpOverride.value = was.hpGain
   bumps.value = Object.fromEntries(
     Object.entries(was.statBumps).filter((e): e is [string, number] => !!e[1]),
@@ -96,20 +103,74 @@ function canBumpNimble(key: string) {
   return r.stats.includes(key as never) && used.value < r.count && (bumps.value[key] ?? 0) < 1
 }
 
-const nimbleProblems = computed<string[]>(() => {
+/** What a Nimble level still needs, each with the heading of the section that asks for it. */
+const nimbleProblems = computed<{ heading: string; text: string }[]>(() => {
   const p = plan.value
   if (!p) return []
-  const out: string[] = []
-  if (!gainValid.value) out.push('Enter the hit points gained (0 or more)')
-  if (p.subclassChoice && !subclassPick.value) out.push('Choose a subclass')
+  const out: { heading: string; text: string }[] = []
+  if (!gainValid.value) out.push({ heading: 'lu-hp', text: 'Enter the hit points gained' })
+  if (p.subclassChoice && !subclassPick.value)
+    out.push({ heading: 'lu-sub', text: 'Choose a subclass' })
   if (statRule.value && used.value < statRule.value.count)
-    out.push(`Assign ${statRule.value.count - used.value} more stat point(s)`)
+    out.push({
+      heading: 'lu-ab',
+      text: `Assign ${statRule.value.count - used.value} more stat point(s)`,
+    })
   for (const c of p.choices) {
     const err = validatePicks(c, picks.value[c.key])
-    if (err) out.push(`${c.label}: ${err}`)
+    if (err) out.push({ heading: 'lu-ch', text: `${c.label}: ${err}` })
   }
   return out
 })
+
+// Data-driven PF2e level-up (sheets made in the builder); hand-made sheets keep free text.
+const pf2eMode = computed(() => {
+  const s = draft.value.sheet as Pf2eSheet
+  return system.value === 'pf2e' && !!s.classSlug && !!s.creation && level.value < MAX_LEVEL
+})
+const pf2ePrevious = computed(() =>
+  props.previous && !('hpGain' in props.previous) ? props.previous : undefined,
+)
+const pf2eBody = ref<{
+  problems: { section: string; text: string }[]
+  progress: { done: number; total: number }
+  commit: () => boolean
+  jump: (section: string) => void
+} | null>(null)
+const pf2eProblems = computed(() =>
+  pf2eMode.value ? (pf2eBody.value?.problems ?? [{ section: '', text: 'Loading the rules' }]) : [],
+)
+
+/** What still blocks Confirm, shown beside it; each item jumps to its section. */
+const todo = computed(() => {
+  if (pf2eMode.value)
+    return pf2eProblems.value.map((p) => ({
+      text: p.text,
+      go: () => (p.section ? pf2eBody.value?.jump(p.section) : undefined),
+    }))
+  return nimbleProblems.value.map((p) => ({
+    text: p.text,
+    go: () => {
+      const h = document.getElementById(p.heading)
+      h?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      if (h && !h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1')
+      h?.focus({ preventScroll: true })
+    },
+  }))
+})
+
+async function confirmPf2e() {
+  showErrors.value = true
+  if (pf2eProblems.value.length) return todo.value[0]?.go()
+  if (!pf2eBody.value?.commit()) return
+  const next = level.value + 1
+  draft.value.level = next
+  open.value = false
+  // saveNow: the draft's change watcher hasn't marked it dirty yet, so save() would wait for
+  // the autosave and a closed tab could lose the level.
+  await saveNow()
+  if (!props.progress) snackbar.show(`${draft.value.name} is now level ${next}`)
+}
 
 /** Hit die (5e, Nimble) or fixed HP per level (PF2e). */
 const die = computed(() => {
@@ -198,7 +259,7 @@ function dec(key: string) {
 
 async function confirmNimble() {
   showErrors.value = true
-  if (nimbleProblems.value.length) return
+  if (nimbleProblems.value.length) return todo.value[0]?.go()
   const next = level.value + 1
   applyNimbleLevel(draft.value.sheet as NimbleSheet, next, {
     hpGain: gain.value,
@@ -214,6 +275,7 @@ async function confirmNimble() {
 }
 
 async function confirm() {
+  if (pf2eMode.value) return confirmPf2e()
   if (plan.value) return confirmNimble()
   showErrors.value = true
   if (!gainValid.value) return
@@ -295,6 +357,9 @@ async function confirm() {
         <span class="badge" :class="`badge--${system}`">{{ systemLabel(system) }}</span>
         <span class="small" style="color: var(--page-soft)">{{ draft.name }}</span>
         <span v-if="progress" class="badge badge--outline">{{ progress }}</span>
+        <span v-if="pf2eMode && pf2eBody?.progress.total" class="badge badge--outline">
+          {{ pf2eBody.progress.done }} of {{ pf2eBody.progress.total }} chosen
+        </span>
       </div>
     </template>
 
@@ -322,7 +387,14 @@ async function confirm() {
         <strong>Level {{ level + 1 }}</strong>
       </div>
 
-      <section class="step-block" aria-labelledby="lu-hp">
+      <Pf2eLevelUp
+        v-if="pf2eMode && open"
+        ref="pf2eBody"
+        :previous="pf2ePrevious"
+        :show-errors="showErrors"
+      />
+
+      <section v-if="!pf2eMode" class="step-block" aria-labelledby="lu-hp">
         <div class="step-head">
           <h3 id="lu-hp">1 · Hit points</h3>
           <span class="small muted">{{ hpHint }}</span>
@@ -385,7 +457,7 @@ async function confirm() {
         </p>
       </section>
 
-      <section v-if="!plan || statRule" class="step-block" aria-labelledby="lu-ab">
+      <section v-if="!pf2eMode && (!plan || statRule)" class="step-block" aria-labelledby="lu-ab">
         <div class="step-head">
           <h3 id="lu-ab">2 · {{ rules.boostTitle }}</h3>
           <span class="small points" :class="{ done: left === 0 }">
@@ -507,13 +579,9 @@ async function confirm() {
             </select>
           </div>
         </section>
-
-        <p v-if="showErrors && nimbleProblems.length" class="err" role="alert">
-          {{ nimbleProblems[0] }}
-        </p>
       </template>
 
-      <section v-else class="step-block" aria-labelledby="lu-ft">
+      <section v-else-if="!pf2eMode" class="step-block" aria-labelledby="lu-ft">
         <h3 id="lu-ft">3 · New features</h3>
         <div class="feats">
           <div class="field">
@@ -531,7 +599,7 @@ async function confirm() {
         </div>
       </section>
 
-      <section class="summary" aria-label="Summary">
+      <section v-if="!pf2eMode" class="summary" aria-label="Summary">
         <div class="caps" style="margin-bottom: 8px">Updates automatically</div>
         <dl>
           <div v-for="r in summary" :key="r.label">
@@ -543,13 +611,30 @@ async function confirm() {
     </template>
 
     <template #actions>
+      <template v-if="level < MAX_LEVEL && todo.length">
+        <p id="lu-todo" class="sr-only">
+          Still to choose: {{ todo.map((t) => t.text).join('; ') }}
+        </p>
+        <button
+          type="button"
+          class="todo"
+          :class="{ err: showErrors }"
+          aria-describedby="lu-todo"
+          @click="todo[0]?.go()"
+        >
+          <strong>{{ todo.length }} left:</strong>
+          <span class="todo__first">{{ todo[0]?.text }}</span>
+          <span aria-hidden="true">▸</span>
+        </button>
+      </template>
       <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
       <button
         v-if="level < MAX_LEVEL"
         type="button"
-        class="btn"
-        :disabled="!!plan && nimbleProblems.length > 0"
-        :title="plan && nimbleProblems.length ? nimbleProblems.join('\n') : undefined"
+        class="btn lu-confirm"
+        :class="{ 'is-blocked': todo.length > 0 }"
+        :aria-disabled="todo.length > 0 || undefined"
+        :aria-describedby="todo.length ? 'lu-todo' : undefined"
         @click="confirm"
       >
         Confirm level {{ level + 1 }}
@@ -559,6 +644,76 @@ async function confirm() {
 </template>
 
 <style scoped lang="scss">
+.todo {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-right: auto;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--page-soft);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+
+  strong {
+    flex: none;
+    color: var(--page-text);
+  }
+
+  &.err strong {
+    text-decoration: underline;
+  }
+
+  &:hover .todo__first {
+    color: var(--page-text);
+  }
+}
+
+.todo__first {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lu-confirm.is-blocked {
+  background: transparent;
+  color: var(--page-text);
+  border-color: var(--line-strong);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .lu-confirm {
+    flex: 1 1 auto;
+  }
+
+  .todo {
+    position: relative;
+    flex-basis: 100%;
+    min-height: 32px;
+
+    // A 44px hit area on touch without a taller line: 6px into the 12px gap above Cancel
+    // and Confirm and into the gap above the footer, so it overlaps neither.
+    @media (pointer: coarse) {
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -6px 0;
+      }
+    }
+  }
+}
+
 .arrow {
   display: flex;
   align-items: center;
