@@ -847,9 +847,15 @@ button.head__tile {
 }
 
 .input--sm {
+  width: auto;
   min-height: 34px;
   padding: 4px 8px;
   font-size: 13px;
+}
+
+select.input--sm {
+  flex: 0 0 auto;
+  padding-right: 30px;
 }
 
 .pool {
@@ -865,6 +871,7 @@ button.head__tile {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
   }
 }
 

@@ -129,12 +129,12 @@ describe('pf2e spell rules: Player Core spells', () => {
     expect(r.parts).toEqual([])
   })
 
-  it('Gouging Claw: slashing or piercing, plus persistent bleed that heightens by 1 (p. 334)', () => {
+  it('Gouging Claw: slashing or piercing, plus persistent bleed that heightens by 1 (p. 333)', () => {
     expect(rolls('Gouging Claw', 1)).toEqual(['2d6 slashing or piercing', '2 persistent bleed'])
     expect(rolls('Gouging Claw', 3)).toEqual(['4d6 slashing or piercing', '4 persistent bleed'])
   })
 
-  it('Live Wire: a list of parts that each heighten (p. 339)', () => {
+  it('Live Wire: a list of parts that each heighten (Player Core 2 p. 248)', () => {
     expect(rolls('Live Wire', 3)).toEqual([
       '2d4 slashing',
       '2d4 electricity',
@@ -142,27 +142,60 @@ describe('pf2e spell rules: Player Core spells', () => {
     ])
   })
 
-  it('Blazing Bolt: 4d6 with 2 or more actions, heightened 1d6 or 2d6 by version', () => {
+  it('Blazing Bolt: 4d6 with 2 or more actions, heightened 1d6 or 2d6 by version (p. 318)', () => {
     expect(rolls('Blazing Bolt', 2, { actions: 1 })).toEqual(['2d6 fire'])
     expect(rolls('Blazing Bolt', 4, { actions: 1 })).toEqual(['4d6 fire'])
     expect(rolls('Blazing Bolt', 4, { actions: 3 })).toEqual(['8d6 fire'])
   })
 
-  it('Chilling Darkness: the extra spirit damage against holy creatures is noted, not rolled', () => {
+  it('Chilling Darkness: the extra spirit damage against holy creatures is noted, not rolled (p. 320)', () => {
     const s = spell('Chilling Darkness')
     const later = partsAt(s, spellRules(s), { rank: 5 }).filter((p) => p.later)
     expect(rolls('Chilling Darkness', 5)).toEqual(['9d6 cold'])
     expect(later.map((p) => `${diceText(p.dice)} ${p.type}`)).toEqual(['9d6 spirit'])
   })
 
+  it('Daze: a basic Will save in its text, stunned 1 on a critical failure (p. 322)', () => {
+    const r = spellRules(spell('Daze'))
+    expect(r.saves).toEqual([{ save: 'Will', basic: true }])
+    expect(r.conditions).toEqual({ 'critical failure': [{ name: 'stunned', value: 1 }] })
+    const cast = castRolls(spell('Daze'), { rank: 3, attackBonus: 9, dc: 21, rng: middle })
+    expect(cast.text).toBe(
+      'DC 21 basic Will. Damage 2d6: crit success 0, success 4 mental, failure 8 mental, crit failure 16 mental. Conditions: crit failure stunned 1.',
+    )
+  })
+
+  it('Harm heals undead, not the caster; Heal hurts undead', () => {
+    const harm = castRolls(spell('Harm'), {
+      rank: 1,
+      actions: 2,
+      attackBonus: 7,
+      dc: 17,
+      rng: middle,
+    })
+    expect(harm.healing).toBeUndefined()
+    expect(harm.text).toMatch(/^Heals undead 13 HP \(1d8 \+ 8\)\. DC 17 basic Fortitude\./)
+    const heal = castRolls(spell('Heal'), {
+      rank: 1,
+      actions: 1,
+      attackBonus: 7,
+      dc: 17,
+      rng: middle,
+    })
+    expect(heal.text).toBe(
+      'Heals 5 HP (1d8). Against undead: DC 17 basic Fortitude. Damage 1d8: crit success 0, success 2 vitality, failure 5 vitality, crit failure 10 vitality.',
+    )
+  })
+
   it('summarises a spell for its row', () => {
     expect(spellSummary(spell('Fireball'), { rank: 5 })).toBe('basic Reflex · 10d6 fire')
     expect(spellSummary(spell('Ignition'), { rank: 2 })).toBe('spell attack · 3d4 fire')
+    expect(spellSummary(spell('Heroism'), { rank: 6 })).toBe('Heroism +2')
   })
 })
 
 describe('pf2e spell rules: rolling a cast', () => {
-  it('a basic save rolls once and lists none, half, full and double (p. 305)', () => {
+  it('a basic save rolls once and lists none, half, full and double (p. 302)', () => {
     const r = castRolls(spell('Fireball'), { rank: 3, attackBonus: 9, dc: 19, rng: middle })
     expect(r.text).toBe(
       'DC 19 basic Reflex. Damage 6d6: crit success 0, success 12 fire, failure 24 fire, crit failure 48 fire.',

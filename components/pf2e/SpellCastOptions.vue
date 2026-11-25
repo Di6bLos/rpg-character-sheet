@@ -3,7 +3,7 @@
 // change it: the action version (Heal, Force Barrage) and a melee spell attack (Ignition's
 // d6s). Read from the spell text by utils/pf2eSpellRules.ts.
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
-import { spellRules, spellSummary } from '~/utils/pf2eSpellRules'
+import { defaultActions, spellRules, spellSummary } from '~/utils/pf2eSpellRules'
 
 const props = defineProps<{ spell: Pf2eSpellDef; rank: number }>()
 const actions = defineModel<number | undefined>('actions')
@@ -20,9 +20,10 @@ const GLYPH = ['', '◆', '◆◆', '◆◆◆']
   <span class="cast-options">
     <select
       v-if="rules.actionOptions.length > 1"
-      v-model.number="actions"
       class="input input--sm"
+      :value="actions ?? defaultActions(rules)"
       :aria-label="`Actions to cast ${spell.name} with`"
+      @change="actions = Number(($event.target as HTMLSelectElement).value)"
     >
       <option v-for="n in rules.actionOptions" :key="n" :value="n">
         {{ GLYPH[n] }} {{ n }} action{{ n === 1 ? '' : 's' }}
@@ -61,8 +62,14 @@ const GLYPH = ['', '◆', '◆◆', '◆◆◆']
 }
 
 .input--sm {
+  width: auto;
   min-height: 34px;
   padding: 4px 8px;
   font-size: 13px;
+}
+
+select.input--sm {
+  flex: 0 0 auto;
+  padding-right: 30px;
 }
 </style>

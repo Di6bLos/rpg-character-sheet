@@ -1,9 +1,9 @@
 // What a Pathfinder 2e spell does, read from its rules text in `data/pf2e` (Player Core
-// pp. 297–305): its defense (a spell attack against AC, or a save, basic or not, p. 305), the
-// damage and healing it rolls with their types (persistent, splash), the degree of success
-// blocks and the conditions each one gives (p. 401), heightening (p. 299: "Heightened (+N)"
-// adds per N ranks, "Heightened (Nth)" sets the values from that rank), the versions cast with
-// 1–3 actions (Heal, Force Barrage), whether it's sustained, and the effect in
+// pp. 297–303): its defense (a spell attack against AC, p. 303, or a save, basic or not,
+// p. 302), the damage and healing it rolls with their types (persistent, splash), the degree of
+// success blocks and the conditions each one gives (p. 401), heightening (p. 297: "Heightened
+// (+N)" adds per N ranks, "Heightened (Nth)" sets the values from that rank), the versions cast
+// with 1–3 actions (Heal, Force Barrage), whether it's sustained, and the effect in
 // `data/pf2e/effects.ts` it turns on. `castRolls` rolls it at the rank it's cast.
 // `tests/pf2eSpellRules.test.ts` checks every spell parses and every rules regex here still
 // matches some spell, so rewording the data fails loudly.
@@ -40,6 +40,8 @@ export interface Pf2eSpellPart {
    */
   later?: boolean
   note?: string
+  /** Only against these creatures: Heal's vitality damage hurts undead, Harm heals them. */
+  vs?: string
 }
 
 /** A Strike a battle form grants (its dice aren't the spell's damage). */
@@ -64,9 +66,9 @@ export interface Pf2eHeightenFixed {
 }
 
 export interface Pf2eSpellRules {
-  /** A spell attack roll against AC (p. 305). */
+  /** A spell attack roll against AC (p. 303). */
   attack: boolean
-  /** The saves it calls for; `basic` follows p. 305's double, full, half, none. */
+  /** The saves it calls for; `basic` follows p. 302's double, full, half, none. */
   saves: { save: Pf2eSave; basic: boolean }[]
   /** The defense as written when it isn't one of those ("see text"). */
   defenseNote?: string
@@ -92,7 +94,10 @@ export interface Pf2eSpellRules {
   sustained: boolean
   /** The effect in data/pf2e/effects.ts the spell turns on, and whether it's always on you. */
   effect?: { def: Pf2eEffectDef; self: boolean }
-  /** A psychic's amp (Player Core 2 p. 136): what the cantrip does instead or more, parsed alike. */
+  /**
+   * A psychic's amp (Dark Archive (Remastered) p. 9): what the psi cantrip does for 1 Focus
+   * Point, parsed alike; listed, not rolled.
+   */
   amp?: Pf2eSpellRules
 }
 
@@ -176,6 +181,7 @@ const NOT_DEALT =
   /\b(?:resistance|weakness|first|up to|reduces?|reduced|prevents?|ignores?)\b[^.]*$/i
 const DEFENSE_SAVE = /\b(basic )?(Fortitude|Reflex|Will)\b/gi
 const TEXT_ATTACK = /\b(?:make|makes|making|attempt) an? (?:melee |ranged )?spell attack\b/i
+const TEXT_BASIC = /\bbasic (Fortitude|Reflex|Will) save\b/g
 const TEXT_SAVE = /\b(basic )?(Fortitude|Reflex|Will) save\b/i
 const AMP = /\*\*Amp\*\*/
 const AMP_HEIGHTENED = /\*\*Amp Heightened/g
@@ -204,6 +210,8 @@ const ALTERNATIVE = new RegExp(`^\\s*(?:${TYPE}\\s+)?(?:damage\\s+)?or\\s+$`, 'i
 const SENTENCE_CRIT = /\b[Oo]n a critical (?:success|hit)\b/
 const SENTENCE_CRIT_FAIL = /\b[Oo]n a critical failure\b/
 const SENTENCE_FAIL = /\b[Oo]n a failure\b/
+const SENTENCE_CRIT_FAILS = /\bcritically fails\b|\b[Oo]n a critical failure\b/
+const SENTENCE_FAILS = /\b(?:fails|failed) (?:its|their|the|this) save\b|\b[Oo]n a failure\b/
 const SPEND_MORE = /\bIf you spend (\d+) or more actions Casting the Spell\b/i
 const MIRROR_DAMAGE = /\byou deal that amount of (\w+) damage\b/i
 const MIRROR_HEAL = /\byou restore that amount of Hit Points\b/i
@@ -390,10 +398,14 @@ function parseSaves(defense: string | undefined, main: string) {
   const saves: { save: Pf2eSave; basic: boolean }[] = []
   const source = defense ?? TEXT_SAVE.exec(main)?.[0] ?? ''
   let lastBasic = false
+  // Daze's defense says "Will" where its text says "with a basic Will save".
+  const textBasic = new Set(
+    [...main.matchAll(TEXT_BASIC)].map((m) => m[1]!.charAt(0).toUpperCase() + m[1]!.slice(1)),
+  )
   for (const m of source.matchAll(DEFENSE_SAVE)) {
     const save = (m[2]!.charAt(0).toUpperCase() + m[2]!.slice(1).toLowerCase()) as Pf2eSave
     const joined = /\bor\s*$/.test(source.slice(0, m.index))
-    const basic: boolean = !!m[1] || (joined && lastBasic)
+    const basic: boolean = !!m[1] || (joined && lastBasic) || textBasic.has(save)
     lastBasic = basic
     if (!saves.some((s) => s.save === save)) saves.push({ save, basic })
   }
@@ -802,14 +814,26 @@ export function spellRules(spell: Pf2eSpellDef): Pf2eSpellRules {
   // Heal and Harm: the other use of the same dice (vitality damage to undead, healing undead).
   const first = parts.find((p) => !p.actions && !p.degree)
   const mirrorDamage = MIRROR_DAMAGE.exec(main)
+  const healsUndead = first?.role === 'damage' && MIRROR_HEAL.test(main)
+  const undead = healsUndead ? { vs: 'undead' } : {}
   if (first?.role === 'healing' && mirrorDamage)
-    parts.push({ dice: { ...first.dice }, role: 'damage', type: mirrorDamage[1]!.toLowerCase() })
-  if (first?.role === 'damage' && MIRROR_HEAL.test(main))
-    parts.push({ dice: { ...first.dice }, role: 'healing', type: '' })
+    parts.push({
+      dice: { ...first.dice },
+      role: 'damage',
+      type: mirrorDamage[1]!.toLowerCase(),
+      vs: 'undead',
+    })
+  if (healsUndead) parts.push({ dice: { ...first.dice }, role: 'healing', type: '', ...undead })
   for (const v of variants) {
     const more = FLAT_HEAL.exec(v.text)
     if (more)
-      parts.push({ dice: flat(Number(more[1])), role: 'healing', type: '', actions: v.actions })
+      parts.push({
+        dice: flat(Number(more[1])),
+        role: 'healing',
+        type: '',
+        actions: v.actions,
+        ...undead,
+      })
   }
 
   const heighten: Pf2eSpellRules['heighten'] = { adds: [], fixed: [] }
@@ -835,6 +859,22 @@ export function spellRules(spell: Pf2eSpellDef): Pf2eSpellRules {
       conditions[r.degree] = [...found].map(([name, value]) =>
         value === undefined ? { name } : { name, value },
       )
+  }
+  // "If the target critically fails the save, it is also stunned 1" (outside the blocks).
+  for (const sentence of main.split(/(?<=[.!?])\s+|\n+/)) {
+    if (ranges.some((r) => r.text.includes(sentence))) continue
+    const at: Pf2eDegree[] = SENTENCE_CRIT_FAILS.test(sentence)
+      ? ['critical failure']
+      : SENTENCE_FAILS.test(sentence)
+        ? ['failure', 'critical failure']
+        : []
+    for (const degree of at)
+      for (const m of sentence.matchAll(CONDITION)) {
+        const list = (conditions[degree] ??= [])
+        const name = m[1]!.toLowerCase()
+        if (!list.some((c) => c.name === name))
+          list.push(m[2] ? { name, value: Number(m[2]) } : { name })
+      }
   }
 
   const perAction = PER_ACTION.exec(main)
@@ -888,7 +928,7 @@ export function pieces(spell: Pf2eSpellDef, rules: Pf2eSpellRules, o: Pf2eCastOp
 }
 
 /**
- * The parts at a rank and action count (p. 299): each "+N" step adds its dice, the highest
+ * The parts at a rank and action count (p. 297): each "+N" step adds its dice, the highest
  * "Nth" block at or below the rank sets its values, and an action version's own dice replace
  * the base ones (Heal's +8 adds to them).
  */
@@ -935,7 +975,7 @@ export function partsAt(
   return parts.filter((p) => p.dice.count > 0 || p.dice.mod > 0)
 }
 
-/** The value of a scaling effect at a rank (Heroism +2 from 6th, +3 from 9th; Enlarge +4 from 4th). */
+/** A scaling effect's value at a rank (Heroism +2 from 6th, +3 from 9th; Enlarge +4 from 4th). */
 export function effectValue(spell: Pf2eSpellDef, def: Pf2eEffectDef, rank: number) {
   if (!def.values?.length) return undefined
   const reached = spell.heightened?.step
@@ -991,6 +1031,17 @@ function sumText(rolled: Rolled[], times = 1) {
   return `${total} (${each.join(', ')})`
 }
 
+/** "2d6 persistent fire", "1d8 healing", "5 temp HP". */
+const partText = (p: Pf2eSpellPart) =>
+  p.role === 'healing'
+    ? `${diceText(p.dice)} healing${p.vs ? ` to ${p.vs}` : ''}`
+    : p.role === 'temp'
+      ? `${diceText(p.dice)} temp HP`
+      : `${diceText(p.dice)}${label(p) ? ` ${label(p)}` : ''}${p.vs ? ` to ${p.vs}` : ''}`
+
+const conditionText = (c: { name: string; value?: number }) =>
+  c.value === undefined ? c.name : `${c.name} ${c.value}`
+
 const firstSentence = (text: string) => {
   const one = text.replace(/\s+/g, ' ').trim()
   const end = one.search(/(?<=\.)\s/)
@@ -1007,7 +1058,7 @@ export interface Pf2eCastContext extends Pf2eCastOptions {
 }
 
 /**
- * Rolls what a spell rolls at the rank it's cast (pp. 299, 305): a spell attack against the
+ * Rolls what a spell rolls at the rank it's cast (pp. 297, 302–303): a spell attack against the
  * target's AC (a critical hit doubles the damage, persistent included), the damage once with a
  * basic save's four results (none, half, full, double), each degree's own text and dice for
  * other saves, and healing. Damage the spell deals later is listed, not rolled. Empty text
@@ -1021,7 +1072,8 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
     total: p.dice.count ? rollDice(p.dice, c.rng).total : p.dice.mod,
   })
   const now = parts.filter((p) => !p.later)
-  const healParts = now.filter((p) => p.role === 'healing' && !p.degree)
+  const healParts = now.filter((p) => p.role === 'healing' && !p.degree && !p.vs)
+  const healUndead = now.filter((p) => p.role === 'healing' && !p.degree && p.vs)
   const tempParts = now.filter((p) => p.role === 'temp' && !p.degree)
   const damage = now.filter((p) => p.role === 'damage' && !p.degree && !p.persistent)
   const persistent = now.filter((p) => p.role === 'damage' && !p.degree && p.persistent)
@@ -1035,6 +1087,11 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
     const healed = healParts.map(roll).reduce((n, r) => n + r.total, 0)
     result.healing = healed
     out.push(`Heals ${healed} HP (${healParts.map((p) => diceText(p.dice)).join(' + ')}).`)
+  }
+  if (healUndead.length) {
+    const healed = healUndead.map(roll).reduce((n, r) => n + r.total, 0)
+    const dice = healUndead.map((p) => diceText(p.dice)).join(' + ')
+    out.push(`Heals ${healUndead[0]!.vs} ${healed} HP (${dice}).`)
   }
   if (tempParts.length) {
     const temp = tempParts.map(roll).reduce((n, r) => n + r.total, 0)
@@ -1059,7 +1116,7 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
       const crit = `${sumText([...rolled, ...persist], 2)}${extraNote}`
       if (!degree)
         out.push(
-          `Damage ${sumText(rolled)}${shards} (${dmgDice}) on a hit;${persistNote ? `${persistNote.replace(/\.$/, ';')}` : ''} critical hit ${crit}.`,
+          `Damage ${sumText(rolled)}${shards} (${dmgDice}) on a hit;${persistNote.replace(/\.$/, ';')} critical hit ${crit}.`,
         )
       else if (degree === 'critical success') out.push(`Critical hit: ${crit} damage.`)
       else if (degree === 'success') out.push(`Hit: ${sumText(rolled)} damage.${persistNote}`)
@@ -1067,7 +1124,8 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
     }
   } else if (c.dc && rules.saves.length) {
     const save = rules.saves.map((s) => `${s.basic ? 'basic ' : ''}${s.save}`).join(' or ')
-    out.push(`DC ${c.dc} ${save}.`)
+    const vs = damage.length && damage.every((p) => p.vs) ? `Against ${damage[0]!.vs}: ` : ''
+    out.push(`${vs}DC ${c.dc} ${save}.`)
     if (rolled.length && rules.saves.some((s) => s.basic)) {
       const each = DEGREE_ORDER.map((d) => {
         const extra = byDegree(d).map(roll)
@@ -1075,6 +1133,11 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
         return `${SHORT[d]} ${base}${extra.length ? ` + ${sumText(extra)}` : ''}`
       })
       out.push(`Damage ${dmgDice}${shards}: ${each.join(', ')}.${persistNote}`)
+      const gives = DEGREE_ORDER.flatMap((d) => {
+        const list = rules.conditions[d]
+        return list?.length ? [`${SHORT[d]} ${list.map(conditionText).join(', ')}`] : []
+      })
+      if (gives.length) out.push(`Conditions: ${gives.join('; ')}.`)
     } else {
       if (rolled.length) out.push(`Damage ${sumText(rolled)}${shards} (${dmgDice}).${persistNote}`)
       else if (persistNote) out.push(persistNote.trim())
@@ -1089,11 +1152,8 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
   } else if (rolled.length) {
     out.push(`Damage ${sumText(rolled)}${shards} (${dmgDice}).${persistNote}`)
   } else if (persistNote) out.push(persistNote.trim())
-  const later = parts.filter((p) => p.later)
-  if (later.length)
-    out.push(
-      `Later: ${later.map((p) => `${diceText(p.dice)}${label(p) ? ` ${label(p)}` : ''}${p.role === 'healing' ? ' healing' : ''}`).join(', ')}.`,
-    )
+  const later = parts.filter((p) => p.later).map(partText)
+  if (later.length) out.push(`Not rolled (see the text): ${later.join(', ')}.`)
   result.text = out.join(' ')
   return result
 }
@@ -1105,14 +1165,12 @@ export function spellSummary(spell: Pf2eSpellDef, o: Pf2eCastOptions): string {
   const defense = rules.attack
     ? 'spell attack'
     : rules.saves.map((s) => `${s.basic ? 'basic ' : ''}${s.save}`).join(' or ')
-  const rolls = parts.map((p) =>
-    p.role === 'healing'
-      ? `${diceText(p.dice)} healing`
-      : p.role === 'temp'
-        ? `${diceText(p.dice)} temp HP`
-        : `${diceText(p.dice)}${label(p) ? ` ${label(p)}` : ''}`,
-  )
-  return [defense, rolls.join(' + '), rules.sustained ? 'sustained' : '']
+  const order = { healing: 0, temp: 1, damage: 2 }
+  const rolls = [...parts].sort((a, b) => order[a.role] - order[b.role]).map(partText)
+  const def = rules.effect?.def
+  const value = def ? effectValue(spell, def, o.rank) : undefined
+  const effect = def ? `${def.name}${value === undefined ? '' : ` +${value}`}` : ''
+  return [defense, rolls.join(' + '), effect, rules.sustained ? 'sustained' : '']
     .filter(Boolean)
     .join(' · ')
 }
@@ -1151,6 +1209,9 @@ export const SPELL_PATTERNS: Record<string, RegExp> = {
   SENTENCE_CRIT,
   SENTENCE_CRIT_FAIL,
   SENTENCE_FAIL,
+  SENTENCE_CRIT_FAILS,
+  SENTENCE_FAILS,
+  TEXT_BASIC,
   SPEND_MORE,
   MIRROR_DAMAGE,
   MIRROR_HEAL,
