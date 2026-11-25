@@ -30,18 +30,32 @@ describe('keyboardOpen', () => {
 
 describe('phone tabs', () => {
   it('player with Scribe', () =>
-    expect(phoneTabs('player', true)).toEqual(['actions', 'hero', 'party', 'chat', 'scribe']))
+    expect(phoneTabs('player', true, true)).toEqual(['actions', 'hero', 'party', 'chat', 'scribe']))
   it('player without Scribe', () =>
-    expect(phoneTabs('player', false)).toEqual(['actions', 'hero', 'party', 'chat']))
+    expect(phoneTabs('player', false, true)).toEqual(['actions', 'hero', 'party', 'chat']))
   it('gm gets a Scribe tab when it is available', () => {
-    expect(phoneTabs('gm', true)).toEqual(['encounter', 'creature', 'party', 'chat', 'scribe'])
-    expect(phoneTabs('gm', false)).toEqual(['encounter', 'creature', 'party', 'chat'])
+    expect(phoneTabs('gm', true, true)).toEqual([
+      'encounter',
+      'creature',
+      'party',
+      'chat',
+      'scribe',
+    ])
+    expect(phoneTabs('gm', false, true)).toEqual(['encounter', 'creature', 'party', 'chat'])
   })
-  it('watcher', () => expect(phoneTabs('watcher', true)).toEqual(['party', 'chat', 'scribe']))
+  it('watcher', () => expect(phoneTabs('watcher', true, true)).toEqual(['party', 'chat', 'scribe']))
   it('watcher with a stale Actions tab falls back to Party', () =>
-    expect(pickTab('watcher', true, 'actions')).toBe('party'))
-  it('keeps a valid saved tab', () => expect(pickTab('player', true, 'chat')).toBe('chat'))
+    expect(pickTab('watcher', true, true, 'actions')).toBe('party'))
+  it('keeps a valid saved tab', () => expect(pickTab('player', true, true, 'chat')).toBe('chat'))
   it('scribe saved but unavailable → default', () =>
-    expect(pickTab('player', false, 'scribe')).toBe('actions'))
+    expect(pickTab('player', false, true, 'scribe')).toBe('actions'))
   it('role', () => expect(phoneRole({ gmControls: false, hero: false })).toBe('watcher'))
+})
+
+describe('a player without actions', () => {
+  it('gets Hero first and no Actions tab', () => {
+    expect(phoneTabs('player', true, false)).toEqual(['hero', 'party', 'chat', 'scribe'])
+    expect(pickTab('player', false, false, 'actions')).toBe('hero')
+    expect(pickTab('player', false, true, null)).toBe('actions')
+  })
 })

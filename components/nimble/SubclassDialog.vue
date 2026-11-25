@@ -13,7 +13,7 @@ import {
 } from '~/utils/nimbleBuild'
 
 const open = defineModel<boolean>({ required: true })
-const { draft, save } = useSheet<NimbleSheet>()
+const { draft, saveNow } = useSheet<NimbleSheet>()
 const snackbar = useSnackbarStore()
 
 const pick = ref('')
@@ -50,7 +50,7 @@ async function confirm() {
   if (!pick.value || problems.value.length) return
   changeSubclass(sheet.value, draft.value.level, pick.value, picks.value)
   open.value = false
-  await save()
+  await saveNow()
   snackbar.show(`${draft.value.name} is now ${sheet.value.subclass}`)
 }
 </script>
