@@ -37,7 +37,7 @@ import {
 import { featRules } from '~/utils/pf2eEffects'
 import { dailyPreparations } from '~/utils/pf2eSpells'
 
-const { draft, canEdit, lastRoll, say } = useSheet<Pf2eSheet>()
+const { draft, canEdit, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
 const level = computed(() => draft.value.level)
 const strikesApi = usePf2eStrikes()
@@ -345,12 +345,57 @@ function strikeDamage(e: Entry, crit: boolean, row: Pf2eRowState) {
 }
 
 function rest(period: 'minute' | '10min' | 'hour') {
-  if (canEdit.value) say(timePasses(sheet.value, period))
+  if (canEdit.value) claim('act-rest', () => say(timePasses(sheet.value, period)))
 }
 
 function prepare() {
-  if (canEdit.value) say(dailyPreparations(sheet.value))
+  if (canEdit.value) claim('act-rest', () => say(dailyPreparations(sheet.value)))
 }
+
+const { claim, resultFor } = useResultOwner()
+const onTurn = computed(() => !!sheet.value.turn?.active)
+const inCombat = computed(() => onTurn.value || (sheet.value.turn?.round ?? 0) > 0)
+
+/**
+ * The panel's folding sections: on your turn Actions open and Reactions fold, off your turn
+ * the reverse (as on the Nimble sheet); out of combat both stay as the player left them.
+ * Basic, skill and class actions start folded.
+ */
+const sections = computed(() => [
+  ...grouped.value.map((g) => ({
+    ...g,
+    open:
+      !inCombat.value || (g.id !== 'actions' && g.id !== 'reactions')
+        ? undefined
+        : g.id === 'actions'
+          ? onTurn.value
+          : !onTurn.value,
+    startFolded: false,
+  })),
+  { id: 'basic', label: 'Basic actions', entries: basic.value, open: undefined, startFolded: true },
+  ...(skillActions.value.length
+    ? [
+        {
+          id: 'skill',
+          label: 'Skill actions (trained)',
+          entries: skillActions.value,
+          open: undefined,
+          startFolded: true,
+        },
+      ]
+    : []),
+  ...(classActions.value.length
+    ? [
+        {
+          id: 'class',
+          label: `${sheet.value.class} actions`,
+          entries: classActions.value,
+          open: undefined,
+          startFolded: true,
+        },
+      ]
+    : []),
+])
 
 const dmgPreview = (e: Entry) =>
   [...e.rules.damage, ...(e.via?.rules.damage ?? [])]
@@ -363,34 +408,43 @@ const dmgPreview = (e: Entry) =>
   <section class="panel stack" style="gap: 14px" aria-labelledby="pf-act-h">
     <UiFold name="PF2e actions" />
     <div class="panel-title" style="margin: 0">
-      <div class="title-help">
-        <h2 id="pf-act-h">Actions</h2>
-        <UiHelp
-          label="About actions"
-          text="Your abilities that take actions, a reaction or time, or have a limited number of uses, then basic and skill actions. Use pays its actions from the turn, spends a use, and rolls what it rolls against the target's DC."
-        />
-      </div>
+      <h2 id="pf-act-h">Actions</h2>
+    </div>
+    <div class="targets">
       <label class="target">
-        Target DC
+        DC
         <input
           v-model.number="targetDc"
-          class="input"
+          class="input target__dc"
           type="number"
           inputmode="numeric"
           min="0"
           placeholder="—"
+          aria-label="Target DC"
         />
       </label>
       <label class="target">
         Target
         <input v-model="target" class="input target__name" maxlength="40" placeholder="name" />
       </label>
+      <UiHelp
+        label="About the target"
+        text="DC: the DC your check is against, such as the creature's Will DC for Demoralize; leave it empty to roll without a result. Target: who you use the ability on, so limits per target (Battle Medicine, Demoralize) count for that name."
+      />
     </div>
 
-    <div v-for="g in grouped" :key="g.id" class="stack" style="gap: 8px">
-      <h3 class="caps">{{ g.label }}</h3>
+    <section
+      v-for="sec in sections"
+      :key="sec.id"
+      class="panel sub stack"
+      :aria-labelledby="`pf-act-${sec.id}`"
+    >
+      <UiFold :name="`PF2e ${sec.label}`" :open="sec.open" :start-folded="sec.startFolded" />
+      <h3 :id="`pf-act-${sec.id}`" class="sub__title">
+        {{ sec.label }} <span class="sub__count">{{ sec.entries.length }}</span>
+      </h3>
       <Pf2eActionRow
-        v-for="e in g.entries"
+        v-for="e in sec.entries"
         :key="e.key"
         :entry="e"
         :why="why(e)"
@@ -399,71 +453,17 @@ const dmgPreview = (e: Entry) =>
         :weapons="weaponsFor(e)"
         :tiers="tiersFor(e)"
         :dmg="dmgPreview(e)"
-        @use="use(e, $event)"
-        @damage="(crit, st) => strikeDamage(e, crit, st)"
+        :result="resultFor(`act:${e.key}`)"
+        @use="(st) => claim(`act:${e.key}`, () => use(e, st))"
+        @damage="(crit, st) => claim(`act:${e.key}`, () => strikeDamage(e, crit, st))"
       />
-    </div>
+    </section>
     <p v-if="!grouped.length" class="empty">
       None of your abilities take an action or have a limited use.
     </p>
 
-    <details class="fold">
-      <summary class="caps">Basic actions</summary>
-      <div class="stack" style="gap: 8px">
-        <Pf2eActionRow
-          v-for="e in basic"
-          :key="e.key"
-          :entry="e"
-          :why="why(e)"
-          :left="left(e)"
-          :choices="choicesFor(e)"
-          :weapons="weaponsFor(e)"
-          :tiers="tiersFor(e)"
-          :dmg="dmgPreview(e)"
-          @use="use(e, $event)"
-          @damage="(crit, st) => strikeDamage(e, crit, st)"
-        />
-      </div>
-    </details>
-    <details v-if="skillActions.length" class="fold">
-      <summary class="caps">Skill actions (trained)</summary>
-      <div class="stack" style="gap: 8px">
-        <Pf2eActionRow
-          v-for="e in skillActions"
-          :key="e.key"
-          :entry="e"
-          :why="why(e)"
-          :left="left(e)"
-          :choices="choicesFor(e)"
-          :weapons="weaponsFor(e)"
-          :tiers="tiersFor(e)"
-          :dmg="dmgPreview(e)"
-          @use="use(e, $event)"
-          @damage="(crit, st) => strikeDamage(e, crit, st)"
-        />
-      </div>
-    </details>
-    <details v-if="classActions.length" class="fold">
-      <summary class="caps">{{ sheet.class }} actions</summary>
-      <div class="stack" style="gap: 8px">
-        <Pf2eActionRow
-          v-for="e in classActions"
-          :key="e.key"
-          :entry="e"
-          :why="why(e)"
-          :left="left(e)"
-          :choices="choicesFor(e)"
-          :weapons="weaponsFor(e)"
-          :tiers="tiersFor(e)"
-          :dmg="dmgPreview(e)"
-          @use="use(e, $event)"
-          @damage="(crit, st) => strikeDamage(e, crit, st)"
-        />
-      </div>
-    </details>
-
-    <div class="row rest" style="gap: 8px">
-      <span class="small muted">Time passes:</span>
+    <div class="rest">
+      <span class="small rest__label">Time passes</span>
       <button
         type="button"
         class="btn btn--ghost btn--sm"
@@ -498,44 +498,73 @@ const dmgPreview = (e: Entry) =>
         Daily preparations
       </button>
     </div>
-    <div v-if="lastRoll" class="roll-status" aria-hidden="true">{{ lastRoll }}</div>
+    <p v-if="resultFor('act-rest')" class="roll-status" role="status" aria-live="polite">
+      {{ resultFor('act-rest') }}
+    </p>
   </section>
 </template>
 
 <style scoped lang="scss">
+.targets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
 .target {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 13px;
   font-weight: 600;
 
   .input {
-    width: 80px;
+    min-height: 36px;
+    padding: 4px 8px;
+  }
+
+  .target__dc {
+    width: 64px;
   }
 
   .target__name {
-    width: 130px;
+    width: 120px;
   }
 }
 
-h3.caps {
+.sub {
+  padding: 14px;
+  box-shadow: none;
+  gap: 8px;
+}
+
+.sub__title {
   margin: 0;
-  font-size: 12px;
+  font-size: 15px;
 }
 
-.fold > summary {
-  cursor: pointer;
-  padding: 6px 0;
+.sub__count {
   font-size: 12px;
-}
-
-.fold[open] > summary {
-  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--page-soft);
 }
 
 .rest {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 8px;
+}
+
+.rest__label {
+  font-weight: 600;
+  color: var(--page-soft);
+}
+
+@media (pointer: coarse) {
+  .target .input {
+    min-height: 44px;
+  }
 }
 </style>

@@ -1,5 +1,8 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{ name: string; open?: boolean }>(), { open: undefined })
+const props = withDefaults(defineProps<{ name: string; open?: boolean; startFolded?: boolean }>(), {
+  open: undefined,
+  startFolded: false,
+})
 
 const storageKey = computed(() => `lantern:fold:${props.name}`)
 const folded = ref(false)
@@ -10,9 +13,10 @@ onMounted(() => {
     return
   }
   try {
-    folded.value = localStorage.getItem(storageKey.value) === '1'
+    const stored = localStorage.getItem(storageKey.value)
+    folded.value = stored === null ? props.startFolded : stored === '1'
   } catch {
-    folded.value = false
+    folded.value = props.startFolded
   }
 })
 
@@ -27,6 +31,7 @@ function toggle() {
   folded.value = !folded.value
   try {
     if (folded.value) localStorage.setItem(storageKey.value, '1')
+    else if (props.startFolded) localStorage.setItem(storageKey.value, '0')
     else localStorage.removeItem(storageKey.value)
   } catch {
     return
@@ -69,7 +74,7 @@ function toggle() {
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, currentColor 60%, transparent);
   border-radius: 8px;
   background: transparent;
   color: var(--accent-text);

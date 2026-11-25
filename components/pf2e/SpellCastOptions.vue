@@ -72,4 +72,10 @@ select.input--sm {
   flex: 0 0 auto;
   padding-right: 30px;
 }
+
+@media (pointer: coarse) {
+  .input--sm {
+    min-height: 44px;
+  }
+}
 </style>

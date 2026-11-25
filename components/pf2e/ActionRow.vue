@@ -22,6 +22,8 @@ const props = defineProps<{
   weapons: { index: number; name: string }[]
   tiers: { rank: Pf2eRank; dc: number; bonus: number }[]
   dmg: string
+  /** The result of its last use, shown under it. */
+  result?: string
 }>()
 const emit = defineEmits<{
   use: [state: Pf2eRowState]
@@ -61,13 +63,18 @@ const checkLabel = computed(() => {
 <template>
   <div class="arow tile" :aria-labelledby="`${id}-name`" role="group">
     <div class="arow__head">
-      <span v-if="glyph" class="arow__glyph" role="img" :aria-label="label">{{ glyph }}</span>
+      <span v-if="glyph" class="arow__glyph"
+        ><span aria-hidden="true">{{ glyph }}</span
+        ><span class="sr-only">{{ label }}</span></span
+      >
       <span v-else-if="label" class="arow__time">{{ label }}</span>
       <strong :id="`${id}-name`">{{ entry.name }}</strong>
       <small v-if="entry.from" class="muted">· {{ entry.from }}</small>
       <span v-if="r.frequency" class="arow__freq small">
         {{ frequencyLabel(r.frequency) }}
-        <template v-if="!r.frequency.perTarget"> · {{ left }} left</template>
+        <template v-if="!r.frequency.perTarget">
+          · {{ left }} use{{ left === 1 ? '' : 's' }} left</template
+        >
       </span>
     </div>
     <p v-if="r.trigger" class="small arow__line"><strong>Trigger</strong> {{ r.trigger }}</p>
@@ -91,7 +98,7 @@ const checkLabel = computed(() => {
         v-if="choices.length > 1"
         v-model="state.skill"
         class="input arow__select"
-        :aria-label="`${entry.name}: skill`"
+        :aria-label="`Skill for ${entry.name}`"
       >
         <option :value="undefined">
           {{ choices[0]?.skill }} {{ sign(choices[0]?.bonus ?? 0) }}
@@ -107,7 +114,7 @@ const checkLabel = computed(() => {
         v-if="tiers.length > 1"
         v-model="state.tier"
         class="input arow__select"
-        :aria-label="`${entry.name}: DC`"
+        :aria-label="`DC for ${entry.name}`"
       >
         <option :value="undefined">DC {{ tiers[0]?.dc }}</option>
         <option v-for="t in tiers.slice(1)" :key="t.rank" :value="t.rank">
@@ -118,7 +125,7 @@ const checkLabel = computed(() => {
         v-if="r.strike && weapons.length > 1"
         v-model="state.weapon"
         class="input arow__select"
-        :aria-label="`${entry.name}: weapon`"
+        :aria-label="`Strike for ${entry.name}`"
       >
         <option :value="undefined">{{ weapons[0]?.name }}</option>
         <option v-for="w in weapons.slice(1)" :key="w.index" :value="w.index">{{ w.name }}</option>
@@ -127,7 +134,7 @@ const checkLabel = computed(() => {
         v-if="range.length"
         v-model="state.actions"
         class="input arow__select"
-        :aria-label="`${entry.name}: actions to spend`"
+        :aria-label="`Actions to spend on ${entry.name}`"
       >
         <option :value="undefined">{{ range[0] }} action{{ range[0] === 1 ? '' : 's' }}</option>
         <option v-for="n in range.slice(1)" :key="n" :value="n">{{ n }} actions</option>
@@ -146,7 +153,7 @@ const checkLabel = computed(() => {
       >
         Use
       </button>
-      <span v-if="why" :id="`${id}-why`" class="small muted">{{ why }}</span>
+      <span v-if="why" :id="`${id}-why`" class="small muted arow__why">{{ why }}</span>
       <template v-if="state.struck">
         <button type="button" class="btn btn--ghost btn--sm" @click="emit('damage', false, state)">
           Damage
@@ -161,6 +168,9 @@ const checkLabel = computed(() => {
         </button>
       </template>
     </div>
+    <p v-if="result" class="roll-status arow__result" role="status" aria-live="polite">
+      {{ result }}
+    </p>
   </div>
 </template>
 
@@ -230,10 +240,30 @@ const checkLabel = computed(() => {
 
 .arow__select {
   width: auto;
+  min-width: 140px;
   max-width: 100%;
   min-height: 36px;
-  padding: 4px 8px;
+  padding: 4px 34px 4px 10px;
   font-size: 13px;
+}
+
+.arow__why {
+  order: 10;
+  flex-basis: 100%;
+}
+
+.arow__result {
+  margin: 0;
+}
+
+@media (pointer: coarse) {
+  .arow__select {
+    min-height: 44px;
+  }
+
+  .arow__self {
+    min-height: 44px;
+  }
 }
 
 .arow__self {

@@ -14,7 +14,9 @@ import {
 } from '~/utils/pf2ePlay'
 import { resistancesNow, shiftedDegree, speedNow } from '~/utils/pf2eEffects'
 
-const { draft, canEdit, hpPct, xpPct, xpLabel, lastRoll, say } = useSheet<Pf2eSheet>()
+const { draft, canEdit, hpPct, xpPct, xpLabel, say } = useSheet<Pf2eSheet>()
+/** Results show in the panel that made them; anything else in Defenses, beside HP. */
+const { claim, resultIn, unclaimed } = useResultOwner()
 const sheet = computed(() => draft.value.sheet)
 
 const RANK_NAME: Record<Pf2eRank, string> = {
@@ -349,7 +351,7 @@ const bulkPct = computed(() =>
             :class="{ 'is-changed': x.now.changed }"
             :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.label}`"
             :aria-label="`Roll ${x.label} ${sign(x.now.value)}`"
-            @click="rollSave(x.label, x.now.value)"
+            @click="claim('defense:save', () => rollSave(x.label, x.now.value))"
           >
             {{ sign(x.now.value) }}
           </button>
@@ -404,6 +406,14 @@ const bulkPct = computed(() =>
       </div>
 
       <Pf2eSheetConditions />
+      <p
+        v-if="resultIn('defense:') || unclaimed"
+        class="roll-status"
+        role="status"
+        aria-live="polite"
+      >
+        {{ resultIn('defense:') || unclaimed }}
+      </p>
     </section>
 
     <section class="panel stack" style="gap: 12px" aria-labelledby="sk-h">
@@ -423,7 +433,7 @@ const bulkPct = computed(() =>
           :class="{ 'is-trained': x.rank !== 'U' }"
           :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.name}`"
           :aria-label="`Roll ${x.name} ${sign(x.now.value)}`"
-          @click="rollCheck(x.name, x.now.value)"
+          @click="claim('skills:check', () => rollCheck(x.name, x.now.value))"
         >
           <span class="rank" :class="`rank--${x.rank}`" :title="RANK_NAME[x.rank]">{{
             x.rank
@@ -434,6 +444,9 @@ const bulkPct = computed(() =>
           <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
         </button>
       </div>
+      <p v-if="resultIn('skills:')" class="roll-status" role="status" aria-live="polite">
+        {{ resultIn('skills:') }}
+      </p>
     </section>
   </div>
 
@@ -491,7 +504,8 @@ const bulkPct = computed(() =>
           <tr v-for="(w, i) in strikes" :key="i">
             <td>
               <div class="row" style="gap: 8px; flex-wrap: nowrap">
-                <span aria-label="One action" class="action-glyph">◆</span>
+                <span class="action-glyph" aria-hidden="true">◆</span
+                ><span class="sr-only">One action</span>
                 <strong>{{ w.name }}</strong>
               </div>
             </td>
@@ -509,7 +523,7 @@ const bulkPct = computed(() =>
                   :title="w.changed ? w.note : undefined"
                   :aria-label="a.label"
                   :disabled="!canEdit"
-                  @click="strikeFromTable(w.index, n)"
+                  @click="claim(`strike:${w.index}`, () => strikeFromTable(w.index, n))"
                 >
                   {{ a.text }}
                 </button>
@@ -523,7 +537,7 @@ const bulkPct = computed(() =>
                   :class="{ 'is-changed': w.dmgChanged }"
                   :title="w.dmgChanged ? w.dmgNote : undefined"
                   :aria-label="`Roll damage for ${w.name}`"
-                  @click="strikesApi.damage(w.index, false)"
+                  @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, false))"
                 >
                   {{ w.dmg }}
                 </button>
@@ -532,7 +546,7 @@ const bulkPct = computed(() =>
                   class="atk crit-btn"
                   :aria-label="`Roll critical damage for ${w.name}`"
                   title="Critical hit: double damage"
-                  @click="strikesApi.damage(w.index, true)"
+                  @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, true))"
                 >
                   ×2
                 </button>
@@ -548,7 +562,9 @@ const bulkPct = computed(() =>
       </table>
     </div>
     <p v-else class="empty">No strikes yet. Use “Edit sheet” to add one.</p>
-    <div v-if="lastRoll" class="roll-status" role="status">{{ lastRoll }}</div>
+    <p v-if="resultIn('strike:')" class="roll-status" role="status" aria-live="polite">
+      {{ resultIn('strike:') }}
+    </p>
   </section>
 
   <Pf2eSheetActions />
