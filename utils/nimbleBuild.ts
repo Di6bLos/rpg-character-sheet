@@ -494,10 +494,7 @@ function applyLevelDef(sheet: NimbleSheet, def: LevelDef | undefined, src: strin
     for (const a of sheet.attacks) if (a.name === from) a.name = to
   }
   if (def.hitDie) sheet.hitDie = Math.max(sheet.hitDie, def.hitDie)
-  if (def.hpBonus) {
-    sheet.hpMax += def.hpBonus
-    sheet.hp += def.hpBonus
-  }
+  if (def.hpBonus) addLevelHp(sheet, def.hpBonus)
   if (def.speed) sheet.speed = String((Number.parseInt(sheet.speed, 10) || BASE_SPEED) + def.speed)
   if (def.woundsMax) sheet.woundsMax += def.woundsMax
   if (def.replacesAbilities)

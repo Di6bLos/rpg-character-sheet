@@ -445,6 +445,17 @@ describe('levelling', () => {
     expect(sheet.hp).toBe(0)
   })
 
+  it('a subclass HP bonus raises max HP but leaves a hero at 0 HP at 0', () => {
+    const sheet = build(classBySlug('hunter')!)
+    levelTo(sheet, 2, 'wild-heart')
+    const max = sheet.hpMax
+    sheet.hp = 0
+    const picks = pickLevel(sheet, 3, 'wild-heart')
+    applyNimbleLevel(sheet, 3, { hpGain: 5, statBumps: {}, subclassSlug: 'wild-heart', picks })
+    expect(sheet.hpMax).toBe(max + 5 + 5)
+    expect(sheet.hp).toBe(0)
+  })
+
   for (const cls of NIMBLE_CLASSES)
     for (const sub of cls.subclasses.filter((s) => !s.story))
       it(`levels a ${cls.slug} (${sub.slug}) from 1 to 20`, () => {
