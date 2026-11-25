@@ -202,5 +202,21 @@ export function rulesTerms(query: string): string[] {
   return query.toLowerCase().split(/\s+/).filter(Boolean)
 }
 
+/**
+ * Loads every topic at once and keeps the ones that came back when others fail, so a search
+ * still shows what it found; `lost` are the ones that didn't load, with their errors.
+ */
+export async function loadTopics<T>(topics: T[], load: (topic: T) => Promise<string>) {
+  const results = await Promise.allSettled(topics.map(load))
+  const loaded: [T, string][] = []
+  const lost: { topic: T; error: unknown }[] = []
+  results.forEach((r, i) => {
+    const topic = topics[i] as T
+    if (r.status === 'fulfilled') loaded.push([topic, r.value])
+    else lost.push({ topic, error: r.reason })
+  })
+  return { loaded, lost }
+}
+
 /** A cite line: "_Player Core pp. 400–401._", "_Core p. 8; GM's Guide p. 24._". */
 export const RULES_CITE = /\bpp?\.\s*\d+/

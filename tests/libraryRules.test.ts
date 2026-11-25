@@ -8,7 +8,14 @@ import { CONDITIONS, REACTIONS } from '../data/nimble/core'
 import { RULES_FILES, RULES_SYSTEMS, loadRulesFile, rulesSystem } from '../data/rules'
 import { settingName } from '../scripts/lib/aon'
 import { loreHtml } from '../utils/loreText'
-import { RULES_CITE, expandRules, rulesNeeds, rulesPlain, rulesSections } from '../utils/rulesText'
+import {
+  RULES_CITE,
+  expandRules,
+  loadTopics,
+  rulesNeeds,
+  rulesPlain,
+  rulesSections,
+} from '../utils/rulesText'
 
 const dir = join(import.meta.dirname, '..', 'data', 'pf2e', 'generated')
 const load = <K extends keyof Pf2eData>(set: K): Pf2eData[K] =>
@@ -85,6 +92,20 @@ describe('rules index', () => {
     const raw = await loadRulesFile('pf2e/05-conditions.md')
     expect(rulesNeeds(raw)).toEqual(['pf2eConditions'])
     expect(() => expandRules(raw)).toThrow(/not loaded/)
+  })
+})
+
+describe('loading topics', () => {
+  it('keeps the topics that loaded when another fails, so a search shows what it found', async () => {
+    const lostFile = new Error('Failed to fetch dynamically imported module')
+    const { loaded, lost } = await loadTopics(['combat', 'actions', 'conditions'], (slug) =>
+      slug === 'actions' ? Promise.reject(lostFile) : Promise.resolve(`## ${slug}`),
+    )
+    expect(loaded).toEqual([
+      ['combat', '## combat'],
+      ['conditions', '## conditions'],
+    ])
+    expect(lost).toEqual([{ topic: 'actions', error: lostFile }])
   })
 })
 
