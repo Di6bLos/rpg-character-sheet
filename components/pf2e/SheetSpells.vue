@@ -76,8 +76,14 @@ const cantripIds = computed(
 )
 
 const numbers = computed(() => (sc.value ? spellNumbers(sheet.value, sc.value, level.value) : null))
-/** Focus-only heroes cast with their class DC. */
-const castNumbers = computed(() => numbers.value ?? focusNumbers(sheet.value))
+/** Focus-only heroes cast with their class's focus attribute at their class DC's rank. */
+const castNumbers = computed(() => numbers.value ?? focusNumbers(sheet.value, level.value))
+/** The attack and DC tiles: the spellcasting's, or a focus-only hero's for their focus spells. */
+const headNumbers = computed(
+  () =>
+    numbers.value ??
+    (!props.archetype && sheet.value.focusSpells?.length ? castNumbers.value : null),
+)
 const ranks = computed(() =>
   (sc.value?.slots ?? [])
     .map((r, i) => ({ rank: i + 1, ...r }))
@@ -87,7 +93,7 @@ const edit = ref(false)
 const open = ref<string | null>(null)
 
 function rollSpellAttack() {
-  const n = numbers.value
+  const n = headNumbers.value
   if (!n) return
   claim('spells-head', () => {
     const r = rollCheck(n.attack.value)
@@ -336,24 +342,24 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
 
     <div class="head">
       <button
-        v-if="numbers"
+        v-if="headNumbers"
         type="button"
         class="tile head__tile"
-        :class="{ 'is-changed': numbers.attack.changed }"
-        :title="numbers.attack.changed ? numbers.attack.note : 'Roll a spell attack'"
+        :class="{ 'is-changed': headNumbers.attack.changed }"
+        :title="headNumbers.attack.changed ? headNumbers.attack.note : 'Roll a spell attack'"
         @click="rollSpellAttack"
       >
         <span class="tile__label">Spell attack</span>
-        <span class="tile__value">{{ sign(numbers.attack.value) }}</span>
+        <span class="tile__value">{{ sign(headNumbers.attack.value) }}</span>
       </button>
       <div
-        v-if="numbers"
+        v-if="headNumbers"
         class="tile head__tile"
-        :class="{ 'is-changed': numbers.dc.changed }"
-        :title="numbers.dc.changed ? numbers.dc.note : undefined"
+        :class="{ 'is-changed': headNumbers.dc.changed }"
+        :title="headNumbers.dc.changed ? headNumbers.dc.note : undefined"
       >
         <span class="tile__label">Spell DC</span>
-        <span class="tile__value">{{ numbers.dc.value }}</span>
+        <span class="tile__value">{{ headNumbers.dc.value }}</span>
       </div>
       <div class="head__tools">
         <button

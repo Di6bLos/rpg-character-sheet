@@ -17,7 +17,10 @@ import {
   castFont,
   castPrepared,
   castSpontaneous,
+  FOCUS_ATTR,
+  castEffect,
   dailyPreparations,
+  focusNumbers,
   focusPoolMax,
   fontSlots,
   heightenedRank,
@@ -306,7 +309,9 @@ describe('pf2e casting (pp. 297–298)', () => {
       focusSpells: [ref('Counter Performance')],
       focus: { max: 1, current: 0, note: '' },
     }
-    expect(dailyPreparations(s)).toBe('Daily preparations: Focus Points and daily abilities restored.')
+    expect(dailyPreparations(s)).toBe(
+      'Daily preparations: Focus Points and daily abilities restored.',
+    )
     expect(s.focus.current).toBe(1)
   })
 
@@ -315,5 +320,53 @@ describe('pf2e casting (pp. 297–298)', () => {
     s.spellcasting!.slots[0]!.prepared![0]!.id = 'x'
     setSlotMax(s.spellcasting!, 1, 3)
     expect(s.spellcasting?.slots[0]?.prepared?.map((p) => p.id)).toEqual(['x', null, null])
+  })
+})
+
+describe('pf2e focus spells for heroes without spellcasting', () => {
+  /** A level 1 champion: STR key (+4), CHA +2, class DC trained. */
+  const champion = (): Pf2eSheet => {
+    const s = defaultSheet('pf2e')
+    s.class = 'Champion'
+    s.classSlug = 'champion'
+    s.keyAttr = 'STR'
+    s.attrs.STR = 4
+    s.attrs.CHA = 2
+    s.saves = s.saves.filter((x) => x.label !== 'Class DC')
+    s.saves.push({ label: 'Class DC', rank: 'T', value: 17 })
+    s.focusSpells = [ref('Lay on Hands')]
+    return s
+  }
+
+  it('uses the class text’s spellcasting attribute, not the key one (Player Core 2 pp. 86, 114)', () => {
+    const s = champion()
+    expect(focusNumbers(s, 1)).toMatchObject({ attack: { value: 5 }, dc: { value: 15 } })
+    s.class = 'Monk'
+    s.classSlug = 'monk'
+    s.attrs.WIS = 3
+    expect(focusNumbers(s, 1)).toMatchObject({ attack: { value: 6 }, dc: { value: 16 } })
+  })
+
+  it('rises with the class DC’s rank, as these classes raise both together', () => {
+    const s = champion()
+    s.saves.find((x) => x.label === 'Class DC')!.rank = 'E'
+    expect(focusNumbers(s, 9).dc.value).toBe(10 + 2 + 9 + 4)
+  })
+
+  it('casts a champion’s devotion spell against their Charisma DC', () => {
+    const s = champion()
+    const r = castEffect(s, named(data.spells, 'Lay on Hands'), 1, 1, { rng: () => 0.5 })
+    expect(r.text).toContain('DC 15 basic Fortitude')
+  })
+
+  it('has every focus-only class’s attribute as its text states it', () => {
+    const NAME: Record<string, string> = { Charisma: 'CHA', Wisdom: 'WIS', Intelligence: 'INT' }
+    const said = data.classes
+      .filter((k) => !k.spellSlots)
+      .flatMap((k) => {
+        const m = /\b(?:key )?spellcasting attribute is (\w+)/i.exec(k.text)
+        return m ? [[k.slug, NAME[m[1]!]] as const] : []
+      })
+    expect(Object.fromEntries(said)).toEqual(FOCUS_ATTR)
   })
 })

@@ -3,7 +3,13 @@
 // heightened into a higher slot), a cleric's divine font, focus spells and Refocus, daily
 // preparations, and the flat check for casting while stupefied (p. 446).
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
-import type { Pf2eSheet, Pf2eSlotRank, Pf2eSpellRef, Pf2eSpellcasting } from '~/types/sheets'
+import type {
+  Pf2eAttr,
+  Pf2eSheet,
+  Pf2eSlotRank,
+  Pf2eSpellRef,
+  Pf2eSpellcasting,
+} from '~/types/sheets'
 import { type Rng, rollDie } from '~/utils/dice'
 import { setGiven, toggleEffect } from '~/utils/pf2eEffects'
 import { itemsDailyPrep } from '~/utils/pf2eInventory'
@@ -30,14 +36,26 @@ export function spellNumbers(s: Pf2eSheet, sc: Pf2eSpellcasting, level: number) 
 }
 
 /**
- * Spell attack and DC for a hero without spellcasting of their own (a champion's or monk's
- * focus spells): the class DC, and that less 10 as the attack.
+ * The attribute focus spells use for a class without spellcasting of its own, as its text says:
+ * a champion's devotion spells Charisma (Player Core 2 p. 86), a monk's qi spells Wisdom
+ * (Player Core 2 p. 114), a ranger's warden spells Wisdom (Player Core p. 152).
  */
-export function focusNumbers(s: Pf2eSheet) {
-  const dc = s.saves.find((x) => x.label === 'Class DC')?.value ?? 10
+export const FOCUS_ATTR: Record<string, Pf2eAttr> = { champion: 'CHA', monk: 'WIS', ranger: 'WIS' }
+
+/**
+ * Spell attack and DC for a hero without spellcasting of their own (a champion's, monk's or
+ * ranger's focus spells): their class's spellcasting attribute (`FOCUS_ATTR`, the key attribute
+ * for others) and the class DC's rank, which these classes raise along with their spell
+ * attack and spell DC.
+ */
+export function focusNumbers(s: Pf2eSheet, level: number) {
+  const cls = (s.classSlug ?? s.class).trim().toLowerCase()
+  const attr = FOCUS_ATTR[cls] ?? s.keyAttr
+  const rank = s.saves.find((x) => x.label === 'Class DC')?.rank ?? 'T'
+  const base = s.attrs[attr] + proficiency(rank === 'U' ? 'T' : rank, level)
   return {
-    attack: adjusted(s, dc - 10, { kind: 'attack', attr: s.keyAttr }),
-    dc: adjusted(s, dc, { kind: 'classDc', attr: s.keyAttr }),
+    attack: adjusted(s, base, { kind: 'attack', attr }),
+    dc: adjusted(s, 10 + base, { kind: 'classDc', attr }),
   }
 }
 
@@ -225,7 +243,7 @@ export function castEffect(
   choice: Pf2eCastChoice = {},
 ): Pf2eCastRoll & { selfEffect?: string } {
   const sc = choice.sc ?? s.spellcasting
-  const numbers = sc ? spellNumbers(s, sc, level) : focusNumbers(s)
+  const numbers = sc ? spellNumbers(s, sc, level) : focusNumbers(s, level)
   const map = MAP[choice.attackNumber ?? 0] ?? 0
   const roll = castRolls(spell, {
     rank,
