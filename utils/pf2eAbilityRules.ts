@@ -1122,7 +1122,7 @@ export function usedAction(text: string, known: Iterable<string>): string | unde
   for (const name of known) {
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const m = new RegExp(
-      `(?:\\b(?:[Yy]ou can|[Yy]ou may|[Tt]hen|[Aa]ttempt to|and|or)\\s+|(?:^|[.!:]\\s+)(?:[Yy]ou\\s+)?)${esc}\\b`,
+      `(?:\\b(?:[Yy]ou can|[Yy]ou may|[Tt]hen|[Aa]ttempt to|and|or)\\s+|(?:^|[.!:]\\s+)(?:[Yy]ou\\s+)?)${esc}\\b(?!\\s+while\\b)`,
     ).exec(own)
     if (m && (!best || (m.index ?? 0) < best.at)) best = { name, at: m.index ?? 0 }
   }

@@ -13,6 +13,7 @@ import {
   readAbility,
   readCost,
   readFrequency,
+  usedAction,
 } from '../utils/pf2eAbilityRules'
 import {
   blockedReason,
@@ -737,5 +738,21 @@ describe('pf2e ability rules: review fixes', () => {
     const dead = hero([], { dying: 4 })
     expect(blockedReason(dead, reaction)).toBe('Your hero is dead.')
     expect(blockedReason(hero([]), reaction)).toBe('')
+  })
+
+  it('Rage rolls nothing: “You can Seek while raging” only allows Seek (Player Core 2 p. 72)', () => {
+    const checks = actions
+      .filter((a) => {
+        const r = readAbility(a)
+        return r.check && r.outcomes.length
+      })
+      .map((a) => a.name)
+    const rage = feature('Rage').embedded.find((e) => e.name === 'Rage')!
+    expect(rage.check).toBeUndefined()
+    expect(usedAction(rage.body ?? '', checks)).toBeUndefined()
+    const s = hero(['Rage'])
+    const lines = resolveUse(s, rage, { name: 'Rage', level: 1, rng: () => 0.5 })
+    expect(lines.join(' ')).not.toMatch(/Perception|\(\d+/)
+    expect(usedAction('You can Seek the hidden door.', checks)).toBe('Seek')
   })
 })
