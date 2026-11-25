@@ -358,6 +358,8 @@ export interface Pf2eSheet extends SheetCommon {
     carry?: string[]
     /** A finisher was used this turn: no more attack actions (Player Core 2 p. 163). */
     finisher?: boolean
+    /** The initiative rolled this encounter (one roll, p. 434), kept until it ends. */
+    initiative?: number
   }
 }
 

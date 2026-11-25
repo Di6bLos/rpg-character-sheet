@@ -18,18 +18,22 @@ import {
   castPrepared,
   castSpontaneous,
   FOCUS_ATTR,
+  castBlocked,
   castEffect,
+  castRankFor,
   dailyPreparations,
   focusNumbers,
   focusPoolMax,
   fontSlots,
   heightenedRank,
+  payCast,
   refocus,
   setSlotMax,
   slotsFor,
   spellNumbers,
   spontaneousRank,
 } from '../utils/pf2eSpells'
+import { endPf2eTurn, startPf2eTurn } from '../utils/pf2eActions'
 import { defaultSheet } from '../utils/sheetDefaults'
 import { autoCreation, buildData as data, named } from './helpers/pf2e'
 
@@ -368,5 +372,63 @@ describe('pf2e focus spells for heroes without spellcasting', () => {
         return m ? [[k.slug, NAME[m[1]!]] as const] : []
       })
     expect(Object.fromEntries(said)).toEqual(FOCUS_ATTR)
+  })
+})
+
+describe('pf2e casting and the turn (Player Core pp. 302, 436)', () => {
+  const def = (name: string) => named(data.spells, name)
+
+  it('won’t cast while dead or unable to act', () => {
+    const s = caster('spontaneous')
+    expect(castBlocked(s, def('Fear'))).toBe('')
+    s.conditions = ['Paralyzed']
+    expect(castBlocked(s, def('Fear'))).toBe('You can’t act while paralyzed.')
+    s.conditions = []
+    s.dying = 4
+    expect(castBlocked(s, def('Fear'))).toBe('Your hero is dead.')
+  })
+
+  it('needs the actions on your turn, and an unspent reaction in an encounter', () => {
+    const s = caster('spontaneous')
+    startPf2eTurn(s)
+    s.turn!.actions = 1
+    expect(castBlocked(s, def('Fear'))).toBe('Needs 2 actions; 1 left')
+    s.turn!.actions = 0
+    expect(castBlocked(s, def('Shield'))).toBe('Needs 1 action; 0 left')
+    endPf2eTurn(s)
+    s.turn!.reaction = false
+    expect(castBlocked(s, def('Air Bubble'))).toBe('Reaction already used this round')
+  })
+
+  it('a reaction spell out of an encounter doesn’t spend the reaction; daily preparations restore it', () => {
+    const s = caster('spontaneous')
+    payCast(s, def('Air Bubble'), { attacks: 0 })
+    expect(s.turn?.reaction ?? true).toBe(true)
+    startPf2eTurn(s)
+    endPf2eTurn(s)
+    payCast(s, def('Air Bubble'), { attacks: 0 })
+    expect(s.turn?.reaction).toBe(false)
+    dailyPreparations(s)
+    expect(s.turn?.reaction).toBe(true)
+  })
+
+  it('spends the actions of a disrupted spell, with no attack counted', () => {
+    const s = caster('spontaneous')
+    startPf2eTurn(s)
+    payCast(s, def('Fear'), { actions: 2, attacks: 0 })
+    expect(s.turn).toMatchObject({ actions: 1, attacks: 0 })
+    payCast(s, def('Shield'), { attacks: 0 })
+    expect(s.turn?.actions).toBe(0)
+  })
+
+  it('casts from the picked rank only while it has a slot left (p. 297)', () => {
+    const s = caster('spontaneous')
+    const sc = s.spellcasting!
+    const fear = ref('Fear')
+    expect(castRankFor(sc, fear, 3)).toBe(3)
+    sc.slots[2]!.used = 1
+    expect(castRankFor(sc, fear, 3)).toBe(1)
+    sc.slots[0]!.used = 2
+    expect(castRankFor(sc, fear, 3)).toBe(1)
   })
 })

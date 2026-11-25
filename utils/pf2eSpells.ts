@@ -13,7 +13,9 @@ import type {
 import { type Rng, rollDie } from '~/utils/dice'
 import { setGiven, toggleEffect } from '~/utils/pf2eEffects'
 import { itemsDailyPrep } from '~/utils/pf2eInventory'
-import { adjusted, conditionValue, proficiency } from '~/utils/pf2ePlay'
+import { readCost } from '~/utils/pf2eAbilityRules'
+import { attacked, inEncounter } from '~/utils/pf2eActions'
+import { activeConditions, adjusted, conditionValue, isDead, proficiency } from '~/utils/pf2ePlay'
 import { type Pf2eCastRoll, castRolls, effectValue, spellRules } from '~/utils/pf2eSpellRules'
 
 /** Cantrips and focus spells heighten to half your level, rounded up (p. 298). */
@@ -87,6 +89,22 @@ const heightenNote = (spell: Pf2eSpellRef, rank: number) =>
  */
 export const spontaneousRank = (spell: Pf2eSpellRef, slotRank: number) =>
   spell.signature ? slotRank : spell.rank
+
+/** Ranks with a slot left that a repertoire spell can be cast from (its own rank or higher). */
+export const openRanks = (sc: Pf2eSpellcasting | undefined, spell: Pf2eSpellRef) =>
+  (sc?.slots ?? [])
+    .map((r, i) => ({ rank: i + 1, left: r.max - r.used }))
+    .filter((r) => r.rank >= spell.rank && r.left > 0)
+
+/** The slot rank to cast from: the one picked while it still has a slot left, else the lowest. */
+export function castRankFor(
+  sc: Pf2eSpellcasting | undefined,
+  spell: Pf2eSpellRef,
+  picked: number | undefined,
+) {
+  const open = openRanks(sc, spell)
+  return open.find((r) => r.rank === picked)?.rank ?? open[0]?.rank ?? spell.rank
+}
 
 /**
  * Spontaneous casting (p. 297): spend a slot of the spell's rank or higher. `sc` is the
@@ -185,9 +203,52 @@ export function dailyPreparations(s: Pf2eSheet): string {
   }
   s.focus.current = s.focus.max
   s.used = []
+  if (s.turn) s.turn.reaction = true
   itemsDailyPrep(s)
   const slots = sc || s.archetypeCasting?.length
   return `Daily preparations: ${slots ? 'spell slots, ' : ''}Focus Points and daily abilities restored.`
+}
+
+/** Conditions that keep the hero from acting at all, Cast a Spell included (pp. 444–446). */
+const CANT_ACT = ['Paralyzed', 'Petrified', 'Unconscious', 'Stunned']
+
+/**
+ * Why the hero can't cast this spell now, or '' (Player Core pp. 302, 436): dead, or a
+ * condition that keeps them from acting; on their turn, fewer actions left than it costs; a
+ * reaction spell once the reaction is spent in an encounter.
+ */
+export function castBlocked(s: Pf2eSheet, spell: Pf2eSpellDef | undefined, actions?: number) {
+  if (isDead(s)) return 'Your hero is dead.'
+  const on = activeConditions(s)
+  const stopped = CANT_ACT.find((c) => on.has(c))
+  if (stopped) return `You can’t act while ${stopped.toLowerCase()}.`
+  const cost = readCost(spell?.actions)
+  const t = s.turn
+  if (cost?.kind === 'reaction' && t && inEncounter(s) && !t.reaction)
+    return 'Reaction already used this round'
+  if (cost?.kind === 'actions' && t?.active) {
+    const n = actions ?? cost.min
+    if (t.actions < n) return `Needs ${n} action${n === 1 ? '' : 's'}; ${t.actions} left`
+  }
+  return ''
+}
+
+/**
+ * Pays for a cast (p. 302): its actions on your turn, the reaction in an encounter, and its
+ * spell attacks toward the multiple attack penalty (p. 402). A disrupted spell still costs
+ * its actions, with no attack made.
+ */
+export function payCast(
+  s: Pf2eSheet,
+  spell: Pf2eSpellDef,
+  o: { actions?: number; attacks: number },
+) {
+  const t = s.turn
+  const cost = readCost(spell.actions)
+  if (t && inEncounter(s) && cost?.kind === 'reaction') t.reaction = false
+  if (t?.active && cost?.kind === 'actions')
+    t.actions = Math.max(0, t.actions - (o.actions ?? cost.min))
+  if (o.attacks) attacked(s, o.attacks)
 }
 
 /** Slots for a level from the class's spells-per-day row; prepared slots start empty. */

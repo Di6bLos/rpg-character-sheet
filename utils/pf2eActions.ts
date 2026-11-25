@@ -35,6 +35,15 @@ export const newTurn = (): Turn => ({
 
 const turnOf = (s: Pf2eSheet) => (s.turn ??= newTurn())
 
+/**
+ * In an encounter (Player Core p. 434): initiative was rolled or a turn started, and the
+ * encounter hasn't ended. Out of one a reaction isn't spent and actions aren't counted.
+ */
+export const inEncounter = (s: Pf2eSheet) => {
+  const t = s.turn
+  return !!t && (t.active || t.round > 0 || t.initiative !== undefined)
+}
+
 function setCondition(s: Pf2eSheet, name: string, value: number) {
   if (value <= 0) {
     s.conditions = s.conditions.filter((c) => c !== name)
@@ -65,9 +74,12 @@ export function startPf2eTurn(s: Pf2eSheet): string {
   const cantAct =
     isDead(s) || s.conditions.includes('Paralyzed') || s.conditions.includes('Unconscious')
   let actions = 3 + (s.conditions.includes('Quickened') ? 1 : 0)
-  const stunned = conditionValue(s, 'Stunned')
+  // Stunned with a duration instead of a value takes every action while it lasts (p. 446).
+  const stunnedFor = s.conditions.includes('Stunned') && s.conditionValues?.Stunned === undefined
+  const stunned = stunnedFor ? actions : conditionValue(s, 'Stunned')
   const stunLoss = Math.min(stunned, actions)
-  if (stunned) {
+  if (stunnedFor) notes.push('Stunned: you can’t act while it lasts.')
+  else if (stunned) {
     setCondition(s, 'Stunned', stunned - stunLoss)
     notes.push(`Stunned: ${stunLoss} action${stunLoss === 1 ? '' : 's'} lost.`)
   }
@@ -139,6 +151,7 @@ export function timePasses(s: Pf2eSheet, period: 'minute' | '10min' | 'hour'): s
         ? ['turn', 'round', 'minute', '10min']
         : ['turn', 'round', 'minute', '10min', 'hour']
   refreshUses(s, periods)
+  if (s.turn) s.turn.reaction = true
   const ended = endPf2eEffects(s, [
     'startOfTurn',
     'endOfTurn',
@@ -318,7 +331,10 @@ export function blockedReason(
   return finisherBlock(s, r)
 }
 
-/** Pays for a use: actions or the reaction while the turn tracker runs, flourish, frequency. */
+/**
+ * Pays for a use: actions on your turn, the reaction in an encounter (out of one it isn't
+ * counted), flourish, frequency.
+ */
 export function payFor(
   s: Pf2eSheet,
   r: Pf2eAbilityRules,
@@ -326,7 +342,7 @@ export function payFor(
 ) {
   const t = s.turn
   if (t?.active && r.cost?.kind === 'actions') t.actions -= opts.actions ?? r.cost.min
-  if (t && r.cost?.kind === 'reaction') t.reaction = false
+  if (t && inEncounter(s) && r.cost?.kind === 'reaction') t.reaction = false
   if (t?.active && r.traits.some((x) => x.toLowerCase() === 'flourish')) t.flourish = true
   if (r.frequency) spendUse(s, opts.name, r.frequency, opts.target)
   return spendFinisher(s, r)
@@ -508,11 +524,8 @@ export function resolveUse(s: Pf2eSheet, r: Pf2eAbilityRules, o: Pf2eUseOptions)
       `You have ${s.tempHp} temporary Hit Points (the higher of these ${amount} and any you had).`,
     )
   }
-  if (toggle?.mode === 'toggle' && !s.effects?.on.includes(toggle.name)) {
+  if (toggle?.mode === 'toggle' && !s.effects?.on.includes(toggle.name))
     lines.push(toggleEffect(s, toggle.name, o.level))
-    const t = s.turn
-    if (toggle.ends === 'endOfNextTurn' && t?.active) t.carry = [...(t.carry ?? []), toggle.name]
-  }
   const mine = r.conditions.filter((c) => c.self && !c.degree)
   if (mine.length)
     lines.push(

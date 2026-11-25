@@ -303,6 +303,7 @@ export const PF2E_RULE_PATTERNS = {
   strideTwice: /\bStride (?:up to )?(twice|two times|three times)\b/,
   strideOnce:
     /\b(?:You |you |then |can )?(Stride|Step)\b(?! (?:up to )?(?:twice|two times|three times))/,
+  freeWhen: /[^.]*\bas a free action if\b[^.]*\./,
   mapCounted:
     /\bcounts? as (two|three) attacks (?:when (?:calculating|determining)|for(?: the purposes? of (?:calculating|determining)| calculating)?|toward) your multiple attack penalty/i,
   mapNone: /\b(?:doesn't|does not|don't) count toward your multiple attack penalty/i,
@@ -424,6 +425,9 @@ export function readCost(a: Pf2eActionCost | undefined): Pf2eCost | undefined {
   if (typeof a === 'number') return { kind: 'actions', min: a, max: a }
   const v = a.trim().toLowerCase()
   if (v === 'reaction' || v.startsWith('↺') || v.startsWith('reaction')) return { kind: 'reaction' }
+  // "free or 1" (Devise a Stratagem): free only in a case its text names, so 1 action.
+  const freeOr = /^free or (\d)$/.exec(v)
+  if (freeOr) return { kind: 'actions', min: Number(freeOr[1]), max: Number(freeOr[1]) }
   if (v === 'free' || v === '◇' || v.startsWith('free')) return { kind: 'free' }
   const glyphs = [...v.matchAll(/◆+/g)].map((m) => m[0].length)
   if (glyphs.length) return { kind: 'actions', min: glyphs[0]!, max: glyphs.at(-1)! }
@@ -1056,7 +1060,11 @@ export function readAbility(input: Pf2eAbilityInput): Pf2eAbilityRules {
     embedded: inner.map((e) => ({ ...readAbility(e), body: e.text })),
   }
   if (cost) rules.cost = cost
-  const costNote = input.cost ?? field(P.costField, text)
+  const freeWhen =
+    typeof input.actions === 'string' && /^free or/i.test(input.actions)
+      ? P.freeWhen.exec(text)?.[0]
+      : undefined
+  const costNote = input.cost ?? field(P.costField, text) ?? freeWhen
   if (costNote) rules.costNote = costNote
   if (input.usage) rules.usage = input.usage
   if (frequency) rules.frequency = frequency

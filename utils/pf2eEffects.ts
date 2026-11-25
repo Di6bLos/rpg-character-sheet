@@ -634,6 +634,8 @@ export function toggleEffect(s: Pf2eSheet, name: string, level: number, value?: 
   const effects = (s.effects ??= { on: [], given: [] })
   if (effects.on.includes(name)) return endToggle(s, name)
   effects.on = [...effects.on, name]
+  // Turned on during your turn, it lasts through the end of your next one.
+  if (def.ends === 'endOfNextTurn' && s.turn?.active) s.turn.carry = [...(s.turn.carry ?? []), name]
   if (value !== undefined) effects.values = { ...effects.values, [name]: value }
   const temp = def.effects.find((e) => e.kind === 'tempHp')
   if (temp) {

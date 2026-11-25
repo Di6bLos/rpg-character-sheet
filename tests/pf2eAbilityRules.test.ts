@@ -16,8 +16,11 @@ import {
 } from '../utils/pf2eAbilityRules'
 import {
   blockedReason,
+  endPf2eEncounter,
   endPf2eTurn,
   featStatLines,
+  inEncounter,
+  newTurn,
   mapIndex,
   payFor,
   resolveUse,
@@ -209,7 +212,7 @@ describe('pf2e ability rules: Player Core abilities', () => {
     expect(readCost('single action to three actions')).toEqual({ kind: 'actions', min: 1, max: 3 })
     expect(readCost('↺')).toEqual({ kind: 'reaction' })
     expect(readCost('◇')).toEqual({ kind: 'free' })
-    expect(readCost('free or 1')).toEqual({ kind: 'free' })
+    expect(readCost('free or 1')).toEqual({ kind: 'actions', min: 1, max: 1 })
     expect(readCost('1 to 3')).toEqual({ kind: 'actions', min: 1, max: 3 })
     expect(readCost('reaction or 2')).toEqual({ kind: 'reaction' })
     expect(readFrequency('once per 10 minutes')).toMatchObject({ period: '10min', times: 1 })
@@ -644,5 +647,60 @@ describe('pf2e ability rules: review fixes', () => {
     expect(uncounted(s, strike, 'failure', 1)).toBe(true)
     expect(s.turn!.attacks).toBe(1)
     expect(uncounted(s, strike, 'critical failure', 1)).toBe(false)
+  })
+  it('spends a reaction only in an encounter; time passing gives it back (p. 434)', () => {
+    const r = readAbility(find(feats, 'Reactive Shield'))
+    expect(r.cost).toEqual({ kind: 'reaction' })
+    const s = hero(['Reactive Shield'])
+    payFor(s, r, { name: r.name })
+    expect(s.turn?.reaction ?? true).toBe(true)
+    startPf2eTurn(s)
+    endPf2eTurn(s)
+    payFor(s, r, { name: r.name })
+    expect(s.turn?.reaction).toBe(false)
+    expect(blockedReason(s, r)).toBe('Reaction already used this round')
+    endPf2eEncounter(s)
+    s.turn!.reaction = false
+    timePasses(s, 'minute')
+    expect(s.turn?.reaction).toBe(true)
+  })
+
+  it('stunned for a duration, with no value, takes every action (Player Core p. 446)', () => {
+    const s = hero([])
+    s.conditions = ['Stunned', 'Quickened']
+    expect(startPf2eTurn(s)).toContain('can’t act while it lasts')
+    expect(s.turn?.actions).toBe(0)
+    expect(s.conditions).toContain('Stunned')
+  })
+
+  it('an end-of-next-turn toggle turned on by hand during your turn lasts through your next', () => {
+    const s = hero(['Panache'])
+    startPf2eTurn(s)
+    toggleEffect(s, 'Panache (until your next turn ends)', 1)
+    endPf2eTurn(s)
+    expect(s.effects?.on).toContain('Panache (until your next turn ends)')
+    startPf2eTurn(s)
+    endPf2eTurn(s)
+    expect(s.effects?.on).not.toContain('Panache (until your next turn ends)')
+  })
+
+  it('Devise a Stratagem costs 1 action, free only for a lead’s subject (Player Core 2 p. 103)', () => {
+    const r = action('Devise a Stratagem')
+    expect(r.cost).toEqual({ kind: 'actions', min: 1, max: 1 })
+    expect(r.costNote).toMatch(/as a free action if you're aware that creature could help answer/)
+    expect(readCost('free')).toEqual({ kind: 'free' })
+  })
+
+  it('keeps the rolled initiative on the sheet through the turns, until the encounter ends', () => {
+    const s = hero([])
+    expect(inEncounter(s)).toBe(false)
+    s.turn = { ...newTurn(), initiative: 17 }
+    expect(inEncounter(s)).toBe(true)
+    startPf2eTurn(s)
+    endPf2eTurn(s)
+    expect(s.turn.initiative).toBe(17)
+    endPf2eEncounter(s)
+    expect(s.turn.initiative).toBeUndefined()
+    expect(inEncounter(s)).toBe(false)
   })
 })

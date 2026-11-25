@@ -6,7 +6,7 @@
 // utils/pf2eActions.ts; abilities spend from it in the Actions panel.
 import type { Pf2eSheet } from '~/types/sheets'
 import { rollCheck, showOutcome, sign } from '~/utils/dice'
-import { endPf2eEncounter, endPf2eTurn, startPf2eTurn } from '~/utils/pf2eActions'
+import { endPf2eEncounter, endPf2eTurn, newTurn, startPf2eTurn } from '~/utils/pf2eActions'
 import { adjusted } from '~/utils/pf2ePlay'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
@@ -14,13 +14,18 @@ const { claim, resultIn } = useResultOwner()
 const sheet = computed(() => draft.value.sheet)
 const turn = computed(() => sheet.value.turn)
 const active = computed(() => !!turn.value?.active)
-const inCombat = computed(() => active.value || (turn.value?.round ?? 0) > 0)
+const inCombat = computed(
+  () => active.value || (turn.value?.round ?? 0) > 0 || turn.value?.initiative !== undefined,
+)
 const actionsLeft = computed(() => (active.value ? (turn.value?.actions ?? 0) : 0))
 const maxActions = computed(() => Math.max(3, actionsLeft.value))
 const reactionReady = computed(() => turn.value?.reaction !== false)
 
-/** The initiative rolled this encounter: one roll, until the encounter ends. */
-const rolled = ref<number | null>(null)
+/**
+ * The initiative rolled this encounter: one roll, kept on the sheet's turn so a reload doesn't
+ * allow another, until the encounter ends.
+ */
+const rolled = computed(() => turn.value?.initiative ?? null)
 
 const initiative = computed(() => {
   const p = sheet.value.saves.find((x) => x.label === 'Perception')
@@ -38,7 +43,8 @@ function rollInitiative() {
   if (!canEdit.value || initiativeWhy.value) return
   claim('turn:init', () => {
     const r = rollCheck(initiative.value.value)
-    rolled.value = r.total
+    const t = (sheet.value.turn ??= newTurn())
+    t.initiative = r.total
     const nat = r.natural ? `, natural ${r.natural}` : ''
     const note = initiative.value.note ? ` (${initiative.value.note})` : ''
     const line = `Initiative: ${r.total} (${r.d20} ${sign(initiative.value.value)}${nat})${note}`
@@ -56,7 +62,6 @@ function step() {
 
 function finish() {
   if (!canEdit.value) return
-  rolled.value = null
   claim('turn:end', () => say(endPf2eEncounter(sheet.value)))
 }
 
@@ -66,7 +71,7 @@ const nextAttack = computed(() =>
 )
 const heading = computed(() => {
   if (!inCombat.value) return 'Not in combat'
-  const round = `Round ${turn.value?.round ?? 1}`
+  const round = turn.value?.round ? `Round ${turn.value.round}` : 'Initiative rolled'
   return active.value ? `${round} · your turn` : `${round} · waiting for your turn`
 })
 const status = computed(() => {
