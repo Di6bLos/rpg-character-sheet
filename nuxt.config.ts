@@ -33,6 +33,12 @@ export default defineNuxtConfig({
   },
 
   compatibilityDate: '2024-11-01',
+
+  // .local/ holds local-only rules data and build output (gitignored), never app code: thousands
+  // of files the dev server shouldn't watch. A headless Chrome profile left there once kept the
+  // server restarting on a dangling socket.
+  ignore: ['.local/**'],
+  vite: { server: { watch: { ignored: ['**/.local/**'] } } },
   devtools: { enabled: true },
 
   modules: ['@pinia/nuxt'],
