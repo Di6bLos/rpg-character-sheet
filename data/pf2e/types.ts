@@ -241,6 +241,8 @@ export type Pf2eEffect =
       cumulativeWith?: string[]
       /** Only for these actions' checks, rolled from the Actions panel (Make an Impression). */
       actions?: string[]
+      /** From this level on (a doctrine's or specialization's later benefit). */
+      level?: number
     }
   /** A different multiple attack penalty (the Flurry edge against hunted prey). */
   | { kind: 'map'; second: number; third: number; agileSecond: number; agileThird: number }
@@ -257,9 +259,10 @@ export type Pf2eEffect =
       kind: 'damageDice'
       /** Dice by level: the last entry at or below the hero's level applies. */
       dice: [level: number, dice: string][]
-      when: 'offGuard' | 'huntedPrey' | 'stratagem'
-      /** Which Strikes: agile, finesse or ranged (sneak attack). */
-      weapons?: 'agileFinesseRanged'
+      /** `always`: while the effect is on (Qi Form's 1d6, Weapon Surge's spirit dice). */
+      when: 'offGuard' | 'huntedPrey' | 'stratagem' | 'always'
+      /** Which Strikes: agile, finesse or ranged (sneak attack), or unarmed (Inner Upheaval). */
+      weapons?: 'agileFinesseRanged' | 'unarmed'
       label: string
     }
   /** Temporary Hit Points when turned on: level + CON (Rage), level, half level, a number. */
@@ -276,15 +279,24 @@ export type Pf2eEffect =
       to: Pf2eDegreeName
       /** Only against these effects ("a fear effect"): shown on the roll, not applied. */
       against?: string
+      level?: number
     }
   /** A proficiency rank the ability raises the statistic to (Juggernaut: Fortitude master). */
   | {
       kind: 'proficiency'
       stat: 'Fortitude' | 'Reflex' | 'Will' | 'Perception' | 'Class DC' | 'AC' | 'attack' | 'spell'
       rank: Pf2eRank
+      level?: number
     }
   /** Resistance the hero has, by an amount or a formula, plus `add` (Raging Resistance: 3 + CON). */
-  | { kind: 'resistance'; type: string; amount: Pf2eAmount; add?: number; min?: number }
+  | {
+      kind: 'resistance'
+      type: string
+      amount: Pf2eAmount
+      add?: number
+      min?: number
+      level?: number
+    }
   /** The fist's damage die (Powerful Fist: d6). */
   | { kind: 'fistDie'; die: number }
 

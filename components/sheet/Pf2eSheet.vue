@@ -118,6 +118,14 @@ function rollSave(label: string, bonus: number) {
 
 const resistances = computed(() => resistancesNow(sheet.value, draft.value.level))
 
+watch(
+  () => draft.value.level,
+  (level) => {
+    if (canEdit.value && sheet.value.level !== level) sheet.value.level = level
+  },
+  { immediate: true },
+)
+
 const strikesApi = providePf2eStrikes()
 const { targetAc, damageFlags, conditionsOffered, strikes, nextAttack } = strikesApi
 const turnActive = computed(() => !!sheet.value.turn?.active)

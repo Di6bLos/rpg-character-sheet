@@ -33,6 +33,8 @@ import {
   spontaneousRank,
 } from '~/utils/pf2eSpells'
 import { defaultActions, spellRules } from '~/utils/pf2eSpellRules'
+import { readCost } from '~/utils/pf2eAbilityRules'
+import { attacked } from '~/utils/pf2eActions'
 import { loreHtml } from '~/utils/loreText'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
@@ -87,9 +89,26 @@ function run(message: string) {
 }
 
 // --- What a cast rolls ---------------------------------------------------------------
-/** The target's AC for spell attacks, and which attack this is for MAP (p. 402). */
-const targetAc = ref<number | null>(null)
-const attackNumber = ref(0)
+/**
+ * The target's AC for spell attacks, shared with the Strikes table, and which attack this is
+ * for MAP (p. 402): the turn tracker's count of attacks this turn, which the select can change.
+ */
+const { targetAc, nextAttack } = usePf2eStrikes()
+const attackNumber = ref(nextAttack.value)
+watch(nextAttack, (n) => (attackNumber.value = n))
+
+/**
+ * While the turn tracker runs, a cast spends its actions (or the reaction), and a spell
+ * attack counts toward the multiple attack penalty for Strikes and the next spell attack.
+ */
+function payCast(def: Pf2eSpellDef) {
+  const t = sheet.value.turn
+  const cost = readCost(def.actions)
+  if (t && cost?.kind === 'reaction') t.reaction = false
+  if (t?.active && cost?.kind === 'actions')
+    t.actions = Math.max(0, t.actions - (actionsOf(def) ?? cost.min))
+  if (spellRules(def).attack) attacked(sheet.value)
+}
 const knownIds = computed(() => [
   ...(sc.value?.cantrips ?? []),
   ...(sc.value?.spells ?? []),
@@ -126,6 +145,7 @@ function cast(message: string, def: Pf2eSpellDef | undefined, rank: number) {
     attackNumber: attackNumber.value,
     targetAc: targetAc.value,
   })
+  payCast(def)
   say(`${message} ${r.text}`.trim())
   const effect = spellRules(def).effect
   const offer = effect && !effect.self ? effect.def.name : undefined

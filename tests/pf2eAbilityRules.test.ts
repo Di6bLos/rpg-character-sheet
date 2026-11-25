@@ -376,6 +376,19 @@ describe('pf2e abilities in play', () => {
     expect(shiftedDegree(s, 'Fortitude', 'failure').degree).toBe('failure')
   })
 
+  it('a later benefit waits for its level: Warpriest’s fifth doctrine at 15th', () => {
+    const doctrine = classes.flatMap((c) => c.subclasses).find((x) => x.name === 'Warpriest')!
+    const r = readAbility(doctrine)
+    expect(r.degreeShifts).toEqual([
+      { save: 'Fortitude', from: 'success', to: 'critical success', level: 15 },
+    ])
+    const s = hero([])
+    s.feats = [{ type: 'Doctrine', level: '1', action: '', name: 'Warpriest', desc: doctrine.text }]
+    expect(shiftedDegree(s, 'Fortitude', 'success').degree).toBe('success')
+    s.level = 15
+    expect(shiftedDegree(s, 'Fortitude', 'success').degree).toBe('critical success')
+  })
+
   it('Bravery’s against-fear upgrade comes back as a note', () => {
     const s = hero(['Bravery'])
     const out = shiftedDegree(s, 'Will', 'success')

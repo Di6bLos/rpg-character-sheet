@@ -23,7 +23,7 @@ const BY_NAME = new Map(PF2E_EFFECTS.map((e) => [e.name, e]))
 /** A sheet's feat as the parser reads it. */
 export const featInput = (f: Pf2eFeat) => ({
   name: f.name,
-  text: f.desc,
+  text: f.desc.replace(/\\n/g, '\n'),
   actions: f.action,
   ...(f.frequency ? { frequency: f.frequency } : {}),
   ...(f.trigger ? { trigger: f.trigger } : {}),
@@ -79,6 +79,7 @@ export function derivedEffects(r: Pf2eAbilityRules, book = ''): Pf2eEffectDef[] 
       type: m.type,
       ...(m.skills ? { skills: m.skills } : {}),
       ...(m.actions ? { actions: m.actions } : {}),
+      ...(m.level ? { level: m.level } : {}),
     }
     if (useIt || m.conditional) {
       sometimes.push(effect)
@@ -91,6 +92,7 @@ export function derivedEffects(r: Pf2eAbilityRules, book = ''): Pf2eEffectDef[] 
       type: x.type,
       amount: x.amount,
       ...(x.min ? { min: x.min } : {}),
+      ...(x.level ? { level: x.level } : {}),
     }
     if (useIt || x.conditional) {
       sometimes.push(effect)
@@ -201,7 +203,10 @@ export function activeEffects(s: Pf2eSheet): Pf2eActiveEffect[] {
   const own = ownEffects(s)
     .filter((e) => e.mode === 'permanent' || on.has(e.name))
     .filter((e) => !e.requires || on.has(e.requires))
-    .map((def) => ({ def }))
+    .map((def) => {
+      const value = s.effects?.values?.[def.name]
+      return value === undefined ? { def } : { def, value }
+    })
   const given = (s.effects?.given ?? []).flatMap((g) => {
     const def = BY_NAME.get(g.name)
     return def ? [{ def, value: g.value }] : []
@@ -209,10 +214,12 @@ export function activeEffects(s: Pf2eSheet): Pf2eActiveEffect[] {
   return [...own, ...given]
 }
 
+/** Effects of a kind that are on, those that start at a higher level than the hero's left out. */
 const allOf = <K extends Pf2eEffect['kind']>(s: Pf2eSheet, kind: K) =>
   activeEffects(s).flatMap((a) =>
     a.def.effects
       .filter((e): e is Extract<Pf2eEffect, { kind: K }> => e.kind === kind)
+      .filter((e) => !('level' in e) || (e.level ?? 1) <= (s.level ?? 1))
       .map((effect) => ({ effect, active: a })),
   )
 
@@ -482,7 +489,17 @@ export function endPf2eEffects(s: Pf2eSheet, when: Pf2eEnds[]): string[] {
     const ends = pf2eEffectDef(s, n)?.ends
     return ends && when.includes(ends)
   })
-  return ending.map((n) => endToggle(s, n))
+  const out = ending.map((n) => endToggle(s, n))
+  const given = s.effects?.given ?? []
+  const lapsed = given.filter((g) => {
+    const ends = BY_NAME.get(g.name)?.ends
+    return ends && when.includes(ends)
+  })
+  if (lapsed.length && s.effects) {
+    s.effects.given = given.filter((g) => !lapsed.includes(g))
+    out.push(...lapsed.map((g) => `${g.name.replace(' (ally)', '')} ends.`))
+  }
+  return out
 }
 
 export interface Pf2eDamageFlags {
@@ -505,10 +522,12 @@ export function extraDice(
     if (e.when === 'huntedPrey' && !flags.huntedPrey) return []
     if (e.when === 'stratagem' && !flags.stratagem) return []
     const fits =
-      e.weapons !== 'agileFinesseRanged' ||
-      strike.ranged ||
-      traits.includes('agile') ||
-      traits.includes('finesse')
+      e.weapons === 'unarmed'
+        ? traits.includes('unarmed')
+        : e.weapons !== 'agileFinesseRanged' ||
+          strike.ranged ||
+          traits.includes('agile') ||
+          traits.includes('finesse')
     const dice = [...e.dice].reverse().find(([at]) => at <= level)?.[1]
     return fits && dice ? [{ dice, label: e.label }] : []
   })
@@ -569,6 +588,7 @@ export const recoveryDcChange = (s: Pf2eSheet) =>
 function endToggle(s: Pf2eSheet, name: string) {
   const effects = (s.effects ??= { on: [], given: [] })
   effects.on = effects.on.filter((n) => n !== name)
+  if (effects.values) delete effects.values[name]
   const temp = effects.tempHp
   if (temp?.from !== name) return `${name} ends.`
   delete effects.tempHp
@@ -578,16 +598,21 @@ function endToggle(s: Pf2eSheet, name: string) {
   return `${name} ends: you lose its ${lost} remaining temporary Hit Points.`
 }
 
-/** Turns one of the hero's toggles on or off; Rage's temp HP don't stack with others. */
-export function toggleEffect(s: Pf2eSheet, name: string, level: number): string {
+/**
+ * Turns one of the hero's toggles on or off; Rage's temp HP don't stack with others. `value`
+ * is a spell's number at the rank it was cast (Competitive Edge +2 at 7th, False Vitality's
+ * temp HP), kept while it's on.
+ */
+export function toggleEffect(s: Pf2eSheet, name: string, level: number, value?: number): string {
   const def = pf2eEffectDef(s, name)
   if (!def || def.mode !== 'toggle') return `${name} isn't something you turn on.`
   const effects = (s.effects ??= { on: [], given: [] })
   if (effects.on.includes(name)) return endToggle(s, name)
   effects.on = [...effects.on, name]
+  if (value !== undefined) effects.values = { ...effects.values, [name]: value }
   const temp = def.effects.find((e) => e.kind === 'tempHp')
   if (temp) {
-    const amount = amountAt(temp.formula, level, s.attrs.CON)
+    const amount = value ?? amountAt(temp.formula, level, s.attrs.CON)
     if (amount > s.tempHp) {
       s.tempHp = amount
       effects.tempHp = { from: name, amount }

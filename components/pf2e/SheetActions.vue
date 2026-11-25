@@ -136,33 +136,18 @@ function entryFor(
 
 const mine = computed<Entry[]>(() =>
   sheet.value.feats.flatMap((raw, i) => {
-    const f = { ...raw, ...patches.value.get(i) }
+    const f = { ...raw, ...patches.value.get(i), desc: raw.desc.replace(/\\n/g, '\n') }
     const r = featRules(f)
     const same = r.embedded.some((e) => e.name === f.name)
     const own = usable(r) && !same ? [entryFor(`f${i}`, f.name, r, f.desc)] : []
     const inner = r.embedded
       .filter((e) => e.cost || e.frequency || e.trigger)
       .map((e, j) =>
-        entryFor(
-          `f${i}e${j}`,
-          e.name,
-          e,
-          embeddedText(f.desc, e.name),
-          e.name === f.name ? undefined : f.name,
-        ),
+        entryFor(`f${i}e${j}`, e.name, e, e.body ?? '', e.name === f.name ? undefined : f.name),
       )
     return [...own, ...inner]
   }),
 )
-
-/** The text of an action written inside a feat, from its heading to the next one. */
-function embeddedText(desc: string, name: string) {
-  const at = desc.indexOf(name)
-  if (at < 0) return desc
-  const rest = desc.slice(at + name.length)
-  const next = rest.search(/\n#{1,4} |\n\s*\*\*[^*\n]+\*\*\s*[◆↺◇]/)
-  return (next < 0 ? rest : rest.slice(0, next)).replace(/^[^\n]*\n/, '')
-}
 
 const mineNames = computed(() => new Set(mine.value.map((e) => e.name)))
 
@@ -225,10 +210,11 @@ const choicesFor = (e: Entry) => {
   const r = checkOf(e)
   return r?.check ? checkChoices(sheet.value, r, e.via?.name ?? e.name) : []
 }
+/** The Strikes an ability can make, weapons before the fist. */
 const weaponsFor = (e: Entry) =>
-  strikesApi.strikes.value.filter((w) =>
-    e.rules.strike?.melee ? !w.ranged : e.rules.strike?.ranged ? w.ranged : true,
-  )
+  strikesApi.strikes.value
+    .filter((w) => (e.rules.strike?.melee ? !w.ranged : e.rules.strike?.ranged ? w.ranged : true))
+    .sort((a, b) => Number(a.name === 'Fist') - Number(b.name === 'Fist'))
 const tiersFor = (e: Entry) => {
   const tiers = checkOf(e)?.check?.tiers ?? []
   const order: Pf2eRank[] = ['U', 'T', 'E', 'M', 'L']

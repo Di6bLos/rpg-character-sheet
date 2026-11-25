@@ -231,7 +231,7 @@ export function effectOnSelf(s: Pf2eSheet, spell: Pf2eSpellDef, rank: number, le
   if (!def) return ''
   if (def.mode === 'toggle') {
     if (s.effects?.on.includes(def.name)) return `${def.name} is already on.`
-    return toggleEffect(s, def.name, level)
+    return toggleEffect(s, def.name, level, effectValue(spell, def, rank))
   }
   const value = effectValue(spell, def, rank)
   setGiven(s, def.name, true, value)

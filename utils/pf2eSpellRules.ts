@@ -978,9 +978,7 @@ export function partsAt(
 /** A scaling effect's value at a rank (Heroism +2 from 6th, +3 from 9th; Enlarge +4 from 4th). */
 export function effectValue(spell: Pf2eSpellDef, def: Pf2eEffectDef, rank: number) {
   if (!def.values?.length) return undefined
-  const reached = spell.heightened?.step
-    ? []
-    : (spell.heightened?.ranks ?? []).filter((r) => r <= rank)
+  const reached = (spell.heightened?.ranks ?? []).filter((r) => r <= rank)
   return def.values[Math.min(def.values.length - 1, reached.length)]
 }
 

@@ -158,6 +158,11 @@ export interface Pf2eFeat {
 }
 
 export interface Pf2eSheet extends SheetCommon {
+  /**
+   * The character's level, copied from the character by the sheet so rules on the sheet
+   * alone can tell when a later benefit starts (Warpriest's fifth doctrine at 15th).
+   */
+  level?: number
   heritage: string
   subclass: string
   deity: string
@@ -213,6 +218,8 @@ export interface Pf2eSheet extends SheetCommon {
     on: string[]
     given: { name: string; value?: number }[]
     tempHp?: { from: string; amount: number }
+    /** A toggle's number at the rank its spell was cast (Competitive Edge +2), by name. */
+    values?: Record<string, number>
   }
   /**
    * Uses of abilities with a frequency since daily preparations (which clear it): the name for

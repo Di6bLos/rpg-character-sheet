@@ -96,6 +96,8 @@ export interface Pf2eSelfMod {
   conditional: boolean
   /** The sentence it comes from, for the player. */
   sentence: string
+  /** From this level on (Warpriest's "Fifth Doctrine (15th)"). */
+  level?: number
 }
 
 export interface Pf2eDegreeShift {
@@ -104,11 +106,13 @@ export interface Pf2eDegreeShift {
   to: Pf2eDegreeName
   /** "against a fear effect": shown as a note, not applied by itself. */
   against?: string
+  level?: number
 }
 
 export interface Pf2eProficiencyUp {
   stat: 'Fortitude' | 'Reflex' | 'Will' | 'Perception' | 'Class DC' | 'AC' | 'attack' | 'spell'
   rank: Pf2eRank
+  level?: number
 }
 
 export interface Pf2eResistance {
@@ -116,6 +120,7 @@ export interface Pf2eResistance {
   amount: Pf2eAmount
   conditional: boolean
   sentence: string
+  level?: number
   /** "(minimum 1)". */
   min?: number
 }
@@ -162,6 +167,8 @@ export interface Pf2eAbilityRules {
   grants: string[]
   /** Actions written inside it ("## Rage ◆"), read on their own. */
   embedded: Pf2eAbilityRules[]
+  /** An embedded action's own text. */
+  body?: string
 }
 
 export type { Pf2eAmount, Pf2eDegreeName, Pf2eEnds }
@@ -343,6 +350,9 @@ export const PF2E_RULE_PATTERNS = {
     /\b(?:when|whenever|if|while|after|until|as long as|each time|the first time|before|for 1|for \d+|against|instead)\b/i,
   notAnAction:
     /^(?:Fortitude|Reflex|Will|Perception|AC|Armor|Hit Points|Hardness|Speed)\b|\bDCs?\b/,
+  levelLabel: /^\s*[-•]?\s*\*\*[^*]*\((\d+)(?:st|nd|rd|th)\)\*\*/,
+  levelLead: /^(?:At|Starting at|Beginning at|From) (\d+)(?:st|nd|rd|th) level\b/,
+  levelHeading: /^#{1,4} [^\n]*?Level (\d+)\s*$/gm,
   labelledOption: /^(?:[-•]\s*)?\*\*[^*]+\*\*/,
   youAndAllies: /\byou and (?:all |your |each |any )*(?:allies|ally)\b/i,
   embeddedHeading: /^#{1,4} ([^\n]+?) ([◆↺◇]+(?: to [◆↺◇]+)?)\s*$/gm,
@@ -624,15 +634,16 @@ function readProficiency(text: string): Pf2eProficiencyUp[] {
   for (const m of text.matchAll(P.proficiency)) {
     const what = m[1]!.toLowerCase()
     const rank = RANK[m[2]!.toLowerCase()]!
+    const at = gate(text, m.index ?? 0)
     const save = /^(fortitude|reflex|will) saves?$/.exec(what)?.[1]
-    if (save) out.push({ stat: (save[0]!.toUpperCase() + save.slice(1)) as 'Will', rank })
-    else if (/^perception$/.test(what)) out.push({ stat: 'Perception', rank })
-    else if (/class dc/.test(what)) out.push({ stat: 'Class DC', rank })
-    else if (/spell attack/.test(what)) out.push({ stat: 'spell', rank })
+    if (save) out.push({ stat: (save[0]!.toUpperCase() + save.slice(1)) as 'Will', rank, ...at })
+    else if (/^perception$/.test(what)) out.push({ stat: 'Perception', rank, ...at })
+    else if (/class dc/.test(what)) out.push({ stat: 'Class DC', rank, ...at })
+    else if (/spell attack/.test(what)) out.push({ stat: 'spell', rank, ...at })
     else if (/unarmored defense|unarmed defense/.test(what) && !/weapon/.test(what))
-      out.push({ stat: 'AC', rank })
+      out.push({ stat: 'AC', rank, ...at })
     else if (/simple (?:weapons|and martial)/.test(what) && /unarmed attacks/.test(what))
-      out.push({ stat: 'attack', rank })
+      out.push({ stat: 'attack', rank, ...at })
   }
   return out
 }
@@ -650,6 +661,7 @@ function readResistances(text: string): Pf2eResistance[] {
         ...(m[2] ? { min: Number(m[2]) } : {}),
         conditional: isConditional(s),
         sentence: s,
+        ...gate(text, text.indexOf(s)),
       })
     }
     for (const m of s.matchAll(P.resistanceTo)) {
@@ -660,10 +672,32 @@ function readResistances(text: string): Pf2eResistance[] {
         ...(m[3] ? { min: Number(m[3]) } : {}),
         conditional: isConditional(s),
         sentence: s,
+        ...gate(text, text.indexOf(s)),
       })
     }
   }
   return out
+}
+
+/**
+ * The level a part of an ability starts at: its option's label ("**Fifth Doctrine (15th)**"),
+ * "At 13th level," before it in its sentence, or the heading over it ("## Specialization
+ * Ability · Level 7"). Undefined from 1st.
+ */
+function gateAt(text: string, index: number): number | undefined {
+  const lineStart = text.lastIndexOf('\n', index) + 1
+  const line = text.slice(lineStart, index)
+  const label = P.levelLabel.exec(line)
+  if (label) return Number(label[1])
+  const sentence = line.split(/(?<=[.!?])\s+/).at(-1) ?? ''
+  const at = P.levelLead.exec(sentence)
+  if (at) return Number(at[1])
+  const heading = [...text.slice(0, index).matchAll(P.levelHeading)].at(-1)
+  return heading ? Number(heading[1]) : undefined
+}
+const gate = (text: string, index: number) => {
+  const level = gateAt(text, index)
+  return level && level > 1 ? { level } : {}
 }
 
 /** A sentence that says when it applies. */
@@ -693,6 +727,7 @@ function readSelfMods(text: string): Pf2eSelfMod[] {
           qualifier: rest,
           conditional: actions.length ? rest !== '' : isConditional(s) || rest !== '',
           sentence: s,
+          ...gate(text, text.indexOf(s)),
         })
     }
   }
@@ -810,6 +845,7 @@ function readDegreeShifts(text: string): Pf2eDegreeShift[] {
         from: one[1]!.toLowerCase() as Pf2eDegreeName,
         to: one[4]!.toLowerCase() as Pf2eDegreeName,
         ...(one[3] ? { against: one[3] } : {}),
+        ...gate(text, text.indexOf(s)),
       })
       continue
     }
@@ -820,6 +856,7 @@ function readDegreeShifts(text: string): Pf2eDegreeShift[] {
         from: all[1]!.toLowerCase() as Pf2eDegreeName,
         to: all[3]!.toLowerCase() as Pf2eDegreeName,
         ...(all[2] ? { against: all[2] } : {}),
+        ...gate(text, text.indexOf(s)),
       })
   }
   return out
@@ -964,7 +1001,7 @@ export function readAbility(input: Pf2eAbilityInput): Pf2eAbilityRules {
     })),
     grants: [...text.matchAll(P.grants)].map((m) => m[1]!.trim()),
     unarmed,
-    embedded: inner.map((e) => readAbility(e)),
+    embedded: inner.map((e) => ({ ...readAbility(e), body: e.text })),
   }
   if (cost) rules.cost = cost
   if (frequency) rules.frequency = frequency
