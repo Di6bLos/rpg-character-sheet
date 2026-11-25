@@ -401,6 +401,17 @@ const inventoryCols = computed(() => [
             />
           </div>
           <div class="field">
+            <label for="pf-e-shac">AC bonus</label
+            ><input
+              id="pf-e-shac"
+              v-model.number="pf.shield.ac"
+              class="input"
+              type="number"
+              min="0"
+              placeholder="2"
+            />
+          </div>
+          <div class="field">
             <label for="pf-e-shh">Hardness</label
             ><input
               id="pf-e-shh"
@@ -470,11 +481,24 @@ const inventoryCols = computed(() => [
         v-model="pf.strikes"
         title="Strikes"
         add-label="Add strike"
-        :blank="() => ({ name: '', bonus: 0, agile: false, dmg: '1d6', type: '', traits: '' })"
+        :blank="
+          () => ({
+            name: '',
+            bonus: 0,
+            agile: false,
+            attr: 'STR' as Pf2eAttr,
+            ranged: false,
+            dmg: '1d6',
+            type: '',
+            traits: '',
+          })
+        "
         :columns="[
           { key: 'name', label: 'Strike', width: 'minmax(140px, 2fr)' },
           { key: 'bonus', label: 'Attack', type: 'number', width: '84px' },
+          { key: 'attr', label: 'Attribute', type: 'select', options: ATTRS, width: '90px' },
           { key: 'agile', label: 'Agile', type: 'checkbox', width: '60px' },
+          { key: 'ranged', label: 'Ranged', type: 'checkbox', width: '64px' },
           { key: 'dmg', label: 'Damage', width: '110px' },
           { key: 'type', label: 'Type', width: 'minmax(100px, 1fr)' },
           { key: 'traits', label: 'Traits (comma separated)', width: 'minmax(160px, 2fr)' },

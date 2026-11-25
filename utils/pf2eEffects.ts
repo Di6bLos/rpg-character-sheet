@@ -72,6 +72,23 @@ function selectors(ctx: Pf2eStatContext): Pf2eSelector[] {
   return out
 }
 
+/**
+ * A shield is broken at or below its Broken Threshold (p. 269): it can't Shield Block and
+ * gives no AC while raised until it's Repaired above it. A shield without max HP isn't tracked.
+ */
+export const shieldBroken = (s: Pf2eSheet) => s.shield.hpMax > 0 && s.shield.hp <= s.shield.bt
+
+/**
+ * The shield's own circumstance bonus to AC (Buckler +1, most +2, p. 274); +2 when the sheet
+ * doesn't say (older sheets, or the editor's field left empty).
+ */
+export const shieldAc = (s: Pf2eSheet) =>
+  typeof s.shield.ac === 'number' && Number.isFinite(s.shield.ac) ? s.shield.ac : 2
+
+/** What a raised, unbroken shield adds to AC, as a circumstance bonus (p. 274). */
+export const raisedShieldBonus = (s: Pf2eSheet) =>
+  s.shield.name.trim() !== '' && s.shield.raised && !shieldBroken(s) ? shieldAc(s) : 0
+
 const atLevel = (steps: [number, number][], level: number, fallback: number) =>
   [...steps].reverse().find(([at]) => at <= level)?.[1] ?? fallback
 
@@ -110,9 +127,11 @@ export function effectMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
         source: [m.source, ...more.map((o) => o.source)].join(' + '),
       }
     })
-  // Raise a Shield: +2 circumstance to AC (Player Core p. 274), so it doesn't stack with Shield.
-  if (ctx.kind === 'ac' && s.shield.name && s.shield.raised)
-    mods.push({ value: 2, type: 'circumstance', source: 'Raised shield' })
+  // Raise a Shield: the shield's circumstance bonus to AC (Player Core p. 274), so it doesn't
+  // stack with the Shield spell's; a broken shield gives none.
+  const raised = raisedShieldBonus(s)
+  if (ctx.kind === 'ac' && raised)
+    mods.push({ value: raised, type: 'circumstance', source: 'Raised shield' })
   if (ctx.kind === 'ac')
     for (const { effect, active } of allOf(s, 'dexCap')) {
       const over = s.attrs.DEX - effect.value

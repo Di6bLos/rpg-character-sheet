@@ -222,6 +222,16 @@ describe('pf2e effects, second wave', () => {
     expect(adjusted(s, 16, { kind: 'ac' }).value).toBe(17)
   })
 
+  it("stacks the raised shield's own bonus (Buckler +1, Fortress +3), and none once broken", () => {
+    const shield = { name: 'Buckler', hardness: 3, hp: 6, hpMax: 6, bt: 3, raised: true, ac: 1 }
+    const s = hero([], { shield })
+    expect(adjusted(s, 16, { kind: 'ac' }).value).toBe(17)
+    s.shield = { ...shield, name: 'Fortress Shield', ac: 3 }
+    expect(adjusted(s, 16, { kind: 'ac' }).value).toBe(19)
+    s.shield.hp = 3
+    expect(adjusted(s, 16, { kind: 'ac' }).changed).toBe(false)
+  })
+
   it('Enlarge gives clumsy 1 and melee damage; Haste gives quickened (pp. 329, 335)', () => {
     const s = hero()
     setGiven(s, 'Enlarge', true, 4)

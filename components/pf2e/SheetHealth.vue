@@ -12,6 +12,7 @@ import {
   isDead,
   recoveryCheck,
   recoveryDc,
+  shieldBroken,
   takeDamage,
 } from '~/utils/pf2ePlay'
 
@@ -22,7 +23,7 @@ const amount = ref<number | null>(null)
 const crit = ref(false)
 const block = ref(false)
 const canBlock = computed(
-  () => !!sheet.value.shield.name && sheet.value.shield.raised && sheet.value.shield.hp > 0,
+  () => !!sheet.value.shield.name && sheet.value.shield.raised && !shieldBroken(sheet.value),
 )
 watch(canBlock, (ok) => !ok && (block.value = false))
 
@@ -38,7 +39,7 @@ function hurt() {
 }
 
 function mend() {
-  if (!canEdit.value || !amount.value) return
+  if (!canEdit.value || !amount.value || dead.value) return
   say(heal(sheet.value, amount.value))
   amount.value = null
 }
@@ -116,7 +117,8 @@ function adjust(k: Track, by: number) {
       <button
         type="button"
         class="btn btn--ghost btn--sm"
-        :disabled="!canEdit || !amount"
+        :disabled="!canEdit || !amount || dead"
+        :title="dead ? 'Your hero has died' : undefined"
         @click="mend"
       >
         Heal

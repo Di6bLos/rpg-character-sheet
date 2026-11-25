@@ -163,7 +163,16 @@ export interface Pf2eSheet extends SheetCommon {
   attrs: Record<Pf2eAttr, number>
   acRank: Pf2eRank
   hpPerLevel: number
-  shield: { name: string; hardness: number; hp: number; hpMax: number; bt: number; raised: boolean }
+  shield: {
+    name: string
+    /** Its circumstance bonus to AC while raised (Buckler +1, most +2); absent means +2. */
+    ac?: number
+    hardness: number
+    hp: number
+    hpMax: number
+    bt: number
+    raised: boolean
+  }
   /** Fortitude, Reflex, Will, Perception, Class DC. */
   saves: Pf2eProficiency[]
   tempHp: number
@@ -211,6 +220,11 @@ export interface Pf2eSpellRef {
   id: string
   name: string
   rank: number
+  /**
+   * A spontaneous caster's signature spell (Player Core p. 297): it heightens to any rank the
+   * hero has slots for, not only the rank it's known at.
+   */
+  signature?: boolean
 }
 
 /** One rank of spell slots; prepared casters fill each slot with a spell. */

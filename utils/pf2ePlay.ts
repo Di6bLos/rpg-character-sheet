@@ -1,14 +1,17 @@
 // Pathfinder 2e table-side rules for the sheet: what conditions do to checks and DCs
 // (Player Core pp. 442–447), how bonuses and penalties stack (p. 400), degrees of success
 // (p. 401), and damage, Shield Block, knocked out, dying, wounded and doomed (pp. 269,
-// 410–411). Pure functions on the sheet; the sheet panels call them and `say()` the result.
+// 406, 410–412). Pure functions on the sheet; the sheet panels call them and `say()` the result.
 import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import {
   baseDeathAt,
   effectConditions,
   effectMods,
   endOnUnconscious,
+  raisedShieldBonus,
   recoveryDcChange,
+  shieldAc,
+  shieldBroken,
 } from '~/utils/pf2eEffects'
 
 const RANK_BONUS: Record<Pf2eRank, number> = { U: 0, T: 2, E: 4, M: 6, L: 8 }
@@ -266,6 +269,15 @@ function loseDying(s: Pf2eSheet) {
   return ` No longer dying; wounded ${s.wounded}.`
 }
 
+// The shield helpers live in utils/pf2eEffects.ts, which stacks the raised shield's bonus.
+export { raisedShieldBonus, shieldAc, shieldBroken }
+
+/**
+ * A damage roll's total (p. 406): penalties never take it below 1, and a critical hit then
+ * doubles it.
+ */
+export const strikeDamage = (rolled: number, crit = false) => Math.max(1, rolled) * (crit ? 2 : 1)
+
 export interface Pf2eDamageOptions {
   /** From an attacker's critical hit or your own critical failure. */
   crit?: boolean
@@ -276,19 +288,28 @@ export interface Pf2eDamageOptions {
 /**
  * Take damage (p. 410): Shield Block first, then temp HP, then HP. At 0 HP you're knocked
  * out with dying 1 (2 on a crit) plus your wounded value; damage while dying raises it by 1
- * (2 on a crit).
+ * (2 on a crit). One blow of at least double your max HP kills outright (massive damage,
+ * p. 412); it's counted after Shield Block, as that's the damage the hero takes.
  */
 export function takeDamage(s: Pf2eSheet, amount: number, o: Pf2eDamageOptions = {}): string {
   let left = Math.max(0, Math.floor(amount))
   const notes: string[] = []
-  if (o.shieldBlock && s.shield.name && s.shield.hp > 0) {
+  if (o.shieldBlock && s.shield.name && !shieldBroken(s)) {
     const prevented = Math.min(left, s.shield.hardness)
     left -= prevented
     s.shield.hp = Math.max(0, s.shield.hp - left)
     const state =
       s.shield.hp === 0 ? ' and is destroyed' : s.shield.hp <= s.shield.bt ? ' and is broken' : ''
     notes.push(`${s.shield.name} blocks ${prevented}, takes ${left}${state}.`)
-    if (s.shield.hp <= s.shield.bt) s.shield.raised = false
+    if (shieldBroken(s)) s.shield.raised = false
+  }
+  if (s.hpMax > 0 && left >= 2 * s.hpMax) {
+    s.tempHp = 0
+    s.hp = 0
+    s.dying = Math.max(1, deathAt(s))
+    addCondition(s, 'Unconscious')
+    const took = `Took ${left} damage${o.crit ? ' (crit)' : ''}, double your max HP or more:`
+    return [...notes, `${took} massive damage, your hero dies instantly.`].join(' ')
   }
   if (s.hp === 0 && s.dying > 0) {
     if (left === 0) return notes.join(' ')
@@ -306,8 +327,12 @@ export function takeDamage(s: Pf2eSheet, amount: number, o: Pf2eDamageOptions = 
   return ended ? `${out} ${ended}` : out
 }
 
+/** Healing, recovery checks and Heroic Recovery can't bring back the dead (p. 411). */
+const DEAD = 'Your hero has died: only magic that returns the dead can bring them back.'
+
 /** Heal (p. 411): back above 0 HP you lose dying (gaining wounded) and wake up. */
 export function heal(s: Pf2eSheet, amount: number): string {
+  if (isDead(s)) return DEAD
   const was = s.hp
   s.hp = Math.min(s.hpMax, s.hp + Math.max(0, Math.floor(amount)))
   let note = ''
@@ -327,6 +352,7 @@ export const recoveryDc = (s: Pf2eSheet) => 10 + s.dying + recoveryDcChange(s)
  * Critical success −2, success −1, failure +1, critical failure +2.
  */
 export function recoveryCheck(s: Pf2eSheet, natural: number): string {
+  if (isDead(s)) return DEAD
   if (s.dying <= 0) return 'Not dying: no recovery check.'
   const dc = recoveryDc(s)
   const d = degreeOf(natural, natural, dc)
@@ -346,6 +372,7 @@ export function recoveryCheck(s: Pf2eSheet, natural: number): string {
  * stabilize at 0 HP, without gaining or raising wounded.
  */
 export function heroicRecovery(s: Pf2eSheet): string {
+  if (isDead(s)) return DEAD
   if (s.heroPoints < 1) return 'No Hero Points left.'
   if (s.dying <= 0) return 'Not dying.'
   const spent = s.heroPoints
