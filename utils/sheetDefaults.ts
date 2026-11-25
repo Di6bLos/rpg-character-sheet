@@ -51,6 +51,24 @@ const NIMBLE_SKILLS: [string, NimbleStat][] = [
   ['Stealth', 'DEX'],
 ]
 
+export const DND5E_CONDITIONS = [
+  'Blinded',
+  'Charmed',
+  'Deafened',
+  'Exhaustion',
+  'Frightened',
+  'Grappled',
+  'Incapacitated',
+  'Invisible',
+  'Paralyzed',
+  'Petrified',
+  'Poisoned',
+  'Prone',
+  'Restrained',
+  'Stunned',
+  'Unconscious',
+]
+
 function dnd5e(): Dnd5eSheet {
   return {
     lineage: '',
@@ -70,6 +88,8 @@ function dnd5e(): Dnd5eSheet {
     speed: '30 ft',
     profBonus: 2,
     deathSaves: { successes: 0, failures: 0 },
+    tempHp: 0,
+    conditions: [],
     weapons: [],
     features: [],
     inventory: [],

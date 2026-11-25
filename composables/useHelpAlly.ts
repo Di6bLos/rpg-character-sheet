@@ -67,14 +67,14 @@ export function useHelpAlly(options: { onResult?: (message: string) => void } = 
  * or the next time it loads, adds them to the sheet and clears them.
  */
 export function useHeroEffects() {
-  const { draft, canEdit, say } = useSheet<NimbleSheet>()
+  const { draft, canEdit, held, say } = useSheet<NimbleSheet>()
   let channel: RealtimeChannel | null = null
 
   const taken = new Set<string>()
 
   async function take(rows: HeroEffect[]) {
     const fresh = rows.filter((r) => !taken.has(r.id))
-    if (!canEdit.value || !fresh.length) return
+    if (!canEdit.value || held.value || !fresh.length) return
     for (const r of fresh) taken.add(r.id)
     for (const row of fresh) {
       addCondition(draft.value.sheet, row.effect)
@@ -107,6 +107,10 @@ export function useHeroEffects() {
         (payload) => void take([payload.new as HeroEffect]),
       )
       .subscribe()
+    await catchUp(id)
+  }
+
+  async function catchUp(id: string) {
     const { data } = await supabase
       .from('hero_effects')
       .select('id, effect, from_name')
@@ -122,6 +126,9 @@ export function useHeroEffects() {
       },
       { immediate: true },
     )
+    watch(held, (on) => {
+      if (!on && channel) void catchUp(draft.value.id)
+    })
   })
 
   onBeforeUnmount(() => {

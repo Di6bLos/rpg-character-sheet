@@ -37,17 +37,19 @@ export function phoneRole(o: { gmControls: boolean; hero: boolean }): PhoneRole 
   return o.hero ? 'player' : 'watcher'
 }
 
-/** The phone's bottom tabs for a role; Scribe is the last tab whenever it's available. */
-export function phoneTabs(role: PhoneRole, scribe: boolean): PhoneTab[] {
+/**
+ * The phone's bottom tabs for a role; Scribe is the last tab whenever it's available. A player
+ * has Actions only when the system has action tiles (`actions`, Nimble).
+ */
+export function phoneTabs(role: PhoneRole, scribe: boolean, actions: boolean): PhoneTab[] {
   if (role === 'gm') {
     return scribe
       ? ['encounter', 'creature', 'party', 'chat', 'scribe']
       : ['encounter', 'creature', 'party', 'chat']
   }
   if (role === 'player') {
-    return scribe
-      ? ['actions', 'hero', 'party', 'chat', 'scribe']
-      : ['actions', 'hero', 'party', 'chat']
+    const tabs: PhoneTab[] = actions ? ['actions', 'hero'] : ['hero']
+    return scribe ? [...tabs, 'party', 'chat', 'scribe'] : [...tabs, 'party', 'chat']
   }
   return scribe ? ['party', 'chat', 'scribe'] : ['party', 'chat']
 }
@@ -59,7 +61,13 @@ const DEFAULT_TAB: Record<PhoneRole, PhoneTab> = {
 }
 
 /** The saved tab when this role still has it; otherwise the role's default. */
-export function pickTab(role: PhoneRole, scribe: boolean, saved: string | null): PhoneTab {
-  const tabs = phoneTabs(role, scribe)
-  return tabs.find((t) => t === saved) ?? DEFAULT_TAB[role]
+export function pickTab(
+  role: PhoneRole,
+  scribe: boolean,
+  actions: boolean,
+  saved: string | null,
+): PhoneTab {
+  const tabs = phoneTabs(role, scribe, actions)
+  const fallback = role === 'player' && !actions ? 'hero' : DEFAULT_TAB[role]
+  return tabs.find((t) => t === saved) ?? fallback
 }

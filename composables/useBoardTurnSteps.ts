@@ -66,7 +66,7 @@ export function useTrackerTurnSteps(
 
 /**
  * The board's automatic turn steps for the player's seated hero, run on the board's
- * own sheet editor (the quick-action panel below 1200px, the battle board above): the
+ * own sheet editor (the battle board's hero scope): the
  * tracker's turn steps (useTrackerTurnSteps), and marking summons the GM dropped to
  * 0 HP slain (posted to party chat). Call once per editor.
  */

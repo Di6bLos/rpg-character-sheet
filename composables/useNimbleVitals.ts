@@ -1,5 +1,6 @@
 import type { NimbleSheet } from '~/types/sheets'
 import { sheetResource } from '~/utils/nimbleBuild'
+import { hpTone as toneFor } from '~/utils/roster'
 import { conditionMods, wardedDamage } from '~/utils/nimbleConditions'
 import {
   armorNow,
@@ -43,13 +44,8 @@ export function useNimbleVitals() {
       ? 'Bloodied: at or below half HP'
       : `Bloodied at ${Math.floor(sheet.value.hpMax / 2)} HP`
   })
-  const hpTone = computed(() =>
-    sheet.value.hp === 0
-      ? ('danger' as const)
-      : bloodied.value
-        ? ('accent' as const)
-        : ('' as const),
-  )
+  /** The HP bar's band, the one scheme every bar uses (`hpTone`; accent when Bloodied). */
+  const hpTone = computed(() => toneFor(sheet.value.hp, sheet.value.hpMax))
 
   const diceLeft = computed(() => hitDiceLeft(sheet.value))
 

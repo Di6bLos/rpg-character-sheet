@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The battle board's Chat / Scribe panel: one panel, two tabs. Chat is the
 // party chat as it is today (threads, Battle log, unread badges); the Scribe tab
-// shows only when it is available to this user (the same check as LorePanel). Fills
+// shows only when it is available to this user (useLoreAvailable). Fills
 // the rest of the right column; only the message lists scroll. Compact (phone): fills
 // its tab with larger controls, never folds, and `only` fixes it to Chat or Scribe
 // (the phone has a bottom tab for each) in place of its own tabs.
@@ -299,7 +299,7 @@ function onKey(event: KeyboardEvent) {
     padding: 6px 14px 0;
   }
 
-  // Tighter than the Party tab's chat, so the log keeps its room in a short window.
+  // Tighter than the chat's own spacing, so the log keeps its room in a short window.
   // One row of conversations however many members there are: the extra ones scroll
   // sideways (keyboard focus scrolls them into view).
   :deep(.chat__tabs) {
@@ -319,7 +319,7 @@ function onKey(event: KeyboardEvent) {
     }
   }
 
-  // Everything a size down from the Party tab's chat; targets stay at least 24px.
+  // Everything a size down from the chat's own sizes; targets stay at least 24px.
   :deep(.chat__tabs button) {
     gap: 4px;
     min-height: 28px;

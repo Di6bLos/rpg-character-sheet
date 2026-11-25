@@ -59,7 +59,14 @@ export function build(
 ): NimbleSheet {
   const stats = recommendedStats(cls, standard)
   const picks = autoPick(creationChoices(cls, background))
-  return buildNimbleSheet({ cls, ancestry, background, stats, skillPoints: { Might: 2 }, picks })
+  return buildNimbleSheet({
+    cls,
+    ancestry,
+    background,
+    stats,
+    skillPoints: { Might: 2, Perception: 2 },
+    picks,
+  })
 }
 
 /**
