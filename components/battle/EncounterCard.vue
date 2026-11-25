@@ -13,7 +13,7 @@ import { heroArmor } from '~/utils/nimbleConditions'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
 import { heroTurnActions } from '~/utils/nimblePlay'
-import { heroDead, heroDown } from '~/utils/roster'
+import { conditionLabels, heroDead, heroDown } from '~/utils/roster'
 
 const props = defineProps<{
   init: ReturnType<typeof useInitiative>
@@ -46,7 +46,7 @@ const down = computed(
     !features.value.nimbleHero &&
     heroDown(props.hero?.summary?.hp, props.hero?.summary?.hpMax),
 )
-/** Dead: three failed 5e death saves or PF2e Dying 4 (DownStatus's rule). */
+/** Dead: three failed 5e death saves or PF2e's death value (DownStatus's rule). */
 const deadHero = computed(() => down.value && heroDead(props.hero?.summary))
 const armor = computed(() =>
   isPc.value
@@ -62,7 +62,13 @@ const armor = computed(() =>
     : statTop(props.npc, 'Armor') || String(props.c.ac ?? '—'),
 )
 const conditions = computed(() =>
-  isPc.value ? (props.hero?.summary?.conditions ?? []) : (props.c.conditions ?? []),
+  isPc.value
+    ? conditionLabels(
+        props.hero?.summary?.conditions ?? [],
+        props.hero?.character_system,
+        props.hero?.summary?.conditionValues,
+      )
+    : (props.c.conditions ?? []),
 )
 const foot = computed(() => conditions.value.join(' · '))
 

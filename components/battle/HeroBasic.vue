@@ -11,7 +11,7 @@
 import type { RosterEntry } from '~/types'
 import { sign } from '~/utils/dice'
 import { initiativeBonus, initiativeLabel } from '~/utils/heroCardStats'
-import { heroDown, hpTone } from '~/utils/roster'
+import { conditionLabels, heroDown, hpTone } from '~/utils/roster'
 
 const props = defineProps<{ entry: RosterEntry; compact?: boolean }>()
 
@@ -29,6 +29,8 @@ const LIVE_KEYS = [
   'deathSaves',
   'dying',
   'wounded',
+  'doomed',
+  'conditionValues',
   'ac',
   'initMod',
   'passivePerception',
@@ -71,7 +73,7 @@ const wounded = computed(() => {
   return !down.value && typeof w === 'number' && w > 0 ? `Wounded ${w}` : ''
 })
 const conditions = computed(() => {
-  const list = s.value.conditions ?? []
+  const list = conditionLabels(s.value.conditions ?? [], system.value, s.value.conditionValues)
   const conc = s.value.concentration
   return conc ? [...list, `Concentrating · ${conc}`] : list
 })

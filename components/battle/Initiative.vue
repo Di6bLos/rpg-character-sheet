@@ -15,7 +15,7 @@
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
-import { heroDead, hpClass } from '~/utils/roster'
+import { conditionLabels, heroDead, hpClass } from '~/utils/roster'
 import { activeKey, browseBounds, slotAt, type StripSlot } from '~/utils/initiativeStrip'
 
 const props = defineProps<{
@@ -41,7 +41,7 @@ function isMine(c: TurnRow) {
   return c.kind === 'pc' && !!c.character_id && rosterFor(c)?.user_id === auth.userId
 }
 
-/** A dead 5e / PF2e hero: three failed death saves or Dying 4 (off Nimble, as DownStatus). */
+/** A dead 5e / PF2e hero: three failed death saves or PF2e's death value (off Nimble, as DownStatus). */
 function deadPc(c: TurnRow) {
   return c.kind === 'pc' && !features.value.nimbleHero && heroDead(rosterFor(c)?.summary)
 }
@@ -103,7 +103,13 @@ function tokenTitle(c: TurnRow): string {
 }
 
 function conditions(c: TurnRow): string[] {
-  return c.kind === 'pc' ? (rosterFor(c)?.summary?.conditions ?? []) : (c.conditions ?? [])
+  if (c.kind !== 'pc') return c.conditions ?? []
+  const r = rosterFor(c)
+  return conditionLabels(
+    r?.summary?.conditions ?? [],
+    r?.character_system,
+    r?.summary?.conditionValues,
+  )
 }
 
 function portraitPath(c: TurnRow): string | null {

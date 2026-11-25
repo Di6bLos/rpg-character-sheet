@@ -4,7 +4,7 @@
 // The default slot lands at the end of the bar's row (the card's action pips).
 // Compact (phone): 44px buttons and field, 8px apart.
 // Down (a 5e / PF2e hero at 0 HP): "Down" in place of the numbers; "Dead" with `dead`
-// (three failed 5e death saves, or PF2e Dying 4).
+// (three failed 5e death saves, or PF2e Dying at its death value: 4, less Doomed).
 import { hpClass } from '~/utils/roster'
 
 const props = defineProps<{

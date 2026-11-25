@@ -2,7 +2,11 @@ import type { GameSystem, HeroHpChange } from '~/types'
 import type { AnySheet, Dnd5eSheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
 import { heal, takeDamage } from '~/utils/nimblePlay'
 import { wardedDamage } from '~/utils/nimbleConditions'
-import { PF2E_DEAD_AT } from '~/utils/roster'
+import {
+  heal as pf2eHeal,
+  isDead as pf2eIsDead,
+  takeDamage as pf2eTakeDamage,
+} from '~/utils/pf2ePlay'
 
 type Change = Pick<HeroHpChange, 'id' | 'amount' | 'crit'>
 
@@ -66,7 +70,7 @@ function tookLine(n: number, crit: boolean, sheet: { hp: number; hpMax: number }
 
 const DEAD_HEAL = 'GM: healing has no effect: the hero is dead.'
 
-/** Unconscious at 0 HP: added on dropping to 0, removed on healing from 0 (5e and PF2e). */
+/** Unconscious at 0 HP: added on dropping to 0, removed on healing from 0 (5e). */
 function setUnconscious(sheet: { conditions?: string[] }, on: boolean) {
   const list = sheet.conditions ?? []
   const has = list.includes('Unconscious')
@@ -114,43 +118,30 @@ export function applyDnd5eHpChange(sheet: Dnd5eSheet, change: Change): string {
 }
 
 /**
- * Pathfinder 2e: damage takes temp HP first, then HP down to 0; dropping to 0 sets Dying to
- * 1 + Wounded (2 + Wounded on a crit) and adds Unconscious. Damage while already at 0 raises
- * Dying by 1 (2 on a crit) while dying; a stabilised hero (Dying 0) starts again at 1 + Wounded
- * (2 + Wounded on a crit). Dying 4 is dead (Doomed isn't tracked). Healing caps at max HP;
- * healing a dying hero ends Dying and raises Wounded by 1 (a stabilised hero at Dying 0 gains
- * no Wounded); healing from 0 removes Unconscious; a dead hero can't be healed.
+ * Pathfinder 2e, with the sheet's own engine (utils/pf2ePlay.ts takeDamage / heal): temp HP
+ * first, knocked out at 0 with Dying 1 + Wounded (2 + Wounded on a crit), Dying raised while
+ * down, massive damage, Doomed lowering the Dying value that kills; healing a dying hero ends
+ * Dying and raises Wounded, and the dead can't be healed.
  */
 export function applyPf2eHpChange(sheet: Pf2eSheet, change: Change): string {
   const n = Math.abs(Math.floor(change.amount))
   if (!n) return ''
-  const wounded = Math.max(0, sheet.wounded ?? 0)
-  const base = Math.max(0, sheet.dying ?? 0)
-  const dead = sheet.hp <= 0 && base >= PF2E_DEAD_AT
+  sheet.tempHp = Math.max(0, sheet.tempHp ?? 0)
+  sheet.dying = Math.max(0, sheet.dying ?? 0)
+  sheet.wounded = Math.max(0, sheet.wounded ?? 0)
+  if (!Array.isArray(sheet.conditions)) sheet.conditions = []
   if (change.amount < 0) {
-    const { wasUp, overflow } = hurt(sheet, n)
-    const step = change.crit ? 2 : 1
-    let note = ''
-    if (wasUp && sheet.hp === 0) setUnconscious(sheet, true)
-    // Temp HP that soaks the whole hit at 0 HP leaves Dying alone.
-    if (!dead && sheet.hp === 0 && (wasUp || overflow > 0)) {
-      const dying = !wasUp && base > 0 ? base + step : step + wounded
-      sheet.dying = Math.min(PF2E_DEAD_AT, dying)
-      note = sheet.dying >= PF2E_DEAD_AT ? ` Dying ${sheet.dying}: dead.` : ` Dying ${sheet.dying}.`
-    }
-    return `${tookLine(n, change.crit, sheet)}${note}`
+    const line = pf2eTakeDamage(sheet, n, { crit: change.crit })
+    // While dying the engine only says the new Dying value; the GM's line says the hit too.
+    return line.startsWith('Took ') ? gmLine(line) : `${tookLine(n, change.crit, sheet)} ${line}`
   }
-  if (dead) return DEAD_HEAL
-  const wasDying = sheet.hp <= 0 && base > 0
-  const wasDown = mend(sheet, n)
-  if (wasDown) setUnconscious(sheet, false)
-  let note = ''
-  if (wasDying) {
-    sheet.dying = 0
-    sheet.wounded = wounded + 1
-    note = ` Wounded ${sheet.wounded}.`
-  }
-  return `GM: healed ${n}: ${sheet.hp}/${sheet.hpMax} HP.${note}`
+  if (pf2eIsDead(sheet)) return DEAD_HEAL
+  return gmLine(pf2eHeal(sheet, n))
+}
+
+/** The engine's line as the GM's: "Took 5 damage…" reads "GM: took 5 damage…". */
+function gmLine(line: string) {
+  return `GM: ${line.charAt(0).toLowerCase()}${line.slice(1)}`
 }
 
 /** Applies a GM's HP change with the hero's own system's rules. */

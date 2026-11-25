@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The stats modal's main area for a Pathfinder 2e hero: attribute modifiers, saves and
-// Perception and Class DC with their ranks, hero and focus points, Dying and Wounded
-// (live from the roster), the shield, every skill with its rank (trained first) and the
+// Perception and Class DC with their ranks, hero and focus points, Dying (out of the sheet
+// engine's death value, which Doomed lowers), Wounded and Doomed (live from the roster), the
+// shield (its own AC bonus while raised, none while broken), every skill with its rank (trained first) and the
 // feats as Key abilities (type and level as the source line).
 // Shows only what campaign_hero_card returned.
 import type { Pf2eAttr } from '~/types/sheets'
@@ -9,6 +10,7 @@ import type { Pf2eHeroCard } from '~/types'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
 import { featSource, oneLine, pf2eRankName, pf2eSkillRows } from '~/utils/heroCardStats'
+import { pf2eDeathAt } from '~/utils/roster'
 
 const props = defineProps<{ card: Pf2eHeroCard; live: HeroLive }>()
 
@@ -37,8 +39,10 @@ const points = computed(
       focus: props.card.focus,
       dying: props.card.dying,
       wounded: props.card.wounded,
+      doomed: props.card.doomed ?? 0,
     },
 )
+const deathAt = computed(() => pf2eDeathAt(points.value))
 
 const feats = computed(() =>
   (props.card.feats ?? []).filter((f) => f.name).map((f) => ({ ...f, src: featSource(f) })),
@@ -46,7 +50,8 @@ const feats = computed(() =>
 
 const shield = computed(() => {
   const s = props.card.shield
-  return s && s.name.trim() ? s : null
+  if (!s || !s.name.trim()) return null
+  return { ...s, ac: s.ac ?? 2, broken: s.hpMax > 0 && s.hp <= s.bt }
 })
 </script>
 
@@ -100,9 +105,13 @@ const shield = computed(() => {
         <dt>Focus points</dt>
         <dd>{{ points.focus.max > 0 ? `${points.focus.current} / ${points.focus.max}` : '—' }}</dd>
         <dt>Dying</dt>
-        <dd :class="{ hcs__bad: points.dying > 0 }">{{ points.dying }} / 4</dd>
+        <dd :class="{ hcs__bad: points.dying > 0 }">{{ points.dying }} / {{ deathAt }}</dd>
         <dt>Wounded</dt>
         <dd :class="{ hcs__bad: points.wounded > 0 }">{{ points.wounded }}</dd>
+        <template v-if="points.doomed > 0">
+          <dt>Doomed</dt>
+          <dd class="hcs__bad">{{ points.doomed }}</dd>
+        </template>
       </dl>
     </div>
 
@@ -111,7 +120,8 @@ const shield = computed(() => {
       <template v-if="shield">
         <p class="hcs__shield-name">
           {{ shield.name }}
-          <span v-if="shield.raised" class="hcs__tag">Raised · +2 AC</span>
+          <span v-if="shield.broken" class="hcs__tag">Broken</span>
+          <span v-else-if="shield.raised" class="hcs__tag">Raised · +{{ shield.ac }} AC</span>
         </p>
         <dl class="hcs__pairs">
           <dt>Hardness</dt>

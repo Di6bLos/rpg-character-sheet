@@ -3,11 +3,14 @@
 // chips (hover for what they do, click to remove) and + Add, which opens a picker of the
 // campaign system's conditions (`conditionNames`; tap to toggle). Nimble's adds its spell
 // statuses as a second group and says what each active one does; 5e and PF2e list names
-// only. Nimble leaves out Bloodied, Dying and Wounded: HP shows those. The caller applies
+// only, PF2e's valued ones with their value ("Frightened 2"). Nimble leaves out Bloodied,
+// Dying and Wounded: HP shows those; PF2e leaves out Dying, Wounded and Doomed, numbers on
+// the sheet. The caller applies
 // each toggle: the stat block writes the combatant, the hero vitals send it to the hero's sheet.
 import { CONDITIONS } from '~/data/nimble/core'
 import { conditionNames } from '~/utils/battleFeatures'
 import { SPELL_STATUSES } from '~/utils/nimbleConditions'
+import { conditionLabels } from '~/utils/roster'
 
 const props = defineProps<{
   /** Whose conditions, for labels. */
@@ -17,6 +20,8 @@ const props = defineProps<{
   conditions: string[]
   /** The line under the picker: what happens to a condition set here. */
   note: string
+  /** PF2e values of valued conditions (frightened 2), shown on their chips. */
+  values?: Record<string, number> | null
 }>()
 const emit = defineEmits<{ toggle: [name: string, on: boolean] }>()
 
@@ -43,7 +48,11 @@ const options = computed(() =>
 )
 /** Active conditions with what they do; a custom name typed elsewhere has none. */
 const active = computed(() =>
-  props.conditions.map((n) => ({ name: n, desc: nimble.value ? (NIMBLE_DESC.get(n) ?? '') : '' })),
+  props.conditions.map((n) => ({
+    name: n,
+    label: conditionLabels([n], system.value, props.values)[0] ?? n,
+    desc: nimble.value ? (NIMBLE_DESC.get(n) ?? '') : '',
+  })),
 )
 
 function toggle(name: string) {
@@ -83,7 +92,7 @@ watch(
         :aria-label="`Remove ${a.name}`"
         @click="toggle(a.name)"
       >
-        {{ a.name }} <span aria-hidden="true">×</span>
+        {{ a.label }} <span aria-hidden="true">×</span>
       </button>
     </div>
     <p v-else class="cond__none">No conditions</p>

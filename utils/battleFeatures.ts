@@ -1,6 +1,7 @@
 import { AUTO_CONDITIONS, CONDITIONS } from '~/data/nimble/core'
 import type { GameSystem } from '~/types'
-import { DND5E_CONDITIONS, PF2E_CONDITIONS } from '~/utils/sheetDefaults'
+import { DND5E_CONDITIONS } from '~/utils/sheetDefaults'
+import { PF2E_CONDITION_DEFS } from '~/utils/pf2ePlay'
 import { SPELL_STATUSES } from '~/utils/nimbleConditions'
 
 /** What the battle board offers for a campaign's game system. */
@@ -40,7 +41,7 @@ export function battleFeatures(system: GameSystem): BattleFeatures {
  */
 export function conditionNames(system: GameSystem): string[] {
   if (system === 'dnd5e') return [...DND5E_CONDITIONS]
-  if (system === 'pf2e') return [...PF2E_CONDITIONS]
+  if (system === 'pf2e') return PF2E_CONDITION_DEFS.map((d) => d.name)
   return [...CONDITIONS, ...SPELL_STATUSES]
     .filter((x) => !AUTO_CONDITIONS.includes(x.name) && x.name !== 'Helped')
     .map((x) => x.name)

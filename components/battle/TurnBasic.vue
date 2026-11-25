@@ -11,7 +11,7 @@
 // says whose turn it is yet). A failed write reads "Initiative not sent", keeps the rolled
 // total and offers to resend it, as the Nimble turn bar does. With Manual dice on (account
 // menu, `profiles.own_dice`) a field takes the player's own total instead. A dead hero
-// (three failed death saves, PF2e Dying 4) isn't offered the roll, and a player who can't
+// (three failed death saves, PF2e Dying at 4 less Doomed) isn't offered the roll, and a player who can't
 // edit the hero (suspended) gets it disabled, as on the Nimble turn bar.
 // Compact (the phone's turn slot): inset 8px from the sides and the tab bar below.
 import type { useInitiative } from '~/composables/useInitiative'

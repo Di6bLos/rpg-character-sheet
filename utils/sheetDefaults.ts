@@ -69,46 +69,6 @@ export const DND5E_CONDITIONS = [
   'Unconscious',
 ]
 
-/**
- * PF2e conditions as on/off chips. Dying, Wounded and Doomed are values the sheet keeps as
- * numbers (`dying`, `wounded`; Doomed isn't tracked), so they aren't chips.
- */
-export const PF2E_CONDITIONS = [
-  'Blinded',
-  'Clumsy',
-  'Concealed',
-  'Confused',
-  'Controlled',
-  'Dazzled',
-  'Deafened',
-  'Drained',
-  'Encumbered',
-  'Enfeebled',
-  'Fascinated',
-  'Fatigued',
-  'Fleeing',
-  'Frightened',
-  'Grabbed',
-  'Hidden',
-  'Immobilized',
-  'Invisible',
-  'Observed',
-  'Off-guard',
-  'Paralyzed',
-  'Persistent Damage',
-  'Petrified',
-  'Prone',
-  'Quickened',
-  'Restrained',
-  'Sickened',
-  'Slowed',
-  'Stunned',
-  'Stupefied',
-  'Unconscious',
-  'Undetected',
-  'Unnoticed',
-]
-
 function dnd5e(): Dnd5eSheet {
   return {
     lineage: '',

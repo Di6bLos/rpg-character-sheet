@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { RosterEntry } from '../types'
 import {
   authorLabel,
+  conditionLabels,
   heroDead,
+  pf2eDeathAt,
   heroStable,
   deathSavesLine,
   downStatus,
@@ -98,6 +100,14 @@ describe('heroDead', () => {
     expect(dyingLine(s)).toBe('')
   })
 
+  it('reads a doomed PF2e hero as Dead at the lower Dying value, as the sheet engine does', () => {
+    expect(pf2eDeathAt({ doomed: 1 })).toBe(3)
+    expect(heroDead({ dying: 3, doomed: 1 })).toBe(true)
+    expect(downStatus({ dying: 3, doomed: 1 })).toBe('Dead')
+    expect(heroDead({ dying: 2, doomed: 1 })).toBe(false)
+    expect(pf2eDeathAt({})).toBe(4)
+  })
+
   it('not below Dying 4 or three failures', () => {
     expect(heroDead({ deathSaves: { successes: 0, failures: 2 } })).toBe(false)
     expect(heroDead({ dying: 3 })).toBe(false)
@@ -143,5 +153,18 @@ describe('hpTone / hpClass', () => {
     expect(hpClass(30, 30)).toBe('')
     expect(hpClass(10, 30)).toBe('hp--accent')
     expect(hpClass(0, 30)).toBe('hp--danger')
+  })
+})
+
+describe('conditionLabels', () => {
+  it('gives PF2e valued conditions their value, 1 when the sheet has none', () => {
+    expect(conditionLabels(['Frightened', 'Prone', 'Sickened'], 'pf2e', { Frightened: 2 })).toEqual(
+      ['Frightened 2', 'Prone', 'Sickened 1'],
+    )
+  })
+
+  it('leaves other systems by name', () => {
+    expect(conditionLabels(['Frightened'], 'nimble', { Frightened: 2 })).toEqual(['Frightened'])
+    expect(conditionLabels(['Frightened'], 'dnd5e')).toEqual(['Frightened'])
   })
 })

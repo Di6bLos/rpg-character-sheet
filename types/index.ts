@@ -138,6 +138,12 @@ export interface RosterEntry {
     focus?: { current: number; max: number }
     /** PF2e Wounded value. */
     wounded?: number
+    /** PF2e Doomed value: lowers the Dying value that kills. */
+    doomed?: number
+    /** PF2e values of valued conditions (frightened 2); absent means 1. */
+    conditionValues?: Record<string, number>
+    /** PF2e feat names (Diehard changes when the hero dies). */
+    featNames?: string[]
     summons?: NimbleSummon[]
     abilityNames?: string[]
     portraitOverride?: string
@@ -334,8 +340,13 @@ export interface Pf2eHeroCard extends HeroCardBase {
   focus: { current: number; max: number }
   dying: number
   wounded: number
+  doomed: number
+  /** Values of valued conditions (frightened 2); absent means 1. */
+  conditionValues: Record<string, number>
   shield: {
     name: string
+    /** Its circumstance bonus to AC while raised. */
+    ac: number
     hardness: number
     hp: number
     hpMax: number

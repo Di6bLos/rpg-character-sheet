@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { battleFeatures, conditionNames } from '~/utils/battleFeatures'
+import { PF2E_CONDITION_DEFS } from '~/utils/pf2ePlay'
 
 describe('battleFeatures', () => {
   it('gives Nimble its features and other systems none of them but PF2e points', () => {
@@ -16,6 +17,8 @@ describe('battleFeatures', () => {
     expect(conditionNames('dnd5e')).toHaveLength(15)
     expect(conditionNames('dnd5e')).toContain('Exhaustion')
     expect(conditionNames('pf2e')).toContain('Off-guard')
+    // The sheet's own condition list, so a GM's pick is one the sheet shows and applies.
+    expect(conditionNames('pf2e')).toEqual(PF2E_CONDITION_DEFS.map((d) => d.name))
     // Dying, Wounded and Doomed are values on the sheet, not chips.
     for (const value of ['Dying', 'Wounded', 'Doomed'])
       expect(conditionNames('pf2e')).not.toContain(value)

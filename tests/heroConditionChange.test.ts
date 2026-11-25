@@ -7,6 +7,7 @@ import {
   lastPerCondition,
 } from '../utils/heroConditionChange'
 import { CONDITION_ENDS } from '../utils/nimbleConditions'
+import { conditionValue } from '../utils/pf2ePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
 
 function hero(patch: Partial<NimbleSheet> = {}): NimbleSheet {
@@ -93,6 +94,20 @@ describe('GM hero condition changes, D&D 5e and PF2e', () => {
       applyConditionChangeFor('pf2e', sheet, { id: 'b', condition: 'Prone', add: false }),
     ).toBe('')
     expect(sheet.conditions).toEqual(['Off-guard'])
+  })
+
+  it('removing a PF2e valued condition drops its value, and a new add starts at 1', () => {
+    const sheet = {
+      ...defaultSheet('pf2e'),
+      conditions: ['Frightened', 'Sickened'],
+      conditionValues: { Frightened: 2, Sickened: 1 },
+    }
+    expect(
+      applyConditionChangeFor('pf2e', sheet, { id: 'a', condition: 'Frightened', add: false }),
+    ).toBe('GM: no longer Frightened.')
+    expect(sheet.conditionValues).toEqual({ Sickened: 1 })
+    applyConditionChangeFor('pf2e', sheet, { id: 'b', condition: 'Frightened', add: true })
+    expect(conditionValue(sheet, 'Frightened')).toBe(1)
   })
 
   it('copes with an old 5e sheet that has no conditions list', () => {

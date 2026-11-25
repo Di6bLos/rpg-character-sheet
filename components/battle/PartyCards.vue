@@ -12,7 +12,7 @@ import type { RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { heroTurnActions } from '~/utils/nimblePlay'
-import { dyingLine, heroDead, heroDown, hpClass } from '~/utils/roster'
+import { conditionLabels, dyingLine, heroDead, heroDown, hpClass } from '~/utils/roster'
 import { pf2ePointsLine } from '~/utils/heroCardStats'
 
 const props = defineProps<{
@@ -43,7 +43,7 @@ const heroes = computed(() =>
 const toggles = computed(() => !props.compact && heroes.value.length > 0)
 const partyClosed = computed(() => right.state.value.split <= 0)
 
-/** Nimble: Wounds at max. 5e / PF2e: three failed death saves or Dying 4 (DownStatus row). */
+/** Nimble: Wounds at max. 5e / PF2e: three failed death saves or PF2e's death value (DownStatus row). */
 function isDead(r: RosterEntry) {
   const s = r.summary
   if (basicDown(r)) return heroDead(s)
@@ -76,7 +76,11 @@ function downLabel(r: RosterEntry): string {
 }
 
 function conditions(r: RosterEntry): string[] {
-  const list = r.summary?.conditions ?? []
+  const list = conditionLabels(
+    r.summary?.conditions ?? [],
+    r.character_system,
+    r.summary?.conditionValues,
+  )
   const conc = r.summary?.concentration
   return !features.value.nimbleHero && conc ? [...list, `Concentrating · ${conc}`] : list
 }

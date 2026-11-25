@@ -1,4 +1,7 @@
-import type { RosterEntry } from '~/types'
+import type { GameSystem, RosterEntry } from '~/types'
+import type { Pf2eSheet } from '~/types/sheets'
+import { PF2E_CONDITION_DEFS, deathAt, isDead } from '~/utils/pf2ePlay'
+import { defaultSheet } from '~/utils/sheetDefaults'
 
 export interface AuthorLabel {
   /** The character's name, or the player's name when they have no character. */
@@ -32,18 +35,32 @@ export function heroDown(hp: number | undefined, hpMax: number | undefined): boo
   return (hpMax ?? 0) > 0 && hp !== undefined && hp <= 0
 }
 
-/** PF2e's Dying value at which the hero dies (Player Core p. 411; Doomed isn't tracked). */
-export const PF2E_DEAD_AT = 4
-
 /** PF2e's Dying value, when the hero is dying (the sheet keeps 0 otherwise). */
 function pf2eDying(s: HeroSummary | null | undefined): number {
   return typeof s?.dying === 'number' && s.dying > 0 ? s.dying : 0
 }
 
-/** A downed 5e / PF2e hero who is dead: three failed death saves (5e) or Dying 4 (PF2e). */
+/** The summary's PF2e numbers on a sheet, for the sheet engine's own death rules. */
+function pf2eSheetOf(s: HeroSummary | null | undefined): Pf2eSheet {
+  return {
+    ...defaultSheet('pf2e'),
+    dying: pf2eDying(s),
+    doomed: typeof s?.doomed === 'number' && s.doomed > 0 ? s.doomed : 0,
+  }
+}
+
+/** The Dying value at which a PF2e hero dies, as the sheet has it: 4, less Doomed. */
+export function pf2eDeathAt(s: HeroSummary | null | undefined): number {
+  return deathAt(pf2eSheetOf(s))
+}
+
+/**
+ * A downed 5e / PF2e hero who is dead: three failed death saves (5e) or, PF2e, Dying at the
+ * sheet engine's death value (4, less Doomed).
+ */
 export function heroDead(s: HeroSummary | null | undefined): boolean {
-  const dying = pf2eDying(s)
-  if (dying) return dying >= PF2E_DEAD_AT
+  if (isDead(pf2eSheetOf(s))) return true
+  if (pf2eDying(s)) return false
   return (s?.deathSaves?.failures ?? 0) >= 3
 }
 
@@ -100,4 +117,19 @@ export function hpTone(hp: number, hpMax: number): HpTone {
 export function hpClass(hp: number, hpMax: number): string {
   const tone = hpTone(hp, hpMax)
   return tone ? `hp--${tone}` : ''
+}
+
+const PF2E_VALUED = new Set(PF2E_CONDITION_DEFS.filter((d) => d.valued).map((d) => d.name))
+
+/**
+ * Conditions as the board lists them: PF2e's valued ones with their value ("Frightened 2",
+ * 1 when the sheet has none), the rest by name.
+ */
+export function conditionLabels(
+  conditions: readonly string[],
+  system: GameSystem | null | undefined,
+  values?: Record<string, number> | null,
+): string[] {
+  if (system !== 'pf2e') return [...conditions]
+  return conditions.map((n) => (PF2E_VALUED.has(n) ? `${n} ${Math.max(1, values?.[n] ?? 1)}` : n))
 }

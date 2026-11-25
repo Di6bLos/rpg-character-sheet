@@ -15,7 +15,7 @@ import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
 import { initiativeBonus, initiativeLabel } from '~/utils/heroCardStats'
-import { heroDown, hpTone } from '~/utils/roster'
+import { conditionLabels, heroDown, hpTone } from '~/utils/roster'
 
 const props = defineProps<{
   characterId: string
@@ -49,7 +49,7 @@ const downSummary = computed(() => {
   const l = props.live
   if (!l.deathSaves && !l.pf2e) return null
   if (!heroDown(l.hp, l.hpMax)) return null
-  return { deathSaves: l.deathSaves ?? undefined, dying: l.pf2e?.dying }
+  return { deathSaves: l.deathSaves ?? undefined, dying: l.pf2e?.dying, doomed: l.pf2e?.doomed }
 })
 /** PF2e's Wounded value while up. */
 const wounded = computed(() => {
@@ -289,6 +289,7 @@ async function adjust(sign: 1 | -1) {
       :name="card.name"
       :subject="characterId"
       :conditions="shownConditions"
+      :values="live.conditionValues"
       :note="
         features.nimbleHero
           ? `Saved to ${card.name}'s sheet; it ends on its usual timing, or when you remove it.`
@@ -299,7 +300,12 @@ async function adjust(sign: 1 | -1) {
     <div v-else>
       <span class="hc__sect">Conditions</span>
       <ul v-if="live.conditions.length" class="hc__chips">
-        <li v-for="c in live.conditions" :key="c">{{ c }}</li>
+        <li
+          v-for="c in conditionLabels(live.conditions, card.system, live.conditionValues)"
+          :key="c"
+        >
+          {{ c }}
+        </li>
       </ul>
       <p v-else class="hc__none">No conditions</p>
     </div>

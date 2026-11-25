@@ -53,10 +53,11 @@ export function applyConditionChange(sheet: NimbleSheet, change: Change): string
 
 /**
  * D&D 5e / PF2e: a plain add or remove on the sheet's condition names (no timed ends), with
- * the message to show the player, or '' when the sheet already matched.
+ * the message to show the player, or '' when the sheet already matched. Removing a PF2e
+ * valued condition drops its value too, as the sheet's own toggle does (an add starts at 1).
  */
 export function applyPlainConditionChange(
-  sheet: { conditions?: string[] },
+  sheet: { conditions?: string[]; conditionValues?: Record<string, number> },
   change: Change,
 ): string {
   const name = change.condition.trim()
@@ -70,6 +71,7 @@ export function applyPlainConditionChange(
   }
   if (at < 0) return ''
   list.splice(at, 1)
+  if (sheet.conditionValues) delete sheet.conditionValues[name]
   return `GM: no longer ${name}.`
 }
 
