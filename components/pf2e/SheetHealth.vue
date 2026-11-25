@@ -1,11 +1,15 @@
 <script setup lang="ts">
-// The PF2e sheet's damage, healing and dying controls (Player Core pp. 410–411): an amount
-// to take (Crit, and Shield Block while a shield is raised) or heal; dying, wounded and
-// doomed steppers; the recovery check and Heroic Recovery while dying. Rules in utils/pf2ePlay.ts.
+// The PF2e sheet's damage, healing and dying controls (Player Core pp. 407–411): an amount
+// to take with its damage type (for immunities, weaknesses and resistances, p. 408), Crit,
+// From a spell (when a resistance cares), and Shield Block while a shield is raised, or heal;
+// dying, wounded and doomed steppers; the recovery check and Heroic Recovery while dying.
+// Rules in utils/pf2ePlay.ts and utils/pf2eDamage.ts.
 import type { Pf2eSheet } from '~/types/sheets'
-import { rollDie } from '~/utils/dice'
+import { rollCheck, showOutcome } from '~/utils/dice'
+import { PF2E_DAMAGE_TYPES, defensesOf } from '~/utils/pf2eDamage'
 import { baseDeathAt } from '~/utils/pf2eEffects'
 import {
+  degreeOf,
   deathAt,
   heal,
   heroicRecovery,
@@ -22,6 +26,12 @@ const sheet = computed(() => draft.value.sheet)
 const amount = ref<number | null>(null)
 const crit = ref(false)
 const block = ref(false)
+/** The damage's type ('' untyped) and whether a spell dealt it, for the hero's defenses. */
+const dmgType = ref('')
+const fromSpell = ref(false)
+const spellMatters = computed(() =>
+  defensesOf(sheet.value, draft.value.level).resistances.some((r) => /spell/i.test(r.type)),
+)
 const canBlock = computed(
   () => !!sheet.value.shield.name && sheet.value.shield.raised && !shieldBroken(sheet.value),
 )
@@ -32,10 +42,18 @@ const dying = computed(() => sheet.value.dying > 0 && !dead.value)
 
 function hurt() {
   if (!canEdit.value || !amount.value) return
-  say(takeDamage(sheet.value, amount.value, { crit: crit.value, shieldBlock: block.value }))
+  say(
+    takeDamage(sheet.value, amount.value, {
+      crit: crit.value,
+      shieldBlock: block.value,
+      type: dmgType.value,
+      spell: fromSpell.value,
+    }),
+  )
   amount.value = null
   crit.value = false
   block.value = false
+  fromSpell.value = false
 }
 
 function mend() {
@@ -44,8 +62,15 @@ function mend() {
   amount.value = null
 }
 
+/** The recovery check is a flat check (p. 411): the tray shows the die and its degree. */
 function recover() {
-  if (canEdit.value) say(recoveryCheck(sheet.value, rollDie(20)))
+  if (!canEdit.value) return
+  const dc = recoveryDc(sheet.value)
+  const r = rollCheck(0)
+  const line = recoveryCheck(sheet.value, r.d20)
+  const degree = degreeOf(r.d20, r.d20, dc)
+  showOutcome({ label: 'Recovery check', total: r.d20, detail: line, degree })
+  say(line)
 }
 
 function heroic() {
@@ -113,6 +138,17 @@ function adjust(k: Track, by: number) {
         placeholder="HP"
         :disabled="!canEdit"
       />
+      <label class="sr-only" for="pf-dmg-type">Damage type</label>
+      <select
+        id="pf-dmg-type"
+        v-model="dmgType"
+        class="input hurt__type"
+        :disabled="!canEdit"
+        title="Damage type, for your immunities, weaknesses and resistances"
+      >
+        <option value="">Untyped</option>
+        <option v-for="t in PF2E_DAMAGE_TYPES" :key="t" :value="t">{{ t }}</option>
+      </select>
       <button type="submit" class="btn btn--sm" :disabled="!canEdit || !amount">Damage</button>
       <button
         type="button"
@@ -126,6 +162,10 @@ function adjust(k: Track, by: number) {
       <label class="check">
         <input v-model="crit" type="checkbox" :disabled="!canEdit" />
         Crit
+      </label>
+      <label v-if="spellMatters" class="check" title="A resistance of yours is to spells">
+        <input v-model="fromSpell" type="checkbox" :disabled="!canEdit" />
+        From a spell
       </label>
       <label
         v-if="canBlock"
@@ -192,6 +232,12 @@ function adjust(k: Track, by: number) {
 
 .hurt__n {
   width: 96px;
+}
+
+.hurt__type {
+  width: auto;
+  min-width: 120px;
+  text-transform: capitalize;
 }
 
 .check {

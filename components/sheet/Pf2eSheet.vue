@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
-import { rollAttack, sign } from '~/utils/dice'
+import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import {
   type Pf2eStatContext,
   SAVE_ATTR,
@@ -12,7 +12,7 @@ import {
   shieldBroken,
   takeDamage,
 } from '~/utils/pf2ePlay'
-import { resistancesNow, shiftedDegree, speedNow } from '~/utils/pf2eEffects'
+import { shiftedDegree, speedNow } from '~/utils/pf2eEffects'
 import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, say } = useSheet<Pf2eSheet>()
@@ -87,10 +87,12 @@ const skills = computed(() =>
 
 const natNote = (n: number | null) => (n === 20 ? ', natural 20' : n === 1 ? ', natural 1' : '')
 
-/** A check with this modifier; the tray shows the die, the result line says the total. */
-function rollCheck(name: string, bonus: number) {
-  const r = rollAttack(bonus)
-  say(`${name}: ${r.total} (${r.d20} ${sign(bonus)}${natNote(r.natural)})`)
+/** A check with this modifier; the dice tray shows the die, modifier and total. */
+function check(name: string, bonus: number) {
+  const r = rollCheck(bonus)
+  const line = `${name}: ${r.total} (${r.d20} ${sign(bonus)}${natNote(r.natural)})`
+  showOutcome({ label: name, total: r.total, detail: line })
+  say(line)
 }
 
 /** The DC of the effect the hero is saving against, for the save's degree. */
@@ -102,20 +104,23 @@ const saveDc = ref<number | null>(null)
  * against some effects (Bravery against fear).
  */
 function rollSave(label: string, bonus: number) {
-  if (label !== 'Fortitude' && label !== 'Reflex' && label !== 'Will')
-    return rollCheck(label, bonus)
-  const r = rollAttack(bonus)
+  if (label !== 'Fortitude' && label !== 'Reflex' && label !== 'Will') return check(label, bonus)
+  const r = rollCheck(bonus)
   const head = `${label}: ${r.total} (${r.d20} ${sign(bonus)}${natNote(r.natural)})`
   const dc = saveDc.value
-  if (!dc) return say(head)
+  if (!dc) {
+    showOutcome({ label, total: r.total, detail: head })
+    return say(head)
+  }
   const rolled = degreeOf(r.total, r.d20, dc)
   const shift = shiftedDegree(sheet.value, label, rolled)
   const by = shift.by ? ` → ${shift.degree} (${shift.by})` : ''
   const notes = shift.notes.length ? ` ${shift.notes.join('; ')}.` : ''
-  say(`${head} vs DC ${dc}: ${rolled}${by}.${notes}`)
+  const line = `${head} vs DC ${dc}: ${rolled}${by}.${notes}`
+  const degree = shift.degree.replace(/^\w/, (c) => c.toUpperCase())
+  showOutcome({ label: `${label} save`, total: r.total, detail: line, degree })
+  say(line)
 }
-
-const resistances = computed(() => resistancesNow(sheet.value, draft.value.level))
 
 watch(
   () => draft.value.level,
@@ -134,6 +139,7 @@ function strikeFromTable(index: number, step: number) {
   if (!canEdit.value) return
   const t = sheet.value.turn
   if (t?.active) {
+    if (t.finisher) return say('You used a finisher this turn: no more attacks.')
     if (t.actions < 1) return say('No actions left this turn.')
     t.actions -= 1
   }
@@ -395,12 +401,11 @@ const bulkPct = computed(() =>
               >{{ speed.text }}</strong
             ></span
           >
-          <span v-for="r in resistances" :key="`${r.source}-${r.type}`" :title="r.source"
-            >Resistance <strong>{{ r.value }}</strong> {{ r.type }}</span
-          >
         </div>
         <Pf2eSheetHealth />
       </div>
+
+      <Pf2eSheetDefenses />
 
       <Pf2eSheetConditions />
       <p
@@ -430,7 +435,7 @@ const bulkPct = computed(() =>
           :class="{ 'is-trained': x.rank !== 'U' }"
           :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.name}`"
           :aria-label="`Roll ${x.name} ${sign(x.now.value)}`"
-          @click="claim('skills:check', () => rollCheck(x.name, x.now.value))"
+          @click="claim('skills:check', () => check(x.name, x.now.value))"
         >
           <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
             x.rank
@@ -542,7 +547,7 @@ const bulkPct = computed(() =>
                   type="button"
                   class="atk crit-btn"
                   :aria-label="`Roll critical damage for ${w.name}`"
-                  title="Critical hit: double damage"
+                  :title="`Critical hit: double damage${w.critNote ? `, then ${w.critNote}` : ''}`"
                   @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, true))"
                 >
                   ×2

@@ -7,6 +7,7 @@ import {
   degreeOf,
   heal,
   heroicRecovery,
+  initiativeCheck,
   isDead,
   raisedShieldBonus,
   recoveryCheck,
@@ -238,5 +239,17 @@ describe('pf2e damage rolls (Player Core p. 406)', () => {
     expect(strikeDamage(0, true)).toBe(2)
     expect(strikeDamage(7, true)).toBe(14)
     expect(strikeDamage(7)).toBe(7)
+  })
+})
+
+describe('pf2e initiative (Player Core p. 436)', () => {
+  it('rolls Perception after conditions, as the sheet and the battle board both use it', () => {
+    const s = hero({
+      saves: [{ label: 'Perception', rank: 'T', value: 7 }],
+      conditions: ['Frightened'],
+      conditionValues: { Frightened: 2 },
+    })
+    expect(initiativeCheck(s).value).toBe(5)
+    expect(initiativeCheck(hero({ saves: [] })).value).toBe(0)
   })
 })

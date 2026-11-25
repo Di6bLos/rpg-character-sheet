@@ -330,6 +330,15 @@ function close() {
             <span>{{ outcome.label || 'Total' }}</span>
             <strong>{{ outcome.total }}</strong>
           </div>
+          <strong
+            v-if="outcome.degree"
+            class="tray__call"
+            :class="{
+              'tray__call--crit': /^critical (?:success|hit)/i.test(outcome.degree),
+              'tray__call--miss': /fail|miss/i.test(outcome.degree),
+            }"
+            >{{ outcome.degree }}</strong
+          >
           <p class="tray__detail">{{ outcome.detail }}</p>
         </div>
       </template>

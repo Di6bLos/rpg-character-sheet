@@ -5,9 +5,9 @@
 // next Strike is for the multiple attack penalty. Its results show here. Rules in
 // utils/pf2eActions.ts; abilities spend from it in the Actions panel.
 import type { Pf2eSheet } from '~/types/sheets'
-import { rollAttack, sign } from '~/utils/dice'
+import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import { endPf2eEncounter, endPf2eTurn, startPf2eTurn } from '~/utils/pf2eActions'
-import { adjusted } from '~/utils/pf2ePlay'
+import { initiativeCheck } from '~/utils/pf2ePlay'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
 const { claim, resultIn } = useResultOwner()
@@ -22,10 +22,7 @@ const reactionReady = computed(() => turn.value?.reaction !== false)
 /** The initiative rolled this encounter: one roll, until the encounter ends. */
 const rolled = ref<number | null>(null)
 
-const initiative = computed(() => {
-  const p = sheet.value.saves.find((x) => x.label === 'Perception')
-  return adjusted(sheet.value, p?.value ?? 0, { kind: 'perception', attr: 'WIS', initiative: true })
-})
+const initiative = computed(() => initiativeCheck(sheet.value))
 const initiativeWhy = computed(() =>
   rolled.value !== null
     ? `Rolled ${rolled.value} this encounter`
@@ -37,11 +34,13 @@ const initiativeWhy = computed(() =>
 function rollInitiative() {
   if (!canEdit.value || initiativeWhy.value) return
   claim('turn:init', () => {
-    const r = rollAttack(initiative.value.value)
+    const r = rollCheck(initiative.value.value)
     rolled.value = r.total
     const nat = r.natural ? `, natural ${r.natural}` : ''
     const note = initiative.value.note ? ` (${initiative.value.note})` : ''
-    say(`Initiative: ${r.total} (${r.d20} ${sign(initiative.value.value)}${nat})${note}`)
+    const line = `Initiative: ${r.total} (${r.d20} ${sign(initiative.value.value)}${nat})${note}`
+    showOutcome({ label: 'Initiative', total: r.total, detail: line })
+    say(line)
   })
 }
 

@@ -118,6 +118,29 @@ export function rollAttack(bonus: number, rng: Rng = Math.random): AttackRoll {
   return { d20, total: d20 + bonus, natural: d20 === 20 ? 20 : d20 === 1 ? 1 : null }
 }
 
+/**
+ * A d20 check with its modifier (Pathfinder 2e checks, saves, Strikes, flat checks): the dice
+ * tray shows the die, the modifier and the total as one roll, not a lone die.
+ */
+export function rollCheck(bonus: number, rng: Rng = Math.random): AttackRoll {
+  const r = quietly(() => rollAttack(bonus, rng))
+  if (!detailed)
+    showDice({
+      sides: 20,
+      dice: [r.d20],
+      dropped: [],
+      primary: -1,
+      explosions: [],
+      extra: null,
+      mod: bonus,
+      total: r.total,
+      miss: false,
+      crit: false,
+      odds: 0,
+    })
+  return r
+}
+
 /** Pathfinder 2e multiple attack penalty for the 1st, 2nd and 3rd attack. */
 export function mapPenalties(agile: boolean): [number, number, number] {
   return agile ? [0, 4, 8] : [0, 5, 10]
@@ -167,6 +190,8 @@ export interface RollOutcome {
   label: string
   /** The final number; null when the line says it (minions, a heal) or there is none. */
   total: number | null
+  /** Pathfinder 2e: the degree of success ("Critical hit", "Failure"), shown with the total. */
+  degree?: string
   /** The app's result line. */
   detail: string
 }

@@ -4,20 +4,23 @@
 // round while the encounter runs. While the GM has seated the hero without an Initiative
 // ("–" on the strip: before the first turn or mid-encounter) it reads "Roll your
 // initiative", with a Roll initiative button that rolls d20 + the hero's Init (PF2e:
-// Perception; read from HeroScope's live sheet once loaded, else the roster), shows the
+// Perception, after conditions and initiative bonuses as the sheet's own turn tracker rolls it,
+// `initiativeCheck`; read from HeroScope's live sheet once loaded, else the roster), shows the
 // total with the Init in the dice tray and sends it to the tracker (`sendInitiative`); the
 // button goes once the row has a number. Rolled before the GM's first Next turn it reads
 // "Waiting for the GM to start" (the strip already marks its first token, so it never
 // says whose turn it is yet). A failed write reads "Initiative not sent", keeps the rolled
 // total and offers to resend it, as the Nimble turn bar does. With Manual dice on (account
 // menu, `profiles.own_dice`) a field takes the player's own total instead. A dead hero
-// (three failed death saves, PF2e Dying at 4 less Doomed) isn't offered the roll, and a player who can't
-// edit the hero (suspended) gets it disabled, as on the Nimble turn bar.
+// (three failed death saves, PF2e Dying at the sheet's death value) isn't offered the roll,
+// and a player who can't edit the hero (suspended) gets it disabled, as on the Nimble turn bar.
 // Compact (the phone's turn slot): inset 8px from the sides and the tab bar below.
 import type { useInitiative } from '~/composables/useInitiative'
 import { sendInitiative } from '~/composables/useSendInitiative'
 import { quietly, rollDie, showDice, showOutcome, sign } from '~/utils/dice'
+import type { Pf2eSheet } from '~/types/sheets'
 import { initiativeBonus } from '~/utils/heroCardStats'
+import { initiativeCheck } from '~/utils/pf2ePlay'
 import { heroDead, heroDown } from '~/utils/roster'
 
 const props = defineProps<{
@@ -118,10 +121,20 @@ async function send(total: number) {
     who.value?.focus()
 }
 
+/**
+ * What the roll adds: a loaded PF2e sheet's Perception after conditions and initiative
+ * bonuses, as its own turn tracker rolls it; else the roster's Init (PF2e: Perception).
+ */
+function initiativeMod(): number {
+  const sheet = editor.value?.draft.value.sheet
+  if (system.value === 'pf2e' && sheet) return initiativeCheck(sheet as Pf2eSheet).value
+  return initiativeBonus(system.value, hero.value) ?? 0
+}
+
 function roll() {
   if (unsent.value !== null) return send(unsent.value)
   who.value?.focus()
-  const mod = initiativeBonus(system.value, hero.value) ?? 0
+  const mod = initiativeMod()
   const d20 = quietly(() => rollDie(20))
   const total = d20 + mod
   showDice({

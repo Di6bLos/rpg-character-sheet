@@ -9,8 +9,8 @@
 // matches some spell, so rewording the data fails loudly.
 import { PF2E_EFFECTS } from '~/data/pf2e/effects'
 import type { Pf2eEffectDef, Pf2eSpellDef } from '~/data/pf2e/types'
-import { type Rng, rollAttack, rollDice, sign } from '~/utils/dice'
-import { type Pf2eDegree, degreeOf } from '~/utils/pf2ePlay'
+import { type Rng, rollCheck, rollDice, showOutcome, sign } from '~/utils/dice'
+import { type Pf2eDegree, degreeOf, strikeResult } from '~/utils/pf2ePlay'
 
 export type Pf2eSave = 'Fortitude' | 'Reflex' | 'Will'
 
@@ -1106,10 +1106,16 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
   const dmgDice = damage.map((p) => diceText(p.dice)).join(' + ')
   const persistNote = persist.length ? ` Plus ${sumText(persist)} damage.` : ''
   if (rules.attack) {
-    const a = rollAttack(c.attackBonus, c.rng)
+    const a = rollCheck(c.attackBonus, c.rng)
     const nat = a.natural ? `, natural ${a.natural}` : ''
     const degree = c.targetAc ? degreeOf(a.total, a.d20, c.targetAc) : undefined
     if (degree) result.degree = degree
+    showOutcome({
+      label: `${spell.name}: spell attack`,
+      total: a.total,
+      detail: '',
+      ...(degree ? { degree: strikeResult(degree) } : {}),
+    })
     const vs = degree ? ` vs AC ${c.targetAc}: ${SHORT[degree]}` : ''
     out.push(`Spell attack ${a.total} (${a.d20} ${sign(c.attackBonus)}${nat})${vs}.`)
     if (rolled.length || persist.length) {

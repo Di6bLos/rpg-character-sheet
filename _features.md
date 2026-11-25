@@ -329,12 +329,12 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Three actions per turn (turn tracker, `SheetTurn`, `utils/pf2eActions.ts`)
 - [x] Valued conditions (frightened, clumsy, off-guard…) on every number, dying, wounded, doomed, recovery checks, Heroic Recovery
 - [x] Shield Block (Hardness, broken threshold)
-- [ ] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
-  - Partly: the hero's resistances from effects (`resistancesNow`), persistent damage rolled and typed by spells and actions with a reminder at End turn; not yet weaknesses or deadly and fatal dice
+- [x] Persistent damage, resistances and weaknesses, deadly and fatal crit dice
 - [x] Incredible Initiative's +2 on initiative rolls (Roll initiative in `SheetTurn`)
 - [x] Spell slots (prepared and spontaneous), heightening, cantrips, divine font, focus spells and Refocus, daily preparations
 - [x] Spell damage rolls and heightened effects from the spell text (`utils/pf2eSpellRules.ts`)
-- [ ] Dice tray, target and odds rows
+- [x] Dice tray: checks, saves, Strikes, spell attacks, flat checks and damage with their total and degree
+- [ ] Target and odds rows
 
 ### 8.5 Abilities, spells and effects
 
@@ -342,8 +342,7 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] First wave: Rage, Sneak Attack, Precision edge, Courageous Anthem, Bless, Heroism, Toughness, Diehard, Fleet, Incredible Initiative (note)
 - [x] Abilities with an action get Use, daily frequencies tracked until daily preparations
 - [x] Second wave: Hunt Prey with the Flurry and Outwit edges, Thief, Precise Strike, Strategic Strike and Devise a Stratagem, weapon specialization (and greater), Crane and Mountain Stance, Shield, Mystic Armor, Rallying Anthem, Enlarge, Haste, Guidance
-- [ ] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, finishers), barbarian instincts, sorcerer blood magic, champion reactions
-  - Partly: actions read from their text (`utils/pf2eAbilityRules.ts`: Vicious Swing's extra dice and multiple attack penalty, Reactive Strike), finishers as a note on the precision edge
+- [x] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, Flurry of Blows, finishers with panache and bravado), barbarian instincts' Rage damage, sorcerer blood magic, champion reactions
 - [ ] Player Core 2 classes
 - [ ] Other classes, archetypes, ancestry feats
 - [x] Spells that change numbers when cast on yourself, beyond the first wave (`effectOnSelf` in `utils/pf2eSpells.ts`, offered after a cast in `SheetSpells`)
