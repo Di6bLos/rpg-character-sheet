@@ -6,17 +6,22 @@ import { formatSize, shortDate } from '~/utils/format'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
 
 definePageMeta({ middleware: 'auth' })
-useHead({ title: 'Library · Lantern' })
 
 const auth = useAuthStore()
 const store = useLibraryStore()
 const site = useSiteStore()
 const route = useRoute()
 
-/** Documents, or the shared NPC pool (hidden when admins switch the pool off). */
-const tab = computed(() =>
-  route.query.tab === 'npcs' && site.settings.npc_pool_library ? 'npcs' : 'documents',
-)
+/** Documents, the basic rules, or the shared NPC pool (hidden when admins switch it off). */
+const tab = computed(() => {
+  if (route.query.tab === 'rules') return 'rules'
+  return route.query.tab === 'npcs' && site.settings.npc_pool_library ? 'npcs' : 'documents'
+})
+useHead({
+  title: computed(() =>
+    tab.value === 'rules' ? 'Rules · Library · Lantern' : 'Library · Lantern',
+  ),
+})
 const snackbar = useSnackbarStore()
 
 // --- Pinned bars ----------------------------------------------------------------------
@@ -202,10 +207,10 @@ function report(doc: LibraryDocument) {
         <div class="eyebrow" style="letter-spacing: 0.14em; font-size: 11px">
           Shared with everyone
         </div>
-        <h1 style="margin-top: 6px">Document library</h1>
+        <h1 style="margin-top: 6px">Library</h1>
         <p>
-          General rules, references and homebrew any player or GM can read from their dashboard.
-          Campaign-specific notes go in that campaign’s journal.
+          The basic rules of each game, plus references and homebrew any player or GM can read from
+          their dashboard. Campaign-specific notes go in that campaign’s journal.
         </p>
       </div>
       <button
@@ -241,16 +246,17 @@ function report(doc: LibraryDocument) {
       />
     </header>
 
-    <nav
-      v-if="site.settings.npc_pool_library"
-      ref="subnavEl"
-      aria-label="Library sections"
-      class="lib-tabs sticky-bar"
-    >
+    <nav ref="subnavEl" aria-label="Library sections" class="lib-tabs sticky-bar">
       <NuxtLink to="/library" :aria-current="tab === 'documents' ? 'page' : undefined"
         >Documents</NuxtLink
       >
       <NuxtLink
+        :to="{ path: '/library', query: { tab: 'rules' } }"
+        :aria-current="tab === 'rules' ? 'page' : undefined"
+        >Rules</NuxtLink
+      >
+      <NuxtLink
+        v-if="site.settings.npc_pool_library"
         :to="{ path: '/library', query: { tab: 'npcs' } }"
         :aria-current="tab === 'npcs' ? 'page' : undefined"
         >NPCs &amp; monsters</NuxtLink
@@ -258,6 +264,8 @@ function report(doc: LibraryDocument) {
     </nav>
 
     <LibraryNpcPool v-if="tab === 'npcs'" />
+
+    <LibraryRules v-else-if="tab === 'rules'" />
 
     <template v-else>
       <RestrictedNotice v-if="!canUpload" title="Uploads are turned off for your account">
@@ -565,6 +573,12 @@ function report(doc: LibraryDocument) {
 
   .lib-tabs {
     position: static;
+    gap: 0;
+
+    a {
+      padding: 0 10px;
+      font-size: 16px;
+    }
   }
 }
 </style>

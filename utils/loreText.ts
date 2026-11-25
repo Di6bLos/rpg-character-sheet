@@ -46,7 +46,15 @@ function table(rows: string[]): string {
   )
 }
 
-export function loreHtml(markdown: string): string {
+export interface LoreHtmlOptions {
+  /**
+   * The HTML level for `##` headings, with `###` one below it and so on. Left out, every
+   * heading is an `<h4>` (Scribe replies and rules text inside cards).
+   */
+  headingBase?: number
+}
+
+export function loreHtml(markdown: string, opts: LoreHtmlOptions = {}): string {
   const out: string[] = []
   let list: 'ul' | 'ol' | null = null
   let para: string[] = []
@@ -90,13 +98,16 @@ export function loreHtml(markdown: string): string {
       code = []
       continue
     }
-    const heading = /^#{1,6}\s+(.*)$/.exec(line)
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line)
     const bullet = /^\s*[-*•]\s+(.*)$/.exec(line)
     const numbered = /^\s*\d+[.)]\s+(.*)$/.exec(line)
     if (heading) {
       flushPara()
       closeList()
-      out.push(`<h4>${inline(heading[1] ?? '')}</h4>`)
+      const level = opts.headingBase
+        ? Math.min(6, Math.max(1, opts.headingBase + (heading[1]?.length ?? 2) - 2))
+        : 4
+      out.push(`<h${level}>${inline(heading[2] ?? '')}</h${level}>`)
     } else if (bullet || numbered) {
       flushPara()
       const kind = bullet ? 'ul' : 'ol'
