@@ -364,6 +364,10 @@ export function runeNumbers(
   grade = '',
 ): Pf2eRuneNumbers {
   const text = [own, grade].filter(Boolean).join('\n\n')
+  if (subcategory.startsWith('Shield')) {
+    const reinforcing = reinforcingNumbers(grade || own)
+    return { slot: 'reinforcing', onto: 'shield', ...(reinforcing ? { reinforcing } : {}), usage }
+  }
   const onto = /armor/i.test(subcategory) ? 'armor' : 'weapon'
   const step = /\((Greater|Major)\)/.exec(name)?.[1]?.toLowerCase()
   if (subcategory.startsWith('Fundamental')) {
@@ -425,4 +429,76 @@ export function withLowerSpells(
 export const spellRankIn = (name: string) => {
   const m = /\b(\d+)(?:st|nd|rd|th)-rank\b/i.exec(name)
   return m ? Number(m[1]) : undefined
+}
+
+/**
+ * A poison's affliction (GM Core p. 249, Player Core 2 p. 290): its save and DC, onset,
+ * maximum duration, stages as printed, and how it's delivered (injury, ingested, contact,
+ * inhaled), from "**Saving Throw** DC 18 Fortitude; **Onset** 10 minutes; …; **Stage 1** …".
+ */
+export function afflictionNumbers(text: string, traits: string[]): Pf2eItemNumbers['poison'] {
+  const flat = text.replace(/\s+/g, ' ')
+  const save = /\*\*Saving Throw\*\* DC (\d+) (\w+)/.exec(flat)
+  if (!save) return undefined
+  const field = (name: string) =>
+    new RegExp(`\\*\\*${name}\\*\\* ([^;*]+?)(?:;|$| \\*\\*)`).exec(flat)?.[1]?.trim()
+  // "**Stages 1–5** 1d6 poison damage (1 round)" (Unending Itch) is that stage five times.
+  const stages = [
+    ...flat.matchAll(/\*\*Stages? (\d+)(?:[–-](\d+))?\*\* ([^;*]+?)(?=;|$| \*\*)/g),
+  ].flatMap((m) => Array<string>(m[2] ? Number(m[2]) - Number(m[1]) + 1 : 1).fill(m[3]!.trim()))
+  const exposure = traits
+    .map((t) => t.toLowerCase())
+    .filter((t) => ['injury', 'ingested', 'contact', 'inhaled'].includes(t))
+  const onset = field('Onset')
+  const maxDuration = field('Maximum Duration')
+  return {
+    dc: Number(save[1]),
+    save: save[2]!,
+    exposure,
+    ...(onset ? { onset } : {}),
+    ...(maxDuration ? { maxDuration } : {}),
+    stages,
+  }
+}
+
+/**
+ * The fundamental runes a specific weapon or armor is made with, from its description ("This
+ * _+1 striking kukri_", "this _+2 greater resilient_ …"; GM Core p. 233).
+ */
+export function fundamentalRunes(text: string): Pf2eItemNumbers['fundamental'] {
+  const m = /\+([1-4])\s+((?:(greater|major)\s+)?(striking|resilient)\s+)?/i.exec(
+    text.replace(/_/g, ''),
+  )
+  if (!m) return undefined
+  const step = m[4] ? ({ greater: 2, major: 3 }[m[3]?.toLowerCase() ?? ''] ?? 1) : 0
+  return {
+    potency: Number(m[1]),
+    striking: m[4]?.toLowerCase() === 'striking' ? step : 0,
+    resilient: m[4]?.toLowerCase() === 'resilient' ? step : 0,
+  }
+}
+
+/** A shield's printed Hardness, HP and BT ("Hardness 8, HP 64, and BT 32"). */
+export function shieldNumbers(text: string) {
+  const m = /\bHardness (\d+), HP (\d+),? and BT (\d+)/.exec(text)
+  return m ? { hardness: Number(m[1]), hp: Number(m[2]), bt: Number(m[3]) } : undefined
+}
+
+/**
+ * A reinforcing rune (GM Core p. 232): "The shield's Hardness increases by 3, it gains an
+ * additional 44 Hit Points, and its BT increases by 22 (maximum 8 Hardness, 64 HP, and 32 BT)."
+ */
+export function reinforcingNumbers(text: string): Pf2eRuneNumbers['reinforcing'] {
+  const m =
+    /Hardness increases by (\d+), it gains an additional (\d+) Hit Points, and its BT increases by (\d+) \(maximum (\d+) Hardness, (\d+) HP, and (\d+) BT\)/.exec(
+      text,
+    )
+  if (!m) return undefined
+  const [hardness, hp, bt, maxHardness, maxHp, maxBt] = m.slice(1).map(Number) as number[]
+  return {
+    hardness: hardness!,
+    hp: hp!,
+    bt: bt!,
+    max: { hardness: maxHardness!, hp: maxHp!, bt: maxBt! },
+  }
 }

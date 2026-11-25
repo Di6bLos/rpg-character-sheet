@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Etches runes on a PF2e weapon or armor (GM Core pp. 224–225): the runes for that item
+// Etches runes on a PF2e weapon, armor, staff or shield (GM Core pp. 224–225, 232, 278): the runes for that item
 // (fetched when the dialog opens), each with the reason it can't go on (`runeProblem`: the
 // wrong item, a melee-only rune on a ranged weapon, more property runes than the potency
 // holds, an equal or stronger rune already there), the runes on it with a Remove, and the
@@ -40,7 +40,9 @@ watch(
 const higherLevel = ref(false)
 const payFor = ref(true)
 const st = computed(() => props.item.pf2e)
-const onto = computed(() => (st.value?.kind === 'armor' ? 'armor' : 'weapon'))
+const onto = computed(() =>
+  st.value?.kind === 'armor' ? 'armor' : st.value?.kind === 'shield' ? 'shield' : 'weapon',
+)
 const options = computed(() =>
   runes.value
     .filter((r) => r.rune?.onto === onto.value && r.rarity === 'common')
@@ -75,6 +77,7 @@ const current = computed(() => {
           },
         ]
       : []),
+    ...(r.reinforcing ? [{ key: 'reinforcing', label: r.reinforcing.name }] : []),
     ...r.property.map((p) => ({
       key: p.id,
       label: working.has(p.id) ? p.name : `${p.name} (dormant: no potency for it)`,

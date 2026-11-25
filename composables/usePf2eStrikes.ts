@@ -20,7 +20,8 @@ import {
   traitsInHands,
   versatileType,
 } from '~/utils/pf2eDamage'
-import { strikeRunes } from '~/utils/pf2eInventory'
+import { strikeItem, strikeRunes } from '~/utils/pf2eInventory'
+import { afflictionLine } from '~/utils/pf2eItemUse'
 import {
   damageConditions,
   effectMods,
@@ -317,13 +318,20 @@ function create() {
     const shown = crit
       ? `${total} (2 × ${rolled}${afterTotal ? ` + ${afterTotal}` : ''})`
       : String(total)
-    const text =
+    let text =
       `${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}${extras.length ? ` (${extras.join(', ')})` : ''}`.trim() +
       // A property rune's critical effect (GM Core pp. 236–237), noted for the table to apply,
       // and its persistent damage or damage against some foes.
       (w.runeNotes.length ? `; also ${w.runeNotes.join(', ')}` : '') +
       (crit && w.critNotes.length ? ` ${w.critNotes.join(' ')}` : '')
     stratagemStruck.value = stratagemDamaged(stratagemState(), index).struck
+    // An injury poison on the weapon goes into the target with this hit (GM Core p. 249).
+    const weapon = strikeItem(sheet.value, w.name)?.pf2e
+    const poison = weapon?.poisoned
+    if (weapon && poison) {
+      delete weapon.poisoned
+      text += ` ${poison.name}: the target is exposed (${afflictionLine({ ...poison, exposure: ['injury'] })}).`
+    }
     if (!o.quiet) {
       showOutcome({ label: `${w.name} damage`, total, detail: text })
       say(text)

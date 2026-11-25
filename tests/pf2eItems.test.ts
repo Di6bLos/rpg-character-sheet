@@ -9,7 +9,9 @@ import {
   etchRune,
   itemFromDef,
   itemsDailyPrep,
+  needsInvesting,
   prepareStaff,
+  reinforcedStats,
   runeCost,
   runeFamily,
   runeProblem,
@@ -33,6 +35,8 @@ const gear = loadSet('gear')
 const magic = loadSet('magicItems')
 const staves = loadSet('staves')
 const wands = loadSet('wands')
+const arms = loadSet('arms')
+const shieldSet = loadSet('shields')
 const weapons = loadSet('weapons')
 const armor = loadSet('armor')
 const spells = loadSet('spells')
@@ -265,6 +269,69 @@ describe('pf2e runes (GM Core pp. 224–237)', () => {
     expect(adjusted(s, 5, { kind: 'save', save: 'Fortitude' }).value).toBe(6)
     mail.pf2e!.carry = 'stowed'
     expect(adjusted(s, 18, { kind: 'ac' }).value).toBe(18)
+  })
+})
+
+describe('pf2e specific arms, shield runes, poisons and companion items', () => {
+  // GM Core p. 241: a specific weapon is its base weapon with the runes it's made with.
+  it('adds a specific weapon or armor with its base’s kind and its fundamental runes', () => {
+    const s = hero()
+    const kukri = itemFromDef({ set: 'item', def: named(arms, 'Bloodletting Kukri') })
+    expect(kukri.pf2e).toMatchObject({ kind: 'weapon', carry: 'held', ranged: false })
+    s.inventory.push(kukri)
+    expect(strikeRunes(s, 'Bloodletting Kukri')).toMatchObject({ potency: 1, striking: 1 })
+    expect(runedName(kukri)).toBe('+1 striking Bloodletting Kukri')
+    const eel = itemFromDef({ set: 'item', def: named(arms, 'Electric Eelskin') })
+    expect(eel.pf2e).toMatchObject({ kind: 'armor', carry: 'worn', category: 'light' })
+    s.inventory.push(eel)
+    expect(adjusted(s, 18, { kind: 'ac' }).value).toBe(19)
+  })
+
+  // GM Core p. 232: a reinforcing rune raises Hardness, HP and BT, to its maximum.
+  it('etches a reinforcing rune on a shield, up to the rune’s maximum', () => {
+    const shield = itemFromDef({ set: 'shields', def: item(shieldSet, 'Steel Shield') })
+    expect(shield.pf2e?.shieldStats).toMatchObject({ hardness: 5, hp: 20, bt: 10 })
+    const minor = named(runes, 'Reinforcing Rune (Minor)')
+    expect(runeProblem(shield.pf2e!, item(runes, 'Striking'))).toMatch(
+      /Shield runes go on shields|Weapon runes/,
+    )
+    expect(etchRune(shield, minor)).toMatch(/Hardness 8, HP 64, BT 32/)
+    expect(reinforcedStats(shield.pf2e!)).toMatchObject({ hardness: 8, hp: 64, bt: 32 })
+    expect(runeProblem(shield.pf2e!, minor)).toMatch(/already has/)
+    const lesser = named(runes, 'Reinforcing Rune (Lesser)')
+    expect(runeCost(shield.pf2e!, lesser, runes)).toBe(lesser.price - minor.price)
+    etchRune(shield, lesser)
+    expect(reinforcedStats(shield.pf2e!)).toMatchObject({ hardness: 8, hp: 72, bt: 36 })
+    const sword = itemFromDef({ set: 'weapons', def: item(weapons, 'Longsword') })
+    expect(runeProblem(sword.pf2e!, minor)).toMatch(/Shield runes go on shields/)
+  })
+
+  // GM Core p. 249: an injury poison goes on a held weapon and into the next target it hits.
+  it('applies an injury poison to the held weapon, said with its DC and stages', () => {
+    const s = hero()
+    const venom = itemFromDef({ set: 'item', def: item(consumables, 'Black Adder Venom') })
+    s.inventory.push(venom)
+    expect(useConsumable(s, 0, { level: 1 })).toMatch(/Hold a weapon/)
+    expect(s.inventory).toHaveLength(1)
+    s.inventory.push(itemFromDef({ set: 'weapons', def: item(weapons, 'Dagger') }))
+    const text = useConsumable(s, 0, { level: 1 })
+    expect(text).toMatch(/Applied Black Adder Venom to Dagger/)
+    expect(text).toMatch(/DC 18 Fortitude; maximum 3 rounds; stage 1 1d4 poison damage/)
+    expect(s.inventory.find((i) => i.name === 'Dagger')?.pf2e?.poisoned).toMatchObject({
+      dc: 18,
+      stages: expect.arrayContaining(['1d8 poison damage (1 round)']),
+    })
+    s.inventory.push(itemFromDef({ set: 'item', def: item(consumables, 'Arsenic') }))
+    expect(useConsumable(s, 1, { level: 1 })).toMatch(
+      /Arsenic \(ingested\): DC 18 Fortitude; onset 10 minutes/,
+    )
+  })
+
+  // GM Core p. 219: the companion invests its own item.
+  it('leaves a companion item out of the hero’s investments', () => {
+    const collar = itemFromDef({ set: 'item', def: item(magic, 'Collar of Empathy') })
+    expect(collar.pf2e?.kind).toBe('companion')
+    expect(needsInvesting(collar.pf2e!)).toBe(false)
   })
 })
 

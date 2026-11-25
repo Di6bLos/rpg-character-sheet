@@ -65,13 +65,16 @@ import {
   withoutLegacy,
 } from './lib/aon'
 import {
+  afflictionNumbers,
   bombNumbers,
+  fundamentalRunes,
   itemActivations,
   itemBonuses,
   itemDuration,
   itemGrades,
   itemHealing,
   runeNumbers,
+  shieldNumbers,
   spellRankIn,
   staffSpells,
   withLowerSpells,
@@ -694,7 +697,12 @@ const shields: Pf2eShieldDef[] = latest(of('shield')).map((d) => ({
 // --- Other equipment (GM Core chapter 11, Player Core pp. 287–295) -------------
 /** AoN's item categories → the sets they go in and what each item is. */
 const ITEM_SETS: Record<string, (d: AonDoc) => Pf2eItemKind | undefined> = {
-  gear: (d) => (d.item_category === 'Adventuring Gear' ? 'gear' : undefined),
+  gear: (d) =>
+    d.item_category === 'Adventuring Gear'
+      ? 'gear'
+      : d.item_category === 'Assistive Items'
+        ? 'assistive'
+        : undefined,
   consumables: (d) =>
     (
       ({
@@ -706,18 +714,32 @@ const ITEM_SETS: Record<string, (d: AonDoc) => Pf2eItemKind | undefined> = {
         'Alchemical Ammunition': 'ammunition',
         Oils: 'oil',
         'Alchemical Bombs': 'bomb',
+        'Alchemical Poisons': 'poison',
+        'Other Consumables': 'consumable',
       }) as Record<string, Pf2eItemKind>
     )[String(d.item_subcategory ?? '')],
+  snares: (d) => (d.item_category === 'Snares' ? 'snare' : undefined),
   magicItems: (d) =>
     d.item_category === 'Held Items'
       ? 'held'
       : d.item_category === 'Worn Items' && d.item_subcategory === 'Other Worn Items'
         ? 'worn'
-        : undefined,
+        : d.item_category === 'Worn Items' && d.item_subcategory === 'Companion Items'
+          ? 'companion'
+          : undefined,
   runes: (d) =>
     d.item_category === 'Runes' &&
-    /^(?:Fundamental|Weapon Property|Armor Property)/.test(String(d.item_subcategory ?? ''))
+    /^(?:Fundamental|Weapon Property|Armor Property|Shield)/.test(String(d.item_subcategory ?? ''))
       ? 'rune'
+      : undefined,
+  // GM Core pp. 233–243: specific magic armor, weapons and shields, and precious-material ones.
+  arms: (d) =>
+    /^(?:Specific Magic (?:Armor|Weapons)|Specific Shields|Precious Material (?:Armor|Weapons|Shields))$/.test(
+      String(d.item_subcategory ?? ''),
+    )
+      ? ({ Armor: 'armor', Weapons: 'weapon', Shields: 'shield' } as const)[
+          String(d.item_category) as 'Armor'
+        ]
       : undefined,
   staves: (d) => (d.item_category === 'Staves' && !d.item_subcategory ? 'staff' : undefined),
   wands: (d) => (d.item_category === 'Wands' ? 'wand' : undefined),
@@ -775,6 +797,42 @@ const missingSpells = (list: { rank: number; names: string[] }[]) => [
 ]
 
 const allById = new Map(all.map((d) => [d.id, d]))
+
+const weaponByName = new Map(weapons.map((w) => [w.name.toLowerCase(), w]))
+const armorByName = new Map(armor.map((a) => [a.name.toLowerCase(), a]))
+const shieldByName = new Map(shields.map((sh) => [sh.name.toLowerCase(), sh]))
+/**
+ * What the sheet uses from a specific or precious-material item (GM Core pp. 233–243): its base
+ * item and that base's melee/ranged or armor category, the fundamental runes it's made with
+ * ("This +1 striking kukri"), a shield's Hardness, HP and BT ("The shield has Hardness 8, HP
+ * 64, and BT 32", else its base shield's), and whether it grants Shield Block.
+ */
+function armsNumbers(
+  d: AonDoc,
+  kind: 'armor' | 'weapon' | 'shield',
+  own: string,
+  grade: string,
+): Partial<Pf2eItemDef> {
+  const text = [own, grade].filter(Boolean).join('\n\n')
+  const base = list(d.base_item)[0]
+  const out: Partial<Pf2eItemDef> = { ...opt('base', base) }
+  const key = (base ?? '').toLowerCase()
+  if (kind === 'weapon' && weaponByName.has(key))
+    out.ranged = weaponByName.get(key)!.type === 'Ranged'
+  if (kind === 'armor' && armorByName.has(key))
+    out.category = armorByName.get(key)!.category.toLowerCase()
+  const runes = fundamentalRunes(text)
+  if (runes) out.fundamental = runes
+  if (kind === 'shield') {
+    const printed = shieldNumbers(grade) ?? shieldNumbers(own)
+    const b = shieldByName.get(key)
+    const stats =
+      printed ?? (b ? { hardness: b.hardness, hp: b.hp, bt: Math.floor(b.hp / 2) } : undefined)
+    if (stats) out.shieldStats = { ...stats, ...(b ? { ac: b.ac } : {}) }
+    if (/\byou (?:gain|can use) (?:the )?Shield Block\b/i.test(text)) out.grantsShieldBlock = true
+  }
+  return out
+}
 /**
  * A remastered grade AoN files under a legacy item (Rage of Elements' Aeon Stone (Cymophane
  * Cabochon) under the Core Rulebook's aeon stone): its family is the remastered item of the
@@ -813,9 +871,14 @@ function legacyParent(d: AonDoc) {
  */
 function itemSet(kindOf: (d: AonDoc) => Pf2eItemKind | undefined): Pf2eItemDef[] {
   const docs = current.filter((d) => d.category === 'equipment' && kindOf(d))
+  // An entry without a Price is a family's summary page, except a consumable that is only ever
+  // crafted (Elixir of Rejuvenation, Player Core 2 p. 288), which is kept at no Price.
   const owned = latest(
     docs.filter((d) =>
-      d.item_parent_id ? true : !list(d.item_child_id).length && d.price !== undefined,
+      d.item_parent_id
+        ? true
+        : !list(d.item_child_id).length &&
+          (d.price !== undefined || !!d.trait?.includes('Consumable')),
     ),
   )
   const staffLists = new Map<string, { rank: number; names: string[] }[]>()
@@ -838,7 +901,9 @@ function itemSet(kindOf: (d: AonDoc) => Pf2eItemKind | undefined): Pf2eItemDef[]
       const numbers: Partial<Pf2eItemDef> = {}
       const healing = itemHealing(grade) ?? itemHealing(own)
       if (healing) numbers.healing = healing
-      if (kind === 'bomb') {
+      // A thrown consumable is a bomb by another name (holy water, GM Core p. 252).
+      const thrown = itemActivations(stats, text).some((a) => a.as === 'Strike')
+      if (kind === 'bomb' || (kind === 'consumable' && thrown)) {
         const bomb = bombNumbers(grade) ?? bombNumbers(own)
         if (bomb) numbers.bomb = bomb
       } else if (kind !== 'rune') {
@@ -850,11 +915,17 @@ function itemSet(kindOf: (d: AonDoc) => Pf2eItemKind | undefined): Pf2eItemDef[]
           : itemBonuses(withoutActivations(own), withoutActivations(grade))
         if (bonuses.length) numbers.bonuses = bonuses
       }
-      if (['potion', 'elixir', 'oil', 'talisman', 'ammunition'].includes(kind)) {
+      if (['potion', 'elixir', 'oil', 'talisman', 'ammunition', 'consumable'].includes(kind)) {
         const duration = itemDuration(own, grade)
         if (duration) numbers.duration = duration
       }
       if (kind === 'rune') numbers.rune = runeNumbers(d.name, sub, usage ?? '', own, grade)
+      if (kind === 'poison') {
+        const poison = afflictionNumbers(text, list(d.trait))
+        if (poison) numbers.poison = poison
+      }
+      if (kind === 'armor' || kind === 'weapon' || kind === 'shield')
+        Object.assign(numbers, armsNumbers(d, kind, own, grade))
       if (kind === 'scroll' || kind === 'wand') {
         const rank = spellRankIn(d.name)
         if (rank) numbers.spellRank = rank

@@ -12,6 +12,7 @@ const data = {
   actions: load('actions'),
   ancestries: load('ancestries'),
   archetypes: load('archetypes'),
+  arms: load('arms'),
   armor: load('armor'),
   backgrounds: load('backgrounds'),
   classes: load('classes'),
@@ -24,6 +25,7 @@ const data = {
   magicItems: load('magicItems'),
   runes: load('runes'),
   shields: load('shields'),
+  snares: load('snares'),
   spells: load('spells'),
   staves: load('staves'),
   traits: load('traits'),
@@ -37,6 +39,8 @@ const items = [
   ...data.runes,
   ...data.staves,
   ...data.wands,
+  ...data.snares,
+  ...data.arms,
 ]
 const item = (name: string) => items.find((i) => i.name === name)
 const classNames = new Set(data.classes.map((c) => c.name))
@@ -569,10 +573,22 @@ describe('pf2e data', () => {
 
   it('keeps every item a price, level, Bulk and a kind its set holds', () => {
     const kinds: Record<string, string[]> = {
-      gear: ['gear'],
-      consumables: ['potion', 'elixir', 'scroll', 'talisman', 'ammunition', 'oil', 'bomb'],
-      magicItems: ['held', 'worn'],
+      gear: ['gear', 'assistive'],
+      consumables: [
+        'potion',
+        'elixir',
+        'scroll',
+        'talisman',
+        'ammunition',
+        'oil',
+        'bomb',
+        'poison',
+        'consumable',
+      ],
+      snares: ['snare'],
+      magicItems: ['held', 'worn', 'companion'],
       runes: ['rune'],
+      arms: ['armor', 'weapon', 'shield'],
       staves: ['staff'],
       wands: ['wand'],
     }
@@ -701,6 +717,66 @@ describe('pf2e data', () => {
     expect(rune('Mythic Armor Potency')).toMatchObject({ slot: 'potency', value: 4 })
     expect(rune('Mythic Resilient')).toMatchObject({ slot: 'resilient', value: 4 })
     for (const r of data.runes) expect(r.rune?.usage, r.name).toMatch(/^etched (?:onto|into)/)
+  })
+
+  // The core books' other item categories: Player Core pp. 287–295, Player Core 2 pp. 288–300,
+  // GM Core pp. 228–262.
+  it('has the core books’ poisons, snares, other consumables, shield runes and arms', () => {
+    const core = (set: { source: { book: string } }[]) =>
+      set.filter((i) => ['Player Core', 'Player Core 2', 'GM Core'].includes(i.source.book))
+    expect(item('Holy Water')).toMatchObject({
+      kind: 'consumable',
+      bomb: { damage: { dice: '1d6', type: 'spirit' }, splash: 1 },
+    })
+    expect(item('Candle of Truth')).toMatchObject({ kind: 'consumable', duration: '10 minutes' })
+    expect(item('Elixir of Rejuvenation')).toMatchObject({ kind: 'elixir', price: 0, level: 20 })
+    expect(item('Black Adder Venom')).toMatchObject({
+      kind: 'poison',
+      poison: {
+        dc: 18,
+        save: 'Fortitude',
+        exposure: ['injury'],
+        maxDuration: '3 rounds',
+        stages: [
+          '1d4 poison damage (1 round)',
+          '1d6 poison damage (1 round)',
+          '1d8 poison damage (1 round)',
+        ],
+      },
+    })
+    expect(item('Arsenic')?.poison).toMatchObject({ exposure: ['ingested'], onset: '10 minutes' })
+    for (const p of data.consumables.filter((i) => i.kind === 'poison'))
+      expect(p.poison?.stages.length, p.name).toBeGreaterThan(0)
+    expect(item('Alarm Snare')).toMatchObject({ kind: 'snare', source: { book: 'Player Core 2' } })
+    expect(core(data.snares).length).toBeGreaterThan(20)
+    expect(item('Reinforcing Rune (Minor)')?.rune).toMatchObject({
+      slot: 'reinforcing',
+      onto: 'shield',
+      reinforcing: { hardness: 3, hp: 44, bt: 22, max: { hardness: 8, hp: 64, bt: 32 } },
+    })
+    expect(item('Bloodletting Kukri')).toMatchObject({
+      kind: 'weapon',
+      base: 'Kukri',
+      ranged: false,
+      fundamental: { potency: 1, striking: 1, resilient: 0 },
+    })
+    expect(item('Electric Eelskin')).toMatchObject({
+      kind: 'armor',
+      category: 'light',
+      fundamental: { potency: 1, resilient: 1 },
+    })
+    expect(item('Sturdy Shield (Minor)')).toMatchObject({
+      kind: 'shield',
+      shieldStats: { hardness: 8, hp: 64, bt: 32, ac: 2 },
+    })
+    expect(item('Adamantine Buckler (Standard-Grade)')?.shieldStats).toMatchObject({
+      hardness: 8,
+      hp: 32,
+      bt: 16,
+    })
+    expect(core(data.arms).length).toBeGreaterThan(100)
+    expect(item('Collar of Empathy')?.kind).toBe('companion')
+    expect(item('Cane')).toMatchObject({ kind: 'assistive', source: { book: 'Player Core' } })
   })
 
   it('reads staves, wands and worn items as printed (GM Core pp. 279–286)', () => {

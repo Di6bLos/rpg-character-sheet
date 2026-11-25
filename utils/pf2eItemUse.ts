@@ -4,7 +4,7 @@
 // through the spell rules at the item's rank. The bookkeeping (Bulk, runes, charges) is in
 // `utils/pf2eInventory.ts`.
 import type { Pf2eEffectDef, Pf2eSpellDef } from '~/data/pf2e/types'
-import type { InventoryItem, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import type { InventoryItem, Pf2eItemState, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { type Rng, parseDice, rollAttack, rollDice, rollDie, sign } from '~/utils/dice'
 import { attacked, mapIndex } from '~/utils/pf2eActions'
 import { durationRounds, toggleEffect } from '~/utils/pf2eEffects'
@@ -161,18 +161,60 @@ function throwBomb(s: Pf2eSheet, item: InventoryItem, o: Pf2eItemUseOptions): st
   return `${vs}: ${dmg} ${b.damage.type}${crit ? ` (2 × ${rolled})` : ''}${splash}${pers}.`
 }
 
+/** A poison's affliction in a line: "DC 18 Fortitude; maximum 3 rounds; stage 1 1d4 poison…". */
+export function afflictionLine(p: NonNullable<Pf2eItemState['poison']>) {
+  return [
+    `DC ${p.dc} ${p.save}`,
+    p.onset ? `onset ${p.onset}` : '',
+    p.maxDuration ? `maximum ${p.maxDuration}` : '',
+    ...p.stages.map((x, i) => `stage ${i + 1} ${x}`),
+  ]
+    .filter(Boolean)
+    .join('; ')
+}
+
+/**
+ * A poison (GM Core p. 249): an injury poison goes on the weapon the hero holds, for its next
+ * Strike that hits; the others are said with their DC and stages for the target to resist.
+ */
+function usePoison(s: Pf2eSheet, item: InventoryItem): string {
+  const p = item.pf2e!.poison!
+  if (!p.exposure.includes('injury'))
+    return `${item.name} (${p.exposure.join(', ') || 'poison'}): ${afflictionLine(p)}.`
+  const weapon = s.inventory.find(
+    (i) => (i.pf2e?.kind === 'weapon' || i.pf2e?.kind === 'staff') && i.pf2e.carry === 'held',
+  )
+  if (!weapon?.pf2e) return 'Hold a weapon to apply an injury poison to it.'
+  weapon.pf2e.poisoned = {
+    name: item.name,
+    dc: p.dc,
+    save: p.save,
+    stages: p.stages,
+    ...(p.maxDuration ? { maxDuration: p.maxDuration } : {}),
+  }
+  return `Applied ${item.name} to ${weapon.name}: your next Strike that hits exposes the target (${afflictionLine(p)}).`
+}
+
 /**
  * Uses a consumable (GM Core p. 220): pays its actions while the turn runs, spends one, and
- * does what it does: Hit Points through `heal`, bonuses as an effect, a bomb's Strike.
+ * does what it does: Hit Points through `heal`, bonuses as an effect, a bomb's Strike, a
+ * poison on the weapon or said for the target.
  */
 export function useConsumable(s: Pf2eSheet, index: number, o: Pf2eItemUseOptions): string {
   const item = s.inventory[index]
   const st = item?.pf2e
   if (!item || !st) return 'Nothing to use.'
   const act = st.activations?.[0]
+  const needsWeapon =
+    st.poison?.exposure.includes('injury') &&
+    !s.inventory.some(
+      (i) => (i.pf2e?.kind === 'weapon' || i.pf2e?.kind === 'staff') && i.pf2e.carry === 'held',
+    )
+  if (needsWeapon) return 'Hold a weapon to apply an injury poison to it.'
   const blocked = payActions(s, act?.actions ?? (st.bomb ? 1 : undefined))
   if (blocked) return blocked
   const parts: string[] = []
+  if (st.poison) parts.push(usePoison(s, item))
   if (st.bomb) parts.push(throwBomb(s, item, o))
   if (st.healing) {
     const dice = parseDice(st.healing)

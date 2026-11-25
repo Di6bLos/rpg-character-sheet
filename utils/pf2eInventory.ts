@@ -11,7 +11,7 @@ import type {
   Pf2eSpellDef,
   Pf2eWeaponDef,
 } from '~/data/pf2e/types'
-import type { InventoryItem, Pf2eItemState, Pf2eSheet } from '~/types/sheets'
+import type { InventoryItem, Pf2eItemRunes, Pf2eItemState, Pf2eSheet } from '~/types/sheets'
 
 /** A modifier the way utils/pf2ePlay.ts stacks them (kept here to avoid an import cycle). */
 interface ItemMod {
@@ -179,10 +179,23 @@ export function itemFromDef(o: Pf2eOwnable, count = 1, spell?: Pf2eSpellDef): In
     st = { ...common, kind: 'weapon', ranged: o.def.type === 'Ranged', carry: 'held' }
   else if (o.set === 'armor')
     st = { ...common, kind: 'armor', category: o.def.category.toLowerCase(), carry: 'worn' }
-  else if (o.set === 'shields') st = { ...common, kind: 'shield', carry: 'held' }
+  else if (o.set === 'shields')
+    st = {
+      ...common,
+      kind: 'shield',
+      carry: 'held',
+      shieldStats: {
+        hardness: o.def.hardness,
+        hp: o.def.hp,
+        bt: Math.floor(o.def.hp / 2),
+        ac: o.def.ac,
+      },
+    }
+  else if (o.def.kind === 'weapon' || o.def.kind === 'armor' || o.def.kind === 'shield')
+    st = armsState(o.def, common)
   else {
     const i = o.def
-    const { healing, bonuses, duration, bomb, rune, spells, spellRank } = i
+    const { healing, bonuses, duration, bomb, rune, spells, spellRank, poison } = i
     st = {
       ...common,
       kind: i.kind,
@@ -195,6 +208,7 @@ export function itemFromDef(o: Pf2eOwnable, count = 1, spell?: Pf2eSpellDef): In
       ...(rune ? { rune } : {}),
       ...(spells ? { spells, charges: 0 } : {}),
       ...(spellRank ? { spellRank } : {}),
+      ...(poison ? { poison } : {}),
       ...(i.kind === 'wand' ? { wand: { cast: false, overcharged: false, broken: false } } : {}),
     }
     if (/^worn\b/i.test(i.usage ?? '') || /^backpack$/i.test(d.name)) st.carry = 'worn'
@@ -211,6 +225,45 @@ export function itemFromDef(o: Pf2eOwnable, count = 1, spell?: Pf2eSpellDef): In
   return { name, qty: bulkLabel(d.bulk), pf2e: st }
 }
 
+/**
+ * A specific or precious-material weapon, armor or shield (GM Core pp. 228–243) as the sheet's
+ * weapon, armor or shield: its base's melee/ranged or category, the fundamental runes it's made
+ * with, a shield's Hardness, HP and BT, and Shield Block when it grants it.
+ */
+function armsState(i: Pf2eItemDef, common: Pf2eItemState): Pf2eItemState {
+  const f = i.fundamental
+  return {
+    ...common,
+    kind: i.kind as 'weapon',
+    carry: i.kind === 'armor' ? 'worn' : 'held',
+    ...(i.usage ? { usage: i.usage } : {}),
+    ...(i.activations.length ? { activations: i.activations } : {}),
+    ...(i.ranged !== undefined ? { ranged: i.ranged } : {}),
+    ...(i.category ? { category: i.category } : {}),
+    ...(f ? { runes: { ...f, property: [] } } : {}),
+    ...(i.shieldStats ? { shieldStats: i.shieldStats } : {}),
+    ...(i.grantsShieldBlock ? { shieldBlock: true } : {}),
+    ...(i.bonuses ? { bonuses: i.bonuses } : {}),
+  }
+}
+
+/**
+ * A shield's Hardness, HP and BT with its reinforcing rune (GM Core p. 232): each raised by the
+ * rune, but not past the rune's maximum (unless the shield's own is already higher).
+ */
+export function reinforcedStats(st: Pf2eItemState) {
+  const own = st.shieldStats
+  const r = st.runes?.reinforcing
+  if (!own || !r) return own
+  const raise = (base: number, by: number, max: number) => Math.max(base, Math.min(base + by, max))
+  return {
+    ...own,
+    hardness: raise(own.hardness, r.hardness, r.max.hardness),
+    hp: raise(own.hp, r.hp, r.max.hp),
+    bt: raise(own.bt, r.bt, r.max.bt),
+  }
+}
+
 // --- Investing (GM Core p. 219) ----------------------------------------------------
 
 /** A hero benefits from at most 10 invested items a day (GM Core p. 219). */
@@ -220,9 +273,13 @@ export const INVEST_LIMIT = 10
 const hasRunes = (st: Pf2eItemState) =>
   !!st.runes && (st.runes.potency + st.runes.resilient > 0 || st.runes.property.length > 0)
 
-/** Items with the invested trait, and armor with runes, must be invested to work. */
+/**
+ * Items with the invested trait, and armor with runes, must be invested to work; a companion
+ * item is the companion's to invest, not the hero's (GM Core p. 219).
+ */
 export const needsInvesting = (st: Pf2eItemState) =>
-  !!st.traits?.includes('Invested') || (st.kind === 'armor' && hasRunes(st))
+  st.kind !== 'companion' &&
+  (!!st.traits?.includes('Invested') || (st.kind === 'armor' && hasRunes(st)))
 
 /**
  * Investments used today (GM Core p. 219): items invested now, and those invested since daily
@@ -260,7 +317,12 @@ export const itemActive = (st: Pf2eItemState) =>
 
 // --- Runes (GM Core pp. 224–225) -------------------------------------------------
 
-export const noRunes = () => ({ potency: 0, striking: 0, resilient: 0, property: [] })
+export const noRunes = (): Pf2eItemRunes => ({
+  potency: 0,
+  striking: 0,
+  resilient: 0,
+  property: [],
+})
 
 export const FUNDAMENTAL_WORDS: Record<string, string[]> = {
   striking: ['', 'striking', 'greater striking', 'major striking', 'mythic striking'],
@@ -293,6 +355,14 @@ export function runeProblem(st: Pf2eItemState, rune: Pf2eItemDef): string | unde
   const isArmor = st.kind === 'armor'
   if (r.onto === 'weapon' && !isWeapon) return 'Weapon runes go on weapons.'
   if (staff && r.slot === 'property') return 'A staff takes fundamental runes only.'
+  if (r.onto === 'shield' || st.kind === 'shield') {
+    // A shield takes only a reinforcing rune (GM Core p. 224).
+    if (r.onto !== 'shield' || st.kind !== 'shield') return 'Shield runes go on shields.'
+    const had = st.runes?.reinforcing
+    const old = had ? REINFORCING_GRADES.indexOf(gradeOf(had.name)) : -1
+    if (old >= REINFORCING_GRADES.indexOf(gradeOf(rune.name))) return `It already has ${had!.name}.`
+    return undefined
+  }
   if (r.onto === 'armor' && !isArmor) return 'Armor runes go on armor.'
   const usage = r.usage.toLowerCase()
   if (/\bmelee weapon\b/.test(usage) && st.ranged) return 'Only on a melee weapon.'
@@ -302,7 +372,7 @@ export function runeProblem(st: Pf2eItemState, rune: Pf2eItemDef): string | unde
   if (isArmor && named.length && !named.includes(category))
     return `Only on ${named.join(' or ')} armor.`
   const runes = st.runes ?? noRunes()
-  if (r.slot !== 'property') {
+  if (r.slot !== 'property' && r.slot !== 'reinforcing') {
     const now = runes[r.slot]
     if ((r.value ?? 0) <= now) return `It already has an equal or stronger ${r.slot} rune.`
     return undefined
@@ -317,6 +387,9 @@ export function runeProblem(st: Pf2eItemState, rune: Pf2eItemDef): string | unde
   return undefined
 }
 
+const REINFORCING_GRADES = ['minor', 'lesser', 'moderate', 'greater', 'major', 'supreme']
+const gradeOf = (name: string) => /\((\w+)\)/.exec(name)?.[1]?.toLowerCase() ?? ''
+
 /** Etches a rune (a stronger one of the same kind replaces the old); returns what happened. */
 export function etchRune(item: InventoryItem, rune: Pf2eItemDef): string {
   const st = item.pf2e
@@ -325,6 +398,12 @@ export function etchRune(item: InventoryItem, rune: Pf2eItemDef): string {
   if (problem) return problem
   const r = rune.rune!
   const runes = (st.runes ??= noRunes())
+  if (r.slot === 'reinforcing') {
+    if (r.reinforcing) runes.reinforcing = { id: rune.id, name: rune.name, ...r.reinforcing }
+    st.level = Math.max(st.level ?? 0, rune.level)
+    const now = reinforcedStats(st)
+    return `Etched ${rune.name} on ${item.name}${now ? `: Hardness ${now.hardness}, HP ${now.hp}, BT ${now.bt}` : ''}.`
+  }
   if (r.slot === 'property') {
     const family = runeFamily(rune.name)
     runes.property = [
@@ -353,14 +432,19 @@ export function runeCost(st: Pf2eItemState, rune: Pf2eItemDef, runes: Pf2eItemDe
   const r = rune.rune
   if (!r) return rune.price
   const now = st.runes ?? noRunes()
+  if (r.slot === 'reinforcing') {
+    const had = runes.find((d) => d.id === now.reinforcing?.id)
+    return Math.max(0, rune.price - (had?.price ?? 0))
+  }
+  const slot = r.slot
   const old =
-    r.slot === 'property'
+    slot === 'property'
       ? runes.find(
           (d) =>
             d.id === now.property.find((p) => runeFamily(p.name) === runeFamily(rune.name))?.id,
         )
       : runes.find(
-          (d) => d.rune?.slot === r.slot && d.rune.onto === r.onto && d.rune.value === now[r.slot],
+          (d) => d.rune?.slot === slot && d.rune.onto === r.onto && d.rune.value === now[slot],
         )
   return Math.max(0, rune.price - (old?.price ?? 0))
 }
@@ -371,11 +455,12 @@ export function runeCost(st: Pf2eItemState, rune: Pf2eItemDef, runes: Pf2eItemDe
  */
 export function removeRune(
   item: InventoryItem,
-  which: 'potency' | 'striking' | 'resilient' | string,
+  which: 'potency' | 'striking' | 'resilient' | 'reinforcing' | string,
 ) {
   const runes = item.pf2e?.runes
   if (!runes) return
   if (which === 'potency' || which === 'striking' || which === 'resilient') runes[which] = 0
+  else if (which === 'reinforcing') delete runes.reinforcing
   else runes.property = runes.property.filter((p) => p.id !== which)
 }
 
@@ -392,6 +477,7 @@ export function runedName(item: InventoryItem) {
     FUNDAMENTAL_WORDS.striking![r.striking] ?? '',
     FUNDAMENTAL_WORDS.resilient![r.resilient] ?? '',
     ...r.property.map((p) => runeFamily(p.name)),
+    r.reinforcing ? `${gradeOf(r.reinforcing.name)} reinforcing`.trim() : '',
     item.name,
   ]
   return parts.filter(Boolean).join(' ')

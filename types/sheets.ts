@@ -7,6 +7,7 @@ import type {
   Pf2eItemDamage,
   Pf2eItemKind,
   Pf2eItemNumbers,
+  Pf2eRuneNumbers,
   Pf2eRuneVsDamage,
 } from '~/data/pf2e/types'
 
@@ -101,16 +102,23 @@ export interface Pf2eItemState extends Pf2eItemNumbers {
   spell?: { id: string; name: string; rank: number }
   /** An item that grants Shield Block while held, as its text says (Scale of Igroon). */
   shieldBlock?: boolean
+  /**
+   * An injury poison applied to this weapon (GM Core p. 249): its affliction, spent by the next
+   * Strike that hits.
+   */
+  poisoned?: { name: string; dc: number; save: string; stages: string[]; maxDuration?: string }
 }
 
 export interface Pf2eItemRunes {
-  /** Weapon or armor potency +0–3. */
+  /** Weapon or armor potency +0–4. */
   potency: number
-  /** Striking 0–3: extra weapon damage dice (striking, greater, major). */
+  /** Striking 0–4: extra weapon damage dice (striking, greater, major, mythic). */
   striking: number
-  /** Resilient +0–3: item bonus to saves. */
+  /** Resilient +0–4: item bonus to saves. */
   resilient: number
   property: Pf2ePropertyRune[]
+  /** A shield's reinforcing rune (GM Core p. 232), by name, with what it adds. */
+  reinforcing?: { id: string; name: string } & NonNullable<Pf2eRuneNumbers['reinforcing']>
 }
 
 export interface Pf2ePropertyRune {

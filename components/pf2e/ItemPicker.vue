@@ -1,6 +1,8 @@
 <script setup lang="ts">
-// Adds a PF2e item from the data to the inventory: a search over gear, consumables, magic items,
-// staves, wands, weapons, armor and shields (fetched when the dialog opens), items above the
+// Adds a PF2e item from the data to the inventory: a search over gear (assistive items too),
+// consumables (poisons and other consumables too), snares, magic items (companion items too),
+// specific and precious-material arms and armor, staves, wands, weapons, armor and shields
+// (fetched when the dialog opens), items above the
 // hero's level and uncommon or rare ones behind switches (GM Core p. 222: rarity; Player Core
 // p. 25: buying at your level), how many, the spell a scroll or Magic Wand holds (a spell of
 // that rank that isn't a cantrip or focus spell, GM Core pp. 262, 282; a specific wand casts
@@ -20,7 +22,9 @@ const GROUPS = [
   { key: 'all', label: 'All' },
   { key: 'gear', label: 'Gear' },
   { key: 'consumables', label: 'Consumables' },
+  { key: 'snares', label: 'Snares' },
   { key: 'magicItems', label: 'Worn & held' },
+  { key: 'arms', label: 'Magic arms & armor' },
   { key: 'staves', label: 'Staves' },
   { key: 'wands', label: 'Wands' },
   { key: 'weapons', label: 'Weapons' },
@@ -46,7 +50,7 @@ async function load() {
   loading.value = true
   failed.value = ''
   try {
-    const sets = ['gear', 'consumables', 'magicItems', 'staves', 'wands'] as const
+    const sets = ['gear', 'consumables', 'snares', 'magicItems', 'arms', 'staves', 'wands'] as const
     const [items, weapons, armor, shields, spellList] = await Promise.all([
       Promise.all(sets.map((s) => loadPf2e(s))),
       loadPf2e('weapons'),

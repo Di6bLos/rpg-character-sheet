@@ -18,6 +18,7 @@ import {
   itemState,
   needsInvesting,
   prepareStaff,
+  reinforcedStats,
   runedName,
   setInvested,
   syncEncumbered,
@@ -75,7 +76,16 @@ function setCoin(k: (typeof COINS)[number], v: number) {
   sheet.value.coins = { ...sheet.value.coins, [k]: Math.max(0, Math.floor(Number(v) || 0)) }
 }
 
-const CONSUMABLE = new Set(['potion', 'elixir', 'talisman', 'ammunition', 'oil', 'bomb'])
+const CONSUMABLE = new Set([
+  'potion',
+  'elixir',
+  'talisman',
+  'ammunition',
+  'oil',
+  'bomb',
+  'poison',
+  'consumable',
+])
 const rows = computed(() =>
   sheet.value.inventory.map((item, index) => {
     const st = itemState(item)
@@ -90,7 +100,8 @@ const rows = computed(() =>
       castable: (kind === 'scroll' || kind === 'wand') && !!st.spell,
       staff: kind === 'staff',
       // Staves are staff weapons and take fundamental runes (GM Core p. 278).
-      runes: kind === 'weapon' || kind === 'armor' || kind === 'staff',
+      runes: kind === 'weapon' || kind === 'armor' || kind === 'staff' || kind === 'shield',
+      shield: kind === 'shield' ? reinforcedStats(st) : undefined,
       invest: needsInvesting(st),
     }
   }),
@@ -324,6 +335,10 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
               }}<template v-if="r.st.level !== undefined"> · Item {{ r.st.level }}</template
               ><template v-if="r.st.usage"> · {{ r.st.usage }}</template
               ><template v-if="r.staff"> · {{ r.st.charges ?? 0 }} charges</template
+              ><template v-if="r.shield">
+                · Hardness {{ r.shield.hardness }}, HP {{ r.shield.hp }}, BT
+                {{ r.shield.bt }}</template
+              ><template v-if="r.st.poisoned"> · {{ r.st.poisoned.name }} applied</template
               ><template v-if="r.st.wand?.broken"> · broken</template
               ><template v-else-if="r.st.wand?.cast"> · used today</template>
             </span>
