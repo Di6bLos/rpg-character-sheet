@@ -221,7 +221,11 @@ export type Pf2eSelector =
  * stays in `note` for the player.
  */
 export type Pf2eEffect =
-  /** A bonus or penalty. `melee` limits it to melee Strikes; `agileHalf` halves it for agile ones. */
+  /**
+   * A bonus or penalty. `melee` limits it to melee Strikes, `weapons` to agile or finesse
+   * ones, `skills` to the named skills; `agileHalf` halves it for agile attacks; `byLevel`
+   * replaces `value` from a level on (the last entry at or below the hero's level).
+   */
   | {
       kind: 'modifier'
       selector: Pf2eSelector[]
@@ -229,13 +233,26 @@ export type Pf2eEffect =
       type: 'status' | 'circumstance' | 'item' | 'untyped'
       melee?: boolean
       agileHalf?: boolean
+      weapons?: 'agileFinesse'
+      skills?: string[]
+      byLevel?: [level: number, value: number][]
     }
+  /** A different multiple attack penalty (the Flurry edge against hunted prey). */
+  | { kind: 'map'; second: number; third: number; agileSecond: number; agileThird: number }
+  /** Damage with finesse melee Strikes uses this attribute when it's higher (Thief). */
+  | { kind: 'damageAttribute'; attr: Pf2eAttr }
+  /** Damage by the Strike's proficiency rank (weapon specialization). */
+  | { kind: 'specialization'; damage: Partial<Record<Pf2eRank, number>> }
+  /** A condition the effect gives (Enlarge: clumsy 1; Haste: quickened). */
+  | { kind: 'condition'; name: string; value?: number }
+  /** A Dexterity cap on AC (Mountain Stance: +0). */
+  | { kind: 'dexCap'; value: number }
   /** Extra damage dice on Strikes while a condition holds (sneak attack on an off-guard foe). */
   | {
       kind: 'damageDice'
       /** Dice by level: the last entry at or below the hero's level applies. */
       dice: [level: number, dice: string][]
-      when: 'offGuard' | 'huntedPrey'
+      when: 'offGuard' | 'huntedPrey' | 'stratagem'
       /** Which Strikes: agile, finesse or ranged (sneak attack). */
       weapons?: 'agileFinesseRanged'
       label: string
@@ -259,6 +276,8 @@ export interface Pf2eEffectDef {
   effects: Pf2eEffect[]
   /** Values for a `given` effect that scales (Heroism +1/+2/+3); modifiers use the chosen one. */
   values?: number[]
+  /** Only while this other effect is on (the ranger's edges need Hunt Prey). */
+  requires?: string
   /** Rules the effect can't apply itself, shown while it's on. */
   note?: string
 }

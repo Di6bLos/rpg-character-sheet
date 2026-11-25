@@ -338,7 +338,8 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Structured effect model (`data/pf2e/effects.ts`, `utils/pf2eEffects.ts`): modifiers, damage dice, temp HP, death and recovery changes; permanent, toggle and ally-given effects
 - [x] First wave: Rage, Sneak Attack, Precision edge, Courageous Anthem, Bless, Heroism, Toughness, Diehard, Fleet, Incredible Initiative (note)
 - [x] Abilities with an action get Use, daily frequencies tracked until daily preparations
-- [ ] Player Core classes: the rest of their numeric features and feats (weapon specialization, panache, hunt prey bonuses…)
+- [x] Second wave: Hunt Prey with the Flurry and Outwit edges, Thief, Precise Strike, Strategic Strike and Devise a Stratagem, weapon specialization (and greater), Crane and Mountain Stance, Shield, Mystic Armor, Rallying Anthem, Enlarge, Haste, Guidance
+- [ ] Player Core classes: Strike-modifying actions (Vicious Swing, Double Slice, finishers), barbarian instincts, sorcerer blood magic, champion reactions
 - [ ] Player Core 2 classes
 - [ ] Other classes, archetypes, ancestry feats
 - [ ] Spells that change numbers when cast on yourself, beyond the first wave

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
-import { mapPenalties, parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
+import { parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
 import {
   type Pf2eStatContext,
   SAVE_ATTR,
@@ -10,7 +10,7 @@ import {
   strikeResult,
   takeDamage,
 } from '~/utils/pf2ePlay'
-import { damageConditions, extraDice, speedNow } from '~/utils/pf2eEffects'
+import { damageConditions, extraDice, mapPenalties, speedNow } from '~/utils/pf2eEffects'
 import { dailyPreparations } from '~/utils/pf2eSpells'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, lastRoll, say } = useSheet<Pf2eSheet>()
@@ -51,7 +51,8 @@ const attrs = computed(() =>
 )
 
 const hasShield = computed(() => sheet.value.shield.name.trim() !== '')
-const ac = computed(() => sheet.value.ac + (hasShield.value && sheet.value.shield.raised ? 2 : 0))
+// A raised shield's +2 is a circumstance bonus the engine stacks (it doesn't add to Shield's +1).
+const ac = computed(() => sheet.value.ac)
 /** The ±1 HP steppers go through the damage rules, so 0 HP still knocks the hero out. */
 function stepHp(by: number) {
   if (!canEdit.value) return
@@ -78,7 +79,7 @@ const saves = computed(() =>
 const skills = computed(() =>
   sheet.value.skills.map((x) => ({
     ...x,
-    now: adjusted(sheet.value, x.value, { kind: 'skill', attr: x.attr }),
+    now: adjusted(sheet.value, x.value, { kind: 'skill', attr: x.attr, skill: x.name }),
   })),
 )
 
@@ -94,7 +95,7 @@ function rollCheck(name: string, bonus: number) {
 const targetAc = ref<number | null>(null)
 
 /** Situations that add damage dice the hero's abilities give (sneak attack, precision). */
-const damageFlags = ref({ offGuard: false, huntedPrey: false })
+const damageFlags = ref({ offGuard: false, huntedPrey: false, stratagem: false })
 const conditionsOffered = computed(() => damageConditions(sheet.value))
 
 const speed = computed(() => speedNow(sheet.value))
@@ -139,7 +140,22 @@ const strikes = computed(() =>
   sheet.value.strikes.map((w) => {
     const typeInitial = w.type ? ` ${w.type.charAt(0).toUpperCase()}` : ''
     const attr = w.attr ?? 'STR'
-    const attack = adjusted(sheet.value, w.bonus, { kind: 'attack', attr })
+    const traits = w.traits.split(',').map((t) => t.trim().toLowerCase())
+    const level = draft.value.level
+    // Devise a Stratagem: INT for the attack with an agile, finesse or ranged weapon or a sap
+    // (Player Core 2 p. 100), which strategic strike's dice go with.
+    const stratagem =
+      damageFlags.value.stratagem &&
+      (w.ranged || traits.some((t) => ['agile', 'finesse', 'sap'].includes(t)))
+    const attackBase = stratagem
+      ? w.bonus - sheet.value.attrs[attr] + sheet.value.attrs.INT
+      : w.bonus
+    const attack = adjusted(sheet.value, attackBase, {
+      kind: 'attack',
+      attr: stratagem ? 'INT' : attr,
+      traits,
+      level,
+    })
     // Melee damage adds STR, so enfeebled lowers it (p. 443); effects like Rage and
     // Courageous Anthem add theirs (Rage only to melee, halved for agile).
     const dmgMods = adjusted(sheet.value, 0, {
@@ -147,9 +163,12 @@ const strikes = computed(() =>
       attr: w.ranged ? undefined : 'STR',
       melee: !w.ranged,
       agile: w.agile,
+      traits,
+      rank: w.rank,
+      level,
     })
     const dmg = shiftDice(w.dmg, dmgMods.value)
-    const extra = extraDice(sheet.value, draft.value.level, w, damageFlags.value)
+    const extra = extraDice(sheet.value, level, w, { ...damageFlags.value, stratagem })
     const rollDmg = (crit: boolean) => {
       const expr = parseDice(dmg)
       if (!expr) return say(`${w.name}: “${w.dmg}” isn’t a dice expression like 1d8+4`)
@@ -182,7 +201,7 @@ const strikes = computed(() =>
         .join(', '),
       changed: attack.changed,
       note: attack.note,
-      atks: mapPenalties(w.agile).map((penalty, i) => {
+      atks: mapPenalties(sheet.value, w.agile).map((penalty, i) => {
         const bonus = attack.value - penalty
         return {
           text: sign(bonus),
@@ -474,6 +493,10 @@ const bulkPct = computed(() =>
       <label v-if="conditionsOffered.includes('huntedPrey')" class="target">
         <input v-model="damageFlags.huntedPrey" type="checkbox" />
         First hit on your prey this round
+      </label>
+      <label v-if="conditionsOffered.includes('stratagem')" class="target">
+        <input v-model="damageFlags.stratagem" type="checkbox" />
+        Devise a Stratagem (INT to the attack)
       </label>
     </div>
     <div

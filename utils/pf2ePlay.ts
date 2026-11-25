@@ -3,7 +3,7 @@
 // (p. 401), and damage, Shield Block, knocked out, dying, wounded and doomed (pp. 269,
 // 410–411). Pure functions on the sheet; the sheet panels call them and `say()` the result.
 import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
-import { baseDeathAt, effectMods, recoveryDcChange } from '~/utils/pf2eEffects'
+import { baseDeathAt, effectConditions, effectMods, recoveryDcChange } from '~/utils/pf2eEffects'
 
 const RANK_BONUS: Record<Pf2eRank, number> = { U: 0, T: 2, E: 4, M: 6, L: 8 }
 
@@ -66,6 +66,14 @@ export interface Pf2eStatContext {
   /** Strikes: melee, and agile (Rage's damage is halved for agile attacks). */
   melee?: boolean
   agile?: boolean
+  /** Strikes: their traits, lowercased (finesse for Precise Strike and Thief). */
+  traits?: string[]
+  /** Strikes: the hero's proficiency rank with the weapon (weapon specialization). */
+  rank?: Pf2eRank
+  /** Skill checks: which skill (Outwit's bonus is to Deception, Intimidation and Stealth). */
+  skill?: string
+  /** The hero's level, for effects that grow with it. */
+  level?: number
   /** A Reflex save, for unconscious. */
   save?: 'Fortitude' | 'Reflex' | 'Will'
 }
@@ -150,13 +158,18 @@ const DEF = new Map(PF2E_CONDITION_DEFS.map((d) => [d.name, d]))
 
 /** Active conditions, those another condition gives included (prone → off-guard). */
 export function activeConditions(s: Pf2eSheet) {
-  const out = new Set(s.conditions)
-  for (const c of s.conditions) for (const g of DEF.get(c)?.gives ?? []) out.add(g)
+  const own = [...s.conditions, ...effectConditions(s).keys()]
+  const out = new Set(own)
+  for (const c of own) for (const g of DEF.get(c)?.gives ?? []) out.add(g)
   return out
 }
 
+/** A condition's value: the hero's own, or what an effect gives (Enlarge: clumsy 1), whichever is higher. */
 export const conditionValue = (s: Pf2eSheet, name: string) =>
-  s.conditions.includes(name) ? Math.max(1, s.conditionValues?.[name] ?? 1) : 0
+  Math.max(
+    s.conditions.includes(name) ? Math.max(1, s.conditionValues?.[name] ?? 1) : 0,
+    effectConditions(s).get(name) ?? 0,
+  )
 
 /** The penalties conditions put on one number. */
 export function conditionMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {

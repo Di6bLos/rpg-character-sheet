@@ -35,11 +35,12 @@ export interface Pf2eActiveEffect {
   value?: number
 }
 
-/** Effects on right now. */
+/** Effects on right now; one that `requires` another only while that one is on. */
 export function activeEffects(s: Pf2eSheet): Pf2eActiveEffect[] {
   const on = new Set(s.effects?.on ?? [])
   const own = ownEffects(s)
     .filter((e) => e.mode === 'permanent' || on.has(e.name))
+    .filter((e) => !e.requires || on.has(e.requires))
     .map((def) => ({ def }))
   const given = (s.effects?.given ?? []).flatMap((g) => {
     const def = BY_NAME.get(g.name)
@@ -71,21 +72,72 @@ function selectors(ctx: Pf2eStatContext): Pf2eSelector[] {
   return out
 }
 
-/** Modifiers active effects add to one number. */
+const atLevel = (steps: [number, number][], level: number, fallback: number) =>
+  [...steps].reverse().find(([at]) => at <= level)?.[1] ?? fallback
+
+/** Modifiers active effects (and a raised shield) add to one number. */
 export function effectMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
   const want = selectors(ctx)
-  return allOf(s, 'modifier').flatMap(({ effect: e, active }) => {
+  const traits = ctx.traits ?? []
+  const agileOrFinesse = ctx.agile || traits.includes('agile') || traits.includes('finesse')
+  const mods: Pf2eMod[] = allOf(s, 'modifier').flatMap(({ effect: e, active }) => {
     if (!e.selector.some((x) => want.includes(x))) return []
     if (e.melee && !ctx.melee) return []
-    const base = active.value ?? e.value
+    if (e.weapons === 'agileFinesse' && !agileOrFinesse) return []
+    if (e.skills && (ctx.kind !== 'skill' || !e.skills.includes(ctx.skill ?? ''))) return []
+    const base = active.value ?? (e.byLevel ? atLevel(e.byLevel, ctx.level ?? 1, e.value) : e.value)
     const value = e.agileHalf && ctx.agile ? Math.floor(base / 2) : base
     return value ? [{ value, type: e.type, source: active.def.name }] : []
   })
+  // Raise a Shield: +2 circumstance to AC (Player Core p. 274), so it doesn't stack with Shield.
+  if (ctx.kind === 'ac' && s.shield.name && s.shield.raised)
+    mods.push({ value: 2, type: 'circumstance', source: 'Raised shield' })
+  if (ctx.kind === 'ac')
+    for (const { effect, active } of allOf(s, 'dexCap')) {
+      const over = s.attrs.DEX - effect.value
+      if (over > 0)
+        mods.push({ value: -over, type: 'untyped', source: `${active.def.name} (Dex cap)` })
+    }
+  if (ctx.kind === 'damage') {
+    // Weapon specialization: the best one for the Strike's rank (p. 136).
+    const spec = allOf(s, 'specialization')
+      .map(({ effect, active }) => ({
+        value: effect.damage[ctx.rank ?? 'U'] ?? 0,
+        source: active.def.name,
+      }))
+      .sort((a, b) => b.value - a.value)[0]
+    if (spec?.value) mods.push({ value: spec.value, type: 'untyped', source: spec.source })
+    // Thief: DEX to finesse melee damage instead of STR when it's higher (p. 167).
+    if (ctx.melee && traits.includes('finesse'))
+      for (const { effect, active } of allOf(s, 'damageAttribute')) {
+        const gain = s.attrs[effect.attr] - s.attrs.STR
+        if (gain > 0)
+          mods.push({ value: gain, type: 'untyped', source: `${active.def.name} (${effect.attr})` })
+      }
+  }
+  return mods
+}
+
+/** The multiple attack penalties for the 2nd and 3rd attack (the Flurry edge's, when on). */
+export function mapPenalties(s: Pf2eSheet, agile: boolean): [number, number, number] {
+  const flurry = allOf(s, 'map')[0]?.effect
+  if (flurry)
+    return agile ? [0, -flurry.agileSecond, -flurry.agileThird] : [0, -flurry.second, -flurry.third]
+  return agile ? [0, 4, 8] : [0, 5, 10]
+}
+
+/** Conditions active effects give (Enlarge: clumsy 1), by name with their value. */
+export function effectConditions(s: Pf2eSheet) {
+  const out = new Map<string, number>()
+  for (const { effect } of allOf(s, 'condition'))
+    out.set(effect.name, Math.max(out.get(effect.name) ?? 0, effect.value ?? 1))
+  return out
 }
 
 /** Speed after effects (Fleet), as the sheet writes it. */
 export function speedNow(s: Pf2eSheet) {
   const base = Number.parseInt(s.speed, 10)
+  // Effects with a speed modifier (Fleet +5, Mountain Stance −5).
   const bonus = allOf(s, 'modifier')
     .filter(({ effect }) => effect.selector.includes('speed'))
     .reduce((n, { effect }) => n + effect.value, 0)
@@ -96,6 +148,8 @@ export function speedNow(s: Pf2eSheet) {
 export interface Pf2eDamageFlags {
   offGuard?: boolean
   huntedPrey?: boolean
+  /** The Strike uses Devise a Stratagem (strategic strike). */
+  stratagem?: boolean
 }
 
 /** Extra damage dice a Strike gets while its condition holds (sneak attack, precision). */
@@ -109,6 +163,7 @@ export function extraDice(
   return allOf(s, 'damageDice').flatMap(({ effect: e }) => {
     if (e.when === 'offGuard' && !flags.offGuard) return []
     if (e.when === 'huntedPrey' && !flags.huntedPrey) return []
+    if (e.when === 'stratagem' && !flags.stratagem) return []
     const fits =
       e.weapons !== 'agileFinesseRanged' ||
       strike.ranged ||
