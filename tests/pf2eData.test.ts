@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type Pf2eData, loadPf2e } from '../data/pf2e'
-import { openBook, settingName } from '../scripts/lib/aon'
+import { closedTitlesIn, openBook, settingName } from '../scripts/lib/aon'
 
 const dir = join(import.meta.dirname, '..', 'data', 'pf2e', 'generated')
 const load = <K extends keyof Pf2eData>(set: K): Pf2eData[K] =>
@@ -12,6 +12,7 @@ const data = {
   actions: load('actions'),
   ancestries: load('ancestries'),
   archetypes: load('archetypes'),
+  arms: load('arms'),
   armor: load('armor'),
   backgrounds: load('backgrounds'),
   classes: load('classes'),
@@ -24,6 +25,7 @@ const data = {
   magicItems: load('magicItems'),
   runes: load('runes'),
   shields: load('shields'),
+  snares: load('snares'),
   spells: load('spells'),
   staves: load('staves'),
   traits: load('traits'),
@@ -37,6 +39,8 @@ const items = [
   ...data.runes,
   ...data.staves,
   ...data.wands,
+  ...data.snares,
+  ...data.arms,
 ]
 const item = (name: string) => items.find((i) => i.name === name)
 const classNames = new Set(data.classes.map((c) => c.name))
@@ -124,6 +128,37 @@ describe('pf2e data', () => {
 
   // A setting archetype (Hellknight, Red Mantis Assassin, Aldori Duelist) has no feats of its
   // own in the data, so a feat that still names one, or names a Golarion noun, fails here.
+  // The closed books (legacy and setting) as `npm run pf2e:data` last read them from AoN.
+  it('names no closed book anywhere, a deity’s own source aside', () => {
+    const books = JSON.parse(
+      readFileSync(join(import.meta.dirname, 'fixtures', 'pf2e', 'closed-books.json'), 'utf8'),
+    ) as { closed: string[]; legacy: string[] }
+    const closed = new Set(books.closed)
+    expect(closed).toContain('Draconic Codex')
+    for (const [set, rows] of Object.entries(data))
+      for (const r of rows as Pf2eData['traits']) {
+        const { source: _source, ...rest } = r
+        const json = JSON.stringify(set === 'deities' ? rest : r)
+        const named = closedTitlesIn(json, set === 'deities' ? new Set(books.legacy) : closed)
+        expect(named, `${set}: ${r.name}`).toEqual([])
+        expect(json, `${set}: ${r.name}`).not.toMatch(/PFS Note/)
+      }
+    // Player Core p. 326: Dragon Form keeps its own rules, not AoN's Draconic Codex table.
+    const dragonForm = data.spells.find((sp) => sp.id === 'spell-1502')!
+    expect(dragonForm.text).toContain('Heightened (8th)')
+    expect(dragonForm.text).not.toMatch(/Adamantine|Monster Core Dragons/)
+    expect(item("Pactmaster's Grace")).toBeUndefined()
+  })
+
+  it('takes closed archetypes’ dedications out of prerequisites', () => {
+    const prereq = (id: string) => data.feats.find((f) => f.id === id)?.prerequisites
+    expect(prereq('feat-6427')).toBe('Vigilante Dedication')
+    expect(prereq('feat-5084')).toBe('Fighter Dedication')
+    expect(prereq('feat-7314')).toBe('Apocalypse Rider Dedication')
+    const closedNames = /\b(?:Bellflower Tiller|Blackjacket|Battle Harbinger|Hellknight) Dedication/
+    for (const f of data.feats) expect(f.prerequisites ?? '', f.name).not.toMatch(closedNames)
+  })
+
   it('names only archetypes that are in the data themselves', () => {
     const deityNames = data.deities.map((d) => d.name)
     const own = new Set(
@@ -492,8 +527,23 @@ describe('pf2e data', () => {
     expect(data.weapons.find((w) => w.name === 'Staff')).toMatchObject({
       source: { book: 'Player Core', page: 277 },
       damage: '1d4',
-      traits: ['Monk', 'Two-Hand'],
+      traits: ['Monk', 'Two-Hand d8'],
     })
+  })
+
+  // Player Core pp. 282–283: valued traits keep their values, as the weapon tables print them.
+  it('keeps the values of valued weapon traits', () => {
+    const traits = (name: string) => data.weapons.find((w) => w.name === name)?.traits
+    expect(traits('Bastard Sword')).toEqual(['Two-Hand d12'])
+    expect(traits('Pick')).toEqual(['Fatal d10'])
+    expect(traits('Gladius')).toContain('Versatile S')
+    expect(traits('Lance')).toContain('Jousting d6')
+    expect(traits('Hand Cannon')).toContain('Modular B, P, or S')
+    for (const w of data.weapons)
+      for (const t of w.traits)
+        expect(t, w.name).not.toMatch(
+          /^(?:Two-Hand|Versatile|Deadly|Fatal|Volley|Scatter|Capacity)$/,
+        )
   })
 
   it('keeps weapon, armor and shield statistics', () => {
@@ -523,10 +573,22 @@ describe('pf2e data', () => {
 
   it('keeps every item a price, level, Bulk and a kind its set holds', () => {
     const kinds: Record<string, string[]> = {
-      gear: ['gear'],
-      consumables: ['potion', 'elixir', 'scroll', 'talisman', 'ammunition', 'oil', 'bomb'],
-      magicItems: ['held', 'worn'],
+      gear: ['gear', 'assistive'],
+      consumables: [
+        'potion',
+        'elixir',
+        'scroll',
+        'talisman',
+        'ammunition',
+        'oil',
+        'bomb',
+        'poison',
+        'consumable',
+      ],
+      snares: ['snare'],
+      magicItems: ['held', 'worn', 'companion'],
       runes: ['rune'],
+      arms: ['armor', 'weapon', 'shield'],
       staves: ['staff'],
       wands: ['wand'],
     }
@@ -618,7 +680,103 @@ describe('pf2e data', () => {
       rune: { slot: 'property', damage: { dice: '1d6', type: 'fire' } },
     })
     expect(item('Flaming')?.rune?.crit).toMatch(/1d10 persistent fire damage on a critical hit/)
+    // GM Core pp. 236–237: every way the runes print their damage on a hit.
+    const rune = (name: string) => item(name)?.rune
+    expect(rune('Shock')?.damage).toEqual({ dice: '1d6', type: 'electricity' })
+    expect(rune('Thundering')?.damage).toEqual({ dice: '1d6', type: 'sonic' })
+    expect(rune('Corrosive')?.damage).toEqual({ dice: '1d6', type: 'acid' })
+    expect(rune('Decaying')?.damage).toEqual({ dice: '1d4', type: 'void' })
+    expect(rune('Astral')?.damage).toEqual({ dice: '1d6', type: 'spirit' })
+    expect(rune('Holy')).toMatchObject({
+      damage: { dice: '1d4', type: 'spirit' },
+      vs: [{ dice: '2d4', type: 'spirit', vs: 'an unholy target', instead: true }],
+    })
+    expect(rune('Unholy')?.damage).toEqual({ dice: '1d4', type: 'spirit' })
+    // Persistent damage is its own condition; damage only against undead is never a hit's.
+    expect(rune('Wounding')).toMatchObject({ persistent: { dice: '1d6', type: 'bleed' } })
+    expect(rune('Wounding')?.damage).toBeUndefined()
+    expect(rune('Vitalizing')).toMatchObject({
+      vs: [{ dice: '1d6', type: 'vitality', vs: 'undead', persistent: true }],
+    })
+    expect(rune('Vitalizing')?.damage).toBeUndefined()
+    expect(rune('Vitalizing (Greater)')?.vs?.[0]?.dice).toBe('2d6')
+    expect(rune('Brilliant')?.damage).toEqual({ dice: '1d4', type: 'fire' })
+    // A grade's own numbers (GM Core p. 237): Flaming (Greater) 2d10, Frost (Greater) DC 34.
+    expect(rune('Flaming (Greater)')?.crit).toMatch(/plus 2d10 persistent fire damage/)
+    expect(rune('Flaming (Greater)')?.damage?.dice).toBe('1d6')
+    expect(rune('Frost (Greater)')?.crit).toMatch(/DC 34 Fortitude/)
+    expect(rune('Fearsome (Greater)')?.crit).toMatch(/frightened 2/)
+    expect(rune('Rooting (True)')?.crit).toMatch(/Escape DC 41/)
+    expect(rune('Thundering (Greater)')?.crit).toMatch(/DC 34.*deafness is permanent/)
+    // Keen widens the critical range instead of adding a note.
+    expect(rune('Keen')).toMatchObject({ keen: true })
+    expect(rune('Keen')?.crit).toBeUndefined()
+    // War of Immortals' mythic runes: five weapon dice, +4.
+    expect(rune('Mythic Striking')).toMatchObject({ slot: 'striking', value: 4 })
+    expect(rune('Mythic Weapon Potency')).toMatchObject({ slot: 'potency', value: 4 })
+    expect(rune('Mythic Armor Potency')).toMatchObject({ slot: 'potency', value: 4 })
+    expect(rune('Mythic Resilient')).toMatchObject({ slot: 'resilient', value: 4 })
     for (const r of data.runes) expect(r.rune?.usage, r.name).toMatch(/^etched (?:onto|into)/)
+  })
+
+  // The core books' other item categories: Player Core pp. 287–295, Player Core 2 pp. 288–300,
+  // GM Core pp. 228–262.
+  it('has the core books’ poisons, snares, other consumables, shield runes and arms', () => {
+    const core = (set: { source: { book: string } }[]) =>
+      set.filter((i) => ['Player Core', 'Player Core 2', 'GM Core'].includes(i.source.book))
+    expect(item('Holy Water')).toMatchObject({
+      kind: 'consumable',
+      bomb: { damage: { dice: '1d6', type: 'spirit' }, splash: 1 },
+    })
+    expect(item('Candle of Truth')).toMatchObject({ kind: 'consumable', duration: '10 minutes' })
+    expect(item('Elixir of Rejuvenation')).toMatchObject({ kind: 'elixir', price: 0, level: 20 })
+    expect(item('Black Adder Venom')).toMatchObject({
+      kind: 'poison',
+      poison: {
+        dc: 18,
+        save: 'Fortitude',
+        exposure: ['injury'],
+        maxDuration: '3 rounds',
+        stages: [
+          '1d4 poison damage (1 round)',
+          '1d6 poison damage (1 round)',
+          '1d8 poison damage (1 round)',
+        ],
+      },
+    })
+    expect(item('Arsenic')?.poison).toMatchObject({ exposure: ['ingested'], onset: '10 minutes' })
+    for (const p of data.consumables.filter((i) => i.kind === 'poison'))
+      expect(p.poison?.stages.length, p.name).toBeGreaterThan(0)
+    expect(item('Alarm Snare')).toMatchObject({ kind: 'snare', source: { book: 'Player Core 2' } })
+    expect(core(data.snares).length).toBeGreaterThan(20)
+    expect(item('Reinforcing Rune (Minor)')?.rune).toMatchObject({
+      slot: 'reinforcing',
+      onto: 'shield',
+      reinforcing: { hardness: 3, hp: 44, bt: 22, max: { hardness: 8, hp: 64, bt: 32 } },
+    })
+    expect(item('Bloodletting Kukri')).toMatchObject({
+      kind: 'weapon',
+      base: 'Kukri',
+      ranged: false,
+      fundamental: { potency: 1, striking: 1, resilient: 0 },
+    })
+    expect(item('Electric Eelskin')).toMatchObject({
+      kind: 'armor',
+      category: 'light',
+      fundamental: { potency: 1, resilient: 1 },
+    })
+    expect(item('Sturdy Shield (Minor)')).toMatchObject({
+      kind: 'shield',
+      shieldStats: { hardness: 8, hp: 64, bt: 32, ac: 2 },
+    })
+    expect(item('Adamantine Buckler (Standard-Grade)')?.shieldStats).toMatchObject({
+      hardness: 8,
+      hp: 32,
+      bt: 16,
+    })
+    expect(core(data.arms).length).toBeGreaterThan(100)
+    expect(item('Collar of Empathy')?.kind).toBe('companion')
+    expect(item('Cane')).toMatchObject({ kind: 'assistive', source: { book: 'Player Core' } })
   })
 
   it('reads staves, wands and worn items as printed (GM Core pp. 279–286)', () => {
@@ -639,6 +797,26 @@ describe('pf2e data', () => {
     const listed = data.staves.flatMap((st) => (st.spells ?? []).flatMap((r) => r.names))
     const unknown = listed.filter((n) => !spellNames.has(n.replace(/\s*\([^)]*\)$/, '')))
     expect(unknown.length / listed.length).toBeLessThan(0.05)
+    // Legacy names a staff still prints go to their remastered spells (GM Core p. 279); spells
+    // from setting or legacy books stay as printed and are listed as missing.
+    const prism = item('Dragonprism Staff')!
+    expect(prism.spells?.find((r) => r.rank === 1)?.names).toContain('Breathe Fire')
+    expect(prism.spells?.find((r) => r.rank === 2)?.names).toContain('Acid Grip')
+    expect(item('Staff of Air (Greater)')?.spells?.flatMap((r) => r.names)).toContain('Mist')
+    for (const st of data.staves)
+      for (const n of (st.spells ?? []).flatMap((r) => r.names))
+        if (!spellNames.has(n.replace(/\s*\([^)]*\)$/, '')))
+          expect(st.missingSpells, `${st.name}: ${n}`).toContain(n)
+    expect(prism.missingSpells).toEqual(['reflective scales'])
+    // A specific wand casts its own spell (GM Core p. 282); a Magic Wand holds one you pick.
+    expect(item('Wand of Smoldering Fireballs (5th-Rank Spell)')).toMatchObject({
+      castsSpell: 'Fireball',
+      spellRank: 5,
+    })
+    expect(item('Wand of Choking Mist (2nd-Rank Spell)')?.castsSpell).toBe('Mist')
+    expect(item('Wand of Tormented Slumber')).toMatchObject({ castsSpell: 'Sleep', spellRank: 4 })
+    expect(item('Magic Wand (1st-rank Spell)')?.castsSpell).toBeUndefined()
+    expect(item('Wand of Widening (1st-rank Spell)')?.castsSpell).toBeUndefined()
     expect(greater?.find((r) => r.rank === 0)?.names).toEqual(['Ignition'])
     expect(item('Magic Wand (1st-rank Spell)')).toMatchObject({
       level: 3,
@@ -661,6 +839,17 @@ describe('pf2e data', () => {
       frequency: 'once per day',
     })
     expect(item('Rope')).toMatchObject({ kind: 'gear', price: 50, bulk: 0.1 })
+    // Rage of Elements' aeon stones, which AoN files under the legacy aeon stone, take GM
+    // Core's aeon stone text and their own (p. 98), their bonus against Hide and Sneak only.
+    expect(item('Aeon Stone (Cymophane Cabochon)')).toMatchObject({
+      parent: 'equipment-3055',
+      source: { book: 'Rage of Elements', page: 98 },
+      bonuses: [{ value: 2, selector: 'perception', when: expect.stringMatching(/Hide/) }],
+    })
+    for (const i of data.magicItems) {
+      expect(i.text, i.name).not.toBe('')
+      if (i.parent) expect(i.parent, i.name).not.toBe('equipment-407')
+    }
   })
 
   it('gives deities what a cleric needs', () => {

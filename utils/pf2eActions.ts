@@ -19,7 +19,13 @@ import {
   diceAt,
 } from '~/utils/pf2eAbilityRules'
 import { bravado, finisherBlock, spendFinisher } from '~/utils/pf2eClassActions'
-import { pf2eEffectDef, endPf2eEffects, mapPenalties, toggleEffect } from '~/utils/pf2eEffects'
+import {
+  pf2eEffectDef,
+  endPf2eEffects,
+  mapPenalties,
+  passItemTime,
+  toggleEffect,
+} from '~/utils/pf2eEffects'
 import { adjusted, conditionValue, degreeOf, heal, isDead, takePersistent } from '~/utils/pf2ePlay'
 
 type Turn = NonNullable<Pf2eSheet['turn']>
@@ -57,6 +63,8 @@ export function startPf2eTurn(s: Pf2eSheet): string {
   const t = turnOf(s)
   const notes: string[] = []
   notes.push(...endPf2eEffects(s, ['startOfTurn', 'trigger']))
+  // A round goes by from one turn to the next: consumables' durations count down.
+  if (t.round > 0) notes.push(...passItemTime(s, 1))
   if (s.shield.raised) {
     s.shield.raised = false
     notes.push('Your shield lowers.')
@@ -126,6 +134,8 @@ export function endPf2eEncounter(s: Pf2eSheet): string {
   ])
   s.turn = newTurn()
   refreshUses(s, ['turn', 'round', 'minute'])
+  // Like "minute" effects, a consumable's minute is taken as over with the fight.
+  ended.push(...passItemTime(s, 10))
   return ['Encounter over.', ...ended].join(' ')
 }
 
@@ -146,6 +156,7 @@ export function timePasses(s: Pf2eSheet, period: 'minute' | '10min' | 'hour'): s
     'encounter',
     'minute',
   ])
+  ended.push(...passItemTime(s, { minute: 10, '10min': 100, hour: 600 }[period]))
   const label = { minute: '1 minute', '10min': '10 minutes', hour: '1 hour' }[period]
   return [
     `${label} passes: uses per ${label === '1 hour' ? 'hour' : 'minute'} and shorter come back.`,

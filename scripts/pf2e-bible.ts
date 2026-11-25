@@ -21,7 +21,9 @@ import {
   closedArchetypeFeat,
   closedArchetypes,
   closedBooks,
+  closedPrerequisite,
   heritageAncestry,
+  leadNamesClosed,
   loadAon,
   located,
   orcProblems,
@@ -31,6 +33,8 @@ import {
   shareable,
   slug,
   withoutArchetypes,
+  withoutClosedPrerequisites,
+  withoutClosedMentions,
   withoutDeities,
   withoutLegacy,
 } from './lib/aon'
@@ -64,16 +68,18 @@ const everything = loadAon(DATA)
 const DEITIES = everything.filter((d) => d.category === 'deity').map((d) => d.name)
 /** Setting and legacy-only archetypes: their own feats go, other feats lose their names. */
 const CLOSED_ARCHETYPES = closedArchetypes(everything, DEITIES)
+/** Legacy and setting books, left out of the ORC set wherever they're cited or named. */
+const CLOSED_BOOKS = closedBooks(everything)
 const docs = everything.filter(
   (d) =>
     !ORC_ONLY ||
     (remaster(d) &&
       !LORE.has(d.category) &&
       shareable(d, DEITIES) &&
-      !closedArchetypeFeat(d, CLOSED_ARCHETYPES)),
+      !closedArchetypeFeat(d, CLOSED_ARCHETYPES) &&
+      !closedPrerequisite(d, CLOSED_ARCHETYPES) &&
+      !leadNamesClosed(cleanMarkdown(d.markdown ?? '', 1, new Map()), CLOSED_BOOKS)),
 )
-/** Legacy and setting books, left out of the ORC set wherever they're cited. */
-const CLOSED_BOOKS = closedBooks(everything)
 const byId = new Map(docs.map((d) => [d.id, d]))
 const placed = new Set<string>()
 /** Entries already printed inside another (`<document>`), so book order doesn't repeat them. */
@@ -88,10 +94,15 @@ const byName = (a: Doc, b: Doc) =>
   a.name.localeCompare(b.name) || Number(remaster(b)) - Number(remaster(a))
 const byLevel = (a: Doc, b: Doc) => (a.level ?? 0) - (b.level ?? 0) || byName(a, b)
 
+/** A legacy name the ORC set doesn't print: a closed archetype or its dedication (Drow Shootist). */
+const closedName = (n: string) =>
+  ORC_ONLY && CLOSED_ARCHETYPES.has(n.replace(/ Dedication$/, '').trim())
+
 function edition(d: Doc) {
   const tag = remaster(d) ? 'Remaster (ORC)' : 'Legacy (OGL)'
+  const legacy = (d.legacy_name ?? []).filter((n) => !closedName(n))
   const later = d.remaster_name?.length ? ` · remastered as ${d.remaster_name.join(', ')}` : ''
-  const earlier = d.legacy_name?.length ? ` · replaces legacy ${d.legacy_name.join(', ')}` : ''
+  const earlier = legacy.length ? ` · replaces legacy ${legacy.join(', ')}` : ''
   return `_${tag}${later}${earlier}_`
 }
 
@@ -100,7 +111,13 @@ function entry(d: Doc, h: number) {
   placed.add(d.id)
   const cleaned = cleanMarkdown(d.markdown ?? '', h, byId, embed, new Set([d.id]))
   const body = ORC_ONLY
-    ? withoutArchetypes(withoutDeities(withoutLegacy(cleaned, CLOSED_BOOKS)), CLOSED_ARCHETYPES)
+    ? withoutClosedPrerequisites(
+        withoutArchetypes(
+          withoutDeities(withoutClosedMentions(withoutLegacy(cleaned, CLOSED_BOOKS), CLOSED_BOOKS)),
+          CLOSED_ARCHETYPES,
+        ),
+        CLOSED_ARCHETYPES,
+      )
     : cleaned
   const [first = '', ...rest] = body.split('\n')
   const head = first.startsWith('#') ? first : `${'#'.repeat(h)} ${d.name}`

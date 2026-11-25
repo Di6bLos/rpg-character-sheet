@@ -37,9 +37,11 @@ const DEGREES: Pf2eDegree[] = ['critical failure', 'failure', 'success', 'critic
 /**
  * Degree of success (Player Core p. 401): beat the DC by 10 for a critical success, miss it
  * by 10 for a critical failure; a natural 20 is one degree better, a natural 1 one worse.
+ * `keen`: a Strike with a keen rune is a critical hit on a natural 19 that hits (GM Core p. 237).
  */
-export function degreeOf(total: number, natural: number, dc: number): Pf2eDegree {
+export function degreeOf(total: number, natural: number, dc: number, keen = false): Pf2eDegree {
   let i = total >= dc + 10 ? 3 : total >= dc ? 2 : total <= dc - 10 ? 0 : 1
+  if (keen && natural === 19 && i === 2) i = 3
   if (natural === 20) i = Math.min(3, i + 1)
   if (natural === 1) i = Math.max(0, i - 1)
   return DEGREES[i]!
@@ -241,12 +243,16 @@ export function conditionMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
   return mods
 }
 
-/** A number after conditions, active effects and runes, with what changed it for its tooltip. */
-export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext) {
+/**
+ * A number after conditions, active effects and runes, with what changed it for its tooltip.
+ * `extra` are the roll's own modifiers, stacked with the rest (a bomb's item bonus).
+ */
+export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext, extra: Pf2eMod[] = []) {
   const { total, applied } = stackMods([
     ...conditionMods(s, ctx),
     ...effectMods(s, ctx),
     ...runeMods(s, ctx.kind, ctx.weapon),
+    ...extra,
   ])
   return {
     value: base + total,
@@ -348,11 +354,37 @@ function afterDefenses(s: Pf2eSheet, parts: Pf2eDamagePart[]) {
   return { total, notes, type: types.length === 1 ? `${types[0]} ` : '' }
 }
 
+/** The damage Shield Block can be used against (Player Core p. 262). */
+const BLOCKABLE = ['bludgeoning', 'piercing', 'slashing']
+
+/** Whether the hero has Shield Block: the feat (or the class feature), or a shield granting it. */
+export const hasShieldBlock = (s: Pf2eSheet) =>
+  s.feats.some((f) => f.name.trim().toLowerCase() === 'shield block') ||
+  s.inventory.some((i) => i.pf2e?.shieldBlock && i.pf2e.carry === 'held')
+
 /**
- * Take damage (p. 410): Shield Block first, then temp HP, then HP. At 0 HP you're knocked
- * out with dying 1 (2 on a crit) plus your wounded value; damage while dying raises it by 1
- * (2 on a crit). One blow of at least double your max HP kills outright (massive damage,
- * p. 412); it's counted after Shield Block, as that's the damage the hero takes.
+ * Why the hero can't Shield Block this damage, or '' (Player Core p. 262): the feat or a shield
+ * that grants it, a raised shield that isn't broken, physical damage from an attack
+ * (bludgeoning, piercing or slashing; untyped damage is taken to be), and the reaction unspent.
+ */
+export function shieldBlockProblem(s: Pf2eSheet, types: (string | undefined)[] = []) {
+  if (!s.shield.name) return 'No shield.'
+  if (!s.shield.raised) return 'Raise your shield first.'
+  if (shieldBroken(s)) return 'Your shield is broken.'
+  if (!hasShieldBlock(s)) return 'You need the Shield Block feat.'
+  const typed = types.filter(Boolean).map((t) => t!.toLowerCase())
+  if (typed.length && !typed.some((t) => BLOCKABLE.includes(t)))
+    return 'Shield Block works against physical damage (bludgeoning, piercing or slashing).'
+  if (s.turn && !s.turn.reaction) return 'Your reaction is spent.'
+  return ''
+}
+
+/**
+ * Take damage (p. 410): Shield Block first (it spends the reaction), then temp HP, then HP.
+ * At 0 HP you're knocked out with dying 1 (2 on a crit) plus your wounded value; damage while
+ * dying takes temp HP first and raises dying by 1 (2 on a crit) only if some gets through.
+ * One blow of at least double your max HP kills outright (massive damage, p. 412); it's
+ * counted after Shield Block, as that's the damage the hero takes.
  */
 export function takeDamage(
   s: Pf2eSheet,
@@ -363,12 +395,28 @@ export function takeDamage(
   const typed = Array.isArray(amount) || o.type !== undefined || !!o.spell
   const parts: Pf2eDamagePart[] = Array.isArray(amount)
     ? amount
-    : [{ amount, ...(o.type ? { type: o.type } : {}), spell: o.spell, persistent: o.persistent }]
+    : [
+        {
+          amount,
+          ...(o.type ? { type: o.type } : {}),
+          spell: o.spell,
+          ...(o.tradition ? { tradition: o.tradition } : {}),
+          persistent: o.persistent,
+        },
+      ]
   const defended = typed ? afterDefenses(s, parts) : undefined
   let left = defended?.total ?? Math.max(0, Math.floor(parts[0]?.amount ?? 0))
   const kind = defended?.type ?? ''
   const notes: string[] = [...(defended?.notes ?? [])]
-  if (o.shieldBlock && s.shield.name && !shieldBroken(s)) {
+  const blockProblem = o.shieldBlock
+    ? shieldBlockProblem(
+        s,
+        parts.map((p) => p.type),
+      )
+    : ''
+  if (blockProblem) notes.push(`No Shield Block: ${blockProblem}`)
+  else if (o.shieldBlock) {
+    if (s.turn) s.turn.reaction = false
     const prevented = Math.min(left, s.shield.hardness)
     left -= prevented
     s.shield.hp = Math.max(0, s.shield.hp - left)
@@ -386,6 +434,10 @@ export function takeDamage(
     return [...notes, `${took} massive damage, your hero dies instantly.`].join(' ')
   }
   if (s.hp === 0 && s.dying > 0) {
+    const absorbed = Math.min(s.tempHp, left)
+    s.tempHp -= absorbed
+    left -= absorbed
+    if (absorbed) notes.push(`Temporary HP took ${absorbed}.`)
     if (left === 0) return notes.join(' ')
     return `${notes.join(' ')}${worsen(s, o.crit ? 2 : 1)}`.trim()
   }

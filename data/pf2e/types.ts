@@ -252,9 +252,11 @@ export interface Pf2eShieldDef extends Pf2eRecord {
 }
 
 /**
- * What an item is: adventuring gear, a consumable (potion, elixir, scroll, talisman, magical
- * or alchemical ammunition, oil, bomb), a held or worn magic item, a weapon or armor rune, a
- * staff or a wand (GM Core chapter 11).
+ * What an item is: adventuring gear or an assistive item, a consumable (potion, elixir,
+ * scroll, talisman, magical or alchemical ammunition, oil, bomb, poison, another
+ * consumable like holy water), a snare, a held or worn magic item or one for a companion, a
+ * weapon, armor or shield rune, a staff or a wand, or a specific or precious-material weapon,
+ * armor or shield (GM Core chapter 11, Player Core 2 chapter 6).
  */
 export type Pf2eItemKind =
   | 'gear'
@@ -270,6 +272,14 @@ export type Pf2eItemKind =
   | 'rune'
   | 'staff'
   | 'wand'
+  | 'poison'
+  | 'snare'
+  | 'consumable'
+  | 'assistive'
+  | 'companion'
+  | 'armor'
+  | 'weapon'
+  | 'shield'
 
 /**
  * An item's activation (GM Core p. 220): its actions, or what it takes when that isn't only
@@ -309,17 +319,41 @@ export interface Pf2eItemDamage {
   type: string
 }
 
+/** A rune's damage against some foes only ("to undead", "against an unholy target"). */
+export interface Pf2eRuneVsDamage extends Pf2eItemDamage {
+  vs: string
+  persistent?: boolean
+  /** It replaces the rune's usual damage (holy: 2d4 instead of 1d4 against unholy). */
+  instead?: boolean
+}
+
 /** A rune's numbers (GM Core pp. 224–237). */
 export interface Pf2eRuneNumbers {
-  /** A fundamental rune (potency, striking, resilient) or a property rune. */
-  slot: 'potency' | 'striking' | 'resilient' | 'property'
-  onto: 'weapon' | 'armor'
-  /** Potency +1–3; striking 1–3 (striking, greater, major); resilient +1–3. */
+  /** A fundamental rune (potency, striking, resilient, a shield's reinforcing) or a property rune. */
+  slot: 'potency' | 'striking' | 'resilient' | 'reinforcing' | 'property'
+  onto: 'weapon' | 'armor' | 'shield'
+  /**
+   * A reinforcing rune (GM Core p. 232): what it adds to a shield's Hardness, HP and BT, and
+   * the most it can raise them to.
+   */
+  reinforcing?: {
+    hardness: number
+    hp: number
+    bt: number
+    max: { hardness: number; hp: number; bt: number }
+  }
+  /** Potency +1–4; striking 1–4 (striking, greater, major, mythic); resilient +1–4. */
   value?: number
   /** A property rune's damage on a hit (flaming: 1d6 fire). */
   damage?: Pf2eItemDamage
-  /** What it does on a critical hit, as printed. */
+  /** Persistent damage it deals on a hit (wounding: 1d6 bleed), a condition apart (p. 445). */
+  persistent?: Pf2eItemDamage
+  /** Damage only against some foes (vitalizing: 1d6 persistent vitality to undead). */
+  vs?: Pf2eRuneVsDamage[]
+  /** What it does on a critical hit, as printed with its grade's numbers. */
   crit?: string
+  /** Keen (GM Core p. 237): a natural 19 that hits is a critical hit. */
+  keen?: boolean
   /** Its Usage line: "etched onto a melee weapon", "etched onto light armor". */
   usage: string
 }
@@ -342,8 +376,36 @@ export interface Pf2eItemNumbers {
   rune?: Pf2eRuneNumbers
   /** A staff's spells by rank (cantrips at 0), its lower types' included (GM Core p. 278). */
   spells?: { rank: number; names: string[] }[]
+  /** Staff spells from setting or legacy books the data leaves out, as printed. */
+  missingSpells?: string[]
   /** The spell rank a scroll or wand holds (GM Core pp. 262, 282). */
   spellRank?: number
+  /** The spell a specific wand casts, by name (Wand of Smoldering Fireballs: Fireball). */
+  castsSpell?: string
+  /**
+   * A poison's affliction (GM Core p. 249): its save and DC, onset, maximum duration and
+   * stages as printed, and how it's delivered (injury poisons go on a weapon).
+   */
+  poison?: {
+    dc: number
+    save: string
+    exposure: string[]
+    onset?: string
+    maxDuration?: string
+    stages: string[]
+  }
+  /** A specific weapon, armor or shield's base item (Bloodletting Kukri: Kukri). */
+  base?: string
+  /** A specific weapon's base is a ranged weapon. */
+  ranged?: boolean
+  /** A specific armor's base armor category (light, medium, heavy). */
+  category?: string
+  /** The fundamental runes a specific weapon or armor comes with ("+1 striking kukri"). */
+  fundamental?: { potency: number; striking: number; resilient: number }
+  /** A specific or precious-material shield's Hardness, HP and BT, and its AC bonus. */
+  shieldStats?: { hardness: number; hp: number; bt: number; ac?: number }
+  /** The item's text says you can Shield Block with it (Player Core p. 262). */
+  grantsShieldBlock?: boolean
 }
 
 /**
@@ -546,6 +608,8 @@ export interface Pf2eEffectDef {
   note?: string
   /** A toggle that ends by itself, by the turn steps. */
   ends?: Pf2eEnds
+  /** A consumable's effect: rounds of its duration left (10 a minute), counted by the turn steps. */
+  rounds?: number
   /** Read from the ability's text by utils/pf2eAbilityRules.ts rather than written here. */
   derived?: boolean
 }

@@ -5,7 +5,7 @@
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eSheet, Pf2eSlotRank, Pf2eSpellRef, Pf2eSpellcasting } from '~/types/sheets'
 import { type Rng, rollDie } from '~/utils/dice'
-import { setGiven, toggleEffect } from '~/utils/pf2eEffects'
+import { passItemTime, setGiven, toggleEffect } from '~/utils/pf2eEffects'
 import { itemsDailyPrep } from '~/utils/pf2eInventory'
 import { adjusted, conditionValue, proficiency } from '~/utils/pf2ePlay'
 import { type Pf2eCastRoll, castRolls, effectValue, spellRules } from '~/utils/pf2eSpellRules'
@@ -168,8 +168,13 @@ export function dailyPreparations(s: Pf2eSheet): string {
   s.focus.current = s.focus.max
   s.used = []
   itemsDailyPrep(s)
+  // A night's rest outlasts any consumable's effect (24 hours at most).
+  const ended = passItemTime(s, Infinity)
   const slots = sc || s.archetypeCasting?.length
-  return `Daily preparations: ${slots ? 'spell slots, ' : ''}Focus Points and daily abilities restored.`
+  return [
+    `Daily preparations: ${slots ? 'spell slots, ' : ''}Focus Points and daily abilities restored.`,
+    ...ended,
+  ].join(' ')
 }
 
 /** Slots for a level from the class's spells-per-day row; prepared slots start empty. */

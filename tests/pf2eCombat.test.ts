@@ -191,6 +191,38 @@ describe('pf2e immunities, weaknesses and resistances (Player Core pp. 407–408
     expect(applyDefenses(s, 10, { type: 'fire' }, 9).amount).toBe(10)
   })
 
+  // Player Core 2 p. 75: Superstition resists spells of the two traditions chosen, any type.
+  it('Superstition’s Raging Resistance covers only its two chosen traditions', () => {
+    const superstition = subclass('Barbarian', 'Superstition')
+    const s = hero(
+      [
+        feat('Rage', 'Class feature', feature('Barbarian', 'Rage').text),
+        feat('Superstition', 'Instinct', superstition.text),
+        feat('Raging Resistance', 'Class feature'),
+      ],
+      { attrs: { ...defaultSheet('pf2e').attrs, CON: 3 }, level: 9 },
+    )
+    toggleEffect(s, 'Rage', 9)
+    const resist = () => defensesOf(s, 9).resistances.find((x) => x.source === 'Raging Resistance')
+    expect(resist()?.note).toMatch(/choose your two traditions/)
+    expect(applyDefenses(s, 10, { type: 'fire', spell: true, tradition: 'Arcane' }, 9).amount).toBe(
+      10,
+    )
+    s.levelChoices = { superstitionTraditions: ['Arcane', 'Occult'] }
+    expect(resist()).toMatchObject({ type: 'arcane spells and occult spells', value: 6 })
+    expect(applyDefenses(s, 10, { type: 'fire', spell: true, tradition: 'Arcane' }, 9).amount).toBe(
+      4,
+    )
+    expect(
+      applyDefenses(s, 10, { type: 'mental', spell: true, tradition: 'Occult' }, 9).amount,
+    ).toBe(4)
+    expect(applyDefenses(s, 10, { type: 'fire', spell: true, tradition: 'Divine' }, 9).amount).toBe(
+      10,
+    )
+    expect(applyDefenses(s, 10, { type: 'fire' }, 9).amount).toBe(10)
+    expect(takeDamage(s, 10, { type: 'cold', spell: true, tradition: 'Arcane' })).toMatch(/Took 4/)
+  })
+
   it('Selfish Shield’s resistance holds against the triggering damage only (Player Core 2 p. 91)', () => {
     const desecration = subclass('Champion', 'Desecration')
     const s = hero([feat('Desecration', 'Cause', desecration.text)], { class: 'Champion' })

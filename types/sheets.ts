@@ -7,6 +7,8 @@ import type {
   Pf2eItemDamage,
   Pf2eItemKind,
   Pf2eItemNumbers,
+  Pf2eRuneNumbers,
+  Pf2eRuneVsDamage,
 } from '~/data/pf2e/types'
 
 export interface SheetCommon {
@@ -84,8 +86,10 @@ export interface Pf2eItemState extends Pf2eItemNumbers {
   carry: 'worn' | 'held' | 'stowed'
   usage?: string
   traits?: string[]
-  /** Invested today (GM Core p. 219: at most 10). */
+  /** Invested now (GM Core p. 219). */
   invested?: boolean
+  /** Invested since daily preparations, even if taken off since: it counts against the 10. */
+  investedToday?: boolean
   activations?: Pf2eActivation[]
   /** Armor's category (light, medium, heavy, unarmored) and a weapon's melee or ranged, for runes. */
   category?: string
@@ -98,16 +102,25 @@ export interface Pf2eItemState extends Pf2eItemNumbers {
   wand?: { cast: boolean; overcharged: boolean; broken: boolean }
   /** The spell in a scroll or wand, at the item's rank. */
   spell?: { id: string; name: string; rank: number }
+  /** An item that grants Shield Block while held, as its text says (Scale of Igroon). */
+  shieldBlock?: boolean
+  /**
+   * An injury poison applied to this weapon (GM Core p. 249): its affliction, spent by the next
+   * Strike that hits.
+   */
+  poisoned?: { name: string; dc: number; save: string; stages: string[]; maxDuration?: string }
 }
 
 export interface Pf2eItemRunes {
-  /** Weapon or armor potency +0–3. */
+  /** Weapon or armor potency +0–4. */
   potency: number
-  /** Striking 0–3: extra weapon damage dice (striking, greater, major). */
+  /** Striking 0–4: extra weapon damage dice (striking, greater, major, mythic). */
   striking: number
-  /** Resilient +0–3: item bonus to saves. */
+  /** Resilient +0–4: item bonus to saves. */
   resilient: number
   property: Pf2ePropertyRune[]
+  /** A shield's reinforcing rune (GM Core p. 232), by name, with what it adds. */
+  reinforcing?: { id: string; name: string } & NonNullable<Pf2eRuneNumbers['reinforcing']>
 }
 
 export interface Pf2ePropertyRune {
@@ -115,7 +128,13 @@ export interface Pf2ePropertyRune {
   name: string
   level: number
   damage?: Pf2eItemDamage
+  /** Persistent damage on a hit (wounding), a condition the target tracks. */
+  persistent?: Pf2eItemDamage
+  /** Damage against some foes only (vitalizing against undead). */
+  vs?: Pf2eRuneVsDamage[]
   crit?: string
+  /** Keen: a natural 19 that hits is a critical hit (GM Core p. 237). */
+  keen?: boolean
 }
 
 export type CustomItemEffectKind =

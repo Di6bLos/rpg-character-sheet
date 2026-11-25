@@ -226,6 +226,7 @@ export const GOLARION_NAMES = [
   'Twilight Talon',
   'Grand Lodge',
   'Jassim',
+  'Pactmaster',
 ]
 
 /**
@@ -290,6 +291,94 @@ export function closedBooks(docs: AonDoc[]) {
     for (const b of [d.primary_source, ...(d.category === 'source' ? [d.name] : [])])
       if (b && !openBook(b)) books.add(b.trim())
   return books
+}
+
+/**
+ * Closed book titles that are also words or Golarion names an open rulebook's rules text
+ * prints as they are ("Legends say…", "Slithering roots", "the Mwangi Expanse", "the
+ * Firebrands", Impossible Magic's March of the Dead feat): not citations of the book.
+ */
+export const TITLE_WORDS = new Set([
+  'Legends',
+  'Slithering',
+  'Bestiary',
+  'In Darkness',
+  'March of the Dead',
+  'Firebrands',
+  'Highhelm',
+  'Mwangi Expanse',
+  'Impossible Lands',
+  'Knights of Lastwall',
+])
+
+const titleRes = new WeakMap<Set<string>, RegExp>()
+/**
+ * The closed books a text names: any title of `closed` (but `TITLE_WORDS`) as whole words, and
+ * "Lost Omens", the setting line's name ("Lost Omens: Draconic Codex"). A legacy title an open
+ * book's name starts with ("Treasure Vault (Remastered)") isn't that book.
+ */
+export function closedTitlesIn(text: string, closed: Set<string>) {
+  let re = titleRes.get(closed)
+  if (!re) {
+    const titles = [...closed, 'Lost Omens']
+      .filter((t) => !TITLE_WORDS.has(t) && !openBook(t))
+      .sort((a, b) => b.length - a.length)
+      .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    // Letters and digits bound a title, not underscores: an italic title ("_Lost Omens Tian Xia
+    // Character Guide_") is still a citation.
+    re = new RegExp(`(?<![A-Za-z0-9])(${titles.join('|')})(?![A-Za-z0-9]| \\(Remastered\\))`, 'g')
+    titleRes.set(closed, re)
+  }
+  // "Lost Omens" alone counts as the line's name ("Lost Omens: Draconic Codex", "Lost Omens
+  // Rival Academies"), not as the setting's era ("the Age of Lost Omens") or an ability's name.
+  const hits = [...text.matchAll(re)].filter(
+    (m) =>
+      m[1] !== 'Lost Omens' ||
+      (!/\bof $/.test(text.slice(0, m.index)) &&
+        /^(?::| _?[A-Z])/.test(text.slice(m.index! + m[1]!.length))),
+  )
+  return [...new Set(hits.map((m) => m[1]!))]
+}
+
+/**
+ * A section's lead: the first sentence of its first line of prose, past stat lines, rules and
+ * tables ("The dragons from Lost Omens: Draconic Codex use…"). A pointer to another book
+ * further on (Spellshot's "You can find more information… in Guns & Gears") isn't one.
+ */
+const leadOf = (block: string[]) =>
+  (
+    block.find((l) => {
+      const t = l.trim()
+      return t !== '' && t !== '---' && !t.startsWith('**') && !t.startsWith('|')
+    }) ?? ''
+  ).split(/(?<=[.!?])\s+(?=[A-Z])/)[0] ?? ''
+
+/** Whether an entry's lead, its first line of prose, names a closed book (Monster Core Dragons). */
+export function leadNamesClosed(md: string, closed: Set<string>) {
+  const lines = md.split('\n')
+  const start = lines.findIndex((l) => /^#{1,6} /.test(l))
+  return closedTitlesIn(leadOf(lines.slice(start + 1)), closed).length > 0
+}
+
+/**
+ * Cross-references to left-out books taken out of the text they sit in ("the standard DC of
+ * the siege weapon's level (Core Rulebook 503)"), then every line still naming one: a
+ * paragraph about a legacy book's version, a pointer to a setting book. Headings stay, for
+ * `withoutLegacy` and `orcProblems` to judge.
+ */
+export function withoutClosedMentions(md: string, closed: Set<string>) {
+  return md
+    .split('\n')
+    .map((line) =>
+      line.replace(/\s*\(([^()]*)\)/g, (all, inner: string) =>
+        closedTitlesIn(inner, closed).length &&
+        /^(?:see |page \d+ of )?_?[^_]+_?(?:,? (?:pg\.|page|p\.) ?\d+| \d+)?$/i.test(inner.trim())
+          ? ''
+          : all,
+      ),
+    )
+    .filter((line) => /^#{1,6} /.test(line) || !closedTitlesIn(line, closed).length)
+    .join('\n')
 }
 
 /** AoN's action names → glyphs; ranges ("Single Action to Three Actions") are built from these. */
@@ -431,6 +520,10 @@ export function cleanMarkdown(
   )
   // AoN's own spoiler warnings ("Nethys Note: This page contains HUGE SPOILERS…") are not book text.
   s = s.replace(/(?:\*\*_|_\*\*)Nethys Note:[^*]*?spoilers[^*]*?(?:_\*\*|\*\*_)/gi, '')
+  // Pathfinder Society notes ("_[**PFS Note**](/pathfinder-society) Characters from Kyonin…_")
+  // are organized-play rulings, not book text: each goes to the end of its paragraph,
+  // line breaks included (Cavalier's Pathfinder Society edicts).
+  s = s.replace(/_?\[?\*\*_?PFS Note_?\*\*\]?(?:\([^)]*\))?(?:[^<\n]|<br\s*\/?>|\n(?!\s*\n))*/g, '')
   s = s.replace(/<sup>\s*([^<]*?)\s*<\/sup>/g, (_, mark: string) => footnote(mark))
   s = s.replace(/<table[\s\S]*?<\/table>/g, table)
   s = s
@@ -470,27 +563,39 @@ export function sourceBooks(line: string) {
 
 /**
  * Drops each subsection whose own source line (before its next heading) cites only books in
- * `legacy` (the books to leave out) or is titled with one of them, and takes those books out
- * of every source line that also cites another ("Player Core pg. 150, Core Rulebook pg. 165"
- * → "Player Core pg. 150").
+ * `legacy` (the books to leave out), is titled with one of them, or whose lead names one
+ * (Dragon Form's "Monster Core Dragons": "The dragons from Lost Omens: Draconic Codex use…",
+ * with the table under the heading after it), and takes those books out of every source line
+ * that also cites another ("Player Core pg. 150, Core Rulebook pg. 165" → "Player Core pg.
+ * 150"). The entry's own heading, the first, is never dropped for its lead.
  */
 export function withoutLegacy(md: string, legacy: Set<string>) {
   const lines = md.split('\n')
   const out: string[] = []
   const heading = (l: string) => /^(#{1,6}) /.exec(l)
+  const first = lines.findIndex((l) => heading(l))
   let skip = 0
+  let byLead = false
   lines.forEach((line, i) => {
     const head = heading(line)
     if (head) {
       const lvl = head[1]!.length
-      if (skip && lvl <= skip) skip = 0
+      const next = lines.slice(i + 1).findIndex((l) => heading(l))
+      const block = lines.slice(i + 1, next < 0 ? undefined : i + 1 + next)
+      // A heading over nothing but a table goes on with the section a lead cut.
+      const tableOnly =
+        block.some((l) => l.startsWith('|')) &&
+        block.every((l) => l.trim() === '' || l.startsWith('|'))
+      if (skip && lvl <= skip && !(byLead && tableOnly)) {
+        skip = 0
+        byLead = false
+      }
       if (!skip) {
-        const next = lines.slice(i + 1).findIndex((l) => heading(l))
-        const block = lines.slice(i + 1, next < 0 ? undefined : i + 1 + next)
         const books = sourceBooks(block.find((l) => SOURCE_LINE.test(l)) ?? '')
         // A section titled with a left-out book (Avatar's forms per book) is that book's too.
         const titled = legacy.has(line.slice(lvl + 1).trim())
-        if (titled || (books.length && books.every((b) => legacy.has(b)))) skip = lvl
+        byLead = i !== first && closedTitlesIn(leadOf(block), legacy).length > 0
+        if (titled || byLead || (books.length && books.every((b) => legacy.has(b)))) skip = lvl
       }
     }
     if (skip) return
@@ -521,15 +626,22 @@ export function withoutDeities(md: string) {
   return out.join('\n').replace(/\n{3,}/g, '\n\n')
 }
 
-/** Lines that must not reach a shareable (ORC) output: a legacy book cited, a deity stat line. */
+/**
+ * Lines that must not reach a shareable (ORC) output: a left-out book cited or named, a deity
+ * stat line, a closed archetype on an Archetype line or as a dedication.
+ */
 export function orcProblems(md: string, legacy: Set<string>, archetypes = new Set<string>()) {
   return md
     .split('\n')
     .filter(
       (l) =>
         sourceBooks(l).some((b) => legacy.has(b)) ||
+        closedTitlesIn(l, legacy).length > 0 ||
         DEITY_STAT.test(l) ||
-        lineArchetypes(l).some((a) => archetypes.has(a)),
+        lineArchetypes(l).some((a) => archetypes.has(a)) ||
+        [...l.matchAll(/([A-Z][\w'’-]*(?: [A-Z][\w'’-]*)*) Dedication\b/g)].some((m) =>
+          archetypes.has(m[1]!),
+        ),
     )
 }
 
@@ -588,6 +700,62 @@ export function withoutArchetypes(md: string, closed: Set<string>) {
     })
     .join('\n')
 }
+
+const DEDICATION = /^(.+?) Dedication$/
+
+/**
+ * A feat's prerequisites without the closed archetypes' dedications it offers ("Vigilante
+ * Dedication or Bellflower Tiller Dedication" → "Vigilante Dedication"; Wither Away's
+ * "Apocalypse Rider Dedication; Battle Harbinger Dedication" → "Apocalypse Rider Dedication").
+ * Undefined when nothing is left: the feat needed only a closed archetype.
+ */
+export function withoutClosedDedications(prereq: string, closed: Set<string>) {
+  const closedPart = (p: string) => closed.has(DEDICATION.exec(p.trim())?.[1]?.trim() ?? '')
+  const clauses = prereq
+    .split(/;\s*/)
+    .map((clause) => {
+      const parts = clause.split(/,? or |, /)
+      if (!parts.some(closedPart)) return clause.trim()
+      const kept = parts.map((p) => p.trim()).filter((p) => p && !closedPart(p))
+      return kept.length > 2
+        ? `${kept.slice(0, -1).join(', ')}, or ${kept.at(-1)}`
+        : kept.join(' or ')
+    })
+    .filter(Boolean)
+  return clauses.length ? clauses.join('; ') : undefined
+}
+
+const PREREQ_LINE = /^\*\*Prerequisites?\*\*\s*(.*)$/
+
+/**
+ * Takes closed archetypes' dedications out of the `**Prerequisites**` stat line, whose value
+ * AoN prints on the same line or the next (`withoutClosedDedications`); a line left empty goes.
+ */
+export function withoutClosedPrerequisites(md: string, closed: Set<string>) {
+  const lines = md.split('\n')
+  const out: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const m = PREREQ_LINE.exec(lines[i]!)
+    if (!m) {
+      out.push(lines[i]!)
+      continue
+    }
+    const below = !m[1]!.trim()
+    const value = below ? (lines[i + 1] ?? '') : m[1]!
+    const kept = withoutClosedDedications(value, closed)
+    if (below) i++
+    if (kept === undefined) continue
+    out.push(below ? lines[i - 1]! : `${lines[i]!.slice(0, lines[i]!.indexOf(value))}${kept}`)
+    if (below) out.push(kept)
+  }
+  return out.join('\n')
+}
+
+/** Whether a feat needs only closed archetypes' dedications (AoN's `prerequisite` field). */
+export const closedPrerequisite = (d: AonDoc, closed: Set<string>) =>
+  typeof d.prerequisite === 'string' &&
+  !!d.prerequisite.trim() &&
+  withoutClosedDedications(stripLinks(d.prerequisite), closed) === undefined
 
 /**
  * Heritages whose name doesn't say their ancestry: the legacy half-elf and half-orc (full,
