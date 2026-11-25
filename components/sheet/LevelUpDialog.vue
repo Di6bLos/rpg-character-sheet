@@ -698,8 +698,19 @@ async function confirm() {
   }
 
   .todo {
+    position: relative;
     flex-basis: 100%;
     min-height: 32px;
+
+    // A 44px hit area on touch without a taller line: 6px into the 12px gap above Cancel
+    // and Confirm and into the gap above the footer, so it overlaps neither.
+    @media (pointer: coarse) {
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -6px 0;
+      }
+    }
   }
 }
 
