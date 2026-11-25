@@ -15,7 +15,7 @@
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
-import { hpClass } from '~/utils/roster'
+import { deadBySaves, hpClass } from '~/utils/roster'
 import { activeKey, browseBounds, slotAt, type StripSlot } from '~/utils/initiativeStrip'
 
 const props = defineProps<{
@@ -41,7 +41,13 @@ function isMine(c: TurnRow) {
   return c.kind === 'pc' && !!c.character_id && rosterFor(c)?.user_id === auth.userId
 }
 
+/** A 5e hero dead by three failed death saves (off Nimble only, as DownStatus says it). */
+function deadBySavesPc(c: TurnRow) {
+  return c.kind === 'pc' && !features.value.nimbleHero && deadBySaves(rosterFor(c)?.summary)
+}
+
 function isDead(c: TurnRow) {
+  if (deadBySavesPc(c)) return true
   const s = c.kind === 'pc' ? rosterFor(c)?.summary : undefined
   const max = s?.woundsMax ?? 0
   return !!s && max > 0 && (s.wounds ?? 0) >= max
@@ -87,7 +93,7 @@ function hpBand(c: TurnRow): string {
 
 /** HP as words for the tooltip and screen readers; the token itself only shows the bar. */
 function hpLabel(c: TurnRow): string {
-  if (isDown(c)) return c.kind === 'summon' ? 'Slain' : 'Down'
+  if (isDown(c)) return c.kind === 'summon' ? 'Slain' : deadBySavesPc(c) ? 'Dead' : 'Down'
   const t = hpText(c)
   return t ? `HP ${t}` : ''
 }
