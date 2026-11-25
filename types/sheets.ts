@@ -280,6 +280,8 @@ export interface Pf2eCreation {
   spells?: { cantrips: string[]; rank1: string[] }
   /** A cleric's divine font when the deity offers both. */
   font?: string
+  /** The tradition a draconic bloodline or dragon eidolon leaves to the player. */
+  tradition?: string
   /** Focus spells and class cantrips (AoN ids); absent means the ones the features name. */
   focus?: string[]
 }

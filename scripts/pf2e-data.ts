@@ -34,6 +34,7 @@ import type {
 import type { Pf2eAttr, Pf2eRank } from '../types/sheets'
 import {
   type AonDoc,
+  backgroundSkillText,
   classOfType,
   cleanMarkdown,
   heritageAncestry,
@@ -44,6 +45,7 @@ import {
   page,
   remaster,
   shareable,
+  skillNamesIn,
   slug,
   stripLinks,
   withoutLegacy,
@@ -399,12 +401,38 @@ const heritages: Pf2eHeritageDef[] = [
   }),
   ...versatileDocs.map((d) => ({ ...base(d), versatile: true })),
 ]
-const backgrounds: Pf2eBackgroundDef[] = latest(of('background')).map((d) => ({
-  ...base(d),
-  boosts: list(d.attribute),
-  skills: list(d.skill),
-  feats: list(d.feat),
-}))
+/**
+ * A background's skills from its "You're trained in…" text as well as AoN's skill field, which
+ * misses some (The Hunted's Stealth and Survival) and lists a choice as if both were trained
+ * (a hermit's Nature or Occultism). A field entry whose skills all come from the text goes;
+ * prose naming no skill ("Lore related to the terrain you worked in") stays for the player.
+ */
+function backgroundSkills(d: AonDoc, text: string) {
+  const read = backgroundSkillText(text)
+  const chosen = new Set(read.choices.flatMap((c) => c.options))
+  const known = new Set([...read.fixed, ...chosen])
+  const field = list(d.skill).filter((e) => {
+    const named = skillNamesIn(e)
+    const plainName = named.length === 1 && e === named[0] && !chosen.has(e)
+    return !named.length || plainName || !named.every((n) => known.has(n))
+  })
+  // Lores to name that AoN's field doesn't spell out (Reborn Soul's two).
+  const prose = field.filter((e) => !skillNamesIn(e).length).length
+  return {
+    skills: [...new Set([...field, ...read.fixed]), ...read.lores.slice(prose)],
+    ...opt('skillChoices', read.choices.length ? read.choices : undefined),
+    ...opt('deitySkill', read.deitySkill || undefined),
+  }
+}
+const backgrounds: Pf2eBackgroundDef[] = latest(of('background')).map((d) => {
+  const b = base(d)
+  return {
+    ...b,
+    boosts: list(d.attribute),
+    ...backgroundSkills(d, b.text),
+    feats: list(d.feat),
+  }
+})
 
 // --- Feats and spells ----------------------------------------------------------
 const featLists = new Set([...ancestryNames, ...versatileNames])
