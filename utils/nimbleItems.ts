@@ -11,6 +11,10 @@ import type {
 } from '~/types/sheets'
 import { parseDice, rollDie, sign, type Rng } from '~/utils/dice'
 import { classMeleeDamage, weaponAttack } from '~/utils/nimbleBuild'
+import { adoptStartingWorn, armorPiece, armorValue, wornArmor } from '~/utils/nimbleWornArmor'
+
+export { armorPiece, armorValue, wornArmor }
+export type { ArmorPiece } from '~/utils/nimbleWornArmor'
 
 export const SPELL_SCROLL = 'Spell Scroll'
 
@@ -237,24 +241,6 @@ export function itemAttack(
   }
 }
 
-export function armorValue(formula: string, stats: NimbleSheet['stats']): number | null {
-  const cap = Number(/\(max (\d+)\)/.exec(formula)?.[1] ?? Number.POSITIVE_INFINITY)
-  const terms = formula
-    .replace(/\(.*?\)/g, '')
-    .replace(/\s+/g, '')
-    .split('+')
-    .filter(Boolean)
-  if (!terms.length) return null
-  let total = 0
-  for (const t of terms) {
-    if (/^\d+$/.test(t)) total += Number(t)
-    else if (t === 'STR' || t === 'DEX' || t === 'INT' || t === 'WIL')
-      total += Math.min(cap, stats[t])
-    else return null
-  }
-  return total
-}
-
 function shown(formula: string, stats: NimbleSheet['stats']): string {
   const value = armorValue(formula, stats)
   if (value === null) return formula
@@ -278,6 +264,30 @@ export function itemStat(sheet: NimbleSheet, item: InventoryItem, level: number)
   if (shield) return `+${formula.replace(/^\+/, '')} Armor`
   const value = armorValue(formula, sheet.stats)
   return `Armor ${value ?? formula}`
+}
+
+/**
+ * Puts on or takes off armor or a shield: one of each is worn at a time, and the
+ * hero's Armor is worked out again from what they now wear.
+ */
+export function wearItem(sheet: NimbleSheet, item: InventoryItem, level: number): string {
+  const piece = armorPiece(sheet, item)
+  if (!piece) return ''
+  // What the click means is decided first; then a sheet from before Equip, whose Armor
+  // assumed its starting armor and shield are on, gets them marked worn.
+  const on = !item.worn
+  const at = sheet.inventory.indexOf(item)
+  adoptStartingWorn(sheet)
+  item = sheet.inventory[at] ?? item
+  sheet.inventory = sheet.inventory.map((i) => {
+    if (i === item) return { ...i, worn: on }
+    const other = armorPiece(sheet, i)
+    return on && i.worn && other?.shield === piece.shield ? { ...i, worn: false } : i
+  })
+  const armor = wornArmor(sheet, level)
+  sheet.ac = armor.value
+  const notes = armor.notes.length ? ` ${armor.notes.join(' ')}` : ''
+  return `${on ? 'Wearing' : 'Took off'} ${item.name}: Armor ${armor.value} (${armor.parts.join(', ')}).${notes}`
 }
 
 export function isWeapon(item: InventoryItem): boolean {

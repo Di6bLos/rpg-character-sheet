@@ -427,7 +427,7 @@ describe('class options on summons', () => {
       },
     ])
 
-    expect(switchSummonOption(sheet, 'Small Companion', 'Medium Companion')).toBe(
+    expect(switchSummonOption(sheet, 'Small Companion', 'Medium Companion', 3)).toBe(
       'Biscuit is now your medium companion.',
     )
     expect(sheet.abilities.map((a) => a.name)).toEqual(['Medium Companion'])

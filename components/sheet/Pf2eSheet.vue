@@ -1,18 +1,15 @@
 <script setup lang="ts">
-import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
 import { mapPenalties, parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
 import { PF2E_CONDITIONS } from '~/utils/sheetDefaults'
+import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, adjustHp, lastRoll, say } = useSheet<Pf2eSheet>()
+// The GM's HP and condition changes from the battle board.
+useHeroHpChanges()
+useHeroConditionChanges()
 const sheet = computed(() => draft.value.sheet)
 
-const RANK_NAME: Record<Pf2eRank, string> = {
-  U: 'Untrained',
-  T: 'Trained',
-  E: 'Expert',
-  M: 'Master',
-  L: 'Legendary',
-}
 const ATTR_NAME: Record<Pf2eAttr, string> = {
   STR: 'Strength',
   DEX: 'Dexterity',
@@ -200,7 +197,7 @@ const bulkPct = computed(() =>
             <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
           </svg>
           <div class="ac__v">{{ ac }}</div>
-          <div class="caps" style="font-size: 11px">AC · {{ RANK_NAME[sheet.acRank] }}</div>
+          <div class="caps" style="font-size: 11px">AC · {{ PF2E_RANK_NAME[sheet.acRank] }}</div>
         </div>
         <div v-if="hasShield" class="tile shield">
           <div class="shield__head">
@@ -234,7 +231,7 @@ const bulkPct = computed(() =>
         <div v-for="s in sheet.saves" :key="s.label" class="tile" style="gap: 6px; padding: 12px">
           <div class="save__head">
             <span class="tile__label">{{ s.label }}</span>
-            <span class="rank" :class="`rank--${s.rank}`" :title="RANK_NAME[s.rank]">{{
+            <span class="rank" :class="`rank--${s.rank}`" :title="PF2E_RANK_NAME[s.rank]">{{
               s.rank
             }}</span>
           </div>
@@ -321,7 +318,7 @@ const bulkPct = computed(() =>
           class="skill"
           :class="{ 'is-trained': s.rank !== 'U' }"
         >
-          <span class="rank" :class="`rank--${s.rank}`" :title="RANK_NAME[s.rank]">{{
+          <span class="rank" :class="`rank--${s.rank}`" :title="PF2E_RANK_NAME[s.rank]">{{
             s.rank
           }}</span>
           <span class="skill__name"

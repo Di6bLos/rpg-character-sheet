@@ -38,7 +38,7 @@ export function useCampaignChat(campaignId: Ref<string>) {
 
   const me = computed(() => auth.userId ?? '')
 
-  /** Game lines (rolls and casts from the quick-action panel): hidden unless the viewer turns them on. */
+  /** Game lines (rolls and casts from the battle board): hidden unless the viewer turns them on. */
   const showActions = ref(false)
   watch(
     me,
@@ -189,15 +189,23 @@ export function useCampaignChat(campaignId: Ref<string>) {
     if (visible.value) markRead(thread.value)
   }
 
-  /** The chat panel calls this as it mounts and unmounts. */
+  const notifications = useNotificationsStore()
+  /** The chat panel calls this as it mounts and unmounts (and as it scrolls in or out of view). */
   function setVisible(on: boolean) {
     visible.value = on
+    notifications.setChatOnScreen(campaignId.value, on)
     if (on) markRead(thread.value)
   }
 
   onMounted(init)
   watch([campaignId, me], init)
+  watch(campaignId, (now, before) => {
+    if (!visible.value) return
+    notifications.setChatOnScreen(before, false)
+    notifications.setChatOnScreen(now, true)
+  })
   onBeforeUnmount(() => {
+    notifications.setChatOnScreen(campaignId.value, false)
     if (channel) void supabase.removeChannel(channel)
   })
 
@@ -220,7 +228,7 @@ export function useCampaignChat(campaignId: Ref<string>) {
 export type CampaignChat = ReturnType<typeof useCampaignChat>
 const CHAT_KEY: InjectionKey<CampaignChat> = Symbol('campaign-chat')
 
-/** The board parent page owns the chat so the Party tab badge stays live on every tab. */
+/** The board parent page owns the chat, so it and its unread counts live across tab changes. */
 export function provideCampaignChat(campaignId: Ref<string>): CampaignChat {
   const chat = useCampaignChat(campaignId)
   provide(CHAT_KEY, chat)

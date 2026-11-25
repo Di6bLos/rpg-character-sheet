@@ -214,7 +214,7 @@ async function create() {
             </div>
             <span class="small muted" style="font-size: 13px">{{ meta(c) }}</span>
           </div>
-          <!-- GMs land on the console's Party tab (turn controls); players on the board's. -->
+          <!-- GMs land on the console's Battle tab (turn controls); players on the board's. -->
           <NuxtLink
             :to="`/campaigns/${c.id}/${c.myRole === 'gm' ? 'gm' : 'board'}`"
             class="btn"

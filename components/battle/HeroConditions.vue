@@ -60,7 +60,7 @@ const chips = computed(() =>
         {{ st.label }} <span aria-hidden="true">×</span>
       </button>
     </div>
-    <p v-else class="cond__none">None</p>
+    <p v-else class="cond__none">No conditions</p>
     <ul v-if="effects.length" class="cond__effects">
       <li v-for="e in effects" :key="e">{{ e }}</li>
     </ul>

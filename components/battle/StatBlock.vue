@@ -3,7 +3,8 @@
 // place (this combatant only), size / type / level, the HP bar with amount, −, + and Set,
 // tiles for Armor, Speed, Initiative and Actions (max editable), conditions with Add,
 // then the linked stat block's entries with Roll buttons and GM notes. A custom
-// combatant with no stat block shows the numbers only.
+// combatant with no stat block shows the numbers only. Off Nimble (`useBattleFeatures().pips`
+// false) there is no Actions tile.
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { statTop } from '~/composables/useCombatantNpcs'
 import { statBlockSubtitle } from '~/utils/npcStatBlock'
@@ -14,6 +15,7 @@ const props = defineProps<{
 }>()
 
 const { npcFor } = useCombatantNpcs(props.init)
+const features = useBattleFeatures()
 const uid = useId()
 
 const c = computed<TurnRow | undefined>(() =>
@@ -113,7 +115,7 @@ function onMax(event: Event) {
 
       <BattleStatBlockHp :init="init" :c="c" />
 
-      <div class="sbk__tiles">
+      <div class="sbk__tiles" :class="{ 'sbk__tiles--3': !features.pips }">
         <div class="sbk__tile">
           <b>{{ armor }}</b
           ><span>Armor</span>
@@ -126,7 +128,7 @@ function onMax(event: Event) {
           <b>{{ c.initiative_rolled ? c.initiative : '–' }}</b
           ><span>Init</span>
         </div>
-        <div class="sbk__tile">
+        <div v-if="features.pips" class="sbk__tile">
           <b
             >{{ c.actions_used ?? 0 }}/<input
               class="sbk__max"
@@ -207,6 +209,10 @@ function onMax(event: Event) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+}
+
+.sbk__tiles--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .sbk__tile {
