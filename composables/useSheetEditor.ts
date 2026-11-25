@@ -12,6 +12,7 @@ export interface SheetEditor<T extends AnySheet = AnySheet> {
   canEdit: Ref<boolean>
   dirty: Ref<boolean>
   saving: Ref<boolean>
+  held: Ref<boolean>
   lastRoll: Ref<string>
   campaignName: Ref<string>
   campaignId: Ref<string | null>
@@ -56,6 +57,7 @@ export function provideSheetEditor(
   const canEdit = ref(options.canEdit)
   const dirty = ref(false)
   const saving = ref(false)
+  const held = ref(false)
   const lastRoll = ref('')
   const campaignName = ref(options.campaignName)
   const campaignId = ref(options.campaignId ?? null)
@@ -78,7 +80,7 @@ export function provideSheetEditor(
       await pendingSave
       return saveInOrder()
     }
-    if (!canEdit.value || !dirty.value) return
+    if (!canEdit.value || held.value || !dirty.value) return
     pendingSave = persist()
     try {
       await pendingSave
@@ -253,6 +255,7 @@ export function provideSheetEditor(
     canEdit,
     dirty,
     saving,
+    held,
     lastRoll,
     campaignName,
     campaignId,

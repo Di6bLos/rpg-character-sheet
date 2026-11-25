@@ -15,7 +15,7 @@ import {
 } from '~/utils/nimbleBuild'
 
 const open = defineModel<boolean>({ required: true })
-const { draft, saveNow } = useSheet()
+const { draft, held, saveNow } = useSheet()
 const snackbar = useSnackbarStore()
 
 const creation = computed(() =>
@@ -102,13 +102,13 @@ function begin(from: number) {
       .map((e) => [e.level, e.nimble!]),
   )
   goal.value = draft.value.level
+  held.value = true
 }
 
 async function climb(from: number) {
   if (draft.value.system === 'nimble') syncCompanions(draft.value.sheet as NimbleSheet)
   draft.value.level = from
   open.value = false
-  await saveNow()
   if (from >= goal.value) return finish()
   openedAt.value = from
   levelUpOpen.value = true
@@ -138,10 +138,13 @@ async function rebuildLevelOne() {
   await climb(1)
 }
 
-function finish() {
-  snackbar.show(`${draft.value.name} is reconfigured at level ${goal.value}`)
+async function finish() {
+  const level = goal.value
   goal.value = 0
   original.value = null
+  held.value = false
+  await saveNow()
+  snackbar.show(`${draft.value.name} is reconfigured at level ${level}`)
 }
 
 async function stepClosed() {
@@ -158,6 +161,7 @@ async function stepClosed() {
   draft.value.level = saved.level
   goal.value = 0
   original.value = null
+  held.value = false
   await saveNow()
   snackbar.show(`Reconfigure cancelled: ${draft.value.name} is back as before`)
 }
