@@ -272,30 +272,36 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
 </script>
 
 <template>
-  <section class="panel stack" style="gap: 12px" aria-labelledby="inv-h">
+  <section class="panel stack" style="gap: 10px" aria-labelledby="inv-h">
+    <UiFold name="Inventory" />
     <div class="panel-title" style="margin: 0">
       <h2 id="inv-h">Inventory</h2>
-      <span class="small">
-        Bulk <strong>{{ bulk.bulk }}</strong> / {{ bulk.limit }} before encumbered,
-        {{ bulk.max }} max
+      <span class="bulk" :class="{ over: bulk.encumbered }">
+        Bulk {{ bulk.bulk }} / {{ bulk.limit }}
       </span>
     </div>
     <div
       class="meter meter--thin"
-      :class="bulk.overloaded ? 'meter--danger' : bulk.encumbered ? 'is-warn' : 'meter--accent'"
+      :class="bulk.encumbered ? 'meter--over' : 'meter--accent'"
+      role="img"
+      :aria-label="`Bulk ${bulk.bulk} of ${bulk.max} you can carry; encumbered over ${bulk.limit}`"
     >
       <span :style="{ width: bulkPct + '%' }" />
     </div>
-    <p v-if="bulk.overloaded" class="small warn" role="status">
-      Overloaded: you can’t carry more than {{ bulk.max }} Bulk.
+    <p v-if="bulk.overloaded" class="notice notice--error" role="status">
+      Overloaded: you can’t carry more than {{ bulk.max }} Bulk (10 + STR).
     </p>
-    <p v-else-if="bulk.encumbered" class="small warn" role="status">
-      Encumbered: clumsy 1 and −10 feet to your Speeds.
+    <p v-else-if="bulk.encumbered" class="notice" role="status">
+      Encumbered over {{ bulk.limit }} Bulk (5 + STR): clumsy 1 and −10 feet to your Speeds.
     </p>
     <div class="facts">
-      <span>
-        Invested <strong>{{ invested }} / {{ INVEST_LIMIT }}</strong>
-      </span>
+      <span
+        >Encumbered over <strong>{{ bulk.limit }}</strong
+        >, max <strong>{{ bulk.max }}</strong></span
+      >
+      <span
+        >Invested <strong>{{ invested }} / {{ INVEST_LIMIT }}</strong></span
+      >
       <span v-if="bulk.light"
         >Light items <strong>{{ bulk.light }}</strong></span
       >
@@ -307,38 +313,37 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
     <ul class="items" aria-label="Items">
       <li v-for="r in rows" :key="r.index" class="item">
         <div class="item__head">
-          <div class="stack" style="gap: 2px; min-width: 0">
-            <strong class="item__name">{{ r.name }}</strong>
-            <span class="small muted">
-              <template v-if="r.st.count > 1">{{ r.st.count }} × </template>Bulk {{ r.bulk }}
-              <template v-if="r.st.level !== undefined"> · Item {{ r.st.level }}</template>
-              <template v-if="r.st.usage"> · {{ r.st.usage }}</template>
-              <template v-if="r.staff"> · {{ r.st.charges ?? 0 }} charges</template>
-              <template v-if="r.st.wand?.broken"> · broken</template>
-              <template v-else-if="r.st.wand?.cast"> · used today</template>
+          <div class="item__text">
+            <span class="item__name">{{ r.name }}</span>
+            <span class="item__meta">
+              Bulk {{ r.bulk
+              }}<template v-if="r.st.level !== undefined"> · Item {{ r.st.level }}</template
+              ><template v-if="r.st.usage"> · {{ r.st.usage }}</template
+              ><template v-if="r.staff"> · {{ r.st.charges ?? 0 }} charges</template
+              ><template v-if="r.st.wand?.broken"> · broken</template
+              ><template v-else-if="r.st.wand?.cast"> · used today</template>
             </span>
           </div>
           <div class="item__tools">
-            <div class="row" style="gap: 4px; flex-wrap: nowrap">
-              <button
-                type="button"
-                class="step step--sm"
-                :aria-label="`One fewer ${r.item.name}`"
-                :disabled="!canEdit || r.st.count <= 1"
-                @click="step(r.index, -1)"
-              >
-                −
-              </button>
-              <button
-                type="button"
-                class="step step--sm"
-                :aria-label="`One more ${r.item.name}`"
-                :disabled="!canEdit"
-                @click="step(r.index, 1)"
-              >
-                +
-              </button>
-            </div>
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`One fewer ${r.item.name}`"
+              :disabled="!canEdit || r.st.count <= 1"
+              @click="step(r.index, -1)"
+            >
+              −
+            </button>
+            <span class="item__qty" :aria-label="`${r.st.count} carried`">{{ r.st.count }}</span>
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`One more ${r.item.name}`"
+              :disabled="!canEdit"
+              @click="step(r.index, 1)"
+            >
+              +
+            </button>
             <select
               class="input carry"
               :value="r.st.carry"
@@ -350,14 +355,28 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
               <option value="held">Held</option>
               <option value="stowed">Stowed</option>
             </select>
+            <button
+              type="button"
+              class="remove"
+              :aria-label="`Remove ${r.item.name}`"
+              title="Remove"
+              :disabled="!canEdit"
+              @click="remove(r.index)"
+            >
+              ×
+            </button>
           </div>
         </div>
-        <div class="item__actions">
+        <div
+          v-if="r.invest || r.consumable || r.castable || r.staff || r.runes"
+          class="item__actions"
+        >
           <button
             v-if="r.invest"
             type="button"
-            class="chip chip--sm"
+            class="toggle"
             :aria-pressed="!!r.st.invested"
+            :aria-label="`Invested: ${r.item.name}`"
             :disabled="!canEdit"
             @click="toggleInvest(r.index)"
           >
@@ -367,8 +386,8 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
             v-if="r.consumable"
             type="button"
             class="btn btn--sm"
+            :aria-label="`${r.st.bomb ? 'Throw' : 'Use'} ${r.item.name}${r.st.activations?.[0]?.actions ? `, ${actionWords(r.st.activations[0].actions)}` : ''}`"
             :disabled="!canEdit"
-            :title="actionWords(r.st.activations?.[0]?.actions)"
             @click="use(r.index)"
           >
             {{ r.st.bomb ? 'Throw' : 'Use' }}
@@ -383,7 +402,13 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
             :disabled="!canEdit || !!r.st.wand?.broken"
             @click="castItem(r.index)"
           >
-            {{ r.st.kind === 'wand' && r.st.wand?.cast ? 'Overcharge' : 'Cast' }}
+            {{
+              r.st.wand?.broken
+                ? 'Broken until Repaired:'
+                : r.st.kind === 'wand' && r.st.wand?.cast
+                  ? 'Overcharge'
+                  : 'Cast'
+            }}
             {{ r.st.spell?.name }}
           </button>
           <button
@@ -391,44 +416,37 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
             type="button"
             class="btn btn--ghost btn--sm"
             :aria-expanded="openStaff === r.index"
+            :aria-label="`Spells in ${r.item.name}`"
             @click="toggleStaff(r.index)"
           >
-            Spells
+            Spells {{ openStaff === r.index ? '▴' : '▾' }}
           </button>
           <button
             v-if="r.runes"
             type="button"
             class="btn btn--ghost btn--sm"
+            :aria-label="`Runes on ${r.item.name}`"
             :disabled="!canEdit"
             @click="etching = r.index"
           >
             Runes
           </button>
-          <button
-            type="button"
-            class="btn btn--ghost btn--sm"
-            :aria-label="`Remove ${r.item.name}`"
-            :disabled="!canEdit"
-            @click="remove(r.index)"
-          >
-            Remove
-          </button>
         </div>
-        <p v-if="r.st.activations?.length" class="small muted act">
+        <p v-if="r.st.activations?.length" class="item__act">
           Activate {{ activationLine(r.st.activations) }}
         </p>
 
-        <div v-if="r.staff && openStaff === r.index" class="staff stack" style="gap: 8px">
-          <div class="row" style="gap: 8px; align-items: flex-end">
-            <div v-if="expendSlots.length" class="field">
-              <label :for="`pf-staff-x-${r.index}`">Expend a slot for more charges</label>
+        <div v-if="r.staff && openStaff === r.index" class="staff">
+          <div class="staff__prep">
+            <label v-if="expendSlots.length" class="field grow" :for="`pf-staff-x-${r.index}`">
+              <span class="caps">Expend a slot for more charges</span>
               <select :id="`pf-staff-x-${r.index}`" v-model="expend" class="input">
                 <option value="">None</option>
                 <option v-for="x in expendSlots" :key="x.key" :value="x.key">
                   Rank {{ x.rank }} slot (+{{ x.rank }})
                 </option>
               </select>
-            </div>
+            </label>
             <button
               type="button"
               class="btn btn--sm"
@@ -440,21 +458,22 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
           </div>
           <div v-for="group in r.st.spells" :key="group.rank" class="staff__rank">
             <span class="caps">{{ group.rank ? `Rank ${group.rank}` : 'Cantrip' }}</span>
-            <div class="row" style="gap: 6px">
-              <template v-for="n in group.names" :key="n">
-                <button
-                  type="button"
-                  class="btn btn--ghost btn--sm"
-                  :disabled="!canEdit || !!staffProblem(n, group.rank)"
-                  :title="staffProblem(n, group.rank) || undefined"
-                  @click="castStaff(r.index, n, group.rank)"
-                >
-                  {{ n }}
-                  <span class="small muted">{{
-                    group.rank ? `${group.rank} charge${group.rank > 1 ? 's' : ''}` : 'free'
-                  }}</span>
-                </button>
-              </template>
+            <div class="staff__spells">
+              <button
+                v-for="n in group.names"
+                :key="n"
+                type="button"
+                class="btn btn--ghost btn--sm"
+                :disabled="!canEdit || !!staffProblem(n, group.rank)"
+                :title="staffProblem(n, group.rank) || undefined"
+                :aria-label="`Cast ${n} from ${r.item.name}, ${group.rank ? `${group.rank} charge${group.rank > 1 ? 's' : ''}` : 'no charge'}`"
+                @click="castStaff(r.index, n, group.rank)"
+              >
+                {{ n }}
+                <span class="cost">{{
+                  group.rank ? `${group.rank} charge${group.rank > 1 ? 's' : ''}` : 'free'
+                }}</span>
+              </button>
               <select
                 v-if="spontaneous && group.rank && slotRanks(group.rank).length"
                 v-model.number="staffSlot[`${r.index}:${group.rank}`]"
@@ -476,50 +495,60 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
     </ul>
     <p v-if="!sheet.inventory.length" class="empty">Nothing carried yet.</p>
 
-    <button v-if="canEdit" type="button" class="btn btn--sm add" @click="picking = true">
-      Add an item
-    </button>
-    <div v-if="canEdit" class="add-name">
-      <div class="field grow">
-        <label for="pf-inv-name">Or by name</label>
-        <input
-          id="pf-inv-name"
-          v-model="newName"
-          class="input"
-          maxlength="80"
-          @keydown.enter.prevent="addByName"
-        />
-      </div>
-      <div class="field" style="width: 72px">
-        <label for="pf-inv-bulk">Bulk</label>
-        <input id="pf-inv-bulk" v-model="newBulk" class="input" maxlength="4" />
-      </div>
-      <button type="button" class="btn btn--ghost btn--sm" @click="addByName">
-        Add<span class="sr-only"> by name</span>
+    <div v-if="canEdit" class="add">
+      <button type="button" class="btn btn--ghost btn--sm" @click="picking = true">
+        Add item from the rules
       </button>
+      <form class="add__name" @submit.prevent="addByName">
+        <label class="field grow" for="pf-inv-name">
+          <span class="caps">Or write one in</span>
+          <input
+            id="pf-inv-name"
+            v-model="newName"
+            class="input"
+            maxlength="80"
+            placeholder="Grandfather’s compass"
+          />
+        </label>
+        <label class="field bulk-in" for="pf-inv-bulk">
+          <span class="caps">Bulk</span>
+          <input id="pf-inv-bulk" v-model="newBulk" class="input" maxlength="4" />
+        </label>
+        <button type="submit" class="btn btn--ghost btn--sm" :disabled="!newName.trim()">
+          Add<span class="sr-only"> {{ newName.trim() || 'item' }}</span>
+        </button>
+      </form>
     </div>
 
     <div class="coins" role="group" aria-label="Coins">
-      <label v-for="k in COINS" :key="k" class="coin">
-        <span class="caps">{{ k }}</span>
+      <div v-for="k in COINS" :key="k" class="tile coin">
         <input
-          class="input"
+          :id="`pf-coin-${k}`"
           type="number"
           inputmode="numeric"
           min="0"
+          :class="k"
           :value="sheet.coins[k] ?? 0"
           :readonly="!canEdit"
           @change="setCoin(k, Number(($event.target as HTMLInputElement).value))"
         />
-      </label>
+        <label :for="`pf-coin-${k}`" class="tile__label">{{ k }}</label>
+      </div>
     </div>
     <p v-if="resultFor('inv')" class="roll-status" role="status" aria-live="polite">
       {{ resultFor('inv') }}
     </p>
 
-    <div class="field">
-      <label for="pf-notes">Notes</label>
-      <textarea id="pf-notes" v-model="sheet.notes" class="input" rows="4" :readonly="!canEdit" />
+    <div class="field" style="margin-top: 6px">
+      <label for="pf-notes" class="caps">Notes</label>
+      <textarea
+        id="pf-notes"
+        v-model="sheet.notes"
+        class="input"
+        rows="3"
+        style="min-height: 0; font-size: 14px"
+        :readonly="!canEdit"
+      />
     </div>
 
     <Pf2eItemPicker
@@ -541,6 +570,37 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
 </template>
 
 <style scoped lang="scss">
+.bulk {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--page-soft);
+  font-variant-numeric: tabular-nums;
+
+  &.over {
+    color: var(--danger-text);
+  }
+}
+
+.meter--over > span {
+  background: var(--danger);
+}
+
+.notice {
+  margin: 0;
+}
+
+.facts {
+  display: flex;
+  gap: 4px 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--page-soft);
+
+  strong {
+    color: var(--page-text);
+  }
+}
+
 .items {
   list-style: none;
   margin: 0;
@@ -551,31 +611,75 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--track);
-  font-size: 14px;
 }
 
 .item__head {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
+  min-height: 44px;
+}
+
+.item__text {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .item__name {
+  font-size: 14px;
+  font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.item__meta,
+.item__act {
+  margin: 0;
+  font-size: 12px;
+  color: var(--page-muted);
 }
 
 .item__tools {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-left: auto;
+}
+
+.item__qty {
+  min-width: 20px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .carry {
-  width: 104px;
+  width: 108px;
+  min-height: 36px;
+  padding-block: 4px;
+  font-size: 13px;
+}
+
+.remove {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: min(var(--radius-control), 6px);
+  background: none;
+  color: var(--page-muted);
+  font-size: 20px;
+  line-height: 1;
+
+  &:hover:not(:disabled) {
+    color: var(--danger-text);
+    background: var(--danger-bg);
+  }
 }
 
 .item__actions {
@@ -584,18 +688,47 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   gap: 6px;
 }
 
-.act {
-  margin: 0;
+.toggle {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: min(var(--radius-control), 6px);
+  background: none;
+  color: var(--page-soft);
+  font-size: 13px;
+  font-weight: 700;
+
+  &[aria-pressed='true'] {
+    border-color: var(--accent);
+    color: var(--accent-text);
+  }
 }
 
 .glyph {
-  margin-left: 4px;
+  margin-left: 2px;
 }
 
 .staff {
-  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
   border-radius: min(var(--radius-control), 8px);
-  background: var(--field);
+  background: var(--inset);
+}
+
+.staff__prep {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
 }
 
 .staff__rank {
@@ -604,18 +737,44 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   gap: 4px;
 }
 
-.add {
-  align-self: flex-start;
+.staff__spells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.add-name {
+.cost {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--page-muted);
+}
+
+.add {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  > .btn {
+    align-self: flex-start;
+  }
+}
+
+.add__name {
   display: flex;
   align-items: flex-end;
   gap: 8px;
 
-  .grow {
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     min-width: 0;
   }
+}
+
+.bulk-in {
+  width: 64px;
+  flex: none;
 }
 
 .coins {
@@ -625,35 +784,41 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
 }
 
 .coin {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 11px;
-}
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
 
-.facts {
-  display: flex;
-  gap: 8px 20px;
-  flex-wrap: wrap;
-  font-size: 13px;
-  color: var(--page-soft);
-
-  strong {
+  input {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
     color: var(--page-text);
+    appearance: textfield;
+
+    &.gp {
+      color: var(--accent-text);
+    }
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      appearance: none;
+      margin: 0;
+    }
   }
 }
 
-.warn {
-  color: var(--warn-text);
-  margin: 0;
-}
+@media (pointer: coarse) {
+  .carry,
+  .toggle {
+    min-height: 44px;
+  }
 
-.is-warn > span {
-  background: var(--warn-text);
-}
-
-.chip--sm {
-  min-height: 32px;
-  font-size: 13px;
+  .remove {
+    width: 44px;
+    height: 44px;
+  }
 }
 </style>

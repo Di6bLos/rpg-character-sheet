@@ -102,15 +102,21 @@ const PAGE = 50
 const shown = ref(PAGE)
 watch([query, group, higher, rare], () => (shown.value = PAGE))
 
+/** Items whose name matches come before those that only have the trait searched for. */
 const matches = computed(() => {
   const q = query.value.trim().toLowerCase()
-  return entries.value.filter((e) => {
+  const shown = entries.value.filter((e) => {
     const d = e.own.def
     if (group.value !== 'all' && e.group !== group.value) return false
     if (!higher.value && d.level > props.level) return false
-    if (!rare.value && d.rarity !== 'common') return false
-    return !q || d.name.toLowerCase().includes(q) || d.traits.some((t) => t.toLowerCase() === q)
+    return rare.value || d.rarity === 'common'
   })
+  if (!q) return shown
+  const named = shown.filter((e) => e.own.def.name.toLowerCase().includes(q))
+  const traited = shown.filter(
+    (e) => !named.includes(e) && e.own.def.traits.some((t) => t.toLowerCase() === q),
+  )
+  return [...named, ...traited]
 })
 
 const picked = ref<Entry | null>(null)
@@ -244,7 +250,7 @@ const meta = (e: Entry) => {
           </select>
         </div>
       </div>
-      <label class="row" style="gap: 8px">
+      <label class="check">
         <input v-model="payFor" type="checkbox" />
         Pay {{ priceLabel(cost) }} from your coins
       </label>
@@ -267,6 +273,21 @@ const meta = (e: Entry) => {
 </template>
 
 <style scoped lang="scss">
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 15px;
+  cursor: pointer;
+
+  input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent);
+  }
+}
+
 .picks {
   list-style: none;
   margin: 0;

@@ -99,7 +99,7 @@ function remove(key: string) {
         </li>
       </ul>
       <UiSwitch v-model="higherLevel" :label="`Show runes above level ${level}`" small />
-      <label class="row" style="gap: 8px">
+      <label class="check">
         <input v-model="payFor" type="checkbox" />
         Pay for the rune from your coins
       </label>
@@ -132,6 +132,21 @@ function remove(key: string) {
 </template>
 
 <style scoped lang="scss">
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 15px;
+  cursor: pointer;
+
+  input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent);
+  }
+}
+
 .runes {
   list-style: none;
   margin: 0;
