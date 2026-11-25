@@ -4,7 +4,13 @@ import { abilityArmor } from '~/utils/nimbleArmor'
 import { ancestryBySlug } from '~/data/nimble/ancestries'
 import { backgroundBySlug } from '~/data/nimble/backgrounds'
 import { classBySlug, poolOptionByName, subclassBySlug } from '~/data/nimble/classes'
-import { BASE_SPEED, BASE_WOUNDS, MAX_SKILL_BONUS, weaponByName } from '~/data/nimble/core'
+import {
+  BASE_SPEED,
+  BASE_WOUNDS,
+  MAX_SKILL_BONUS,
+  STARTING_SKILL_POINTS,
+  weaponByName,
+} from '~/data/nimble/core'
 import { SPELLS, SCHOOL_LABELS, spellByName, utilitySpells } from '~/data/nimble/spells'
 import { SUMMONS } from '~/data/nimble/summons'
 import type {
@@ -1141,6 +1147,21 @@ export function creationInput(sheet: NimbleSheet, level: number): NimbleBuildInp
   for (const c of creationChoices(cls, background, chosen))
     if (chosen[c.key]) picks[c.key] = [...chosen[c.key]!]
   return { cls, ancestry, background, stats: { ...base.stats }, skillPoints, picks }
+}
+
+export function creationProblems(input: NimbleBuildInput): string[] {
+  const out: string[] = []
+  const placed = Object.values(input.skillPoints).reduce((a, b) => a + b, 0)
+  const left = STARTING_SKILL_POINTS - placed
+  if (left) out.push(`Place ${left} more skill point${left === 1 ? '' : 's'}`)
+  const req = input.background.requires
+  if (req && input.stats[req.stat] > req.max)
+    out.push(`${input.background.name} needs ${req.stat} of ${req.max} or less`)
+  for (const c of creationChoices(input.cls, input.background, input.picks)) {
+    const err = validatePicks(c, input.picks[c.key])
+    if (err) out.push(`${c.label}: ${err}`)
+  }
+  return out
 }
 
 export function syncCompanions(sheet: NimbleSheet): void {

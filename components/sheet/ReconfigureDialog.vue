@@ -2,15 +2,15 @@
 // Reconfigure: go back to an earlier level, undoing what the levels above it
 // granted, then level back up one level at a time, starting from the old picks.
 // Nimble heroes built from class data can also redo their level 1 choices.
-import { STARTING_SKILL_POINTS, STAT_ARRAYS } from '~/data/nimble/core'
+import { STAT_ARRAYS } from '~/data/nimble/core'
 import type { AnySheet, NimbleLevelInput, NimbleSheet, NimbleStat } from '~/types/sheets'
 import { canRestore, restoreBuild, restoreLevel } from '~/utils/levelHistory'
 import {
   buildNimbleSheet,
   creationChoices,
   creationInput,
+  creationProblems,
   syncCompanions,
-  validatePicks,
   type Picks,
 } from '~/utils/nimbleBuild'
 
@@ -54,19 +54,16 @@ const keyValue = computed(() => {
 const choices = computed(() =>
   cls.value ? creationChoices(cls.value, background.value, picks.value) : [],
 )
-const problems = computed(() => {
-  const out: string[] = []
-  const left = STARTING_SKILL_POINTS - Object.values(skillPoints.value).reduce((a, b) => a + b, 0)
-  if (left) out.push(`Place ${left} more skill point${left === 1 ? '' : 's'}`)
-  const req = background.value?.requires
-  if (req && stats.value[req.stat] > req.max)
-    out.push(`${background.value!.name} needs ${req.stat} of ${req.max} or less`)
-  for (const c of choices.value) {
-    const err = validatePicks(c, picks.value[c.key])
-    if (err) out.push(`${c.label}: ${err}`)
-  }
-  return out
-})
+const problems = computed(() =>
+  creation.value
+    ? creationProblems({
+        ...creation.value,
+        stats: stats.value,
+        skillPoints: skillPoints.value,
+        picks: picks.value,
+      })
+    : [],
+)
 
 function startLevelOne() {
   const was = creation.value!

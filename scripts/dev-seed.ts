@@ -73,7 +73,7 @@ export async function localStack(): Promise<LocalStack | null> {
 }
 
 const CAMPAIGN = 'Test Table'
-const HERO = { name: 'Iriel', classSlug: 'mage', level: 5 }
+export const HERO = { name: 'Iriel', classSlug: 'mage', level: 5 }
 
 /**
  * Runs `step` again (up to 5 tries, 2 s apart) while the local database is
@@ -135,7 +135,7 @@ async function upsertUser(db: SupabaseClient, account: SeedAccount) {
   return id
 }
 
-function buildHero(hero: { classSlug: string; level: number }) {
+export function buildHero(hero: { classSlug: string; level: number }) {
   const cls = classBySlug(hero.classSlug)
   if (!cls) throw new Error(`Unknown class ${hero.classSlug}`)
   const sheet = build(cls)
