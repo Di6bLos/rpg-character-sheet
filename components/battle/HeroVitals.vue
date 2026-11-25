@@ -2,8 +2,9 @@
 // A hero's vitals on the battle board: portrait and identity, HP (the GM's controls
 // send a change to the hero's own sheet through hero_hp_changes, applied there by
 // useHeroHpChanges), mana for the GM, Wounds, Armor / Speed / Init and conditions (the GM
-// adds and removes them through hero_condition_changes, applied by useHeroConditionChanges). The stats modal's
-// side and the GM's left column (a hero picked on the initiative strip) both show it.
+// adds and removes them through hero_condition_changes, applied by
+// useHeroConditionChanges). The stats modal's side and the GM's left column (a hero picked
+// on the initiative strip) both show it.
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
 // Every system's sheet applies the GM's changes with its own rules (`gmHeroControls`); only
 // Nimble conditions end on their own timing. Where Nimble shows the GM mana, PF2e
@@ -28,7 +29,10 @@ const features = useBattleFeatures()
 const controls = computed(() => props.gm && features.value.gmHeroControls)
 
 const own = computed(() => !!props.entry && props.entry.user_id === auth.userId)
-/** The viewer's own hero, with the hero column's HP (it has Wounds too). Slots aren't reactive, so not a computed. */
+/**
+ * The viewer's own hero, with the hero column's HP (it has Wounds too). Slots aren't
+ * reactive, so not a computed.
+ */
 function ownHp(): boolean {
   return own.value && !!slots['own-hp']
 }
@@ -100,7 +104,8 @@ async function adjust(sign: 1 | -1) {
   if (!(await send(id, name, sign * n, isCrit))) return
   amount.value = null
   crit.value = false
-  sent.value = `Sent to ${name}: ${sign < 0 ? `${n} damage${isCrit ? ' (crit)' : ''}` : `heal ${n}`}. Their sheet applies it.`
+  const what = sign < 0 ? `${n} damage${isCrit ? ' (crit)' : ''}` : `heal ${n}`
+  sent.value = `Sent to ${name}: ${what}. Their sheet applies it.`
 }
 </script>
 

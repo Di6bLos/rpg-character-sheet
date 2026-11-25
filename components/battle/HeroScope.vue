@@ -2,10 +2,10 @@
 // The player's seated hero on the battle board: loads it and gives the whole board (either
 // frame) one sheet editor, so the hero column, turn bar and actions share one autosaving
 // working copy and the board's automatic turn steps run once. The editor lives in
-// HeroEditor, beside the slot, so the board itself stays mounted while the hero loads, changes (Playing as) or the frame switches
-// (rotation). `hero` is true while the seated hero's editor is ready; it goes false for
-// a moment across a change of hero, so the parts that use the editor start over with
-// the new one. False for the GM, a player without a seated hero, or while loading.
+// HeroEditor, beside the slot, so the board itself stays mounted while the hero loads,
+// changes (Playing as) or the frame switches (rotation). `hero` is true while the seated
+// hero's editor is ready; it goes false for a moment across a change of hero, so the parts
+// that use the editor start over with the new one. False for the GM, a player without a seated hero, or while loading.
 // `enabled` is false for systems without the sheet-editor hero column (5e, PF2e): then the
 // slot renders with `hero: false`, and the seated player's hero still gets an editor (no
 // turn steps or Nimble statuses) only so the GM's HP and condition changes apply and

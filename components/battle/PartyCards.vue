@@ -110,7 +110,7 @@ function mana(r: RosterEntry): string {
   if (!props.gm) return ''
   if (features.value.gmPoints) return pf2ePointsLine(r.summary)
   const m = r.summary?.mana
-  return features.value.gmHeroControls && m && m.max > 0 ? `mana ${m.current}/${m.max}` : ''
+  return features.value.nimbleHero && m && m.max > 0 ? `mana ${m.current}/${m.max}` : ''
 }
 
 /** The card's accessible name: everything it shows, since aria-label replaces its content. */

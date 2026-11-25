@@ -148,6 +148,25 @@ describe('GM hero HP changes, Pathfinder 2e', () => {
     expect(sheet.dying).toBe(0)
   })
 
+  it('damage while already at 0 raises Dying by 1, or 2 on a crit', () => {
+    const sheet = mira({ hp: 0, dying: 1 })
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -3, crit: false })).toBe(
+      'GM: took 3 damage: 0/20 HP. Dying 2.',
+    )
+    expect(sheet.dying).toBe(2)
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'b', amount: -3, crit: true })
+    expect(sheet.dying).toBe(4)
+  })
+
+  it('healing a stabilised hero (0 HP, Dying 0) adds no Wounded', () => {
+    const sheet = mira({ hp: 0, dying: 0, wounded: 1 })
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: 5, crit: false })).toBe(
+      'GM: healed 5: 5/20 HP.',
+    )
+    expect(sheet.dying).toBe(0)
+    expect(sheet.wounded).toBe(1)
+  })
+
   it('healing from 0 ends Dying and raises Wounded by 1', () => {
     const sheet = mira({ hp: 0, dying: 1, wounded: 0 })
     expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: 30, crit: false })).toBe(

@@ -25,7 +25,10 @@ const queue = keyedQueue()
  */
 export function useSendHeroCondition() {
   const snackbar = useSnackbarStore()
-  const { campaign, campaignId, reloadRoster } = useCampaignBoard()
+  const { campaignId, reloadRoster } = useCampaignBoard()
+  // Only used on the board, so the campaign decides; Nimble while it loads, so a Nimble
+  // add never goes out without its end.
+  const features = useBattleFeatures()
 
   /** False when it failed. */
   async function send(characterId: string, name: string, condition: string, add: boolean) {
@@ -35,8 +38,7 @@ export function useSendHeroCondition() {
       p_condition: condition,
       p_add: add,
       // Only Nimble conditions end on their own; 5e and PF2e ones stay until removed.
-      p_end:
-        add && campaign.value?.system === 'nimble' ? (CONDITION_ENDS[condition] ?? null) : null,
+      p_end: add && features.value.nimbleHero ? (CONDITION_ENDS[condition] ?? null) : null,
     }
     try {
       const { error } = await queue.run(

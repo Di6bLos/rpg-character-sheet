@@ -75,10 +75,14 @@ export function applyDnd5eHpChange(sheet: Dnd5eSheet, change: Change): string {
   return `GM: healed ${n}: ${sheet.hp}/${sheet.hpMax} HP.${wasDown ? ' Death saves reset.' : ''}`
 }
 
+/** PF2e's Dying value at which the hero dies (the sheet shows Dying N / 4). */
+const PF2E_DEAD_AT = 4
+
 /**
  * Pathfinder 2e: damage takes temp HP first, then HP down to 0; dropping to 0 sets Dying to
- * 1 + Wounded (2 + Wounded on a crit). Healing caps at max HP; healing from 0 ends Dying and
- * raises Wounded by 1.
+ * 1 + Wounded (2 + Wounded on a crit), and damage while already at 0 raises Dying by 1 (2 on
+ * a crit), up to 4. Healing caps at max HP; healing a dying hero ends Dying and raises
+ * Wounded by 1 (a stabilised hero at Dying 0 gains no Wounded).
  */
 export function applyPf2eHpChange(sheet: Pf2eSheet, change: Change): string {
   const n = Math.abs(Math.floor(change.amount))
@@ -86,16 +90,19 @@ export function applyPf2eHpChange(sheet: Pf2eSheet, change: Change): string {
   const wounded = Math.max(0, sheet.wounded ?? 0)
   if (change.amount < 0) {
     const wasUp = hurt(sheet, n)
+    const step = change.crit ? 2 : 1
     let note = ''
-    if (wasUp && sheet.hp === 0) {
-      sheet.dying = (change.crit ? 2 : 1) + wounded
+    if (sheet.hp === 0) {
+      const dying = wasUp ? step + wounded : Math.max(0, sheet.dying ?? 0) + step
+      sheet.dying = Math.min(PF2E_DEAD_AT, dying)
       note = ` Dying ${sheet.dying}.`
     }
     return `${tookLine(n, change.crit, sheet)}${note}`
   }
-  const wasDown = mend(sheet, n)
+  const wasDying = sheet.hp <= 0 && (sheet.dying ?? 0) > 0
+  mend(sheet, n)
   let note = ''
-  if (wasDown) {
+  if (wasDying) {
     sheet.dying = 0
     sheet.wounded = wounded + 1
     note = ` Wounded ${sheet.wounded}.`
