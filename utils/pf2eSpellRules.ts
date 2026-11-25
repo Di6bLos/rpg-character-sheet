@@ -91,6 +91,13 @@ export interface Pf2eSpellRules {
   perAction?: { noun: string; perStep: number }
   /** Ignition: a melee spell attack turns every damage die into this size. */
   meleeDie?: number
+  /**
+   * Spell attacks against several targets, each counted for the multiple attack penalty
+   * (p. 402): one per action (Blazing Bolt's rays), or up to `max` (Slashing Gust's two).
+   */
+  attacks?: { perAction?: boolean; max: number }
+  /** A hit's damage takes this basic save (Disintegrate), `critWorse` a degree worse on a crit. */
+  hitSave?: { save: Pf2eSave; critWorse: boolean }
   sustained: boolean
   /** The effect in data/pf2e/effects.ts the spell turns on, and whether it's always on you. */
   effect?: { def: Pf2eEffectDef; self: boolean }
@@ -177,6 +184,17 @@ const FLAT_DAMAGE = new RegExp(
   'gi',
 )
 const FLAT_UNTYPED = /\b(?:deal|deals|dealing|take|takes|taking) (\d+) damage\b/gi
+const FLAT_REGAIN = /\b(?:regains?|restores?) (\d+) Hit Points\b(?! per)/gi
+/** A version's line for one kind of creature: "- **Undead Creature** The target takes…". */
+const UNDEAD_LINE = /^\s*-\s*\*\*(?:Willing )?Undead\b[^*]*\*\*/
+/** Damage from crossing or standing in the spell later, not from the cast (Wall of Fire). */
+const LATER_SENTENCE =
+  /\b(?:crosses|enters|(?:starts?|ends?|begins?) (?:its|their) turns?|at the (?:start|end) of (?:its|their) turns?)\b/i
+/** …unless the sentence says it also happens as the spell is cast (Shadow Army, Astral Rain). */
+const CAST_TOO =
+  /\bwhen (?:the spell is cast|it(?:'|’)s created|you cast)\b|\b(?:that(?:'|’)s|is) (?:in|inside) the (?:area|burst)\b/i
+/** Healing that comes later: each time, at the start of a turn, after the full duration. */
+const HEAL_LATER = /\beach time\b|\bat the start of\b|\bfor the full duration\b/i
 const NOT_DEALT =
   /\b(?:resistance|weakness|first|up to|reduces?|reduced|prevents?|ignores?)\b[^.]*$/i
 const DEFENSE_SAVE = /\b(basic )?(Fortitude|Reflex|Will)\b/gi
@@ -220,7 +238,7 @@ const FLAT_HEAL =
 const FLAT_HEAL_STEP =
   /\b(?:extra|additional) healing for the (\d+)-action version increases by (\d+)\b/i
 const FLAT_STEP = new RegExp(
-  `(?:^|\\band\\s+|,\\s*)(?:the\\s+)?(?:initial\\s+)?(?:persistent\\s+)?(?:${TYPE}\\s+)*damage(?:\\s+on a critical (?:hit|success|failure))?\\s+(?:increases|is increased)\\s+by\\s+(\\d+)\\b(?!\\s*(?:d\\d|feet|-foot))`,
+  `(?:^|\\band\\s+|,\\s*)(?:(?:the\\s+)?(?:initial\\s+)?(?:persistent\\s+)?(?:${TYPE}\\s+)*damage(?:\\s+on a critical (?:hit|success|failure))?\\s+(?:increases|is increased)|increasing\\s+the\\s+(?:persistent\\s+)?(?:${TYPE}\\s+)*damage(?:\\s+on a critical (?:hit|success|failure))?|the\\s+amount\\s+of\\s+healing\\s+increases|the\\s+Hit\\s+Points\\s+regained\\s+increase)\\s+by\\s+(\\d+)\\b(?!\\s*(?:d\\d|feet|-foot))`,
   'gi',
 )
 const EACH_INCREASE = /\b(?:each|both) increases?\b|\bincreases?\s+by\s*$/i
@@ -234,6 +252,13 @@ const ALL_VERSIONS = /\bfor all versions\b/i
 const PER_ACTION = /\bincrease the number of (\w+) you shoot by one\b/i
 const PER_ACTION_STEP = /\bYou fire one additional (\w+) with each action you spend\b/i
 const MELEE_DIE = /\bincreases all the spell's damage dice to d(\d+)s\b/i
+const RAY_PER_ACTION =
+  /\bFor each additional action you use when Casting the Spell, you can fire an additional\b/i
+const ATTACKS_COUNT = /\bcounts as (two|three) attacks for your multiple attack penalty\b/i
+/** A hit's damage comes with a basic save (Disintegrate), one degree worse on a critical hit. */
+const HIT_SAVE = /\bIf you hit[^.]*\bwith a basic (Fortitude|Reflex|Will) save\b/i
+const CRIT_WORSE =
+  /\bIf you critically hit, the target gets a result one degree of success worse\b/i
 const SELF_ALLIES = /\bYou and (?:all )?(?:your )?allies\b/
 const SUSTAINED = /\bsustained\b/i
 const DEGREES_AFTER =
@@ -377,6 +402,19 @@ function diceUses(main: string, forms: { start: number; end: number }[]): DiceUs
       splash: !!m[4],
     })
   }
+  for (const m of main.matchAll(FLAT_REGAIN)) {
+    if (inForm(m.index)) continue
+    const index = m.index + m[0].indexOf(m[1]!)
+    uses.push({
+      kind: 'healing',
+      dice: flat(Number(m[1])),
+      index,
+      end: index + m[1]!.length,
+      type: '',
+      persistent: false,
+      splash: false,
+    })
+  }
   for (const m of main.matchAll(FLAT_UNTYPED)) {
     if (inForm(m.index)) continue
     const index = m.index + m[0].indexOf(m[1]!)
@@ -426,6 +464,7 @@ function mainParts(main: string, forms: { start: number; end: number }[]) {
   const ranges = degreeRanges(main)
   const { variants } = lineRanges(main)
   const sentences = sentenceSpans(main)
+  const lineAt = (i: number) => main.slice(main.lastIndexOf('\n', i - 1) + 1, i)
   const uses = diceUses(main, forms)
   const parts: (Pf2eSpellPart & { sentence: number })[] = []
   let last: DiceUse | undefined
@@ -470,6 +509,7 @@ function mainParts(main: string, forms: { start: number; end: number }[]) {
       ...(u.splash ? { splash: true } : {}),
       ...(degree ? { degree } : {}),
       ...(actions ? { actions } : {}),
+      ...(UNDEAD_LINE.test(lineAt(u.index)) ? { vs: 'undead' } : {}),
     }
     // The same roll written twice ("On a critical success…" and the Critical Success block).
     if (parts.some((p) => sameKind(p, part) && diceText(p.dice) === diceText(part.dice))) continue
@@ -485,10 +525,16 @@ function mainParts(main: string, forms: { start: number; end: number }[]) {
   for (const p of parts) {
     if (p.degree || p.actions || p.persistent) continue
     const first = p.role === 'damage' ? firstDamage : firstHeal
-    if (first && p.sentence !== first.sentence && p.sentence !== firstDamage?.sentence) {
-      const s = sentences[p.sentence]
+    const s = sentences[p.sentence]
+    const text = s ? main.slice(s.start, s.end).trim() : ''
+    const elsewhere = first && p.sentence !== first.sentence && p.sentence !== firstDamage?.sentence
+    const comes =
+      p.role === 'damage'
+        ? LATER_SENTENCE.test(text) && !CAST_TOO.test(text)
+        : !p.dice.count && HEAL_LATER.test(text)
+    if (elsewhere || comes) {
       p.later = true
-      if (s) p.note = main.slice(s.start, s.end).trim()
+      if (text) p.note = text
     }
   }
   return { parts: parts.map(({ sentence: _, ...p }) => p as Pf2eSpellPart), ranges, variants }
@@ -552,6 +598,9 @@ function amounts(block: string): Amount[] {
   })
 }
 
+/** A degree a heightened block names: "on a critical failure", "on a critical hit". */
+const BLOCK_DEGREE = /\bcritical (hit)\b|\b(?:on an? )((?:critical )?(?:success|failure))\b/gi
+
 const LATER_SUBJECT =
   /\b(?:end|start)s? (?:its|their) turns?|\bSustain\b|\beach (?:round|hour|day)\b/i
 const PLAIN_WORDS = new Set(
@@ -585,6 +634,7 @@ function subjectTarget(
   subject: string,
   after: string,
   taken: Set<number>,
+  ownDegrees: Set<Pf2eDegree> = new Set(),
 ): { index?: number; make?: Omit<Pf2eSpellPart, 'dice'> }[] {
   const typeAfter = TYPED_AFTER.exec(after)
   const named = [...subject.matchAll(TYPE_WORD)].map((m) => m[1]!.toLowerCase())
@@ -621,8 +671,14 @@ function subjectTarget(
     out.push(at >= 0 ? { index: at } : { make: { role: 'temp', type: '' } })
   }
   if (healing) {
-    const at = find((p) => p.role === 'healing' && p.dice.count > 0)
-    out.push(at >= 0 ? { index: at } : { make: { role: 'healing', type: '' } })
+    // A flat amount ("regains 6 Hit Points", Lay on Hands) when there are no healing dice.
+    const dice = find((p) => p.role === 'healing' && p.dice.count > 0)
+    const at = dice >= 0 ? dice : find((p) => p.role === 'healing' && !p.actions)
+    // A second subject for the same healing ("If you choose to regain Hit Points, the Hit
+    // Points regained increase by 8") adds nothing more.
+    const had = parts.some((p, i) => p.role === 'healing' && taken.has(i))
+    if (at >= 0) out.push({ index: at })
+    else if (!had) out.push({ make: { role: 'healing', type: '' } })
   }
   if (damage) {
     // "increases by 1d8 on a success, or by 2d8 on a failure or critical failure".
@@ -651,11 +707,27 @@ function subjectTarget(
         return out
       }
     }
-    if (typed.length) out.push(...typed)
+    // A step that names no degree, for damage written only in the degree blocks (Hydraulic
+    // Push's 6d6 and 3d6), adds to every degree's, except one the block gives its own amount
+    // ("by 1d8 (2d8 on a critical failure)").
+    const everyDegree = (picked: { index: number }[]) => {
+      const p = picked.length === 1 ? parts[picked[0]!.index] : undefined
+      if (degree || !p?.degree) return picked
+      return parts.flatMap((q, i) =>
+        q.degree &&
+        !q.later &&
+        !taken.has(i) &&
+        (i === picked[0]!.index || !ownDegrees.has(q.degree)) &&
+        sameKind({ ...q, degree: p.degree }, p)
+          ? [{ index: i }]
+          : [],
+      )
+    }
+    if (typed.length) out.push(...everyDegree(typed))
     else {
       const at = find(dmg)
       const make = { role: 'damage' as const, type: types[0] ?? '', persistent, splash, degree }
-      out.push(at >= 0 ? { index: at } : { make })
+      out.push(...(at >= 0 ? everyDegree([{ index: at }]) : [{ make }]))
     }
   }
   return out
@@ -666,7 +738,13 @@ function subjectTarget(
  * version's part; one that doesn't goes to that part in every version, except those another
  * clause in the block named ("by 1d6, or by 2d6 for the 2-action version").
  */
-function targets(parts: Pf2eSpellPart[], a: Amount, scope: Scope, named: Set<number>) {
+function targets(
+  parts: Pf2eSpellPart[],
+  a: Amount,
+  scope: Scope,
+  named: Set<number>,
+  ownDegrees: Set<Pf2eDegree>,
+) {
   const subjects =
     EACH_INCREASE.test(a.before) || EACH_AFTER.test(a.after)
       ? a.before
@@ -678,7 +756,7 @@ function targets(parts: Pf2eSpellPart[], a: Amount, scope: Scope, named: Set<num
   // One amount adds to a part once ("the initial damage, as well as the burst damage, each").
   const taken = new Set<number>()
   for (const subject of subjects.length ? subjects : [a.before])
-    for (const t of subjectTarget(parts, subject, a.after, taken)) {
+    for (const t of subjectTarget(parts, subject, a.after, taken, ownDegrees)) {
       if (t.make) {
         picked.push({
           indexes: [],
@@ -717,12 +795,17 @@ function eachAmount(
 ) {
   const all = amounts(block).map((a) => ({ a, scope: scopeOf(a.after) ?? scopeOf(a.before) }))
   const named = new Set<number>()
+  const ownDegrees = new Set(
+    [...block.matchAll(BLOCK_DEGREE)].map((m) =>
+      m[1] ? 'critical success' : (m[2]!.toLowerCase() as Pf2eDegree),
+    ),
+  )
   const ordered = [
     ...all.filter((x) => Array.isArray(x.scope)),
     ...all.filter((x) => !Array.isArray(x.scope)),
   ]
   for (const { a, scope } of ordered)
-    for (const t of targets(parts, a, scope, named)) {
+    for (const t of targets(parts, a, scope, named, ownDegrees)) {
       if (Array.isArray(scope)) for (const i of t.indexes) named.add(i)
       use(a, t.indexes, t.make)
     }
@@ -880,6 +963,13 @@ export function spellRules(spell: Pf2eSpellDef): Pf2eSpellRules {
   const perAction = PER_ACTION.exec(main)
   const perStep = blocks.some((b) => b.step && PER_ACTION_STEP.test(b.text))
   const meleeDie = MELEE_DIE.exec(main)
+  const counts = ATTACKS_COUNT.exec(main)
+  const hitSave = HIT_SAVE.exec(main)
+  const attacks = RAY_PER_ACTION.test(main)
+    ? { perAction: true, max: 3 }
+    : counts
+      ? { max: counts[1] === 'three' ? 3 : 2 }
+      : undefined
   const def = EFFECTS.get(spell.name)
   const rules: Pf2eSpellRules = {
     attack,
@@ -896,6 +986,15 @@ export function spellRules(spell: Pf2eSpellDef): Pf2eSpellRules {
     variants: variants.map((v) => ({ actions: v.actions, text: v.text })),
     ...(perAction ? { perAction: { noun: perAction[1]!, perStep: perStep ? 1 : 0 } } : {}),
     ...(meleeDie ? { meleeDie: Number(meleeDie[1]) } : {}),
+    ...(attack && attacks ? { attacks } : {}),
+    ...(attack && hitSave
+      ? {
+          hitSave: {
+            save: (hitSave[1]![0]!.toUpperCase() + hitSave[1]!.slice(1).toLowerCase()) as Pf2eSave,
+            critWorse: CRIT_WORSE.test(main),
+          },
+        }
+      : {}),
     sustained: SUSTAINED.test(spell.duration ?? ''),
     ...(def
       ? { effect: { def, self: (!spell.targets && !spell.range) || SELF_ALLIES.test(main) } }
@@ -917,6 +1016,18 @@ export interface Pf2eCastOptions {
   actions?: number
   /** A melee spell attack (Ignition's d6s). */
   melee?: boolean
+  /** Targets attacked, for spells that can attack several (Slashing Gust: 1 or 2). */
+  targets?: number
+}
+
+/** How many spell attacks a cast makes: Blazing Bolt one per action, Slashing Gust 1 or 2. */
+export function attackCount(spell: Pf2eSpellDef, o: Pf2eCastOptions) {
+  const rules = spellRules(spell)
+  if (!rules.attack) return 0
+  const a = rules.attacks
+  if (!a) return 1
+  const n = a.perAction ? (o.actions ?? defaultActions(rules) ?? 1) : (o.targets ?? 1)
+  return Math.max(1, Math.min(a.max, n))
 }
 
 /** Force Barrage: how many shards at this rank and action count. */
@@ -1084,6 +1195,79 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
   const shards = count ? ` (${count} ${rules.perAction!.noun})` : ''
   const out: string[] = []
   const result: Pf2eCastRoll = { text: '' }
+  const persistNoteOf = (list: Rolled[]) => (list.length ? ` Plus ${sumText(list)} damage.` : '')
+
+  /** Rolls one spell attack against the target's AC (p. 303) and says it; its degree if known. */
+  const spellAttack = (lead: string) => {
+    const a = rollCheck(c.attackBonus, c.rng)
+    const nat = a.natural ? `, natural ${a.natural}` : ''
+    const degree = c.targetAc ? degreeOf(a.total, a.d20, c.targetAc) : undefined
+    showOutcome({
+      label: `${spell.name}: spell attack`,
+      total: a.total,
+      detail: '',
+      ...(degree ? { degree: strikeResult(degree) } : {}),
+    })
+    const vs = degree ? ` vs AC ${c.targetAc}: ${SHORT[degree]}` : ''
+    out.push(`${lead}Spell attack ${a.total} (${a.d20} ${sign(c.attackBonus)}${nat})${vs}.`)
+    return degree
+  }
+
+  /**
+   * What an attack's degree deals: double on a critical hit, persistent included; the damage
+   * written in the degree blocks (Hydraulic Push); or, with a basic save too (Disintegrate),
+   * the save's four results, one degree worse on a critical hit.
+   */
+  const attackDamage = (degree: Pf2eDegree | undefined, own: Rolled[], ownPersist: Rolled[]) => {
+    const note = persistNoteOf(ownPersist)
+    const basic = rules.hitSave
+    if (basic && own.length) {
+      const line = (worse: boolean) => {
+        const each = DEGREE_ORDER.map((d, k) => {
+          const as = worse ? DEGREE_ORDER[Math.min(3, k + 1)]! : d
+          return `${SHORT[d]} ${BASIC[as] ? sumText(own, BASIC[as]) : '0'}`
+        })
+        return `DC ${c.dc} basic ${basic.save} save against ${sumText(own)} (${dmgDice}): ${each.join(', ')}.`
+      }
+      const worse = basic.critWorse
+      if (!degree)
+        return [
+          `On a hit, ${line(false)}${worse ? ` On a critical hit, one degree worse: ${line(true)}` : ''}`,
+        ]
+      if (degree === 'critical success')
+        return [`Critical hit${worse ? ', the save one degree worse' : ''}: ${line(worse)}`]
+      if (degree === 'success') return [`Hit: ${line(false)}`]
+      return [rules.degrees[degree] ? firstSentence(rules.degrees[degree]!) : 'No damage.']
+    }
+    if (own.length || ownPersist.length) {
+      const extra = byDegree('critical success').map(roll)
+      const extraNote = extra.length ? ` plus ${sumText(extra)}` : ''
+      const crit = `${sumText([...own, ...ownPersist], 2)}${extraNote}`
+      if (!degree)
+        return [
+          `Damage ${sumText(own)}${shards} (${dmgDice}) on a hit;${note.replace(/\.$/, ';')} critical hit ${crit}.`,
+        ]
+      if (degree === 'critical success') return [`Critical hit: ${crit} damage.`]
+      if (degree === 'success') return [`Hit: ${sumText(own)} damage.${note}`]
+      return [rules.degrees[degree] ? firstSentence(rules.degrees[degree]!) : 'No damage.']
+    }
+    const blocks = DEGREE_ORDER.filter((d) => byDegree(d).length)
+    if (!blocks.length) return []
+    if (!degree)
+      return [
+        `Damage ${blocks
+          .map((d) => {
+            const dice = byDegree(d).map((p) => diceText(p.dice))
+            return `${sumText(byDegree(d).map(roll))} (${dice.join(' + ')}) on a ${d === 'success' ? 'hit' : d === 'critical success' ? 'critical hit' : d}`
+          })
+          .join('; ')}.`,
+      ]
+    if (!byDegree(degree).length)
+      return [rules.degrees[degree] ? firstSentence(rules.degrees[degree]!) : 'No damage.']
+    const said =
+      degree === 'critical success' ? 'Critical hit' : degree === 'success' ? 'Hit' : SHORT[degree]
+    return [`${said}: ${sumText(byDegree(degree).map(roll))} damage.`]
+  }
 
   if (healParts.length) {
     const healed = healParts.map(roll).reduce((n, r) => n + r.total, 0)
@@ -1106,29 +1290,15 @@ export function castRolls(spell: Pf2eSpellDef, c: Pf2eCastContext): Pf2eCastRoll
   const dmgDice = damage.map((p) => diceText(p.dice)).join(' + ')
   const persistNote = persist.length ? ` Plus ${sumText(persist)} damage.` : ''
   if (rules.attack) {
-    const a = rollCheck(c.attackBonus, c.rng)
-    const nat = a.natural ? `, natural ${a.natural}` : ''
-    const degree = c.targetAc ? degreeOf(a.total, a.d20, c.targetAc) : undefined
-    if (degree) result.degree = degree
-    showOutcome({
-      label: `${spell.name}: spell attack`,
-      total: a.total,
-      detail: '',
-      ...(degree ? { degree: strikeResult(degree) } : {}),
-    })
-    const vs = degree ? ` vs AC ${c.targetAc}: ${SHORT[degree]}` : ''
-    out.push(`Spell attack ${a.total} (${a.d20} ${sign(c.attackBonus)}${nat})${vs}.`)
-    if (rolled.length || persist.length) {
-      const extra = byDegree('critical success').map(roll)
-      const extraNote = extra.length ? ` plus ${sumText(extra)}` : ''
-      const crit = `${sumText([...rolled, ...persist], 2)}${extraNote}`
-      if (!degree)
-        out.push(
-          `Damage ${sumText(rolled)}${shards} (${dmgDice}) on a hit;${persistNote.replace(/\.$/, ';')} critical hit ${crit}.`,
-        )
-      else if (degree === 'critical success') out.push(`Critical hit: ${crit} damage.`)
-      else if (degree === 'success') out.push(`Hit: ${sumText(rolled)} damage.${persistNote}`)
-      else out.push(rules.degrees[degree] ? firstSentence(rules.degrees[degree]!) : 'No damage.')
+    const n = attackCount(spell, c)
+    for (let i = 0; i < n; i++) {
+      // Each target's own attack and damage, all at the same multiple attack penalty.
+      const own = i ? damage.map(roll) : rolled
+      const ownPersist = i ? persistent.map(roll) : persist
+      const lead = n > 1 ? `Target ${i + 1}: ` : ''
+      const degree = spellAttack(lead)
+      if (degree && !i) result.degree = degree
+      out.push(...attackDamage(degree, own, ownPersist))
     }
   } else if (c.dc && rules.saves.length) {
     const save = rules.saves.map((s) => `${s.basic ? 'basic ' : ''}${s.save}`).join(' or ')
@@ -1220,6 +1390,11 @@ export const SPELL_PATTERNS: Record<string, RegExp> = {
   SENTENCE_CRIT_FAILS,
   SENTENCE_FAILS,
   TEXT_BASIC,
+  FLAT_REGAIN,
+  UNDEAD_LINE,
+  LATER_SENTENCE,
+  CAST_TOO,
+  HEAL_LATER,
   SPEND_MORE,
   MIRROR_DAMAGE,
   MIRROR_HEAL,
@@ -1235,9 +1410,14 @@ export const SPELL_PATTERNS: Record<string, RegExp> = {
   PER_ACTION,
   PER_ACTION_STEP,
   MELEE_DIE,
+  RAY_PER_ACTION,
+  ATTACKS_COUNT,
+  HIT_SAVE,
+  CRIT_WORSE,
   SELF_ALLIES,
   SUSTAINED,
   LATER_SUBJECT,
+  BLOCK_DEGREE,
   DEGREES_AFTER,
   ACTIONS_ROUNDS,
   ACTIONS_RANGE,

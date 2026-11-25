@@ -4,6 +4,7 @@ import type { Pf2eSheet } from '../types/sheets'
 import { activeEffects } from '../utils/pf2eEffects'
 import {
   SPELL_PATTERNS,
+  attackCount,
   castRolls,
   diceText,
   effectValue,
@@ -413,5 +414,73 @@ describe('pf2e spell rules: every spell in the data', () => {
       ),
     )
     expect(found).toBe(true)
+  })
+})
+
+describe('pf2e spell rules: review fixes', () => {
+  const cast = (name: string, rank: number, targetAc: number | null, extra = {}) =>
+    castRolls(spell(name), { rank, attackBonus: 7, dc: 17, targetAc, rng: middle, ...extra }).text
+
+  it('Hydraulic Push: its step adds to both degrees, and a hit rolls its own dice (p. 336)', () => {
+    expect([1, 2, 3].map((r) => rolls('Hydraulic Push', r))).toEqual([
+      ['6d6 bludgeoning (critical success)', '3d6 bludgeoning (success)'],
+      ['8d6 bludgeoning (critical success)', '5d6 bludgeoning (success)'],
+      ['10d6 bludgeoning (critical success)', '7d6 bludgeoning (success)'],
+    ])
+    expect(cast('Hydraulic Push', 1, null)).toContain(
+      'Damage 24 bludgeoning (6d6) on a critical hit; 12 bludgeoning (3d6) on a hit.',
+    )
+    expect(cast('Hydraulic Push', 1, 15)).toContain('Hit: 12 bludgeoning damage.')
+  })
+
+  it('keeps a degree’s own heightened amount: Haunting Spirit +1d8, +2d8 on a critical failure', () => {
+    expect(rolls('Haunting Spirit', 5)).toEqual([
+      '5d8 spirit (failure)',
+      '10d8 spirit (critical failure)',
+    ])
+  })
+
+  it('Disintegrate: a hit gets the basic Fortitude save, a critical hit one degree worse (p. 325)', () => {
+    expect(cast('Disintegrate', 6, 15)).toContain(
+      'Hit: DC 17 basic Fortitude save against 72 (12d10): crit success 0, success 36, failure 72, crit failure 144.',
+    )
+    expect(cast('Disintegrate', 6, 8)).toContain(
+      'Critical hit, the save one degree worse: DC 17 basic Fortitude save against 72 (12d10): crit success 36, success 72, failure 144, crit failure 144.',
+    )
+  })
+
+  it('Lay on Hands heals 6 per rank and hurts only undead (Player Core 2 p. 255)', () => {
+    expect([1, 2, 3].map((r) => rolls('Lay on Hands', r))).toEqual([
+      ['6 healing', '1d6 vitality'],
+      ['12 healing', '2d6 vitality'],
+      ['18 healing', '3d6 vitality'],
+    ])
+    const damage = partsAt(spell('Lay on Hands'), spellRules(spell('Lay on Hands')), { rank: 1 })
+    expect(damage.find((p) => p.role === 'damage')?.vs).toBe('undead')
+    const r = castRolls(spell('Lay on Hands'), { rank: 2, attackBonus: 7, dc: 17, rng: middle })
+    expect(r.healing).toBe(12)
+    expect(r.text).toContain('Against undead: DC 17 basic Fortitude.')
+  })
+
+  it('Needle Darts: the persistent bleed on a critical hit grows by 1 a rank (Rage of Elements p. 144)', () => {
+    expect(rolls('Needle Darts', 3)).toEqual([
+      '5d4 piercing',
+      '3 persistent bleed (critical success)',
+    ])
+  })
+
+  it('Wall of Fire: damage for crossing the wall comes later, not with the cast (p. 367)', () => {
+    expect(rolls('Wall of Fire', 4)).toEqual([])
+    expect(cast('Wall of Fire', 4, null)).toBe('Not rolled (see the text): 4d6 fire.')
+  })
+
+  it('counts each spell attack: a Blazing Bolt ray per action, Slashing Gust’s two targets', () => {
+    const bolt = spell('Blazing Bolt')
+    expect([1, 2, 3].map((actions) => attackCount(bolt, { rank: 2, actions }))).toEqual([1, 2, 3])
+    const gust = spell('Slashing Gust')
+    expect(attackCount(gust, { rank: 1 })).toBe(1)
+    expect(attackCount(gust, { rank: 1, targets: 2 })).toBe(2)
+    expect(attackCount(spell('Hydraulic Push'), { rank: 1, targets: 2 })).toBe(1)
+    expect(cast('Slashing Gust', 1, 15, { targets: 2 })).toMatch(/^Target 1: .* Target 2: /)
   })
 })

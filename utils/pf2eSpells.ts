@@ -284,6 +284,8 @@ export interface Pf2eCastChoice {
   /** 0 for the first attack this turn, 1 and 2 for the second and third (−5, −10). */
   attackNumber?: number
   targetAc?: number | null
+  /** Targets attacked, for spells that can attack several (Slashing Gust). */
+  targets?: number
   rng?: Rng
   /** The spellcasting it's cast with, when not the class's (an archetype's, p. 215). */
   sc?: Pf2eSpellcasting
@@ -310,6 +312,7 @@ export function castEffect(
     rank,
     actions: choice.actions,
     melee: choice.melee,
+    targets: choice.targets,
     attackBonus: numbers.attack.value - map,
     dc: numbers.dc.value,
     targetAc: choice.targetAc,

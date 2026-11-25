@@ -39,7 +39,7 @@ import {
   spellNumbers,
   spontaneousRank,
 } from '~/utils/pf2eSpells'
-import { defaultActions, spellRules } from '~/utils/pf2eSpellRules'
+import { attackCount, defaultActions, spellRules } from '~/utils/pf2eSpellRules'
 import { readCost } from '~/utils/pf2eAbilityRules'
 import { actionCostLabel } from '~/utils/pf2eActions'
 import { loreHtml } from '~/utils/loreText'
@@ -150,6 +150,7 @@ const hasAttackSpell = computed(() =>
 /** Per spell: the action version and a melee spell attack. */
 const actionsFor = ref<Record<string, number | undefined>>({})
 const meleeFor = ref<Record<string, boolean>>({})
+const targetsFor = ref<Record<string, number | undefined>>({})
 const actionsOf = (def: Pf2eSpellDef) => actionsFor.value[def.id] ?? defaultActions(spellRules(def))
 
 /** What the last cast left to apply: healing, temporary HP, a buff cast on a target. */
@@ -193,12 +194,13 @@ function castIn(key: string, message: string, def: Pf2eSpellDef | undefined, ran
     sc: sc.value,
     actions: actionsOf(def),
     melee: !!meleeFor.value[def.id],
+    targets: targetsFor.value[def.id],
     attackNumber: attackNumber.value,
     targetAc: targetAc.value,
   })
   payCast(sheet.value, def, {
     actions: actionsOf(def),
-    attacks: spellRules(def).attack ? 1 : 0,
+    attacks: attackCount(def, { rank, actions: actionsOf(def), targets: targetsFor.value[def.id] }),
   })
   const blood = bloodMagic(sheet.value, def.name, rank)
   const target = blood?.damage ? ` Or a target takes ${blood.damage} damage.` : ''
@@ -281,6 +283,14 @@ function healSelf() {
   const last = lastCast.value
   if (!canEdit.value || !last?.healing) return
   claim(last.key, () => say(`${last.def.name}: ${heal(sheet.value, last.healing!)}`))
+  lastCast.value = { ...last, healing: undefined }
+}
+
+/** The healing went to someone else: say so, and it's no longer on offer. */
+function healTarget() {
+  const last = lastCast.value
+  if (!canEdit.value || !last?.healing) return
+  claim(last.key, () => say(`${last.def.name}: the target regains ${last.healing} Hit Points.`))
   lastCast.value = { ...last, healing: undefined }
 }
 
@@ -450,6 +460,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             v-if="byId.get(s.id)"
             v-model:actions="actionsFor[s.id]"
             v-model:melee="meleeFor[s.id]"
+            v-model:targets="targetsFor[s.id]"
             :spell="byId.get(s.id)!"
             :rank="heightenedRank(level)"
           />
@@ -487,6 +498,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           :offers="offersFor(`spell:${s.id}`)"
           :disabled="!canEdit"
           @heal="healSelf"
+          @heal-target="healTarget"
           @temp="tempSelf"
           @buff="buffSelf"
           @blood="bloodSelf"
@@ -580,6 +592,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
               v-if="byId.get(s.id)"
               v-model:actions="actionsFor[s.id]"
               v-model:melee="meleeFor[s.id]"
+              v-model:targets="targetsFor[s.id]"
               :spell="byId.get(s.id)!"
               :rank="spontaneousRank(s, castRank(s))"
             />
@@ -617,6 +630,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             :offers="offersFor(`spell:${s.id}`)"
             :disabled="!canEdit"
             @heal="healSelf"
+            @heal-target="healTarget"
             @temp="tempSelf"
             @buff="buffSelf"
             @blood="bloodSelf"
@@ -651,6 +665,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
               v-if="p.id && byId.get(p.id)"
               v-model:actions="actionsFor[p.id]"
               v-model:melee="meleeFor[p.id]"
+              v-model:targets="targetsFor[p.id]"
               :spell="byId.get(p.id)!"
               :rank="r.rank"
             />
@@ -677,6 +692,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             :offers="offersFor(`slot:${r.rank}:${i}`)"
             :disabled="!canEdit"
             @heal="healSelf"
+            @heal-target="healTarget"
             @temp="tempSelf"
             @buff="buffSelf"
             @blood="bloodSelf"
@@ -730,6 +746,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             v-if="fontDef && fontRank"
             v-model:actions="actionsFor[fontDef.id]"
             v-model:melee="meleeFor[fontDef.id]"
+            v-model:targets="targetsFor[fontDef.id]"
             :spell="fontDef"
             :rank="fontRank"
           />
@@ -761,6 +778,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           :offers="offersFor('spell:font')"
           :disabled="!canEdit"
           @heal="healSelf"
+          @heal-target="healTarget"
           @temp="tempSelf"
           @buff="buffSelf"
           @blood="bloodSelf"
@@ -811,6 +829,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             v-if="byId.get(s.id)"
             v-model:actions="actionsFor[s.id]"
             v-model:melee="meleeFor[s.id]"
+            v-model:targets="targetsFor[s.id]"
             :spell="byId.get(s.id)!"
             :rank="heightenedRank(level)"
           />
@@ -853,6 +872,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           :offers="offersFor(`spell:${s.id}`)"
           :disabled="!canEdit"
           @heal="healSelf"
+          @heal-target="healTarget"
           @temp="tempSelf"
           @buff="buffSelf"
           @blood="bloodSelf"
