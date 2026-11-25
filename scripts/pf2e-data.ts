@@ -138,6 +138,35 @@ const base = (d: AonDoc) => {
 const opt = <K extends string, V>(key: K, v: V | undefined | '') =>
   (v === undefined || v === '' ? {} : { [key]: v }) as Partial<Record<K, V>>
 
+const SKILLS = [
+  'Acrobatics',
+  'Arcana',
+  'Athletics',
+  'Crafting',
+  'Deception',
+  'Diplomacy',
+  'Intimidation',
+  'Medicine',
+  'Nature',
+  'Occultism',
+  'Performance',
+  'Religion',
+  'Society',
+  'Stealth',
+  'Survival',
+  'Thievery',
+]
+
+/** Skills a subclass option's text says it trains ("You're trained in Intimidation"). */
+function trainedSkills(text: string) {
+  const out = new Set<string>()
+  for (const m of text.matchAll(
+    /trained in ((?:[A-Z][\w']*(?: Lore)?(?:, | and | or |, and )?)+)/g,
+  ))
+    for (const s of m[1]!.split(/,? and |, | or /)) if (SKILLS.includes(s.trim())) out.add(s.trim())
+  return [...out]
+}
+
 /** Rows of the first markdown table whose header cells start with `head`. */
 function tableRows(md: string, head: string[]) {
   const lines = md.split('\n')
@@ -179,7 +208,15 @@ const classes: Pf2eClassDef[] = classDocs.map((d) => {
   const subclasses: Pf2eSubclassOption[] = docs
     .filter((s) => s.category !== 'class' && classOfType(s.type, classNames) === d.name)
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((s) => ({ ...base(s), kind: s.type ?? '' }))
+    .map((s) => {
+      const b = base(s)
+      return {
+        ...b,
+        kind: s.type ?? '',
+        ...opt('level', typeof s.level === 'number' ? s.level : undefined),
+        skills: list(s.skill).length ? list(s.skill) : trainedSkills(b.text),
+      }
+    })
   return {
     ...base(d),
     slug: slug(d.name),

@@ -38,6 +38,10 @@ export interface Pf2eClassFeature {
 export interface Pf2eSubclassOption extends Pf2eRecord {
   /** The book's name for the choice, e.g. "Bard Muse", "Druidic Order". */
   kind: string
+  /** For options with levels (runesmith runes, commander tactics). */
+  level?: number
+  /** Skills the option makes you trained in (a patron's, a rogue's racket…). */
+  skills: string[]
 }
 
 export interface Pf2eClassDef extends Pf2eRecord {
