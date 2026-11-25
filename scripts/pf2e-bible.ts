@@ -18,6 +18,8 @@ import {
   type AonDoc as Doc,
   classOfType as typeOf,
   cleanMarkdown,
+  closedArchetypeFeat,
+  closedArchetypes,
   heritageAncestry,
   legacyBooks,
   loadAon,
@@ -27,6 +29,7 @@ import {
   remaster,
   shareable,
   slug,
+  withoutArchetypes,
   withoutDeities,
   withoutLegacy,
 } from './lib/aon'
@@ -58,8 +61,15 @@ const CORE = [
 const everything = loadAon(DATA)
 /** Every deity name AoN has, to spot entries named for one (Achaekek's Clutch). */
 const DEITIES = everything.filter((d) => d.category === 'deity').map((d) => d.name)
+/** Setting and legacy-only archetypes: their own feats go, other feats lose their names. */
+const CLOSED_ARCHETYPES = closedArchetypes(everything, DEITIES)
 const docs = everything.filter(
-  (d) => !ORC_ONLY || (remaster(d) && !LORE.has(d.category) && shareable(d, DEITIES)),
+  (d) =>
+    !ORC_ONLY ||
+    (remaster(d) &&
+      !LORE.has(d.category) &&
+      shareable(d, DEITIES) &&
+      !closedArchetypeFeat(d, CLOSED_ARCHETYPES)),
 )
 /**
  * Books the ORC set leaves out wherever they're cited: legacy (OGL) books, and every book that
@@ -94,7 +104,9 @@ function edition(d: Doc) {
 function entry(d: Doc, h: number) {
   placed.add(d.id)
   const cleaned = cleanMarkdown(d.markdown ?? '', h, byId, embed, new Set([d.id]))
-  const body = ORC_ONLY ? withoutDeities(withoutLegacy(cleaned, CLOSED_BOOKS)) : cleaned
+  const body = ORC_ONLY
+    ? withoutArchetypes(withoutDeities(withoutLegacy(cleaned, CLOSED_BOOKS)), CLOSED_ARCHETYPES)
+    : cleaned
   const [first = '', ...rest] = body.split('\n')
   const head = first.startsWith('#') ? first : `${'#'.repeat(h)} ${d.name}`
   const tail = first.startsWith('#') ? rest : [first, ...rest]
@@ -110,7 +122,8 @@ function write(file: string, title: string, parts: string[], entries: number, in
   const path = join(OUT, file)
   mkdirSync(join(path, '..'), { recursive: true })
   const md = `# ${title}\n\n${intro ? `${intro}\n\n` : ''}${parts.join('\n')}`
-  if (ORC_ONLY) for (const l of orcProblems(md, CLOSED_BOOKS)) leaks.push(`${file}: ${l}`)
+  if (ORC_ONLY)
+    for (const l of orcProblems(md, CLOSED_BOOKS, CLOSED_ARCHETYPES)) leaks.push(`${file}: ${l}`)
   writeFileSync(path, md)
   written.push({ file, title, entries })
 }

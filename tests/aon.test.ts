@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
   actionGlyph,
+  type AonDoc,
   cleanMarkdown,
+  closedArchetypeFeat,
+  closedArchetypes,
   openBook,
   orcProblems,
   settingName,
   sourceBooks,
   table,
+  withoutArchetypes,
   withoutDeities,
   withoutLegacy,
 } from '../scripts/lib/aon'
@@ -187,5 +191,52 @@ describe('Golarion setting material', () => {
     expect(settingName('Weight of the World', deities)).toBeUndefined()
     expect(settingName('Setback', deities)).toBeUndefined()
     expect(settingName('Fireball', deities)).toBeUndefined()
+  })
+})
+
+describe('setting archetypes', () => {
+  const doc = (name: string, primary_source: string, release_date = '2025-01-01'): AonDoc => ({
+    id: name,
+    category: 'archetype',
+    name,
+    primary_source,
+    release_date,
+  })
+  const closed = closedArchetypes(
+    [
+      doc('Vigilante', 'Player Core 2'),
+      doc('Hellknight', 'Hellfire Dispatches'),
+      doc('Aldori Duelist', 'Battlecry!'),
+      doc('Shadowdancer', "Advanced Player's Guide", '2020-08-01'),
+      doc('Archer', "Advanced Player's Guide", '2020-08-01'),
+      doc('Archer', 'Player Core 2'),
+    ],
+    [],
+  )
+
+  it('judges each archetype by its own newest record: book, then name', () => {
+    expect([...closed].sort()).toEqual(['Aldori Duelist', 'Hellknight', 'Shadowdancer'])
+  })
+
+  it('drops only feats that belong to closed archetypes alone', () => {
+    const feat = (trait: string[], archetype: string[]) =>
+      ({ id: 'f', category: 'feat', name: 'F', trait, archetype }) as AonDoc
+    expect(closedArchetypeFeat(feat(['Archetype'], ['Hellknight']), closed)).toBe(true)
+    expect(closedArchetypeFeat(feat(['Archetype'], ['Hellknight', 'Vigilante']), closed)).toBe(
+      false,
+    )
+    expect(closedArchetypeFeat(feat(['Druid'], ['Hellknight']), closed)).toBe(false)
+  })
+
+  it('takes closed archetypes off the Archetype lines of the feats that stay', () => {
+    const md = [
+      '**Archetypes** Vigilante (Level 4), Red Mantis Assassin (Level 4), Aldori Duelist (Level 4)',
+      '**Archetype** Hellknight (Level 8)',
+      '**Source** Player Core pg. 1',
+    ].join('\n')
+    const out = withoutArchetypes(md, new Set([...closed, 'Red Mantis Assassin']))
+    expect(out).toBe('**Archetype** Vigilante (Level 4)\n**Source** Player Core pg. 1')
+    expect(orcProblems(md, new Set(), closed)).toHaveLength(2)
+    expect(orcProblems(out, new Set(), closed)).toEqual([])
   })
 })
