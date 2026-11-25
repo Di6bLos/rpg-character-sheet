@@ -18,6 +18,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { sourceBooks } from './lib/aon'
 
 const ROOT = join(import.meta.dirname, '..')
 const [bibleArg, outArg] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
@@ -210,19 +211,14 @@ const PROFILE = join(WORK, 'chrome')
 process.on('exit', () => rmSync(WORK, { recursive: true, force: true }))
 const today = new Date().toISOString().slice(0, 10)
 const report: string[] = []
+const oversized: string[] = []
 
 for (const v of VOLUMES.filter((x) => !ONLY || ONLY.includes(x.slug))) {
   const parts = v.parts.filter((p) => existsSync(join(BIBLE, p)))
   if (!parts.length) continue
   const chapters = parts.map((p) => readFileSync(join(BIBLE, p), 'utf8'))
   const titles = chapters.map((c) => /^# (.*)$/m.exec(c)?.[1] ?? 'Untitled')
-  const books = [
-    ...new Set(
-      chapters.flatMap((c) =>
-        [...c.matchAll(/^\*\*Source\*\* (.+?) pg\./gm)].map((m) => m[1]!.trim()),
-      ),
-    ),
-  ].sort()
+  const books = [...new Set(chapters.flatMap((c) => c.split('\n').flatMap(sourceBooks)))].sort()
   const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Pathfinder 2e Remaster: ${esc(v.title)}</title><style>${CSS}</style></head><body>
 <div class="cover"><h1>${esc(v.title)}</h1><p class="sub">Pathfinder Second Edition Remaster rules reference</p><p class="sub">Compiled for Lantern · ${today}</p></div>
 <div class="notice"><h2>Notice</h2>
@@ -254,5 +250,10 @@ ${chapters.map(html).join('\n')}
   const line = `${v.slug}: ${parts.length} chapters, ${(size / 1048576).toFixed(1)} MB${size > MAX_BYTES ? '  OVER 50 MB' : ''}`
   report.push(line)
   console.log(line)
+  if (size > MAX_BYTES) oversized.push(v.slug)
 }
 if (!ONLY) writeFileSync(join(OUT, 'README.txt'), `${report.join('\n')}\n`)
+if (oversized.length) {
+  console.error(`Over the library's 50 MB limit, split them: ${oversized.join(', ')}`)
+  process.exit(1)
+}
