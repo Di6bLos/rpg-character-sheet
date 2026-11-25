@@ -83,5 +83,13 @@ function toggle() {
   &:hover {
     border-color: var(--accent);
   }
+
+  @media (pointer: coarse) {
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -7px;
+    }
+  }
 }
 </style>
