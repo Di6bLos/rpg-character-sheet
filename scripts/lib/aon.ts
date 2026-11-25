@@ -494,10 +494,71 @@ export function withoutDeities(md: string) {
 }
 
 /** Lines that must not reach a shareable (ORC) output: a legacy book cited, a deity stat line. */
-export function orcProblems(md: string, legacy: Set<string>) {
+export function orcProblems(md: string, legacy: Set<string>, archetypes = new Set<string>()) {
   return md
     .split('\n')
-    .filter((l) => sourceBooks(l).some((b) => legacy.has(b)) || DEITY_STAT.test(l))
+    .filter(
+      (l) =>
+        sourceBooks(l).some((b) => legacy.has(b)) ||
+        DEITY_STAT.test(l) ||
+        lineArchetypes(l).some((a) => archetypes.has(a)),
+    )
+}
+
+/**
+ * Archetypes the shareable set leaves out, by name. Each is judged by its own record, the
+ * newest remastered one when there is one: kept only when printed in an open rulebook and not
+ * named for a deity or Golarion proper noun. So setting archetypes (Hellknight, Red Mantis
+ * Assassin, Aldori Duelist) go, and so do archetypes only printed in legacy books (Shadowdancer,
+ * Lich), which aren't in the ORC set either.
+ */
+export function closedArchetypes(docs: AonDoc[], deities: string[]) {
+  const newest = new Map<string, AonDoc>()
+  const order = (d: AonDoc) => `${Number(remaster(d))}:${d.release_date ?? ''}`
+  for (const d of docs.filter((x) => x.category === 'archetype')) {
+    const had = newest.get(d.name)
+    if (!had || order(d) > order(had)) newest.set(d.name, d)
+  }
+  return new Set(
+    [...newest.values()].filter((d) => !remaster(d) || !shareable(d, deities)).map((d) => d.name),
+  )
+}
+
+/**
+ * A feat of closed archetypes only: it has the archetype trait and every archetype it lists is
+ * closed (Aldori Parry, a Red Mantis Assassin skill feat). A class feat that an archetype also
+ * offers keeps its place and loses only the archetype's name.
+ */
+export const closedArchetypeFeat = (d: AonDoc, closed: Set<string>) =>
+  (d.trait ?? []).includes('Archetype') &&
+  !!d.archetype?.length &&
+  d.archetype.every((a) => closed.has(a))
+
+const ARCHETYPE_LINE = /^\*\*Archetypes?\*\* (.+)$/
+const archetypeItem = (item: string) =>
+  item
+    .replace(/\s*\(Level \d+\)\s*$/, '')
+    .replace(/\*+$/, '')
+    .trim()
+/** The archetypes an `**Archetype(s)**` stat line names ("Hellknight (Level 8)" → Hellknight). */
+const lineArchetypes = (line: string) =>
+  (ARCHETYPE_LINE.exec(line.trim())?.[1] ?? '').split(', ').map(archetypeItem).filter(Boolean)
+
+/**
+ * Takes closed archetypes out of the `**Archetype(s)**` stat lines ("Vigilante (Level 4),
+ * Red Mantis Assassin (Level 4)" → "Vigilante (Level 4)"); a line left empty goes.
+ */
+export function withoutArchetypes(md: string, closed: Set<string>) {
+  return md
+    .split('\n')
+    .flatMap((line) => {
+      const m = ARCHETYPE_LINE.exec(line)
+      if (!m) return [line]
+      const kept = m[1]!.split(', ').filter((item) => !closed.has(archetypeItem(item)))
+      if (!kept.length) return []
+      return [`**Archetype${kept.length > 1 ? 's' : ''}** ${kept.join(', ')}`]
+    })
+    .join('\n')
 }
 
 /**
