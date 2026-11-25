@@ -1,22 +1,37 @@
 import { describe, expect, it } from 'vitest'
 import type { Pf2eCreation } from '../types/sheets'
 import {
+  actionGlyph,
   ancestryBoostPlan,
+  armorPenalties,
   armorRank,
   attributeMods,
+  backgroundBoostProblems,
+  backgroundBoostSlots,
+  backgroundSkills,
   boostProblems,
   buildPf2eSheet,
   creationProblems,
   emptyCreation,
   featOptions,
   featSlots,
+  gearOptions,
+  keyAttributeOptions,
+  levelOneText,
+  needsDeity,
   proficiency,
+  resolve,
+  setSlotBoost,
   skillPlan,
   skillProblems,
+  slotTaken,
+  speedLine,
   subclassChoices,
+  trainedSkills,
+  untrainedGear,
   weaponRank,
 } from '../utils/pf2eBuild'
-import { autoCreation, buildData as data, named } from './helpers/pf2e'
+import { autoCreation, buildData as data, fillSlots, named } from './helpers/pf2e'
 
 const cls = (name: string) => named(data.classes, name)
 
@@ -128,7 +143,11 @@ describe('pf2e attribute boosts', () => {
 
   it('sends the first background boost to one of its two attributes', () => {
     const c = { ...dwarfFighter(), backgroundBoosts: ['CHA', 'STR'] as ('CHA' | 'STR')[] }
-    expect(boostProblems(c, data)).toContain(
+    expect(backgroundBoostProblems(c, data)).toContain(
+      'The first background boost goes to Intelligence or Wisdom',
+    )
+    // Checked on the Background step itself, not only once the attributes come up.
+    expect(creationProblems(c, data).background).toContain(
       'The first background boost goes to Intelligence or Wisdom',
     )
   })
@@ -242,5 +261,425 @@ describe('pf2e every class', () => {
     expect(sheet.hpMax).toBeGreaterThan(c.hp)
     expect(sheet.class).toBe(c.name)
     expect(sheet.skills.filter((s) => s.rank === 'T').length).toBeGreaterThanOrEqual(2)
+  })
+})
+
+const bg = (name: string) => named(data.backgrounds, name)
+const sub = (clsName: string, name: string) => named(cls(clsName).subclasses, name)
+/** `autoCreation` with some subclass picks swapped in, key attribute and deity refreshed. */
+function withPicks(clsName: string, picks: Record<string, string[]>) {
+  const c = autoCreation(cls(clsName))
+  c.subclasses = { ...c.subclasses, ...picks }
+  return c
+}
+
+describe('pf2e background boosts the data leaves out (from the rules text)', () => {
+  const shape = (name: string) =>
+    backgroundBoostSlots(bg(name)).map((s) => (s.allowed.length === 6 ? 'free' : s.allowed))
+
+  /** A background as the data gives it when the boosts are only in the text. */
+  const textOnly = (text: string) => ({ ...bg('Amnesiac'), boosts: [], text })
+
+  it('reads "You gain N free attribute boosts"', () => {
+    expect(shape('Amnesiac')).toEqual(['free', 'free', 'free'])
+    expect(shape('Discarded Duplicate')).toEqual(['free', 'free', 'free'])
+    // Fated Rival's wording (a Golarion book, so not in the committed data).
+    const rival = textOnly(
+      'You gain two free attribute boosts; you choose one, and the GM chooses one to complement your rival.',
+    )
+    expect(backgroundBoostSlots(rival)).toHaveLength(2)
+    expect(backgroundBoostSlots(rival)[0]!.note).toMatch(/GM chooses one/)
+  })
+
+  it('reads "Choose … It must be to" and "Each boost has to be to"', () => {
+    expect(shape('Feral Child')).toEqual([['STR', 'DEX', 'CON']])
+    expect(shape('The Hunted')).toEqual([
+      ['DEX', 'CON', 'WIS'],
+      ['DEX', 'CON', 'WIS'],
+    ])
+  })
+
+  it('leaves a sign or a deity not chosen yet free, with a note', () => {
+    // Zodiac Bound's wording (a Golarion book, so not in the committed data).
+    const zodiac = textOnly(
+      'Choose two attribute boosts. One must be to the attribute tied to your sign, and one is a free attribute boost.',
+    )
+    const [sign, free] = backgroundBoostSlots(zodiac)
+    expect(sign).toMatchObject({ label: "Your sign's attribute", note: expect.any(String) })
+    expect(sign!.allowed).toHaveLength(6)
+    expect(free!.allowed).toHaveLength(6)
+    expect(shape('Raised by Belief')).toEqual(['free', 'free'])
+    expect(backgroundBoostSlots(bg('Raised by Belief'))[0]!.note).toMatch(/deity/)
+    const sarenrae = named(data.deities, 'Sarenrae')
+    expect(backgroundBoostSlots(bg('Raised by Belief'), sarenrae)[0]!.allowed).toEqual(
+      sarenrae.attributes,
+    )
+  })
+
+  it('keeps the usual "one of two, plus one free" shape', () => {
+    expect(shape('Acolyte')).toEqual([['INT', 'WIS'], 'free'])
+  })
+
+  it('gives every background at least one boost, and every one builds', () => {
+    for (const b of data.backgrounds) {
+      expect(backgroundBoostSlots(b).length, b.name).toBeGreaterThan(0)
+      const c = autoCreation(cls('Fighter'), data, b.name)
+      expect(creationProblems(c, data).background, b.name).toEqual([])
+    }
+  })
+
+  it('counts each slot: an Amnesiac needs three different boosts', () => {
+    const c: Pf2eCreation = {
+      ...autoCreation(cls('Fighter'), data, 'Amnesiac'),
+      backgroundBoosts: [],
+    }
+    expect(backgroundBoostProblems(c, data)).toEqual(['Choose all 3 background boosts'])
+    c.backgroundBoosts = ['STR', 'DEX', 'STR']
+    expect(backgroundBoostProblems(c, data)).toEqual([
+      'Each background boost must go to a different attribute',
+    ])
+    const before = attributeMods({ ...c, backgroundBoosts: [] }, data)
+    c.backgroundBoosts = ['INT', 'WIS', 'CHA']
+    expect(backgroundBoostProblems(c, data)).toEqual([])
+    expect(attributeMods(c, data)).toMatchObject({
+      INT: before.INT + 1,
+      WIS: before.WIS + 1,
+      CHA: before.CHA + 1,
+    })
+  })
+
+  it('never boosts one attribute twice: a repeat swaps slots or is refused', () => {
+    const slots = backgroundBoostSlots(bg('Acolyte'))
+    // INT, then a free WIS; WIS in the first slot sends INT to the free one.
+    expect(setSlotBoost(['INT', 'WIS'], slots, 0, 'WIS')).toEqual(['WIS', 'INT'])
+    // CHA can't move into the INT-or-WIS slot, so INT can't be taken from it.
+    expect(slotTaken(['INT', 'CHA'], slots, 1)).toEqual(['INT'])
+    expect(setSlotBoost(['INT', 'CHA'], slots, 1, 'INT')).toEqual(['INT', 'CHA'])
+    // Slots fill in order, and clearing one clears the ones after it.
+    expect(setSlotBoost([], slots, 1, 'STR')).toEqual([])
+    expect(setSlotBoost(['INT', 'CHA'], slots, 0)).toEqual([])
+    expect(fillSlots(slots)).toEqual(['INT', 'STR'])
+  })
+})
+
+describe('pf2e class table rows out of order', () => {
+  it('finds the 1st-level row by its level, not its position', () => {
+    for (const name of ['Rogue', 'Cleric', 'Psychic', 'Summoner']) {
+      const k = cls(name)
+      const shuffled = { ...k, advancement: [...k.advancement].reverse() }
+      expect(subclassChoices(shuffled), name).toEqual(subclassChoices(k))
+      expect(featSlots(shuffled), name).toEqual(featSlots(k))
+      expect(needsDeity(shuffled), name).toBe(needsDeity(k))
+    }
+  })
+})
+
+describe('pf2e key attributes from the 1st-level choices', () => {
+  it('adds the one a racket allows', () => {
+    const rogue = cls('Rogue')
+    expect(keyAttributeOptions(rogue)).toEqual(['DEX'])
+    expect(keyAttributeOptions(rogue, [sub('Rogue', 'Ruffian')])).toEqual(['DEX', 'STR'])
+    expect(keyAttributeOptions(rogue, [sub('Rogue', 'Mastermind')])).toEqual(['DEX', 'INT'])
+    expect(keyAttributeOptions(rogue, [sub('Rogue', 'Scoundrel')])).toEqual(['DEX', 'CHA'])
+    expect(keyAttributeOptions(rogue, [sub('Rogue', 'Thief')])).toEqual(['DEX'])
+  })
+
+  it('takes the one a psychic’s subconscious mind sets', () => {
+    const psychic = cls('Psychic')
+    expect(keyAttributeOptions(psychic)).toEqual(['INT', 'CHA'])
+    expect(keyAttributeOptions(psychic, [sub('Psychic', 'Emotional Acceptance')])).toEqual(['CHA'])
+    expect(keyAttributeOptions(psychic, [sub('Psychic', 'Gathered Lore')])).toEqual(['INT'])
+  })
+
+  it('checks the key against the choices', () => {
+    const thief = withPicks('Rogue', { 'Rogue Racket': [sub('Rogue', 'Thief').id] })
+    thief.keyAttribute = 'STR'
+    expect(boostProblems(thief, data)).toContain('Choose your key attribute: DEX')
+    const ruffian = { ...thief, subclasses: { 'Rogue Racket': [sub('Rogue', 'Ruffian').id] } }
+    expect(boostProblems(ruffian, data)).not.toContain('Choose your key attribute: DEX or STR')
+    const mind = withPicks('Psychic', {
+      'Psychic Subconscious Mind': [sub('Psychic', 'Emotional Acceptance').id],
+    })
+    mind.keyAttribute = 'INT'
+    expect(boostProblems(mind, data)).toContain('Choose your key attribute: CHA')
+  })
+
+  it('asks an avenger, and no other rogue, for a deity', () => {
+    expect(needsDeity(cls('Rogue'), [sub('Rogue', 'Avenger')])).toBe(true)
+    expect(needsDeity(cls('Rogue'), [sub('Rogue', 'Ruffian')])).toBe(false)
+    const c = withPicks('Rogue', { 'Rogue Racket': [sub('Rogue', 'Avenger').id] })
+    c.deity = undefined
+    expect(creationProblems(c, data).class).toEqual(['Choose a deity'])
+  })
+})
+
+describe('pf2e skill text', () => {
+  it('splits "Arcana, Nature, Occultism, or Religion" into four (Runesmith)', () => {
+    const c = autoCreation(cls('Runesmith'))
+    expect(skillPlan(c, data).groups).toContainEqual({
+      options: ['Arcana', 'Nature', 'Occultism', 'Religion'],
+      count: 1,
+    })
+  })
+
+  it('makes a mastermind choose one of four skills besides Society', () => {
+    const c = withPicks('Rogue', { 'Rogue Racket': [sub('Rogue', 'Mastermind').id] })
+    const plan = skillPlan(c, data)
+    expect(plan.fixed).toContain('Society')
+    expect(plan.groups).toContainEqual({
+      options: ['Arcana', 'Nature', 'Occultism', 'Religion'],
+      count: 1,
+    })
+  })
+
+  it('gives an avenger their deity’s divine skill', () => {
+    const c = withPicks('Rogue', { 'Rogue Racket': [sub('Rogue', 'Avenger').id] })
+    const deity = resolve(c, data).deity!
+    expect(skillPlan(c, data).fixed).toContain(deity.skill[0])
+  })
+
+  it('reads a background’s Lore prose: a choice, or a Lore the player names', () => {
+    expect(backgroundSkills(bg('Noble')).groups).toEqual([
+      { options: ['Genealogy Lore', 'Heraldry Lore'], count: 1 },
+    ])
+    expect(backgroundSkills(bg('Guard')).groups[0]!.options).toEqual(['Legal Lore', 'Warfare Lore'])
+    // AoN's doubled "Lore Lore", three options, a note after the name, a link.
+    const prose = (skills: string[]) => backgroundSkills({ ...bg('Guard'), skills })
+    expect(prose(['Driving Lore Lore or Piloting Lore']).groups[0]!.options).toEqual([
+      'Driving Lore',
+      'Piloting Lore',
+    ])
+    expect(
+      prose(['Basket Weaving Lore or Tapestry Lore or Textile Lore.']).groups[0]!.options,
+    ).toHaveLength(3)
+    expect(prose(['Azlant Lore . Add Azlanti to your languages.']).fixed).toEqual(['Azlant Lore'])
+    expect(prose(['Mana Wastes Lore (or another similar Lore skill)']).fixed).toEqual([
+      'Mana Wastes Lore',
+    ])
+    expect(
+      prose(['Academia Lore or a Lore skill <a href="/x">associated with your school</a>']).lores,
+    ).toEqual([{ hint: 'Academia Lore or a Lore skill associated with your school' }])
+    const bandit = backgroundSkills(bg('Bandit'))
+    expect(bandit.fixed).toEqual(['Intimidation'])
+    expect(bandit.lores).toEqual([{ hint: expect.stringMatching(/^Lore related to the terrain/) }])
+    expect(backgroundSkills(bg('Saloon Entertainer')).lores).toEqual([
+      { hint: 'Lore of your choice' },
+    ])
+  })
+
+  it('needs the named Lore before the hero is done, then trains it', () => {
+    const c = autoCreation(cls('Fighter'), data, 'Bandit')
+    c.lores = ['']
+    expect(skillProblems(c, data)).toContain('Name the Lore skill your background gives')
+    c.lores = ['desert lore']
+    expect(skillProblems(c, data)).toEqual([])
+    expect(trainedSkills(c, data)).toContain('Desert Lore')
+    expect(buildPf2eSheet(c, data).skills.find((s) => s.name === 'Desert Lore')).toMatchObject({
+      rank: 'T',
+    })
+  })
+
+  it('trains the Lore a class feature names', () => {
+    expect(skillPlan(autoCreation(cls('Necromancer')), data).fixed).toContain('Undead Lore')
+    expect(skillPlan(autoCreation(cls('Thaumaturge')), data).fixed).toContain('Esoteric Lore')
+  })
+
+  it('takes no Lore from an animist’s apparitions, which change every day', () => {
+    const lores = skillPlan(autoCreation(cls('Animist')), data).fixed.filter((s) =>
+      s.endsWith(' Lore'),
+    )
+    expect(lores).toEqual(['Scribing Lore'])
+  })
+})
+
+describe('pf2e training from 1st-level choices', () => {
+  it('reads only the 1st-level part of a doctrine', () => {
+    const warpriest = levelOneText(sub('Cleric', 'Warpriest').text)
+    expect(warpriest).toMatch(/light and medium armor/)
+    expect(warpriest).not.toMatch(/martial weapons/)
+  })
+
+  it('trains a warpriest and a ruffian in armor', () => {
+    const cleric = cls('Cleric')
+    expect(armorRank(cleric, 'Medium')).toBe('U')
+    expect(armorRank(cleric, 'Medium', [sub('Cleric', 'Warpriest')])).toBe('T')
+    expect(armorRank(cleric, 'Light', [sub('Cleric', 'Warpriest')])).toBe('T')
+    expect(armorRank(cleric, 'Heavy', [sub('Cleric', 'Warpriest')])).toBe('U')
+    expect(armorRank(cleric, 'Medium', [sub('Cleric', 'Cloistered Cleric')])).toBe('U')
+    expect(armorRank(cls('Rogue'), 'Medium', [sub('Rogue', 'Ruffian')])).toBe('T')
+    expect(armorRank(cls('Rogue'), 'Medium', [sub('Rogue', 'Avenger')])).toBe('T')
+    expect(armorRank(cls('Rogue'), 'Medium', [sub('Rogue', 'Thief')])).toBe('U')
+  })
+
+  it('trains weapons a choice names, and an avenger’s favored weapon', () => {
+    const longsword = named(data.weapons, 'Longsword')
+    const necro = cls('Necromancer')
+    expect(weaponRank(longsword, necro)).toBe('U')
+    expect(weaponRank(longsword, necro, undefined, [sub('Necromancer', 'Reaper')])).toBe('T')
+    expect(weaponRank(longsword, cls('Cleric'), undefined, [sub('Cleric', 'Warpriest')])).toBe('U')
+    const sarenrae = named(data.deities, 'Sarenrae')
+    const falcata = data.weapons.find((w) => w.category === 'Advanced')!
+    const avenger = [sub('Rogue', 'Avenger')]
+    const favored = { ...sarenrae, favoredWeapons: [falcata.name] }
+    expect(weaponRank(falcata, cls('Rogue'), favored, avenger)).toBe('T')
+    expect(weaponRank(falcata, cls('Rogue'), favored)).toBe('U')
+  })
+
+  it('builds a warpriest in chain mail with trained AC and expert Fortitude', () => {
+    const c = withPicks('Cleric', { 'Cleric Doctrine': [sub('Cleric', 'Warpriest').id] })
+    c.armor = named(data.armor, 'Chain Mail').id
+    expect(creationProblems(c, data).gear).toEqual([])
+    const s = buildPf2eSheet(c, data)
+    expect(s.acRank).toBe('T')
+    const fort = s.saves.find((x) => x.label === 'Fortitude')!
+    expect(fort).toMatchObject({ rank: 'E', value: 5 + attributeMods(c, data).CON })
+    const cloistered = {
+      ...c,
+      subclasses: { 'Cleric Doctrine': [sub('Cleric', 'Cloistered Cleric').id] },
+    }
+    expect(buildPf2eSheet(cloistered, data).saves[0]!.rank).toBe('T')
+  })
+})
+
+describe('pf2e gear', () => {
+  it('sells level 0 and 1 items, once each, no fists', () => {
+    const g = gearOptions(data)
+    expect(g.armor.map((a) => a.name)).toContain('Splint Mail')
+    expect(g.weapons.some((w) => w.category === 'Unarmed')).toBe(false)
+    expect(g.weapons.every((w) => w.level <= 1)).toBe(true)
+    const names = g.weapons.map((w) => w.name)
+    expect(new Set(names).size).toBe(names.length)
+  })
+
+  it('flags armor and weapons the hero isn’t trained in', () => {
+    const c = autoCreation(cls('Wizard'))
+    c.weapons = [named(data.weapons, 'Longsword').id]
+    c.armor = named(data.armor, 'Leather Armor').id
+    expect(untrainedGear(c, data).map((g) => g.name)).toEqual(['Leather Armor', 'Longsword'])
+    expect(creationProblems(c, data).gear).toEqual([
+      'Not trained in Leather Armor, Longsword: pick something else',
+    ])
+  })
+
+  it('puts ammunition in the pack, without a proficiency or a Strike', () => {
+    const c = dwarfFighter()
+    const arrows = named(data.weapons, 'Arrows')
+    c.weapons = [...c.weapons, arrows.id]
+    expect(untrainedGear(c, data)).toEqual([])
+    const s = buildPf2eSheet(c, data)
+    expect(s.strikes.map((x) => x.name)).toEqual(['Fist', 'Longsword'])
+    expect(s.inventory.map((i) => i.name)).toContain('Arrows')
+  })
+})
+
+describe('pf2e armor penalties (Player Core p. 271)', () => {
+  const chain = named(data.armor, 'Chain Mail')
+  const mods = (STR: number) => ({ STR, DEX: 1, CON: 0, INT: 0, WIS: 0, CHA: 0 })
+
+  it('drops the check penalty and 5 ft of the Speed penalty for a strong wearer', () => {
+    expect(armorPenalties(mods(3), chain)).toMatchObject({ check: 0, speed: 0 })
+    expect(armorPenalties(mods(2), chain)).toMatchObject({
+      check: chain.checkPenalty,
+      speed: chain.speedPenalty,
+    })
+    const splint = named(data.armor, 'Splint Mail')
+    expect(armorPenalties(mods(4), splint).speed).toBe(splint.speedPenalty + 5)
+  })
+
+  it('always takes a shield’s Speed penalty', () => {
+    const tower = named(data.shields, 'Tower Shield')
+    expect(armorPenalties(mods(0), undefined, tower).speed).toBe(tower.speedPenalty)
+  })
+
+  it('puts them on the sheet: STR and DEX skills, Speed, and a note', () => {
+    const c = {
+      ...dwarfFighter(),
+      ancestryBoosts: ['DEX' as const],
+      backgroundBoosts: ['WIS' as const, 'CON' as const],
+      freeBoosts: ['DEX' as const, 'CON' as const, 'INT' as const, 'WIS' as const],
+    }
+    // STR +1 (key) against chain mail's Strength +3.
+    expect(attributeMods(c, data).STR).toBe(1)
+    const s = buildPf2eSheet(c, data)
+    const plainSheet = buildPf2eSheet({ ...c, armor: undefined }, data)
+    const skill = (sheet: typeof s, n: string) => sheet.skills.find((x) => x.name === n)!.value
+    expect(skill(s, 'Acrobatics')).toBe(skill(plainSheet, 'Acrobatics') + chain.checkPenalty)
+    expect(skill(s, 'Athletics')).toBe(skill(plainSheet, 'Athletics') + chain.checkPenalty)
+    expect(skill(s, 'Medicine')).toBe(skill(plainSheet, 'Medicine'))
+    expect(s.speed).toBe(`${20 + chain.speedPenalty} ft`)
+    expect(s.notes).toMatch(/Chain Mail: -2 to Strength and Dexterity skill checks/)
+  })
+})
+
+describe('pf2e feats from the class table and heritages', () => {
+  it('gives a summoner an evolution feat in the class slot', () => {
+    const summoner = cls('Summoner')
+    expect(featSlots(summoner)).toEqual(['ancestry', 'class'])
+    const c = autoCreation(summoner)
+    const options = featOptions('class', c, data)
+    expect(options.length).toBeGreaterThan(0)
+    expect(options.every((f) => f.traits.includes('Evolution'))).toBe(true)
+    delete c.feats.class
+    expect(creationProblems(c, data).skills).toContain('Choose an evolution feat')
+  })
+
+  it('opens elf feats to an aiuvarin and orc feats to a dromaar', () => {
+    const c = dwarfFighter()
+    const lists = (heritage: string) =>
+      new Set(
+        featOptions('ancestry', { ...c, heritage: named(data.heritages, heritage).id }, data)
+          .flatMap((f) => f.ancestries)
+          .filter((a) => a !== 'Dwarf'),
+      )
+    expect(lists('Aiuvarin')).toEqual(new Set(['Aiuvarin', 'Elf']))
+    expect(lists('Dromaar')).toEqual(new Set(['Dromaar', 'Orc']))
+  })
+
+  it('leaves generic class features off the sheet whatever their case', () => {
+    const fighter = cls('Fighter')
+    const lower = {
+      ...fighter,
+      features: fighter.features.map((f) => ({ ...f, name: f.name.toLowerCase() })),
+    }
+    const s = buildPf2eSheet(dwarfFighter(), {
+      ...data,
+      classes: data.classes.map((k) => (k.id === fighter.id ? lower : k)),
+    })
+    const names = s.feats.map((f) => f.name)
+    expect(names).toContain('reactive strike')
+    expect(names).not.toContain('attribute boosts')
+    expect(names).not.toContain('initial proficiencies')
+  })
+
+  it('notes what the data leaves out (a druid’s order) on the sheet', () => {
+    const druid = cls('Druid')
+    const order = druid.subclasses.find((o) => o.gap)!
+    const c = withPicks('Druid', { 'Druidic Order': [order.id] })
+    expect(buildPf2eSheet(c, data).notes).toContain(`${order.name}: ${order.gap}`)
+  })
+})
+
+describe('pf2e data shapes after the setting cut', () => {
+  it('reads each part of a compound action cost', () => {
+    expect(actionGlyph(2)).toBe('◆◆')
+    expect(actionGlyph('1 to 3')).toBe('◆ to ◆◆◆')
+    expect(actionGlyph('free or 1')).toBe('◇ or ◆')
+    expect(actionGlyph('reaction or 2')).toBe('↺ or ◆◆')
+    expect(actionGlyph('2 to 2 rounds')).toBe('◆◆ to 2 rounds')
+  })
+
+  it('takes Speed from a heritage that gives one (awakened animals)', () => {
+    const animal = named(data.ancestries, 'Awakened Animal')
+    expect(speedLine(animal, named(data.heritages, 'Climbing Animal'))).toBe('20 ft, climb 20 ft')
+    expect(speedLine(animal, named(data.heritages, 'Swimming Animal'))).toBe('swim 30 ft')
+    const dwarf = named(data.ancestries, 'Dwarf')
+    expect(speedLine(dwarf, named(data.heritages, 'Rock Dwarf'), -10)).toBe('10 ft')
+    expect(speedLine(dwarf, undefined, -20)).toBe('5 ft')
+  })
+
+  it('puts the shield’s own AC bonus on the sheet', () => {
+    const buckler = named(data.shields, 'Buckler')
+    const s = buildPf2eSheet({ ...dwarfFighter(), shield: buckler.id }, data)
+    expect(s.shield).toMatchObject({ name: 'Buckler', ac: buckler.ac })
   })
 })
