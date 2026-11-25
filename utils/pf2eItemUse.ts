@@ -233,6 +233,7 @@ export function castFromItem(
       : (st.spell?.rank ?? spell.rank)
   const problem = itemCastProblem(s, spell, cantrip ? 1 : rank, staff)
   if (problem) return problem
+  if (st.wand?.broken) return `${item.name} is broken until it's Repaired.`
   const blocked = actionsProblem(s, spell.actions)
   if (blocked) return blocked
   if (staff) {

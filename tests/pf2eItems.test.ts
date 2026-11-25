@@ -285,6 +285,8 @@ describe('pf2e scrolls, wands and staves (GM Core pp. 262, 278, 282)', () => {
     expect(useWand(s, 0, 15)).toMatchObject({ cast: true, destroyed: false })
     expect(s.inventory[0]!.pf2e!.wand).toMatchObject({ overcharged: true, broken: true })
     expect(useWand(s, 0, 15).text).toMatch(/broken/)
+    const forceBarrage = item(spells, 'Force Barrage') as (typeof spells)[number]
+    expect(castFromItem(s, 0, forceBarrage, { level: 3 })).toMatch(/broken until it's Repaired/)
     const t = hero()
     t.inventory.push(itemFromDef({ set: 'item', def: item(wands, 'Magic Wand (1st-rank Spell)') }))
     useWand(t, 0, 15)

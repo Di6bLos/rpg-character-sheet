@@ -139,7 +139,8 @@ export function itemFromDef(o: Pf2eOwnable, count = 1, spell?: Pf2eSpellDef): In
   }
   let st: Pf2eItemState
   let name = d.name
-  if (o.set === 'weapons')
+  if (o.set === 'weapons' && o.def.category === 'Ammunition') st = { ...common, kind: 'ammunition' }
+  else if (o.set === 'weapons')
     st = { ...common, kind: 'weapon', ranged: o.def.type === 'Ranged', carry: 'held' }
   else if (o.set === 'armor')
     st = { ...common, kind: 'armor', category: o.def.category.toLowerCase(), carry: 'worn' }
