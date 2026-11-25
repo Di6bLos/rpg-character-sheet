@@ -1,9 +1,9 @@
 // Prints the shareable Pathfinder 2e rules bible (`.local/rules/pf2e-orc/`, made by
-// `node scripts/pf2e-bible.ts --orc`) as PDF volumes for the library: one per topic, each
+// `npm run pf2e:bible -- --orc`) as PDF volumes for the library: one per topic, each
 // under the library's 50 MB limit, with a cover, contents, the ORC notice and PDF bookmarks.
 // Needs Google Chrome (headless print). Output: `.local/pf2e/pdf/`.
 //
-//   node scripts/pf2e-pdf.ts [bibleDir] [outDir] [--only=09-equipment-1,…]
+//   npm run pf2e:pdf -- [bibleDir] [outDir] [--only=09-equipment-1,…]
 
 import { execFileSync } from 'node:child_process'
 import {
