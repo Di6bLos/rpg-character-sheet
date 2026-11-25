@@ -234,6 +234,28 @@ describe('pf2e data', () => {
     }
   })
 
+  // Every "You're trained in…" ends up somewhere the builder reads: a skill, a choice, or the
+  // deity's skill (The Hunted's Stealth and Survival were missing from AoN's field).
+  it('gives each background that trains a skill its skills or a skill choice', () => {
+    for (const b of data.backgrounds)
+      if (/\btrained in\b/i.test(b.text))
+        expect(
+          b.skills.length + (b.skillChoices?.length ?? 0) + (b.deitySkill ? 1 : 0),
+          b.name,
+        ).toBeGreaterThan(0)
+    const named = (n: string) => data.backgrounds.find((b) => b.name === n)!
+    expect(named('The Hunted').skills).toEqual(['Stealth', 'Survival'])
+    expect(named('Scholar').skillChoices).toEqual([
+      { options: ['Arcana', 'Nature', 'Occultism', 'Religion'], count: 1 },
+    ])
+    // A choice isn't also listed as trained (AoN's field gives a hermit both).
+    expect(named('Hermit').skills).not.toContain('Nature')
+    expect(named('Raised by Belief').deitySkill).toBe(true)
+    for (const b of data.backgrounds)
+      for (const ch of b.skillChoices ?? [])
+        for (const o of ch.options) expect(b.skills, `${b.name}: ${o}`).not.toContain(o)
+  })
+
   it('reads spell stats from their stat lines (Fireball as printed)', () => {
     const fireball = data.spells.find((s) => s.name === 'Fireball')
     expect(fireball).toMatchObject({

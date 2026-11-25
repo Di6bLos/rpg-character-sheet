@@ -72,14 +72,16 @@ export function autoCreation(
   for (const ch of subclassChoices(cls))
     c.subclasses[ch.key] = ch.options.slice(0, ch.count.min).map((o) => o.id)
   const { subclassPicks } = resolve(c, data)
-  if (needsDeity(cls, subclassPicks)) c.deity = deityOptions(data)[0]!.id
+  if (needsDeity(cls, subclassPicks) || background.deitySkill) c.deity = deityOptions(data)[0]!.id
   c.backgroundBoosts = fillSlots(backgroundBoostSlots(background, resolve(c, data).deity))
   c.keyAttribute = keyAttributeOptions(cls, subclassPicks)[0]!
   c.freeBoosts = pickFour(c.keyAttribute)
   const plan2 = skillPlan(c, data)
   const picks: string[] = []
   for (const g of plan2.groups)
-    picks.push(...g.options.filter((o) => !plan2.fixed.includes(o)).slice(0, g.count))
+    picks.push(
+      ...g.options.filter((o) => !plan2.fixed.includes(o) && !picks.includes(o)).slice(0, g.count),
+    )
   picks.push(
     ...PF2E_SKILL_NAMES.filter((s) => !plan2.fixed.includes(s) && !picks.includes(s)).slice(
       0,

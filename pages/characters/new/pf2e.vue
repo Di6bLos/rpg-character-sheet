@@ -35,13 +35,13 @@ import {
   isAmmunition,
   keyAttributeOptions,
   levelOneFeatures,
-  needsDeity,
   resolve,
   setSlotBoost,
   skillPlan,
   slotTaken,
   subclassChoices,
   untrainedGear,
+  wantsDeity as wantsDeityFor,
   weaponRank,
 } from '~/utils/pf2eBuild'
 
@@ -178,7 +178,7 @@ const keyOptions = computed(() =>
 watch(keyOptions, (keys) => {
   if (keys.length && !keys.includes(c.value.keyAttribute)) c.value.keyAttribute = keys[0]!
 })
-const wantsDeity = computed(() => !!cls.value && needsDeity(cls.value, subclassPicks.value))
+const wantsDeity = computed(() => !!data.value && wantsDeityFor(c.value, data.value))
 watch(wantsDeity, (want) => {
   if (!want) c.value.deity = undefined
 })
@@ -362,10 +362,18 @@ const groupPicks = computed(() =>
 const freePicks = computed(() =>
   c.value.skills.filter((s) => !plan.value?.fixed.includes(s) && !groupPicks.value.includes(s)),
 )
-/** Picks a skill for an "either…or" choice, replacing only that choice's earlier pick. */
-function pickGroup(options: string[], skill: string) {
-  const before = groupPicks.value.find((s) => options.includes(s))
-  c.value.skills = [...c.value.skills.filter((s) => s !== before && s !== skill), skill]
+/**
+ * Picks a skill for a choice. An "either…or" replaces that choice's earlier pick; a choice of
+ * several ("four of the following") toggles, up to its count.
+ */
+function pickGroup(g: { options: string[]; count: number }, skill: string) {
+  const mine = c.value.skills.filter((s) => g.options.includes(s)).slice(0, g.count)
+  if (g.count > 1) {
+    if (mine.includes(skill)) c.value.skills = c.value.skills.filter((s) => s !== skill)
+    else if (mine.length < g.count) c.value.skills = [...c.value.skills, skill]
+    return
+  }
+  c.value.skills = [...c.value.skills.filter((s) => s !== mine[0] && s !== skill), skill]
 }
 function toggleFree(skill: string) {
   if (c.value.skills.includes(skill)) c.value.skills = c.value.skills.filter((s) => s !== skill)
@@ -789,6 +797,9 @@ async function create() {
 
           <template v-if="wantsDeity">
             <div class="section-head"><h3>Deity</h3></div>
+            <p v-if="background?.deitySkill" class="small muted">
+              {{ background.name }} trains you in your deity’s skill.
+            </p>
             <Pf2eOptionCards v-model="deityPick" :options="deityCards" label="Deities" />
             <p class="small muted cup">
               Deities use trademarks and/or copyrights owned by Paizo Inc., used under Paizo's
@@ -856,7 +867,9 @@ async function create() {
             {{ plan.fixed.join(', ') }}
           </p>
           <fieldset v-for="(g, gi) in plan.groups" :key="gi" class="skill-group">
-            <legend class="small">Choose one: {{ listOr(g.options) }}</legend>
+            <legend class="small">
+              {{ g.count > 1 ? `Choose ${g.count}` : 'Choose one' }}: {{ listOr(g.options) }}
+            </legend>
             <button
               v-for="o in g.options"
               :key="o"
@@ -865,7 +878,7 @@ async function create() {
               :class="{ 'chip--on': groupPicks.includes(o) }"
               :aria-pressed="groupPicks.includes(o)"
               :disabled="plan.fixed.includes(o)"
-              @click="pickGroup(g.options, o)"
+              @click="pickGroup(g, o)"
             >
               {{ o }}
             </button>
