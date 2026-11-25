@@ -304,10 +304,13 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 
 ### 8.2 Typed data (`data/pf2e/`)
 
-- [ ] Types modelled on `data/nimble/types.ts`, plus a structured effect model for feats and spells
-- [ ] Generator from the AoN data: classes, ancestries and heritages, backgrounds, feats, spells, equipment, conditions, actions (Remaster/ORC only, with citations and the ORC notice)
-- [ ] Lazy-loaded JSON for the large sets (feats, spells, items), not bundled
-- [ ] Data integrity tests
+- [x] Types (`data/pf2e/types.ts`)
+- [x] Generator from the AoN data (`npm run pf2e:data`): classes, ancestries and heritages, backgrounds, feats, spells, weapons, armor, shields, conditions, actions, traits (Remaster/ORC only, with citations and `data/pf2e/NOTICE.md`)
+- [x] Each set a static file fetched on first use (`loadPf2e`), not bundled
+- [x] Data integrity tests (`tests/pf2eData.test.ts`)
+- [ ] Other equipment (gear, consumables, magic items, runes) with their activations
+- [ ] Deities for clerics and champions (Reserved Material: decide what may be stored)
+- [ ] Structured effect model for feats and spells (with 8.5, where it is first used)
 
 ### 8.3 Builder and level-up
 

@@ -6,35 +6,24 @@
 // GM material. Every entry keeps its source and page and says whether it is Remaster (ORC,
 // Rage of Elements on) or Legacy (OGL) and what replaced it.
 //
-//   node scripts/pf2e-bible.ts [dataDir] [outDir]
-//   node scripts/pf2e-bible.ts --orc [dataDir] [outDir]   (Remaster/ORC entries only, without the
+//   npm run pf2e:bible -- [dataDir] [outDir]
+//   npm run pf2e:bible -- --orc [dataDir] [outDir]   (Remaster/ORC entries only, without the
 //     Golarion lore files: what may be shared, e.g. the library PDFs; default out pf2e-orc/)
 
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { gunzipSync } from 'node:zlib'
-
-interface Doc {
-  id: string
-  category: string
-  name: string
-  type?: string
-  markdown?: string
-  url?: string
-  level?: number
-  trait?: string[]
-  archetype?: string[]
-  class?: string | string[]
-  spell_type?: string
-  item_category?: string
-  primary_source?: string
-  release_date?: string
-  remaster_name?: string[]
-  legacy_name?: string[]
-  breadcrumbs?: string[]
-  next_link?: { url: string }
-  previous_link?: { url: string }
-}
+import {
+  type AonDoc as Doc,
+  classOfType as typeOf,
+  cleanMarkdown,
+  heritageAncestry,
+  legacyBooks,
+  loadAon,
+  page,
+  remaster,
+  slug,
+  withoutLegacy,
+} from './lib/aon'
 
 const ROOT = join(import.meta.dirname, '..')
 const ORC_ONLY = process.argv.includes('--orc')
@@ -50,13 +39,7 @@ const LORE = new Set([
   'article',
   'source',
 ])
-
-/** Rage of Elements (Aug 2023) is the first book published under ORC. */
-const ORC_FROM = '2023-08-01'
 /** Rules files open with the core books, in this order; the rest follow by release. */
-function remaster(d: Doc) {
-  return (d.release_date ?? '') >= ORC_FROM
-}
 const CORE = [
   'Player Core',
   'Player Core 2',
@@ -66,47 +49,19 @@ const CORE = [
   'NPC Core',
 ]
 
-const everything: Doc[] = readdirSync(DATA)
-  .filter((f) => f.endsWith('.json.gz'))
-  .flatMap((f) => JSON.parse(gunzipSync(readFileSync(join(DATA, f))).toString('utf8')) as Doc[])
+const everything = loadAon(DATA)
 const docs = everything.filter((d) => !ORC_ONLY || (remaster(d) && !LORE.has(d.category)))
-/** Books published before ORC; AoN inlines some of their sections (Critical Specialization Effects, income tables) into remastered pages. */
-const LEGACY_BOOKS = new Set(
-  everything.filter((d) => !remaster(d) && d.primary_source).map((d) => d.primary_source!),
-)
-for (const d of everything)
-  if (remaster(d) && d.primary_source) LEGACY_BOOKS.delete(d.primary_source)
-for (const d of everything)
-  if (d.category === 'source' && !remaster(d)) {
-    LEGACY_BOOKS.add(d.name)
-    LEGACY_BOOKS.add(d.name.replace(/^The /, ''))
-  }
+const LEGACY_BOOKS = legacyBooks(everything)
 const byId = new Map(docs.map((d) => [d.id, d]))
 const placed = new Set<string>()
 /** Entries already printed inside another (`<document>`), so book order doesn't repeat them. */
 const embedded = new Set<string>()
-
-const ACTIONS: Record<string, string> = {
-  'Single Action': '◆',
-  'Two Actions': '◆◆',
-  'Three Actions': '◆◆◆',
-  Reaction: '↺',
-  'Free Action': '◇',
-  'One to Three Actions': '◆ to ◆◆◆',
-  'One or Two Actions': '◆ or ◆◆',
-  'Two or Three Actions': '◆◆ or ◆◆◆',
-  'Two to Three Actions': '◆◆ to ◆◆◆',
+const embed = (id: string) => {
+  embedded.add(id)
+  placed.add(id)
 }
 
 const has = (d: Doc, trait: string) => (d.trait ?? []).includes(trait)
-const page = (d: Doc) =>
-  Number(/\*\*Source\*\*[^\n]*?pg\. (\d+)/.exec(d.markdown ?? '')?.[1] ?? 9999)
-const slug = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/['’]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
 const byName = (a: Doc, b: Doc) =>
   a.name.localeCompare(b.name) || Number(remaster(b)) - Number(remaster(a))
 const byLevel = (a: Doc, b: Doc) => (a.level ?? 0) - (b.level ?? 0) || byName(a, b)
@@ -118,103 +73,11 @@ function edition(d: Doc) {
   return `_${tag}${later}${earlier}_`
 }
 
-const stripLinks = (s: string) => s.replace(/\[([^\]]*)\]\((?:[^()]|\([^)]*\))*\)/g, '$1')
-const actionGlyph = (s: string) => ACTIONS[s] ?? `[${s}]`
-
-function table(html: string) {
-  const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((r) =>
-    [...(r[1] ?? '').matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((c) =>
-      stripLinks((c[1] ?? '').replace(/<[^>]+>/g, ' '))
-        .replace(/\s+/g, ' ')
-        .replace(/\|/g, '\\|')
-        .trim(),
-    ),
-  )
-  if (!rows.length) return ''
-  const width = Math.max(...rows.map((r) => r.length))
-  const line = (r: string[]) =>
-    `| ${Array.from({ length: width }, (_, i) => r[i] ?? '').join(' | ')} |`
-  return `\n${line(rows[0] ?? [])}\n| ${Array(width).fill('---').join(' | ')} |\n${rows.slice(1).map(line).join('\n')}\n`
-}
-
-/** AoN's markup → plain markdown; `h` is the heading level of the entry's own title. */
-function clean(md: string, h: number, seen: Set<string>): string {
-  let s = md.replace(
-    /<document level="(\d+)" id="([^"]+)"\s*\/>/g,
-    (_, lvl: string, id: string) => {
-      const sub = byId.get(id)
-      if (!sub?.markdown || seen.has(id) || seen.size > 6) return ''
-      embedded.add(id)
-      placed.add(id)
-      return `\n${clean(sub.markdown, h + Number(lvl) - 1, new Set([...seen, id]))}\n`
-    },
-  )
-  s = s.replace(/<title([^>]*)>([\s\S]*?)<\/title>/g, (_, attrs: string, inner: string) => {
-    const lvl = Number(/level="(\d+)"/.exec(attrs)?.[1] ?? 1)
-    const right = /right="([^"]*)"/.exec(attrs)?.[1]?.trim()
-    const text = stripLinks(
-      inner.replace(/<actions string="([^"]*)"\s*\/>/g, (_m, a: string) => actionGlyph(a)),
-    )
-      .replace(/<[^>]+>/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-    const shown = right && /\d/.test(right) ? ` · ${right}` : ''
-    return `\n${'#'.repeat(Math.min(6, h + lvl - 1))} ${text}${shown}\n`
-  })
-  s = s.replace(/<traits>([\s\S]*?)<\/traits>/g, (_, inner: string) => {
-    const labels = [...inner.matchAll(/label="([^"]*)"/g)].map((m) => m[1])
-    return labels.length ? `\n**Traits** ${labels.join(', ')}\n` : ''
-  })
-  s = s.replace(/<actions string="([^"]*)"\s*\/>/g, (_, a: string) => actionGlyph(a))
-  s = s.replace(/<table[\s\S]*?<\/table>/g, table)
-  s = s
-    .replace(/<li[^>]*>/g, '\n- ')
-    .replace(/<\/li>|<\/?[uo]l[^>]*>/g, '')
-    .replace(/<br\s*\/?>/g, '\n')
-    .replace(/<hr\s*\/?>/g, '\n---\n')
-    .replace(/<image[^>]*\/?>(?:<\/image>)?/g, '')
-    .replace(/<\/?[a-z][a-z-]*(?:\s[^>]*)?\/?>/g, '')
-  return stripLinks(s)
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .split('\n')
-    .map((l) => l.trimEnd())
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
-
-/** In the ORC set, drops each subsection whose own source line names a legacy book. */
-function withoutLegacy(md: string) {
-  const lines = md.split('\n')
-  const out: string[] = []
-  let skip = 0
-  lines.forEach((line, i) => {
-    const head = /^(#+) /.exec(line)
-    if (head) {
-      const lvl = head[1]!.length
-      if (skip && lvl <= skip) skip = 0
-      if (!skip) {
-        const next = lines.slice(i + 1).findIndex((l) => l.startsWith('#'))
-        const block = lines.slice(i + 1, next < 0 ? undefined : i + 1 + next)
-        const book = block.map((l) => /^\*\*Source\*\* (.+?) pg\./.exec(l)?.[1]).find(Boolean)
-        if (book && LEGACY_BOOKS.has(book)) skip = lvl
-      }
-    }
-    if (!skip) out.push(line)
-  })
-  return out.join('\n')
-}
-
 /** One entry with its edition line under the title. */
 function entry(d: Doc, h: number) {
   placed.add(d.id)
-  const cleaned = clean(d.markdown ?? '', h, new Set([d.id]))
-  const body = ORC_ONLY ? withoutLegacy(cleaned) : cleaned
+  const cleaned = cleanMarkdown(d.markdown ?? '', h, byId, embed, new Set([d.id]))
+  const body = ORC_ONLY ? withoutLegacy(cleaned, LEGACY_BOOKS) : cleaned
   const [first = '', ...rest] = body.split('\n')
   const head = first.startsWith('#') ? first : `${'#'.repeat(h)} ${d.name}`
   const tail = first.startsWith('#') ? rest : [first, ...rest]
@@ -372,12 +235,7 @@ write(
 
 // --- Classes ------------------------------------------------------------------
 const classNames = [...new Set(of('class').map((d) => d.name))].sort()
-/** Subclass types whose name doesn't start with their class's. */
-const TYPE_CLASS: Record<string, string> = {
-  'Druidic Order': 'Druid',
-  'Animistic Practice': 'Animist',
-}
-const classOfType = (t = '') => TYPE_CLASS[t] ?? classNames.find((c) => t.startsWith(`${c} `))
+const classOfType = (t?: string) => typeOf(t, classNames)
 const subclassCats = new Set(
   docs.filter((d) => classOfType(d.type) && d.category !== 'class').map((d) => d.category),
 )
@@ -431,26 +289,12 @@ for (const c of classNames) {
 // --- Ancestries -----------------------------------------------------------------
 {
   const ancestries = of('ancestry').filter((d) => d.type === 'Ancestry')
-  const names = [...new Set(ancestries.map((d) => d.name))].sort((a, b) => b.length - a.length)
+  const names = [...new Set(ancestries.map((d) => d.name))]
   const versatileNames = new Set(
     of('ancestry')
       .filter((d) => d.type !== 'Ancestry')
       .map((d) => d.name),
   )
-  const ALIASES: [RegExp, string][] = [
-    [/^Half-(Elf|Orc)$/, 'Human'],
-    [/\bRat\b/, 'Ratfolk'],
-  ]
-  const heritageOf = (h: Doc) => {
-    const alias = ALIASES.find(([re, a]) => re.test(h.name) && names.includes(a))
-    if (alias) return alias[1]
-    const words = h.name.split(/[\s-]+/)
-    return (
-      names.find((n) => h.name.endsWith(n)) ??
-      names.find((n) => words.includes(n)) ??
-      names.find((n) => h.name.includes(n))
-    )
-  }
   const heritages = of('heritage')
   const unmatched: Doc[] = []
   const grouped = new Map<string, Doc[]>()
@@ -460,7 +304,7 @@ for (const c of classNames) {
       versatileStubs.push(h)
       continue
     }
-    const a = heritageOf(h)
+    const a = heritageAncestry(h.name, names)
     if (!a) unmatched.push(h)
     else grouped.set(a, [...(grouped.get(a) ?? []), h])
   }
