@@ -126,6 +126,15 @@ function create() {
   const toggleVersatile = (index: number) => {
     grip.value = { ...grip.value, versatile: flip(grip.value.versatile, index) }
   }
+  // Devise a Stratagem lasts until the start of your next turn (Player Core 2 p. 103): Start
+  // turn (the round goes up) and End encounter (it goes back to 0) clear it.
+  watch(
+    () => sheet.value.turn?.round ?? 0,
+    () => {
+      damageFlags.value.stratagem = false
+      stratagemStruck.value = undefined
+    },
+  )
   /** The attack the next Strike is this turn (0–2), for the table's highlight. */
   const nextAttack = computed(() => mapIndex(sheet.value))
 

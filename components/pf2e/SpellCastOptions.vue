@@ -1,13 +1,15 @@
 <script setup lang="ts">
 // What a spell rolls at the rank it'd be cast ("basic Reflex · 6d6 fire"), and the choices that
-// change it: the action version (Heal, Force Barrage) and a melee spell attack (Ignition's
-// d6s). Read from the spell text by utils/pf2eSpellRules.ts.
+// change it: the action version (Heal, Force Barrage), a melee spell attack (Ignition's d6s) and
+// how many targets it attacks (Slashing Gust's two). Read from the spell text by
+// utils/pf2eSpellRules.ts.
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import { defaultActions, spellRules, spellSummary } from '~/utils/pf2eSpellRules'
 
 const props = defineProps<{ spell: Pf2eSpellDef; rank: number }>()
 const actions = defineModel<number | undefined>('actions')
 const melee = defineModel<boolean>('melee', { default: false })
+const targets = defineModel<number | undefined>('targets')
 
 const rules = computed(() => spellRules(props.spell))
 const summary = computed(() =>
@@ -27,6 +29,17 @@ const GLYPH = ['', '◆', '◆◆', '◆◆◆']
     >
       <option v-for="n in rules.actionOptions" :key="n" :value="n">
         {{ GLYPH[n] }} {{ n }} action{{ n === 1 ? '' : 's' }}
+      </option>
+    </select>
+    <select
+      v-if="rules.attacks && !rules.attacks.perAction"
+      class="input input--sm"
+      :value="targets ?? 1"
+      :aria-label="`Targets ${spell.name} attacks`"
+      @change="targets = Number(($event.target as HTMLSelectElement).value)"
+    >
+      <option v-for="n in rules.attacks.max" :key="n" :value="n">
+        {{ n }} target{{ n === 1 ? '' : 's' }}
       </option>
     </select>
     <label v-if="rules.meleeDie" class="check">

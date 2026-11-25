@@ -3,10 +3,18 @@
 // heightened into a higher slot), a cleric's divine font, focus spells and Refocus, daily
 // preparations, and the flat check for casting while stupefied (p. 446).
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
-import type { Pf2eSheet, Pf2eSlotRank, Pf2eSpellRef, Pf2eSpellcasting } from '~/types/sheets'
+import type {
+  Pf2eAttr,
+  Pf2eSheet,
+  Pf2eSlotRank,
+  Pf2eSpellRef,
+  Pf2eSpellcasting,
+} from '~/types/sheets'
 import { type Rng, rollDie } from '~/utils/dice'
 import { passItemTime, setGiven, toggleEffect } from '~/utils/pf2eEffects'
 import { itemsDailyPrep } from '~/utils/pf2eInventory'
+import { readCost } from '~/utils/pf2eAbilityRules'
+import { attacked, cantAct, inEncounter } from '~/utils/pf2eActions'
 import { adjusted, conditionValue, proficiency } from '~/utils/pf2ePlay'
 import { type Pf2eCastRoll, castRolls, effectValue, spellRules } from '~/utils/pf2eSpellRules'
 
@@ -30,14 +38,26 @@ export function spellNumbers(s: Pf2eSheet, sc: Pf2eSpellcasting, level: number) 
 }
 
 /**
- * Spell attack and DC for a hero without spellcasting of their own (a champion's or monk's
- * focus spells): the class DC, and that less 10 as the attack.
+ * The attribute focus spells use for a class without spellcasting of its own, as its text says:
+ * a champion's devotion spells Charisma (Player Core 2 p. 86), a monk's qi spells Wisdom
+ * (Player Core 2 p. 114), a ranger's warden spells Wisdom (Player Core p. 152).
  */
-export function focusNumbers(s: Pf2eSheet) {
-  const dc = s.saves.find((x) => x.label === 'Class DC')?.value ?? 10
+export const FOCUS_ATTR: Record<string, Pf2eAttr> = { champion: 'CHA', monk: 'WIS', ranger: 'WIS' }
+
+/**
+ * Spell attack and DC for a hero without spellcasting of their own (a champion's, monk's or
+ * ranger's focus spells): their class's spellcasting attribute (`FOCUS_ATTR`, the key attribute
+ * for others) and the class DC's rank, which these classes raise along with their spell
+ * attack and spell DC.
+ */
+export function focusNumbers(s: Pf2eSheet, level: number) {
+  const cls = (s.classSlug ?? s.class).trim().toLowerCase()
+  const attr = FOCUS_ATTR[cls] ?? s.keyAttr
+  const rank = s.saves.find((x) => x.label === 'Class DC')?.rank ?? 'T'
+  const base = s.attrs[attr] + proficiency(rank === 'U' ? 'T' : rank, level)
   return {
-    attack: adjusted(s, dc - 10, { kind: 'attack', attr: s.keyAttr }),
-    dc: adjusted(s, dc, { kind: 'classDc', attr: s.keyAttr }),
+    attack: adjusted(s, base, { kind: 'attack', attr }),
+    dc: adjusted(s, 10 + base, { kind: 'classDc', attr }),
   }
 }
 
@@ -69,6 +89,22 @@ const heightenNote = (spell: Pf2eSpellRef, rank: number) =>
  */
 export const spontaneousRank = (spell: Pf2eSpellRef, slotRank: number) =>
   spell.signature ? slotRank : spell.rank
+
+/** Ranks with a slot left that a repertoire spell can be cast from (its own rank or higher). */
+export const openRanks = (sc: Pf2eSpellcasting | undefined, spell: Pf2eSpellRef) =>
+  (sc?.slots ?? [])
+    .map((r, i) => ({ rank: i + 1, left: r.max - r.used }))
+    .filter((r) => r.rank >= spell.rank && r.left > 0)
+
+/** The slot rank to cast from: the one picked while it still has a slot left, else the lowest. */
+export function castRankFor(
+  sc: Pf2eSpellcasting | undefined,
+  spell: Pf2eSpellRef,
+  picked: number | undefined,
+) {
+  const open = openRanks(sc, spell)
+  return open.find((r) => r.rank === picked)?.rank ?? open[0]?.rank ?? spell.rank
+}
 
 /**
  * Spontaneous casting (p. 297): spend a slot of the spell's rank or higher. `sc` is the
@@ -167,6 +203,7 @@ export function dailyPreparations(s: Pf2eSheet): string {
   }
   s.focus.current = s.focus.max
   s.used = []
+  if (s.turn) s.turn.reaction = true
   itemsDailyPrep(s)
   // A night's rest outlasts any consumable's effect (24 hours at most).
   const ended = passItemTime(s, Infinity)
@@ -175,6 +212,43 @@ export function dailyPreparations(s: Pf2eSheet): string {
     `Daily preparations: ${slots ? 'spell slots, ' : ''}Focus Points and daily abilities restored.`,
     ...ended,
   ].join(' ')
+}
+
+/**
+ * Why the hero can't cast this spell now, or '' (Player Core pp. 302, 436): dead, or a
+ * condition that keeps them from acting; on their turn, fewer actions left than it costs; a
+ * reaction spell once the reaction is spent in an encounter.
+ */
+export function castBlocked(s: Pf2eSheet, spell: Pf2eSpellDef | undefined, actions?: number) {
+  const stopped = cantAct(s)
+  if (stopped) return stopped
+  const cost = readCost(spell?.actions)
+  const t = s.turn
+  if (cost?.kind === 'reaction' && t && inEncounter(s) && !t.reaction)
+    return 'Reaction already used this round'
+  if (cost?.kind === 'actions' && t?.active) {
+    const n = actions ?? cost.min
+    if (t.actions < n) return `Needs ${n} action${n === 1 ? '' : 's'}; ${t.actions} left`
+  }
+  return ''
+}
+
+/**
+ * Pays for a cast (p. 302): its actions on your turn, the reaction in an encounter, and its
+ * spell attacks toward the multiple attack penalty (p. 402). A disrupted spell still costs
+ * its actions, with no attack made.
+ */
+export function payCast(
+  s: Pf2eSheet,
+  spell: Pf2eSpellDef,
+  o: { actions?: number; attacks: number },
+) {
+  const t = s.turn
+  const cost = readCost(spell.actions)
+  if (t && inEncounter(s) && cost?.kind === 'reaction') t.reaction = false
+  if (t?.active && cost?.kind === 'actions')
+    t.actions = Math.max(0, t.actions - (o.actions ?? cost.min))
+  if (o.attacks) attacked(s, o.attacks)
 }
 
 /** Slots for a level from the class's spells-per-day row; prepared slots start empty. */
@@ -210,6 +284,8 @@ export interface Pf2eCastChoice {
   /** 0 for the first attack this turn, 1 and 2 for the second and third (−5, −10). */
   attackNumber?: number
   targetAc?: number | null
+  /** Targets attacked, for spells that can attack several (Slashing Gust). */
+  targets?: number
   rng?: Rng
   /** The spellcasting it's cast with, when not the class's (an archetype's, p. 215). */
   sc?: Pf2eSpellcasting
@@ -230,12 +306,13 @@ export function castEffect(
   choice: Pf2eCastChoice = {},
 ): Pf2eCastRoll & { selfEffect?: string } {
   const sc = choice.sc ?? s.spellcasting
-  const numbers = sc ? spellNumbers(s, sc, level) : focusNumbers(s)
+  const numbers = sc ? spellNumbers(s, sc, level) : focusNumbers(s, level)
   const map = MAP[choice.attackNumber ?? 0] ?? 0
   const roll = castRolls(spell, {
     rank,
     actions: choice.actions,
     melee: choice.melee,
+    targets: choice.targets,
     attackBonus: numbers.attack.value - map,
     dc: numbers.dc.value,
     targetAc: choice.targetAc,

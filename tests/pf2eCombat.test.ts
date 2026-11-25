@@ -503,6 +503,21 @@ describe('pf2e blood magic (Player Core 2 p. 144)', () => {
     ])
   })
 
+  it('offers each bloodline’s blood magic once, not again as a toggle read from its text', () => {
+    const toggles = (line: string) =>
+      ownEffects(sorcerer(line))
+        .filter((e) => e.mode === 'toggle')
+        .map((e) => e.name)
+    expect(toggles('Fey')).toEqual([
+      'Cloak of Ribbons (Performance)',
+      'Cloak of Ribbons (concealed)',
+    ])
+    expect(toggles('Imperial')).toEqual(['Imperious Defense (AC)', 'Imperious Defense (saves)'])
+    expect(toggles('Aesir')).toEqual(['Call the Storm'])
+    expect(toggles('Diabolic')).toEqual(['Tongue of Flame'])
+    expect(toggles('Elemental')).toEqual(['Elemental Fury'])
+  })
+
   it('Scaly Hide gives +1 status to AC until the start of your next turn', () => {
     const s = sorcerer('Draconic')
     toggleEffect(s, 'Scaly Hide', 1)
