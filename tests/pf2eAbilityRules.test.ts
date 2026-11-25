@@ -777,4 +777,12 @@ describe('pf2e ability rules: review fixes', () => {
     resolveUse(s, wing, { name: 'Wing Buffet', level: 1, rng: () => 0.5 })
     expect(s.turn?.attacks).toBe(2)
   })
+
+  it('“Both attacks count toward your multiple attack penalty” counts 2, after both are made', () => {
+    for (const name of ['Rebounding Toss', 'Slam Down', 'Tandem Strike', 'Bat Around']) {
+      const strike = ability(name).strike!
+      expect([name, strike.mapCount]).toEqual([name, 2])
+    }
+    expect(ability('Slam Down').strike).toMatchObject({ sameMap: true })
+  })
 })

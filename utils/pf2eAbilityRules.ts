@@ -308,6 +308,7 @@ export const PF2E_RULE_PATTERNS = {
   strideTwice: /\bStride (?:up to )?(twice|two times|three times)\b/,
   strideOnce:
     /\b(?:You |you |then |can )?(Stride|Step)\b(?! (?:up to )?(?:twice|two times|three times))/,
+  mapBoth: /\b(Both|All three) attacks count toward your multiple attack penalty\b/i,
   freeWhen: /[^.]*\bas a free action if\b[^.]*\./,
   mapCounted:
     /\bcounts? as (two|three) attacks (?:when (?:calculating|determining)|for(?: the purposes? of (?:calculating|determining)| calculating)?|toward) your multiple attack penalty/i,
@@ -883,6 +884,8 @@ function readStrike(text: string): Pf2eStrikeRule | undefined {
   const twice = P.strideTwice.exec(before)
   const strides = twice ? num(twice[1]!) : P.strideOnce.test(before) ? 1 : 0
   const counted = P.mapCounted.exec(text)
+  // "Both attacks count toward your multiple attack penalty" (Slam Down: a Strike and a Trip).
+  const both = P.mapBoth.exec(text)
   // "**Failure** This attack does not count toward your multiple attack penalty" (Exacting
   // Strike): only that degree's attack is left out.
   const none = P.mapNone.exec(text)
@@ -890,7 +893,15 @@ function readStrike(text: string): Pf2eStrikeRule | undefined {
   const rule: Pf2eStrikeRule = {
     count,
     strides,
-    mapCount: counted ? num(counted[1]!) : none && !noneOn ? 0 : count,
+    mapCount: counted
+      ? num(counted[1]!)
+      : both
+        ? both[1]!.toLowerCase() === 'both'
+          ? 2
+          : 3
+        : none && !noneOn
+          ? 0
+          : count,
   }
   if (noneOn) rule.mapNoneOn = noneOn
   if (/melee/.test(kinds) && !/ranged/.test(kinds)) rule.melee = true
