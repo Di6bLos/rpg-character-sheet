@@ -4,7 +4,15 @@
 // doomed steppers; the recovery check and Heroic Recovery while dying. Rules in utils/pf2ePlay.ts.
 import type { Pf2eSheet } from '~/types/sheets'
 import { rollDie } from '~/utils/dice'
-import { deathAt, heal, heroicRecovery, isDead, recoveryCheck, takeDamage } from '~/utils/pf2ePlay'
+import {
+  deathAt,
+  heal,
+  heroicRecovery,
+  isDead,
+  recoveryCheck,
+  shieldBroken,
+  takeDamage,
+} from '~/utils/pf2ePlay'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -13,7 +21,7 @@ const amount = ref<number | null>(null)
 const crit = ref(false)
 const block = ref(false)
 const canBlock = computed(
-  () => !!sheet.value.shield.name && sheet.value.shield.raised && sheet.value.shield.hp > 0,
+  () => !!sheet.value.shield.name && sheet.value.shield.raised && !shieldBroken(sheet.value),
 )
 watch(canBlock, (ok) => !ok && (block.value = false))
 
@@ -29,7 +37,7 @@ function hurt() {
 }
 
 function mend() {
-  if (!canEdit.value || !amount.value) return
+  if (!canEdit.value || !amount.value || dead.value) return
   say(heal(sheet.value, amount.value))
   amount.value = null
 }
@@ -105,7 +113,8 @@ function adjust(k: Track, by: number) {
       <button
         type="button"
         class="btn btn--ghost btn--sm"
-        :disabled="!canEdit || !amount"
+        :disabled="!canEdit || !amount || dead"
+        :title="dead ? 'Your hero has died' : undefined"
         @click="mend"
       >
         Heal

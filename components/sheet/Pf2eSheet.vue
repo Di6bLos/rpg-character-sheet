@@ -7,6 +7,11 @@ import {
   adjusted,
   degreeOf,
   heal,
+  isDead,
+  raisedShieldBonus,
+  shieldAc,
+  shieldBroken,
+  strikeDamage,
   strikeResult,
   takeDamage,
 } from '~/utils/pf2ePlay'
@@ -49,7 +54,9 @@ const attrs = computed(() =>
 )
 
 const hasShield = computed(() => sheet.value.shield.name.trim() !== '')
-const ac = computed(() => sheet.value.ac + (hasShield.value && sheet.value.shield.raised ? 2 : 0))
+const ac = computed(() => sheet.value.ac + raisedShieldBonus(sheet.value))
+const broken = computed(() => shieldBroken(sheet.value))
+const dead = computed(() => isDead(sheet.value))
 /** The ±1 HP steppers go through the damage rules, so 0 HP still knocks the hero out. */
 function stepHp(by: number) {
   if (!canEdit.value) return
@@ -125,9 +132,9 @@ const strikes = computed(() =>
     const rollDmg = (crit: boolean) => {
       const expr = parseDice(dmg)
       if (!expr) return say(`${w.name}: “${w.dmg}” isn’t a dice expression like 1d8+4`)
-      const total = rollDice(expr).total
+      const total = strikeDamage(rollDice(expr).total)
       // A critical hit deals double damage (p. 401); deadly and fatal dice are added by hand.
-      const shown = crit ? `${total * 2} (2 × ${total})` : String(total)
+      const shown = crit ? `${strikeDamage(total, true)} (2 × ${total})` : String(total)
       say(`${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}`.trim())
     }
     return {
@@ -281,11 +288,22 @@ const bulkPct = computed(() =>
             <button
               type="button"
               class="chip shield__btn"
-              :aria-pressed="sheet.shield.raised"
-              :disabled="!canEdit"
+              :aria-pressed="sheet.shield.raised && !broken"
+              :disabled="!canEdit || broken"
+              :title="
+                broken
+                  ? 'Broken (HP at or below its Broken Threshold): it can’t be raised until Repaired'
+                  : undefined
+              "
               @click="sheet.shield.raised = !sheet.shield.raised"
             >
-              {{ sheet.shield.raised ? 'Raised · +2 AC' : 'Raise shield' }}
+              {{
+                broken
+                  ? 'Broken'
+                  : sheet.shield.raised
+                    ? `Raised · +${shieldAc(sheet)} AC`
+                    : 'Raise shield'
+              }}
             </button>
           </div>
           <div class="facts">
@@ -354,7 +372,7 @@ const bulkPct = computed(() =>
               type="button"
               class="step"
               aria-label="Gain 1 hit point"
-              :disabled="!canEdit"
+              :disabled="!canEdit || dead"
               @click="stepHp(1)"
             >
               +
