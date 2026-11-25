@@ -11,6 +11,7 @@ import type {
   Pf2eDeityDef,
   Pf2eFeatDef,
   Pf2eRecord,
+  Pf2eSpellDef,
   Pf2eSubclassOption,
   Pf2eWeaponDef,
 } from '~/data/pf2e/types'
@@ -22,6 +23,8 @@ import type {
   Pf2eSheet,
   Pf2eStrike,
 } from '~/types/sheets'
+import { proficiency } from '~/utils/pf2ePlay'
+import { focusPoolMax, fontSlots, slotsFor } from '~/utils/pf2eSpells'
 import { PF2E_SKILLS, defaultSheet } from '~/utils/sheetDefaults'
 
 /** The data sets the builder reads. */
@@ -36,6 +39,7 @@ export type Pf2eBuildData = Pick<
   | 'weapons'
   | 'armor'
   | 'shields'
+  | 'spells'
 >
 
 export const PF2E_ATTRS: Pf2eAttr[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']
@@ -55,7 +59,6 @@ const isSkill = (s: string) => SKILL_ATTR.has(s) || s.endsWith(' Lore')
 export const STARTING_CP = 1500
 /** Highest attribute modifier at 1st level (Player Core p. 19). */
 const MAX_MOD = 4
-const RANK_BONUS: Record<Pf2eRank, number> = { U: 0, T: 2, E: 4, M: 6, L: 8 }
 const RANK_ORDER: Pf2eRank[] = ['U', 'T', 'E', 'M', 'L']
 const RANK_WORD: Record<string, Pf2eRank> = {
   Untrained: 'U',
@@ -65,9 +68,7 @@ const RANK_WORD: Record<string, Pf2eRank> = {
   Legendary: 'L',
 }
 
-/** Proficiency bonus (Player Core p. 11): untrained +0, otherwise level + 2/4/6/8. */
-export const proficiency = (rank: Pf2eRank, level = 1) =>
-  rank === 'U' ? 0 : level + RANK_BONUS[rank]
+export { proficiency }
 
 export const ACTION_GLYPH: Record<string, string> = {
   1: '◆',
@@ -403,6 +404,88 @@ export const trainedSkills = (c: Pf2eCreation, data: Pf2eBuildData) => [
   ...new Set([...skillPlan(c, data).fixed, ...c.skills]),
 ]
 
+// --- Spellcasting --------------------------------------------------------------
+
+/** The subclass options the hero picked. */
+const subclassPicks = (c: Pf2eCreation, cls: Pf2eClassDef) =>
+  cls.subclasses.filter((s) => Object.values(c.subclasses).some((ids) => ids.includes(s.id)))
+
+/**
+ * A caster's 1st-level spellcasting (Player Core pp. 297–298, each class entry): the
+ * tradition (a sorcerer's bloodline, witch's patron or summoner's eidolon sets it),
+ * prepared or spontaneous (classes with a spell repertoire are spontaneous), and how many
+ * cantrips and 1st-rank spells to choose, from the class's spells-per-day table.
+ */
+export function spellcastingPlan(c: Pf2eCreation, data: Pf2eBuildData) {
+  const { cls, deity } = resolve(c, data)
+  const row = cls?.spellSlots?.[0]
+  if (!cls || !row) return null
+  const l1 = norm(cls.advancement[0]?.features.join(', ') ?? '')
+  const tradition =
+    cls.traditions.length === 1
+      ? cls.traditions[0]!
+      : (subclassPicks(c, cls).find((s) => s.traditions.length)?.traditions[0] ?? '')
+  const fonts = l1.includes('divine font') ? (deity?.divineFont ?? []) : []
+  return {
+    tradition,
+    kind: l1.includes('spell repertoire') ? ('spontaneous' as const) : ('prepared' as const),
+    cantrips: row.cantrips,
+    rank1: row.slots[0] ?? 0,
+    slots: row.slots,
+    fonts,
+  }
+}
+
+/** Common-or-better spells of the hero's tradition: cantrips, or 1st-rank spells. */
+export function spellOptions(which: 'cantrip' | 'spell', c: Pf2eCreation, data: Pf2eBuildData) {
+  const plan = spellcastingPlan(c, data)
+  if (!plan?.tradition) return []
+  return data.spells.filter(
+    (s) =>
+      s.kind === which &&
+      (which === 'cantrip' || s.rank === 1) &&
+      s.traditions.includes(plan.tradition),
+  )
+}
+
+/**
+ * Focus spells the 1st-level features and subclass picks grant: those of the class whose
+ * name the features' text mentions (a bard's composition cantrips, a muse's spell…).
+ */
+export function creationFocusSpells(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSpellDef[] {
+  const { cls } = resolve(c, data)
+  if (!cls) return []
+  const text = [
+    ...cls.features.filter((f) => f.level === 1).map((f) => f.text),
+    ...subclassPicks(c, cls).map((s) => s.text),
+  ]
+    .join('\n')
+    // Spell names are italic in the rules text (_courageous anthem_).
+    .replace(/[_*]/g, ' ')
+    .toLowerCase()
+  return data.spells.filter(
+    (s) =>
+      (s.kind === 'focus' || s.kind === 'cantrip') &&
+      s.classes.includes(cls.name) &&
+      s.rank <= 1 &&
+      new RegExp(`\\b${s.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text),
+  )
+}
+
+/** The class's focus spells and class cantrips up to 1st rank, to pick from. */
+export function focusSpellOptions(c: Pf2eCreation, data: Pf2eBuildData) {
+  const { cls } = resolve(c, data)
+  if (!cls) return []
+  return data.spells.filter(
+    (s) =>
+      (s.kind === 'focus' || s.kind === 'cantrip') && s.classes.includes(cls.name) && s.rank <= 1,
+  )
+}
+
+/** The focus spells the build uses: the player's picks, or the ones the features name. */
+export const chosenFocusSpells = (c: Pf2eCreation, data: Pf2eBuildData) =>
+  c.focus ? data.spells.filter((s) => c.focus!.includes(s.id)) : creationFocusSpells(c, data)
+
 // --- Proficiencies --------------------------------------------------------------
 
 interface WeaponRule {
@@ -536,6 +619,7 @@ export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   ]
   const cost = gearCost(c, data)
   return {
+    spells: spellProblems(c, data),
     ancestry: ancestryStep,
     background: background ? [] : ['Choose a background'],
     class: classStep,
@@ -544,6 +628,21 @@ export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
     skills: cls && background ? featStep : ['Finish the steps before'],
     gear: cost > STARTING_CP ? [`That gear costs ${cost / 100} gp; you have 15 gp`] : [],
   }
+}
+
+/** What the spells step still needs: the picks the class's table asks for, a divine font. */
+export function spellProblems(c: Pf2eCreation, data: Pf2eBuildData) {
+  const plan = spellcastingPlan(c, data)
+  if (!plan) return []
+  if (!plan.tradition) return ['Choose the option that sets your tradition first (class step)']
+  const out: string[] = []
+  const n = (ids?: string[]) => ids?.length ?? 0
+  if (n(c.spells?.cantrips) !== plan.cantrips) out.push(`Choose ${plan.cantrips} cantrips`)
+  if (n(c.spells?.rank1) !== plan.rank1)
+    out.push(`Choose ${plan.rank1} 1st-rank spell${plan.rank1 === 1 ? '' : 's'}`)
+  if (plan.fonts.length > 1 && !c.font)
+    out.push(`Choose your divine font: ${plan.fonts.join(' or ')}`)
+  return out
 }
 
 const featEntry = (
@@ -597,6 +696,22 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
     .map((name) => data.feats.find((f) => f.name === name))
     .filter(present)
   const extraLanguages = Math.max(0, mods.INT)
+  const spellRef = (id: string) => {
+    const sp = data.spells.find((x) => x.id === id)
+    return sp ? [{ id: sp.id, name: sp.name, rank: sp.rank }] : []
+  }
+  const plan = spellcastingPlan(c, data)
+  const rank1 = (c.spells?.rank1 ?? []).flatMap(spellRef)
+  const slots = plan ? slotsFor(plan.slots, plan.kind) : []
+  // A prepared caster starts with the 1st-rank picks in its 1st-rank slots.
+  slots[0]?.prepared?.forEach((p, i) => (p.id = rank1[i]?.id ?? null))
+  const font = plan?.fonts.length ? (plan.fonts.length === 1 ? plan.fonts[0] : c.font) : undefined
+  const focusDefs = chosenFocusSpells(c, data)
+  const focusSpells = focusDefs.map((f) => ({ id: f.id, name: f.name, rank: f.rank }))
+  const focusCantrips = new Set(
+    focusDefs.filter((f) => f.traits.includes('Cantrip')).map((f) => f.id),
+  )
+  const focusMax = focusPoolMax(focusSpells, focusCantrips)
   const spent = gearCost(c, data)
   const left = STARTING_CP - spent
 
@@ -691,6 +806,23 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
     coins: { gp: Math.floor(left / 100), sp: Math.floor((left % 100) / 10), cp: left % 10 },
     bulkLimit: 5 + mods.STR,
     notes: `Languages: ${ancestry.languages.join(', ')}${extraLanguages ? ` (+${extraLanguages} of your choice)` : ''}`,
+    ...(plan?.tradition
+      ? {
+          spellcasting: {
+            tradition: plan.tradition,
+            kind: plan.kind,
+            attr: c.keyAttribute,
+            rank: 'T' as const,
+            cantrips: (c.spells?.cantrips ?? []).flatMap(spellRef),
+            spells: rank1,
+            slots,
+            ...(font ? { font: { spell: font, max: fontSlots(1), used: 0 } } : {}),
+          },
+        }
+      : {}),
+    ...(focusSpells.length
+      ? { focusSpells, focus: { max: focusMax, current: focusMax, note: '' } }
+      : {}),
     classSlug: cls.slug,
     creation: c,
   }

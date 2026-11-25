@@ -501,10 +501,12 @@ const bulkPct = computed(() =>
     <div v-if="lastRoll" class="roll-status" role="status">{{ lastRoll }}</div>
   </section>
 
+  <Pf2eSheetSpells v-if="sheet.spellcasting || sheet.focusSpells?.length" />
+
   <div class="two-col">
     <section class="panel stack" style="gap: 12px" aria-labelledby="ft-h">
       <h2 id="ft-h">Feats &amp; actions</h2>
-      <div v-if="sheet.focus.max > 0" class="tile focus">
+      <div v-if="sheet.focus.max > 0 && !sheet.focusSpells?.length" class="tile focus">
         <div class="stack" style="gap: 2px">
           <strong style="font-size: 14px">Focus points</strong>
           <span class="small muted" style="font-size: 12px">{{ sheet.focus.note }}</span>

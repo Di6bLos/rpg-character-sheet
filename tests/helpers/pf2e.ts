@@ -18,6 +18,8 @@ import {
   needsDeity,
   resolve,
   skillPlan,
+  spellOptions,
+  spellcastingPlan,
   subclassChoices,
 } from '../../utils/pf2eBuild'
 
@@ -35,6 +37,7 @@ export const buildData: Pf2eBuildData = {
   weapons: loadSet('weapons'),
   armor: loadSet('armor'),
   shields: loadSet('shields'),
+  spells: loadSet('spells'),
 }
 
 export const named = <T extends { name: string }>(list: T[], name: string) => {
@@ -74,6 +77,18 @@ export function autoCreation(cls: Pf2eClassDef, data = buildData): Pf2eCreation 
   c.skills = picks
   for (const slot of featSlots(resolve(c, data).cls))
     c.feats[slot] = featOptions(slot, c, data)[0]!.id
+  const casting = spellcastingPlan(c, data)
+  if (casting) {
+    c.spells = {
+      cantrips: spellOptions('cantrip', c, data)
+        .slice(0, casting.cantrips)
+        .map((s) => s.id),
+      rank1: spellOptions('spell', c, data)
+        .slice(0, casting.rank1)
+        .map((s) => s.id),
+    }
+    if (casting.fonts.length > 1) c.font = casting.fonts[0]
+  }
   return c
 }
 

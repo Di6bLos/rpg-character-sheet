@@ -2,7 +2,13 @@
 // (Player Core pp. 442–447), how bonuses and penalties stack (p. 400), degrees of success
 // (p. 401), and damage, Shield Block, knocked out, dying, wounded and doomed (pp. 269,
 // 410–411). Pure functions on the sheet; the sheet panels call them and `say()` the result.
-import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
+import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+
+const RANK_BONUS: Record<Pf2eRank, number> = { U: 0, T: 2, E: 4, M: 6, L: 8 }
+
+/** Proficiency bonus (Player Core p. 11): untrained +0, otherwise level + 2/4/6/8. */
+export const proficiency = (rank: Pf2eRank, level = 1) =>
+  rank === 'U' ? 0 : level + RANK_BONUS[rank]
 
 export type Pf2eDegree = 'critical success' | 'success' | 'failure' | 'critical failure'
 const DEGREES: Pf2eDegree[] = ['critical failure', 'failure', 'success', 'critical success']

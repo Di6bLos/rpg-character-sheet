@@ -181,6 +181,41 @@ export interface Pf2eSheet extends SheetCommon {
   classSlug?: string
   /** What the builder was given (AoN ids), so the build can be read back or redone. */
   creation?: Pf2eCreation
+  /** The class's spellcasting, for casters (Player Core pp. 297–298). */
+  spellcasting?: Pf2eSpellcasting
+  /** Focus spells the hero knows; `focus` holds the pool. */
+  focusSpells?: Pf2eSpellRef[]
+}
+
+/** A spell from `data/pf2e`: its AoN id, name and lowest rank (cantrips are rank 1). */
+export interface Pf2eSpellRef {
+  id: string
+  name: string
+  rank: number
+}
+
+/** One rank of spell slots; prepared casters fill each slot with a spell. */
+export interface Pf2eSlotRank {
+  max: number
+  /** Spontaneous: slots spent today. */
+  used: number
+  /** Prepared: the spell in each slot (an id, or null while empty) and whether it was cast. */
+  prepared?: { id: string | null; cast: boolean }[]
+}
+
+export interface Pf2eSpellcasting {
+  tradition: string
+  kind: 'prepared' | 'spontaneous'
+  attr: Pf2eAttr
+  /** Proficiency for the spell attack modifier and spell DC. */
+  rank: Pf2eRank
+  cantrips: Pf2eSpellRef[]
+  /** Spontaneous: the repertoire. Prepared: the spells the hero prepares from. */
+  spells: Pf2eSpellRef[]
+  /** Ranks 1–10, in order. */
+  slots: Pf2eSlotRank[]
+  /** A cleric's divine font: extra slots at the highest rank for heal or harm (p. 108). */
+  font?: { spell: string; max: number; used: number }
 }
 
 /** The choices a Pathfinder 2e hero was built from (Player Core pp. 22–27); ids are AoN ids. */
@@ -208,6 +243,12 @@ export interface Pf2eCreation {
   armor?: string
   shield?: string
   weapons: string[]
+  /** Spells picked at creation (AoN ids): cantrips, then 1st-rank spells. */
+  spells?: { cantrips: string[]; rank1: string[] }
+  /** A cleric's divine font when the deity offers both. */
+  font?: string
+  /** Focus spells and class cantrips (AoN ids); absent means the ones the features name. */
+  focus?: string[]
 }
 
 // --- Nimble ---------------------------------------------------------------

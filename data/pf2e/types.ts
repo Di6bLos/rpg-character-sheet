@@ -42,6 +42,8 @@ export interface Pf2eSubclassOption extends Pf2eRecord {
   level?: number
   /** Skills the option makes you trained in (a patron's, a rogue's racket…). */
   skills: string[]
+  /** The spell tradition it sets (a sorcerer's bloodline, a witch's patron, an eidolon). */
+  traditions: string[]
 }
 
 export interface Pf2eClassDef extends Pf2eRecord {
@@ -122,7 +124,7 @@ export interface Pf2eSpellDef extends Pf2eRecord {
   requirements?: string
   /** Heightening: `step` for "Heightened (+N)", else the listed ranks. */
   heightened?: { step?: number; ranks: number[] }
-  /** Focus spells: the classes whose focus spell it is. */
+  /** Focus spells and class cantrips (compositions, hexes): the classes they belong to. */
   classes: string[]
 }
 

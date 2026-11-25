@@ -215,6 +215,7 @@ const classes: Pf2eClassDef[] = classDocs.map((d) => {
         kind: s.type ?? '',
         ...opt('level', typeof s.level === 'number' ? s.level : undefined),
         skills: list(s.skill).length ? list(s.skill) : trainedSkills(b.text),
+        traditions: list(s.tradition),
       }
     })
   return {
@@ -322,7 +323,8 @@ const spells: Pf2eSpellDef[] = of('spell').map((d) => {
     ...(step || ranks.length
       ? { heightened: { ...opt('step', step && Number(step)), ranks } }
       : {}),
-    classes: d.spell_type === 'Focus' ? list(d.trait).filter((t) => classNames.includes(t)) : [],
+    // Focus spells and class cantrips (compositions, hexes, psi cantrips) carry their class's trait.
+    classes: d.spell_type === 'Spell' ? [] : list(d.trait).filter((t) => classNames.includes(t)),
   }
 })
 
