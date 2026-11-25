@@ -8,6 +8,7 @@ Remaster rules (ORC License; see `licensing.md`). Pages are printed page numbers
   - Start at its `README.md`. It covers 46.5k entries from every book, legacy included.
   - Topics: `rules/NN-<book>.md` holds each book's rules chapters in book order (core books first). Then `classes/<class>.md` (features, subclasses, every book's class feats, focus spells, kits), `ancestries/<ancestry>.md` (heritages, ancestry feats), `archetypes/`, `feats/`, `spells/`, `equipment/`, `creatures/`, `gm/`, `conditions.md`, `traits.md`, `actions.md`, `skills.md`.
   - Each entry shows its source and page, and is tagged **Remaster (ORC)** (Rage of Elements, Aug 2023, and later) or **Legacy (OGL)**, with the name of what replaced it.
+  - `--orc` builds the shareable set (`.local/rules/pf2e-orc/`): Remaster entries from the open rulebooks only (no Golarion setting books, nothing named for a deity or Golarion place; see `licensing.md`), legacy and setting books taken out of every source line, no deity stat lines. The build fails if any output would still cite such a book or list deities.
 - **Refreshing the data**: the data comes from the search backend 2e.aonprd.com itself uses (`https://elasticsearch.aonprd.com/aon/_search`). Page through each `category` with `sort: [{ 'id.keyword': 'asc' }]` and `search_after`, 1000 entries a request, about one request a second. Fetch from an AoN tab in Chrome, then save the gzipped JSON into `.local/pf2e/aon/` and rerun `npm run pf2e:bible`.
 - **Legacy (OGL) books** are local-only until the user decides otherwise (`licensing.md`). Golarion names (deities, nations, NPCs) are Reserved Material even in ORC books.
 
@@ -113,6 +114,6 @@ The bible's `rules/03-gm-core.md` has the full tables: Perception, saves, skills
 
 ## How the repo encodes it
 
-- **Data**: `data/pf2e/` holds the Remaster rules data generated from the AoN data (`npm run pf2e:data`; types in `data/pf2e/types.ts`, loaded with `loadPf2e`). It covers classes, ancestries, heritages, backgrounds, feats, spells, weapons, armor, shields, conditions, actions and traits. It includes ORC content only, without deity lists, with the notice in `data/pf2e/NOTICE.md`.
+- **Data**: `data/pf2e/` holds the Remaster rules data generated from the AoN data (`npm run pf2e:data`; types in `data/pf2e/types.ts`, loaded with `loadPf2e`). It covers classes, ancestries, heritages, backgrounds, feats, spells, weapons, armor, shields, conditions, actions and traits. It includes ORC content from the open rulebooks only (no Golarion setting material, see `licensing.md`), without deity lists, plus the deities under the Community Use Policy, with the notice in `data/pf2e/NOTICE.md`.
 - **Sheet**: the app still has a hand-edited sheet (`Pf2eSheet` in `types/sheets.ts`, `components/sheet/Pf2eSheet.vue`). The builder and the play engine come next (`add-game-system` checklist, `_features.md` Phase 8).
 - **Automation**: abilities and spells will use structured effect data on each feat and spell, not regexes over rules text.
