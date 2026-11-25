@@ -54,9 +54,15 @@ describe('HP through a Reconfigure', () => {
     expect(sheet.hp).toBe(sheet.hpMax - 7)
   })
 
-  it('never goes below 0 HP', () => {
-    const sheet = { hp: 0, hpMax: 10 } as Parameters<typeof keepDamage>[0]
-    keepDamage(sheet, { hp: 2, hpMax: 30 })
+  it('a conscious hero whose max drops below the damage stays up at 1 HP', () => {
+    const sheet = { hp: 35, hpMax: 35 } as Parameters<typeof keepDamage>[0]
+    keepDamage(sheet, { hp: 3, hpMax: 40 })
+    expect(sheet.hp).toBe(1)
+  })
+
+  it('a hero at 0 HP stays at 0 when the max goes up', () => {
+    const sheet = { hp: 40, hpMax: 44 } as Parameters<typeof keepDamage>[0]
+    keepDamage(sheet, { hp: 0, hpMax: 40 })
     expect(sheet.hp).toBe(0)
   })
 })

@@ -149,9 +149,17 @@ export function restoreBuild(sheet: AnySheet, built: AnySheet): void {
   sheet.levelHistory = []
 }
 
+/**
+ * Keeps the damage the hero had taken against the new max. A hero at 0 HP stays there
+ * (still Dying), and a conscious one is never dropped to 0 by a lower max.
+ */
 export function keepDamage(sheet: AnySheet, before: { hp: number; hpMax: number }): void {
+  if (before.hp <= 0) {
+    sheet.hp = 0
+    return
+  }
   const damage = Math.max(0, before.hpMax - before.hp)
-  sheet.hp = Math.max(0, sheet.hpMax - damage)
+  sheet.hp = Math.max(1, sheet.hpMax - damage)
 }
 
 function applySnapshot(sheet: AnySheet, snap: Loose) {
