@@ -2,9 +2,12 @@
 // cantrips heightened to half your level, casting from slots (prepared or spontaneous,
 // heightened into a higher slot), a cleric's divine font, focus spells and Refocus, daily
 // preparations, and the flat check for casting while stupefied (p. 446).
+import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eSheet, Pf2eSlotRank, Pf2eSpellRef, Pf2eSpellcasting } from '~/types/sheets'
-import { rollDie } from '~/utils/dice'
+import { type Rng, rollDie } from '~/utils/dice'
+import { setGiven, toggleEffect } from '~/utils/pf2eEffects'
 import { adjusted, conditionValue, proficiency } from '~/utils/pf2ePlay'
+import { type Pf2eCastRoll, castRolls, effectValue, spellRules } from '~/utils/pf2eSpellRules'
 
 /** Cantrips and focus spells heighten to half your level, rounded up (p. 298). */
 export const heightenedRank = (level: number) => Math.max(1, Math.ceil(level / 2))
@@ -22,6 +25,18 @@ export function spellNumbers(s: Pf2eSheet, sc: Pf2eSpellcasting, level: number) 
   return {
     attack: adjusted(s, base, { kind: 'attack', attr: sc.attr }),
     dc: adjusted(s, 10 + base, { kind: 'classDc', attr: sc.attr }),
+  }
+}
+
+/**
+ * Spell attack and DC for a hero without spellcasting of their own (a champion's or monk's
+ * focus spells): the class DC, and that less 10 as the attack.
+ */
+export function focusNumbers(s: Pf2eSheet) {
+  const dc = s.saves.find((x) => x.label === 'Class DC')?.value ?? 10
+  return {
+    attack: adjusted(s, dc - 10, { kind: 'attack', attr: s.keyAttr }),
+    dc: adjusted(s, dc, { kind: 'classDc', attr: s.keyAttr }),
   }
 }
 
@@ -160,4 +175,65 @@ export function setSlotMax(sc: Pf2eSpellcasting, rank: number, max: number) {
     const prepared = r.prepared ?? []
     r.prepared = Array.from({ length: r.max }, (_, i) => prepared[i] ?? { id: null, cast: false })
   }
+}
+
+/** A cast went off: a slot or point was spent and the stupefied flat check didn't disrupt it. */
+export const castWentOff = (message: string) =>
+  message.startsWith('Cast ') && !message.includes('the spell is disrupted')
+
+/** How the player casts it: the action version, a melee spell attack, the attack's MAP. */
+export interface Pf2eCastChoice {
+  actions?: number
+  melee?: boolean
+  /** 0 for the first attack this turn, 1 and 2 for the second and third (−5, −10). */
+  attackNumber?: number
+  targetAc?: number | null
+  rng?: Rng
+}
+
+const MAP = [0, 5, 10]
+
+/**
+ * Rolls what a cast spell does at the rank it went off (utils/pf2eSpellRules.ts): the spell
+ * attack (MAP counted, p. 402) or the DC its save is against, damage and healing. A spell that
+ * only ever affects the caster (Shield, Mystic Armor, Bless's emanation) turns on its effect.
+ */
+export function castEffect(
+  s: Pf2eSheet,
+  spell: Pf2eSpellDef,
+  rank: number,
+  level: number,
+  choice: Pf2eCastChoice = {},
+): Pf2eCastRoll & { selfEffect?: string } {
+  const numbers = s.spellcasting ? spellNumbers(s, s.spellcasting, level) : focusNumbers(s)
+  const map = MAP[choice.attackNumber ?? 0] ?? 0
+  const roll = castRolls(spell, {
+    rank,
+    actions: choice.actions,
+    melee: choice.melee,
+    attackBonus: numbers.attack.value - map,
+    dc: numbers.dc.value,
+    targetAc: choice.targetAc,
+    rng: choice.rng,
+  })
+  const effect = spellRules(spell).effect
+  if (!effect?.self) return roll
+  const selfEffect = effectOnSelf(s, spell, rank, level)
+  return { ...roll, text: `${roll.text} ${selfEffect}`.trim(), selfEffect }
+}
+
+/**
+ * Turns on a spell's effect for the caster (data/pf2e/effects.ts): their own toggle (Shield,
+ * Mystic Armor, the anthems), or the effect as an ally gives it (Heroism +2 at 6th rank).
+ */
+export function effectOnSelf(s: Pf2eSheet, spell: Pf2eSpellDef, rank: number, level: number) {
+  const def = spellRules(spell).effect?.def
+  if (!def) return ''
+  if (def.mode === 'toggle') {
+    if (s.effects?.on.includes(def.name)) return `${def.name} is already on.`
+    return toggleEffect(s, def.name, level)
+  }
+  const value = effectValue(spell, def, rank)
+  setGiven(s, def.name, true, value)
+  return `${def.name}${value === undefined ? '' : ` +${value}`} is on you.`
 }
