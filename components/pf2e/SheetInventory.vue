@@ -47,6 +47,13 @@ function run(message: string) {
   claim('inv', () => say(message))
 }
 
+/** A use's result shows under its row, or under the panel when the item was used up. */
+function act(i: number, use: () => string) {
+  const before = sheet.value.inventory.length
+  const message = use()
+  claim(sheet.value.inventory.length === before ? `inv:${i}` : 'inv', () => say(message))
+}
+
 // The encumbered condition follows the Bulk (Player Core p. 269).
 watch(
   () => bulk.value.encumbered,
@@ -152,13 +159,17 @@ async function castItem(i: number) {
     const list = await spellData()
     const spell = list.find((s) => s.id === st.spell!.id)
     if (!spell) return run(`${st.spell.name} isn't in the spell data.`)
-    claim(`inv:${i}`, () => say(castFromItem(sheet.value, i, spell, castOptions())))
+    act(i, () => castFromItem(sheet.value, i, spell, castOptions()))
   } catch {
     run('The spell data couldn’t load.')
   }
 }
 
 const openStaff = ref<number | null>(null)
+watch(
+  () => sheet.value.inventory.length,
+  () => (openStaff.value = null),
+)
 async function toggleStaff(i: number) {
   openStaff.value = openStaff.value === i ? null : i
   if (openStaff.value !== null) await spellData().catch(() => undefined)
@@ -191,9 +202,7 @@ function castStaff(i: number, name: string, rank: number) {
   const spell = spellNamed(name)
   if (!spell || !canEdit.value) return run(`${name} isn't in the spell data.`)
   const slotRank = staffSlot.value[`${i}:${rank}`] || undefined
-  claim(`inv:${i}`, () =>
-    say(castFromItem(sheet.value, i, spell, { ...castOptions(), rank, slotRank })),
-  )
+  act(i, () => castFromItem(sheet.value, i, spell, { ...castOptions(), rank, slotRank }))
 }
 const staffProblem = (name: string, rank: number) => {
   const spell = spellNamed(name)
@@ -225,14 +234,12 @@ async function use(i: number) {
       rank = undefined
     }
   }
-  claim(`inv:${i}`, () =>
-    say(
-      useConsumable(sheet.value, i, {
-        level: level.value,
-        targetAc: targetAc.value,
-        ...(rank ? { bombRank: rank } : {}),
-      }),
-    ),
+  act(i, () =>
+    useConsumable(sheet.value, i, {
+      level: level.value,
+      targetAc: targetAc.value,
+      ...(rank ? { bombRank: rank } : {}),
+    }),
   )
 }
 
@@ -469,9 +476,11 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
     </ul>
     <p v-if="!sheet.inventory.length" class="empty">Nothing carried yet.</p>
 
-    <div v-if="canEdit" class="row" style="gap: 8px; align-items: flex-end">
-      <button type="button" class="btn btn--sm" @click="picking = true">Add an item</button>
-      <div class="field grow" style="min-width: 140px">
+    <button v-if="canEdit" type="button" class="btn btn--sm add" @click="picking = true">
+      Add an item
+    </button>
+    <div v-if="canEdit" class="add-name">
+      <div class="field grow">
         <label for="pf-inv-name">Or by name</label>
         <input
           id="pf-inv-name"
@@ -485,7 +494,9 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
         <label for="pf-inv-bulk">Bulk</label>
         <input id="pf-inv-bulk" v-model="newBulk" class="input" maxlength="4" />
       </div>
-      <button type="button" class="btn btn--ghost btn--sm" @click="addByName">Add</button>
+      <button type="button" class="btn btn--ghost btn--sm" @click="addByName">
+        Add<span class="sr-only"> by name</span>
+      </button>
     </div>
 
     <div class="coins" role="group" aria-label="Coins">
@@ -591,6 +602,20 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.add {
+  align-self: flex-start;
+}
+
+.add-name {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+
+  .grow {
+    min-width: 0;
+  }
 }
 
 .coins {
