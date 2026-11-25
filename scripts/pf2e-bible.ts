@@ -20,10 +20,10 @@ import {
   cleanMarkdown,
   closedArchetypeFeat,
   closedArchetypes,
+  closedBooks,
   heritageAncestry,
-  legacyBooks,
   loadAon,
-  openBook,
+  located,
   orcProblems,
   page,
   remaster,
@@ -71,14 +71,8 @@ const docs = everything.filter(
       shareable(d, DEITIES) &&
       !closedArchetypeFeat(d, CLOSED_ARCHETYPES)),
 )
-/**
- * Books the ORC set leaves out wherever they're cited: legacy (OGL) books, and every book that
- * isn't an open rulebook (`OPEN_BOOKS`), whose sections AoN sometimes inlines into rulebook pages.
- */
-const CLOSED_BOOKS = legacyBooks(everything)
-for (const d of everything)
-  for (const b of [d.primary_source, ...(d.category === 'source' ? [d.name] : [])])
-    if (b && !openBook(b)) CLOSED_BOOKS.add(b.trim())
+/** Legacy and setting books, left out of the ORC set wherever they're cited. */
+const CLOSED_BOOKS = closedBooks(everything)
 const byId = new Map(docs.map((d) => [d.id, d]))
 const placed = new Set<string>()
 /** Entries already printed inside another (`<document>`), so book order doesn't repeat them. */
@@ -339,7 +333,7 @@ for (const c of classNames) {
       versatileStubs.push(h)
       continue
     }
-    const a = heritageAncestry(h.name, names)
+    const a = heritageAncestry(located(h), ancestries.map(located))
     if (!a) unmatched.push(h)
     else grouped.set(a, [...(grouped.get(a) ?? []), h])
   }

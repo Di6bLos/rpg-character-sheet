@@ -259,6 +259,18 @@ export function settingName(name: string, deities: string[]) {
 export const shareable = (d: AonDoc, deities: string[]) =>
   openBook(d.primary_source) && !settingName(d.name, deities)
 
+/**
+ * Books a shareable output leaves out wherever they're cited: legacy (OGL) books, and every
+ * book that isn't an open rulebook, whose sections AoN sometimes inlines into rulebook pages.
+ */
+export function closedBooks(docs: AonDoc[]) {
+  const books = legacyBooks(docs)
+  for (const d of docs)
+    for (const b of [d.primary_source, ...(d.category === 'source' ? [d.name] : [])])
+      if (b && !openBook(b)) books.add(b.trim())
+  return books
+}
+
 /** AoN's action names → glyphs; ranges ("Single Action to Three Actions") are built from these. */
 export const ACTIONS: Record<string, string> = {
   'Single Action': '◆',
@@ -390,7 +402,7 @@ export function cleanMarkdown(
     actionGlyph(a) ? `${sp}${actionGlyph(a)}` : '',
   )
   // AoN's own spoiler warnings ("Nethys Note: This page contains HUGE SPOILERS…") are not book text.
-  s = s.replace(/\*\*_Nethys Note:[^*]*?spoilers[^*]*?_\*\*/gi, '')
+  s = s.replace(/(?:\*\*_|_\*\*)Nethys Note:[^*]*?spoilers[^*]*?(?:_\*\*|\*\*_)/gi, '')
   s = s.replace(/<sup>\s*([^<]*?)\s*<\/sup>/g, (_, mark: string) => footnote(mark))
   s = s.replace(/<table[\s\S]*?<\/table>/g, table)
   s = s
@@ -549,25 +561,58 @@ export function withoutArchetypes(md: string, closed: Set<string>) {
     .join('\n')
 }
 
+/**
+ * Heritages whose name doesn't say their ancestry: the legacy half-elf and half-orc (full,
+ * non-ORC bible only), rat heritages, and Dijiang, a sprite heritage (Tian Xia Character
+ * Guide p. 46, beside Gandharva, Kanchil and Leungli Sprite; Sprite's Spark names it).
+ */
 const HERITAGE_ALIASES: [RegExp, string][] = [
   [/^Half-(Elf|Orc)$/, 'Human'],
   [/\bRat\b/, 'Ratfolk'],
+  [/^Dijiang$/, 'Sprite'],
 ]
 
+/** An entry's name with the book and printed page it starts on. */
+export interface Placed {
+  name: string
+  book: string
+  page: number
+}
+
+export const located = (d: AonDoc): Placed => ({
+  name: d.name,
+  book: d.primary_source ?? '',
+  page: page(d),
+})
+
+/** How far past its ancestry's first page a heritage may print and still be the ancestry's own. */
+const HERITAGE_PAGES = 6
+
 /**
- * The ancestry a heritage belongs to, from its name (AoN stores no link): an alias, then
- * the ancestry the name ends with, then one it names. `ancestries` are ancestry names.
+ * The ancestry a heritage belongs to (AoN stores no link): an alias, then the ancestry the
+ * name ends with, then one it names; failing those, the ancestry printed just before it in
+ * the same book, within a few pages (Climbing Animal → Awakened Animal, Shadow of the Smith →
+ * Wayang, House Drake → Dragonet).
  */
-export function heritageAncestry(heritage: string, ancestries: string[]) {
-  const names = [...ancestries].sort((a, b) => b.length - a.length)
-  const alias = HERITAGE_ALIASES.find(([re, a]) => re.test(heritage) && names.includes(a))
+export function heritageAncestry(heritage: Placed, ancestries: Placed[]) {
+  const names = [...new Set(ancestries.map((a) => a.name))].sort((a, b) => b.length - a.length)
+  const name = heritage.name
+  const alias = HERITAGE_ALIASES.find(([re, a]) => re.test(name) && names.includes(a))
   if (alias) return alias[1]
-  const words = heritage.split(/[\s-]+/)
-  return (
-    names.find((n) => heritage.endsWith(n)) ??
+  const words = name.split(/[\s-]+/)
+  const named =
+    names.find((n) => name.endsWith(n)) ??
     names.find((n) => words.includes(n)) ??
-    names.find((n) => heritage.includes(n))
-  )
+    names.find((n) => name.includes(n))
+  if (named) return named
+  return ancestries
+    .filter(
+      (a) =>
+        a.book === heritage.book &&
+        heritage.page >= a.page &&
+        heritage.page - a.page <= HERITAGE_PAGES,
+    )
+    .sort((a, b) => b.page - a.page)[0]?.name
 }
 
 /** Subclass types whose name doesn't start with their class's. */
@@ -579,3 +624,105 @@ const TYPE_CLASS: Record<string, string> = {
 /** The class a subclass option's type belongs to ("Bard Muse" → Bard), if any. */
 export const classOfType = (type: string | undefined, classes: string[]) =>
   TYPE_CLASS[type ?? ''] ?? classes.find((c) => (type ?? '').startsWith(`${c} `))
+
+const SKILLS = [
+  'Acrobatics',
+  'Arcana',
+  'Athletics',
+  'Crafting',
+  'Deception',
+  'Diplomacy',
+  'Intimidation',
+  'Medicine',
+  'Nature',
+  'Occultism',
+  'Performance',
+  'Religion',
+  'Society',
+  'Stealth',
+  'Survival',
+  'Thievery',
+]
+const skillsIn = (s: string) => SKILLS.filter((k) => new RegExp(`\\b${k}\\b`).test(s))
+/** Proper-named Lores ("the First World Lore skill"), not "a Lore skill of your choice". */
+const loresIn = (s: string) =>
+  [...s.matchAll(/\b((?:[A-Z][\w'-]*)(?: (?:of|[A-Z][\w'-]*))* Lore)\b/g)].map((m) => m[1]!)
+
+/** Skills and named Lores a phrase mentions, leaving out examples in brackets. */
+export const skillNamesIn = (s: string) => {
+  const plain = s.replace(/\([^)]*\)/g, '').replace(/\bLore Lore\b/g, 'Lore')
+  return [...skillsIn(plain), ...loresIn(plain)]
+}
+
+/** What a background's "You're trained in…" sentences say, for skills AoN's skill field leaves out. */
+export interface BackgroundSkillText {
+  /** Skills and named Lores it trains outright ("both the Stealth and Survival skills"). */
+  fixed: string[]
+  /** "Your choice of the Arcana, Nature, Occultism, or Religion skill"; no options = any skill. */
+  choices: { options: string[]; count: number }[]
+  /** "Your deity's associated skill" (Raised by Belief). */
+  deitySkill: boolean
+  /** Lores the player names, one entry each, in the book's words ("Lore related to…"). */
+  lores: string[]
+}
+
+/**
+ * Reads the skills a background's text trains (Player Core p. 24 backgrounds: "You're trained
+ * in…"). A choice ("your choice of either the Nature or the Occultism skill", "one of the
+ * following lore skills: …", "a skill of your choice") is kept apart from what is fixed, and
+ * examples in brackets ("such as Shelyn Lore") are ignored.
+ */
+export function backgroundSkillText(text: string): BackgroundSkillText {
+  const plain = text
+    .replace(/[*_]/g, '')
+    .replace(/[’]|''/g, "'")
+    .replace(/\bLore Lore\b/g, 'Lore')
+    .replace(/\s+/g, ' ')
+  const out: BackgroundSkillText = { fixed: [], choices: [], deitySkill: false, lores: [] }
+  const count = (w: string) => ({ one: 1, two: 2, three: 3, four: 4 })[w.toLowerCase()] ?? 1
+  for (const m of plain.matchAll(
+    /\b(?:you're|you are|you become)(?: also)? trained in ([^.]+)/gi,
+  )) {
+    let clause = m[1]!.replace(/\([^)]*\)/g, '')
+    if (/your deity's (?:associated|divine) skill/i.test(clause)) out.deitySkill = true
+    const pick = /your choice of (.+?)(?: skill\b|, as well as|, and |$)/i.exec(clause)
+    if (pick) {
+      out.choices.push({ options: skillsIn(pick[1]!), count: 1 })
+      clause = clause.replace(pick[0], ' ')
+    }
+    // "one of the following lore skills: …", "four of the following: …", "the corresponding
+    // Lore skill: …" (Elementally Infused, by its element).
+    const list =
+      /(?:\b(one|two|three|four) of the following[^:]*|the corresponding Lore skill): (.+)$/i.exec(
+        clause,
+      )
+    if (list) {
+      out.choices.push({
+        options: [...skillsIn(list[2]!), ...loresIn(list[2]!)],
+        count: count(list[1] ?? 'one'),
+      })
+      clause = clause.slice(0, list.index)
+    }
+    // "the Legal Lore or Warfare Lore skill"
+    const lore = String.raw`[A-Z][\w'-]*(?: (?:of|[A-Z][\w'-]*))* Lore`
+    const either = new RegExp(`${lore}(?: skill)?(?:,? or (?:the )?${lore}(?: skill)?)+`).exec(
+      clause,
+    )
+    if (either) {
+      out.choices.push({ options: loresIn(either[0]), count: 1 })
+      clause = clause.replace(either[0], ' ')
+    }
+    if (/\ba skill of your choice\b/i.test(clause)) out.choices.push({ options: [], count: 1 })
+    // "a Lore skill related to the settlement you came from", "two Lore skills, which you and
+    // your GM choose…"
+    const named = /\b(a|one|two|three) Lore skills?\b(.*)$/i.exec(clause)
+    if (named) {
+      const hint = `Lore${named[2]!.replace(/^,/, '')}`.replace(/\s+/g, ' ').trim()
+      for (let i = 0; i < count(named[1]!.replace(/^a$/i, 'one')); i++) out.lores.push(hint)
+      clause = clause.slice(0, named.index)
+    }
+    for (const s of [...skillsIn(clause), ...loresIn(clause)])
+      if (!out.fixed.includes(s)) out.fixed.push(s)
+  }
+  return out
+}

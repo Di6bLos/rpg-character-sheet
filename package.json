@@ -19,6 +19,7 @@
     "test": "vitest run",
     "seed:bestiary": "tsx scripts/bestiary-seed.ts",
     "pf2e:bible": "tsx scripts/pf2e-bible.ts",
+    "pf2e:data": "tsx scripts/pf2e-data.ts",
     "pf2e:pdf": "tsx scripts/pf2e-pdf.ts"
   },
   "dependencies": {
