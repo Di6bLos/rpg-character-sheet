@@ -3,6 +3,7 @@
 // feats and spells never weigh down the app bundle. Licensing: `./NOTICE.md`.
 import actionsUrl from './generated/actions.json?url'
 import ancestriesUrl from './generated/ancestries.json?url'
+import archetypesUrl from './generated/archetypes.json?url'
 import armorUrl from './generated/armor.json?url'
 import backgroundsUrl from './generated/backgrounds.json?url'
 import classesUrl from './generated/classes.json?url'
@@ -17,6 +18,7 @@ import weaponsUrl from './generated/weapons.json?url'
 import type {
   Pf2eActionDef,
   Pf2eAncestryDef,
+  Pf2eArchetypeDef,
   Pf2eArmorDef,
   Pf2eBackgroundDef,
   Pf2eClassDef,
@@ -33,6 +35,7 @@ import type {
 export interface Pf2eData {
   actions: Pf2eActionDef[]
   ancestries: Pf2eAncestryDef[]
+  archetypes: Pf2eArchetypeDef[]
   armor: Pf2eArmorDef[]
   backgrounds: Pf2eBackgroundDef[]
   classes: Pf2eClassDef[]
@@ -49,6 +52,7 @@ export interface Pf2eData {
 const URLS: Record<keyof Pf2eData, string> = {
   actions: actionsUrl,
   ancestries: ancestriesUrl,
+  archetypes: archetypesUrl,
   armor: armorUrl,
   backgrounds: backgroundsUrl,
   classes: classesUrl,
