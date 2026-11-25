@@ -14,7 +14,8 @@ import {
   STARTING_CP,
   type Pf2eBuildData,
   type Pf2eFeatSlot,
-  actionGlyph,
+  actionWords,
+  glyphWords,
   ancestryBoostPlan,
   armorRank,
   attributeMods,
@@ -404,25 +405,8 @@ function setLore(i: number, value: string) {
   lores[i] = value
   c.value.lores = Array.from(lores, (x) => x ?? '')
 }
-const ACTION_NAME: Record<string, string> = {
-  '◆': '1 action',
-  '◆◆': '2 actions',
-  '◆◆◆': '3 actions',
-  '↺': 'reaction',
-  '◇': 'free action',
-}
-/** Glyphs back to words, part by part: "◇ or ◆" → "free action or 1 action". */
-const glyphWords = (g: string) =>
-  g
-    .split(/ (to|or) /)
-    .map((p) => ACTION_NAME[p] ?? p)
-    .join(' ')
 const featMeta = (f: Pf2eFeatDef) =>
-  [
-    glyphWords(actionGlyph(f.actions)),
-    f.traits.join(', '),
-    f.prerequisites ? `Needs ${f.prerequisites}` : '',
-  ]
+  [actionWords(f.actions), f.traits.join(', '), f.prerequisites ? `Needs ${f.prerequisites}` : '']
     .filter(Boolean)
     .join(' · ')
 const featCards = computed(
@@ -516,9 +500,7 @@ watch(
   },
 )
 const spellMeta = (s: Pf2eSpellDef) =>
-  [ACTION_NAME[actionGlyph(s.actions)] ?? actionGlyph(s.actions), s.traits.join(', ')]
-    .filter(Boolean)
-    .join(' · ')
+  [actionWords(s.actions), s.traits.join(', ')].filter(Boolean).join(' · ')
 const cantripCards = computed(() =>
   data.value ? spellOptions('cantrip', c.value, data.value).map((s) => opt(s, spellMeta(s))) : [],
 )

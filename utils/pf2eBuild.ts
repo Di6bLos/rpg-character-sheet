@@ -53,7 +53,7 @@ const ATTR_BY_NAME: Record<string, Pf2eAttr> = {
   Wisdom: 'WIS',
   Charisma: 'CHA',
 }
-const ATTR_NAME = Object.fromEntries(
+export const PF2E_ATTR_NAME = Object.fromEntries(
   Object.entries(ATTR_BY_NAME).map(([name, a]) => [a, name]),
 ) as Record<Pf2eAttr, string>
 const SKILL_ATTR = new Map(PF2E_SKILLS.filter(([n]) => n !== 'Lore'))
@@ -90,6 +90,22 @@ export const actionGlyph = (a?: Pf2eActionCost) =>
         .split(/ (to|or) /)
         .map((p) => ACTION_GLYPH[p] ?? p)
         .join(' ')
+
+const ACTION_NAME: Record<string, string> = {
+  '◆': '1 action',
+  '◆◆': '2 actions',
+  '◆◆◆': '3 actions',
+  '↺': 'reaction',
+  '◇': 'free action',
+}
+/** Glyphs back to words, part by part: "◇ or ◆" → "free action or 1 action". */
+export const glyphWords = (g: string) =>
+  g
+    .split(/ (to|or) /)
+    .map((p) => ACTION_NAME[p] ?? p)
+    .join(' ')
+/** A cost in words, for screen readers and meta lines: "2 actions", "reaction". */
+export const actionWords = (a?: Pf2eActionCost) => glyphWords(actionGlyph(a))
 
 const byId = <T extends { id: string }>(list: T[], id?: string) =>
   id ? list.find((x) => x.id === id) : undefined
@@ -209,7 +225,7 @@ export function backgroundBoostSlots(b: Pf2eBackgroundDef, deity?: Pf2eDeityDef)
     const each = /^(?:It|Each boost) (?:must|has to) be to ([^.]+)/i.exec(rule)
     if (each) {
       const allowed = attrsIn(each[1]!)
-      const label = listOr(allowed.map((a) => ATTR_NAME[a]))
+      const label = listOr(allowed.map((a) => PF2E_ATTR_NAME[a]))
       return Array.from({ length: n }, () => ({ label, allowed }))
     }
     const one = /^One must be to (.+?),? and (?:the other|one) is a free/i.exec(rule)
@@ -217,7 +233,7 @@ export function backgroundBoostSlots(b: Pf2eBackgroundDef, deity?: Pf2eDeityDef)
       const what = one[1]!
       const named = attrsIn(what)
       const first: Pf2eBoostSlot = named.length
-        ? { label: listOr(named.map((a) => ATTR_NAME[a])), allowed: named }
+        ? { label: listOr(named.map((a) => PF2E_ATTR_NAME[a])), allowed: named }
         : /deity/i.test(what) && deity?.attributes.length
           ? { label: `${deity.name}'s divine attribute`, allowed: deity.attributes }
           : {

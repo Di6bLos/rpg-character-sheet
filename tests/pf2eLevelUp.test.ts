@@ -334,6 +334,17 @@ describe('pf2e level-up: feats and prerequisites', () => {
     })
   })
 
+  it("reads the class's subclass options: a muse the bard didn't pick is unmet", () => {
+    const bard = buildPf2eSheet(autoCreation(cls('Bard'), data, 'Acolyte', ['Enigma']), data)
+    expect(featPrerequisites({ prerequisites: 'zoophonia muse' }, bard, data).unmet).toEqual([
+      'zoophonia muse',
+    ])
+    expect(featPrerequisites({ prerequisites: 'enigma muse' }, bard, data).unmet).toEqual([])
+    expect(featPrerequisites(named(data.feats, 'Double Take'), bard, data).unmet).toEqual([
+      'trickster muse',
+    ])
+  })
+
   it('offers feats of the slot and level the hero has not taken', () => {
     const options = levelFeatOptions('class', s, 2, data)
     expect(options.every((f) => f.level <= 2 && f.classes.includes('Fighter'))).toBe(true)
@@ -350,11 +361,12 @@ describe('pf2e level-up: feats and prerequisites', () => {
         s,
       ),
     ).toEqual([
-      'Choose 4 attribute boosts',
-      'Choose fighter weapon mastery: weapon group',
-      'Choose a ancestry feat',
-      'Choose the skill increase',
+      { section: 'boosts', text: 'Choose 4 attribute boosts' },
+      { section: 'choice:group:Fighter Weapon Mastery', text: 'Choose a weapon group' },
+      { section: 'feat:ancestry', text: 'Choose an ancestry feat' },
+      { section: 'skills', text: 'Choose the skill increase' },
     ])
+    expect(plan.choices[0]!.feature?.name).toBe('Fighter Weapon Mastery')
     const picks = autoLevelPicks(s, 5, data, BOOSTS)
     expect(pf2eLevelProblems(pf2eLevelPlan(s, 5, data, picks)!, picks, s)).toEqual([])
   })

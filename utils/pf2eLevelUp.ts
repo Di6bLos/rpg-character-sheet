@@ -494,6 +494,15 @@ export function featPrerequisites(
     names.add(norm(x.name))
     names.add(norm(`${x.name} ${x.type}`))
   }
+  // The class's subclass options by name and kind ("zoophonia muse", "leaf order"): one the
+  // hero didn't pick is unmet.
+  const cls = data?.classes.find((c) => c.slug === sheet.classSlug)
+  const options = new Set(
+    (cls?.subclasses ?? []).flatMap((o) => [
+      norm(`${o.name} ${shortKind(cls!, o.kind)}`),
+      norm(`${o.name} ${shortKind(cls!, o.kind).split(' ').at(-1)}`),
+    ]),
+  )
   const check = (alt: string): boolean | null => {
     const a = plain(alt)
       .replace(/^(?:a|an|the) /i, '')
@@ -513,6 +522,7 @@ export function featPrerequisites(
     const attr = /^(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) \+(\d)$/i.exec(a)
     if (attr) return sheet.attrs[ATTR_BY_NAME[attr[1]!.toLowerCase()]!] >= Number(attr[2])
     if (names.has(norm(a))) return true
+    if (options.has(norm(a))) return false
     return data && knownNames(data).has(norm(a)) ? false : null
   }
   for (const clause of f.prerequisites.split(/;\s*/)) {
@@ -543,6 +553,8 @@ export interface Pf2eSpellPick {
 export interface Pf2eChoicePlan {
   key: string
   label: string
+  /** The class feature that asks for it, shown above the options. */
+  feature?: { name: string; text: string }
   options: { id: string; name: string; text?: string }[]
   count: number
 }
@@ -751,7 +763,8 @@ export function pf2eLevelPlan(
       handled.add(f.name)
       choices.push({
         key: `group:${f.name}`,
-        label: `${f.name}: weapon group`,
+        label: 'Weapon group',
+        feature: { name: f.name, text: f.text },
         options: groups.map((g) => ({ id: g, name: g })),
         count: 1,
       })
@@ -772,7 +785,8 @@ export function pf2eLevelPlan(
           : [...SAVES]
       choices.push({
         key: `save:${f.name}`,
-        label: `${f.name}: saving throw`,
+        label: 'Saving throw',
+        feature: { name: f.name, text: f.text },
         options: options.map((x) => ({ id: x, name: x })),
         count: 1,
       })
@@ -803,17 +817,24 @@ export function pf2eLevelPlan(
           .find((x) => x.m && !/\beither\b/i.test(x.f.text))
     let options: Pf2eSubclassOption[] = []
     let count = 1
+    let feature: Pf2eChoicePlan['feature']
     if (later?.kind === kind) {
       const table = cls.features.find((f) => f.name === later.table)?.text ?? ''
       count = tableCount(table, level) - tableCount(table, level - 1)
       if (count > 0)
         options = cls.subclasses.filter((s) => s.kind === kind && (s.level ?? 1) <= level)
-    } else if (levelled)
+    } else if (levelled) {
       options = cls.subclasses.filter((s) => s.kind === kind && s.level === level)
-    else if (named) {
+      const f = realFeatures(cls, level).find((x) => norm(x.name) === short)
+      if (f && options.length) {
+        handled.add(f.name)
+        feature = { name: f.name, text: f.text }
+      }
+    } else if (named) {
       options = cls.subclasses.filter((s) => s.kind === kind)
       count = WORD_COUNT[named.m![1]?.toLowerCase() ?? ''] ?? 1
       handled.add(named.f.name)
+      feature = { name: named.f.name, text: named.f.text }
     }
     options = options.filter((o) => !known.has(o.id))
     if (options.length && count > 0)
@@ -822,6 +843,7 @@ export function pf2eLevelPlan(
         label: short.replace(/^\w/, (x) => x.toUpperCase()),
         options: options.map((o) => ({ id: o.id, name: o.name, text: o.text })),
         count,
+        ...(feature ? { feature } : {}),
       })
   }
 
@@ -1008,45 +1030,65 @@ function raiseSkills(
 /** Highest skill rank a skill increase can reach at a level (Player Core p. 29). */
 export const skillCap = (level: number): Pf2eRank => (level >= 15 ? 'L' : level >= 7 ? 'M' : 'E')
 
+/** "a" or "an" before a word (Player Core's feat names start with either). */
+const article = (word: string) => (/^[aeiou]/i.test(word) ? 'an' : 'a')
+
+/** One thing a level-up still needs, with the dialog section that asks for it. */
+export interface Pf2eLevelProblem {
+  /** `boosts`, `choice:<key>`, `feat:<key>`, `skills` or `spells:<key>`. */
+  section: string
+  text: string
+}
+
 /** What the picks still need, in the order the dialog shows them. */
 export function pf2eLevelProblems(
   plan: Pf2eLevelPlan,
   picks: Pf2eLevelInput,
   sheet: Pf2eSheet,
-): string[] {
-  const out: string[] = []
+): Pf2eLevelProblem[] {
+  const out: Pf2eLevelProblem[] = []
+  const add = (section: string, text: string) => out.push({ section, text })
   if (plan.boosts) {
-    if (picks.boosts.length !== plan.boosts) out.push(`Choose ${plan.boosts} attribute boosts`)
+    if (picks.boosts.length !== plan.boosts) add('boosts', `Choose ${plan.boosts} attribute boosts`)
     else if (new Set(picks.boosts).size !== picks.boosts.length)
-      out.push('Each attribute boost must go to a different attribute')
+      add('boosts', 'Each attribute boost must go to a different attribute')
   }
-  for (const c of plan.choices)
-    if ((picks.choices[c.key] ?? []).length !== c.count)
-      out.push(
-        c.count === 1
-          ? `Choose ${c.label.toLowerCase()}`
-          : `Choose ${c.count}: ${c.label.toLowerCase()}`,
-      )
+  for (const c of plan.choices) {
+    if ((picks.choices[c.key] ?? []).length === c.count) continue
+    const what = c.label.toLowerCase()
+    add(
+      `choice:${c.key}`,
+      c.count === 1 ? `Choose ${article(what)} ${what}` : `Choose ${c.count}: ${what}`,
+    )
+  }
   for (const slot of plan.feats)
-    if (!picks.feats[slot.key]) out.push(`Choose a ${slot.label.toLowerCase()}`)
+    if (!picks.feats[slot.key]) {
+      const what = slot.label.toLowerCase()
+      add(`feat:${slot.key}`, `Choose ${article(what)} ${what}`)
+    }
   const ranks = Object.fromEntries(sheet.skills.map((s) => [s.name, s.rank]))
   const increases = picks.skills.filter(Boolean)
   if (increases.length !== plan.skillIncreases)
-    out.push(
+    add(
+      'skills',
       plan.skillIncreases === 1
         ? 'Choose the skill increase'
         : `Choose ${plan.skillIncreases} skill increases`,
     )
   const raised = raiseSkills(ranks, increases, plan.skillMax)
-  out.push(...raised.problems)
+  for (const p of raised.problems) add('skills', p)
   const trained = picks.trained ?? []
   if (trained.length !== plan.trained)
-    out.push('Choose a skill to train (your Intelligence went up)')
-  for (const s of trained) if ((raised.ranks[s] ?? 'U') !== 'U') out.push(`${s} is already trained`)
+    add('skills', 'Choose a skill to train (your Intelligence went up)')
+  for (const s of trained)
+    if ((raised.ranks[s] ?? 'U') !== 'U') add('skills', `${s} is already trained`)
   for (const sp of plan.spells) {
     const n = (picks.spells[sp.key] ?? []).length
     if (sp.optional ? n > sp.count : n !== sp.count)
-      out.push(`${sp.optional ? 'Up to' : 'Choose'} ${sp.count}: ${sp.label.toLowerCase()}`)
+      add(
+        `spells:${sp.key}`,
+        `${sp.optional ? 'Up to' : 'Choose'} ${sp.count}: ${sp.label.toLowerCase()}`,
+      )
   }
   return out
 }

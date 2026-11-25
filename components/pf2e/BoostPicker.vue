@@ -3,7 +3,7 @@
 // different one (Player Core p. 19). `locked` are boosts this set already gives (an ancestry's
 // listed boosts), shown on and fixed; `allowed` narrows the choice (a background's two).
 import type { Pf2eAttr } from '~/types/sheets'
-import { PF2E_ATTRS } from '~/utils/pf2eBuild'
+import { PF2E_ATTRS, PF2E_ATTR_NAME } from '~/utils/pf2eBuild'
 
 const props = withDefaults(
   defineProps<{
@@ -15,8 +15,14 @@ const props = withDefaults(
     taken?: Pf2eAttr[]
     /** Where the locked boosts come from, said on the chip: "from ancestry". */
     lockedLabel?: string
+    /** Current modifiers, named on each button for screen readers ("Strength, now +4"). */
+    values?: Partial<Record<Pf2eAttr, number>>
+    /** Attributes holding a partial boost. */
+    partial?: Pf2eAttr[]
   }>(),
   {
+    values: () => ({}),
+    partial: () => [],
     allowed: () => PF2E_ATTRS,
     locked: () => [],
     taken: () => [],
@@ -31,6 +37,20 @@ function toggle(a: Pf2eAttr) {
   // A single boost moves on the next click instead of needing a clear first.
   else if (props.count === 1) model.value = [a]
   else if (model.value.length < props.count) model.value = [...model.value, a]
+}
+
+const signed = (n: number) => (n >= 0 ? `+${n}` : String(n))
+/** The button's name: the attribute in full, its value now, a partial boost it holds. */
+function spoken(a: Pf2eAttr) {
+  const v = props.values[a]
+  return [
+    PF2E_ATTR_NAME[a],
+    v === undefined ? '' : `now ${signed(v)}`,
+    props.partial.includes(a) ? 'has a partial boost' : '',
+    props.locked.includes(a) ? props.lockedLabel : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
 }
 
 const blocked = (a: Pf2eAttr) =>
@@ -67,7 +87,8 @@ const blocked = (a: Pf2eAttr) =>
       >
         <path fill="currentColor" d="M4 7V5a4 4 0 1 1 8 0v2h1v8H3V7h1Zm2 0h4V5a2 2 0 1 0-4 0v2Z" />
       </svg>
-      {{ a }}<span v-if="locked.includes(a)" class="sr-only">, {{ lockedLabel }}</span>
+      <span aria-hidden="true">{{ a }}</span
+      ><span class="sr-only">{{ spoken(a) }}</span>
     </button>
   </div>
 </template>

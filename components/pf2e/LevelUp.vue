@@ -4,12 +4,14 @@
 // slots), then the picks it asks for (boosts, feature choices, feats, skill increases, spells),
 // each with the builder's pieces. `previous` fills in a level's recorded picks (Reconfigure).
 import { type Pf2eData, loadPf2e } from '~/data/pf2e'
-import type { Pf2eFeatDef, Pf2eSpellDef } from '~/data/pf2e/types'
+import type { Pf2eActionCost, Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eAttr, Pf2eLevelInput, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { loreHtml } from '~/utils/loreText'
-import { PF2E_ATTRS, type Pf2eBuildData, actionGlyph } from '~/utils/pf2eBuild'
+import { PF2E_ATTRS, type Pf2eBuildData, actionGlyph, actionWords } from '~/utils/pf2eBuild'
 import {
   RANK_NAME,
+  type Pf2eLevelProblem,
+  type Pf2eSpellPick,
   applyPf2eLevel,
   emptyLevelInput,
   featPrerequisites,
@@ -62,8 +64,10 @@ const picks = ref<Pf2eLevelInput>(
 const plan = computed(() =>
   data.value ? pf2eLevelPlan(sheet.value, level.value, data.value, picks.value) : null,
 )
-const problems = computed(() =>
-  plan.value ? pf2eLevelProblems(plan.value, picks.value, sheet.value) : ['Loading the rules'],
+const problems = computed<Pf2eLevelProblem[]>(() =>
+  plan.value
+    ? pf2eLevelProblems(plan.value, picks.value, sheet.value)
+    : [{ section: '', text: 'Loading the rules' }],
 )
 
 /** The sheet after this level's boosts and skill increases, for feat prerequisites. */
@@ -76,7 +80,7 @@ const projected = computed(() => {
 
 const sign = (n: number) => (n >= 0 ? `+${n}` : String(n))
 const option = (
-  r: { id: string; name: string; text?: string; rarity?: string },
+  r: { id: string; name: string; text?: string; rarity?: string; actions?: Pf2eActionCost },
   meta?: string,
   disabled?: string,
 ): Pf2eOption => ({
@@ -85,19 +89,56 @@ const option = (
   ...(meta ? { meta } : {}),
   ...(r.text ? { text: r.text } : {}),
   ...(r.rarity ? { rarity: r.rarity } : {}),
+  ...(r.actions !== undefined
+    ? { actions: actionGlyph(r.actions), actionsLabel: actionWords(r.actions) }
+    : {}),
   ...(disabled ? { disabled } : {}),
 })
 
+// --- Sections ----------------------------------------------------------------------
+/** Each pick section's element id, from its problem key ("feat:class" → "pf-sec-feat-class"). */
+const sectionId = (key: string) => `pf-sec-${key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+const sections = computed(() => {
+  const p = plan.value
+  if (!p) return []
+  return [
+    ...(p.boosts ? [{ key: 'boosts', title: 'Attribute boosts' }] : []),
+    ...p.choices.map((c) => ({ key: `choice:${c.key}`, title: c.label })),
+    ...p.feats.map((f) => ({ key: `feat:${f.key}`, title: f.label })),
+    ...(p.skillIncreases || p.trained ? [{ key: 'skills', title: 'Skills' }] : []),
+    ...p.spells.map((sp) => ({ key: `spells:${sp.key}`, title: sp.label })),
+  ].map((x) => ({
+    ...x,
+    id: sectionId(x.key),
+    done: !problems.value.some((q) => q.section === x.key),
+  }))
+})
+const progress = computed(() => ({
+  done: sections.value.filter((x) => x.done).length,
+  total: sections.value.length,
+}))
+const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Scrolls to a pick section and moves focus to its heading. */
+function jump(key: string) {
+  const id = sectionId(key)
+  document.getElementById(id)?.scrollIntoView({
+    block: 'start',
+    behavior: reduceMotion() ? 'auto' : 'smooth',
+  })
+  document.getElementById(`${id}-h`)?.focus({ preventScroll: true })
+}
+
+/** Features shown with their choice ("Fighter Weapon Mastery" above the weapon groups). */
+const choiceFeatures = computed(
+  () => new Set((plan.value?.choices ?? []).flatMap((c) => (c.feature ? [c.feature.name] : []))),
+)
+const gains = computed(() =>
+  (plan.value?.features ?? []).filter(
+    (f) => f.from !== sheet.value.class || !choiceFeatures.value.has(f.name),
+  ),
+)
+
 // --- Feats ------------------------------------------------------------------------
-const featMeta = (f: Pf2eFeatDef) =>
-  [
-    `Level ${f.level}`,
-    actionGlyph(f.actions),
-    f.traits.join(', '),
-    f.prerequisites ? `Needs ${f.prerequisites}` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ')
 const featCards = computed(() => {
   const d = data.value
   const p = plan.value
@@ -108,18 +149,26 @@ const featCards = computed(() => {
         .filter(([k]) => k !== slot.key)
         .map(([, id]) => id)
       const cards = levelFeatOptions(slot.kind, sheet.value, level.value, d).map((f) => {
-        const { unmet } = featPrerequisites(f, projected.value, d)
+        const { unmet, unknown } = featPrerequisites(f, projected.value, d)
         const why = others.includes(f.id)
           ? 'Picked for another slot'
           : unmet.length
             ? `Needs ${unmet.join('; ')}`
             : undefined
-        return option(f, featMeta(f), why)
+        const meta = [
+          `Level ${f.level}`,
+          f.traits.join(', '),
+          unknown.length ? `Ask your GM: ${unknown.join('; ')}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+        return { card: option(f, meta, why), level: f.level }
       })
       // Feats the hero can take first, the newest first.
-      const lvl = (o: Pf2eOption) => Number(/^Level (\d+)/.exec(o.meta ?? '')?.[1] ?? 0)
-      cards.sort((a, b) => Number(!!a.disabled) - Number(!!b.disabled) || lvl(b) - lvl(a))
-      return [slot.key, cards]
+      cards.sort(
+        (a, b) => Number(!!a.card.disabled) - Number(!!b.card.disabled) || b.level - a.level,
+      )
+      return [slot.key, cards.map((c) => c.card)]
     }),
   ) as Record<string, Pf2eOption[]>
 })
@@ -130,14 +179,21 @@ function setFeat(key: string, ids: string[]) {
   else delete feats[key]
   picks.value.feats = feats
 }
+const FEAT_HELP: Record<string, (lvl: number) => string> = {
+  class: (lvl) => `Any ${sheet.value.class.toLowerCase()} feat of level ${lvl} or lower.`,
+  ancestry: (lvl) =>
+    `Any ${sheet.value.lineage.toLowerCase()} or heritage feat of level ${lvl} or lower.`,
+  skill: (lvl) =>
+    `Any skill feat of level ${lvl} or lower; you need the rank its prerequisites name.`,
+  general: (lvl) => `Any general feat, skill feats included, of level ${lvl} or lower.`,
+}
 
 // --- Choices and spells -------------------------------------------------------------
 const listPick = (where: 'choices' | 'spells', key: string) => picks.value[where][key] ?? []
 function setList(where: 'choices' | 'spells', key: string, ids: string[]) {
   picks.value[where] = { ...picks.value[where], [key]: ids }
 }
-const spellMeta = (s: Pf2eSpellDef) =>
-  [`Rank ${s.rank}`, actionGlyph(s.actions), s.traits.join(', ')].filter(Boolean).join(' · ')
+const spellMeta = (s: Pf2eSpellDef) => [`Rank ${s.rank}`, s.traits.join(', ')].join(' · ')
 const spellCards = computed(() => {
   const d = data.value
   if (!d || !plan.value) return {}
@@ -149,12 +205,20 @@ const spellCards = computed(() => {
       return [
         p.key,
         levelSpellOptions(p, sheet.value, d).map((s) =>
-          option(s, spellMeta(s), elsewhere.includes(s.id) ? 'Picked above' : undefined),
+          option(s, spellMeta(s), elsewhere.includes(s.id) ? 'Picked for another rank' : undefined),
         ),
       ]
     }),
   ) as Record<string, Pf2eOption[]>
 })
+function spellHelp(sp: Pf2eSpellPick) {
+  if (sp.cantrip) return `Add ${sp.count} cantrip${sp.count === 1 ? '' : 's'}.`
+  if (sp.optional)
+    return `Optional: you prepare from your whole list. These are the spells the sheet offers for your rank ${sp.rank} slots.`
+  if (sp.learnAt)
+    return `Add ${sp.count} to your repertoire at rank ${sp.rank}: a rank ${sp.rank} spell, or a lower-rank one to cast heightened.`
+  return `Add ${sp.count} spells of rank ${sp.rank} or lower.`
+}
 
 // Choices that no longer apply (a different boost changed the plan) are dropped.
 watch(
@@ -174,15 +238,26 @@ const boosts = computed({
   set: (v: Pf2eAttr[]) => (picks.value.boosts = v),
 })
 const partialNow = computed(() => sheet.value.partialBoosts ?? [])
-const boostNotes = computed(() =>
-  picks.value.boosts
-    .filter((a) => sheet.value.attrs[a] >= 4)
-    .map((a) =>
-      partialNow.value.includes(a)
-        ? `${a} completes its partial boost: +${sheet.value.attrs[a]} → +${sheet.value.attrs[a] + 1}`
-        : `${a} is +${sheet.value.attrs[a]}: this is a partial boost (a second one at a later level raises it)`,
-    ),
-)
+const listAnd = (xs: string[]) =>
+  xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : (xs[0] ?? '')
+/** What a boost does to each attribute: +1, a partial boost at +4 or more, or completing one. */
+const boostHelp = computed(() => {
+  const high = PF2E_ATTRS.filter(
+    (a) => sheet.value.attrs[a] >= 4 && !partialNow.value.includes(a),
+  ).map((a) => `${a} (${sign(sheet.value.attrs[a])})`)
+  const completes = partialNow.value.map((a) => `${a}`)
+  return [
+    'Pick four different attributes; each goes up by 1.',
+    high.length
+      ? `${listAnd(high)} ${high.length === 1 ? 'is' : 'are'} at +4 or more: a boost there is only a partial boost, and a second one at a later level raises it.`
+      : '',
+    completes.length
+      ? `${listAnd(completes)} already ${completes.length === 1 ? 'has' : 'have'} a partial boost: boosting it now raises it by 1.`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+})
 
 // --- Skills -------------------------------------------------------------------------
 const RANKS: Pf2eRank[] = ['U', 'T', 'E', 'M', 'L']
@@ -222,12 +297,17 @@ function setSkill(i: number, value: string) {
 }
 const untrained = computed(() => {
   const ranks = ranksBefore(picks.value.skills.length)
-
   return sheet.value.skills.filter((s) => s.name !== 'Lore' && (ranks[s.name] ?? 'U') === 'U')
 })
 function setTrained(value: string) {
   picks.value.trained = value ? [value] : []
 }
+const skillHelp = computed(() => {
+  const steps = ['untrained', 'trained', 'expert']
+  if (level.value >= 7) steps.push('master')
+  if (level.value >= 15) steps.push('legendary')
+  return `Each increase raises one skill a step: ${steps.join(' → ')}.`
+})
 
 const rankWord = (r: Pf2eRank) => RANK_NAME[r]
 
@@ -238,8 +318,7 @@ function commit() {
   return true
 }
 
-defineExpose({ problems, commit })
-const attrs = PF2E_ATTRS
+defineExpose({ problems, progress, commit, jump })
 </script>
 
 <template>
@@ -249,7 +328,6 @@ const attrs = PF2E_ATTRS
     <section class="step-block" aria-labelledby="pf-grants">
       <div class="step-head">
         <h3 id="pf-grants">New at level {{ level }}</h3>
-        <span class="small muted">{{ sheet.class }}</span>
       </div>
       <dl class="facts">
         <div>
@@ -296,8 +374,8 @@ const attrs = PF2E_ATTRS
           <dd>{{ plan.focus.map((s) => s.name).join(', ') }}</dd>
         </div>
       </dl>
-      <div v-if="plan.features.length" class="gains">
-        <details v-for="f in plan.features" :key="f.from + f.name" class="gain-card">
+      <div v-if="gains.length" class="gains">
+        <details v-for="f in gains" :key="f.from + f.name" class="gain-card">
           <summary>
             <strong>{{ f.name }}</strong>
             <small>{{ f.from }}</small>
@@ -311,62 +389,95 @@ const attrs = PF2E_ATTRS
       </ul>
     </section>
 
-    <section v-if="plan.boosts" class="step-block" aria-labelledby="pf-boosts">
-      <div class="step-head">
-        <h3 id="pf-boosts">Attribute boosts</h3>
-        <span class="small muted">
-          Now
-          <template v-for="(a, i) in attrs" :key="a"
-            >{{ i ? ' · ' : '' }}{{ a }} {{ sign(sheet.attrs[a])
-            }}{{ partialNow.includes(a) ? ' (partial)' : '' }}</template
-          >
-        </span>
-      </div>
-      <Pf2eBoostPicker v-model="boosts" label="Four boosts" :count="plan.boosts" />
-      <ul v-if="boostNotes.length" class="notes">
-        <li v-for="n in boostNotes" :key="n">{{ n }}</li>
-      </ul>
+    <nav v-if="sections.length > 1" class="jumps" aria-label="Choices at this level">
+      <button
+        v-for="x in sections"
+        :key="x.key"
+        type="button"
+        class="chip jump"
+        :class="{ 'is-done': x.done }"
+        @click="jump(x.key)"
+      >
+        <span v-if="x.done" aria-hidden="true">✓</span>{{ x.title
+        }}<span class="sr-only">{{ x.done ? ', chosen' : ', still to choose' }}</span>
+      </button>
+    </nav>
+
+    <section
+      v-if="plan.boosts"
+      :id="sectionId('boosts')"
+      class="step-block"
+      :aria-labelledby="`${sectionId('boosts')}-h`"
+    >
+      <h3 :id="`${sectionId('boosts')}-h`" tabindex="-1">Attribute boosts</h3>
+      <p class="help">{{ boostHelp }}</p>
+      <Pf2eBoostPicker
+        v-model="boosts"
+        label="Four boosts"
+        :count="plan.boosts"
+        :values="sheet.attrs"
+        :partial="partialNow"
+      />
     </section>
 
-    <section v-for="c in plan.choices" :key="c.key" class="step-block" :aria-label="c.label">
-      <div class="step-head">
-        <h3>{{ c.label }}</h3>
-        <span class="small muted">{{ c.count > 1 ? `Choose ${c.count}` : 'Choose one' }}</span>
-      </div>
+    <section
+      v-for="c in plan.choices"
+      :id="sectionId(`choice:${c.key}`)"
+      :key="c.key"
+      class="step-block"
+      :aria-labelledby="`${sectionId(`choice:${c.key}`)}-h`"
+    >
+      <h3 :id="`${sectionId(`choice:${c.key}`)}-h`" tabindex="-1">{{ c.label }}</h3>
+      <p class="help">
+        {{ c.count > 1 ? `Choose ${c.count}.` : 'Choose one.' }}
+        <template v-if="c.feature">From {{ c.feature.name }}, new at this level.</template>
+      </p>
+      <details v-if="c.feature" class="gain-card" open>
+        <summary>
+          <strong>{{ c.feature.name }}</strong>
+          <small>{{ sheet.class }}</small>
+        </summary>
+        <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+        <div class="gain-card__body" v-html="loreHtml(c.feature.text)" />
+      </details>
       <Pf2eOptionCards
         :model-value="listPick('choices', c.key)"
         :options="c.options.map((o) => option(o))"
         :label="c.label"
-        @update:model-value="setList('choices', c.key, $event)"
         :multiple="c.count > 1"
         :max="c.count"
+        :compact="c.options.length > 12"
+        @update:model-value="setList('choices', c.key, $event)"
       />
     </section>
 
-    <section v-for="slot in plan.feats" :key="slot.key" class="step-block" :aria-label="slot.label">
-      <div class="step-head">
-        <h3>{{ slot.label }}</h3>
-        <span class="small muted">Level {{ level }} or lower</span>
-      </div>
+    <section
+      v-for="slot in plan.feats"
+      :id="sectionId(`feat:${slot.key}`)"
+      :key="slot.key"
+      class="step-block"
+      :aria-labelledby="`${sectionId(`feat:${slot.key}`)}-h`"
+    >
+      <h3 :id="`${sectionId(`feat:${slot.key}`)}-h`" tabindex="-1">{{ slot.label }}</h3>
+      <p class="help">{{ FEAT_HELP[slot.kind]?.(level) }}</p>
       <Pf2eOptionCards
         :model-value="featPick(slot.key)"
         :options="featCards[slot.key] ?? []"
         :label="`${slot.label}s`"
+        compact
+        hide-unavailable
         @update:model-value="setFeat(slot.key, $event)"
       />
     </section>
 
     <section
       v-if="plan.skillIncreases || plan.trained"
+      :id="sectionId('skills')"
       class="step-block"
-      aria-labelledby="pf-skills"
+      :aria-labelledby="`${sectionId('skills')}-h`"
     >
-      <div class="step-head">
-        <h3 id="pf-skills">Skills</h3>
-        <span class="small muted"
-          >Up to {{ rankWord(plan.skillMax).toLowerCase() }} at this level</span
-        >
-      </div>
+      <h3 :id="`${sectionId('skills')}-h`" tabindex="-1">Skills</h3>
+      <p class="help">{{ skillHelp }}</p>
       <div class="skill-picks">
         <div v-for="i in plan.skillIncreases" :key="`inc-${i}`" class="field">
           <label :for="`pf-inc-${i}`"
@@ -404,27 +515,29 @@ const attrs = PF2E_ATTRS
       </div>
     </section>
 
-    <section v-for="sp in plan.spells" :key="sp.key" class="step-block" :aria-label="sp.label">
-      <div class="step-head">
-        <h3>{{ sp.label }}</h3>
-        <span class="small muted">
-          {{ (picks.spells[sp.key] ?? []).length }} / {{ sp.count
-          }}{{ sp.optional ? ' · optional: you prepare from your whole list' : '' }}
-        </span>
-      </div>
+    <section
+      v-for="sp in plan.spells"
+      :id="sectionId(`spells:${sp.key}`)"
+      :key="sp.key"
+      class="step-block"
+      :aria-labelledby="`${sectionId(`spells:${sp.key}`)}-h`"
+    >
+      <h3 :id="`${sectionId(`spells:${sp.key}`)}-h`" tabindex="-1">
+        {{ sp.label }}
+        <span class="count">{{ (picks.spells[sp.key] ?? []).length }} / {{ sp.count }}</span>
+      </h3>
+      <p class="help">{{ spellHelp(sp) }}</p>
       <Pf2eOptionCards
         :model-value="listPick('spells', sp.key)"
         :options="spellCards[sp.key] ?? []"
         :label="sp.label"
-        @update:model-value="setList('spells', sp.key, $event)"
         :multiple="sp.count > 1"
         :max="sp.count"
+        compact
+        hide-unavailable
+        @update:model-value="setList('spells', sp.key, $event)"
       />
     </section>
-
-    <p v-if="problems.length" class="todo" :class="{ err: showErrors }" aria-live="polite">
-      Still to choose: {{ problems.join(' · ') }}
-    </p>
   </template>
 </template>
 
@@ -432,8 +545,9 @@ const attrs = PF2E_ATTRS
 .step-block {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
+  scroll-margin-top: 8px;
 
   h3 {
     font-family: var(--font-body);
@@ -442,6 +556,15 @@ const attrs = PF2E_ATTRS
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--accent-text);
+
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
   }
 }
 
@@ -451,6 +574,39 @@ const attrs = PF2E_ATTRS
   align-items: baseline;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.help {
+  margin: -4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--page-soft);
+}
+
+.count {
+  margin-left: 6px;
+  letter-spacing: 0;
+  color: var(--page-soft);
+}
+
+.jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.jump {
+  min-height: 36px;
+  gap: 6px;
+  cursor: pointer;
+
+  &.is-done {
+    border-color: var(--accent);
+  }
+
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
 }
 
 .facts {
@@ -531,11 +687,6 @@ const attrs = PF2E_ATTRS
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 12px;
-}
-
-.todo {
-  font-size: 14px;
-  color: var(--page-soft);
 }
 
 .err {

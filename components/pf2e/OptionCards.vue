@@ -2,7 +2,8 @@
 // A grid of PF2e options to pick one (pressed toggle buttons) or several (checkbox) of: a search
 // box for long lists, uncommon and rare options hidden until asked for, and each option's rules
 // text behind a disclosure. Shows the first 60 matches, plus the picked ones wherever they are;
-// the rest on request.
+// the rest on request. `compact` keeps each card to its name line (the level-up dialog);
+// `hideUnavailable` adds a switch, on by default, that hides options that can't be picked.
 import { loreHtml } from '~/utils/loreText'
 
 export interface Pf2eOption {
@@ -13,6 +14,9 @@ export interface Pf2eOption {
   /** Rules text (markdown); its first lines are the card's summary. */
   text?: string
   rarity?: string
+  /** Its action cost as glyphs (◆◆), named for screen readers by `actionsLabel`. */
+  actions?: string
+  actionsLabel?: string
   /** Why it can't be picked right now. */
   disabled?: string
   /** What the rules data leaves out, to add on the sheet (a druidic order's mechanics). */
@@ -25,26 +29,32 @@ const props = withDefaults(
     label: string
     multiple?: boolean
     max?: number
-    /** Show the search box; on by default for more than 12 options. */
+    /** Show the search box; on by default for more than 24 options. */
     search?: boolean
+    compact?: boolean
+    hideUnavailable?: boolean
   }>(),
-  { multiple: false, max: Infinity, search: undefined },
+  { multiple: false, max: Infinity, search: undefined, compact: false, hideUnavailable: false },
 )
 const model = defineModel<string[]>({ required: true })
 
 const PAGE = 60
 const query = ref('')
 const showRare = ref(false)
+const hideOff = ref(true)
 const shown = ref(PAGE)
 
 const hasRare = computed(() => props.options.some((o) => o.rarity && o.rarity !== 'common'))
-const searchable = computed(() => props.search ?? props.options.length > 12)
+const searchable = computed(() => props.search ?? props.options.length > 24)
+const unavailable = computed(() => props.options.filter((o) => o.disabled).length)
+const hiding = computed(() => props.hideUnavailable && hideOff.value)
 const matches = computed(() => {
   const q = query.value.trim().toLowerCase()
   return props.options.filter(
     (o) =>
       model.value.includes(o.id) ||
-      ((showRare.value || !o.rarity || o.rarity === 'common') &&
+      (!(hiding.value && o.disabled) &&
+        (showRare.value || !o.rarity || o.rarity === 'common') &&
         (!q || o.name.toLowerCase().includes(q) || o.meta?.toLowerCase().includes(q))),
   )
 })
@@ -54,7 +64,7 @@ const visible = computed(() => {
   const later = matches.value.slice(shown.value).filter((o) => model.value.includes(o.id))
   return [...page, ...later]
 })
-watch(query, () => (shown.value = PAGE))
+watch([query, hideOff, showRare], () => (shown.value = PAGE))
 
 /** The first paragraph of rules text as plain words, cut to a card's length. */
 function summary(text = '') {
@@ -90,19 +100,26 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
 
 <template>
   <div class="options">
-    <div v-if="searchable || hasRare" class="options__tools">
+    <div v-if="searchable || hasRare || (hideUnavailable && unavailable)" class="options__tools">
       <input
         v-if="searchable"
         v-model="query"
         type="search"
         class="input options__search"
-        :placeholder="`Search ${label.toLowerCase()}`"
+        placeholder="Search"
         :aria-label="`Search ${label.toLowerCase()}`"
       />
+      <UiSwitch
+        v-if="hideUnavailable && unavailable"
+        v-model="hideOff"
+        :label="`Hide unavailable (${unavailable})`"
+      />
       <UiSwitch v-if="hasRare" v-model="showRare" label="Show uncommon and rare (ask your GM)" />
-      <span class="small muted" aria-live="polite">{{ matches.length }} shown</span>
+      <span class="small muted" aria-live="polite">
+        Showing {{ Math.min(visible.length, matches.length) }} of {{ matches.length }}
+      </span>
     </div>
-    <div class="options__grid" role="group" :aria-label="label">
+    <div class="options__grid" :class="{ 'is-compact': compact }" role="group" :aria-label="label">
       <div
         v-for="o in visible"
         :key="o.id"
@@ -116,19 +133,22 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
           :aria-checked="multiple ? model.includes(o.id) : undefined"
           :aria-pressed="multiple ? undefined : model.includes(o.id)"
           :aria-disabled="(!!o.disabled || full) && !model.includes(o.id)"
-          :title="o.disabled || undefined"
           @click="pick(o)"
         >
           <span class="option__head">
             <strong>{{ o.name }}</strong>
+            <span v-if="o.actions" class="option__glyph"
+              ><span aria-hidden="true">{{ o.actions }}</span
+              ><span class="sr-only">{{ o.actionsLabel ?? o.actions }}</span></span
+            >
             <span v-if="o.rarity && o.rarity !== 'common'" class="option__rarity">{{
               o.rarity
             }}</span>
           </span>
           <span v-if="o.meta" class="option__meta">{{ o.meta }}</span>
-          <span v-if="o.gap" class="option__gap">{{ o.gap }}</span>
           <span v-if="o.disabled" class="option__why">{{ o.disabled }}</span>
-          <span v-else-if="o.text" class="option__sum">{{ summary(o.text) }}</span>
+          <span v-if="o.gap" class="option__gap">{{ o.gap }}</span>
+          <span v-if="o.text && !compact" class="option__sum">{{ summary(o.text) }}</span>
         </button>
         <details v-if="o.text" class="option__text">
           <summary>
@@ -145,9 +165,11 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
       class="btn btn--ghost btn--sm"
       @click="shown += PAGE"
     >
-      Show {{ Math.min(PAGE, matches.length - shown) }} more of {{ matches.length - shown }}
+      Show {{ Math.min(PAGE, matches.length - shown) }} more
     </button>
-    <p v-if="!matches.length" class="small muted">Nothing matches “{{ query }}”.</p>
+    <p v-if="!matches.length" class="small muted">
+      {{ query ? `Nothing matches “${query}”.` : 'Nothing you can pick right now.' }}
+    </p>
   </div>
 </template>
 
@@ -177,6 +199,9 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
 }
 
 .option {
+  // The card is panel-coloured (parchment on Cursed) even on the page: accent text in ink.
+  --accent-text: var(--accent-ink);
+
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
@@ -262,9 +287,30 @@ const full = computed(() => props.multiple && model.value.length >= props.max)
 }
 
 .option__why {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+  background: var(--danger-bg);
   color: var(--danger-text);
+}
+
+.option__glyph {
+  margin-right: auto;
+  font-size: 13px;
+  color: var(--panel-soft);
+}
+
+.is-compact {
+  .option__pick {
+    padding: 8px 12px 4px;
+    gap: 2px;
+  }
+
+  .option__text {
+    padding-bottom: 4px;
+  }
 }
 
 .option__text {
