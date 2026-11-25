@@ -8,8 +8,11 @@ import {
   heal,
   heroicRecovery,
   isDead,
+  raisedShieldBonus,
   recoveryCheck,
+  shieldBroken,
   stackMods,
+  strikeDamage,
   takeDamage,
 } from '../utils/pf2ePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
@@ -164,5 +167,76 @@ describe('pf2e damage and dying (pp. 410–411)', () => {
     heroicRecovery(s)
     expect(s).toMatchObject({ dying: 0, wounded: 1, heroPoints: 0, hp: 0 })
     expect(heroicRecovery(hero({ dying: 1, heroPoints: 0 }))).toBe('No Hero Points left.')
+  })
+
+  it('massive damage: one blow of double max HP or more kills outright (p. 412)', () => {
+    const s = hero({ tempHp: 5 })
+    const msg = takeDamage(s, 40)
+    expect(isDead(s)).toBe(true)
+    expect(s).toMatchObject({ hp: 0, tempHp: 0 })
+    expect(msg).toContain('dies instantly')
+    const t = hero()
+    takeDamage(t, 39)
+    expect(isDead(t)).toBe(false)
+    expect(t.dying).toBe(1)
+  })
+
+  it('massive damage counts what gets past Shield Block, and respects doomed', () => {
+    const s = hero({
+      shield: { name: 'Steel Shield', hardness: 5, hp: 20, hpMax: 20, bt: 10, raised: true },
+    })
+    takeDamage(s, 44, { shieldBlock: true })
+    expect(isDead(s)).toBe(false)
+    const t = hero({ doomed: 2 })
+    takeDamage(t, 40)
+    expect(t.dying).toBe(2)
+    expect(isDead(t)).toBe(true)
+  })
+
+  it('the dead are not healed and roll no recovery checks or Heroic Recovery', () => {
+    const s = hero({ hp: 0, dying: 4, wounded: 1, heroPoints: 2, conditions: ['Unconscious'] })
+    expect(heal(s, 10)).toContain('died')
+    expect(recoveryCheck(s, 20)).toContain('died')
+    expect(heroicRecovery(s)).toContain('died')
+    expect(s).toMatchObject({ hp: 0, dying: 4, wounded: 1, heroPoints: 2 })
+    expect(s.conditions).toContain('Unconscious')
+  })
+})
+
+describe('pf2e shields (Player Core pp. 269, 274)', () => {
+  const shield = (over: Partial<Pf2eSheet['shield']> = {}) => ({
+    name: 'Steel Shield',
+    hardness: 5,
+    hp: 20,
+    hpMax: 20,
+    bt: 10,
+    raised: true,
+    ...over,
+  })
+
+  it('a raised shield gives its own AC bonus, +2 when the sheet has none', () => {
+    expect(raisedShieldBonus(hero({ shield: shield({ name: 'Buckler', ac: 1 }) }))).toBe(1)
+    expect(raisedShieldBonus(hero({ shield: shield({ name: 'Fortress Shield', ac: 3 }) }))).toBe(3)
+    expect(raisedShieldBonus(hero({ shield: shield() }))).toBe(2)
+    expect(raisedShieldBonus(hero({ shield: shield({ raised: false }) }))).toBe(0)
+  })
+
+  it('is broken at or below its Broken Threshold: no AC bonus and no Shield Block', () => {
+    const s = hero({ shield: shield({ hp: 10 }) })
+    expect(shieldBroken(s)).toBe(true)
+    expect(raisedShieldBonus(s)).toBe(0)
+    const msg = takeDamage(s, 8, { shieldBlock: true })
+    expect(msg).not.toContain('blocks')
+    expect([s.shield.hp, s.hp]).toEqual([10, 12])
+    expect(shieldBroken(hero({ shield: shield({ hp: 11 }) }))).toBe(false)
+  })
+})
+
+describe('pf2e damage rolls (Player Core p. 406)', () => {
+  it('never deal less than 1, and a critical hit doubles after that', () => {
+    expect(strikeDamage(-2)).toBe(1)
+    expect(strikeDamage(0, true)).toBe(2)
+    expect(strikeDamage(7, true)).toBe(14)
+    expect(strikeDamage(7)).toBe(7)
   })
 })
