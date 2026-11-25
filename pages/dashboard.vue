@@ -54,7 +54,7 @@ const newCount = computed(() => rows.value.reduce((n, r) => n + r.unread, 0))
 
 function boardLink(campaignId: string) {
   const c = campaignOf(campaignId)
-  return `/campaigns/${campaignId}/${c?.myRole === 'gm' ? 'gm' : 'board'}/party`
+  return `/campaigns/${campaignId}/${c?.myRole === 'gm' ? 'gm' : 'board'}/battle`
 }
 
 function fromLabel(m: DashMessage) {
@@ -91,7 +91,7 @@ async function loadCampaign(campaignId: string) {
     .from('messages')
     .select('*, sender:profiles!messages_sender_id_fkey(display_name)')
     .eq('campaign_id', campaignId)
-    // Game lines (quick-action rolls) aren't news; the board chat can show them.
+    // Game lines (battle board rolls) aren't news; the board chat can show them.
     .neq('kind', 'action')
     .order('created_at', { ascending: false })
     .limit(PER_CAMPAIGN)

@@ -2,6 +2,8 @@
 //   - admin@test.local (site admin), gm@test.local, player@test.local; password in utils/devAccounts
 //   - Nimble campaign "Test Table" run by the GM, with the player's level 5 Mage "Iriel" seated
 //   - five more players (DEV_PARTY in utils/devAccounts) seated there with level 5 heroes
+//   - "Test Table 5e" (level 3 Fighter "Corin") and "Test Table PF2e" (level 3 Rogue "Mira"), each
+//     run by the GM with the player's hero seated and a Goblin campaign NPC
 // Existing rows are kept (passwords and roles are reset); `--reset` also rebuilds the heroes' sheets.
 //
 //   npm run dev:seed            # usually via `npm run dev:local`
@@ -16,6 +18,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { classBySlug } from '../data/nimble/classes'
 import { DEV_ACCOUNTS, DEV_PARTY, DEV_PASSWORD, isLocalSupabase } from '../utils/devAccounts'
 import { build, levelTo } from '../utils/nimbleAutoBuild'
+import { defaultSheet } from '../utils/sheetDefaults'
+import type { GameSystem } from '../types'
 
 export interface LocalStack {
   url: string
@@ -74,6 +78,46 @@ export async function localStack(): Promise<LocalStack | null> {
 
 const CAMPAIGN = 'Test Table'
 export const HERO = { name: 'Iriel', classSlug: 'mage', level: 5 }
+
+/** Extra campaigns for the battle board on the other systems; the player's hero is seated in each. */
+const OTHER_TABLES = [
+  {
+    name: 'Test Table 5e',
+    system: 'dnd5e',
+    hero: { name: 'Corin', level: 3, class: 'Fighter', hp: 28, hpMax: 28, ac: 16, initMod: 2 },
+  },
+  {
+    name: 'Test Table PF2e',
+    system: 'pf2e',
+    hero: { name: 'Mira', level: 3, class: 'Rogue', hp: 38, hpMax: 38, ac: 19, initMod: 3 },
+  },
+] as const satisfies readonly {
+  name: string
+  system: GameSystem
+  hero: {
+    name: string
+    level: number
+    class: string
+    hp: number
+    hpMax: number
+    ac: number
+    initMod: number
+  }
+}[]
+
+/** The sheet of a 5e or PF2e test hero: the system's defaults with the class and numbers set. */
+function otherSheet(table: (typeof OTHER_TABLES)[number]) {
+  const { hero } = table
+  const sheet = defaultSheet(table.system)
+  Object.assign(sheet, {
+    class: hero.class,
+    hp: hero.hp,
+    hpMax: hero.hpMax,
+    ac: hero.ac,
+    initMod: hero.initMod,
+  })
+  return sheet
+}
 
 /**
  * Runs `step` again (up to 5 tries, 2 s apart) while the local database is
@@ -148,8 +192,10 @@ async function seatHero(
   db: SupabaseClient,
   campaignId: string,
   userId: string,
-  hero: { name: string; classSlug: string; level: number },
+  hero: { name: string; level: number },
   reset: boolean,
+  make: () => object,
+  system: GameSystem = 'nimble',
 ) {
   const { data: found } = await db
     .from('characters')
@@ -164,9 +210,9 @@ async function seatHero(
       .insert({
         user_id: userId,
         name: hero.name,
-        system: 'nimble',
+        system,
         level: hero.level,
-        sheet: buildHero(hero),
+        sheet: make(),
       })
       .select('id')
       .single()
@@ -175,7 +221,7 @@ async function seatHero(
   } else if (reset) {
     const { error } = await db
       .from('characters')
-      .update({ level: hero.level, sheet: buildHero(hero) })
+      .update({ level: hero.level, sheet: make() })
       .eq('id', heroId)
     if (error) throw error
   }
@@ -221,15 +267,54 @@ export async function seedLocal(stack: LocalStack, opts: { reset?: boolean } = {
 
   // The player's hero, then the rest of the party.
   const reset = !!opts.reset
-  const heroId = await seatHero(db, campaign.id, player, HERO, reset)
+  const heroId = await seatHero(db, campaign.id, player, HERO, reset, () => buildHero(HERO))
   for (const member of DEV_PARTY) {
     const userId = await retrying(`Account ${member.email}`, () =>
       upsertUser(db, { ...member, key: member.handle, role: 'member' }),
     )
-    await seatHero(db, campaign.id, userId, { ...member.hero, level: HERO.level }, reset)
+    const hero = { ...member.hero, level: HERO.level }
+    await seatHero(db, campaign.id, userId, hero, reset, () => buildHero(hero))
   }
 
-  return { campaignId: campaign.id as string, heroId }
+  // The 5e and PF2e tables: found by name and system, so a re-run adds nothing.
+  const tables: { name: string; system: GameSystem; campaignId: string }[] = []
+  for (const table of OTHER_TABLES) {
+    let { data: found } = await db
+      .from('campaigns')
+      .select('id')
+      .eq('name', table.name)
+      .eq('system', table.system)
+      .eq('created_by', gm)
+      .maybeSingle()
+    if (!found) {
+      const { data, error } = await db
+        .from('campaigns')
+        .insert({ name: table.name, system: table.system, created_by: gm })
+        .select('id')
+        .single()
+      if (error) throw error
+      found = data
+    }
+    await seatHero(db, found.id, player, table.hero, reset, () => otherSheet(table), table.system)
+    const { data: npc } = await db
+      .from('campaign_npcs')
+      .select('id')
+      .eq('campaign_id', found.id)
+      .eq('name', 'Goblin')
+      .maybeSingle()
+    if (!npc) {
+      const { error } = await db.from('campaign_npcs').insert({
+        campaign_id: found.id,
+        system: table.system,
+        name: 'Goblin',
+        stat_block: { hp: 7, ac: 15, initMod: 2 },
+      })
+      if (error) throw error
+    }
+    tables.push({ name: table.name, system: table.system, campaignId: found.id as string })
+  }
+
+  return { campaignId: campaign.id as string, heroId, tables }
 }
 
 // CLI
@@ -242,13 +327,15 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       }
       return seedLocal(stack, { reset: process.argv.includes('--reset') })
     })
-    .then(({ campaignId }) => {
+    .then(({ campaignId, tables }) => {
       console.log('Seeded the local stack:')
       for (const a of DEV_ACCOUNTS)
         console.log(`  ${a.label.padEnd(7)} ${a.email} / ${DEV_PASSWORD}`)
       for (const m of DEV_PARTY)
         console.log(`  ${m.hero.name.padEnd(7)} ${m.email} / ${DEV_PASSWORD}`)
       console.log(`  Campaign "${CAMPAIGN}": /campaigns/${campaignId}/board`)
+      for (const t of tables)
+        console.log(`  Campaign "${t.name}": /campaigns/${t.campaignId}/board`)
     })
     .catch((err) => {
       console.error('Seeding failed:', err.message ?? err)

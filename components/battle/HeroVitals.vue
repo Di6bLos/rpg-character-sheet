@@ -1,14 +1,21 @@
 <script setup lang="ts">
 // A hero's vitals on the battle board: portrait and identity, HP (the GM's controls
 // send a change to the hero's own sheet through hero_hp_changes, applied there by
-// useHeroHpChanges), mana for the GM, Wounds, Armor / Speed / Init and conditions (the GM
-// adds and removes them through hero_condition_changes, applied by useHeroConditionChanges). The stats modal's
-// side and the GM's left column (a hero picked on the initiative strip) both show it.
+// useHeroHpChanges), mana for the GM, Wounds, Armor (AC off Nimble) / Speed / Init (PF2e:
+// Perception, what it rolls for Initiative) and conditions (the GM
+// adds and removes them through hero_condition_changes, applied by
+// useHeroConditionChanges). The stats modal's side and the GM's left column (a hero picked
+// on the initiative strip) both show it.
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
+// Every system's sheet applies the GM's changes with its own rules; only Nimble conditions
+// end on their own timing. Where Nimble shows the GM mana, PF2e
+// (`gmPoints`) shows hero and focus points.
 import type { HeroCard, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
+import { initiativeBonus, initiativeLabel } from '~/utils/heroCardStats'
+import { heroDown, hpTone } from '~/utils/roster'
 
 const props = defineProps<{
   characterId: string
@@ -20,12 +27,37 @@ const props = defineProps<{
 const slots = defineSlots<{ 'own-hp'?: () => unknown }>()
 
 const auth = useAuthStore()
+const features = useBattleFeatures()
+/** The GM's HP, mana and condition tools (every system: each sheet applies its own rules). */
+const controls = computed(() => props.gm)
+/** PF2e rolls Perception for Initiative; the others their Init. */
+const init = computed(() => initiativeBonus(props.card.system, props.card) ?? 0)
 
 const own = computed(() => !!props.entry && props.entry.user_id === auth.userId)
-/** The viewer's own hero, with the hero column's HP (it has Wounds too). Slots aren't reactive, so not a computed. */
+/**
+ * The viewer's own hero, with the hero column's HP (it has Wounds too). Slots aren't
+ * reactive, so not a computed.
+ */
 function ownHp(): boolean {
   return own.value && !!slots['own-hp']
 }
+/**
+ * Where Nimble shows Wounds: a downed 5e / PF2e hero's DownStatus (the death saves or
+ * PF2e's Dying value); null for Nimble and while up.
+ */
+const downSummary = computed(() => {
+  const l = props.live
+  if (!l.deathSaves && !l.pf2e) return null
+  if (!heroDown(l.hp, l.hpMax)) return null
+  return { deathSaves: l.deathSaves ?? undefined, dying: l.pf2e?.dying }
+})
+/** PF2e's Wounded value while up. */
+const wounded = computed(() => {
+  const w = props.live.pf2e?.wounded ?? 0
+  return !downSummary.value && w > 0 ? w : 0
+})
+/** The bar's band, as the hero column and HeroBasic have it. */
+const tone = computed(() => hpTone(props.live.hp, props.live.hpMax))
 const dead = computed(() => props.live.woundsMax > 0 && props.live.wounds >= props.live.woundsMax)
 
 const identity = computed(() => {
@@ -85,16 +117,20 @@ watch(
   },
 )
 
+/** What − and + send: the amount typed (1 when empty), whole and at most 999. */
+const step = computed(() => Math.min(999, Math.max(1, Math.floor(Number(amount.value) || 1))))
+
 /** − sends the amount as damage (with Crit if on), + as healing; an empty field means 1. */
 async function adjust(sign: 1 | -1) {
   const id = props.characterId
   const name = props.card.name
-  const n = Math.min(999, Math.max(1, Math.floor(Number(amount.value) || 1)))
+  const n = step.value
   const isCrit = sign < 0 && crit.value
   if (!(await send(id, name, sign * n, isCrit))) return
   amount.value = null
   crit.value = false
-  sent.value = `Sent to ${name}: ${sign < 0 ? `${n} damage${isCrit ? ' (crit)' : ''}` : `heal ${n}`}. Their sheet applies it.`
+  const what = sign < 0 ? `${n} damage${isCrit ? ' (crit)' : ''}` : `heal ${n}`
+  sent.value = `Sent to ${name}: ${what}. Their sheet applies it.`
 }
 </script>
 
@@ -121,23 +157,33 @@ async function adjust(sign: 1 | -1) {
         >
       </div>
       <div class="hc__bar" aria-hidden="true">
-        <span class="hc__fill" :style="{ width: `${pct(live.hp, live.hpMax)}%` }" />
+        <span
+          class="hc__fill"
+          :class="tone ? `hc__fill--${tone}` : undefined"
+          :style="{ width: `${pct(live.hp, live.hpMax)}%` }"
+        />
         <span
           v-if="live.tempHp"
           class="hc__fill hc__fill--temp"
           :style="{ width: `${pct(live.tempHp, live.hpMax)}%` }"
         />
       </div>
-      <p v-if="own" class="hc__hint">Change your HP in the hero column on the left.</p>
+      <p v-if="own" class="hc__hint">
+        {{
+          features.nimbleHero
+            ? 'Change your HP in the hero column on the left.'
+            : 'Change your HP on your full sheet.'
+        }}
+      </p>
     </div>
 
-    <div v-if="gm" class="hc__gm">
+    <div v-if="controls" class="hc__gm">
       <span class="hc__sect">Change HP</span>
       <div class="hc__ctl">
         <button
           type="button"
           class="step step--xs"
-          :aria-label="`${card.name}: take ${amount || 1} damage`"
+          :aria-label="`${card.name}: take ${step} damage`"
           @click="adjust(-1)"
         >
           −
@@ -156,7 +202,7 @@ async function adjust(sign: 1 | -1) {
         <button
           type="button"
           class="step step--xs"
-          :aria-label="`${card.name}: heal ${amount || 1}`"
+          :aria-label="`${card.name}: heal ${step}`"
           @click="adjust(1)"
         >
           +
@@ -175,7 +221,40 @@ async function adjust(sign: 1 | -1) {
     </div>
 
     <!-- The GM sees the hero's mana (read only: the player spends it on their sheet). -->
-    <BoardManaGauge v-if="gm && live.mana" class="hc__mana" :mana="live.mana" :name="card.name" />
+    <BoardManaGauge
+      v-if="controls && live.mana"
+      class="hc__mana"
+      :mana="live.mana"
+      :name="card.name"
+    />
+
+    <!-- PF2e: the GM sees the hero's hero and focus points (read only, like mana). -->
+    <div v-if="gm && features.gmPoints && live.pf2e" class="hc__points">
+      <div class="hc__wounds">
+        <span class="hc__sect">Hero points</span>
+        <span
+          class="hc__pips hc__pips--good"
+          role="img"
+          :aria-label="`${live.pf2e.heroPoints} of 3 hero points`"
+        >
+          <i v-for="n in 3" :key="n" :class="{ 'is-on': n <= live.pf2e.heroPoints }" />
+        </span>
+      </div>
+      <div v-if="live.pf2e.focus.max > 0" class="hc__wounds">
+        <span class="hc__sect">Focus points</span>
+        <span
+          class="hc__pips hc__pips--good"
+          role="img"
+          :aria-label="`${live.pf2e.focus.current} of ${live.pf2e.focus.max} focus points`"
+        >
+          <i
+            v-for="n in live.pf2e.focus.max"
+            :key="n"
+            :class="{ 'is-on': n <= live.pf2e.focus.current }"
+          />
+        </span>
+      </div>
+    </div>
 
     <div v-if="live.woundsMax && !ownHp()" class="hc__wounds">
       <span class="hc__sect">Wounds</span>
@@ -184,27 +263,37 @@ async function adjust(sign: 1 | -1) {
       </span>
     </div>
 
+    <BattleDownStatus v-if="downSummary && !ownHp()" :summary="downSummary" />
+    <div v-else-if="wounded && !ownHp()" class="hc__wounds">
+      <span class="hc__sect">Wounded</span>
+      <span class="hc__dying">{{ wounded }}</span>
+    </div>
+
     <div class="hc__tiles">
       <div class="hc__tile">
         <b>{{ heroArmor(card.ac, card.conditions, card.level) }}</b>
-        <span>Armor</span>
+        <span>{{ features.nimbleHero ? 'Armor' : 'AC' }}</span>
       </div>
       <div class="hc__tile">
         <b>{{ card.speed || '—' }}</b>
         <span>Speed</span>
       </div>
       <div class="hc__tile">
-        <b>{{ sign(card.initMod) }}</b>
-        <span>Init</span>
+        <b>{{ sign(init) }}</b>
+        <span>{{ initiativeLabel(card.system) }}</span>
       </div>
     </div>
 
     <BattleConditionPicker
-      v-if="gm"
+      v-if="controls"
       :name="card.name"
       :subject="characterId"
       :conditions="shownConditions"
-      :note="`Saved to ${card.name}'s sheet; it ends on its usual timing, or when you remove it.`"
+      :note="
+        features.nimbleHero
+          ? `Saved to ${card.name}'s sheet; it ends on its usual timing, or when you remove it.`
+          : `Saved to ${card.name}'s sheet until you remove it.`
+      "
       @toggle="toggleCondition"
     />
     <div v-else>
@@ -212,7 +301,7 @@ async function adjust(sign: 1 | -1) {
       <ul v-if="live.conditions.length" class="hc__chips">
         <li v-for="c in live.conditions" :key="c">{{ c }}</li>
       </ul>
-      <p v-else class="hc__none">None</p>
+      <p v-else class="hc__none">No conditions</p>
     </div>
   </div>
 </template>
@@ -291,10 +380,19 @@ async function adjust(sign: 1 | -1) {
 .hc__fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--accent);
+  background: var(--secondary);
 
+  &--accent {
+    background: var(--accent);
+  }
+
+  &--danger {
+    background: var(--danger);
+  }
+
+  // Temp HP over the right end, as on HeroBasic, apart from the three bands.
   &--temp {
-    background: var(--secondary);
+    background: var(--temp-hp);
     opacity: 0.75;
     left: auto;
     right: 0;
@@ -352,6 +450,12 @@ async function adjust(sign: 1 | -1) {
   gap: 8px;
 }
 
+.hc__dying {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--page-soft);
+}
+
 .hc__pips {
   display: inline-flex;
   gap: 4px;
@@ -367,6 +471,16 @@ async function adjust(sign: 1 | -1) {
       box-shadow: none;
     }
   }
+
+  &--good i.is-on {
+    background: var(--accent);
+  }
+}
+
+.hc__points {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .hc__tiles {

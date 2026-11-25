@@ -13,7 +13,7 @@ async function setup(role: PhoneRole, scribe = false, saved?: string) {
   const { usePhoneTab } = await import('~/composables/usePhoneTab')
   const r = ref<PhoneRole>(role)
   const s = ref(scribe)
-  return { r, s, tab: usePhoneTab(r, s) }
+  return { r, s, tab: usePhoneTab(r, s, ref(true)) }
 }
 
 beforeEach(() => {

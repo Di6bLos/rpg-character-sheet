@@ -1,18 +1,17 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
 import type { HeroHpChange } from '~/types'
-import type { NimbleSheet } from '~/types/sheets'
-import { applyHpChange, freshChanges } from '~/utils/heroHpChange'
+import { applyHpChangeFor, freshChanges } from '~/utils/heroHpChange'
 
 type Row = Pick<HeroHpChange, 'id' | 'amount' | 'crit' | 'created_at'>
 
 /**
  * Picks up HP changes the GM sent this hero (`hero_hp_changes`, from the battle
  * board's stats modal) while its sheet is open or the next time it loads, applies
- * them with the sheet's own rules and clears them. Same pattern as useHeroEffects.
+ * them with the sheet's own system's rules and clears them. Same pattern as useHeroEffects.
  */
 export function useHeroHpChanges() {
-  const { draft, canEdit, held, say } = useSheet<NimbleSheet>()
+  const { draft, canEdit, held, say } = useSheet()
   let channel: RealtimeChannel | null = null
   const taken = new Set<string>()
 
@@ -38,7 +37,8 @@ export function useHeroHpChanges() {
     const claimed = new Set((data ?? []).map((r: { id: string }) => r.id))
     for (const row of fresh) {
       if (!claimed.has(row.id)) continue
-      const message = applyHpChange(draft.value.sheet, draft.value.level, row)
+      const { system, sheet, level } = draft.value
+      const message = applyHpChangeFor(system, sheet, level, row)
       if (message) say(message)
     }
   }
@@ -63,7 +63,7 @@ export function useHeroHpChanges() {
   // Read what is waiting now, and again each time the listener is (re)connected, so a
   // change sent while joining or while disconnected isn't missed; `taken` drops repeats.
   function start() {
-    if (channel || draft.value.system !== 'nimble') return
+    if (channel) return
     const id = draft.value.id
     serial(() => catchUp(id))
     channel = supabase
