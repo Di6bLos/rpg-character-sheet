@@ -468,12 +468,20 @@ export function levelOneText(text: string) {
     .join(' ')
 }
 
-/** What "You're trained in…" lines in the 1st-level choices add: armor and weapon categories. */
+/**
+ * What "You're trained in…" lines in the 1st-level choices add: armor and weapon categories,
+ * plus saves they raise ("you have expert proficiency in Fortitude saves": a warpriest).
+ */
 function subclassTraining(picks: Pf2eSubclassOption[]) {
   const armor = new Set<string>()
   const weapons = new Set<string>()
+  const expertSaves = new Set<string>()
   let favored = false
-  for (const p of picks)
+  for (const p of picks) {
+    for (const m of levelOneText(p.text).matchAll(
+      /\bexpert proficiency in (Fortitude|Reflex|Will) saves\b/gi,
+    ))
+      expertSaves.add(m[1]!.toLowerCase())
     for (const m of levelOneText(p.text).matchAll(
       /\b(?:you're|you are|you become)(?: also)? trained in ([^.;]+)/gi,
     )) {
@@ -484,7 +492,8 @@ function subclassTraining(picks: Pf2eSubclassOption[]) {
         for (const k of ['simple', 'martial', 'advanced']) if (what.includes(k)) weapons.add(k)
       if (/favored weapon/.test(what)) favored = true
     }
-  return { armor, weapons: [...weapons], favored }
+  }
+  return { armor, weapons: [...weapons], favored, expertSaves }
 }
 
 /**
@@ -974,11 +983,11 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
   const dex = armor?.dexCap === undefined ? mods.DEX : Math.min(mods.DEX, armor.dexCap)
   const ac = 10 + dex + proficiency(acRank) + (armor?.ac ?? 0)
 
-  const save = (label: string, rank: Pf2eRank, attr: Pf2eAttr) => ({
-    label,
-    rank,
-    value: proficiency(rank) + mods[attr],
-  })
+  const expertSaves = subclassTraining(picked).expertSaves
+  const save = (label: string, classRank: Pf2eRank, attr: Pf2eAttr) => {
+    const rank = expertSaves.has(label.toLowerCase()) ? higher('E', classRank) : classRank
+    return { label, rank, value: proficiency(rank) + mods[attr] }
+  }
   const perception = proficiency(cls.perception) + mods.WIS
   const lores = trained.filter((s) => s.endsWith(' Lore'))
 

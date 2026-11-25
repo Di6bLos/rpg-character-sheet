@@ -525,11 +525,19 @@ describe('pf2e training from 1st-level choices', () => {
     expect(weaponRank(falcata, cls('Rogue'), favored)).toBe('U')
   })
 
-  it('builds a warpriest in chain mail with trained AC', () => {
+  it('builds a warpriest in chain mail with trained AC and expert Fortitude', () => {
     const c = withPicks('Cleric', { 'Cleric Doctrine': [sub('Cleric', 'Warpriest').id] })
     c.armor = named(data.armor, 'Chain Mail').id
     expect(creationProblems(c, data).gear).toEqual([])
-    expect(buildPf2eSheet(c, data).acRank).toBe('T')
+    const s = buildPf2eSheet(c, data)
+    expect(s.acRank).toBe('T')
+    const fort = s.saves.find((x) => x.label === 'Fortitude')!
+    expect(fort).toMatchObject({ rank: 'E', value: 5 + attributeMods(c, data).CON })
+    const cloistered = {
+      ...c,
+      subclasses: { 'Cleric Doctrine': [sub('Cleric', 'Cloistered Cleric').id] },
+    }
+    expect(buildPf2eSheet(cloistered, data).saves[0]!.rank).toBe('T')
   })
 })
 
