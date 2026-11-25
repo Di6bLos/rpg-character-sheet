@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NimbleLevelInput } from '~/types/sheets'
 import { classBySlug } from '~/data/nimble/classes'
-import { keepDamage, restoreLevel } from '~/utils/levelHistory'
+import { holdAndRebuild, keepDamage, restoreLevel } from '~/utils/levelHistory'
 import { applyNimbleLevel } from '~/utils/nimbleBuild'
 import { build, levelTo } from './helpers/nimble'
 
@@ -54,9 +54,49 @@ describe('HP through a Reconfigure', () => {
     expect(sheet.hp).toBe(sheet.hpMax - 7)
   })
 
-  it('never goes below 0 HP', () => {
-    const sheet = { hp: 0, hpMax: 10 } as Parameters<typeof keepDamage>[0]
-    keepDamage(sheet, { hp: 2, hpMax: 30 })
+  it('a conscious hero whose max drops below the damage stays up at 1 HP', () => {
+    const sheet = { hp: 35, hpMax: 35 } as Parameters<typeof keepDamage>[0]
+    keepDamage(sheet, { hp: 3, hpMax: 40 })
+    expect(sheet.hp).toBe(1)
+  })
+
+  it('a hero at 0 HP stays at 0 when the max goes up', () => {
+    const sheet = { hp: 40, hpMax: 44 } as Parameters<typeof keepDamage>[0]
+    keepDamage(sheet, { hp: 0, hpMax: 40 })
     expect(sheet.hp).toBe(0)
+  })
+})
+
+describe('starting a Reconfigure', () => {
+  function hero() {
+    const sheet = build(classBySlug('berserker')!)
+    levelTo(sheet, 4, 'mountainheart')
+    return { level: 4, sheet }
+  }
+
+  it('holds saves and hands back the hero as it was before the rebuild', () => {
+    const draft = hero()
+    const before = JSON.stringify(draft.sheet)
+    const held = { value: false }
+    const saved = holdAndRebuild(draft, held, (sheet) => restoreLevel(sheet, 2))
+    expect(held.value).toBe(true)
+    expect(JSON.stringify(saved.sheet)).toBe(before)
+    expect(saved.level).toBe(4)
+    expect(draft.sheet.levelHistory!.every((e) => e.level <= 2)).toBe(true)
+  })
+
+  it('a rebuild that throws releases saves and puts the hero back, then passes the error on', () => {
+    const draft = hero()
+    const before = JSON.stringify(draft.sheet)
+    const held = { value: false }
+    expect(() =>
+      holdAndRebuild(draft, held, (sheet) => {
+        restoreLevel(sheet, 2)
+        throw new Error('broken class data')
+      }),
+    ).toThrow('broken class data')
+    expect(held.value).toBe(false)
+    expect(draft.level).toBe(4)
+    expect(JSON.stringify(draft.sheet)).toBe(before)
   })
 })

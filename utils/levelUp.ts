@@ -63,6 +63,15 @@ export function hpGain(base: number, statMod: number): number {
   return Math.max(1, base + statMod)
 }
 
+/**
+ * Adds a level's hit points to max and current HP. A hero at 0 HP stays there:
+ * levelling doesn't heal the dying.
+ */
+export function addLevelHp(sheet: { hp: number; hpMax: number }, gain: number): void {
+  sheet.hpMax += gain
+  if (sheet.hp > 0) sheet.hp += gain
+}
+
 export function pointsUsed(bumps: Record<string, number>): number {
   return Object.values(bumps).reduce((a, b) => a + b, 0)
 }

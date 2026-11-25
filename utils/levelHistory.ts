@@ -153,9 +153,44 @@ export function restoreBuild(sheet: AnySheet, built: AnySheet): void {
   if (isNimble(sheet)) syncWornArmor(sheet, 1)
 }
 
+/**
+ * Starts a Reconfigure: holds the draft's saves and runs `rebuild` on its sheet. Returns
+ * the hero as it was, to put back on cancel. When `rebuild` throws, the hero is put back
+ * and saves are released before the error goes on, so a failed start never leaves
+ * autosave off.
+ */
+export function holdAndRebuild(
+  draft: { level: number; sheet: AnySheet },
+  held: { value: boolean },
+  rebuild: (sheet: AnySheet) => void,
+): { level: number; sheet: AnySheet } {
+  const saved = {
+    level: draft.level,
+    sheet: JSON.parse(JSON.stringify(draft.sheet)) as AnySheet,
+  }
+  held.value = true
+  try {
+    rebuild(draft.sheet)
+  } catch (err) {
+    draft.sheet = JSON.parse(JSON.stringify(saved.sheet)) as AnySheet
+    draft.level = saved.level
+    held.value = false
+    throw err
+  }
+  return saved
+}
+
+/**
+ * Keeps the damage the hero had taken against the new max. A hero at 0 HP stays there
+ * (still Dying), and a conscious one is never dropped to 0 by a lower max.
+ */
 export function keepDamage(sheet: AnySheet, before: { hp: number; hpMax: number }): void {
+  if (before.hp <= 0) {
+    sheet.hp = 0
+    return
+  }
   const damage = Math.max(0, before.hpMax - before.hp)
-  sheet.hp = Math.max(0, sheet.hpMax - damage)
+  sheet.hp = Math.max(1, sheet.hpMax - damage)
 }
 
 const isNimble = (s: AnySheet): s is NimbleSheet => 'stats' in s && 'abilities' in s

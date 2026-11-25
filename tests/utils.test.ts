@@ -15,7 +15,7 @@ import {
   sign,
   type ShownRoll,
 } from '../utils/dice'
-import { LEVEL_UP_RULES, averageHp, canBump, hpGain } from '../utils/levelUp'
+import { LEVEL_UP_RULES, addLevelHp, averageHp, canBump, hpGain } from '../utils/levelUp'
 import { accentVars, contrast, readableAccent, resolveAccent } from '../utils/themes'
 import { normalizeSheet } from '../utils/sheetDefaults'
 
@@ -164,6 +164,15 @@ describe('level up', () => {
   it('never gains less than 1 hit point', () => {
     expect(hpGain(6, 2)).toBe(8)
     expect(hpGain(1, -3)).toBe(1)
+  })
+
+  it('adds the gain to max and current HP, but a hero at 0 HP stays at 0', () => {
+    const up = { hp: 12, hpMax: 20 }
+    addLevelHp(up, 7)
+    expect(up).toEqual({ hp: 19, hpMax: 27 })
+    const dying = { hp: 0, hpMax: 20 }
+    addLevelHp(dying, 7)
+    expect(dying).toEqual({ hp: 0, hpMax: 27 })
   })
 
   it('limits 5e to 2 points, up to +2 in one score', () => {

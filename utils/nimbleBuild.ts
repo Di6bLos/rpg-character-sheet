@@ -40,6 +40,7 @@ import type {
 } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { recordLevel, restoreLevel } from '~/utils/levelHistory'
+import { addLevelHp } from '~/utils/levelUp'
 import { defaultSheet } from '~/utils/sheetDefaults'
 
 export const HIT_DIE_STEPS = [6, 8, 10, 12, 20]
@@ -493,10 +494,7 @@ function applyLevelDef(sheet: NimbleSheet, def: LevelDef | undefined, src: strin
     for (const a of sheet.attacks) if (a.name === from) a.name = to
   }
   if (def.hitDie) sheet.hitDie = Math.max(sheet.hitDie, def.hitDie)
-  if (def.hpBonus) {
-    sheet.hpMax += def.hpBonus
-    sheet.hp += def.hpBonus
-  }
+  if (def.hpBonus) addLevelHp(sheet, def.hpBonus)
   if (def.speed) sheet.speed = String((Number.parseInt(sheet.speed, 10) || BASE_SPEED) + def.speed)
   if (def.woundsMax) sheet.woundsMax += def.woundsMax
   if (def.replacesAbilities)
@@ -573,8 +571,7 @@ export function applyNimbleLevel(sheet: NimbleSheet, level: number, input: Level
   const before = { ...sheet.stats }
   const armorBefore = abilityArmor(sheet)
 
-  sheet.hpMax += input.hpGain
-  sheet.hp += input.hpGain
+  addLevelHp(sheet, input.hpGain)
   sheet.hitDice += 1
   for (const [k, v] of Object.entries(input.statBumps)) sheet.stats[k as NimbleStat] += v ?? 0
   if (input.skillPoint) {

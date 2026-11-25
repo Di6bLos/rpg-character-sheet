@@ -4,7 +4,13 @@
 // Nimble heroes built from class data can also redo their level 1 choices.
 import { STAT_ARRAYS } from '~/data/nimble/core'
 import type { AnySheet, NimbleLevelInput, NimbleSheet, NimbleStat } from '~/types/sheets'
-import { canRestore, keepDamage, restoreBuild, restoreLevel } from '~/utils/levelHistory'
+import {
+  canRestore,
+  holdAndRebuild,
+  keepDamage,
+  restoreBuild,
+  restoreLevel,
+} from '~/utils/levelHistory'
 import {
   buildNimbleSheet,
   creationChoices,
@@ -87,23 +93,34 @@ const openedAt = ref(0)
 const next = computed(() => draft.value.level + 1)
 const progress = computed(() => `Reconfiguring · ${next.value} of ${goal.value}`)
 
-function begin(from: number) {
-  const sheet = draft.value.sheet
-  original.value = {
-    level: draft.value.level,
-    sheet: JSON.parse(JSON.stringify(sheet)) as AnySheet,
+/**
+ * Saves first, so leaving before the run ends keeps the hero exactly as it was when
+ * Reconfigure started, then holds saves while `rebuild` takes the hero back to `from`.
+ */
+async function reconfigure(from: number, rebuild: (sheet: AnySheet) => void) {
+  try {
+    await saveNow()
+  } catch {
+    return
   }
+  if (held.value) return
+  let saved: { level: number; sheet: AnySheet }
+  try {
+    saved = holdAndRebuild(draft.value, held, (sheet) => {
+      rebuild(sheet)
+      if (draft.value.system === 'nimble') syncCompanions(sheet as NimbleSheet)
+    })
+  } catch (err) {
+    snackbar.error(err, `Could not reconfigure ${draft.value.name}`)
+    return
+  }
+  original.value = saved
   previous.value = Object.fromEntries(
-    (sheet.levelHistory ?? [])
+    (saved.sheet.levelHistory ?? [])
       .filter((e) => e.level > from && e.nimble)
       .map((e) => [e.level, e.nimble!]),
   )
-  goal.value = draft.value.level
-  held.value = true
-}
-
-async function climb(from: number) {
-  if (draft.value.system === 'nimble') syncCompanions(draft.value.sheet as NimbleSheet)
+  goal.value = saved.level
   draft.value.level = from
   open.value = false
   if (from >= goal.value) return finish()
@@ -113,26 +130,16 @@ async function climb(from: number) {
 
 async function start() {
   if (target.value === 0) return startLevelOne()
-  begin(target.value)
-  restoreLevel(draft.value.sheet, target.value)
-  await climb(target.value)
+  const from = target.value
+  await reconfigure(from, (sheet) => restoreLevel(sheet, from))
 }
 
 async function rebuildLevelOne() {
   showErrors.value = true
   const was = creation.value
   if (problems.value.length || !was) return
-  begin(1)
-  restoreBuild(
-    draft.value.sheet,
-    buildNimbleSheet({
-      ...was,
-      stats: stats.value,
-      skillPoints: skillPoints.value,
-      picks: picks.value,
-    }),
-  )
-  await climb(1)
+  const input = { ...was, stats: stats.value, skillPoints: skillPoints.value, picks: picks.value }
+  await reconfigure(1, (sheet) => restoreBuild(sheet, buildNimbleSheet(input)))
 }
 
 async function finish() {

@@ -91,7 +91,18 @@ export function useHeroConditionChanges() {
       return
     }
     const claimed = new Set((data ?? []).map((r: { id: string }) => r.id))
-    for (const row of lastPerCondition(fresh.filter((r) => claimed.has(r.id)))) {
+    apply(fresh.filter((r) => claimed.has(r.id)))
+  }
+
+  // Claimed while a Reconfigure started holding the sheet: applied once it lets go, so
+  // a cancel can't overwrite them.
+  const parked: Row[] = []
+  function apply(rows: Row[]) {
+    if (held.value) {
+      parked.push(...rows)
+      return
+    }
+    for (const row of lastPerCondition([...parked.splice(0), ...rows])) {
       const message = applyConditionChangeFor(draft.value.system, draft.value.sheet, row)
       if (message) say(message)
     }
@@ -146,7 +157,11 @@ export function useHeroConditionChanges() {
       { immediate: true },
     )
     watch(held, (on) => {
-      if (!on && channel) serial(() => catchUp(draft.value.id))
+      if (on) return
+      serial(async () => {
+        apply([])
+        if (channel) await catchUp(draft.value.id)
+      })
     })
   })
 

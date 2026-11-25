@@ -8,6 +8,7 @@ type Row = { id: string; [key: string]: unknown }
 
 const waiting: Record<string, Row[]> = {}
 const deleted: string[] = []
+let onDelete: (() => void) | null = null
 
 function claim(table: string, ids: string[]) {
   const rows = waiting[table] ?? []
@@ -27,6 +28,7 @@ const supabase = {
     }),
     delete: () => ({
       in: (_column: string, ids: string[]) => {
+        onDelete?.()
         const done = Promise.resolve(claim(table, ids))
         return Object.assign(done, { select: () => done })
       },
@@ -63,6 +65,7 @@ beforeEach(() => {
   sheet = build(classBySlug('berserker')!)
   held.value = true
   deleted.length = 0
+  onDelete = null
   waiting.hero_hp_changes = [{ id: 'hp1', amount: -3, crit: false, created_at: '1' }]
   waiting.hero_condition_changes = [{ id: 'c1', condition: 'Prone', add: true, created_at: '1' }]
   waiting.hero_effects = [{ id: 'e1', effect: 'Helped', from_name: 'Wren' }]
@@ -101,4 +104,29 @@ describe('GM changes while the sheet holds its saves (Reconfigure)', () => {
     expect(sheet.hp).toBe(hp - 3)
     expect(sheet.conditions).toEqual(expect.arrayContaining(['Prone', 'Helped']))
   })
+
+  it.each([
+    ['HP', 'hp1', () => useHeroHpChanges()],
+    ['condition', 'c1', () => useHeroConditionChanges()],
+  ])(
+    'a %s change claimed just as Reconfigure starts waits for the release, not lost to the hold',
+    async (_kind, id, listen) => {
+      held.value = false
+      onDelete = () => {
+        held.value = true
+      }
+      const hp = sheet.hp
+      listen()
+      await settle()
+      expect(deleted).toEqual([id])
+      expect(sheet.hp).toBe(hp)
+      expect(sheet.conditions).toEqual([])
+
+      onDelete = null
+      held.value = false
+      await settle()
+      if (id === 'hp1') expect(sheet.hp).toBe(hp - 3)
+      else expect(sheet.conditions).toContain('Prone')
+    },
+  )
 })
