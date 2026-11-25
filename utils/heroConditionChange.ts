@@ -1,5 +1,5 @@
-import type { HeroConditionChange } from '~/types'
-import type { NimbleSheet } from '~/types/sheets'
+import type { GameSystem, HeroConditionChange } from '~/types'
+import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { addCondition, removeCondition } from '~/utils/nimbleConditions'
 import { clearEffect } from '~/utils/nimbleEffects'
 
@@ -49,4 +49,36 @@ export function applyConditionChange(sheet: NimbleSheet, change: Change): string
   clearEffect(sheet, name)
   removeCondition(sheet, name)
   return `GM: no longer ${name}.`
+}
+
+/**
+ * D&D 5e / PF2e: a plain add or remove on the sheet's condition names (no timed ends), with
+ * the message to show the player, or '' when the sheet already matched.
+ */
+export function applyPlainConditionChange(
+  sheet: { conditions?: string[] },
+  change: Change,
+): string {
+  const name = change.condition.trim()
+  if (!name) return ''
+  const list = Array.isArray(sheet.conditions) ? sheet.conditions : (sheet.conditions = [])
+  const at = list.indexOf(name)
+  if (change.add) {
+    if (at >= 0) return ''
+    list.push(name)
+    return `GM: you are ${name}.`
+  }
+  if (at < 0) return ''
+  list.splice(at, 1)
+  return `GM: no longer ${name}.`
+}
+
+/** Applies a GM's condition change with the hero's own system's rules. */
+export function applyConditionChangeFor(
+  system: GameSystem,
+  sheet: AnySheet,
+  change: Change,
+): string {
+  if (system === 'nimble') return applyConditionChange(sheet as NimbleSheet, change)
+  return applyPlainConditionChange(sheet, change)
 }

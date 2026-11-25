@@ -5,6 +5,9 @@ import { PF2E_CONDITIONS } from '~/utils/sheetDefaults'
 import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, adjustHp, lastRoll, say } = useSheet<Pf2eSheet>()
+// The GM's HP and condition changes from the battle board.
+useHeroHpChanges()
+useHeroConditionChanges()
 const sheet = computed(() => draft.value.sheet)
 
 const ATTR_NAME: Record<Pf2eAttr, string> = {

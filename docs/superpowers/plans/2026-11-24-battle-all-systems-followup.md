@@ -45,6 +45,6 @@
 - Conditions: `gm_set_hero_condition` already writes `sheet.conditions` for any system; for non-Nimble pass `p_end` null. Apply live with a plain add/remove on `sheet.conditions` (no Nimble `conditionEnds`).
 - The 5e/PF2e player's board: a seated non-Nimble player has no sheet editor today (`HeroScope enabled=false`). Mount just enough for the pickups to apply and autosave (preferred: reuse `provideSheetEditor`/`useBoardSheetEditor` for any system, without Nimble's turn steps or `HeroLive`'s Nimble parts); HeroBasic then reads the live values.
 - The roster/party cards/HeroBasic show 5e temp HP and conditions (roster summary already passes `tempHp` and `conditions` from the sheet).
-- [ ] Unit tests for the HP and condition rules first (RED → GREEN).
-- [ ] Smoke 5e and PF2e: as GM, damage Corin (temp first), drop him to 0 (Down, death saves), heal (saves reset); add/remove Prone; player's board and open sheet show it live; reload — it held. PF2e Mira: 0 HP → Dying 1, heal → Wounded 1. Restore both sheets as seeded. Nimble GM HP/conditions unchanged.
-- [ ] CLAUDE.md (Data model `hero_hp_changes` / `hero_condition_changes` now every system); **Commit** — `FEAT: GM changes 5e and PF2e heroes' HP and conditions from the board`
+- [x] Unit tests for the HP and condition rules first (RED → GREEN).
+- [x] Smoke 5e and PF2e: as GM, damage Corin (temp first), drop him to 0 (Down, death saves), heal (saves reset); add/remove Prone; player's board and open sheet show it live; reload — it held. PF2e Mira: 0 HP → Dying 1, heal → Wounded 1. Restore both sheets as seeded. Nimble GM HP/conditions unchanged.
+- [x] CLAUDE.md (Data model `hero_hp_changes` / `hero_condition_changes` now every system); **Commit** — `FEAT: GM changes 5e and PF2e heroes' HP and conditions from the board`

@@ -127,6 +127,8 @@ function dnd5e(): Dnd5eSheet {
     speed: '30 ft',
     profBonus: 2,
     deathSaves: { successes: 0, failures: 0 },
+    tempHp: 0,
+    conditions: [],
     weapons: [],
     features: [],
     inventory: [],

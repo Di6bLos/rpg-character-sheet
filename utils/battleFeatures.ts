@@ -13,13 +13,16 @@ export interface BattleFeatures {
   summons: boolean
   /** The GM's Nimble / classic initiative switch. */
   initiativeModes: boolean
-  /** The GM's HP and condition controls on a hero. */
+  /** The GM's HP and condition controls on a hero (every system; each applies its own rules). */
   gmHeroControls: boolean
   /** PF2e hero and focus points on the GM's party cards and hero vitals (Nimble shows mana). */
   gmPoints: boolean
 }
 
-/** Every feature but `gmPoints` is Nimble's; 5e and PF2e get the plain board. */
+/**
+ * Nimble's features (the hero editor, pips, summons, initiative modes); the GM's hero controls
+ * for every system; PF2e's points. 5e and PF2e otherwise get the plain board.
+ */
 export function battleFeatures(system: GameSystem): BattleFeatures {
   const on = system === 'nimble'
   return {
@@ -27,7 +30,7 @@ export function battleFeatures(system: GameSystem): BattleFeatures {
     pips: on,
     summons: on,
     initiativeModes: on,
-    gmHeroControls: on,
+    gmHeroControls: true,
     gmPoints: system === 'pf2e',
   }
 }

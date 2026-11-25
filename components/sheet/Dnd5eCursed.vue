@@ -106,6 +106,8 @@ const byline = computed(() => {
           />
         </div>
       </div>
+
+      <SheetDnd5eStatus class="block c-status" />
     </aside>
 
     <section class="leaf leaf--main" aria-label="Character record">
@@ -668,6 +670,17 @@ $vellum-dark: #cdb78e;
       color: $brown;
     }
   }
+}
+
+// Temp HP and conditions in ink on the parchment.
+.c-status {
+  --d5-label: #{$brown};
+  --d5-field: rgba(255, 245, 220, 0.35);
+  --d5-field-text: #{$ink};
+  --d5-line: #{$brown};
+  --d5-chip-text: #{$ink-soft};
+  --d5-on: var(--accent-ink);
+  --d5-on-text: #{$vellum};
 }
 
 .notes-label {

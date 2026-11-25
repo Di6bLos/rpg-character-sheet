@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { NimbleSheet } from '../types/sheets'
-import { applyHpChange, freshChanges } from '../utils/heroHpChange'
-import { defaultSheet } from '../utils/sheetDefaults'
+import type { Dnd5eSheet, NimbleSheet, Pf2eSheet } from '../types/sheets'
+import { applyHpChange, applyHpChangeFor, freshChanges } from '../utils/heroHpChange'
+import { defaultSheet, normalizeSheet } from '../utils/sheetDefaults'
 
 function hero(patch: Partial<NimbleSheet> = {}): NimbleSheet {
   return { ...defaultSheet('nimble'), hp: 20, hpMax: 20, ...patch }
@@ -48,5 +48,122 @@ describe('GM hero HP changes', () => {
     expect(
       freshChanges([...rows, { id: 'c', amount: 1, crit: false }], taken).map((r) => r.id),
     ).toEqual(['c'])
+  })
+})
+
+describe('GM hero HP changes, D&D 5e', () => {
+  function corin(patch: Partial<Dnd5eSheet> = {}): Dnd5eSheet {
+    return { ...defaultSheet('dnd5e'), hp: 20, hpMax: 20, ...patch }
+  }
+
+  it('starts a 5e sheet with no temp HP and no conditions', () => {
+    expect(defaultSheet('dnd5e').tempHp).toBe(0)
+    expect(defaultSheet('dnd5e').conditions).toEqual([])
+    const old = normalizeSheet('dnd5e', { hp: 7, hpMax: 12 })
+    expect(old.tempHp).toBe(0)
+    expect(old.conditions).toEqual([])
+  })
+
+  it('takes temp HP first, then HP', () => {
+    const sheet = corin({ tempHp: 3 })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -5, crit: false })).toBe(
+      'GM: took 5 damage: 18/20 HP.',
+    )
+    expect(sheet.tempHp).toBe(0)
+    expect(sheet.hp).toBe(18)
+  })
+
+  it('keeps leftover temp HP when the hit is smaller', () => {
+    const sheet = corin({ tempHp: 8 })
+    applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -5, crit: false })
+    expect(sheet.tempHp).toBe(3)
+    expect(sheet.hp).toBe(20)
+  })
+
+  it('stops at 0 HP, says Down, and a crit changes nothing but the note', () => {
+    const sheet = corin({ hp: 4 })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: -9, crit: true })).toBe(
+      'GM: took 9 damage (crit): 0/20 HP. Down: roll death saves.',
+    )
+    expect(sheet.hp).toBe(0)
+  })
+
+  it('heals up to max', () => {
+    const sheet = corin({ hp: 15 })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: 8, crit: false })).toBe(
+      'GM: healed 8: 20/20 HP.',
+    )
+    expect(sheet.hp).toBe(20)
+  })
+
+  it('healing from 0 resets the death saves', () => {
+    const sheet = corin({ hp: 0, deathSaves: { successes: 2, failures: 1 } })
+    expect(applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: 4, crit: false })).toBe(
+      'GM: healed 4: 4/20 HP. Death saves reset.',
+    )
+    expect(sheet.deathSaves).toEqual({ successes: 0, failures: 0 })
+  })
+
+  it('healing above 0 leaves the death saves alone', () => {
+    const sheet = corin({ hp: 3, deathSaves: { successes: 1, failures: 0 } })
+    applyHpChangeFor('dnd5e', sheet, 3, { id: 'a', amount: 4, crit: false })
+    expect(sheet.deathSaves).toEqual({ successes: 1, failures: 0 })
+  })
+})
+
+describe('GM hero HP changes, Pathfinder 2e', () => {
+  function mira(patch: Partial<Pf2eSheet> = {}): Pf2eSheet {
+    return { ...defaultSheet('pf2e'), hp: 20, hpMax: 20, ...patch }
+  }
+
+  it('takes temp HP first, then HP', () => {
+    const sheet = mira({ tempHp: 2 })
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -5, crit: false })).toBe(
+      'GM: took 5 damage: 17/20 HP.',
+    )
+    expect(sheet.tempHp).toBe(0)
+    expect(sheet.hp).toBe(17)
+  })
+
+  it('dropping to 0 sets Dying 1 + Wounded', () => {
+    const sheet = mira({ hp: 4, wounded: 1 })
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -10, crit: false })).toBe(
+      'GM: took 10 damage: 0/20 HP. Dying 2.',
+    )
+    expect(sheet.hp).toBe(0)
+    expect(sheet.dying).toBe(2)
+  })
+
+  it('a crit to 0 sets Dying 2 + Wounded', () => {
+    const sheet = mira({ hp: 4 })
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -6, crit: true })).toBe(
+      'GM: took 6 damage (crit): 0/20 HP. Dying 2.',
+    )
+    expect(sheet.dying).toBe(2)
+  })
+
+  it('damage that leaves HP above 0 leaves Dying alone', () => {
+    const sheet = mira()
+    applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: -6, crit: true })
+    expect(sheet.dying).toBe(0)
+  })
+
+  it('healing from 0 ends Dying and raises Wounded by 1', () => {
+    const sheet = mira({ hp: 0, dying: 1, wounded: 0 })
+    expect(applyHpChangeFor('pf2e', sheet, 3, { id: 'a', amount: 30, crit: false })).toBe(
+      'GM: healed 30: 20/20 HP. Wounded 1.',
+    )
+    expect(sheet.hp).toBe(20)
+    expect(sheet.dying).toBe(0)
+    expect(sheet.wounded).toBe(1)
+  })
+})
+
+describe('GM hero HP changes dispatch', () => {
+  it('sends Nimble to its own rules', () => {
+    const sheet = hero({ conditions: ['Warded'] })
+    expect(applyHpChangeFor('nimble', sheet, 3, { id: 'a', amount: -9, crit: false })).toBe(
+      'GM: took 4 damage: 16/20 HP. Warded: you take 4, your warder 5.',
+    )
   })
 })

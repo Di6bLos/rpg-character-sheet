@@ -6,12 +6,11 @@
 // (rotation). `hero` is true while the seated hero's editor is ready; it goes false for
 // a moment across a change of hero, so the parts that use the editor start over with
 // the new one. False for the GM, a player without a seated hero, or while loading.
-// `enabled` is false for systems without the sheet-editor hero column (5e, PF2e): then
-// only the slot renders, with `hero: false`, and no editor is loaded or provided. It is
-// read once at setup; View keys this component by it.
-import type { Character } from '~/types'
-import type { AnySheet } from '~/types/sheets'
-
+// `enabled` is false for systems without the sheet-editor hero column (5e, PF2e): then the
+// slot renders with `hero: false`, and the seated player's hero still gets an editor (no
+// turn steps or Nimble statuses) only so the GM's HP and condition changes apply and
+// autosave while the board is open; HeroBasic reads its live values through BOARD_HERO.
+// It is read once at setup; View keys this component by it.
 const props = defineProps<{
   enabled: boolean
   turnCharacterId: string | null
@@ -21,27 +20,27 @@ const props = defineProps<{
 defineSlots<{ default: (props: { hero: boolean }) => unknown }>()
 
 const { campaign } = useCampaignBoard()
-const { character, canEdit } = props.enabled
-  ? useSeatedCharacter('Could not load your character for the battle board')
-  : { character: ref<Character<AnySheet> | null>(null), canEdit: computed(() => false) }
+const { character, canEdit } = useSeatedCharacter(
+  'Could not load your character for the battle board',
+  { anySystem: !props.enabled },
+)
 
-const current = props.enabled ? provideBoardHero() : null
+const current = provideBoardHero()
 // The last action result, for the action panel and the phone's result bar; a new hero
-// starts with none.
-if (current) {
+// starts with none. Nimble only, as before.
+if (props.enabled) {
   const result = provideBattleResult()
   watch(current, () => result.set(''))
 }
 
 const ready = computed(
-  () =>
-    !!current?.value && !!character.value && current.value.draft.value.id === character.value.id,
+  () => !!current.value && !!character.value && current.value.draft.value.id === character.value.id,
 )
 </script>
 
 <template>
   <BattleHeroEditor
-    v-if="enabled && character"
+    v-if="character"
     :key="character.id"
     :character="character"
     :can-edit="canEdit"
@@ -49,7 +48,8 @@ const ready = computed(
     :turn-character-id="props.turnCharacterId"
     :round="props.round"
     :down-summons="props.downSummons"
+    :basic="!enabled"
   />
-  <BattleHeroLive v-if="enabled && ready" :key="`live-${character?.id}`" />
-  <slot :hero="ready" />
+  <BattleHeroLive v-if="ready" :key="`live-${character?.id}`" :basic="!enabled" />
+  <slot :hero="enabled && ready" />
 </template>

@@ -135,6 +135,7 @@ function sign(n: number) {
         </div>
         <div class="meter"><span :style="{ width: hpPct + '%' }" /></div>
       </div>
+      <SheetDnd5eStatus />
       <div class="combat">
         <div v-for="c in combat" :key="c.label" class="tile">
           <div class="tile__label">{{ c.label }}</div>

@@ -4,9 +4,8 @@
 // −5 / −1 / amount / +1 / +5 (EncounterHp), Armor (in the name row), conditions and action
 // pips (EncounterPips, on the HP bar's row: a click spends the next one, a spent one
 // refunds). Slain creatures grey out with Remove and Revive. Heroes take HP through their
-// own sheet (a pickup).
-// Off Nimble (`useBattleFeatures`): no pips, and a hero's HP shows without the buttons
-// (only Nimble sheets apply the board's changes).
+// own sheet (a pickup), applied with that system's rules.
+// Off Nimble (`useBattleFeatures`): no pips.
 // Compact (phone Encounter tab, one column): 44px targets 8px apart, and no tooltip (a
 // tap selects; the Creature tab shows the whole stat block).
 import type { CampaignNpc, RosterEntry } from '~/types'

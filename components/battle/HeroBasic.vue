@@ -4,6 +4,8 @@
 // class and level, HP with temp HP ("Down" at 0, with the death saves or PF2e's Dying
 // value), AC, Init and Passive Perception, conditions and concentration, and a link to the
 // full sheet, where everything is changed. Compact (the phone's Hero tab): 44px link.
+// While HeroScope has the hero's sheet editor (it applies the GM's HP and condition
+// changes), the numbers come from that live copy, with the GM's last change beneath HP.
 import type { RosterEntry } from '~/types'
 import { sign } from '~/utils/dice'
 import { dyingLine, heroDown } from '~/utils/roster'
@@ -13,7 +15,36 @@ const props = defineProps<{ entry: RosterEntry; compact?: boolean }>()
 const { campaignId } = useCampaignBoard()
 const { touch } = useBoardLayout()
 
-const s = computed(() => props.entry.summary ?? {})
+type Summary = NonNullable<RosterEntry['summary']>
+/** The sheet fields the live copy overrides in the roster summary. */
+const LIVE_KEYS = [
+  'hp',
+  'hpMax',
+  'tempHp',
+  'conditions',
+  'deathSaves',
+  'dying',
+  'wounded',
+  'ac',
+  'initMod',
+  'passivePerception',
+] as const
+
+const host = inject(BOARD_HERO, null)
+const editor = computed(() => {
+  const ed = host?.value
+  return ed && ed.draft.value.id === props.entry.character_id ? ed : null
+})
+const s = computed<Summary>(() => {
+  const summary = props.entry.summary ?? {}
+  const sheet = editor.value?.draft.value.sheet as Record<string, unknown> | undefined
+  if (!sheet) return summary
+  const live: Record<string, unknown> = { ...summary }
+  for (const key of LIVE_KEYS) if (sheet[key] !== undefined) live[key] = sheet[key]
+  return live as Summary
+})
+/** The GM's last change, as the sheet worded it ("GM: took 5 damage: 13/18 HP."). */
+const gmNote = computed(() => editor.value?.lastRoll.value ?? '')
 const name = computed(() => props.entry.character_name ?? props.entry.display_name)
 const identity = computed(() =>
   [
@@ -27,8 +58,12 @@ const hp = computed(() => s.value.hp ?? 0)
 const hpMax = computed(() => s.value.hpMax ?? 0)
 const temp = computed(() => s.value.tempHp ?? 0)
 const down = computed(() => heroDown(s.value.hp, s.value.hpMax))
-/** "Death saves 1✓ 2✗" or "Dying 2" beside Down. */
-const dying = computed(() => (down.value ? dyingLine(s.value) : ''))
+/** "Death saves 1✓ 2✗" or "Dying 2" beside Down; PF2e's Wounded while up. */
+const dying = computed(() => {
+  if (down.value) return dyingLine(s.value)
+  const wounded = s.value.wounded
+  return typeof wounded === 'number' && wounded > 0 ? `Wounded ${wounded}` : ''
+})
 const conditions = computed(() => {
   const list = s.value.conditions ?? []
   const conc = s.value.concentration
@@ -91,6 +126,7 @@ const tiles = computed(() => [
         <i v-if="temp" class="hb__temp-fill" :style="{ width: `${pct(temp, hpMax)}%` }" />
       </div>
       <p v-if="dying" class="hb__dying">{{ dying }}</p>
+      <p v-if="gmNote" class="hb__note" role="status">{{ gmNote }}</p>
     </div>
 
     <div class="hb__tiles">
@@ -212,6 +248,12 @@ const tiles = computed(() => [
   font-size: 12px;
   font-weight: 600;
   color: var(--page-soft);
+}
+
+.hb__note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--page-muted);
 }
 
 .hb__tiles {

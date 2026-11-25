@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { NimbleSheet } from '../types/sheets'
+import type { Dnd5eSheet, NimbleSheet } from '../types/sheets'
 import {
   applyConditionChange,
+  applyConditionChangeFor,
   freshConditionChanges,
   lastPerCondition,
 } from '../utils/heroConditionChange'
@@ -66,5 +67,45 @@ describe('GM hero condition changes', () => {
       { id: 'c', condition: 'Prone', add: false },
     ]
     expect(lastPerCondition(rows).map((r) => r.id)).toEqual(['b', 'c'])
+  })
+})
+
+describe('GM hero condition changes, D&D 5e and PF2e', () => {
+  it('adds and removes a 5e condition plainly, with no end', () => {
+    const sheet = defaultSheet('dnd5e')
+    expect(
+      applyConditionChangeFor('dnd5e', sheet, { id: 'a', condition: 'Prone', add: true }),
+    ).toBe('GM: you are Prone.')
+    expect(sheet.conditions).toEqual(['Prone'])
+    expect('conditionEnds' in sheet).toBe(false)
+    expect(
+      applyConditionChangeFor('dnd5e', sheet, { id: 'b', condition: 'Prone', add: false }),
+    ).toBe('GM: no longer Prone.')
+    expect(sheet.conditions).toEqual([])
+  })
+
+  it('says nothing for a PF2e sheet that already matches', () => {
+    const sheet = { ...defaultSheet('pf2e'), conditions: ['Off-guard'] }
+    expect(
+      applyConditionChangeFor('pf2e', sheet, { id: 'a', condition: 'Off-guard', add: true }),
+    ).toBe('')
+    expect(
+      applyConditionChangeFor('pf2e', sheet, { id: 'b', condition: 'Prone', add: false }),
+    ).toBe('')
+    expect(sheet.conditions).toEqual(['Off-guard'])
+  })
+
+  it('copes with an old 5e sheet that has no conditions list', () => {
+    const sheet = { ...defaultSheet('dnd5e') } as Partial<Dnd5eSheet> as Dnd5eSheet
+    delete (sheet as Partial<Dnd5eSheet>).conditions
+    applyConditionChangeFor('dnd5e', sheet, { id: 'a', condition: 'Prone', add: true })
+    expect(sheet.conditions).toEqual(['Prone'])
+  })
+
+  it('keeps Nimble on its own rules (the usual end)', () => {
+    const sheet = hero()
+    const timed = Object.keys(CONDITION_ENDS)[0]!
+    applyConditionChangeFor('nimble', sheet, { id: 'a', condition: timed, add: true })
+    expect(sheet.conditionEnds?.[timed]).toBe(CONDITION_ENDS[timed])
   })
 })

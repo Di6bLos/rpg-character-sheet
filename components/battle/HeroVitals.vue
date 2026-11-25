@@ -5,9 +5,9 @@
 // adds and removes them through hero_condition_changes, applied by useHeroConditionChanges). The stats modal's
 // side and the GM's left column (a hero picked on the initiative strip) both show it.
 // For the viewer's own hero the page passes the hero column's HP (`own-hp`).
-// Off Nimble (`useBattleFeatures().gmHeroControls` false) the GM sees the vitals read-only:
-// no HP controls, mana or condition picker (only Nimble sheets apply the board's changes).
-// Where Nimble shows the GM mana, PF2e (`gmPoints`) shows hero and focus points.
+// Every system's sheet applies the GM's changes with its own rules (`gmHeroControls`); only
+// Nimble conditions end on their own timing. Where Nimble shows the GM mana, PF2e
+// (`gmPoints`) shows hero and focus points.
 import type { HeroCard, RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import type { HeroLive } from '~/composables/useHeroCard'
@@ -249,7 +249,11 @@ async function adjust(sign: 1 | -1) {
       :name="card.name"
       :subject="characterId"
       :conditions="shownConditions"
-      :note="`Saved to ${card.name}'s sheet; it ends on its usual timing, or when you remove it.`"
+      :note="
+        features.nimbleHero
+          ? `Saved to ${card.name}'s sheet; it ends on its usual timing, or when you remove it.`
+          : `Saved to ${card.name}'s sheet until you remove it.`
+      "
       @toggle="toggleCondition"
     />
     <div v-else>
