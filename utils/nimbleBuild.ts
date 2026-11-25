@@ -40,6 +40,7 @@ import type {
 } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { recordLevel, restoreLevel } from '~/utils/levelHistory'
+import { addLevelHp } from '~/utils/levelUp'
 import { defaultSheet } from '~/utils/sheetDefaults'
 
 export const HIT_DIE_STEPS = [6, 8, 10, 12, 20]
@@ -573,8 +574,7 @@ export function applyNimbleLevel(sheet: NimbleSheet, level: number, input: Level
   const before = { ...sheet.stats }
   const armorBefore = abilityArmor(sheet)
 
-  sheet.hpMax += input.hpGain
-  sheet.hp += input.hpGain
+  addLevelHp(sheet, input.hpGain)
   sheet.hitDice += 1
   for (const [k, v] of Object.entries(input.statBumps)) sheet.stats[k as NimbleStat] += v ?? 0
   if (input.skillPoint) {

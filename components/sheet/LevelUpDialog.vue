@@ -2,7 +2,15 @@
 import { classBySlug } from '~/data/nimble/classes'
 import type { Dnd5eSheet, NimbleLevelInput, NimbleSheet, Pf2eSheet } from '~/types/sheets'
 import { abilityMod, rollDie, sign } from '~/utils/dice'
-import { LEVEL_UP_RULES, MAX_LEVEL, averageHp, canBump, hpGain, pointsUsed } from '~/utils/levelUp'
+import {
+  LEVEL_UP_RULES,
+  MAX_LEVEL,
+  addLevelHp,
+  averageHp,
+  canBump,
+  hpGain,
+  pointsUsed,
+} from '~/utils/levelUp'
 import { recordLevel } from '~/utils/levelHistory'
 import {
   applyNimbleLevel,
@@ -220,8 +228,7 @@ async function confirm() {
   const next = level.value + 1
   const sheet = draft.value.sheet
   recordLevel(sheet, next)
-  sheet.hpMax += gain.value
-  sheet.hp += gain.value
+  addLevelHp(sheet, gain.value)
 
   const names = [
     [feat1.value.trim(), rules.value.featLabel],

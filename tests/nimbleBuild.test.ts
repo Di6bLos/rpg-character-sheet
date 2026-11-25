@@ -435,6 +435,16 @@ function levelTo2(sheet: NimbleSheet, from: number, to: number) {
 }
 
 describe('levelling', () => {
+  it('a hero at 0 HP gains max HP on a level-up but stays at 0 (still Dying)', () => {
+    const sheet = build(classBySlug('berserker')!)
+    levelTo(sheet, 3, 'mountainheart')
+    const max = sheet.hpMax
+    sheet.hp = 0
+    levelTo2(sheet, 4, 4)
+    expect(sheet.hpMax).toBe(max + 5)
+    expect(sheet.hp).toBe(0)
+  })
+
   for (const cls of NIMBLE_CLASSES)
     for (const sub of cls.subclasses.filter((s) => !s.story))
       it(`levels a ${cls.slug} (${sub.slug}) from 1 to 20`, () => {
