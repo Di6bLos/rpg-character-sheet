@@ -139,6 +139,8 @@ export interface Pf2eStrike {
   /** The attribute the attack roll uses (conditions like clumsy and enfeebled read it). */
   attr?: Pf2eAttr
   ranged?: boolean
+  /** The hero's proficiency rank with the weapon (weapon specialization reads it). */
+  rank?: Pf2eRank
   dmg: string
   type: string
   traits: string

@@ -4,14 +4,27 @@ import type { Pf2eFeat, Pf2eSheet } from '../types/sheets'
 import {
   activeEffects,
   baseDeathAt,
+  damageConditions,
   extraDice,
+  mapPenalties,
   ownEffects,
   recoveryDcChange,
   setGiven,
   speedNow,
+  stratagemAttacked,
+  stratagemDamaged,
+  stratagemUsesInt,
   toggleEffect,
 } from '../utils/pf2eEffects'
-import { adjusted, deathAt, recoveryCheck, recoveryDc, takeDamage } from '../utils/pf2ePlay'
+import {
+  activeConditions,
+  adjusted,
+  conditionValue,
+  deathAt,
+  recoveryCheck,
+  recoveryDc,
+  takeDamage,
+} from '../utils/pf2ePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
 import { buildData, loadSet } from './helpers/pf2e'
 
@@ -122,7 +135,11 @@ describe('pf2e extra damage dice', () => {
   })
 
   it('adds the Precision edge on the first hit on hunted prey', () => {
-    const s = hero(['Precision'])
+    const s = hero(['Hunt Prey', 'Precision'])
+    expect(extraDice(s, 11, club, { huntedPrey: true })).toEqual([])
+    expect(damageConditions(s)).toEqual([])
+    toggleEffect(s, 'Hunt Prey', 11)
+    expect(damageConditions(s)).toEqual(['huntedPrey'])
     expect(extraDice(s, 11, club, { huntedPrey: true })[0]?.dice).toBe('2d8')
     expect(extraDice(s, 11, club, {})).toEqual([])
   })
@@ -144,5 +161,144 @@ describe('pf2e Diehard and Toughness (pp. 254, 263)', () => {
     expect(recoveryDc(s)).toBe(10)
     expect(recoveryDc({ ...s, feats: [] })).toBe(11)
     expect(recoveryCheck(s, 10)).toContain('vs DC 10, success')
+  })
+})
+
+describe('pf2e effects, second wave', () => {
+  const dex = (DEX: number, STR = 0) => ({ ...defaultSheet('pf2e').attrs, DEX, STR })
+
+  it('applies the ranger’s edges only while hunting prey (Player Core p. 154)', () => {
+    const s = hero(['Hunt Prey', 'Flurry', 'Outwit'])
+    expect(mapPenalties(s, false)).toEqual([0, 5, 10])
+    expect(adjusted(s, 5, { kind: 'skill', attr: 'CHA', skill: 'Deception' }).value).toBe(5)
+    toggleEffect(s, 'Hunt Prey', 1)
+    expect(mapPenalties(s, false)).toEqual([0, 3, 6])
+    expect(mapPenalties(s, true)).toEqual([0, 2, 4])
+    expect(adjusted(s, 5, { kind: 'skill', attr: 'CHA', skill: 'Deception' }).value).toBe(7)
+    expect(adjusted(s, 5, { kind: 'skill', attr: 'WIS', skill: 'Survival' }).value).toBe(5)
+    expect(adjusted(s, 18, { kind: 'ac' }).value).toBe(19)
+  })
+
+  it('adds a thief’s DEX to finesse melee damage when it beats STR (p. 167)', () => {
+    const s = hero(['Thief'], { attrs: dex(4, 1) })
+    const finesse = { kind: 'damage' as const, melee: true, traits: ['finesse'] }
+    expect(adjusted(s, 1, finesse).value).toBe(4)
+    expect(adjusted(s, 1, { ...finesse, traits: [] }).changed).toBe(false)
+    expect(adjusted(s, 0, { ...finesse, melee: false }).changed).toBe(false)
+  })
+
+  it('scales Precise Strike with level, for agile or finesse melee Strikes (PC2 p. 158)', () => {
+    const s = hero(['Precise Strike'])
+    const ctx = { kind: 'damage' as const, melee: true, traits: ['finesse'] }
+    expect(adjusted(s, 0, { ...ctx, level: 1 }).value).toBe(2)
+    expect(adjusted(s, 0, { ...ctx, level: 9 }).value).toBe(4)
+    expect(adjusted(s, 0, { ...ctx, traits: [], level: 9 }).changed).toBe(false)
+  })
+
+  it('adds weapon specialization by rank; the greater one replaces it (p. 136)', () => {
+    const s = hero(['Weapon Specialization'])
+    expect(adjusted(s, 0, { kind: 'damage', rank: 'E' }).value).toBe(2)
+    expect(adjusted(s, 0, { kind: 'damage', rank: 'M' }).value).toBe(3)
+    expect(adjusted(s, 0, { kind: 'damage', rank: 'T' }).changed).toBe(false)
+    s.feats.push(feat('Greater Weapon Specialization'))
+    expect(adjusted(s, 0, { kind: 'damage', rank: 'E' }).value).toBe(4)
+  })
+
+  it('Mountain Stance: +4 item AC, no DEX to AC, −5 feet (PC2 p. 118)', () => {
+    const s = hero(['Mountain Stance'], { attrs: dex(2), speed: '25 ft' })
+    toggleEffect(s, 'Mountain Stance', 1)
+    expect(adjusted(s, 15, { kind: 'ac' }).value).toBe(17)
+    expect(speedNow(s).text).toBe('20 ft')
+  })
+
+  it('a raised shield and the Shield spell are both circumstance bonuses: +2, not +3', () => {
+    const s = hero(['Shield'], {
+      shield: { name: 'Steel Shield', hardness: 5, hp: 20, hpMax: 20, bt: 10, raised: true },
+    })
+    expect(adjusted(s, 16, { kind: 'ac' }).value).toBe(18)
+    toggleEffect(s, 'Shield', 1)
+    expect(adjusted(s, 16, { kind: 'ac' }).value).toBe(18)
+    s.shield.raised = false
+    expect(adjusted(s, 16, { kind: 'ac' }).value).toBe(17)
+  })
+
+  it("stacks the raised shield's own bonus (Buckler +1, Fortress +3), and none once broken", () => {
+    const shield = { name: 'Buckler', hardness: 3, hp: 6, hpMax: 6, bt: 3, raised: true, ac: 1 }
+    const s = hero([], { shield })
+    expect(adjusted(s, 16, { kind: 'ac' }).value).toBe(17)
+    s.shield = { ...shield, name: 'Fortress Shield', ac: 3 }
+    expect(adjusted(s, 16, { kind: 'ac' }).value).toBe(19)
+    s.shield.hp = 3
+    expect(adjusted(s, 16, { kind: 'ac' }).changed).toBe(false)
+  })
+
+  it('Enlarge gives clumsy 1 and melee damage; Haste gives quickened (pp. 329, 335)', () => {
+    const s = hero()
+    setGiven(s, 'Enlarge', true, 4)
+    expect(conditionValue(s, 'Clumsy')).toBe(1)
+    expect(adjusted(s, 18, { kind: 'ac' }).value).toBe(17)
+    expect(adjusted(s, 0, { kind: 'damage', melee: true }).value).toBe(4)
+    expect(adjusted(s, 0, { kind: 'damage', melee: false }).changed).toBe(false)
+    setGiven(s, 'Haste', true)
+    expect(activeConditions(s).has('Quickened')).toBe(true)
+  })
+
+  it('adds strategic strike’s dice to a Strike using Devise a Stratagem (PC2 p. 100)', () => {
+    const s = hero(['Strategic Strike'])
+    const rapier = { traits: 'Finesse', ranged: false }
+    expect(extraDice(s, 5, rapier, { stratagem: true })).toEqual([
+      { dice: '2d6', label: 'strategic strike' },
+    ])
+    expect(extraDice(s, 5, rapier, {})).toEqual([])
+  })
+
+  it('Mountain Stance’s +4 item AC adds to Mystic Armor’s +1, as its text says (PC2 p. 118)', () => {
+    const s = hero(['Mountain Stance', 'Mystic Armor'])
+    toggleEffect(s, 'Mountain Stance', 1)
+    toggleEffect(s, 'Mystic Armor', 1)
+    const ac = adjusted(s, 15, { kind: 'ac' })
+    expect(ac.value).toBe(20)
+    expect(ac.note).toBe('+5 Mountain Stance + Mystic Armor')
+    toggleEffect(s, 'Mountain Stance', 1)
+    expect(adjusted(s, 15, { kind: 'ac' }).value).toBe(16)
+  })
+
+  it('notes that Flurry and Outwit count only against the hunted prey (Player Core p. 154)', () => {
+    const notes = (name: string) => PF2E_EFFECTS.find((e) => e.name === name)?.note ?? ''
+    expect(notes('Flurry')).toMatch(/only for attacks against your hunted prey/i)
+    expect(notes('Outwit')).toMatch(/only against your prey/i)
+  })
+})
+
+describe('pf2e Devise a Stratagem (Player Core 2 p. 103)', () => {
+  const int = (INT: number, DEX = 0) => ({ ...defaultSheet('pf2e').attrs, INT, DEX })
+
+  it('uses INT for agile, finesse and ranged Strikes, not thrown or plain melee ones', () => {
+    const s = hero([], { attrs: int(4, 2) })
+    expect(stratagemUsesInt(s, { traits: 'Finesse', attr: 'DEX' })).toBe(true)
+    expect(stratagemUsesInt(s, { traits: 'Deadly d10', ranged: true, attr: 'DEX' })).toBe(true)
+    expect(stratagemUsesInt(s, { traits: 'Thrown 30 ft', ranged: true })).toBe(false)
+    expect(stratagemUsesInt(s, { traits: 'Sweep' })).toBe(false)
+  })
+
+  it('keeps the better attribute: INT only when it is at least the usual one', () => {
+    expect(stratagemUsesInt(hero([], { attrs: int(2, 4) }), { traits: 'Agile', attr: 'DEX' })).toBe(
+      false,
+    )
+    expect(stratagemUsesInt(hero([], { attrs: int(3, 3) }), { traits: 'Agile', attr: 'DEX' })).toBe(
+      true,
+    )
+  })
+
+  it('covers only the next Strike: its attack spends it, its damage keeps the dice once', () => {
+    const struck = stratagemAttacked({ ready: true }, 0, true)
+    expect(struck).toEqual({ ready: false, struck: 0 })
+    expect(stratagemAttacked(struck, 0, false)).toEqual({ ready: false, struck: undefined })
+    expect(stratagemDamaged(struck, 1)).toBe(struck)
+    expect(stratagemDamaged(struck, 0)).toEqual({ ready: false })
+    expect(stratagemAttacked({ ready: true }, 2, false)).toEqual({
+      ready: false,
+      struck: undefined,
+    })
   })
 })

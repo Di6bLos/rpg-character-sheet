@@ -17,12 +17,20 @@ const sheet = computed(() => draft.value.sheet)
 
 const own = computed(() => ownEffects(sheet.value))
 const toggles = computed(() => own.value.filter((e) => e.mode === 'toggle'))
-const always = computed(() => own.value.filter((e) => e.mode === 'permanent'))
+const always = computed(() => own.value.filter((e) => e.mode === 'permanent' && !e.requires))
+/** Effects that only count while a toggle is on (the ranger's edges with Hunt Prey), by toggle. */
+const withToggle = computed(() => {
+  const by = new Map<string, string[]>()
+  for (const e of own.value.filter((x) => x.mode === 'permanent' && x.requires))
+    by.set(e.requires!, [...(by.get(e.requires!) ?? []), e.name])
+  return [...by.entries()]
+})
 const on = computed(() => new Set(sheet.value.effects?.on ?? []))
 const given = computed(() => new Map((sheet.value.effects?.given ?? []).map((g) => [g.name, g])))
+/** Notes of what's on; permanent ones only when they need a toggle (Outwit: against your prey). */
 const notes = computed(() =>
   activeEffects(sheet.value)
-    .filter((a) => a.def.note && a.def.mode !== 'permanent')
+    .filter((a) => a.def.note && (a.def.mode !== 'permanent' || a.def.requires))
     .map((a) => `${a.def.name}: ${a.def.note}`),
 )
 
@@ -85,6 +93,9 @@ function setValue(name: string, value: number) {
     </div>
     <p v-if="always.length" class="small muted">
       Always on: {{ always.map((e) => e.name).join(', ') }}
+    </p>
+    <p v-for="[toggleName, names] in withToggle" :key="toggleName" class="small muted">
+      With {{ toggleName }}: {{ names.join(', ') }}
     </p>
     <ul v-if="notes.length" class="fx-notes">
       <li v-for="n in notes" :key="n" class="small">{{ n }}</li>

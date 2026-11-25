@@ -1051,6 +1051,7 @@ function strike(
     agile: traits.includes('Agile'),
     attr: attrName,
     ranged,
+    rank,
     dmg: dmgMod ? `${die}${dmgMod > 0 ? '+' : ''}${dmgMod}` : die,
     type: types.join('/'),
     traits: traits.join(', '),
