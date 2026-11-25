@@ -386,9 +386,9 @@ async function adjust(sign: 1 | -1) {
     background: var(--danger);
   }
 
-  // Temp HP over the right end, as on HeroBasic.
+  // Temp HP over the right end, as on HeroBasic, apart from the three bands.
   &--temp {
-    background: var(--accent);
+    background: var(--temp-hp);
     opacity: 0.75;
     left: auto;
     right: 0;

@@ -49,6 +49,9 @@
   // Danger as text on a page or panel (Down, death saves): 4.5:1 or better on either.
   --danger-ink: #e2735f;
   --panel-danger-ink: #e2735f;
+  // Temp HP over an HP bar: apart from all three bands (teal, accent, danger).
+  --temp-hp: #86b4e6;
+  --panel-temp-hp: #86b4e6;
   --ok-bg: #1f3531;
   --ok-text: #bfe9e1;
   --warn-bg: #3a2f1c;
@@ -151,6 +154,7 @@
   --panel-inset: rgba(90, 55, 25, 0.14);
   // Parchment needs a dark red.
   --panel-danger-ink: #7a2e1c;
+  --panel-temp-hp: #2f5f8f;
   --font-display: 'IM Fell English', Georgia, serif;
   --font-heading: 'IM Fell English SC', Georgia, serif;
   --font-body: Spectral, Georgia, serif;

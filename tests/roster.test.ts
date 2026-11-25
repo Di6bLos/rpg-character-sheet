@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { RosterEntry } from '../types'
-import { authorLabel, deathSavesLine, downStatus, dyingLine, heroDown } from '../utils/roster'
+import {
+  authorLabel,
+  deadBySaves,
+  deathSavesLine,
+  downStatus,
+  dyingLine,
+  heroDown,
+  hpClass,
+  hpTone,
+} from '../utils/roster'
 
 const entry = (patch: Partial<RosterEntry>): RosterEntry => ({
   user_id: 'u1',
@@ -69,5 +78,45 @@ describe('downStatus / deathSavesLine / dyingLine', () => {
     expect(dyingLine({})).toBe('')
     expect(downStatus(null)).toBe('Down')
     expect(downStatus({ dying: true })).toBe('Down')
+  })
+})
+
+describe('deadBySaves', () => {
+  it('reads a 5e hero with three failed death saves as Dead', () => {
+    const s = { deathSaves: { successes: 1, failures: 3 } }
+    expect(deadBySaves(s)).toBe(true)
+    expect(downStatus(s)).toBe('Dead')
+    expect(deathSavesLine(s)).toBe('')
+    expect(dyingLine(s, true)).toBe('')
+  })
+
+  it('never for PF2e or fewer failures', () => {
+    expect(deadBySaves({ deathSaves: { successes: 0, failures: 2 } })).toBe(false)
+    expect(deadBySaves({ dying: 1, deathSaves: { successes: 0, failures: 3 } })).toBe(false)
+    expect(deadBySaves(null)).toBe(false)
+  })
+})
+
+describe('hpTone / hpClass', () => {
+  it('is teal above half, amber at half or less, red at 0', () => {
+    expect(hpTone(30, 30)).toBe('')
+    expect(hpTone(16, 30)).toBe('')
+    expect(hpTone(15, 30)).toBe('accent')
+    expect(hpTone(12, 30)).toBe('accent')
+    expect(hpTone(1, 30)).toBe('accent')
+    expect(hpTone(0, 30)).toBe('danger')
+    expect(hpTone(-3, 30)).toBe('danger')
+  })
+
+  it('has no band without a max, and takes a fraction of 1', () => {
+    expect(hpTone(0, 0)).toBe('')
+    expect(hpTone(0.4, 1)).toBe('accent')
+    expect(hpTone(0.6, 1)).toBe('')
+  })
+
+  it('names the band classes', () => {
+    expect(hpClass(30, 30)).toBe('')
+    expect(hpClass(10, 30)).toBe('hp--accent')
+    expect(hpClass(0, 30)).toBe('hp--danger')
   })
 })

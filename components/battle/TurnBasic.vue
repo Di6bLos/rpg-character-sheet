@@ -1,13 +1,15 @@
 <script setup lang="ts">
 // The player's turn line on the battle board for systems without the Nimble turn steps
 // (D&D 5e, Pathfinder 2e): "Your turn", "<name> is acting" or "Not in combat", with the
-// round while the encounter runs. Seated before the GM's first Next turn it reads "Roll
-// your initiative" until the row has a number, then "Waiting for the GM to start" (the
-// strip already marks its first token, so it never says whose turn it is yet). While the GM has seated the hero without an Initiative ("–" on the strip) a Roll
-// initiative button rolls d20 + the hero's Init and sends it to the tracker
-// (`sendInitiative`) and shows the total with the Init in the dice tray; the button goes once the row has a number. A failed write keeps the
-// rolled total and offers to resend it, as the Nimble turn bar does. With Manual dice on
-// (account menu, `profiles.own_dice`) a field takes the player's own total instead.
+// round while the encounter runs. While the GM has seated the hero without an Initiative
+// ("–" on the strip: before the first turn or mid-encounter) it reads "Roll your
+// initiative", with a Roll initiative button that rolls d20 + the hero's Init, shows the
+// total with the Init in the dice tray and sends it to the tracker (`sendInitiative`); the
+// button goes once the row has a number. Rolled before the GM's first Next turn it reads
+// "Waiting for the GM to start" (the strip already marks its first token, so it never
+// says whose turn it is yet). A failed write reads "Initiative not sent", keeps the rolled
+// total and offers to resend it, as the Nimble turn bar does. With Manual dice on (account
+// menu, `profiles.own_dice`) a field takes the player's own total instead.
 // Compact (the phone's turn slot): inset 8px from the sides and the tab bar below.
 import type { useInitiative } from '~/composables/useInitiative'
 import { sendInitiative } from '~/composables/useSendInitiative'
@@ -32,14 +34,6 @@ const row = computed(() =>
 const acting = computed(() => props.init.order.value.find((c) => c.id === props.init.turnId.value))
 const mine = computed(() => !!acting.value && acting.value.character_id === props.characterId)
 const canRoll = computed(() => !!row.value && row.value.initiative_rolled === false)
-const headline = computed(() => {
-  // Seated before the GM's first Next turn.
-  if (!acting.value) {
-    if (!row.value) return 'Not in combat'
-    return canRoll.value ? 'Roll your initiative' : 'Waiting for the GM to start'
-  }
-  return mine.value ? 'Your turn' : `${acting.value.name} is acting`
-})
 const round = computed(() => (props.init.turnId.value ? `Round ${props.init.round.value}` : ''))
 
 const busy = ref(false)
@@ -47,6 +41,17 @@ const busy = ref(false)
 const result = ref('')
 /** A total the tracker didn't get; Resend sends it again instead of rolling anew. */
 const unsent = ref<number | null>(null)
+/**
+ * The turn line. A total the tracker didn't get comes first (as the Resend button says);
+ * then an unrolled row (seated before the first turn, or mid-encounter), then before the
+ * GM's first Next turn, then whose turn it is.
+ */
+const headline = computed(() => {
+  if (row.value && unsent.value !== null) return 'Initiative not sent'
+  if (canRoll.value) return 'Roll your initiative'
+  if (!acting.value) return row.value ? 'Waiting for the GM to start' : 'Not in combat'
+  return mine.value ? 'Your turn' : `${acting.value.name} is acting`
+})
 function clear() {
   result.value = ''
   unsent.value = null

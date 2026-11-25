@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // The player's hero on the battle board for systems without the sheet-editor hero column
 // (D&D 5e, Pathfinder 2e): a read-only card from the campaign roster: portrait, name,
-// class and level, HP with temp HP (DownStatus at 0: the death saves or PF2e's Dying
-// value; the bar's band is the hero column's: `hpTone`), AC, Init and Passive Perception, conditions and concentration, and a link to the
-// full sheet, where everything is changed. Compact (the phone's Hero tab): 44px link.
+// class and level, HP with temp HP (DownStatus at 0: the death saves, PF2e's Dying value
+// or Dead; the bar's band from `hpTone`, as every HP bar), AC, Init and Passive
+// Perception, conditions and concentration, and a link to the full sheet, where
+// everything is changed. Compact (the phone's Hero tab): 44px link.
 // While HeroScope has the hero's sheet editor (it applies the GM's HP and condition
 // changes), the numbers come from that live copy, with the GM's last change beneath HP.
 import type { RosterEntry } from '~/types'
@@ -226,11 +227,12 @@ const tiles = computed(() => [
   height: 10px;
 }
 
-// Temp HP sits over the right end of the bar, as on the hero stats dialog.
+// Temp HP sits over the right end of the bar, as on the hero stats dialog, in its own
+// colour (apart from the three HP bands).
 .hb__temp-fill {
   position: absolute;
   inset: 0 0 0 auto;
-  background: var(--accent);
+  background: var(--temp-hp);
   opacity: 0.75;
 }
 

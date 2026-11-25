@@ -218,7 +218,7 @@ $vellum-dark: #cdb78e;
 }
 
 // IM Fell has only old-style figures, where "+0" reads as "+o": the big numbers (HP,
-// ability modifiers, the quick tiles) use Spectral's lining figures instead.
+// ability modifiers, the quick tiles, the level seal) use Spectral's lining figures.
 $numerals: var(--font-body);
 
 .leaf {
@@ -358,7 +358,8 @@ $numerals: var(--font-body);
   color: var(--on-accent);
 
   strong {
-    font-family: var(--font-display);
+    font-family: $numerals;
+    font-variant-numeric: lining-nums;
     font-weight: 400;
     font-size: 34px;
     line-height: 0.9;

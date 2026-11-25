@@ -15,6 +15,7 @@
 import type { RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
 import { summonOwner } from '~/utils/initiative'
+import { hpClass } from '~/utils/roster'
 import { activeKey, browseBounds, slotAt, type StripSlot } from '~/utils/initiativeStrip'
 
 const props = defineProps<{
@@ -77,9 +78,11 @@ function hpFill(c: TurnRow): number | null {
   return null
 }
 
-function isLow(c: TurnRow): boolean {
+/** The minibar's band (`hpClass`): red when down, amber at half or less. */
+function hpBand(c: TurnRow): string {
+  if (isDown(c)) return 'hp--danger'
   const f = hpFill(c)
-  return isDown(c) || (f !== null && f <= 0.5)
+  return f === null ? '' : hpClass(f, 1)
 }
 
 /** HP as words for the tooltip and screen readers; the token itself only shows the bar. */
@@ -492,7 +495,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
                   <!-- No HP to show (a creature, to players): the bar keeps its room, unseen. -->
                   <span
                     class="tok__bar"
-                    :class="{ 'is-low': isLow(c), 'is-none': hpFill(c) === null }"
+                    :class="[hpBand(c), { 'is-none': hpFill(c) === null }]"
                     aria-hidden="true"
                   >
                     <span
@@ -859,11 +862,7 @@ function onFocus(slot: Slot, e: FocusEvent) {
   span {
     display: block;
     height: 100%;
-    background: var(--accent);
-  }
-
-  &.is-low span {
-    background: var(--danger);
+    background: var(--hp-fill, var(--secondary));
   }
 
   &.is-none {

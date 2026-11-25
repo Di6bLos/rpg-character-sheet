@@ -4,6 +4,8 @@
 // The default slot lands at the end of the bar's row (the card's action pips).
 // Compact (phone): 44px buttons and field, 8px apart. Readonly: the bar and numbers only.
 // Down (a 5e / PF2e hero at 0 HP): "Down" in place of the numbers.
+import { hpClass } from '~/utils/roster'
+
 const props = defineProps<{
   name: string
   now: number
@@ -32,7 +34,7 @@ function stepTyped(sign: 1 | -1) {
 <template>
   <div class="eh__hp">
     <span class="eh__bar" aria-hidden="true">
-      <i :class="{ 'is-low': fill <= 0.5 }" :style="{ width: `${fill * 100}%` }" />
+      <i :class="hpClass(now, max)" :style="{ width: `${fill * 100}%` }" />
     </span>
     <span class="eh__num"
       >{{ slain ? 'Slain' : down ? 'Down' : `${now}/${max}`
@@ -86,11 +88,7 @@ function stepTyped(sign: 1 | -1) {
   i {
     display: block;
     height: 100%;
-    background: var(--secondary);
-
-    &.is-low {
-      background: var(--danger);
-    }
+    background: var(--hp-fill, var(--secondary));
   }
 }
 

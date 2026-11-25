@@ -37,19 +37,26 @@ function pf2eDying(s: HeroSummary | null | undefined): number {
   return typeof s?.dying === 'number' && s.dying > 0 ? s.dying : 0
 }
 
-/** A downed 5e / PF2e hero's short status: "Dying 2" (PF2e) or "Down". */
+/** A 5e hero dead by three failed death saves. */
+export function deadBySaves(s: HeroSummary | null | undefined): boolean {
+  return !pf2eDying(s) && (s?.deathSaves?.failures ?? 0) >= 3
+}
+
+/** A downed 5e / PF2e hero's short status: "Dying 2" (PF2e), "Dead" (5e) or "Down". */
 export function downStatus(s: HeroSummary | null | undefined): string {
   const dying = pf2eDying(s)
-  return dying ? `Dying ${dying}` : 'Down'
+  if (dying) return `Dying ${dying}`
+  return deadBySaves(s) ? 'Dead' : 'Down'
 }
 
 /**
  * A downed 5e hero's death saves: "1 saved · 2 failed" (shown after "Down"), or worded for an
- * aria-label with `spoken`; empty when the sheet has none or PF2e's Dying value says it instead.
+ * aria-label with `spoken`; empty when the sheet has none, the hero is dead by them, or PF2e's
+ * Dying value says it instead.
  */
 export function deathSavesLine(s: HeroSummary | null | undefined, spoken = false): string {
   const ds = s?.deathSaves
-  if (!ds || pf2eDying(s)) return ''
+  if (!ds || pf2eDying(s) || deadBySaves(s)) return ''
   if (!spoken) return `${ds.successes} saved · ${ds.failures} failed`
   const won = `${ds.successes} ${ds.successes === 1 ? 'success' : 'successes'}`
   const lost = `${ds.failures} ${ds.failures === 1 ? 'failure' : 'failures'}`
@@ -64,13 +71,21 @@ export function dyingLine(s: HeroSummary | null | undefined, spoken = false): st
   return pf2eDying(s) ? downStatus(s) : deathSavesLine(s, spoken)
 }
 
+export type HpTone = '' | 'accent' | 'danger'
+
 /**
- * The HP bar's band, as the hero column's bar (`NimbleHpBar`'s `tone`) has it: secondary
- * (teal) while above half, accent at half or less, danger at 0. Pairs with `.meter--accent`
- * and `.meter--danger`.
+ * Every HP bar's band, on every system: secondary (teal) above half, accent (amber) at
+ * half or less, danger (red) at 0. `.meter--accent` / `.meter--danger`, or `hpClass` with
+ * a fill that reads `var(--hp-fill)`.
  */
-export function hpTone(hp: number, hpMax: number): '' | 'accent' | 'danger' {
+export function hpTone(hp: number, hpMax: number): HpTone {
   if (hpMax <= 0) return ''
   if (hp <= 0) return 'danger'
   return hp * 2 <= hpMax ? 'accent' : ''
+}
+
+/** `hpTone` as a class (`hp--accent`, `hp--danger` in main.scss set `--hp-fill`); '' above half. */
+export function hpClass(hp: number, hpMax: number): string {
+  const tone = hpTone(hp, hpMax)
+  return tone ? `hp--${tone}` : ''
 }

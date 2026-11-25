@@ -165,6 +165,7 @@ function onGridHero(characterId: string) {
             :roster="roster"
             :gm="gmControls"
             :acting-character-id="turnCharacterId"
+            :exclude="basicHeroId"
             @open="(id: string) => (cardId = id)"
           />
           <BattleEnemies :init="init" :gm="gmControls" />

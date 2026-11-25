@@ -12,7 +12,7 @@ import type { RosterEntry } from '~/types'
 import { heroArmor } from '~/utils/nimbleConditions'
 import { plural } from '~/utils/format'
 import { heroTurnActions } from '~/utils/nimblePlay'
-import { dyingLine, heroDown } from '~/utils/roster'
+import { deadBySaves, dyingLine, heroDown, hpClass } from '~/utils/roster'
 import { pf2ePointsLine } from '~/utils/heroCardStats'
 
 const props = defineProps<{
@@ -21,6 +21,8 @@ const props = defineProps<{
   /** The hero whose turn it is (a character id), for the Acting tag. */
   actingCharacterId?: string | null
   compact?: boolean
+  /** A hero to leave out (the seated 5e / PF2e player's own, on the phone's Hero tab). */
+  exclude?: string | null
 }>()
 const emit = defineEmits<{ open: [characterId: string] }>()
 
@@ -31,7 +33,9 @@ const features = useBattleFeatures()
 const heroes = computed(() =>
   props.roster.filter(
     (r): r is RosterEntry & { character_id: string } =>
-      !!r.character_id && (props.gm || r.user_id !== auth.userId),
+      !!r.character_id &&
+      (props.gm || r.user_id !== auth.userId) &&
+      (!props.exclude || r.character_id !== props.exclude),
   ),
 )
 
@@ -39,8 +43,10 @@ const heroes = computed(() =>
 const toggles = computed(() => !props.compact && heroes.value.length > 0)
 const partyClosed = computed(() => right.state.value.split <= 0)
 
+/** Nimble: Wounds at max. 5e: three failed death saves (the DownStatus row says it). */
 function isDead(r: RosterEntry) {
   const s = r.summary
+  if (basicDown(r)) return deadBySaves(s)
   return !!s && (s.woundsMax ?? 0) > 0 && (s.wounds ?? 0) >= (s.woundsMax ?? 0)
 }
 
@@ -48,9 +54,9 @@ function isDead(r: RosterEntry) {
 function status(r: RosterEntry): string {
   const s = r.summary
   if (!s) return ''
-  if (isDead(r)) return 'Dead'
-  // 5e and PF2e: down at 0 HP, on the DownStatus row of its own.
+  // 5e and PF2e: down (or dead) at 0 HP, on the DownStatus row of its own.
   if (basicDown(r)) return ''
+  if (isDead(r)) return 'Dead'
   if (s.dying) return 'Dying'
   const summons = (s.summons ?? []).filter((m) => !m.hpMax || m.hp > 0).length
   if (summons) return plural(summons, 'summon')
@@ -65,7 +71,8 @@ function basicDown(r: RosterEntry): boolean {
 /** A downed 5e / PF2e hero, for the card's accessible name: "Down, Death saves 1 success, …". */
 function downLabel(r: RosterEntry): string {
   if (!basicDown(r)) return ''
-  return ['Down', dyingLine(r.summary, true)].filter(Boolean).join(', ')
+  const tag = deadBySaves(r.summary) ? 'Dead' : 'Down'
+  return [tag, dyingLine(r.summary, true)].filter(Boolean).join(', ')
 }
 
 function conditions(r: RosterEntry): string[] {
@@ -90,6 +97,12 @@ function hpFill(r: RosterEntry): number {
   const s = r.summary
   if (!s?.hpMax) return 0
   return Math.min(1, Math.max(0, (s.hp ?? 0) / s.hpMax))
+}
+
+/** The bar's band (`hpClass`): teal, amber at half or less, red at 0. */
+function hpBand(r: RosterEntry): string {
+  const s = r.summary
+  return s?.hp === undefined ? '' : hpClass(s.hp, s.hpMax ?? 0)
 }
 
 function hpText(r: RosterEntry): string {
@@ -214,10 +227,7 @@ function label(r: RosterEntry): string {
             </span>
             <BattleDownStatus v-if="basicDown(r)" class="pc__down" :summary="r.summary" />
             <span class="pc__bar" aria-hidden="true">
-              <span
-                :class="{ 'is-low': hpFill(r) <= 0.5 }"
-                :style="{ width: `${hpFill(r) * 100}%` }"
-              />
+              <span :class="hpBand(r)" :style="{ width: `${hpFill(r) * 100}%` }" />
             </span>
             <span v-if="conditions(r).length" class="pc__conds" aria-hidden="true">
               <span v-for="cond in conditions(r)" :key="cond" class="pc__cond">{{ cond }}</span>
@@ -449,11 +459,7 @@ function label(r: RosterEntry): string {
   span {
     display: block;
     height: 100%;
-    background: var(--secondary);
-
-    &.is-low {
-      background: var(--danger);
-    }
+    background: var(--hp-fill, var(--secondary));
   }
 }
 

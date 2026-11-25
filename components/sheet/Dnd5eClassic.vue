@@ -90,7 +90,7 @@ function sign(n: number) {
           <div class="stat__small">{{ s.score }}</div>
         </div>
       </div>
-      <div class="combat combat--two">
+      <div class="training">
         <div v-for="t in training" :key="t.label" class="tile">
           <div class="tile__label">{{ t.label }}</div>
           <div class="tile__value">{{ t.value }}</div>
@@ -323,7 +323,7 @@ function sign(n: number) {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 12px;
 }
 
@@ -375,10 +375,13 @@ function sign(n: number) {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
+}
 
-  &--two {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+// Proficiency and Passive Perception, under the ability scores.
+.training {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
 }
 
 .sheet-tabs {
