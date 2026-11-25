@@ -8,6 +8,7 @@ import type {
   NimbleStat,
   Pf2eAttr,
   Pf2eSheet,
+  Pf2eStrike,
 } from '~/types/sheets'
 import { canRestore, restoreLevel } from '~/utils/levelHistory'
 import { syncCompanions } from '~/utils/nimbleBuild'
@@ -482,11 +483,11 @@ const inventoryCols = computed(() => [
         title="Strikes"
         add-label="Add strike"
         :blank="
-          () => ({
+          (): Pf2eStrike => ({
             name: '',
             bonus: 0,
             agile: false,
-            attr: 'STR' as Pf2eAttr,
+            attr: 'STR',
             ranged: false,
             dmg: '1d6',
             type: '',
