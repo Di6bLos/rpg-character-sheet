@@ -166,6 +166,34 @@ async function stepClosed() {
 watch(levelUpOpen, (isOpen) => {
   if (!isOpen) void stepClosed()
 })
+
+const router = useRouter()
+let releaseGuards: (() => void) | null = null
+
+function warnUnload(event: BeforeUnloadEvent) {
+  event.preventDefault()
+}
+
+function guardLeaving(on: boolean) {
+  if (on && !releaseGuards) {
+    window.addEventListener('beforeunload', warnUnload)
+    const removeRouteGuard = router.beforeEach(() =>
+      window.confirm(
+        `Leave without finishing? ${draft.value.name} stays as before Reconfigure started.`,
+      ),
+    )
+    releaseGuards = () => {
+      window.removeEventListener('beforeunload', warnUnload)
+      removeRouteGuard()
+    }
+  } else if (!on && releaseGuards) {
+    releaseGuards()
+    releaseGuards = null
+  }
+}
+
+watch(held, guardLeaving)
+onBeforeUnmount(() => guardLeaving(false))
 </script>
 
 <template>
