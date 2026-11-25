@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// Campaign board: the frame for the Party, Journal and Maps & images tabs (child routes).
+// Campaign board: the frame for the Battle, Journal and Maps & images tabs (child routes).
 definePageMeta({ middleware: 'auth' })
 
 const board = provideCampaignBoard('board')
-const chat = provideCampaignChat(board.campaignId)
+provideCampaignChat(board.campaignId)
 const { campaign, loading, load, campaignId } = board
 
 useHead({ title: () => `${campaign.value?.name ?? 'Campaign board'} · Lantern` })
@@ -35,7 +35,7 @@ watch(campaignId, enter)
       <NuxtLink to="/campaigns" class="btn">Go to campaigns</NuxtLink>
     </div>
   </div>
-  <BoardShell v-else :unread="chat.totalUnread.value">
+  <BoardShell v-else>
     <NuxtPage />
   </BoardShell>
 </template>
