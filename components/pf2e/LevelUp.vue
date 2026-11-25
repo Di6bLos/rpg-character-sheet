@@ -17,6 +17,7 @@ import {
   featPrerequisites,
   levelFeatOptions,
   levelSpellOptions,
+  pf2eContext,
   pf2eLevelPlan,
   pf2eLevelProblems,
 } from '~/utils/pf2eLevelUp'
@@ -64,19 +65,23 @@ const picks = ref<Pf2eLevelInput>(
 const plan = computed(() =>
   data.value ? pf2eLevelPlan(sheet.value, level.value, data.value, picks.value) : null,
 )
-const problems = computed<Pf2eLevelProblem[]>(() =>
-  plan.value
-    ? pf2eLevelProblems(plan.value, picks.value, sheet.value)
-    : [{ section: '', text: 'Loading the rules' }],
-)
-
 /** The sheet after this level's boosts and skill increases, for feat prerequisites. */
 const projected = computed(() => {
-  if (!data.value) return sheet.value
+  if (!data.value || !plan.value) return sheet.value
   const copy = JSON.parse(JSON.stringify(sheet.value)) as Pf2eSheet
   applyPf2eLevel(copy, level.value, { ...picks.value, feats: {} }, data.value)
   return copy
 })
+
+/** The class the sheet names isn't in the rules data: the dialog falls back to free text. */
+const unknownClass = computed(() => !!data.value && !pf2eContext(sheet.value, data.value))
+
+// Recorded picks that no longer fit (Reconfigure) are problems, so the player picks again.
+const problems = computed<Pf2eLevelProblem[]>(() =>
+  plan.value && data.value
+    ? pf2eLevelProblems(plan.value, picks.value, sheet.value, data.value, projected.value)
+    : [{ section: '', text: 'Loading the rules' }],
+)
 
 const sign = (n: number) => (n >= 0 ? `+${n}` : String(n))
 const option = (
@@ -168,7 +173,14 @@ const featCards = computed(() => {
       cards.sort(
         (a, b) => Number(!!a.card.disabled) - Number(!!b.card.disabled) || b.level - a.level,
       )
-      return [slot.key, cards.map((c) => c.card)]
+      // A recorded pick the slot no longer offers stays in view, to be taken off.
+      const kept = picks.value.feats[slot.key]
+      const gone =
+        kept && !cards.some((c) => c.card.id === kept)
+          ? d.feats.find((f) => f.id === kept)
+          : undefined
+      const stale = gone ? [option(gone, `Level ${gone.level}`, 'No longer an option')] : []
+      return [slot.key, [...stale, ...cards.map((c) => c.card)]]
     }),
   ) as Record<string, Pf2eOption[]>
 })
@@ -220,11 +232,24 @@ const spellCards = computed(() => {
       const elsewhere = Object.entries(picks.value.spells)
         .filter(([k]) => k !== p.key)
         .flatMap(([, ids]) => ids)
+      const offered = levelSpellOptions(p, sheet.value, d)
+      // Recorded picks the pick no longer offers stay in view, to be taken off.
+      const stale = (picks.value.spells[p.key] ?? [])
+        .filter((id) => !offered.some((s) => s.id === id))
+        .flatMap((id) => d.spells.filter((s) => s.id === id).slice(0, 1))
+        .map((s) => option(s, spellMeta(s), 'No longer an option'))
       return [
         p.key,
-        levelSpellOptions(p, sheet.value, d).map((s) =>
-          option(s, spellMeta(s), elsewhere.includes(s.id) ? 'Picked for another rank' : undefined),
-        ),
+        [
+          ...stale,
+          ...offered.map((s) =>
+            option(
+              s,
+              spellMeta(s),
+              elsewhere.includes(s.id) ? 'Picked for another rank' : undefined,
+            ),
+          ),
+        ],
       ]
     }),
   ) as Record<string, Pf2eOption[]>
@@ -341,6 +366,9 @@ defineExpose({ problems, progress, commit, jump })
 
 <template>
   <p v-if="loadError" class="err" role="alert">{{ loadError }}</p>
+  <p v-else-if="unknownClass" class="err" role="alert">
+    This hero's class isn't in the Pathfinder rules data: level up by hand from Edit sheet.
+  </p>
   <p v-else-if="!plan" class="small muted" aria-live="polite">Loading the Pathfinder rules…</p>
   <template v-else>
     <section class="step-block" aria-labelledby="pf-grants">

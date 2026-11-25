@@ -1335,11 +1335,19 @@ export interface Pf2eLevelProblem {
   text: string
 }
 
-/** What the picks still need, in the order the dialog shows them. */
+/**
+ * What the picks still need, in the order the dialog shows them. With `data`, picks that no
+ * longer fit are problems too (Reconfigure replays a level's recorded picks onto a sheet that
+ * changed): a feat its slot doesn't offer or whose prerequisites the hero now lacks (read
+ * against `projected`, the sheet after this level's boosts and skills), a spell its pick
+ * doesn't offer.
+ */
 export function pf2eLevelProblems(
   plan: Pf2eLevelPlan,
   picks: Pf2eLevelInput,
   sheet: Pf2eSheet,
+  data?: Pf2eBuildData,
+  projected: Pf2eSheet = sheet,
 ): Pf2eLevelProblem[] {
   const out: Pf2eLevelProblem[] = []
   const add = (section: string, text: string) => out.push({ section, text })
@@ -1356,11 +1364,16 @@ export function pf2eLevelProblems(
       c.count === 1 ? `Choose ${article(what)} ${what}` : `Choose ${c.count}: ${what}`,
     )
   }
-  for (const slot of plan.feats)
-    if (!picks.feats[slot.key]) {
-      const what = slot.label.toLowerCase()
+  for (const slot of plan.feats) {
+    const id = picks.feats[slot.key]
+    const what = slot.label.toLowerCase()
+    if (!id) {
       add(`feat:${slot.key}`, `Choose ${article(what)} ${what}`)
+      continue
     }
+    const stale = data && staleFeat(slot, id, picks, sheet, projected, plan.level, data)
+    if (stale) add(`feat:${slot.key}`, stale)
+  }
   const ranks = Object.fromEntries(sheet.skills.map((s) => [s.name, s.rank]))
   const increases = picks.skills.filter(Boolean)
   if (increases.length !== plan.skillIncreases)
@@ -1378,14 +1391,44 @@ export function pf2eLevelProblems(
   for (const s of trained)
     if ((raised.ranks[s] ?? 'U') !== 'U') add('skills', `${s} is already trained`)
   for (const sp of plan.spells) {
-    const n = (picks.spells[sp.key] ?? []).length
+    const ids = picks.spells[sp.key] ?? []
+    const n = ids.length
     if (sp.optional ? n > sp.count : n !== sp.count)
       add(
         `spells:${sp.key}`,
         `${sp.optional ? 'Up to' : 'Choose'} ${sp.count}: ${sp.label.toLowerCase()}`,
       )
+    if (!data) continue
+    const offered = new Set(levelSpellOptions(sp, sheet, data).map((s) => s.id))
+    for (const id of ids.filter((x) => !offered.has(x)))
+      add(
+        `spells:${sp.key}`,
+        `${data.spells.find((s) => s.id === id)?.name ?? 'A spell'} isn't an option for ${sp.label.toLowerCase()} any more: pick again`,
+      )
   }
   return out
+}
+
+/** Why a picked feat no longer fits its slot, or null when it does. */
+function staleFeat(
+  slot: Pf2eFeatSlotPlan,
+  id: string,
+  picks: Pf2eLevelInput,
+  sheet: Pf2eSheet,
+  projected: Pf2eSheet,
+  level: number,
+  data: Pf2eBuildData,
+) {
+  const f = data.feats.find((x) => x.id === id)
+  const name = f?.name ?? 'That feat'
+  const what = slot.label.toLowerCase()
+  if (!f || !levelFeatOptions(slot, sheet, level, data).some((x) => x.id === id))
+    return `${name} isn't an option for the ${what} any more: pick again`
+  const others = Object.entries(picks.feats)
+    .filter(([k]) => k !== slot.key)
+    .map(([, v]) => v)
+  const { unmet } = featPrerequisites(f, projected, data, others)
+  return unmet.length ? `${name} needs ${unmet.join('; ')}: pick again` : null
 }
 
 /**

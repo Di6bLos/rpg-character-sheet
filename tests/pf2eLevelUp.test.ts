@@ -549,3 +549,81 @@ describe('pf2e review fixes: level-ups', () => {
     expect(at10.rank).toBe('E')
   })
 })
+
+describe('pf2e review fixes: Reconfigure and going back', () => {
+  it('flags recorded picks that no longer fit, so the player picks again', () => {
+    const s = levelTo(buildPf2eSheet(dwarfFighter(), data), 5)
+    const picks = autoLevelPicks(s, 6, data)
+    const plan = pf2eLevelPlan(s, 6, data, picks)!
+    expect(pf2eLevelProblems(plan, picks, s, data)).toEqual([])
+    // A feat the hero already has isn't offered again.
+    const taken = data.feats.find((f) => f.id === s.feats.find((x) => x.type === 'Class feat')!.id)!
+    const stale = { ...picks, feats: { ...picks.feats, class: taken.id } }
+    expect(pf2eLevelProblems(plan, stale, s, data)).toContainEqual({
+      section: 'feat:class',
+      text: `${taken.name} isn't an option for the fighter feat any more: pick again`,
+    })
+    // A feat whose prerequisites the hero lost.
+    const needs = levelFeatOptions('skill', s, 6, data).find(
+      (f) =>
+        /^trained in Athletics$/i.test(f.prerequisites ?? '') && !/more than once/i.test(f.text),
+    )!
+    const weaker = structuredClone(s)
+    weaker.skills.find((x) => x.name === 'Athletics')!.rank = 'U'
+    const lost = { ...picks, feats: { ...picks.feats, skill: needs.id } }
+    expect(
+      pf2eLevelProblems(pf2eLevelPlan(weaker, 6, data, lost)!, lost, weaker, data),
+    ).toContainEqual({
+      section: 'feat:skill',
+      text: `${needs.name} needs ${needs.prerequisites}: pick again`,
+    })
+  })
+
+  it('flags a recorded spell its pick no longer offers', () => {
+    const s = levelTo(buildPf2eSheet(autoCreation(cls('Wizard')), data), 4)
+    const picks = autoLevelPicks(s, 5, data)
+    const plan = pf2eLevelPlan(s, 5, data, picks)!
+    const high = data.spells.find(
+      (x) => x.kind === 'spell' && x.rank === 5 && x.traditions.includes('Arcane'),
+    )!
+    const stale = { ...picks, spells: { ...picks.spells, book: [picks.spells.book![0]!, high.id] } }
+    expect(pf2eLevelProblems(plan, stale, s, data)).toContainEqual({
+      section: 'spells:book',
+      text: `${high.name} isn't an option for 2 new spells of rank 3 or lower any more: pick again`,
+    })
+  })
+
+  it('keeps feats and Strikes added by hand when a level is lowered', () => {
+    const s = levelTo(buildPf2eSheet(dwarfFighter(), data), 4)
+    const homeRule = { type: 'Feat', level: '', action: '', name: 'Home rule', desc: 'GM gift' }
+    s.feats.push({ ...homeRule })
+    applyPf2eLevel(s, 5, autoLevelPicks(s, 5, data, BOOSTS), data)
+    s.feats.push({ ...homeRule, name: 'Boon at 5th', level: '5' })
+    s.strikes.push({ name: 'Bite', bonus: 9, agile: false, dmg: '1d6', type: 'P', traits: '' })
+    const levelFive = s.feats.filter((f) => f.id && f.level === '5').map((f) => f.name)
+    expect(levelFive.length).toBeGreaterThan(0)
+    expect(restoreLevel(s, 4)).toBe(true)
+    const names = s.feats.map((f) => f.name)
+    expect(names).toEqual(expect.arrayContaining(['Home rule', 'Boon at 5th']))
+    expect(names.filter((n) => n === 'Home rule')).toHaveLength(1)
+    for (const n of levelFive) expect(names).not.toContain(n)
+    expect(s.strikes.map((x) => x.name)).toContain('Bite')
+  })
+
+  it('keeps the spell slots prepared, cast and spent where they still exist', () => {
+    const w = levelTo(buildPf2eSheet(autoCreation(cls('Wizard')), data), 2)
+    const first = w.spellcasting!.spells[0]!.id
+    applyPf2eLevel(w, 3, autoLevelPicks(w, 3, data), data)
+    w.spellcasting!.slots[0]!.prepared![0] = { id: first, cast: true }
+    w.spellcasting!.slots[1]!.prepared![0] = { id: first, cast: false }
+    expect(restoreLevel(w, 2)).toBe(true)
+    expect(w.spellcasting!.slots[0]!.prepared![0]).toEqual({ id: first, cast: true })
+    expect(w.spellcasting!.slots[1]!.max).toBe(0)
+
+    const so = levelTo(buildPf2eSheet(autoCreation(cls('Sorcerer')), data), 1)
+    applyPf2eLevel(so, 2, autoLevelPicks(so, 2, data), data)
+    so.spellcasting!.slots[0]!.used = 4
+    expect(restoreLevel(so, 1)).toBe(true)
+    expect(so.spellcasting!.slots[0]).toMatchObject({ max: 3, used: 3 })
+  })
+})

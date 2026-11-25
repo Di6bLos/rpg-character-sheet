@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { classBySlug } from '~/data/nimble/classes'
+import { loadPf2e } from '~/data/pf2e'
 import type {
   Dnd5eSheet,
   NimbleLevelInput,
@@ -123,11 +124,30 @@ const nimbleProblems = computed<{ heading: string; text: string }[]>(() => {
   return out
 })
 
-// Data-driven PF2e level-up (sheets made in the builder); hand-made sheets keep free text.
-const pf2eMode = computed(() => {
+// Data-driven PF2e level-up (sheets made in the builder); hand-made sheets keep free text, and
+// so does a builder sheet whose class isn't in the rules data (null until the classes load).
+const pf2eClassKnown = ref<boolean | null>(null)
+const pf2eBuilt = computed(() => {
   const s = draft.value.sheet as Pf2eSheet
-  return system.value === 'pf2e' && !!s.classSlug && !!s.creation && level.value < MAX_LEVEL
+  return system.value === 'pf2e' && !!s.classSlug && !!s.creation
 })
+watch(
+  [open, pf2eBuilt],
+  async ([isOpen, built]) => {
+    if (!isOpen || !built || pf2eClassKnown.value !== null) return
+    const slug = (draft.value.sheet as Pf2eSheet).classSlug
+    try {
+      const classes = await loadPf2e('classes')
+      pf2eClassKnown.value = classes.some((c) => c.slug === slug)
+    } catch {
+      // The level-up body reports the failed load and offers a retry.
+    }
+  },
+  { immediate: true },
+)
+const pf2eMode = computed(
+  () => pf2eBuilt.value && pf2eClassKnown.value !== false && level.value < MAX_LEVEL,
+)
 const pf2ePrevious = computed(() =>
   props.previous && !('hpGain' in props.previous) ? props.previous : undefined,
 )
@@ -393,6 +413,11 @@ async function confirm() {
         :previous="pf2ePrevious"
         :show-errors="showErrors"
       />
+
+      <p v-if="pf2eBuilt && pf2eClassKnown === false" class="notice small" role="status">
+        This hero's class ({{ (draft.sheet as Pf2eSheet).classSlug }}) isn't in the Pathfinder rules
+        data, so this level-up is filled in by hand.
+      </p>
 
       <section v-if="!pf2eMode" class="step-block" aria-labelledby="lu-hp">
         <div class="step-head">
