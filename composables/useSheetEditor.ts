@@ -3,6 +3,7 @@ import type { Character } from '~/types'
 import type { AnySheet, NimbleSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
 import { showOutcome } from '~/utils/dice'
+import { applyHpChangeFor } from '~/utils/heroHpChange'
 import { beginEncounter, endEncounter, initiativeRoll } from '~/utils/nimblePlay'
 import { seatChange, type Seat } from '~/utils/turnSteps'
 
@@ -217,9 +218,17 @@ export function provideSheetEditor(
     lastRoll.value = `GM set your Initiative. ${message}`
   })
 
+  /**
+   * The sheet's ±1 HP buttons. 5e and PF2e follow the same rules as the GM's changes (temp HP
+   * first, death saves / Dying at 0, healing from 0 resets them); Nimble just steps HP.
+   */
   function adjustHp(delta: number) {
-    if (!canEdit.value) return
-    const sheet = draft.value.sheet
+    if (!canEdit.value || !delta) return
+    const { system, sheet, level } = draft.value
+    if (system === 'dnd5e' || system === 'pf2e') {
+      applyHpChangeFor(system, sheet, level, { id: '', amount: delta, crit: false })
+      return
+    }
     sheet.hp = Math.max(0, Math.min(sheet.hpMax, sheet.hp + delta))
   }
 

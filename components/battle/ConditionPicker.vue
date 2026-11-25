@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // A creature's or hero's conditions, as the hero column has them: the active ones as
-// chips (hover for what they do, click to remove) and + Add, which opens a picker of
-// Nimble's conditions and spell statuses (tap to toggle) with what each active one does.
-// Bloodied, Dying and Wounded are left out: HP shows those. The caller applies each
-// toggle: the stat block writes the combatant, the hero vitals send it to the hero's sheet.
-import { AUTO_CONDITIONS, CONDITIONS } from '~/data/nimble/core'
+// chips (hover for what they do, click to remove) and + Add, which opens a picker of the
+// campaign system's conditions (`conditionNames`; tap to toggle). Nimble's adds its spell
+// statuses as a second group and says what each active one does; 5e and PF2e list names
+// only. Nimble leaves out Bloodied, Dying and Wounded: HP shows those. The caller applies
+// each toggle: the stat block writes the combatant, the hero vitals send it to the hero's sheet.
+import { CONDITIONS } from '~/data/nimble/core'
+import { conditionNames } from '~/utils/battleFeatures'
 import { SPELL_STATUSES } from '~/utils/nimbleConditions'
 
 const props = defineProps<{
@@ -18,17 +20,31 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ toggle: [name: string, on: boolean] }>()
 
+const system = useBattleSystem()
 const SPELL_NAMES = new Set(SPELL_STATUSES.map((s) => s.name))
-const OPTIONS = [...CONDITIONS, ...SPELL_STATUSES]
-  .filter((x) => !AUTO_CONDITIONS.includes(x.name) && x.name !== 'Helped')
-  .map((x) => ({ ...x, spell: SPELL_NAMES.has(x.name) }))
-const DESC = new Map(OPTIONS.map((x) => [x.name, x.desc]))
+const NIMBLE_NAMES = new Set(conditionNames('nimble'))
+/** What each Nimble condition the picker lists does; 5e and PF2e names have none here. */
+const NIMBLE_DESC = new Map(
+  [...CONDITIONS, ...SPELL_STATUSES]
+    .filter((x) => NIMBLE_NAMES.has(x.name))
+    .map((x) => [x.name, x.desc]),
+)
+const nimble = computed(() => system.value === 'nimble')
+const choices = computed(() =>
+  conditionNames(system.value).map((name) => ({
+    name,
+    desc: nimble.value ? (NIMBLE_DESC.get(name) ?? '') : '',
+    spell: nimble.value && SPELL_NAMES.has(name),
+  })),
+)
 
 const options = computed(() =>
-  OPTIONS.map((x) => ({ ...x, on: props.conditions.includes(x.name) })),
+  choices.value.map((x) => ({ ...x, on: props.conditions.includes(x.name) })),
 )
 /** Active conditions with what they do; a custom name typed elsewhere has none. */
-const active = computed(() => props.conditions.map((n) => ({ name: n, desc: DESC.get(n) ?? '' })))
+const active = computed(() =>
+  props.conditions.map((n) => ({ name: n, desc: nimble.value ? (NIMBLE_DESC.get(n) ?? '') : '' })),
+)
 
 function toggle(name: string) {
   emit('toggle', name, !props.conditions.includes(name))
@@ -70,7 +86,7 @@ watch(
         {{ a.name }} <span aria-hidden="true">×</span>
       </button>
     </div>
-    <p v-else class="cond__none">None</p>
+    <p v-else class="cond__none">No conditions</p>
 
     <UiDialog v-model="addOpen" :title="`Conditions · ${name}`" width="560px">
       <div class="pick">
@@ -81,13 +97,13 @@ watch(
             type="button"
             class="chip pick__chip"
             :aria-pressed="o.on"
-            :title="o.desc"
+            :title="o.desc || undefined"
             @click="toggle(o.name)"
           >
             {{ o.name }}
           </button>
         </div>
-        <div class="pick__chips">
+        <div v-if="nimble" class="pick__chips">
           <span class="pick__group">Spell and ally statuses</span>
           <button
             v-for="o in options.filter((x) => x.spell)"
@@ -95,13 +111,13 @@ watch(
             type="button"
             class="chip pick__chip"
             :aria-pressed="o.on"
-            :title="o.desc"
+            :title="o.desc || undefined"
             @click="toggle(o.name)"
           >
             {{ o.name }}
           </button>
         </div>
-        <div v-if="active.length" class="tile pick__active">
+        <div v-if="nimble && active.length" class="tile pick__active">
           <p v-for="a in active" :key="a.name" class="pick__line">
             <strong>{{ a.name }}.</strong> {{ a.desc }}
           </p>
