@@ -238,8 +238,8 @@ const SELF_ALLIES = /\bYou and (?:all )?(?:your )?allies\b/
 const SUSTAINED = /\bsustained\b/i
 const DEGREES_AFTER =
   /^\s*on a ((?:critical )?(?:success|failure)(?:,? (?:or|and) (?:a )?(?:critical )?(?:success|failure))*)/i
-const ACTIONS_ROUNDS = /^(single|two|three) actions? to 2 rounds$/i
-const ACTIONS_RANGE = /^(single|two|three) actions? (to|or) (single|two|three) actions?$/i
+const ACTIONS_ROUNDS = /^([1-3]) to 2 rounds$/
+const ACTIONS_RANGE = /^([1-3]) (to|or) ([1-3])$/
 
 const diceOf = (m: RegExpMatchArray): Pf2eDice => ({
   count: Number(m[1]),
@@ -769,17 +769,17 @@ function parseFixed(rank: number, block: string, parts: Pf2eSpellPart[]): Pf2eHe
   return { rank, text: block, sets }
 }
 
-/** Versions by actions: "single action to three actions" → [1, 2, 3]. */
+/** Versions by actions: "1 to 3" → [1, 2, 3], "2 or 3" → [2, 3], "2 to 2 rounds" → [2, 3]. */
 function actionOptions(actions: Pf2eSpellDef['actions']): number[] {
   if (typeof actions !== 'string') return []
-  const n = (w: string) => ({ single: 1, two: 2, three: 3 })[w.toLowerCase()] ?? 0
+  const n = Number
   const rounds = ACTIONS_ROUNDS.exec(actions)
   if (rounds) return [...new Set([n(rounds[1]!), 3])]
   const m = ACTIONS_RANGE.exec(actions)
   if (!m) return []
   const lo = n(m[1]!)
   const hi = n(m[3]!)
-  if (m[2]!.toLowerCase() === 'or') return [lo, hi]
+  if (m[2] === 'or') return [lo, hi]
   return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)
 }
 
@@ -978,8 +978,12 @@ export function partsAt(
 /** A scaling effect's value at a rank (Heroism +2 from 6th, +3 from 9th; Enlarge +4 from 4th). */
 export function effectValue(spell: Pf2eSpellDef, def: Pf2eEffectDef, rank: number) {
   if (!def.values?.length) return undefined
-  const reached = (spell.heightened?.ranks ?? []).filter((r) => r <= rank)
-  return def.values[Math.min(def.values.length - 1, reached.length)]
+  // "Heightened (+N)" steps past the spell's rank, or the "Heightened (Nth)" ranks reached.
+  const step = spell.heightened?.step
+  const reached = step
+    ? Math.max(0, Math.floor((rank - spell.rank) / step))
+    : (spell.heightened?.ranks ?? []).filter((r) => r <= rank).length
+  return def.values[Math.min(def.values.length - 1, reached)]
 }
 
 const BASIC: Record<Pf2eDegree, number> = {

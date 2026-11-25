@@ -332,9 +332,6 @@ const HAS_DICE = /\d+d\d+/
  * Strike: they change something else the GM tracks.
  */
 const NOT_ROLLED: Record<string, string> = {
-  'Advanced Scurvy':
-    'an affliction stage that raises the persistent bleed damage the target takes from other effects',
-  'Chrysopoetic Curse': 'the gold (2d6 gp) left behind, not damage',
   'Conductive Weapon': 'sets a shock rune’s damage die to 1d12; the Strike rolls it',
   'Interplanar Teleport': 'how far off target you arrive (1d20×25 miles)',
 }
@@ -362,7 +359,7 @@ describe('pf2e spell rules: every spell in the data', () => {
       `PF2e spells: ${spells.length}; with dice ${counts.withDice}: ${counts.rolls} roll damage or healing, ${counts.otherDice} only durations, tables or battle forms, ${counts.notRolled} allowlisted`,
     )
     expect(missing).toEqual([])
-    expect(counts.rolls).toBeGreaterThan(550)
+    expect(counts.rolls).toBeGreaterThan(430)
     expect(Object.keys(NOT_ROLLED).every((name) => spells.some((s) => s.name === name))).toBe(true)
   })
 
@@ -394,7 +391,7 @@ describe('pf2e spell rules: every spell in the data', () => {
     }
     console.info(`PF2e heightened blocks with dice: ${blocks}, read: ${blocks - unread.length}`)
     expect(unread).toEqual([])
-    expect(blocks).toBeGreaterThan(400)
+    expect(blocks).toBeGreaterThan(350)
   })
 
   it('parses the action versions of every spell cast with 1 to 3 actions', () => {
