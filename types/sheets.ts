@@ -106,6 +106,9 @@ export interface Dnd5eSheet extends SheetCommon {
   speed: string
   profBonus: number
   deathSaves: { successes: number; failures: number }
+  tempHp: number
+  /** Condition names from DND5E_CONDITIONS (the GM can set them from the battle board). */
+  conditions: string[]
   weapons: Dnd5eWeapon[]
   features: NamedEntry[]
 }

@@ -3,6 +3,10 @@
 // is the amount typed (1 when empty). Emits the change; the card decides where it goes.
 // The default slot lands at the end of the bar's row (the card's action pips).
 // Compact (phone): 44px buttons and field, 8px apart.
+// Down (a 5e / PF2e hero at 0 HP): "Down" in place of the numbers; "Dead" with `dead`
+// (three failed 5e death saves, or PF2e Dying 4).
+import { hpClass } from '~/utils/roster'
+
 const props = defineProps<{
   name: string
   now: number
@@ -10,6 +14,8 @@ const props = defineProps<{
   temp?: number
   slain: boolean
   compact?: boolean
+  down?: boolean
+  dead?: boolean
 }>()
 const emit = defineEmits<{ change: [delta: number] }>()
 
@@ -29,10 +35,11 @@ function stepTyped(sign: 1 | -1) {
 <template>
   <div class="eh__hp">
     <span class="eh__bar" aria-hidden="true">
-      <i :class="{ 'is-low': fill <= 0.5 }" :style="{ width: `${fill * 100}%` }" />
+      <i :class="hpClass(now, max)" :style="{ width: `${fill * 100}%` }" />
     </span>
     <span class="eh__num"
-      >{{ slain ? 'Slain' : `${now}/${max}` }}<small v-if="temp"> +{{ temp }}</small></span
+      >{{ slain ? 'Slain' : down ? (dead ? 'Dead' : 'Down') : `${now}/${max}`
+      }}<small v-if="temp"> +{{ temp }}</small></span
     >
     <!-- The card's action pips sit on this row. -->
     <slot />
@@ -82,11 +89,7 @@ function stepTyped(sign: 1 | -1) {
   i {
     display: block;
     height: 100%;
-    background: var(--secondary);
-
-    &.is-low {
-      background: var(--danger);
-    }
+    background: var(--hp-fill, var(--secondary));
   }
 }
 
