@@ -92,6 +92,20 @@ export const useAuthStore = defineStore('auth', () => {
     await fetchProfile()
   }
 
+  /** Emails a link that signs the player in on /reset-password to set a new password. */
+  async function requestPasswordReset(email: string) {
+    const siteUrl = useRuntimeConfig().public.siteUrl || window.location.origin
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${siteUrl}/reset-password`,
+    })
+    if (error) throw error
+  }
+
+  async function updatePassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+  }
+
   async function logout() {
     // This browser only: the default ("global") ends the account's sessions in every
     // other tab and device too, which then fail with 401s until they sign in again.
@@ -131,6 +145,8 @@ export const useAuthStore = defineStore('auth', () => {
     signUp,
     login,
     logout,
+    requestPasswordReset,
+    updatePassword,
     updateProfile,
   }
 })

@@ -58,7 +58,15 @@ async function submit() {
       />
     </div>
     <div class="field">
-      <label for="login-password">Password</label>
+      <div class="field__row">
+        <label for="login-password">Password</label>
+        <NuxtLink
+          class="small"
+          :to="{ path: '/forgot-password', query: email.trim() ? { email: email.trim() } : {} }"
+        >
+          Forgot password?
+        </NuxtLink>
+      </div>
       <div class="password">
         <input
           id="login-password"
@@ -124,6 +132,13 @@ async function submit() {
 
 .auth-title {
   font-size: 28px;
+}
+
+.field__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .password {
