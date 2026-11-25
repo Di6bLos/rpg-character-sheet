@@ -85,6 +85,12 @@ export interface Pf2eStatContext {
   level?: number
   /** A Reflex save, for unconscious. */
   save?: 'Fortitude' | 'Reflex' | 'Will'
+  /** A Perception check for initiative (Incredible Initiative's +2). */
+  initiative?: boolean
+  /** The action whose check this is, for bonuses limited to it (+1 to Make an Impression). */
+  action?: string
+  /** A spell attack or DC: weapon and class DC proficiency increases don't apply. */
+  spell?: boolean
 }
 
 export interface Pf2eConditionDef {

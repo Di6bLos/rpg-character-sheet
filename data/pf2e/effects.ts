@@ -4,7 +4,11 @@
 // allies cast (Bless, Heroism, Courageous Anthem). Second wave: the Player Core classes'
 // numeric features (Hunt Prey and its edges, Thief, Precise Strike, Strategic Strike, weapon
 // specialization), monk stances, and spells heroes put on themselves (Shield, Mystic Armor,
-// Rallying Anthem, Enlarge, Haste, Guidance). Situational text stays in `note`.
+// Rallying Anthem, Enlarge, Haste, Guidance). Third wave: class features whose numbers the text
+// reader in utils/pf2eAbilityRules.ts can't work out (bonuses that grow by level, resistances
+// with a formula, stances); everything it can read (proficiency increases, Juggernaut-style
+// degree upgrades, plain bonuses) is derived and needs no entry here. Situational text stays
+// in `note`.
 import type { Pf2eEffectDef } from './types'
 
 export const PF2E_EFFECTS: Pf2eEffectDef[] = [
@@ -32,8 +36,7 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     name: 'Incredible Initiative',
     source: { book: 'Player Core', page: 256 },
     mode: 'permanent',
-    effects: [],
-    note: '+2 circumstance bonus to initiative rolls.',
+    effects: [{ kind: 'modifier', selector: ['initiative'], value: 2, type: 'circumstance' }],
   },
 
   // --- Class abilities ----------------------------------------------------------
@@ -211,6 +214,101 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     note: 'Only falling stone Strikes (1d8 bludgeoning; forceful, nonlethal, unarmed); +2 circumstance against forced movement.',
   },
 
+  // --- Class features with numbers by level -------------------------------------
+  {
+    name: 'Incredible Movement',
+    source: { book: 'Player Core 2', page: 114 },
+    mode: 'permanent',
+    effects: [
+      {
+        kind: 'modifier',
+        selector: ['speed'],
+        value: 10,
+        type: 'status',
+        byLevel: [
+          [3, 10],
+          [7, 15],
+          [11, 20],
+          [15, 25],
+          [19, 30],
+        ],
+      },
+    ],
+    note: 'Only while you’re not wearing armor.',
+  },
+  {
+    name: 'Panache',
+    source: { book: 'Player Core 2', page: 158 },
+    mode: 'toggle',
+    ends: 'encounter',
+    effects: [
+      {
+        kind: 'modifier',
+        selector: ['speed'],
+        value: 5,
+        type: 'status',
+        byLevel: [
+          [1, 5],
+          [3, 10],
+          [7, 15],
+          [11, 20],
+          [15, 25],
+          [19, 30],
+        ],
+      },
+    ],
+    note: '+1 circumstance bonus to skill checks with the bravado trait in combat. Without panache, Vivacious Speed still gives half its bonus. Lost when the encounter ends or a finisher is used.',
+  },
+  {
+    name: 'Stylish Combatant',
+    source: { book: 'Player Core 2', page: 158 },
+    mode: 'permanent',
+    effects: [],
+    note: 'Its Speed bonus while you have panache is in Panache.',
+  },
+  {
+    name: 'Vivacious Speed',
+    source: { book: 'Player Core 2', page: 158 },
+    mode: 'permanent',
+    effects: [],
+    note: 'Its Speed bonus by level is in Panache.',
+  },
+  {
+    name: 'Raging Resistance',
+    source: { book: 'Player Core 2', page: 70 },
+    mode: 'permanent',
+    requires: 'Rage',
+    effects: [{ kind: 'resistance', type: 'your instinct’s damage types', amount: 'con', add: 3 }],
+  },
+  {
+    name: "Guardian's Armor",
+    source: { book: 'Battlecry!', page: 37 },
+    mode: 'permanent',
+    effects: [{ kind: 'resistance', type: 'physical', amount: 'halfLevel', add: 1 }],
+    note: 'Only while wearing medium or heavy armor.',
+  },
+  {
+    name: 'Arcane Cascade',
+    source: { book: 'Impossible Magic', page: 12 },
+    mode: 'toggle',
+    effects: [
+      {
+        kind: 'modifier',
+        selector: ['damage'],
+        value: 1,
+        type: 'untyped',
+        melee: true,
+        byLevel: [
+          [1, 1],
+          [7, 2],
+          [15, 3],
+        ],
+      },
+      { kind: 'resistance', type: 'damage from spells', amount: 1 },
+    ],
+    note: 'Melee Strikes gain the arcane trait; the extra damage is force (or a type the spell you just cast could deal). Resistance to spells is 2 from 7th level (weapon specialization) and 3 from 15th.',
+  },
+
   // --- Spells, on yourself or from an ally -------------------------------------
   {
     name: 'Shield',
@@ -218,6 +316,7 @@ export const PF2E_EFFECTS: Pf2eEffectDef[] = [
     mode: 'toggle',
     effects: [{ kind: 'modifier', selector: ['ac'], value: 1, type: 'circumstance' }],
     note: 'Until the start of your next turn; Shield Block with Hardness 5, then you can’t cast it for 10 minutes.',
+    ends: 'startOfTurn',
   },
   {
     name: 'Mystic Armor',

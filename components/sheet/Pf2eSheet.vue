@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
-import { parseDice, rollAttack, rollDice, sign } from '~/utils/dice'
+import { rollAttack, sign } from '~/utils/dice'
 import {
   type Pf2eStatContext,
   SAVE_ATTR,
@@ -10,20 +10,9 @@ import {
   isDead,
   shieldAc,
   shieldBroken,
-  strikeDamage,
-  strikeResult,
   takeDamage,
 } from '~/utils/pf2ePlay'
-import {
-  damageConditions,
-  extraDice,
-  mapPenalties,
-  speedNow,
-  stratagemAttacked,
-  stratagemDamaged,
-  stratagemUsesInt,
-} from '~/utils/pf2eEffects'
-import { dailyPreparations } from '~/utils/pf2eSpells'
+import { resistancesNow, shiftedDegree, speedNow } from '~/utils/pf2eEffects'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, lastRoll, say } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -105,29 +94,46 @@ function rollCheck(name: string, bonus: number) {
   say(`${name}: ${r.total} (${r.d20} ${sign(bonus)}${natNote(r.natural)})`)
 }
 
-/** The target's AC, for Strike results; blank rolls without one. */
-const targetAc = ref<number | null>(null)
+/** The DC of the effect the hero is saving against, for the save's degree. */
+const saveDc = ref<number | null>(null)
 
-/** Situations that add damage dice the hero's abilities give (sneak attack, precision). */
-const damageFlags = ref({ offGuard: false, huntedPrey: false, stratagem: false })
-/** The Strike whose attack used Devise a Stratagem, until its damage is rolled. */
-const stratagemStruck = ref<number>()
-const conditionsOffered = computed(() => damageConditions(sheet.value))
-
-const speed = computed(() => speedNow(sheet.value))
-
-/** Use an ability: say what it is; a daily one is spent until daily preparations. */
-function useAbility(i: number) {
-  if (!canEdit.value) return
-  const f = sheet.value.feats[i]
-  if (!f) return
-  const first = f.desc.split(/(?<=\.)\s/)[0] ?? ''
-  const daily = /per day/i.test(f.frequency ?? '')
-  if (daily) sheet.value.used = [...(sheet.value.used ?? []), f.name]
-  say(`${f.name} ${f.action}${f.trigger ? ` (trigger: ${f.trigger})` : ''}: ${first}`.trim())
+/**
+ * A saving throw: with a DC it says the degree of success (p. 401) after the hero's
+ * upgrades (Juggernaut: a success is a critical success), and notes the ones that hold only
+ * against some effects (Bravery against fear).
+ */
+function rollSave(label: string, bonus: number) {
+  if (label !== 'Fortitude' && label !== 'Reflex' && label !== 'Will')
+    return rollCheck(label, bonus)
+  const r = rollAttack(bonus)
+  const head = `${label}: ${r.total} (${r.d20} ${sign(bonus)}${natNote(r.natural)})`
+  const dc = saveDc.value
+  if (!dc) return say(head)
+  const rolled = degreeOf(r.total, r.d20, dc)
+  const shift = shiftedDegree(sheet.value, label, rolled)
+  const by = shift.by ? ` → ${shift.degree} (${shift.by})` : ''
+  const notes = shift.notes.length ? ` ${shift.notes.join('; ')}.` : ''
+  say(`${head} vs DC ${dc}: ${rolled}${by}.${notes}`)
 }
-const isUsed = (name: string) => sheet.value.used?.includes(name) ?? false
-const hasDaily = computed(() => sheet.value.feats.some((f) => /per day/i.test(f.frequency ?? '')))
+
+const resistances = computed(() => resistancesNow(sheet.value, draft.value.level))
+
+const strikesApi = providePf2eStrikes()
+const { targetAc, damageFlags, conditionsOffered, strikes, nextAttack } = strikesApi
+const turnActive = computed(() => !!sheet.value.turn?.active)
+
+/** A Strike from the table: one action while the turn tracker runs (Player Core p. 418). */
+function strikeFromTable(index: number, step: number) {
+  if (!canEdit.value) return
+  const t = sheet.value.turn
+  if (t?.active) {
+    if (t.actions < 1) return say('No actions left this turn.')
+    t.actions -= 1
+  }
+  strikesApi.attack(index, { map: step })
+}
+
+const speed = computed(() => speedNow(sheet.value, draft.value.level))
 
 const shieldPct = computed(() => {
   const { hp, hpMax } = sheet.value.shield
@@ -143,106 +149,6 @@ function setFocus(n: number) {
   if (!canEdit.value) return
   sheet.value.focus.current = sheet.value.focus.current === n ? n - 1 : n
 }
-
-/** A dice expression with its flat modifier moved by `delta` ("1d8+4", −1 → "1d8+3"). */
-function shiftDice(dmg: string, delta: number) {
-  const e = parseDice(dmg)
-  if (!e || !delta) return dmg
-  const mod = e.mod + delta
-  return `${e.count}d${e.sides}${mod ? sign(mod) : ''}`
-}
-
-const stratagemState = () => ({
-  ready: damageFlags.value.stratagem,
-  struck: stratagemStruck.value,
-})
-
-const strikes = computed(() =>
-  sheet.value.strikes.map((w, index) => {
-    const typeInitial = w.type ? ` ${w.type.charAt(0).toUpperCase()}` : ''
-    const attr = w.attr ?? 'STR'
-    const traits = w.traits.split(',').map((t) => t.trim().toLowerCase())
-    const level = draft.value.level
-    // Devise a Stratagem: the next Strike's attack can use INT (Player Core 2 p. 103), and
-    // strategic strike's dice go with it; the Strike that did keeps them for its damage.
-    const intAttack = damageFlags.value.stratagem && stratagemUsesInt(sheet.value, w)
-    const stratagem = intAttack || stratagemStruck.value === index
-    const attackBase = intAttack
-      ? w.bonus - sheet.value.attrs[attr] + sheet.value.attrs.INT
-      : w.bonus
-    const attack = adjusted(sheet.value, attackBase, {
-      kind: 'attack',
-      attr: intAttack ? 'INT' : attr,
-      traits,
-      level,
-    })
-    // Melee damage adds STR, so enfeebled lowers it (p. 443); effects like Rage and
-    // Courageous Anthem add theirs (Rage only to melee, halved for agile).
-    const dmgMods = adjusted(sheet.value, 0, {
-      kind: 'damage',
-      attr: w.ranged ? undefined : 'STR',
-      melee: !w.ranged,
-      agile: w.agile,
-      traits,
-      rank: w.rank,
-      level,
-    })
-    const dmg = shiftDice(w.dmg, dmgMods.value)
-    const extra = extraDice(sheet.value, level, w, { ...damageFlags.value, stratagem })
-    const rollDmg = (crit: boolean) => {
-      const expr = parseDice(dmg)
-      if (!expr) return say(`${w.name}: “${w.dmg}” isn’t a dice expression like 1d8+4`)
-      const parts = [rollDice(expr).total]
-      for (const x of extra) {
-        const e = parseDice(x.dice)
-        if (e) parts.push(rollDice(e).total)
-      }
-      const total = strikeDamage(parts.reduce((a, b) => a + b, 0))
-      const extras = extra.length
-        ? ` (${extra.map((x) => `+${x.dice} ${x.label}`).join(', ')})`
-        : ''
-      // A critical hit doubles all of it, precision dice included (p. 401); deadly and fatal
-      // dice are added by hand.
-      const shown = crit ? `${strikeDamage(total, true)} (2 × ${total})` : String(total)
-      say(
-        `${w.name} ${crit ? 'critical ' : ''}damage: ${shown} ${w.type.toLowerCase()}${extras}`.trim(),
-      )
-      stratagemStruck.value = stratagemDamaged(stratagemState(), index).struck
-    }
-    return {
-      name: w.name,
-      traits: w.traits
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-      dmg: `${dmg}${extra.map((x) => `+${x.dice}`).join('')}${typeInitial}`,
-      dmgChanged: dmgMods.changed || extra.length > 0,
-      dmgNote: [dmgMods.note, ...extra.map((x) => `+${x.dice} ${x.label}`)]
-        .filter(Boolean)
-        .join(', '),
-      changed: attack.changed,
-      note: attack.note,
-      atks: mapPenalties(sheet.value, w.agile).map((penalty, i) => {
-        const bonus = attack.value - penalty
-        return {
-          text: sign(bonus),
-          label: `${w.name} attack ${i + 1}`,
-          roll: () => {
-            const r = rollAttack(bonus)
-            const st = stratagemAttacked(stratagemState(), index, intAttack)
-            damageFlags.value.stratagem = st.ready
-            stratagemStruck.value = st.struck
-            const ac = targetAc.value
-            const vs = ac ? ` vs AC ${ac}: ${strikeResult(degreeOf(r.total, r.d20, ac))}` : ''
-            say(`${w.name} (attack ${i + 1}): ${r.total}${natNote(r.natural)}${vs}`)
-          },
-        }
-      }),
-      dmgRoll: () => rollDmg(false),
-      critRoll: () => rollDmg(true),
-    }
-  }),
-)
 
 function bulkOf(qty: string): number {
   const v = qty.trim().toUpperCase()
@@ -398,6 +304,19 @@ const bulkPct = computed(() =>
         </div>
       </div>
 
+      <label class="target">
+        Save DC
+        <input
+          v-model.number="saveDc"
+          class="input"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          placeholder="—"
+          aria-describedby="save-dc-help"
+        />
+        <span id="save-dc-help" class="small muted">for the degree of success</span>
+      </label>
       <div class="saves">
         <div v-for="x in saves" :key="x.label" class="tile" style="gap: 6px; padding: 12px">
           <div class="save__head">
@@ -422,7 +341,7 @@ const bulkPct = computed(() =>
             :class="{ 'is-changed': x.now.changed }"
             :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.label}`"
             :aria-label="`Roll ${x.label} ${sign(x.now.value)}`"
-            @click="rollCheck(x.label, x.now.value)"
+            @click="rollSave(x.label, x.now.value)"
           >
             {{ sign(x.now.value) }}
           </button>
@@ -462,7 +381,15 @@ const bulkPct = computed(() =>
             >Temp HP <strong>{{ sheet.tempHp }}</strong></span
           >
           <span
-            >Speed <strong :class="{ 'is-changed': speed.changed }">{{ speed.text }}</strong></span
+            >Speed
+            <strong
+              :class="{ 'is-changed': speed.changed }"
+              :title="speed.changed ? speed.note : undefined"
+              >{{ speed.text }}</strong
+            ></span
+          >
+          <span v-for="r in resistances" :key="`${r.source}-${r.type}`" :title="r.source"
+            >Resistance <strong>{{ r.value }}</strong> {{ r.type }}</span
           >
         </div>
         <Pf2eSheetHealth />
@@ -503,6 +430,8 @@ const bulkPct = computed(() =>
   </div>
 
   <Pf2eSheetEffects />
+
+  <Pf2eSheetTurn />
 
   <section class="panel stack" style="gap: 14px" aria-labelledby="st-h">
     <div class="panel-title" style="margin: 0">
@@ -565,10 +494,14 @@ const bulkPct = computed(() =>
                   :key="n"
                   type="button"
                   class="atk"
-                  :class="{ 'atk--first': n === 0, 'is-changed': w.changed }"
+                  :class="{
+                    'atk--first': n === (turnActive ? nextAttack : 0),
+                    'is-changed': w.changed,
+                  }"
                   :title="w.changed ? w.note : undefined"
                   :aria-label="a.label"
-                  @click="a.roll"
+                  :disabled="!canEdit"
+                  @click="strikeFromTable(w.index, n)"
                 >
                   {{ a.text }}
                 </button>
@@ -582,7 +515,7 @@ const bulkPct = computed(() =>
                   :class="{ 'is-changed': w.dmgChanged }"
                   :title="w.dmgChanged ? w.dmgNote : undefined"
                   :aria-label="`Roll damage for ${w.name}`"
-                  @click="w.dmgRoll"
+                  @click="strikesApi.damage(w.index, false)"
                 >
                   {{ w.dmg }}
                 </button>
@@ -591,7 +524,7 @@ const bulkPct = computed(() =>
                   class="atk crit-btn"
                   :aria-label="`Roll critical damage for ${w.name}`"
                   title="Critical hit: double damage"
-                  @click="w.critRoll"
+                  @click="strikesApi.damage(w.index, true)"
                 >
                   ×2
                 </button>
@@ -610,11 +543,13 @@ const bulkPct = computed(() =>
     <div v-if="lastRoll" class="roll-status" role="status">{{ lastRoll }}</div>
   </section>
 
+  <Pf2eSheetActions />
+
   <Pf2eSheetSpells v-if="sheet.spellcasting || sheet.focusSpells?.length" />
 
   <div class="two-col">
     <section class="panel stack" style="gap: 12px" aria-labelledby="ft-h">
-      <h2 id="ft-h">Feats &amp; actions</h2>
+      <h2 id="ft-h">Feats &amp; features</h2>
       <div v-if="sheet.focus.max > 0 && !sheet.focusSpells?.length" class="tile focus">
         <div class="stack" style="gap: 2px">
           <strong style="font-size: 14px">Focus points</strong>
@@ -649,28 +584,8 @@ const bulkPct = computed(() =>
           </span>
           <span>{{ f.desc }}</span>
         </div>
-        <button
-          v-if="f.action"
-          type="button"
-          class="btn btn--ghost btn--sm feat__use"
-          :disabled="!canEdit || isUsed(f.name)"
-          :title="isUsed(f.name) ? 'Used: back after daily preparations' : undefined"
-          @click="useAbility(i)"
-        >
-          {{ isUsed(f.name) ? 'Used' : 'Use' }}
-        </button>
       </div>
       <p v-if="!sheet.feats.length" class="empty">No feats recorded yet.</p>
-      <button
-        v-if="hasDaily && !sheet.spellcasting"
-        type="button"
-        class="btn btn--ghost btn--sm"
-        style="align-self: flex-start"
-        :disabled="!canEdit"
-        @click="say(dailyPreparations(sheet))"
-      >
-        Daily preparations
-      </button>
     </section>
 
     <section class="panel stack" style="gap: 12px" aria-labelledby="inv-h">
@@ -1109,11 +1024,6 @@ const bulkPct = computed(() =>
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--track);
-}
-
-.feat__use {
-  flex: none;
-  align-self: flex-start;
 }
 
 .feat__meta {
