@@ -224,7 +224,7 @@ for (const v of VOLUMES.filter((x) => !ONLY || ONLY.includes(x.slug))) {
 <div class="notice"><h2>Notice</h2>
 <p>This compilation contains Licensed Material from Paizo Inc. under the ORC License, located at the Library of Congress at TX 9-307-067 and available online at various locations including paizo.com/orclicense and azoralaw.com/orclicense. All warranties are disclaimed as set forth therein.</p>
 <p><b>Attribution:</b> This compilation is based on the following Licensed Material, each © Paizo Inc.: ${books.map(esc).join('; ')}.</p>
-<p><b>Reserved Material:</b> Paizo's trademarks and setting material (for example the names of deities, nations, organizations and characters of Golarion) are Reserved Material and are not licensed under the ORC License. They appear here only where the rules text names them.</p>
+<p><b>Reserved Material:</b> Paizo's trademarks and setting material (for example the names of deities, nations, organizations and characters of Golarion) are Reserved Material and are not licensed under the ORC License. Entries from Golarion setting books and entries named for its deities, places or organizations are left out; such names appear only where the rules text mentions them.</p>
 <p>Lantern is not published, endorsed or specifically approved by Paizo Inc. Text gathered from Archives of Nethys (2e.aonprd.com). Legacy (OGL) material and book art are not included.</p>
 <p>Actions: ◆ one action, ◆◆ two, ◆◆◆ three, ↺ reaction, ◇ free action.</p></div>
 <div class="toc"><h2>Contents</h2><ol>${titles.map((t) => `<li>${esc(t)}</li>`).join('')}</ol></div>

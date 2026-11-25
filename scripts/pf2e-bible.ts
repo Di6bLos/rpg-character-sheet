@@ -7,9 +7,10 @@
 // Rage of Elements on) or Legacy (OGL) and what replaced it.
 //
 //   npm run pf2e:bible -- [dataDir] [outDir]
-//   npm run pf2e:bible -- --orc [dataDir] [outDir]   (Remaster/ORC entries only, without the
-//     Golarion lore files, legacy sources or deity stat lines: what may be shared, e.g. the
-//     library PDFs; default out pf2e-orc/. Exits non-zero if any of those would still be written.)
+//   npm run pf2e:bible -- --orc [dataDir] [outDir]   (what may be shared, e.g. the library
+//     PDFs; default out pf2e-orc/: Remaster entries from the open rulebooks only (`OPEN_BOOKS`
+//     in scripts/lib/aon.ts), none named for a deity or Golarion proper noun, no lore files,
+//     setting or legacy sources or deity stat lines. Exits non-zero if any would still be written.)
 
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -21,9 +22,11 @@ import {
   legacyBooks,
   loadAon,
   located,
+  openBook,
   orcProblems,
   page,
   remaster,
+  shareable,
   slug,
   withoutDeities,
   withoutLegacy,
@@ -54,8 +57,19 @@ const CORE = [
 ]
 
 const everything = loadAon(DATA)
-const docs = everything.filter((d) => !ORC_ONLY || (remaster(d) && !LORE.has(d.category)))
-const LEGACY_BOOKS = legacyBooks(everything)
+/** Every deity name AoN has, to spot entries named for one (Achaekek's Clutch). */
+const DEITIES = everything.filter((d) => d.category === 'deity').map((d) => d.name)
+const docs = everything.filter(
+  (d) => !ORC_ONLY || (remaster(d) && !LORE.has(d.category) && shareable(d, DEITIES)),
+)
+/**
+ * Books the ORC set leaves out wherever they're cited: legacy (OGL) books, and every book that
+ * isn't an open rulebook (`OPEN_BOOKS`), whose sections AoN sometimes inlines into rulebook pages.
+ */
+const CLOSED_BOOKS = legacyBooks(everything)
+for (const d of everything)
+  for (const b of [d.primary_source, ...(d.category === 'source' ? [d.name] : [])])
+    if (b && !openBook(b)) CLOSED_BOOKS.add(b.trim())
 const byId = new Map(docs.map((d) => [d.id, d]))
 const placed = new Set<string>()
 /** Entries already printed inside another (`<document>`), so book order doesn't repeat them. */
@@ -81,7 +95,7 @@ function edition(d: Doc) {
 function entry(d: Doc, h: number) {
   placed.add(d.id)
   const cleaned = cleanMarkdown(d.markdown ?? '', h, byId, embed, new Set([d.id]))
-  const body = ORC_ONLY ? withoutDeities(withoutLegacy(cleaned, LEGACY_BOOKS)) : cleaned
+  const body = ORC_ONLY ? withoutDeities(withoutLegacy(cleaned, CLOSED_BOOKS)) : cleaned
   const [first = '', ...rest] = body.split('\n')
   const head = first.startsWith('#') ? first : `${'#'.repeat(h)} ${d.name}`
   const tail = first.startsWith('#') ? rest : [first, ...rest]
@@ -97,7 +111,7 @@ function write(file: string, title: string, parts: string[], entries: number, in
   const path = join(OUT, file)
   mkdirSync(join(path, '..'), { recursive: true })
   const md = `# ${title}\n\n${intro ? `${intro}\n\n` : ''}${parts.join('\n')}`
-  if (ORC_ONLY) for (const l of orcProblems(md, LEGACY_BOOKS)) leaks.push(`${file}: ${l}`)
+  if (ORC_ONLY) for (const l of orcProblems(md, CLOSED_BOOKS)) leaks.push(`${file}: ${l}`)
   writeFileSync(path, md)
   written.push({ file, title, entries })
 }

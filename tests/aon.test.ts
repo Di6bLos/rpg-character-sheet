@@ -3,7 +3,9 @@ import {
   actionGlyph,
   cleanMarkdown,
   heritageAncestry,
+  openBook,
   orcProblems,
+  settingName,
   sourceBooks,
   table,
   withoutDeities,
@@ -133,6 +135,13 @@ describe('legacy sources in the ORC set', () => {
     expect(out).toContain('### Next')
   })
 
+  it('drops a section titled with a left-out book, as Avatar lists forms per book', () => {
+    const md = ['## Avatar', 'Text.', '### Pathfinder #176', '- Gozreh form', '## Next'].join('\n')
+    const out = withoutLegacy(md, new Set(['Pathfinder #176']))
+    expect(out).not.toContain('Gozreh')
+    expect(out).toContain('## Next')
+  })
+
   it('takes out the deity stat lines and their values', () => {
     const md = [
       '**Source** Player Core pg. 39',
@@ -174,5 +183,32 @@ describe('heritageAncestry', () => {
     expect(at('Climbing Animal', 'Howl of the Wild', 24)).toBe('Awakened Animal')
     expect(at('Climbing Animal', 'Another Book', 24)).toBeUndefined()
     expect(at('Far Away', 'Howl of the Wild', 60)).toBeUndefined()
+  })
+})
+
+describe('Golarion setting material', () => {
+  it('shares only the setting-neutral rulebooks', () => {
+    expect(openBook('Player Core')).toBe(true)
+    expect(openBook('Battlecry!')).toBe(true)
+    for (const book of [
+      'Tian Xia Character Guide',
+      'Hellfire Dispatches',
+      'Divine Mysteries',
+      'Pathfinder #202: Severed at the Root',
+      'Season of Ghosts (Hardcover)',
+    ])
+      expect(openBook(book), book).toBe(false)
+  })
+
+  it('spots records named for a deity or a Golarion proper noun', () => {
+    const deities = ['Achaekek', 'Set', 'Nyarlathotep (The Faceless Sphinx)', 'Weight of the World']
+    expect(settingName("Achaekek's Clutch", deities)).toBe('Achaekek')
+    expect(settingName('Aldori Parry', deities)).toBe('Aldori')
+    expect(settingName('Hellknight Plate', deities)).toBe('Hellknight')
+    expect(settingName('Grasp of Nyarlathotep', deities)).toBe('Nyarlathotep')
+    expect(settingName('Set-up Strike', deities)).toBeUndefined()
+    expect(settingName('Weight of the World', deities)).toBeUndefined()
+    expect(settingName('Setback', deities)).toBeUndefined()
+    expect(settingName('Fireball', deities)).toBeUndefined()
   })
 })
