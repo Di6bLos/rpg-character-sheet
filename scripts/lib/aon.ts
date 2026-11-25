@@ -61,6 +61,202 @@ export function legacyBooks(docs: AonDoc[]) {
   return books
 }
 
+/**
+ * The setting-neutral rulebooks: the only books the shareable set (the ORC bible, the library
+ * PDFs, the committed data) takes entries from. Everything else AoN carries is Golarion
+ * setting, Paizo Reserved Material even when published under ORC: the Lost Omens line
+ * (Divine Mysteries, Tian Xia Character Guide, Hellfire Dispatches…), Adventure Paths and
+ * their player's guides, standalone adventures, Society scenarios, comics, April Fools and
+ * blog posts. AoN also files "Secrets of the Unlit Star Game Master's Guide" under
+ * Rulebooks; it is left out until someone checks it. Deities are the one exception the user
+ * approved (Community Use Policy, see `.claude/skills/rpg-rules/references/licensing.md`).
+ */
+export const OPEN_BOOKS = new Set([
+  'Player Core',
+  'Player Core 2',
+  'GM Core',
+  'Monster Core',
+  'Monster Core 2',
+  'NPC Core',
+  'Rage of Elements',
+  'Howl of the Wild',
+  'War of Immortals',
+  'War of Immortals Alternate Mythic Rules',
+  'Battlecry!',
+  'Impossible Magic',
+  'Feybound',
+  'Dark Archive (Remastered)',
+  'Guns & Gears (Remastered)',
+  'Treasure Vault (Remastered)',
+])
+
+export const openBook = (book: string | undefined) => OPEN_BOOKS.has((book ?? '').trim())
+
+/**
+ * Golarion proper nouns that make a record setting material by its name, even in an open
+ * rulebook (Aldori Parry, Hellknight Plate, Alkenstar Outlaw): nations, regions and cities,
+ * peoples, organizations. Deities are checked from the deity entries themselves.
+ */
+export const GOLARION_NAMES = [
+  'Golarion',
+  'Absalom',
+  'Starstone',
+  'Inner Sea',
+  'Avistan',
+  'Garund',
+  'Tian Xia',
+  'Casmaron',
+  'Arcadia',
+  'Varisia',
+  'Varisian',
+  'Cheliax',
+  'Chelish',
+  'Chelaxian',
+  'Taldor',
+  'Taldan',
+  'Andoran',
+  'Galt',
+  'Isger',
+  'Molthune',
+  'Nirmathas',
+  'Lastwall',
+  'Ustalav',
+  'Brevoy',
+  'River Kingdoms',
+  'Mendev',
+  'Numeria',
+  'Irrisen',
+  'Mammoth Lords',
+  'Belkzen',
+  'Nidal',
+  'Druma',
+  'Kyonin',
+  'Five Kings',
+  'Mana Wastes',
+  'Geb',
+  'Nex',
+  'Alkenstar',
+  'Jistka',
+  'Jistkan',
+  'Osirion',
+  'Osirian',
+  'Thuvia',
+  'Rahadoum',
+  'Katapesh',
+  'Qadira',
+  'Kelesh',
+  'Keleshite',
+  'Vudra',
+  'Vudrani',
+  'Jalmeray',
+  'Mwangi',
+  'Sargava',
+  'Shackles',
+  'Thassilon',
+  'Thassilonian',
+  'Azlant',
+  'Azlanti',
+  'Sarkoris',
+  'Worldwound',
+  'Razmiran',
+  'Korvosa',
+  'Magnimar',
+  'Riddleport',
+  'Sandpoint',
+  'Kaer Maga',
+  'Oppara',
+  'Egorian',
+  'Kintargo',
+  'Westcrown',
+  'Brastlewark',
+  'Highhelm',
+  'Dongun',
+  'Iblydos',
+  'Minkai',
+  'Goka',
+  'Quain',
+  'Shokuro',
+  'Lingshen',
+  'Xa Hoi',
+  'Dtang Ma',
+  'Hwanggot',
+  'Po Li',
+  'Bachuan',
+  'Jinin',
+  'Kwanlai',
+  'Impossible Lands',
+  'Mordant Spire',
+  'Ravounel',
+  'Kortos',
+  'Darklands',
+  'Nar-Voth',
+  'Sekamina',
+  'Stasian',
+  'Ulfen',
+  'Kellid',
+  'Garundi',
+  'Shoanti',
+  'Erutaki',
+  'Shory',
+  'Runelord',
+  'Sihedron',
+  'Pathfinder',
+  'Hellknight',
+  'Aldori',
+  'Swordlord',
+  'Red Mantis',
+  'Eagle Knight',
+  'Golden Legion',
+  'Gray Gardener',
+  'Lion Blade',
+  'Magaambya',
+  'Firebrand',
+  'Bellflower',
+  'Aspis',
+  'Whispering Way',
+  'Night Herald',
+  'Free Captain',
+  'Knights of Ozem',
+  'Ozem',
+  'Palatine Eye',
+  'Arclord',
+  'Twilight Talon',
+  'Grand Lodge',
+]
+
+/** Records whose name matches a deity or Golarion name by accident: "Set" in Set-up Strike, a spell named like a philosophy. */
+export const NOT_SETTING = new Set(['Set-up Strike', 'Weight of the World'])
+
+const nameRe = (names: string[]) =>
+  new RegExp(
+    `(?:^|[^\\w])(${[...new Set(names)]
+      .sort((a, b) => b.length - a.length)
+      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|')})(?=$|[^\\w])`,
+  )
+
+/**
+ * The deity or Golarion name a record is named for (Achaekek's Clutch → Achaekek), if any.
+ * `deities` are deity names; an epithet in parentheses is ignored.
+ */
+const settingRes = new WeakMap<string[], RegExp>()
+export function settingName(name: string, deities: string[]) {
+  if (NOT_SETTING.has(name)) return undefined
+  let re = settingRes.get(deities)
+  if (!re) {
+    re = nameRe([...GOLARION_NAMES, ...deities.map((d) => d.replace(/\s*\(.*\)$/, ''))])
+    settingRes.set(deities, re)
+  }
+  return re.exec(name)?.[1]
+}
+
+/**
+ * Whether an entry belongs in the shareable set: printed in an open rulebook and not named for
+ * a deity or Golarion proper noun. Deities themselves are judged by the caller.
+ */
+export const shareable = (d: AonDoc, deities: string[]) =>
+  openBook(d.primary_source) && !settingName(d.name, deities)
+
 /** AoN's action names → glyphs; ranges ("Single Action to Three Actions") are built from these. */
 export const ACTIONS: Record<string, string> = {
   'Single Action': '◆',
@@ -232,8 +428,9 @@ export function sourceBooks(line: string) {
 
 /**
  * Drops each subsection whose own source line (before its next heading) cites only books in
- * `legacy`, and takes the legacy books out of every source line that also cites a remastered
- * one ("Player Core pg. 150, Core Rulebook pg. 165" → "Player Core pg. 150").
+ * `legacy` (the books to leave out) or is titled with one of them, and takes those books out
+ * of every source line that also cites another ("Player Core pg. 150, Core Rulebook pg. 165"
+ * → "Player Core pg. 150").
  */
 export function withoutLegacy(md: string, legacy: Set<string>) {
   const lines = md.split('\n')
@@ -249,7 +446,9 @@ export function withoutLegacy(md: string, legacy: Set<string>) {
         const next = lines.slice(i + 1).findIndex((l) => heading(l))
         const block = lines.slice(i + 1, next < 0 ? undefined : i + 1 + next)
         const books = sourceBooks(block.find((l) => SOURCE_LINE.test(l)) ?? '')
-        if (books.length && books.every((b) => legacy.has(b))) skip = lvl
+        // A section titled with a left-out book (Avatar's forms per book) is that book's too.
+        const titled = legacy.has(line.slice(lvl + 1).trim())
+        if (titled || (books.length && books.every((b) => legacy.has(b)))) skip = lvl
       }
     }
     if (skip) return
