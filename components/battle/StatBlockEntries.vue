@@ -3,13 +3,17 @@
 // An entry with dice in its text gets a Roll button: the first dice expression rolls
 // (thrown in the dice tray), posts its total (no dice) to party chat as an action line
 // under the creature's name, and shows the dice and total in a result bar pinned to the bottom of the panel, like
-// the player's result bar under their actions.
+// the player's result bar under their actions. In a Nimble campaign an attack follows
+// the attack rules (`monsterRollKind`): a 1 on the Primary Die misses, its max crits and
+// explodes (Core p. 12); minions and flunkies miss on a 1 but never crit (GM's Guide p. 24).
 import type { CampaignNpc, StatEntry } from '~/types'
-import { findDice, rollDice } from '~/utils/dice'
+import { findDice, rollDice, rollNimble, showOutcome } from '~/utils/dice'
+import { monsterRollKind } from '~/utils/monsterAttack'
 
 const props = defineProps<{ npc: CampaignNpc; name: string }>()
 
 const chat = useBoardChat()
+const system = useBattleSystem()
 // On touch the Roll buttons are 44px targets, 8px apart.
 const { touch } = useBoardLayout()
 const last = ref<{ key: string; text: string } | null>(null)
@@ -25,9 +29,12 @@ function diceOf(it: StatEntry) {
   return findDice(it.t) ?? findDice(it.n)
 }
 
-async function roll(it: StatEntry, key: string) {
+async function roll(it: StatEntry, key: string, section: string) {
   const found = diceOf(it)
   if (!found) return
+  const kind =
+    system.value === 'nimble' ? monsterRollKind(section, it, props.npc.stat_block) : 'plain'
+  if (kind !== 'plain') return rollAttack(it, key, found, kind === 'nocrit')
   const { total, rolls } = rollDice(found.dice)
   const mod = found.dice.mod ? ` ${found.dice.mod > 0 ? '+' : '−'} ${Math.abs(found.dice.mod)}` : ''
   const detail = rolls.length > 1 || mod ? `${rolls.join(' + ')}${mod} = ` : ''
@@ -35,6 +42,28 @@ async function roll(it: StatEntry, key: string) {
   last.value = { key, text: `${props.name} · ${it.n || 'Roll'}: ${text}` }
   // The party sees only what it came to; the dice stay in the GM's bar.
   await chat.send(`${props.name} · ${it.n || 'Roll'}: ${total}`, 'party', 'action')
+}
+
+/** A Nimble monster attack: Miss on a 1, an exploding crit on the max (unless `noCrit`). */
+async function rollAttack(
+  it: StatEntry,
+  key: string,
+  found: NonNullable<ReturnType<typeof findDice>>,
+  noCrit: boolean,
+) {
+  const r = rollNimble(found.dice, null, Math.random, 0, { noCrit })
+  const label = it.n || 'Attack'
+  const result = r.miss ? 'Miss' : r.crit ? `Crit! ${r.total}` : String(r.total)
+  const dice = r.dice.join(' + ')
+  const mod = found.dice.mod ? ` ${found.dice.mod > 0 ? '+' : '−'} ${Math.abs(found.dice.mod)}` : ''
+  const detail = r.miss ? `rolled a 1` : `${dice}${mod}${r.crit ? ' + crit dice' : ''} = ${r.total}`
+  last.value = { key, text: `${props.name} · ${label}: ${found.text}: ${result} (${detail})` }
+  showOutcome({
+    label,
+    total: r.miss ? null : r.total,
+    detail: `${props.name} · ${label}: ${result}`,
+  })
+  await chat.send(`${props.name} · ${label}: ${result}`, 'party', 'action')
 }
 </script>
 
@@ -50,7 +79,7 @@ async function roll(it: StatEntry, key: string) {
           class="btn btn--sm sbe__roll"
           :aria-label="`Roll ${it.n || 'it'}: ${diceOf(it)?.text}`"
           :class="{ 'is-last': last?.key === `${si}-${i}` }"
-          @click="roll(it, `${si}-${i}`)"
+          @click="roll(it, `${si}-${i}`, sec.title)"
         >
           Roll {{ diceOf(it)?.text }}
         </button>
