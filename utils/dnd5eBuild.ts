@@ -2074,7 +2074,7 @@ function speedText(st: Dnd5eBuildState, level: number): string {
 const ORDINAL = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th']
 
 /** Summary entries the existing sheet layouts show in Features: proficiencies, spells, resources. */
-function summaryFeatures(sheet: Dnd5eSheet): Dnd5eFeatureEntry[] {
+function summaryFeatures(sheet: Dnd5eSheet, masteries: string[]): Dnd5eFeatureEntry[] {
   const p = sheet.proficiencies
   const out: Dnd5eFeatureEntry[] = []
   if (p) {
@@ -2086,7 +2086,7 @@ function summaryFeatures(sheet: Dnd5eSheet): Dnd5eFeatureEntry[] {
       `Languages: ${p.languages.join(', ')}`,
       p.armor.length ? `Armor: ${p.armor.join(', ')}` : '',
       p.weapons.length ? `Weapons: ${p.weapons.join(', ')}` : '',
-      sheet.masteries?.length ? `Weapon mastery: ${sheet.masteries.join(', ')}` : '',
+      masteries.length ? `Weapon mastery: ${masteries.join(', ')}` : '',
       sheet.senses?.length
         ? `Senses: ${sheet.senses.map((s) => `${s.name} ${s.range} ft`).join(', ')}`
         : '',
@@ -2245,7 +2245,11 @@ export function writeBuild(sheet: Dnd5eSheet, st: Dnd5eBuildState, level: number
   })
   const hand = sheet.features.filter((f) => !f.from)
   sheet.features = [...st.features, ...hand]
-  sheet.features = [...summaryFeatures(sheet), ...sheet.features]
+  const masteryNames = st.masteries.map((m) => {
+    const w = bySlug(data.weapons, m)
+    return w ? `${w.name} (${w.mastery})` : m
+  })
+  sheet.features = [...summaryFeatures(sheet, masteryNames), ...sheet.features]
 }
 
 // --- Level 1 -------------------------------------------------------------------------

@@ -22,6 +22,7 @@ Design reference: `design/README.md`. Check tasks off as they land.
 - [x] Dice rollers per system, HP trackers, portrait upload, autosave
 - [x] "Edit sheet" form for every stored value
 - [x] Level-up dialog (system-aware; level and stats commit together)
+- [x] 5e (2024) hero builder from data (class first, Custom background) and data-driven level-up with Reconfigure
 
 ## Phase 3 · Campaigns
 
