@@ -1,5 +1,7 @@
 import type { GameSystem, HeroConditionChange } from '~/types'
-import type { AnySheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
+import type { AnySheet, Dnd5eSheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
+import { toggleCondition as toggleDnd5eCondition } from '~/utils/dnd5eConditions'
+import { endOnIncapacitated } from '~/utils/dnd5ePlay'
 import { addCondition, removeCondition } from '~/utils/nimbleConditions'
 import { clearEffect } from '~/utils/nimbleEffects'
 import { addPersistent, removePersistent } from '~/utils/pf2eDamage'
@@ -74,7 +76,20 @@ export function applyConditionChange(sheet: NimbleSheet, change: Change): string
 }
 
 /**
- * D&D 5e / PF2e: a plain add or remove on the sheet's condition names (no timed ends), with
+ * D&D 5e, as the sheet's own chips do (utils/dnd5eConditions.ts): Exhaustion goes to level 1 or
+ * 0 (the player steps it), an end the player set goes with the condition, and falling
+ * Incapacitated (Stunned, Unconscious…) ends Rage, Dodge and Concentration.
+ */
+export function applyDnd5eConditionChange(sheet: Dnd5eSheet, change: Change): string {
+  const name = change.condition.trim()
+  if (!name || !toggleDnd5eCondition(sheet, name, change.add)) return ''
+  if (!change.add) return `GM: no longer ${name}.`
+  const ended = endOnIncapacitated(sheet)
+  return `GM: you are ${name}.${ended.length ? ` ${ended.join(', ')} ended.` : ''}`
+}
+
+/**
+ * PF2e: a plain add or remove on the sheet's condition names (no timed ends), with
  * the message to show the player, or '' when the sheet already matched. Removing a PF2e
  * valued condition drops its value too, as the sheet's own toggle does (an add starts at 1).
  */
@@ -104,6 +119,7 @@ export function applyConditionChangeFor(
   change: Change,
 ): string {
   if (system === 'nimble') return applyConditionChange(sheet as NimbleSheet, change)
+  if (system === 'dnd5e') return applyDnd5eConditionChange(sheet as Dnd5eSheet, change)
   if (system === 'pf2e' && change.persistent_type)
     return applyPersistentChange(sheet as Pf2eSheet, change)
   const line = applyPlainConditionChange(sheet, change)
