@@ -329,7 +329,9 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
       <li v-for="r in rows" :key="r.index" class="item">
         <div class="item__head">
           <div class="item__text">
-            <span class="item__name">{{ r.name }}</span>
+            <span class="item__name"
+              >{{ r.name }}<span v-if="r.st.kind" class="tag">{{ r.st.kind }}</span></span
+            >
             <span class="item__meta">
               Bulk {{ r.bulk
               }}<template v-if="r.st.level !== undefined"> · Item {{ r.st.level }}</template
@@ -518,25 +520,28 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
       <button type="button" class="btn btn--ghost btn--sm" @click="picking = true">
         Add item from the rules
       </button>
-      <form class="add__name" @submit.prevent="addByName">
-        <label class="field grow" for="pf-inv-name">
-          <span class="caps">Or write one in</span>
-          <input
-            id="pf-inv-name"
-            v-model="newName"
-            class="input"
-            maxlength="80"
-            placeholder="Grandfather’s compass"
-          />
-        </label>
-        <label class="field bulk-in" for="pf-inv-bulk">
-          <span class="caps">Bulk</span>
-          <input id="pf-inv-bulk" v-model="newBulk" class="input" maxlength="4" />
-        </label>
-        <button type="submit" class="btn btn--ghost btn--sm" :disabled="!newName.trim()">
-          Add<span class="sr-only"> {{ newName.trim() || 'item' }}</span>
-        </button>
-      </form>
+      <details class="add__more">
+        <summary>Write one in</summary>
+        <form class="add__name" @submit.prevent="addByName">
+          <label class="field grow" for="pf-inv-name">
+            <span class="caps">Or write one in</span>
+            <input
+              id="pf-inv-name"
+              v-model="newName"
+              class="input"
+              maxlength="80"
+              placeholder="Grandfather’s compass"
+            />
+          </label>
+          <label class="field bulk-in" for="pf-inv-bulk">
+            <span class="caps">Bulk</span>
+            <input id="pf-inv-bulk" v-model="newBulk" class="input" maxlength="4" />
+          </label>
+          <button type="submit" class="btn btn--ghost btn--sm" :disabled="!newName.trim()">
+            Add<span class="sr-only"> {{ newName.trim() || 'item' }}</span>
+          </button>
+        </form>
+      </details>
     </div>
 
     <div class="coins" role="group" aria-label="Coins">
@@ -654,6 +659,32 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   font-size: 14px;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+// The item's kind beside its name, as Nimble's inventory tags weapons and armor.
+.tag {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--page-muted);
+}
+
+.add__more > summary {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--page-soft);
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .add__more > summary {
+    min-height: 44px;
+  }
 }
 
 .item__meta,
