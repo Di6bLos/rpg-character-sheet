@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The game system chips at the top of the Library's Rules, Spells and Classes tabs. Systems the
-// tab has nothing for yet show as "coming soon".
+// The game system chips at the top of each Library tab. Systems the tab has nothing for yet
+// show as "coming soon", or not at all with `hideMissing` (Nimble has no feats).
 import { RULES_SYSTEMS, type RulesSystem } from '~/data/rules'
 import type { GameSystem } from '~/types'
 
@@ -9,6 +9,8 @@ const props = defineProps<{
   isReady: (s: RulesSystem) => boolean
   /** What's coming, for the soon chips' tooltip: "rules", "spells". */
   what: string
+  /** Leave out the systems the tab has nothing for, instead of "coming soon". */
+  hideMissing?: boolean
 }>()
 const emit = defineEmits<{ pick: [id: GameSystem] }>()
 </script>
@@ -25,7 +27,11 @@ const emit = defineEmits<{ pick: [id: GameSystem] }>()
       >
         {{ s.label }}
       </button>
-      <span v-else class="chip chip--soon" :title="`${s.label} ${props.what} are on the way`">
+      <span
+        v-else-if="!props.hideMissing"
+        class="chip chip--soon"
+        :title="`${s.label} ${props.what} are on the way`"
+      >
         {{ s.label }} <small>coming soon</small>
       </span>
     </template>

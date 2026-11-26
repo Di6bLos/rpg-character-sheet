@@ -79,7 +79,6 @@ _SRD 5.2.1 pp. 11–12._
 Monsters are the main perils characters face, but other dangers await. “Rules Glossary” defines the following hazards:
 
 | Burning | Falling | Suffocation |
-| --- | --- | --- |
 | Dehydration | Malnutrition |  |
 
 _SRD 5.2.1 p. 12._
@@ -120,10 +119,7 @@ _SRD 5.2.1 p. 12._
 
 ## Travel Pace
 
-| A group of characters can travel overland at a Nor- | = Miles per day × 2/3 (round down) |
-| --- | --- |
-
-mal, Fast, or Slow pace, as described in “Playing the Game.” During any journey stage, the predominant terrain determines the characters’ maximum travel pace, as shown in the Maximum Pace column of the Travel Terrain table. Certain factors can affect a group’s travel pace.
+A group of characters can travel overland at a Normal, Fast, or Slow pace, as described in “Playing the Game.” During any journey stage, the predominant terrain determines the characters’ maximum travel pace, as shown in the Maximum Pace column of the Travel Terrain table. Certain factors can affect a group’s travel pace.
 
 ### Good Roads
 
@@ -141,9 +137,19 @@ Characters can push themselves to travel for more than 8 hours per day, at the r
 
 If a party can travel at a high Speed for an extended time, as with a spell such as _Wind Walk_ or a magic item such as a _Carpet of Flying_, translate the party’s Speed into travel rates using these rules:
 
+**Miles per hour** = Speed ÷ 10
+
+**Miles per day** (Normal pace) = Miles per hour × number of hours traveled (typically 8)
+
+**Fast pace** = Miles per day × 1⅓ (round down)
+
+**Slow pace** = Miles per day × 2/3 (round down)
+
+If the characters are flying or their special movement allows them to ignore Difficult Terrain, they can move at a Fast pace regardless of the terrain.
+
 #### Travel Terrain
 
-| Terrain | Maximum Pace | Encounter Distance |  |  |  |
+| Terrain | Maximum Pace | Encounter Distance | Foraging DC | Navigation DC | Search DC |
 | --- | --- | --- | --- | --- | --- |
 | Arctic | Fast* | 6d6 × 10 feet | 20 | 10 | 10 |
 | Coastal | Normal | 2d10 × 10 feet | 10 | 5 | 15 |
@@ -154,20 +160,18 @@ If a party can travel at a high Speed for an extended time, as with a spell such
 | Mountain | Slow | 4d10 × 10 feet | 20 | 15 | 20 |
 | Swamp | Slow | 2d8 × 10 feet | 10 | 15 | 20 |
 | Underdark | Normal | 2d6 × 10 feet | 20 | 10 | 20 |
-| Urban | Normal † | 2d6 × 10 feet | 20 | 15 | 15 |
-| Waterborne | Special | 6d6 × 10 feet | 15 | 10 | 15 |
+| Urban | Normal | 2d6 × 10 feet | 20 | 15 | 15 |
+| Waterborne | Special† | 6d6 × 10 feet | 15 | 10 | 15 |
 
 *Appropriate equipment (such as skis) is necessary to keep up a Fast pace in Arctic terrain.
 
-†
+†Characters’ rate of travel while waterborne depends on the vehicle carrying them; see “Vehicles.”
 
-Characters’ rate of travel while waterborne depends on the vehicle carrying them; see “Vehicles.”
+### Vehicles
 
-**Intelligence or Wisdom.** One or both abilities are ideal for a background that focuses on cerebral or spiritual matters.
+Characters traveling in a vehicle use the vehicle’s speed in miles per hour (as shown in “Equipment”) to determine their rate of travel, and they don’t choose a travel pace.
 
-**Charisma.** This ability is ideal for a background that involves performance or social interaction.
-
-_SRD 5.2.1 pp. 192–193._
+_SRD 5.2.1 p. 192._
 
 ## Environmental Effects
 

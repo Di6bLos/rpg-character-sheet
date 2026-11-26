@@ -45,12 +45,8 @@ When you gain a level, follow these steps:
 | --- | --- |
 | Barbarian | 7 + Con. modifier |
 | Fighter, Paladin, or Ranger | 6 + Con. modifier |
-| Bard, Cleric, Druid, Monk, | 5 + Con. modifier |
-
-Rogue, or Warlock
-
+| Bard, Cleric, Druid, Monk, Rogue, or Warlock | 5 + Con. modifier |
 | Sorcerer or Wizard | 4 + Con. modifier |
-| --- | --- |
 
 **3:** **Record New Class Features.** Look at your class features table in “Classes,” and note the features you gain at your new level in that class. Make any choices offered by a new feature.
 
@@ -90,12 +86,12 @@ Creating a higher-level character uses the same character-creation steps outline
 
 #### Starting Equipment at Higher Levels
 
-| Starting Level | Equipment and Money |
-| --- | --- |
-| 2–4 | Normal starting equipment |
-| 5–10 | 500 GP plus 1d10 × 25 GP plus normal starting equipment |
-| 11–16 | 5,000 gp plus 1d10 × 250 GP plus normal starting equipment |
-| 17–20 | 20,000 GP plus 1d10 × 250 GP plus normal starting equipment |
+| Starting Level | Equipment and Money | Magic Items |
+| --- | --- | --- |
+| 2–4 | Normal starting equipment | 1 Common |
+| 5–10 | 500 GP plus 1d10 × 25 GP plus normal starting equipment | 1 Common, 1 Uncommon |
+| 11–16 | 5,000 gp plus 1d10 × 250 GP plus normal starting equipment | 2 Common, 3 Uncommon, 1 Rare |
+| 17–20 | 20,000 GP plus 1d10 × 250 GP plus normal starting equipment | 2 Common, 4 Uncommon, 3 Rare, 1 Very Rare |
 
 Bonus Feats at Level 20
 
@@ -116,12 +112,6 @@ Multiclassing allows you to gain levels in multiple classes. With this rule, you
 ### Prerequisites
 
 To qualify for a new class, you must have a score of at least 13 in the primary ability of the new class and your current classes. For example, a Barbarian who decides to multiclass into the Druid class must have Strength and Wisdom scores of 13 or higher, since Strength is the primary ability for Barbarians and Wisdom is the primary ability for Druids.
-
-**Magic Items** 1 Common 1 Common, 1 Uncommon
-
-2 Common, 3 Uncommon, 1 Rare
-
-2 Common, 4 Uncommon, 3 Rare, 1 Very Rare
 
 ### Experience Points
 
@@ -198,40 +188,11 @@ For example, if you are a level 4 Ranger / level 3 Sorcerer, you count as a leve
 | 12 | 4 | 3 | 3 | 3 | 2 | 1 | — | — | — |
 | 13 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | — | — |
 | 14 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | — | — |
-
-##### Trinkets
-
-| 1d100 | Trinket |
-| --- | --- |
-| 01 | A mummified goblin hand |
-| 02 | A crystal that faintly glows in moonlight |
-| 03 | A gold coin minted in an unknown land |
-| 04 | A diary written in a language you don’t know |
-| 05 | A brass ring that never tarnishes |
-| 06 | An old chess piece made from glass |
-| 07 | A pair of knucklebone dice, each with a skull symbol on the side that would normally show |
-
-six pips
-
-| 08 | A small idol depicting a nightmarish creature that gives you unsettling dreams when you sleep near it |  |  |  |  |  |  |  |  |  |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 09 | A lock of someone’s hair |  |  |  |  |  |  |  |  |  |
-| 10 | The deed for a parcel of land in a realm unknown to you |  |  |  |  |  |  |  |  |  |
-| 11 | A 1-ounce block made from an unknown material |  |  |  |  |  |  |  |  |  |
-| 12 | A small cloth doll skewered with needles |  |  |  |  |  |  |  |  |  |
-| 13 | A tooth from an unknown beast |  |  |  |  |  |  |  |  |  |
-| 14 | An enormous scale, perhaps from a dragon |  |  |  |  |  |  |  |  |  |
-| 15 | A bright-green feather |  |  |  |  |  |  |  |  |  |
-| 16 | An old divination card bearing your likeness |  |  |  |  |  |  |  |  |  |
-| 17 | A glass orb filled with moving smoke |  |  |  |  |  |  |  |  |  |
-| 18 | A 1-pound egg with a bright-red shell |  |  |  |  |  |  |  |  |  |
-| 19 | A pipe that blows bubbles |  |  |  |  |  |  |  |  |  |
-| 20 | A glass jar containing a bit of flesh floating in pickling fluid |  |  |  |  |  |  |  |  |  |
-| 15 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — | you dimly remember from your childhood |
-| 16 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — |  |
-| 17 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | 1 |  |
-| 18 | 4 | 3 | 3 | 3 | 3 | 1 | 1 | 1 | 1 |  |
-| 19 | 4 | 3 | 3 | 3 | 3 | 2 | 1 | 1 | 1 |  |
-| 20 | 4 | 3 | 3 | 3 | 3 | 2 | 2 | 1 | 1 |  |
+| 15 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — |
+| 16 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — |
+| 17 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | 1 |
+| 18 | 4 | 3 | 3 | 3 | 3 | 1 | 1 | 1 | 1 |
+| 19 | 4 | 3 | 3 | 3 | 3 | 2 | 1 | 1 | 1 |
+| 20 | 4 | 3 | 3 | 3 | 3 | 2 | 2 | 1 | 1 |
 
 _SRD 5.2.1 pp. 24–26._

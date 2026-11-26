@@ -293,7 +293,9 @@ const phoneTopic = computed({
           <header class="rules__head">
             <div class="eyebrow">{{ sys.label }}</div>
             <h2>{{ topic.title }}</h2>
-            <p class="rules__meta">Summarised from {{ sys.sources }}, with printed page numbers.</p>
+            <p class="rules__meta">
+              {{ sys.credit ?? `Summarised from ${sys.sources}, with printed page numbers.` }}
+            </p>
           </header>
           <div v-if="!topicHtml" class="spinner" role="status" aria-label="Loading the rules" />
           <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->

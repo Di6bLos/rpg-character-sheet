@@ -10,7 +10,6 @@ When you do something other than moving or communicating, you typically take an 
 | --- | --- |
 | Attack | Attack with a weapon or an Unarmed Strike. |
 | Dash | For the rest of the turn, give yourself extra movement equal to your Speed. |
-| Action | Summary |
 | Disengage | Your movement doesn’t provoke Opportunity Attacks for the rest of the turn. |
 | Dodge | Until the start of your next turn, attack rolls against you have Disadvantage, and you make Dexterity saving throws with Advantage. You lose this benefit if you have the Incapacitated condition or if your Speed is 0. |
 | Help | Help another creature’s ability check or attack roll, or administer first aid. |

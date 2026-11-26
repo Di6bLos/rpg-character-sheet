@@ -3,6 +3,7 @@ import type { ReportTarget } from '~/components/ReportDialog.vue'
 import { LIBRARY_ACCEPT, LIBRARY_CATEGORIES } from '~/stores/library'
 import type { GameSystem, LibraryCategory, LibraryDocument } from '~/types'
 import { formatSize, shortDate } from '~/utils/format'
+import { ENTRY_SYSTEMS, entryTabLabel, isEntryTab, type EntryTab } from '~/utils/libraryEntries'
 import { SYSTEMS, systemLabel } from '~/utils/systems'
 
 definePageMeta({ middleware: 'auth' })
@@ -16,19 +17,33 @@ const TAB_TITLES = { rules: 'Rules', spells: 'Spells', classes: 'Classes' } as c
 type CompendiumTab = keyof typeof TAB_TITLES
 
 /**
- * Documents, the basic rules, spells, classes, or the shared NPC pool (hidden when admins
- * switch it off).
+ * Documents, the basic rules, spells, classes, feats, backgrounds, species, or the shared NPC
+ * pool (hidden when admins switch it off).
  */
-const tab = computed(() => {
+const tab = computed<CompendiumTab | EntryTab | 'npcs' | 'documents'>(() => {
   const t = route.query.tab
   if (typeof t === 'string' && t in TAB_TITLES) return t as CompendiumTab
+  if (isEntryTab(t)) return t
   return t === 'npcs' && site.settings.npc_pool_library ? 'npcs' : 'documents'
+})
+
+/** Feats, Backgrounds and Species show for the systems that have them, named for the system. */
+const navSystem = useLibraryNavSystem()
+const entryTabs = computed(() =>
+  (Object.keys(ENTRY_SYSTEMS) as EntryTab[])
+    .filter(
+      (t) => t === tab.value || (navSystem.value && ENTRY_SYSTEMS[t].includes(navSystem.value)),
+    )
+    .map((t) => ({ id: t, label: entryTabLabel(t, navSystem.value) })),
+)
+const tabTitle = computed(() => {
+  const t = tab.value
+  if (t in TAB_TITLES) return TAB_TITLES[t as CompendiumTab]
+  return isEntryTab(t) ? entryTabLabel(t, navSystem.value) : ''
 })
 useHead({
   title: computed(() =>
-    tab.value in TAB_TITLES
-      ? `${TAB_TITLES[tab.value as CompendiumTab]} · Library · Lantern`
-      : 'Library · Lantern',
+    tabTitle.value ? `${tabTitle.value} · Library · Lantern` : 'Library · Lantern',
   ),
 })
 const snackbar = useSnackbarStore()
@@ -242,9 +257,9 @@ function report(doc: LibraryDocument) {
         </div>
         <h1 style="margin-top: 6px">Library</h1>
         <p>
-          The basic rules, spells and classes of each game, plus references and homebrew any player
-          or GM can read from their dashboard. Campaign-specific notes go in that campaign’s
-          journal.
+          The basic rules, spells, classes, feats, backgrounds and ancestries of each game, plus
+          references and homebrew any player or GM can read from their dashboard. Campaign-specific
+          notes go in that campaign’s journal.
         </p>
       </div>
       <button
@@ -306,6 +321,13 @@ function report(doc: LibraryDocument) {
         >Classes</NuxtLink
       >
       <NuxtLink
+        v-for="t in entryTabs"
+        :key="t.id"
+        :to="{ path: '/library', query: { tab: t.id } }"
+        :aria-current="tab === t.id ? 'page' : undefined"
+        >{{ t.label }}</NuxtLink
+      >
+      <NuxtLink
         v-if="site.settings.npc_pool_library"
         :to="{ path: '/library', query: { tab: 'npcs' } }"
         :aria-current="tab === 'npcs' ? 'page' : undefined"
@@ -321,6 +343,8 @@ function report(doc: LibraryDocument) {
     <LazyLibrarySpells v-else-if="tab === 'spells'" />
 
     <LazyLibraryClasses v-else-if="tab === 'classes'" />
+
+    <LazyLibraryEntries v-else-if="isEntryTab(tab)" :key="tab" :tab="tab" />
 
     <template v-else>
       <RestrictedNotice v-if="!canUpload" title="Uploads are turned off for your account">

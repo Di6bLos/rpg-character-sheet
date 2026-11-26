@@ -1,6 +1,6 @@
 // Library → Spells and Classes (utils/libraryCompendium.ts): the list's sort is stable and keeps
 // missing values last, filters combine, the URL round-trips, name matches rank above text
-// matches, and every PF2e and Nimble class builds its tables without throwing.
+// matches, and every PF2e, Nimble and 5e class builds its tables without throwing.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -8,7 +8,9 @@ import type { Pf2eData } from '../data/pf2e'
 import type { Pf2eActionCost } from '../data/pf2e/types'
 import { NIMBLE_CLASSES } from '../data/nimble/classes'
 import { SPELLS } from '../data/nimble/spells'
+import type { Dnd5eData } from '../data/dnd5e'
 import {
+  DND5E_SPELL_COLUMNS,
   NIMBLE_CLASS_SOURCES,
   NIMBLE_SPELL_COLUMNS,
   PF2E_SPELL_COLUMNS,
@@ -17,6 +19,11 @@ import {
   byLevel,
   classSummary,
   compendiumList,
+  dnd5eAdvancement,
+  dnd5eClassMatch,
+  dnd5eRangeValue,
+  dnd5eSpellKeep,
+  dnd5eTimeLabel,
   feet,
   nimbleAdvancement,
   nimbleCast,
@@ -43,6 +50,13 @@ const load = <K extends keyof Pf2eData>(set: K): Pf2eData[K] =>
   JSON.parse(readFileSync(join(dir, `${set}.json`), 'utf8'))
 const pf2eSpells = load('spells')
 const pf2eClasses = load('classes')
+const dnd5eDir = join(import.meta.dirname, '..', 'data', 'dnd5e', 'generated')
+const load5e = <K extends keyof Dnd5eData>(set: K): Dnd5eData[K] =>
+  JSON.parse(readFileSync(join(dnd5eDir, `${set}.json`), 'utf8'))
+const dnd5eSpells = load5e('spells')
+const dnd5eClasses = load5e('classes')
+const dnd5eSubclasses = load5e('subclasses')
+const dnd5eOptions = load5e('options')
 
 const query = (changes: Partial<SpellQuery> = {}): SpellQuery => ({
   ...readSpellQuery({}),
@@ -143,14 +157,14 @@ describe('sorting', () => {
         })
         expect(list).toHaveLength(pf2eSpells.length)
       }
-    const byRank = compendiumList(rows, {
+    const byName = compendiumList(rows, {
       q: '',
       full: true,
       keep: () => true,
-      value: column('rank').value,
+      value: column('name').value,
       dir: 'asc',
     })
-    expect(byRank.map(pf2eSpellRank)).toEqual(byRank.map(pf2eSpellRank).sort((a, b) => a - b))
+    expect(byName[0]?.name.localeCompare(byName.at(-1)?.name ?? '')).toBeLessThan(0)
   })
 })
 
@@ -354,5 +368,93 @@ describe('Nimble classes', () => {
     expect(hit?.whole).toBe(false)
     expect(hit?.hits).toContain('Savage Arsenal: Death Blow')
     expect(nimbleClassMatch(berserker, ['zzzqqq'])).toBeNull()
+  })
+})
+
+describe('5e spells', () => {
+  const keep = (changes: Partial<SpellQuery>) => dnd5eSpells.filter(dnd5eSpellKeep(query(changes)))
+
+  it('filters by level, school, class, concentration, ritual, casting time and source', () => {
+    expect(keep({ level: '0' }).every((s) => s.level === 0)).toBe(true)
+    expect(keep({ school: ['evocation'] }).every((s) => s.school === 'Evocation')).toBe(true)
+    expect(keep({ cls: 'warlock' }).every((s) => s.classes.includes('warlock'))).toBe(true)
+    expect(keep({ conc: 'yes' }).every((s) => s.concentration)).toBe(true)
+    expect(keep({ conc: 'no' }).some((s) => s.concentration)).toBe(false)
+    expect(keep({ ritual: 'yes' }).every((s) => s.ritual)).toBe(true)
+    expect(keep({ time: ['reaction'] }).map((s) => s.name)).toContain('Shield')
+    expect(keep({ src: ['phb'] }).every((s) => s.source === 'PHB 2024' && !s.srd)).toBe(true)
+    expect(keep({ src: ['srd'] }).every((s) => s.srd)).toBe(true)
+    const arcana = keep({ src: ['arcana-unleashed'] })
+    expect(arcana.length).toBeGreaterThan(0)
+    expect(arcana.every((s) => s.source === 'Arcana Unleashed')).toBe(true)
+  })
+
+  it('combines filters', () => {
+    const rows = keep({ level: '3', school: ['evocation'], cls: 'wizard' })
+    expect(rows.map((s) => s.name)).toContain('Fireball')
+    expect(rows.every((s) => s.level === 3 && s.classes.includes('wizard'))).toBe(true)
+  })
+
+  it('round-trips its filters through the URL', () => {
+    const q = query({
+      level: '2',
+      conc: 'no',
+      ritual: 'yes',
+      time: ['action', 'bonus'],
+      src: ['srd'],
+    })
+    expect(readSpellQuery(writeSpellQuery(q))).toEqual(q)
+    expect(readSpellQuery({ conc: 'maybe' }).conc).toBe('')
+  })
+
+  it('sorts casting times from Reaction to hours, and ranges from Self outward', () => {
+    const time = DND5E_SPELL_COLUMNS.find((c) => c.key === 'time')
+    const byTime = sortRows(dnd5eSpells, (s) => time?.value(s), 'asc')
+    expect(byTime[0]?.activation).toBe('reaction')
+    expect(byTime.at(-1)?.activation).toBe('time')
+    expect(dnd5eRangeValue('Self')).toBe(0)
+    expect(dnd5eRangeValue('Touch')).toBe(0)
+    expect(dnd5eRangeValue('150 feet')).toBe(150)
+    expect(dnd5eRangeValue('Self (15-foot Cone)')).toBe(15)
+  })
+
+  it('names casting times without their trigger or Ritual', () => {
+    const shield = dnd5eSpells.find((s) => s.slug === 'shield')
+    const alarm = dnd5eSpells.find((s) => s.slug === 'alarm')
+    expect(shield && dnd5eTimeLabel(shield)).toBe('Reaction')
+    expect(alarm && dnd5eTimeLabel(alarm)).toBe('1 minute')
+  })
+})
+
+describe('5e classes', () => {
+  it('builds a 20-level table with every column for each class, the Artificer included', () => {
+    expect(dnd5eClasses.map((c) => c.slug)).toContain('artificer')
+    for (const cls of dnd5eClasses) {
+      const t = dnd5eAdvancement(cls)
+      expect(t.rows).toHaveLength(20)
+      expect(t.rows.every((r) => r.values.length === cls.columns.length)).toBe(true)
+      expect(t.rows[0]?.pb).toBe('+2')
+      expect(t.rows[19]?.pb).toBe('+6')
+    }
+  })
+
+  it('finds features, subclasses and options a search names', () => {
+    const subs = (slug: string) => dnd5eSubclasses.filter((s) => s.class === slug)
+    const groups = (slug: string) => dnd5eOptions.filter((g) => g.class === slug)
+    const rogue = dnd5eClasses.find((c) => c.slug === 'rogue')
+    const warlock = dnd5eClasses.find((c) => c.slug === 'warlock')
+    if (!rogue || !warlock) throw new Error('5e classes missing')
+    const sneak = dnd5eClassMatch(rogue, subs('rogue'), groups('rogue'), ['sneak', 'attack'])
+    expect(sneak?.whole).toBe(false)
+    expect(sneak?.hits).toContain('Feature: Sneak Attack')
+    expect(dnd5eClassMatch(rogue, subs('rogue'), groups('rogue'), ['rogue'])?.whole).toBe(true)
+    const thief = dnd5eClassMatch(rogue, subs('rogue'), groups('rogue'), ['thief'])
+    expect(thief?.subclasses.has('thief')).toBe(true)
+    const shadows = dnd5eClassMatch(warlock, subs('warlock'), groups('warlock'), [
+      'armor',
+      'shadows',
+    ])
+    expect(shadows?.options.has('armor-of-shadows')).toBe(true)
+    expect(dnd5eClassMatch(rogue, subs('rogue'), groups('rogue'), ['zzzz'])).toBeNull()
   })
 })

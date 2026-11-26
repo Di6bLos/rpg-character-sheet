@@ -1,7 +1,13 @@
 // Library → Spells and Classes: the pure parts of both tabs. Spells: what the URL holds (search,
 // filters, sort), the columns each system sorts by, and the search that ranks name matches over
 // rules-text matches. Classes: the tables and groups each class's section shows, read straight
-// from the committed game data (data/pf2e/generated, data/nimble).
+// from the committed game data (data/pf2e/generated, data/dnd5e/generated, data/nimble).
+import type {
+  Dnd5eClassDef,
+  Dnd5eFeature,
+  Dnd5eSpellDef,
+  Dnd5eSubclassDef,
+} from '~/data/dnd5e/types'
 import type {
   Pf2eActionCost,
   Pf2eClassDef,
@@ -19,9 +25,11 @@ import type {
   SubclassDef,
 } from '~/data/nimble/types'
 import type { GameSystem } from '~/types'
+import { DND5E_ACTIVATION, dnd5eSourceKeys, dnd5eSourceSort } from '~/utils/libraryDnd5e'
+import type { SectionDef } from '~/utils/librarySections'
 
 /** Systems with spell and class data to show; the rest are "coming soon". */
-export const COMPENDIUM_SYSTEMS: GameSystem[] = ['nimble', 'pf2e']
+export const COMPENDIUM_SYSTEMS: GameSystem[] = ['nimble', 'pf2e', 'dnd5e']
 
 export type SortDir = 'asc' | 'desc'
 export type SortValue = number | string | undefined
@@ -47,6 +55,15 @@ export interface SpellQuery {
   /** Nimble: `cantrip`, `utility` or the tier. */
   tier: string
   school: string[]
+  /** 5e: `0` for cantrips, else the spell level. */
+  level: string
+  /** 5e: `yes` or `no`; empty is either. */
+  conc: string
+  ritual: string
+  /** 5e casting times: `action`, `bonus`, `reaction`, `time` (a minute or more). */
+  time: string[]
+  /** 5e sources: `DND5E_SOURCE_KEY`'s keys (`srd`, `phb`, `arcana-unleashed`…). */
+  src: string[]
 }
 
 export const SPELL_QUERY_KEYS = [
@@ -62,6 +79,11 @@ export const SPELL_QUERY_KEYS = [
   'rare',
   'tier',
   'school',
+  'level',
+  'conc',
+  'ritual',
+  'time',
+  'src',
 ] as const
 
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v)
@@ -75,6 +97,11 @@ const list = (v: unknown) =>
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
+
+const yesNo = (v: unknown) => {
+  const x = str(v).toLowerCase()
+  return x === 'yes' || x === 'no' ? x : ''
+}
 
 export function readSpellQuery(query: Record<string, unknown>): SpellQuery {
   return {
@@ -90,6 +117,11 @@ export function readSpellQuery(query: Record<string, unknown>): SpellQuery {
     rare: str(query.rare) === '1',
     tier: str(query.tier).toLowerCase(),
     school: list(query.school),
+    level: str(query.level),
+    conc: yesNo(query.conc),
+    ritual: yesNo(query.ritual),
+    time: list(query.time),
+    src: list(query.src),
   }
 }
 
@@ -111,6 +143,11 @@ export function writeSpellQuery(
     rare: s.rare ? '1' : undefined,
     tier: or(s.tier),
     school: or(s.school.join(',')),
+    level: or(s.level),
+    conc: or(s.conc),
+    ritual: or(s.ritual),
+    time: or(s.time.join(',')),
+    src: or(s.src.join(',')),
   }
 }
 
@@ -257,7 +294,6 @@ export const sourceLabel = (src: { book: string; page?: number }) =>
 
 export const PF2E_SPELL_COLUMNS: SpellColumn<Pf2eSpellDef>[] = [
   { key: 'name', label: 'Name', value: (s) => s.name.toLowerCase() },
-  { key: 'rank', label: 'Rank', value: pf2eSpellRank },
   { key: 'actions', label: 'Actions', value: (s) => actionSortValue(s.actions) },
   {
     key: 'traditions',
@@ -331,7 +367,6 @@ export function nimbleCast(s: SpellDef): { actions: string; value?: number; targ
 
 export const NIMBLE_SPELL_COLUMNS: SpellColumn<SpellDef>[] = [
   { key: 'name', label: 'Name', value: (s) => s.name.toLowerCase() },
-  { key: 'tier', label: 'Tier', value: (s) => s.tier },
   { key: 'school', label: 'School', value: (s) => SCHOOL_LABELS[s.school].toLowerCase() },
   { key: 'cost', label: 'Cost', value: nimbleCost },
   { key: 'actions', label: 'Actions', value: (s) => nimbleCast(s).value },
@@ -342,7 +377,97 @@ export function nimbleSpellKeep(q: SpellQuery): (s: SpellDef) => boolean {
     (!q.tier || nimbleTierKey(s) === q.tier) && (!q.school.length || q.school.includes(s.school))
 }
 
-export const DEFAULT_SPELL_SORT: Record<string, string> = { pf2e: 'rank', nimble: 'tier' }
+// --- 5e spells -----------------------------------------------------------------------
+
+const DND5E_TIME_ORDER: Record<Dnd5eSpellDef['activation'], number> = {
+  reaction: 0.5,
+  bonus: 0.7,
+  free: 0.8,
+  action: 1,
+  magic: 1,
+  special: 1.5,
+  time: 2,
+}
+
+/** Reactions, then Bonus Actions, then Actions, then casting times by how long they take. */
+export function dnd5eTimeValue(s: Dnd5eSpellDef): number {
+  if (s.activation !== 'time') return DND5E_TIME_ORDER[s.activation]
+  const m = /(\d+) (minute|hour)/.exec(s.castingTime)
+  return m ? 2 + Number(m[1]) * (m[2] === 'hour' ? 60 : 1) : 2
+}
+
+/** "Action", "Bonus Action", "1 minute": the casting time without its trigger or Ritual. */
+export function dnd5eTimeLabel(s: Dnd5eSpellDef): string {
+  if (s.activation === 'time') return s.castingTime.replace(/ or Ritual$/, '') || 'Special'
+  return DND5E_ACTIVATION[s.activation]
+}
+
+/** Self and Touch are 0 feet ("Self (15-foot Cone)" by its area); then distances, Sight, Unlimited. */
+export function dnd5eRangeValue(range: string): number | undefined {
+  const t = range.toLowerCase()
+  const far = feet(t)
+  if (far !== undefined) return far
+  if (t.startsWith('self') || t.startsWith('touch')) return 0
+  if (t.startsWith('sight')) return 1e8
+  if (t.startsWith('special')) return 1e9
+  return undefined
+}
+
+export const dnd5eLevelLabel = (s: Dnd5eSpellDef) =>
+  s.level === 0 ? `${s.school} cantrip` : `Level ${s.level} ${s.school}`
+
+export const DND5E_SPELL_COLUMNS: SpellColumn<Dnd5eSpellDef>[] = [
+  { key: 'name', label: 'Name', value: (s) => s.name.toLowerCase() },
+  { key: 'school', label: 'School', value: (s) => s.school.toLowerCase() },
+  { key: 'time', label: 'Casting time', value: dnd5eTimeValue },
+  { key: 'range', label: 'Range', value: (s) => dnd5eRangeValue(s.range) },
+  { key: 'duration', label: 'Duration', value: (s) => s.duration.toLowerCase() },
+  { key: 'source', label: 'Source', value: dnd5eSourceSort },
+]
+
+export function dnd5eSpellKeep(q: SpellQuery): (s: Dnd5eSpellDef) => boolean {
+  return (s) =>
+    (!q.level || String(s.level) === q.level) &&
+    (!q.school.length || q.school.includes(s.school.toLowerCase())) &&
+    (!q.cls || s.classes.includes(q.cls)) &&
+    (!q.conc || s.concentration === (q.conc === 'yes')) &&
+    (!q.ritual || s.ritual === (q.ritual === 'yes')) &&
+    (!q.time.length || q.time.includes(s.activation)) &&
+    (!q.src.length || dnd5eSourceKeys(s).some((k) => q.src.includes(k)))
+}
+
+/** Each section is one level, so the list sorts by name within it unless asked otherwise. */
+export const DEFAULT_SPELL_SORT = 'name'
+
+// --- Spell sections ------------------------------------------------------------------
+
+const levels = (count: number, label: (n: number) => string): SectionDef[] =>
+  Array.from({ length: count }, (_, i) => ({ key: String(i + 1), label: label(i + 1) }))
+
+/** PF2e: cantrips, ranks 1–10, then focus spells (of any rank) together. */
+export const PF2E_SPELL_SECTIONS: SectionDef[] = [
+  { key: '0', label: 'Cantrips' },
+  ...levels(10, (n) => `Rank ${n}`),
+  { key: 'focus', label: 'Focus spells', mixed: true },
+]
+
+export const pf2eSpellSection = (s: Pf2eSpellDef) =>
+  s.kind === 'focus' ? 'focus' : String(pf2eSpellRank(s))
+
+/** Nimble: cantrips, utility spells, then tiers 1–9 (the Core Rules' names). */
+export const NIMBLE_SPELL_SECTIONS: SectionDef[] = [
+  { key: 'cantrip', label: 'Cantrips' },
+  { key: 'utility', label: 'Utility spells' },
+  ...levels(9, (n) => `Tier ${n}`),
+]
+
+/** 5e: cantrips, then spell levels 1–9. */
+export const DND5E_SPELL_SECTIONS: SectionDef[] = [
+  { key: '0', label: 'Cantrips' },
+  ...levels(9, (n) => `Level ${n}`),
+]
+
+export const dnd5eSpellSection = (s: Dnd5eSpellDef) => String(s.level)
 
 // --- Classes -------------------------------------------------------------------------
 
@@ -547,4 +672,83 @@ export function nimbleClassMatch(cls: ClassDef, terms: string[]): NimbleClassMat
       .map((s) => s.slug),
   )
   return hits.length ? { whole: false, shows: hit, subclasses, hits: [...new Set(hits)] } : null
+}
+
+// --- 5e classes ----------------------------------------------------------------------
+
+export interface Dnd5eAdvancement {
+  /** The class table's own columns ("Rages", "Cantrips", "1st"…), after Level, PB, Features. */
+  columns: string[]
+  rows: { level: number; pb: string; features: string; values: string[] }[]
+}
+
+/** The class table, levels 1–20 with every column the book prints. */
+export function dnd5eAdvancement(cls: Dnd5eClassDef): Dnd5eAdvancement {
+  return {
+    columns: cls.columns,
+    rows: [...cls.levels]
+      .sort((a, b) => a.level - b.level)
+      .map((r) => ({
+        level: r.level,
+        pb: `+${r.proficiencyBonus}`,
+        features: r.features.join(', '),
+        values: cls.columns.map((c) => r.columns[c] ?? ''),
+      })),
+  }
+}
+
+export interface Dnd5eClassMatch {
+  whole: boolean
+  features: Set<Dnd5eFeature>
+  /** Subclass slugs whose name or a feature matched. */
+  subclasses: Set<string>
+  /** Option entries (invocations, plans…) that matched, by slug. */
+  options: Set<string>
+  hits: string[]
+}
+
+type Dnd5eOptionLike = { slug: string; name: string; text?: string; summary?: string }
+
+/** What in a 5e class (its features, subclasses and option lists) matches a search. */
+export function dnd5eClassMatch(
+  cls: Dnd5eClassDef,
+  subclasses: readonly Dnd5eSubclassDef[],
+  options: readonly { name: string; entries: readonly Dnd5eOptionLike[] }[],
+  terms: string[],
+): Dnd5eClassMatch | null {
+  const all = () => ({
+    whole: true,
+    features: new Set<Dnd5eFeature>(),
+    subclasses: new Set(subclasses.map((s) => s.slug)),
+    options: new Set<string>(),
+    hits: [],
+  })
+  if (matchesAll(terms, cls.name)) return all()
+  const hit = (f: { name: string; text?: string; summary?: string }) =>
+    matchesAll(terms, f.name, f.text, f.summary)
+  const features = new Set([
+    ...cls.features.filter(hit),
+    ...subclasses.flatMap((s) => s.features.filter(hit)),
+  ])
+  const subs = subclasses.filter(
+    (s) => matchesAll(terms, s.name, s.text, s.summary) || s.features.some(hit),
+  )
+  const entries = options.flatMap((g) => g.entries.filter(hit).map((e) => ({ g, e })))
+  const hits = [
+    ...cls.features.filter(hit).map((f) => `Feature: ${f.name}`),
+    ...subclasses.flatMap((s) =>
+      matchesAll(terms, s.name, s.text, s.summary)
+        ? [`Subclass: ${s.name}`]
+        : s.features.filter(hit).map((f) => `${s.name}: ${f.name}`),
+    ),
+    ...entries.map(({ g, e }) => `${g.name}: ${e.name}`),
+  ]
+  if (!hits.length) return null
+  return {
+    whole: false,
+    features,
+    subclasses: new Set(subs.map((s) => s.slug)),
+    options: new Set(entries.map(({ e }) => e.slug)),
+    hits: [...new Set(hits)],
+  }
 }

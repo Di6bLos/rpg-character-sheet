@@ -15,7 +15,6 @@ A creature has six ability scores—Strength, Dexterity, Constitution, Intellige
 On your turn, you can take one action. Choose which action to take from those below or from the special actions provided by your features. _See also_ “Playing the Game” (“Actions”). These actions are defined elsewhere in this glossary:
 
 | Attack | Dodge | Influence | Search |
-| --- | --- | --- | --- |
 | Dash | Help | Magic | Study |
 | Disengage | Hide | Ready | Utilize |
 
@@ -40,7 +39,6 @@ A creature is your ally if it is a member of your adventuring party, your friend
 The descriptions of many spells and other features specify that they have an area of effect, which typically has one of six shapes. These shapes are defined elsewhere in this glossary:
 
 | Cone | Cylinder | Line |
-| --- | --- | --- |
 | Cube | Emanation | Sphere |
 
 An area of effect has a point of origin, a location from which the effect’s energy erupts. The rules for each shape specify how to position its point of origin. If all straight lines extending from the point of origin to a location in the area of effect are blocked, that location isn’t included in the area of effect. To block a line, an obstruction must provide Total Cover. _See also_ “Cover.”
@@ -214,7 +212,6 @@ Some spells and other effects require Concentration to remain active, as specifi
 A condition is a temporary game state. The definition of a condition says how it affects its recipient, and various rules define how to end a condition. This glossary defines these conditions:
 
 | Blinded | Grappled | Poisoned |
-| --- | --- | --- |
 | Charmed | Incapacitated | Prone |
 | Deafened | Invisible | Restrained |
 | Exhaustion | Paralyzed | Stunned |
@@ -245,7 +242,6 @@ Any being in the game, including a player’s character, is a creature. _See als
 Every creature, including every player character, has a tag in the rules that identifies the type of creature it is. Most player characters are of the Humanoid type. These are the game’s creature types:
 
 | Aberration | Elemental | Monstrosity |
-| --- | --- | --- |
 | Beast | Fey | Ooze |
 | Celestial | Fiend | Plant |
 | Construct | Giant | Undead |
@@ -306,7 +302,7 @@ Attacks and other harmful effects deal different types of damage. Damage types h
 | Cold | Freezing water, icy blasts |
 | Fire | Flames, unbearable heat |
 | Force | Pure magical energy |
-| Lightning | Electricity Type Examples |
+| Lightning | Electricity |
 | Necrotic | Life-draining energy |
 | Piercing | Fangs, puncturing objects |
 | Poison | Toxic gas, venom |
