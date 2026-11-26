@@ -156,7 +156,8 @@ export const exhaustionOf = (s: Pick<Dnd5eSheet, 'exhaustion' | 'conditions'>) =
 /** The hero's conditions, those another gives included (Unconscious → Incapacitated, Prone). */
 export function activeConditions(s: Pick<Dnd5eSheet, 'conditions'>): Set<string> {
   const on = new Set(s.conditions ?? [])
-  for (const c of s.conditions ?? []) for (const i of DND5E_CONDITION_RULE[c]?.implies ?? []) on.add(i)
+  for (const c of s.conditions ?? [])
+    for (const i of DND5E_CONDITION_RULE[c]?.implies ?? []) on.add(i)
   return on
 }
 

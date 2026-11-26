@@ -52,6 +52,8 @@ export interface Dnd5eEffectDef {
   endsIncapacitated?: boolean
   /** No spellcasting or concentration while on (Rage). */
   noSpells?: boolean
+  /** Your spells: a bonus to their save DC, Advantage on their attack rolls (Innate Sorcery). */
+  spell?: { dc?: number; adv?: boolean }
 }
 
 const BPS = ['Bludgeoning', 'Piercing', 'Slashing']
@@ -234,13 +236,6 @@ export const DND5E_EFFECTS: Record<string, Dnd5eEffectDef> = {
     ends: 'concentration',
     ally: true,
   },
-  'spirit-shroud': {
-    key: 'spirit-shroud',
-    name: 'Spirit Shroud',
-    note: '+1d8 Radiant, Necrotic or Cold damage when you hit a creature within 10 feet.',
-    ends: 'concentration',
-    damage: { dice: '1d8', type: 'Radiant' },
-  },
   'magic-weapon': {
     key: 'magic-weapon',
     name: 'Magic Weapon',
@@ -312,6 +307,13 @@ export const DND5E_EFFECTS: Record<string, Dnd5eEffectDef> = {
     spentBy: ['attack'],
     ally: true,
   },
+  'innate-sorcery': {
+    key: 'innate-sorcery',
+    name: 'Innate Sorcery',
+    note: 'For 1 minute: +1 to the save DC of your Sorcerer spells and Advantage on their attack rolls (SRD 5.2.1 p. 65).',
+    ends: 'encounter',
+    spell: { dc: 1, adv: true },
+  },
   'wild-shape': {
     key: 'wild-shape',
     name: 'Wild Shape',
@@ -338,7 +340,6 @@ export const SPELL_EFFECTS: Record<string, string> = {
   'enlarge-reduce': 'enlarge',
   blur: 'blur',
   fly: 'fly',
-  'spirit-shroud': 'spirit-shroud',
   'magic-weapon': 'magic-weapon',
   'protection-from-evil-and-good': 'protection',
   'armor-of-agathys': 'armor-of-agathys',

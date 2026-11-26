@@ -229,7 +229,15 @@ export function spendCast(s: Dnd5eSheet, ref: Dnd5eSpellRef, opt: Dnd5eCastOptio
 export function spellNumbers(s: Dnd5eSheet, level: number, ref: Pick<Dnd5eSpellRef, 'ability'>) {
   const hero = dnd5eHero(s, level)
   const mod = hero.mod(ref.ability)
-  return { mod, attack: mod + hero.pb, dc: 8 + mod + hero.pb }
+  const fx = activeEffectDefs(s).filter((d) => d.spell)
+  const dcBonus = fx.reduce((n, d) => n + (d.spell?.dc ?? 0), 0)
+  return {
+    mod,
+    attack: mod + hero.pb,
+    dc: 8 + mod + hero.pb + dcBonus,
+    /** Effects giving the spell attacks Advantage (Innate Sorcery). */
+    adv: fx.filter((d) => d.spell?.adv).map((d) => d.name),
+  }
 }
 
 function cantripsWithAgonizing(s: Dnd5eSheet): string[] {
@@ -456,6 +464,7 @@ export function castSpell(
         strength: false,
         ...(o.target ? { target: o.target } : {}),
       })
+      t.adv.push(...nums.adv)
       const r = rollTest(s, t, { mode: o.mode ?? 'normal', ...(o.rng ? { rng: o.rng } : {}) })
       const ac = o.target?.ac ?? null
       const crit = r.natural === 20

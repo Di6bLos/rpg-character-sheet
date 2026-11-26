@@ -291,7 +291,6 @@ export function d20Test(
   if (t.kind === 'check' && t.skill === 'Athletics' && hero.has('Remarkable Athlete'))
     out.adv.push('Remarkable Athlete')
   if (hero.has('Luck') && s.speciesSlug === 'halfling') out.lucky = true
-  else if (hero.has('Halfling Luck')) out.lucky = true
   return out
 }
 
