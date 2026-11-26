@@ -121,6 +121,8 @@ export interface Dnd5eEntry {
   duration?: string
   /** A use limit that comes back each turn ("once a turn"). */
   oncePerTurn?: boolean
+  /** The feature this is an option of (Cunning Action for its Dash). */
+  parent?: string
 }
 
 const ACTIVATION: Record<Dnd5eActivation, Dnd5eCost> = {
@@ -356,6 +358,7 @@ export function heroEntries(
           cols,
         }),
       )
+      out[out.length - 1]!.parent = f.name
     }
   }
   return out

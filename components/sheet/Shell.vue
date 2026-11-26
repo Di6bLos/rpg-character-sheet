@@ -18,7 +18,6 @@ const emit = defineEmits<{ deleted: [] }>()
 
 const store = useCharacterStore()
 const snackbar = useSnackbarStore()
-const { theme } = useTheme()
 
 const editor = provideSheetEditor(props.character, {
   canEdit: props.canEdit,
@@ -60,9 +59,6 @@ const canChangeSubclass = computed(
     !!(draft.value.sheet as { classSlug?: string }).classSlug &&
     draft.value.level >= 3,
 )
-
-// The dark-fantasy 5e layouts carry their own Level up button.
-const layoutHasLevelUp = computed(() => draft.value.system === 'dnd5e' && theme.value !== 'classic')
 
 const saveLabel = computed(() =>
   saving.value ? 'Saving…' : dirty.value ? 'Save changes' : 'Saved',
@@ -145,12 +141,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
         <button type="button" class="btn btn--ghost" :disabled="saving || !dirty" @click="save">
           {{ saveLabel }}
         </button>
-        <button
-          v-if="!layoutHasLevelUp || editing"
-          type="button"
-          class="btn"
-          @click="levelUpOpen = true"
-        >
+        <button type="button" class="btn" @click="levelUpOpen = true">
           <svg
             width="16"
             height="16"
@@ -197,7 +188,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
       </div>
     </template>
     <template v-else>
-      <SheetDnd5eSheet v-if="draft.system === 'dnd5e'" @level-up="levelUpOpen = true" />
+      <SheetDnd5eSheet v-if="draft.system === 'dnd5e'" />
       <SheetPf2eSheet v-else-if="draft.system === 'pf2e'" />
       <SheetNimbleSheet v-else />
     </template>

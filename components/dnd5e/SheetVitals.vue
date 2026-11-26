@@ -67,11 +67,10 @@ const heavyArmor = computed(() =>
 const ham = computed(() => hero.value.feat('heavy-armor-master') && heavyArmor.value)
 
 function hitOf(amount: number, type = ''): Dnd5eHit {
-  const reduce = [
-    ...(ham.value && /^(bludgeoning|piercing|slashing)$/i.test(type)
+  const reduce =
+    ham.value && /^(bludgeoning|piercing|slashing)$/i.test(type)
       ? [{ label: 'Heavy Armor Master', amount: hero.value.pb }]
-      : []),
-  ]
+      : []
   return {
     amount,
     crit: crit.value,
