@@ -17,7 +17,10 @@ import {
   toggleActionPip,
   turnActions,
 } from '~/utils/nimblePlay'
-import { turnSteps, typesInitiative } from '~/utils/turnSteps'
+import { type TurnModel, turnSteps, typesInitiative } from '~/utils/turnSteps'
+
+const NIMBLE_TURN_HELP =
+  'Attacks, spells and reactions spend actions for you; tap a circle to spend or restore one. Your actions come back at the END of your turn, so reactions you take on others’ turns come out of your next one. Start turn refills once-per-turn abilities and pays spells still being cast; New encounter refills once-per-encounter abilities; then Roll Initiative (or type your total if you roll your own dice): 9 or less starts you with 1 action, 10–19 with 2, 20+ with all. On the board, Start and End turn happen by themselves as initiative reaches and leaves you.'
 
 export function useTurnSteps(
   options: {
@@ -125,7 +128,40 @@ export function useTurnSteps(
     await send(total, `Initiative ${total}.`)
   }
 
+  /** The shared Turn panel's model (components/sheet/TurnPanel.vue). */
+  const model = computed<TurnModel>(() => ({
+    help: NIMBLE_TURN_HELP,
+    active: sheet.value.turnActive,
+    inEncounter: sheet.value.inEncounter,
+    initiative: sheet.value.initiative ?? null,
+    pips: Array.from({ length: pips.value }, (_, i) => ({
+      n: i + 1,
+      on: i + 1 <= left.value,
+      extra: i + 1 > perTurn.value,
+    })),
+    leftText: leftText.value,
+    note: rushedNote.value,
+    casting: sheet.value.casting,
+    steps: steps.value,
+    typed: typed.value,
+    unsent: unsent.value,
+    extraTitle:
+      'An ally or ability gave you an extra action (Stim Pack, Chorus of Champions…); it lasts until your turn ends',
+    endEncounterTitle: 'The battle is over: Rage, unused combat charges and minions end',
+    toggleAction,
+    extraAction,
+    cancelCasting,
+    startEncounter,
+    rollInitiative: initiative,
+    resendInitiative,
+    beginTurn,
+    finishTurn,
+    nextRound,
+    finishEncounter,
+  }))
+
   return {
+    model,
     sheet,
     gmEncounter,
     perTurn,

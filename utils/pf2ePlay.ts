@@ -2,7 +2,7 @@
 // (Player Core pp. 442–447), how bonuses and penalties stack (p. 400), degrees of success
 // (p. 401), and damage, Shield Block, knocked out, dying, wounded and doomed (pp. 269,
 // 406, 410–412). Pure functions on the sheet; the sheet panels call them and `say()` the result.
-import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import type { Pf2eAttr, Pf2eConditionEnd, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { type Rng, parseDice, rollCheck, rollDice } from '~/utils/dice'
 import {
   ASSISTED_DC,
@@ -392,6 +392,7 @@ function addCondition(s: Pf2eSheet, name: string) {
 }
 function removeCondition(s: Pf2eSheet, name: string) {
   s.conditions = s.conditions.filter((c) => c !== name)
+  if (s.conditionEnds?.[name]) setPf2eConditionEnd(s, name, 'manual')
 }
 
 /** Raise dying (p. 411); returns the death line if that kills the hero. */
@@ -659,4 +660,172 @@ export function assistedRecovery(
   if (round > 0 && p.assisted === round) return 'Already helped this round.'
   p.assisted = round
   return `Assisted recovery: ${flatCheck(s, type, apt ? ASSISTED_DC : PERSISTENT_DC, rng)}`
+}
+
+// --- When conditions end ------------------------------------------------------------
+
+/**
+ * When a condition the player set goes away. Most PF2e conditions last as long as the effect
+ * that gave them says (pp. 442–447), so the player picks it; none is the default.
+ */
+export const PF2E_END_LABELS: Record<Pf2eConditionEnd | 'manual', string> = {
+  turnStart: 'at the start of your next turn',
+  turnEnd: 'at the end of your next turn',
+  encounter: 'when the encounter ends',
+  manual: 'when you remove it',
+}
+
+/** Conditions the rules count down by themselves, with how (no end to pick). */
+export const PF2E_AUTO_ENDS: Record<string, string> = {
+  Frightened: 'Drops by 1 at the end of each of your turns (p. 444).',
+}
+
+export function setPf2eConditionEnd(s: Pf2eSheet, name: string, end: Pf2eConditionEnd | 'manual') {
+  const ends = { ...s.conditionEnds }
+  if (end === 'manual') delete ends[name]
+  else ends[name] = end
+  s.conditionEnds = ends
+  // Set during the hero's own turn, "the end of your next turn" skips this turn's end.
+  const held = (s.conditionHold ?? []).filter((n) => n !== name)
+  if (end === 'turnEnd' && s.turn?.active) held.push(name)
+  s.conditionHold = held
+}
+
+/** Takes off the conditions set to end now; the line says which. */
+export function clearPf2eConditionsAt(s: Pf2eSheet, when: Pf2eConditionEnd): string {
+  const held = when === 'turnEnd' ? new Set(s.conditionHold ?? []) : new Set<string>()
+  if (held.size) s.conditionHold = []
+  const ending = Object.entries(s.conditionEnds ?? {})
+    .filter(([name, end]) => end === when && s.conditions.includes(name) && !held.has(name))
+    .map(([name]) => name)
+  for (const name of ending) {
+    removeCondition(s, name)
+    if (s.conditionValues) delete s.conditionValues[name]
+  }
+  return ending.length ? `No longer ${ending.join(' or ').toLowerCase()}.` : ''
+}
+
+/**
+ * What the active conditions do to the hero's numbers, a line each (AC, saves, Perception,
+ * attacks), with saves that change alike on one line; then Speed and actions.
+ */
+export function pf2eConditionSummary(
+  s: Pf2eSheet,
+  speed?: { changed: boolean; text: string; note: string },
+) {
+  const line = (label: string, ctx: Pf2eStatContext) => {
+    const { total, applied } = stackMods(conditionMods(s, ctx))
+    if (!total) return null
+    const why = applied
+      .map((m) => `${m.value > 0 ? '+' : '−'}${Math.abs(m.value)} ${m.source}`)
+      .join(', ')
+    return { label, text: `${total > 0 ? '+' : '−'}${Math.abs(total)} (${why})` }
+  }
+  const saves = [
+    line('Fortitude', { kind: 'save', attr: 'CON', save: 'Fortitude' }),
+    line('Reflex', { kind: 'save', attr: 'DEX', save: 'Reflex' }),
+    line('Will', { kind: 'save', attr: 'WIS', save: 'Will' }),
+  ]
+  const sameSaves = saves.every((x) => x && x.text === saves[0]?.text)
+  const rows = [
+    line('AC', { kind: 'ac' }),
+    ...(sameSaves ? [saves[0] && { label: 'Saves', text: saves[0].text }] : saves),
+    line('Perception', { kind: 'perception', attr: 'WIS' }),
+    line('Melee attacks', { kind: 'attack', attr: 'STR', melee: true }),
+    line('Ranged attacks', { kind: 'attack', attr: 'DEX' }),
+  ]
+  const out = rows.flatMap((r) => (r ? [`${r.label} ${r.text}`] : []))
+  if (speed?.changed) out.push(`Speed ${speed.text} (${speed.note})`)
+  const on = activeConditions(s)
+  const slowed = conditionValue(s, 'Slowed')
+  if (on.has('Quickened')) out.push('Quickened: 1 extra action at the start of your turn')
+  if (slowed)
+    out.push(
+      `Slowed ${slowed}: ${slowed} fewer action${slowed === 1 ? '' : 's'} at the start of your turn`,
+    )
+  const stopped = ['Paralyzed', 'Petrified', 'Unconscious', 'Stunned'].find((c) => on.has(c))
+  if (stopped) out.push(`${stopped}: you can’t act`)
+  return out
+}
+
+// --- Resting and coming back -----------------------------------------------------------
+
+/**
+ * A full night's rest (8 hours, Player Core p. 439): HP back equal to the Constitution
+ * modifier (at least 1) times the level; doomed and drained drop by 1 and fatigue ends
+ * (pp. 443–444); wounded ends once at full HP after resting (p. 447). Daily preparations
+ * (utils/pf2eSpells.ts) follow it.
+ */
+export function nightsRest(s: Pf2eSheet, level: number): string {
+  if (isDead(s)) return DEAD
+  const notes: string[] = []
+  const amount = Math.max(1, s.attrs.CON) * Math.max(1, level)
+  const was = s.hp
+  const healed = heal(s, amount)
+  notes.push(
+    `A night's rest: ${s.hp - was ? `regained ${s.hp - was} HP` : 'HP already full'}, ${s.hp}/${s.hpMax}.`,
+  )
+  if (/No longer dying/.test(healed)) notes.push(`Wounded ${s.wounded}.`)
+  if ((s.doomed ?? 0) > 0) {
+    s.doomed = (s.doomed ?? 0) - 1
+    notes.push(s.doomed ? `Doomed ${s.doomed}.` : 'No longer doomed.')
+  }
+  const locked = s.conditionsLocked ?? []
+  const drained =
+    s.conditions.includes('Drained') && !locked.includes('Drained')
+      ? conditionValue(s, 'Drained')
+      : 0
+  if (drained) {
+    if (drained > 1) s.conditionValues = { ...s.conditionValues, Drained: drained - 1 }
+    else {
+      removeCondition(s, 'Drained')
+      if (s.conditionValues) delete s.conditionValues.Drained
+    }
+    notes.push(drained > 1 ? `Drained ${drained - 1}.` : 'No longer drained.')
+  }
+  if (s.conditions.includes('Fatigued')) {
+    removeCondition(s, 'Fatigued')
+    notes.push('No longer fatigued.')
+  }
+  if (s.wounded > 0 && s.hp === s.hpMax) {
+    s.wounded = 0
+    notes.push('Wounded ends.')
+  }
+  return notes.join(' ')
+}
+
+/** Resurrect's lasting conditions on a success (Player Core p. 394), for a week. */
+const RESURRECTED = ['Clumsy', 'Drained', 'Enfeebled']
+
+/**
+ * Back from the dead by the Resurrect ritual's success (Player Core p. 394): 1 HP, no spells
+ * prepared and no points in any pool, and clumsy 1, drained 1 and enfeebled 1 for a week. Dying,
+ * wounded and the death-related conditions clear; doomed stays, kept short of death.
+ */
+export function resurrect(s: Pf2eSheet): string {
+  if (!isDead(s)) return 'Your hero is alive.'
+  s.dying = 0
+  s.wounded = 0
+  s.doomed = Math.min(s.doomed ?? 0, Math.max(0, baseDeathAt(s) - 1))
+  s.hp = Math.min(1, s.hpMax)
+  s.tempHp = 0
+  s.persistent = []
+  removeCondition(s, 'Unconscious')
+  s.conditionsLocked = [...new Set([...(s.conditionsLocked ?? []), ...RESURRECTED])]
+  for (const name of RESURRECTED) {
+    if (!s.conditions.includes(name)) s.conditions = [...s.conditions, name]
+    s.conditionValues = {
+      ...s.conditionValues,
+      [name]: Math.max(1, s.conditionValues?.[name] ?? 1),
+    }
+  }
+  s.focus.current = 0
+  for (const c of [...(s.spellcasting ? [s.spellcasting] : []), ...(s.archetypeCasting ?? [])]) {
+    for (const r of c.slots) {
+      r.used = r.max
+      for (const p of r.prepared ?? []) p.id = null
+    }
+    if (c.font) c.font.used = c.font.max
+  }
+  return 'Resurrected (Player Core p. 394): back at 1 HP with clumsy 1, drained 1 and enfeebled 1 for a week, which nothing removes or lowers before then. No spells prepared and no Focus Points until your next daily preparations.'
 }

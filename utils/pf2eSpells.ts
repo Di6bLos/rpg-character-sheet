@@ -14,7 +14,14 @@ import { type Rng, rollDie } from '~/utils/dice'
 import { passItemTime, setGiven, toggleEffect } from '~/utils/pf2eEffects'
 import { itemsDailyPrep } from '~/utils/pf2eInventory'
 import { readCost } from '~/utils/pf2eAbilityRules'
-import { attacked, cantAct, inEncounter } from '~/utils/pf2eActions'
+import {
+  NOT_YOUR_TURN,
+  attacked,
+  cantAct,
+  inEncounter,
+  offTurn,
+  usableOffTurn,
+} from '~/utils/pf2eActions'
 import { adjusted, conditionValue, proficiency } from '~/utils/pf2ePlay'
 import { type Pf2eCastRoll, castRolls, effectValue, spellRules } from '~/utils/pf2eSpellRules'
 
@@ -226,6 +233,7 @@ export function castBlocked(s: Pf2eSheet, spell: Pf2eSpellDef | undefined, actio
   const t = s.turn
   if (cost?.kind === 'reaction' && t && inEncounter(s) && !t.reaction)
     return 'Reaction already used this round'
+  if (offTurn(s) && cost && !usableOffTurn({ cost, trigger: spell?.trigger })) return NOT_YOUR_TURN
   if (cost?.kind === 'actions' && t?.active) {
     const n = actions ?? cost.min
     if (t.actions < n) return `Needs ${n} action${n === 1 ? '' : 's'}; ${t.actions} left`

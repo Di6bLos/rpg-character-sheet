@@ -13,7 +13,6 @@ import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { Pf2eArchetypeCasting, Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
 import { rollCheck, showOutcome, sign } from '~/utils/dice'
-import { actionGlyph } from '~/utils/pf2eBuild'
 import { type Pf2eBloodMagic, bloodMagic } from '~/utils/pf2eClassActions'
 import { pf2eEffectDef, toggleEffect } from '~/utils/pf2eEffects'
 import { heal } from '~/utils/pf2ePlay'
@@ -41,7 +40,6 @@ import {
 } from '~/utils/pf2eSpells'
 import { attackCount, defaultActions, spellRules } from '~/utils/pf2eSpellRules'
 import { readCost } from '~/utils/pf2eAbilityRules'
-import { actionCostLabel } from '~/utils/pf2eActions'
 import { loreHtml } from '~/utils/loreText'
 
 const props = defineProps<{ archetype?: string }>()
@@ -57,7 +55,7 @@ const panelId = props.archetype
 /** The cast's offers (heal yourself, temp HP, the buff on yourself) for the row that made it. */
 const offersFor = (key: string) => (lastCast.value?.key === key ? lastCast.value : null)
 /** A spell's action cost for screen readers ("Two actions"). */
-const costName = (id: string) => actionCostLabel(readCost(byId.value.get(id)?.actions))
+const costOf = (id: string) => readCost(byId.value.get(id)?.actions)
 const sheet = computed(() => draft.value.sheet)
 const sc = computed(() =>
   props.archetype
@@ -459,8 +457,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           @click="open = open === s.id ? null : s.id"
         >
           {{ s.name }}
-          <small aria-hidden="true">{{ actionGlyph(byId.get(s.id)?.actions) }}</small
-          ><span class="sr-only">{{ costName(s.id) }}</span>
+          <Pf2eCostPill :cost="costOf(s.id)" />
         </button>
         <div class="spell__meta">
           <Pf2eSpellCastOptions
@@ -564,8 +561,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             @click="open = open === s.id ? null : s.id"
           >
             {{ s.name }}
-            <small aria-hidden="true">{{ actionGlyph(byId.get(s.id)?.actions) }}</small
-            ><span class="sr-only">{{ costName(s.id) }}</span>
+            <Pf2eCostPill :cost="costOf(s.id)" />
             <small v-if="s.signature && !edit" class="tag">signature</small>
           </button>
           <div class="spell__meta">
@@ -827,8 +823,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           @click="open = open === s.id ? null : s.id"
         >
           {{ s.name }}
-          <small aria-hidden="true">{{ actionGlyph(byId.get(s.id)?.actions) }}</small
-          ><span class="sr-only">{{ costName(s.id) }}</span>
+          <Pf2eCostPill :cost="costOf(s.id)" />
           <small v-if="cantripIds.has(s.id)"> · cantrip</small>
         </button>
         <div class="spell__meta">

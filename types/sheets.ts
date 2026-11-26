@@ -304,6 +304,16 @@ export interface Pf2eSheet extends SheetCommon {
   /** Values of valued conditions in `conditions` (frightened 2); absent means 1. */
   conditionValues?: Record<string, number>
   /**
+   * When each condition the player set an end for goes away: at the start or end of their next
+   * turn, or when the encounter ends (`PF2E_END_LABELS` in utils/pf2ePlay.ts). Absent: when
+   * they remove it.
+   */
+  conditionEnds?: Record<string, Pf2eConditionEnd>
+  /** Set during the hero's own turn to end "at the end of your next turn": this turn's end skips them. */
+  conditionHold?: string[]
+  /** Conditions no rest or effect lowers until a week passes (Resurrect's, Player Core p. 394). */
+  conditionsLocked?: string[]
+  /**
    * Saved by the sheet editor for the battle board (`acParts` in utils/pf2ePlay.ts): the AC
    * modifiers not from conditions or the raised shield, and the conditions effects give.
    */
@@ -394,6 +404,10 @@ export interface Pf2eSheet extends SheetCommon {
     initiative?: number
     /** The GM tracker's round whose turn the tracker started for the hero (board turn steps). */
     trackerRound?: number
+    /** Actions stunned and slowed took at the start of this turn (p. 446), shown struck out. */
+    lost?: { stunned: number; slowed: number; all?: string }
+    /** Extra actions gained during this turn (quickened mid-turn, the GM's call). */
+    extra?: number
   }
   /** The GM's tracker seat (combatant id) the sheet last joined, as Nimble's `gmCombatant`. */
   gmCombatant?: string
@@ -507,6 +521,8 @@ export interface NimbleAttack {
 }
 
 export type ConditionEnd = 'turnStart' | 'turnEnd' | 'round' | 'encounter'
+/** PF2e has no New round step (the reaction comes back with your turn), so no round end. */
+export type Pf2eConditionEnd = 'turnStart' | 'turnEnd' | 'encounter'
 
 export interface NimbleCustomSummon {
   kind: 'minion' | 'companion' | 'spirit' | 'construct' | 'other'

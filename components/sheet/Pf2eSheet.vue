@@ -1,27 +1,17 @@
 <script setup lang="ts">
 import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
 import { rollCheck, showOutcome, sign } from '~/utils/dice'
-import {
-  type Pf2eStatContext,
-  SAVE_ATTR,
-  acNow as acAfter,
-  adjusted,
-  degreeOf,
-  heal,
-  isDead,
-  shieldAc,
-  shieldBroken,
-  takeDamage,
-} from '~/utils/pf2ePlay'
-import { shiftedDegree, speedNow } from '~/utils/pf2eEffects'
+import { type Pf2eStatContext, SAVE_ATTR, adjusted, degreeOf } from '~/utils/pf2ePlay'
+import { shiftedDegree } from '~/utils/pf2eEffects'
+import { NOT_YOUR_TURN, cantAct, offTurn } from '~/utils/pf2eActions'
 import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
 
-const { draft, canEdit, hpPct, xpPct, xpLabel, say } = useSheet<Pf2eSheet>()
+const { draft, canEdit, xpPct, xpLabel, say } = useSheet<Pf2eSheet>()
 // The GM's HP and condition changes from the battle board.
 useHeroHpChanges()
 useHeroConditionChanges()
-/** Results show in the panel that made them; anything else in Defenses, beside HP. */
-const { claim, resultIn, unclaimed } = useResultOwner()
+/** Results show in the panel that made them. */
+const { claim, resultIn } = useResultOwner()
 const sheet = computed(() => draft.value.sheet)
 
 const ATTR_NAME: Record<Pf2eAttr, string> = {
@@ -50,22 +40,6 @@ const attrs = computed(() =>
     key: sheet.value.keyAttr === k,
   })),
 )
-
-const hasShield = computed(() => sheet.value.shield.name.trim() !== '')
-// A raised shield's bonus is a circumstance bonus the engine stacks (it doesn't add to Shield's +1).
-const ac = computed(() => sheet.value.ac)
-const broken = computed(() => shieldBroken(sheet.value))
-const dead = computed(() => isDead(sheet.value))
-/** The ±1 HP steppers go through the damage rules, so 0 HP still knocks the hero out. */
-function stepHp(by: number) {
-  if (!canEdit.value) return
-  const dyingBefore = sheet.value.dying
-  const message = by < 0 ? takeDamage(sheet.value, 1) : heal(sheet.value, 1)
-  if (sheet.value.dying !== dyingBefore) say(message)
-}
-
-/** AC after conditions (off-guard, clumsy, frightened…), a raised shield; petrified is 9. */
-const acNow = computed(() => acAfter(sheet.value))
 
 const saveContext = (label: string): Pf2eStatContext =>
   label === 'Perception'
@@ -135,24 +109,31 @@ const strikesApi = providePf2eStrikes()
 const { targetAc, damageFlags, conditionsOffered, strikes, nextAttack } = strikesApi
 const turnActive = computed(() => !!sheet.value.turn?.active)
 
+/**
+ * Why a Strike can't be made now, or '': it takes one action on your turn (Player Core
+ * p. 418), so off your turn in an encounter it waits ("Not your turn"); a finisher ends
+ * your attacks for the turn.
+ */
+const strikeWhy = computed(() => {
+  const s = sheet.value
+  const stopped = cantAct(s)
+  if (stopped) return stopped
+  if (offTurn(s)) return NOT_YOUR_TURN
+  const t = s.turn
+  if (t?.active && t.finisher) return 'Finisher used'
+  if (t?.active && t.actions < 1) return 'No actions left'
+  return ''
+})
+const STRIKE_COST = { kind: 'actions', min: 1, max: 1 } as const
+
 /** A Strike from the table: one action while the turn tracker runs (Player Core p. 418). */
 function strikeFromTable(index: number, step: number) {
   if (!canEdit.value) return
+  if (strikeWhy.value) return say(`Strike: ${strikeWhy.value}.`)
   const t = sheet.value.turn
-  if (t?.active) {
-    if (t.finisher) return say('You used a finisher this turn: no more attacks.')
-    if (t.actions < 1) return say('No actions left this turn.')
-    t.actions -= 1
-  }
+  if (t?.active) t.actions -= 1
   strikesApi.attack(index, { map: step })
 }
-
-const speed = computed(() => speedNow(sheet.value, draft.value.level))
-
-const shieldPct = computed(() => {
-  const { hp, hpMax } = sheet.value.shield
-  return hpMax > 0 ? Math.round((hp / hpMax) * 100) : 0
-})
 
 function setHero(n: number) {
   if (!canEdit.value) return
@@ -237,70 +218,16 @@ function setFocus(n: number) {
   </section>
 
   <div class="two-col">
-    <section class="panel stack" aria-labelledby="def-h">
-      <h2 id="def-h">Defenses</h2>
-      <div class="row" style="align-items: stretch">
-        <div class="ac">
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--secondary)"
-            stroke-width="2"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
-          </svg>
-          <div
-            class="ac__v"
-            :class="{ 'is-changed': acNow.changed }"
-            :title="acNow.changed ? `${ac} ${acNow.note}` : undefined"
-          >
-            {{ acNow.value }}
-          </div>
-          <div class="caps" style="font-size: 11px">AC · {{ PF2E_RANK_NAME[sheet.acRank] }}</div>
-        </div>
-        <div v-if="hasShield" class="tile shield">
-          <div class="shield__head">
-            <div class="caps">{{ sheet.shield.name }}</div>
-            <button
-              type="button"
-              class="chip shield__btn"
-              :aria-pressed="sheet.shield.raised && !broken"
-              :disabled="!canEdit || broken"
-              :title="
-                broken
-                  ? 'Broken (HP at or below its Broken Threshold): it can’t be raised until Repaired'
-                  : undefined
-              "
-              @click="sheet.shield.raised = !sheet.shield.raised"
-            >
-              {{
-                broken
-                  ? 'Broken'
-                  : sheet.shield.raised
-                    ? `Raised · +${shieldAc(sheet)} AC`
-                    : 'Raise shield'
-              }}
-            </button>
-          </div>
-          <div class="facts">
-            <span
-              >Hardness <strong>{{ sheet.shield.hardness }}</strong></span
-            >
-            <span
-              >HP <strong>{{ sheet.shield.hp }} / {{ sheet.shield.hpMax }}</strong></span
-            >
-            <span
-              >BT <strong>{{ sheet.shield.bt }}</strong></span
-            >
-          </div>
-          <div class="meter meter--thin"><span :style="{ width: shieldPct + '%' }" /></div>
+    <Pf2eSheetVitals />
+
+    <section class="panel stack" style="gap: 12px" aria-labelledby="sk-h">
+      <div class="panel-title" style="margin: 0">
+        <h2 id="sk-h">Skills</h2>
+        <div class="rank-legend">
+          <span>U untrained</span><span>T trained</span><span>E expert</span><span>M master</span
+          ><span>L legendary</span>
         </div>
       </div>
-
       <label class="target">
         Save DC
         <input
@@ -314,101 +241,22 @@ function setFocus(n: number) {
         />
         <span id="save-dc-help" class="small muted">for the degree of success</span>
       </label>
-      <div class="saves">
-        <div v-for="x in saves" :key="x.label" class="tile" style="gap: 6px; padding: 12px">
-          <div class="save__head">
-            <span class="tile__label">{{ x.label }}</span>
-            <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
-              x.rank
-            }}</span>
-          </div>
-          <div
-            v-if="x.label === 'Class DC'"
-            class="tile__value"
-            :class="{ 'is-changed': x.now.changed }"
-            :title="x.now.changed ? `${x.value} ${x.now.note}` : undefined"
-            style="font-size: 24px"
-          >
-            {{ x.now.value }}
-          </div>
-          <button
-            v-else
-            type="button"
-            class="tile__value roll-value"
-            :class="{ 'is-changed': x.now.changed }"
-            :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.label}`"
-            :aria-label="`Roll ${x.label} ${sign(x.now.value)}`"
-            @click="claim('defense:save', () => rollSave(x.label, x.now.value))"
-          >
-            {{ sign(x.now.value) }}
-          </button>
-        </div>
-      </div>
-
-      <div class="tile" style="gap: 10px; padding: 14px">
-        <div class="hp">
-          <div class="caps">Hit points</div>
-          <div class="row" style="gap: 8px">
-            <button
-              type="button"
-              class="step"
-              aria-label="Lose 1 hit point"
-              :disabled="!canEdit"
-              @click="stepHp(-1)"
-            >
-              −
-            </button>
-            <div class="hp__value" aria-live="polite">
-              {{ sheet.hp }}<span> / {{ sheet.hpMax }}</span>
-            </div>
-            <button
-              type="button"
-              class="step"
-              aria-label="Gain 1 hit point"
-              :disabled="!canEdit || dead"
-              @click="stepHp(1)"
-            >
-              +
-            </button>
-          </div>
-        </div>
-        <div class="meter"><span :style="{ width: hpPct + '%' }" /></div>
-        <div class="facts">
-          <span
-            >Temp HP <strong>{{ sheet.tempHp }}</strong></span
-          >
-          <span
-            >Speed
-            <strong
-              :class="{ 'is-changed': speed.changed }"
-              :title="speed.changed ? speed.note : undefined"
-              >{{ speed.text }}</strong
-            ></span
-          >
-        </div>
-        <Pf2eSheetHealth />
-      </div>
-
-      <Pf2eSheetDefenses />
-
-      <Pf2eSheetConditions />
-      <p
-        v-if="resultIn('defense:') || unclaimed"
-        class="roll-status"
-        role="status"
-        aria-live="polite"
-      >
-        {{ resultIn('defense:') || unclaimed }}
-      </p>
-    </section>
-
-    <section class="panel stack" style="gap: 12px" aria-labelledby="sk-h">
-      <div class="panel-title" style="margin: 0">
-        <h2 id="sk-h">Skills</h2>
-        <div class="rank-legend">
-          <span>U untrained</span><span>T trained</span><span>E expert</span><span>M master</span
-          ><span>L legendary</span>
-        </div>
+      <div class="skills">
+        <button
+          v-for="x in saves.filter((v) => v.label !== 'Class DC')"
+          :key="x.label"
+          type="button"
+          class="skill is-trained"
+          :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.label}`"
+          :aria-label="`Roll ${x.label} ${sign(x.now.value)}`"
+          @click="claim('skills:save', () => rollSave(x.label, x.now.value))"
+        >
+          <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
+            x.rank
+          }}</span>
+          <span class="skill__name">{{ x.label }}</span>
+          <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
+        </button>
       </div>
       <div class="skills">
         <button
@@ -490,13 +338,21 @@ function setFocus(n: number) {
           <tr v-for="(w, i) in strikes" :key="i">
             <td>
               <div class="row" style="gap: 8px; flex-wrap: nowrap">
-                <span class="action-glyph" aria-hidden="true">◆</span
-                ><span class="sr-only">One action</span>
                 <strong>{{ w.name }}</strong>
+                <Pf2eCostPill :cost="STRIKE_COST" />
               </div>
             </td>
             <td>
-              <div class="row" style="gap: 6px; flex-wrap: nowrap">
+              <button
+                v-if="strikeWhy && canEdit"
+                type="button"
+                class="atk atk--why"
+                disabled
+                :aria-label="`${w.name}: ${strikeWhy}`"
+              >
+                {{ strikeWhy }}
+              </button>
+              <div v-else class="row" style="gap: 6px; flex-wrap: nowrap">
                 <button
                   v-for="(a, n) in w.atks"
                   :key="n"
@@ -975,6 +831,11 @@ function setFocus(n: number) {
     background: color-mix(in srgb, var(--secondary) 14%, var(--field));
     color: var(--page-text);
   }
+}
+
+.atk--why {
+  font-weight: 600;
+  font-size: 13px;
 }
 
 .dmg-btn {
