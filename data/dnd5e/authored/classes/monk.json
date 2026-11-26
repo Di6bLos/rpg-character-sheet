@@ -1,0 +1,326 @@
+{
+  "features": {
+    "Martial Arts": {
+      "activation": "bonus",
+      "dice": "column:Martial Arts"
+    },
+    "Unarmored Defense": {
+      "grants": [
+        {
+          "kind": "ac",
+          "formula": "10 + DEX + WIS"
+        }
+      ]
+    },
+    "Monk’s Focus": {
+      "uses": {
+        "count": "column:Focus Points",
+        "recharge": "short"
+      },
+      "options": [
+        {
+          "name": "Flurry of Blows",
+          "activation": "bonus",
+          "summary": "Costs 1 Focus Point."
+        },
+        {
+          "name": "Patient Defense",
+          "activation": "bonus",
+          "summary": "Disengage is free; Disengage plus Dodge costs 1 Focus Point."
+        },
+        {
+          "name": "Step of the Wind",
+          "activation": "bonus",
+          "summary": "Dash is free; Disengage plus Dash with doubled jumps costs 1 Focus Point."
+        }
+      ]
+    },
+    "Unarmored Movement": {},
+    "Uncanny Metabolism": {
+      "uses": {
+        "count": 1,
+        "recharge": "long"
+      },
+      "dice": "column:Martial Arts"
+    },
+    "Deflect Attacks": {
+      "activation": "reaction",
+      "dice": "1d10",
+      "save": {
+        "ability": "DEX",
+        "dc": "8+PB+WIS"
+      },
+      "summary": "Redirecting the attack costs 1 Focus Point."
+    },
+    "Monk Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin", "fighting-style"]
+        }
+      ]
+    },
+    "Slow Fall": {
+      "activation": "reaction"
+    },
+    "Extra Attack": {},
+    "Stunning Strike": {
+      "uses": {
+        "count": 1,
+        "recharge": "turn"
+      },
+      "save": {
+        "ability": "CON",
+        "dc": "8+PB+WIS"
+      },
+      "duration": "until the start of your next turn",
+      "summary": "Costs 1 Focus Point."
+    },
+    "Empowered Strikes": {
+      "damageType": "Force"
+    },
+    "Evasion": {},
+    "Acrobatic Movement": {},
+    "Heightened Focus": {
+      "options": [
+        {
+          "name": "Flurry of Blows"
+        },
+        {
+          "name": "Patient Defense",
+          "dice": "column:Martial Arts"
+        },
+        {
+          "name": "Step of the Wind"
+        }
+      ]
+    },
+    "Self-Restoration": {},
+    "Deflect Energy": {},
+    "Disciplined Survivor": {
+      "grants": [
+        {
+          "kind": "save",
+          "value": "STR"
+        },
+        {
+          "kind": "save",
+          "value": "DEX"
+        },
+        {
+          "kind": "save",
+          "value": "CON"
+        },
+        {
+          "kind": "save",
+          "value": "INT"
+        },
+        {
+          "kind": "save",
+          "value": "WIS"
+        },
+        {
+          "kind": "save",
+          "value": "CHA"
+        }
+      ],
+      "summary": "Rerolling a failed save costs 1 Focus Point."
+    },
+    "Perfect Focus": {},
+    "Superior Defense": {
+      "duration": "1 minute",
+      "summary": "Costs 3 Focus Points."
+    },
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin", "fighting-style"]
+        }
+      ]
+    },
+    "Body and Mind": {}
+  },
+  "subclasses": {
+    "warrior-of-the-open-hand": {
+      "features": {
+        "Open Hand Technique": {
+          "options": [
+            {
+              "name": "Addle"
+            },
+            {
+              "name": "Push",
+              "save": {
+                "ability": "STR",
+                "dc": "8+PB+WIS"
+              }
+            },
+            {
+              "name": "Topple",
+              "save": {
+                "ability": "DEX",
+                "dc": "8+PB+WIS"
+              }
+            }
+          ]
+        },
+        "Wholeness of Body": {
+          "activation": "bonus",
+          "uses": {
+            "count": "WIS",
+            "recharge": "long"
+          },
+          "dice": "column:Martial Arts"
+        },
+        "Fleet Step": {},
+        "Quivering Palm": {
+          "dice": "10d12",
+          "damageType": "Force",
+          "save": {
+            "ability": "CON",
+            "dc": "8+PB+WIS"
+          },
+          "summary": "Starting the vibrations costs 4 Focus Points."
+        }
+      }
+    },
+    "warrior-of-mercy": {
+      "summary": "A monk who heals allies and withers foes with a touch, spending Focus on both.",
+      "features": {
+        "Hand of Harm": {
+          "summary": "Once per turn, when an Unarmed Strike damages a creature, pay 1 Focus Point to add one Martial Arts die + WIS of Necrotic damage.",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "dice": "column:Martial Arts",
+          "damageType": "Necrotic"
+        },
+        "Hand of Healing": {
+          "summary": "Magic action, 1 Focus Point: touch a creature to heal it for one Martial Arts die + WIS. In a Flurry of Blows you can trade one strike for this healing without paying Focus.",
+          "activation": "magic",
+          "range": "Touch",
+          "dice": "column:Martial Arts"
+        },
+        "Implements of Mercy": {
+          "summary": "Proficiency in Insight, Medicine and the Herbalism Kit.",
+          "grants": [
+            {
+              "kind": "skill",
+              "value": "Insight"
+            },
+            {
+              "kind": "skill",
+              "value": "Medicine"
+            },
+            {
+              "kind": "tool",
+              "value": "Herbalism Kit"
+            }
+          ]
+        },
+        "Physician’s Touch": {
+          "summary": "Hand of Harm can also leave the target Poisoned until your next turn ends. Hand of Healing can also cure one of Blinded, Deafened, Paralyzed, Poisoned or Stunned on the creature healed.",
+          "duration": "until the end of your next turn"
+        },
+        "Flurry of Healing and Harm": {
+          "summary": "During Flurry of Blows, swap any of its strikes for free Hand of Healing uses, or add Hand of Harm to a damaging strike without paying Focus (still once per turn). WIS mod uses (min 1) per Long Rest.",
+          "uses": {
+            "count": "WIS",
+            "recharge": "long"
+          }
+        },
+        "Hand of Ultimate Mercy": {
+          "summary": "Magic action, 5 Focus Points, once per Long Rest: touch a creature dead under 24 hours to revive it with 4d10 + WIS HP, free of Blinded, Deafened, Paralyzed, Poisoned and Stunned.",
+          "activation": "magic",
+          "range": "Touch",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          },
+          "dice": "4d10"
+        }
+      }
+    },
+    "warrior-of-shadow": {
+      "summary": "A stealthy monk who wields darkness, teleports between shadows and fades from sight.",
+      "features": {
+        "Shadow Arts": {
+          "summary": "Pay 1 Focus Point to cast Darkness with no components; you see inside it and can shift it within 60 ft at each turn start. Gain 60 ft Darkvision (+60 ft if you have it) and the Minor Illusion cantrip, cast with WIS.",
+          "grants": [
+            {
+              "kind": "sense",
+              "value": "Darkvision",
+              "range": 60
+            },
+            {
+              "kind": "spell",
+              "spell": "minor-illusion"
+            },
+            {
+              "kind": "spell",
+              "spell": "darkness"
+            }
+          ]
+        },
+        "Shadow Step": {
+          "summary": "Bonus Action while in Dim Light or Darkness: teleport up to 60 ft to a dim or dark spot you can see, then get Advantage on your next melee attack this turn.",
+          "activation": "bonus",
+          "range": 60
+        },
+        "Improved Shadow Step": {
+          "summary": "Pay 1 Focus Point when you Shadow Step to ignore its light requirement; the same Bonus Action also lets you make an Unarmed Strike right after the teleport.",
+          "activation": "bonus"
+        },
+        "Cloak of Shadows": {
+          "summary": "Magic action in dim light or darkness, 3 Focus Points: for 1 minute you are Invisible, pass through occupied spaces as Difficult Terrain and use Flurry of Blows for free. Ends early if Incapacitated or you end a turn in Bright Light.",
+          "activation": "magic",
+          "duration": "1 minute"
+        }
+      }
+    },
+    "warrior-of-the-elements": {
+      "summary": "A monk who channels elemental energy into long-reaching strikes and bursts.",
+      "features": {
+        "Elemental Attunement": {
+          "summary": "At the start of your turn, pay 1 Focus Point for 10 minutes of elemental power: Unarmed Strikes reach 10 ft farther and can deal Acid, Cold, Fire, Lightning or Thunder, and such a hit can force a STR save to move the target 10 ft toward or away.",
+          "duration": "10 minutes",
+          "save": {
+            "ability": "STR",
+            "dc": "8+PB+WIS"
+          }
+        },
+        "Manipulate Elements": {
+          "summary": "You know the Elementalism cantrip; WIS is its casting ability.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "elementalism"
+            }
+          ]
+        },
+        "Elemental Burst": {
+          "summary": "Magic action, 2 Focus Points: a 20-ft-radius burst at a point within 120 ft, of Acid, Cold, Fire, Lightning or Thunder. DEX save: three Martial Arts dice on a fail, half on a success.",
+          "activation": "magic",
+          "range": 120,
+          "dice": "column:Martial Arts",
+          "save": {
+            "ability": "DEX",
+            "dc": "8+PB+WIS"
+          }
+        },
+        "Stride of the Elements": {
+          "summary": "While Elemental Attunement is on, you have Fly and Swim Speeds equal to your Speed."
+        },
+        "Elemental Epitome": {
+          "summary": "While attuned: resist one of Acid, Cold, Fire, Lightning or Thunder (switch each turn); Step of the Wind adds 20 ft Speed and hits creatures you move next to for a Martial Arts die (once each per turn); once per turn an Unarmed Strike hit adds a Martial Arts die.",
+          "dice": "column:Martial Arts"
+        }
+      }
+    }
+  }
+}

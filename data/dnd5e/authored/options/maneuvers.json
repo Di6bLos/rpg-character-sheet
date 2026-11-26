@@ -1,0 +1,117 @@
+{
+  "ambush": {
+    "summary": "Roll Initiative or a Dexterity (Stealth) check: add a Superiority Die to it, unless you're Incapacitated.",
+    "cost": "1 Superiority Die"
+  },
+  "bait-and-switch": {
+    "summary": "On your turn, spend 5+ ft of movement to trade places with a willing, non-Incapacitated creature within 5 ft, provoking nothing. You or it adds the die roll to AC until your next turn starts.",
+    "cost": "1 Superiority Die",
+    "range": 5,
+    "duration": "until the start of your next turn"
+  },
+  "commanders-strike": {
+    "summary": "Give up one attack of your Attack action: a willing ally who sees or hears you spends its Reaction on one weapon or Unarmed Strike attack, adding the die to damage if it hits.",
+    "cost": "1 Superiority Die"
+  },
+  "commanding-presence": {
+    "summary": "Add a Superiority Die to a Charisma (Intimidation, Performance or Persuasion) check.",
+    "cost": "1 Superiority Die"
+  },
+  "disarming-attack": {
+    "summary": "On a hit, add the die to damage; the target makes a STR save or lets go of one held object you choose, which lands in its space.",
+    "cost": "1 Superiority Die",
+    "save": {
+      "ability": "STR",
+      "dc": "8+PB+STR/DEX"
+    }
+  },
+  "distracting-strike": {
+    "summary": "On a hit, add the die to damage; before your next turn starts, the next attack roll against that target by someone else has Advantage.",
+    "cost": "1 Superiority Die",
+    "duration": "until the start of your next turn"
+  },
+  "evasive-footwork": {
+    "summary": "Bonus Action: Disengage, and add the die roll to your AC until your next turn starts.",
+    "cost": "1 Superiority Die",
+    "activation": "bonus",
+    "duration": "until the start of your next turn"
+  },
+  "feinting-attack": {
+    "summary": "Bonus Action: pick a creature within 5 ft. Your next attack roll on it this turn has Advantage and adds the die to damage if it hits.",
+    "cost": "1 Superiority Die",
+    "activation": "bonus",
+    "range": 5
+  },
+  "goading-attack": {
+    "summary": "On a hit, add the die to damage; the target makes a WIS save or has Disadvantage attacking anyone but you until your next turn ends.",
+    "cost": "1 Superiority Die",
+    "save": {
+      "ability": "WIS",
+      "dc": "8+PB+STR/DEX"
+    },
+    "duration": "until the end of your next turn"
+  },
+  "lunging-attack": {
+    "summary": "Bonus Action: Dash. If you move 5+ ft in a straight line right before a melee hit with this turn's Attack action, add the die to that damage.",
+    "cost": "1 Superiority Die",
+    "activation": "bonus"
+  },
+  "maneuvering-attack": {
+    "summary": "On a hit, add the die to damage; a willing ally who sees or hears you may spend its Reaction moving half its Speed or less, and your target gets no Opportunity Attack.",
+    "cost": "1 Superiority Die"
+  },
+  "menacing-attack": {
+    "summary": "On a hit, add the die to damage; the target makes a WIS save or is Frightened until your next turn ends.",
+    "cost": "1 Superiority Die",
+    "save": {
+      "ability": "WIS",
+      "dc": "8+PB+STR/DEX"
+    },
+    "duration": "until the end of your next turn"
+  },
+  "parry": {
+    "summary": "Reaction when a melee attack roll damages you: cut the damage by the die roll + your STR or DEX mod.",
+    "cost": "1 Superiority Die",
+    "activation": "reaction"
+  },
+  "precision-attack": {
+    "summary": "After you miss with an attack roll, roll the die and add it; the attack may now hit.",
+    "cost": "1 Superiority Die"
+  },
+  "pushing-attack": {
+    "summary": "On a weapon or Unarmed Strike hit, add the die to damage; a Large or smaller target makes a STR save or is shoved up to 15 ft straight away.",
+    "cost": "1 Superiority Die",
+    "save": {
+      "ability": "STR",
+      "dc": "8+PB+STR/DEX"
+    }
+  },
+  "rally": {
+    "summary": "Bonus Action: an ally within 30 ft who sees or hears you gains temp HP of the die roll + half your Fighter level (round down).",
+    "cost": "1 Superiority Die",
+    "activation": "bonus",
+    "range": 30
+  },
+  "riposte": {
+    "summary": "Reaction after a melee attack roll misses you: strike back at the attacker with a melee weapon or Unarmed Strike, adding the die to damage on a hit.",
+    "cost": "1 Superiority Die",
+    "activation": "reaction"
+  },
+  "sweeping-attack": {
+    "summary": "On a melee weapon or Unarmed Strike hit, pick a second creature within 5 ft of the target and your reach; if the attack roll would hit it too, it takes the die roll as damage of the same type.",
+    "cost": "1 Superiority Die",
+    "range": 5
+  },
+  "tactical-assessment": {
+    "summary": "Add a Superiority Die to an Intelligence (History or Investigation) or Wisdom (Insight) check.",
+    "cost": "1 Superiority Die"
+  },
+  "trip-attack": {
+    "summary": "On a weapon or Unarmed Strike hit, add the die to damage; a Large or smaller target makes a STR save or falls Prone.",
+    "cost": "1 Superiority Die",
+    "save": {
+      "ability": "STR",
+      "dc": "8+PB+STR/DEX"
+    }
+  }
+}

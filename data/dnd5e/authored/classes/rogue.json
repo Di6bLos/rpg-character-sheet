@@ -1,0 +1,313 @@
+{
+  "features": {
+    "Expertise": {
+      "choices": [
+        {
+          "kind": "expertise",
+          "count": 2
+        }
+      ]
+    },
+    "Sneak Attack": {
+      "uses": {
+        "count": 1,
+        "recharge": "turn"
+      },
+      "dice": "column:Sneak Attack"
+    },
+    "Thieves’ Cant": {
+      "grants": [
+        {
+          "kind": "language",
+          "value": "Thieves’ Cant"
+        }
+      ],
+      "choices": [
+        {
+          "kind": "language",
+          "count": 1
+        }
+      ]
+    },
+    "Weapon Mastery": {
+      "choices": [
+        {
+          "kind": "weaponMastery",
+          "count": 2
+        }
+      ]
+    },
+    "Cunning Action": {
+      "activation": "bonus",
+      "options": [
+        {
+          "name": "Dash"
+        },
+        {
+          "name": "Disengage"
+        },
+        {
+          "name": "Hide"
+        }
+      ]
+    },
+    "Rogue Subclass": {},
+    "Steady Aim": {
+      "activation": "bonus"
+    },
+    "Ability Score Improvement": {},
+    "Cunning Strike": {
+      "options": [
+        {
+          "name": "Poison",
+          "save": {
+            "ability": "CON",
+            "dc": "8+PB+DEX"
+          },
+          "duration": "1 minute"
+        },
+        {
+          "name": "Trip",
+          "save": {
+            "ability": "DEX",
+            "dc": "8+PB+DEX"
+          }
+        },
+        {
+          "name": "Withdraw"
+        }
+      ]
+    },
+    "Uncanny Dodge": {
+      "activation": "reaction"
+    },
+    "Evasion": {},
+    "Reliable Talent": {},
+    "Improved Cunning Strike": {},
+    "Devious Strikes": {
+      "options": [
+        {
+          "name": "Daze",
+          "save": {
+            "ability": "CON",
+            "dc": "8+PB+DEX"
+          }
+        },
+        {
+          "name": "Knock Out",
+          "save": {
+            "ability": "CON",
+            "dc": "8+PB+DEX"
+          },
+          "duration": "1 minute"
+        },
+        {
+          "name": "Obscure",
+          "save": {
+            "ability": "DEX",
+            "dc": "8+PB+DEX"
+          },
+          "duration": "until the end of its next turn"
+        }
+      ]
+    },
+    "Slippery Mind": {
+      "grants": [
+        {
+          "kind": "save",
+          "value": "WIS"
+        },
+        {
+          "kind": "save",
+          "value": "CHA"
+        }
+      ]
+    },
+    "Elusive": {},
+    "Epic Boon": {},
+    "Stroke of Luck": {
+      "uses": {
+        "count": 1,
+        "recharge": "short"
+      }
+    }
+  },
+  "subclasses": {
+    "arcane-trickster": {
+      "summary": "A Rogue who adds Intelligence-based Wizard magic and an unseen Mage Hand to a burglar's toolkit.",
+      "features": {
+        "Spellcasting": {
+          "summary": "Third-caster on the Wizard list with INT: Mage Hand plus 2 more Wizard cantrips (one more at Rogue 10) and 3 prepared level 1 Wizard spells, growing per the Arcane Trickster table up to level 4 slots. Swap a cantrip (not Mage Hand) or a spell each Rogue level; an Arcane Focus works.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "mage-hand",
+              "at": 3
+            }
+          ]
+        },
+        "Mage Hand Legerdemain": {
+          "summary": "Mage Hand can be cast as a Bonus Action and made Invisible; steer it as a Bonus Action and use it for Sleight of Hand checks.",
+          "activation": "bonus"
+        },
+        "Magical Ambush": {
+          "summary": "While you're Invisible, a creature you target with a spell has Disadvantage on its saves against that spell this turn."
+        },
+        "Versatile Trickster": {
+          "summary": "When you Trip a creature with Cunning Strike, you may also Trip a second creature within 5 ft of your Mage Hand."
+        },
+        "Spell Thief": {
+          "summary": "Reaction after a creature's spell targets or includes you: it makes an INT save vs your spell DC. On a fail the spell doesn't affect you, and if it's a level 1+ spell whose level you have slots for, you keep it prepared for 8 hours while the caster can't use it. 1/Long Rest.",
+          "activation": "reaction",
+          "save": {
+            "ability": "INT",
+            "dc": "spell"
+          },
+          "duration": "8 hours",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          }
+        }
+      }
+    },
+    "assassin": {
+      "summary": "A Rogue built for ambushes, poison and disguise, striking hardest before foes can act.",
+      "features": {
+        "Assassinate": {
+          "summary": "Advantage on Initiative. In combat's first round, Advantage on attacks against creatures that haven't acted yet, and a Sneak Attack hit that round adds damage equal to your Rogue level, of the weapon's type."
+        },
+        "Assassin's Tools": {
+          "summary": "Proficiency with, and one each of, the Disguise Kit and Poisoner's Kit.",
+          "grants": [
+            {
+              "kind": "tool",
+              "value": "Disguise Kit"
+            },
+            {
+              "kind": "tool",
+              "value": "Poisoner’s Kit"
+            }
+          ]
+        },
+        "Infiltration Expertise": {
+          "summary": "After 1 hour of study you can flawlessly copy a person's voice, handwriting or both, and Steady Aim no longer drops your Speed to 0."
+        },
+        "Envenom Weapons": {
+          "summary": "Your Cunning Strike Poison also deals 2d6 Poison damage each time the target fails its save, and that damage bypasses Poison Resistance.",
+          "dice": "2d6",
+          "damageType": "Poison"
+        },
+        "Death Strike": {
+          "summary": "Hit with Sneak Attack in combat's first round: the target makes a CON save (DC 8 + DEX + PB) or takes double the attack's damage.",
+          "save": {
+            "ability": "CON",
+            "dc": "8+PB+DEX"
+          }
+        }
+      }
+    },
+    "soulknife": {
+      "summary": "A Rogue whose inner psionic power forms blades of mental energy and fuels telepathy and teleportation.",
+      "features": {
+        "Psionic Power": {
+          "summary": "Psionic Energy Dice: 4d6 at Rogue 3, 6d8 at 5, 8d8 at 9, 8d10 at 11, 10d10 at 13, 12d12 at 17. Regain one on a Short Rest, all on a Long Rest. Fuels this subclass's powers, starting with the two below.",
+          "uses": {
+            "count": 4,
+            "recharge": "long",
+            "short": 1
+          },
+          "dice": "1d6",
+          "options": [
+            {
+              "name": "Psi-Bolstered Knack",
+              "summary": "Failed a check with a proficient skill or tool? Roll a Psionic Energy Die and add it; the die is spent only if that makes it succeed."
+            },
+            {
+              "name": "Psychic Whispers",
+              "activation": "magic",
+              "summary": "Magic action: link up to PB creatures you see telepathically (1 mile reach) for hours equal to a Psionic Energy Die roll."
+            }
+          ]
+        },
+        "Psychic Blades": {
+          "summary": "When you Attack or make an Opportunity Attack with a free hand, form a Simple melee blade: 1d6 Psychic + the attack's modifier, Finesse, Thrown 60/120, Vex mastery (free). After it, a Bonus Action attack with a second blade deals 1d4.",
+          "dice": "1d6",
+          "damageType": "Psychic"
+        },
+        "Soul Blades": {
+          "summary": "Two new Psychic Blade powers fueled by Psionic Energy Dice.",
+          "options": [
+            {
+              "name": "Homing Strikes",
+              "summary": "Missed with a Psychic Blade? Roll a Psionic Energy Die and add it to the attack; the die is spent only if it now hits."
+            },
+            {
+              "name": "Psychic Teleportation",
+              "activation": "bonus",
+              "summary": "Bonus Action: spend and roll a Psionic Energy Die, then teleport to an unoccupied space you see up to 10 ft × the roll away."
+            }
+          ]
+        },
+        "Psychic Veil": {
+          "summary": "Magic action: become Invisible for 1 hour (dismiss anytime); it ends right after you deal damage or force a save. 1/Long Rest, or spend a Psionic Energy Die to use it again.",
+          "activation": "magic",
+          "duration": "1 hour",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "1 Psionic Energy Die"
+          }
+        },
+        "Rend Mind": {
+          "summary": "When your Psychic Blades deal Sneak Attack damage, the target makes a WIS save (DC 8 + DEX + PB) or is Stunned for 1 minute, repeating the save at each of its turn ends. 1/Long Rest, or spend 3 Psionic Energy Dice to reuse.",
+          "save": {
+            "ability": "WIS",
+            "dc": "8+PB+DEX"
+          },
+          "duration": "1 minute",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "3 Psionic Energy Dice"
+          }
+        }
+      }
+    },
+    "thief": {
+      "features": {
+        "Fast Hands": {
+          "activation": "bonus",
+          "options": [
+            {
+              "name": "Sleight of Hand"
+            },
+            {
+              "name": "Use an Object"
+            }
+          ]
+        },
+        "Second-Story Work": {
+          "grants": [
+            {
+              "kind": "speed",
+              "value": "climb",
+              "amount": "walk"
+            }
+          ]
+        },
+        "Supreme Sneak": {
+          "options": [
+            {
+              "name": "Stealth Attack"
+            }
+          ]
+        },
+        "Use Magic Device": {
+          "dice": "1d6"
+        },
+        "Thief’s Reflexes": {}
+      }
+    }
+  }
+}

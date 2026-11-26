@@ -18,6 +18,9 @@
     "format": "prettier --write --experimental-cli .",
     "test": "vitest run",
     "seed:bestiary": "tsx scripts/bestiary-seed.ts",
+    "dnd5e:data": "tsx scripts/dnd5e-data.ts",
+    "dnd5e:fetch": "tsx scripts/dnd5e-fetch.ts",
+    "dnd5e:rules": "tsx scripts/dnd5e-rules.ts",
     "pf2e:bible": "tsx scripts/pf2e-bible.ts",
     "pf2e:data": "tsx scripts/pf2e-data.ts",
     "pf2e:pdf": "tsx scripts/pf2e-pdf.ts"

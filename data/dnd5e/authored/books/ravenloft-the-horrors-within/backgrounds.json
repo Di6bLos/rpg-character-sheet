@@ -1,0 +1,14 @@
+{
+  "haunted-one": {
+    "summary": "Something terrible in your past, one horror or many, follows you everywhere; no blade or spell can drive it off, yet you keep going."
+  },
+  "investigator": {
+    "summary": "Driven by a mystery you witnessed or by a hunger for justice, you dig into crimes and conspiracies others want buried."
+  },
+  "mist-wanderer": {
+    "summary": "The Mists swept you from your homeland into the Domains of Dread, and you now drift between them seeking a way back, finding kinship with other lost travelers."
+  },
+  "spirit-medium": {
+    "summary": "Rites or chance revealed you as a vessel for the dead, whose glimpses of what's to come carry a price and not always kind intent."
+  }
+}

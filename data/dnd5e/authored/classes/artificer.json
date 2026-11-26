@@ -1,0 +1,686 @@
+{
+  "summary": "An Intelligence half-caster who works magic through tools, conjures handy gear, and builds a rotating set of temporary magic items from learned plans.",
+  "features": {
+    "Spellcasting": {
+      "summary": "Half-caster using INT, with Artificer spells cast through Thieves', Tinker's or proficient Artisan's Tools as the focus (so every spell has an M component). Starts with 2 cantrips and 2 prepared level 1 spells; swap one cantrip and any prepared spells after a Long Rest."
+    },
+    "Tinker's Magic": {
+      "summary": "Know Mending. Magic action with Tinker's Tools: make one basic adventuring item (rope, torch, crowbar, caltrops and the like) within 5 ft; it vanishes at your next Long Rest. INT mod uses (min 1) per Long Rest.",
+      "activation": "magic",
+      "uses": {
+        "count": "INT",
+        "recharge": "long"
+      },
+      "range": 5,
+      "grants": [
+        {
+          "kind": "spell",
+          "spell": "mending",
+          "at": 1
+        }
+      ]
+    },
+    "Replicate Magic Item": {
+      "summary": "Learn 4 magic item plans, more per the Plans Known column; swap one per level. After a Long Rest with Tinker's Tools, build 1–2 items from different plans, up to the Magic Items column's cap (oldest vanishes). Items can be attuned on creation and serve as a focus if wands or weapons.",
+      "choices": [
+        {
+          "kind": "option",
+          "count": 4,
+          "group": "plans",
+          "label": "Plans Known"
+        }
+      ]
+    },
+    "Artificer Subclass": {
+      "summary": "Pick your Artificer specialty; it grants features at levels 3, 5, 9 and 15."
+    },
+    "Ability Score Improvement": {
+      "summary": "Gain a feat you qualify for, such as Ability Score Improvement. Again at levels 8, 12 and 16."
+    },
+    "Magic Item Tinker": {
+      "summary": "Three new tricks for items you made with Replicate Magic Item: refill charges with a spell slot, break one down into a spell slot, or turn one into another plan you know.",
+      "options": [
+        {
+          "name": "Charge Magic Item",
+          "summary": "Bonus Action, touch a charged item you made within 5 ft and spend a spell slot: it regains charges equal to the slot's level.",
+          "activation": "bonus",
+          "range": 5
+        },
+        {
+          "name": "Drain Magic Item",
+          "summary": "Bonus Action: destroy an item you made within 5 ft to gain a spell slot (level 1 for Common, level 2 for Uncommon or Rare) that is lost at your next Long Rest. Once per Long Rest.",
+          "activation": "bonus",
+          "range": 5,
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          }
+        },
+        {
+          "name": "Transmute Magic Item",
+          "summary": "Magic action: reshape an item you made within 5 ft into a different item from a plan you know. Once per Long Rest.",
+          "activation": "magic",
+          "range": 5,
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          }
+        }
+      ]
+    },
+    "Flash of Genius": {
+      "summary": "Reaction when you or a creature you see within 30 ft fails a check or save: add your INT mod (min +1) to the roll. INT mod uses (min 1) per Long Rest.",
+      "activation": "reaction",
+      "range": 30,
+      "uses": {
+        "count": "INT",
+        "recharge": "long"
+      }
+    },
+    "Magic Item Adept": {
+      "summary": "Your Attunement limit rises to four items."
+    },
+    "Spell-Storing Item": {
+      "summary": "After a Long Rest, put a level 1–3 Artificer spell (1-action casting, no consumed material; needn't be prepared) into a weapon or focus. Whoever holds it can cast it as a Magic action with your INT, at most once per turn, for twice your INT mod uses (min 2).",
+      "activation": "magic",
+      "range": "Touch"
+    },
+    "Advanced Artifice": {
+      "summary": "Attune to up to five items, and each Short Rest returns one spent Flash of Genius use.",
+      "options": [
+        {
+          "name": "Magic Item Savant",
+          "summary": "Attunement limit becomes five items."
+        },
+        {
+          "name": "Refreshed Genius",
+          "summary": "A Short Rest gives back one expended Flash of Genius use."
+        }
+      ]
+    },
+    "Magic Item Master": {
+      "summary": "Your Attunement limit rises to six items."
+    },
+    "Epic Boon": {
+      "summary": "Take an Epic Boon feat or another feat you qualify for (Boon of Energy Resistance is suggested)."
+    },
+    "Soul of Artifice": {
+      "summary": "Your made items can save your life, and while attuned to an item, Short Rests fully restore Flash of Genius.",
+      "options": [
+        {
+          "name": "Cheat Death",
+          "summary": "Dropped to 0 HP but not killed outright: destroy any number of your Uncommon or Rare replicated items and set your HP to 20 per item destroyed."
+        },
+        {
+          "name": "Magical Guidance",
+          "summary": "If attuned to at least one magic item, a Short Rest restores all Flash of Genius uses."
+        }
+      ]
+    }
+  },
+  "subclasses": {
+    "alchemist": {
+      "summary": "A potion-brewer who hands out random elixirs and boosts acid, fire, poison and healing magic.",
+      "features": {
+        "Tools of the Trade": {
+          "summary": "Gain Alchemist's Supplies and Herbalism Kit proficiency (another Artisan's Tool for each you already had). Brewing potions takes half the usual time.",
+          "grants": [
+            {
+              "kind": "tool",
+              "value": "Alchemist’s Supplies"
+            },
+            {
+              "kind": "tool",
+              "value": "Herbalism Kit"
+            }
+          ]
+        },
+        "Alchemist Spells": {
+          "summary": "Always prepared at levels 3, 5, 9, 13 and 17: Healing Word, Ray of Sickness; Flaming Sphere, Acid Arrow; Gaseous Form, Mass Healing Word; Death Ward, Vitriolic Sphere; Cloudkill, Raise Dead."
+        },
+        "Experimental Elixir": {
+          "summary": "Each Long Rest with Alchemist's Supplies, brew 2 elixirs (3 at level 5, 4 at 9, 5 at 15) and roll a d6 for each one's effect; leftovers vanish at the next Long Rest. Spend a spell slot as a Magic action to brew one more and pick its effect. Drinking or feeding one within 5 ft is a Bonus Action.",
+          "activation": "bonus",
+          "dice": "1d6",
+          "options": [
+            {
+              "name": "Healing",
+              "summary": "Heals 2d8 + your INT mod; 3d8 at level 9, 4d8 at 15.",
+              "dice": "2d8"
+            },
+            {
+              "name": "Swiftness",
+              "summary": "+10 ft Speed for 1 hour; +15 ft at level 9, +20 ft at 15.",
+              "duration": "1 hour"
+            },
+            {
+              "name": "Resilience",
+              "summary": "+1 AC for 10 minutes; 1 hour at level 9, 8 hours at 15.",
+              "duration": "10 minutes"
+            },
+            {
+              "name": "Boldness",
+              "summary": "Add 1d4 to attack rolls and saves for 1 minute; 10 minutes at level 9, 1 hour at 15.",
+              "dice": "1d4",
+              "duration": "1 minute"
+            },
+            {
+              "name": "Flight",
+              "summary": "Fly Speed 10 ft for 10 minutes; 20 ft at level 9, 30 ft at 15.",
+              "duration": "10 minutes"
+            }
+          ]
+        },
+        "Alchemical Savant": {
+          "summary": "Casting through Alchemist's Supplies, add your INT mod (min +1) to one healing roll or one Acid, Fire or Poison damage roll of the spell."
+        },
+        "Restorative Reagents": {
+          "summary": "Cast Lesser Restoration through Alchemist's Supplies with no slot and no need to prepare it, INT mod times (min 1) per Long Rest.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "lesser-restoration",
+              "at": 9,
+              "free": {
+                "count": "INT",
+                "recharge": "long"
+              }
+            }
+          ]
+        },
+        "Chemical Mastery": {
+          "summary": "Acid, Fire or Poison spells can add 2d8 Force damage once a turn; Resistance to Acid and Poison and immunity to Poisoned; a free Tasha's Bubbling Cauldron through your supplies once per Long Rest.",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Acid"
+            },
+            {
+              "kind": "resistance",
+              "value": "Poison"
+            },
+            {
+              "kind": "conditionImmunity",
+              "value": "Poisoned"
+            },
+            {
+              "kind": "spell",
+              "spell": "tashas-bubbling-cauldron",
+              "at": 15,
+              "free": {
+                "count": 1,
+                "recharge": "long"
+              }
+            }
+          ],
+          "options": [
+            {
+              "name": "Alchemical Eruption",
+              "summary": "Once your Artificer spell hits a target with Acid, Fire or Poison damage, add 2d8 Force to it. Once per turn.",
+              "dice": "2d8",
+              "damageType": "Force",
+              "uses": {
+                "count": 1,
+                "recharge": "turn"
+              }
+            },
+            {
+              "name": "Chemical Resistance",
+              "summary": "Resistance to Acid and Poison damage; can't be Poisoned."
+            },
+            {
+              "name": "Conjured Cauldron",
+              "summary": "Once per Long Rest, cast Tasha's Bubbling Cauldron through Alchemist's Supplies with no slot, preparation or materials."
+            }
+          ]
+        }
+      }
+    },
+    "armorer": {
+      "summary": "A tinkerer who rebuilds their own armor into a weaponized second skin with a swappable model.",
+      "features": {
+        "Tools of the Trade": {
+          "summary": "Heavy armor training and Smith's Tools proficiency (or another Artisan's Tool if you had them). Crafting armor takes half the time.",
+          "grants": [
+            {
+              "kind": "armor",
+              "value": "Heavy armor"
+            },
+            {
+              "kind": "tool",
+              "value": "Smith’s Tools"
+            }
+          ]
+        },
+        "Armorer Spells": {
+          "summary": "Always prepared at levels 3, 5, 9, 13 and 17: Magic Missile, Thunderwave; Mirror Image, Shatter; Hypnotic Pattern, Lightning Bolt; Fire Shield, Greater Invisibility; Passwall, Wall of Force."
+        },
+        "Arcane Armor": {
+          "summary": "Magic action with Smith's Tools: the armor you wear becomes Arcane Armor until you swap suits or die. It ignores Strength requirements, dons or doffs as a Utilize action, can't be pulled off you, and works as your spellcasting focus.",
+          "activation": "magic"
+        },
+        "Armor Model": {
+          "summary": "Choose a model for your Arcane Armor, changeable on a Short or Long Rest with Smith's Tools. Each has a built-in weapon that uses INT for attack and damage.",
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "label": "Armor Model"
+            }
+          ],
+          "options": [
+            {
+              "name": "Dreadnaught",
+              "summary": "A heavy-hitting juggernaut: a reach hammer that shoves or drags, and the power to grow to Large.",
+              "options": [
+                {
+                  "name": "Force Demolisher",
+                  "summary": "Simple melee weapon with Reach, 1d10 Force. On a hit against a smaller creature, push it away or pull it in up to 10 ft.",
+                  "dice": "1d10",
+                  "damageType": "Force"
+                },
+                {
+                  "name": "Giant Stature",
+                  "summary": "Bonus Action: for 1 minute gain +5 ft reach and grow to Large if smaller and there's room. INT mod uses (min 1) per Long Rest.",
+                  "activation": "bonus",
+                  "duration": "1 minute",
+                  "uses": {
+                    "count": "INT",
+                    "recharge": "long"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Guardian",
+              "summary": "A front-liner: blows that make foes focus on you, and temp HP when Bloodied.",
+              "options": [
+                {
+                  "name": "Thunder Pulse",
+                  "summary": "Simple melee weapon, 1d8 Thunder. A creature it hits has Disadvantage attacking anyone but you until your next turn starts.",
+                  "dice": "1d8",
+                  "damageType": "Thunder"
+                },
+                {
+                  "name": "Defensive Field",
+                  "summary": "Bonus Action while Bloodied: gain temp HP equal to your Artificer level; they go away if you take the armor off.",
+                  "activation": "bonus"
+                }
+              ]
+            },
+            {
+              "name": "Infiltrator",
+              "summary": "A stealth suit: a long-range lightning shooter, +5 ft Speed, and Advantage on Stealth checks.",
+              "options": [
+                {
+                  "name": "Lightning Launcher",
+                  "summary": "Simple ranged weapon, range 90/300, 1d6 Lightning; once on each of your turns a hit can add another 1d6 Lightning.",
+                  "dice": "1d6",
+                  "damageType": "Lightning",
+                  "range": 90
+                },
+                {
+                  "name": "Powered Steps",
+                  "summary": "Your Speed goes up by 5 ft."
+                },
+                {
+                  "name": "Dampening Field",
+                  "summary": "Advantage on Dexterity (Stealth) checks, offsetting any Disadvantage the armor imposes."
+                }
+              ]
+            }
+          ]
+        },
+        "Extra Attack": {
+          "summary": "Taking the Attack action on your turn gives you two attacks."
+        },
+        "Improved Armorer": {
+          "summary": "Learn one extra plan that must be Armor (replace it only with Armor) and make one extra Armor item with Replicate Magic Item. Your model's special weapon gains +1 to attack and damage.",
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "group": "plans",
+              "label": "Armor plan"
+            }
+          ]
+        },
+        "Perfected Armor": {
+          "summary": "Each model gets stronger: bigger weapon dice plus a new trick (a larger Dreadnaught, a Guardian that yanks foes in, an Infiltrator that marks targets and briefly flies).",
+          "options": [
+            {
+              "name": "Dreadnaught",
+              "summary": "Force Demolisher deals 2d6. Giant Stature grants +10 ft reach, lets you become Large or Huge, and gives Advantage on Strength checks and saves.",
+              "dice": "2d6",
+              "damageType": "Force"
+            },
+            {
+              "name": "Guardian",
+              "summary": "Thunder Pulse deals 1d10. Reaction when a Huge or smaller creature you see ends its turn within 30 ft: it makes a STR save or is pulled up to 25 ft toward you, and if it lands adjacent you may make a melee weapon attack on it. INT mod uses (min 1) per Long Rest.",
+              "dice": "1d10",
+              "damageType": "Thunder",
+              "activation": "reaction",
+              "range": 30,
+              "save": {
+                "ability": "STR",
+                "dc": "spell"
+              },
+              "uses": {
+                "count": "INT",
+                "recharge": "long"
+              }
+            },
+            {
+              "name": "Infiltrator",
+              "summary": "Lightning Launcher deals 2d6; creatures it shocks glow (dim light, 5 ft) and have Disadvantage attacking you until your next turn. Bonus Action: Fly Speed of twice your Speed this turn, INT mod uses (min 1) per Long Rest.",
+              "dice": "2d6",
+              "damageType": "Lightning",
+              "activation": "bonus",
+              "uses": {
+                "count": "INT",
+                "recharge": "long"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "artillerist": {
+      "summary": "A ranged specialist who deploys a magical cannon and channels extra damage through a carved arcane firearm.",
+      "features": {
+        "Tools of the Trade": {
+          "summary": "Proficiency with Martial Ranged weapons and Woodcarver's Tools (or another Artisan's Tool if you had them). Crafting a magic Wand takes half the time.",
+          "grants": [
+            {
+              "kind": "weapon",
+              "value": "Martial Ranged weapons"
+            },
+            {
+              "kind": "tool",
+              "value": "Woodcarver’s Tools"
+            }
+          ]
+        },
+        "Artillerist Spells": {
+          "summary": "Always prepared at levels 3, 5, 9, 13 and 17: Shield, Thunderwave; Scorching Ray, Shatter; Fireball, Wind Wall; Ice Storm, Wall of Fire; Cone of Cold, Wall of Force."
+        },
+        "Eldritch Cannon": {
+          "summary": "Magic action with Smith's or Woodcarver's Tools: build a Small or Tiny cannon within 5 ft (AC 18, HP 5 × Artificer level, immune to Poison and Psychic) lasting 1 hour; once per Long Rest or by spending a spell slot, one at a time. Bonus Action within 60 ft: it moves up to 15 ft and fires one mode.",
+          "activation": "magic",
+          "range": 5,
+          "duration": "1 hour",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a level 1+ spell slot"
+          },
+          "options": [
+            {
+              "name": "Flamethrower",
+              "summary": "15-ft Cone: DEX save, 2d8 Fire on a fail, half on a success; sets loose flammable objects alight.",
+              "activation": "bonus",
+              "dice": "2d8",
+              "damageType": "Fire",
+              "save": {
+                "ability": "DEX",
+                "dc": "spell"
+              },
+              "range": 15
+            },
+            {
+              "name": "Force Ballista",
+              "summary": "Ranged spell attack from the cannon at a target within 120 ft: 2d8 Force and a creature is shoved 5 ft away.",
+              "activation": "bonus",
+              "dice": "2d8",
+              "damageType": "Force",
+              "range": 120
+            },
+            {
+              "name": "Protector",
+              "summary": "The cannon and any creatures you pick within 10 ft of it gain 1d8 + INT mod (min 1) temp HP.",
+              "activation": "bonus",
+              "dice": "1d8",
+              "range": 10
+            }
+          ]
+        },
+        "Arcane Firearm": {
+          "summary": "After a Long Rest, carve sigils into a Wand, Rod, Staff or Martial Ranged weapon to make your firearm; it is a focus, and Artificer spells cast through it add 1d8 to one damage roll.",
+          "dice": "1d8"
+        },
+        "Explosive Cannon": {
+          "summary": "Your cannons hit harder (+1d8 to damage and Protector's temp HP) and can be blown up on purpose.",
+          "options": [
+            {
+              "name": "Detonate",
+              "summary": "Reaction when your cannon takes damage and you're within 60 ft: it explodes, and creatures within 20 ft make a DEX save, taking 3d10 Force on a fail or half on a success.",
+              "activation": "reaction",
+              "dice": "3d10",
+              "damageType": "Force",
+              "save": {
+                "ability": "DEX",
+                "dc": "spell"
+              },
+              "range": 20
+            },
+            {
+              "name": "Firepower",
+              "summary": "Add 1d8 to the cannon's damage rolls and to Protector's temp HP.",
+              "dice": "1d8"
+            }
+          ]
+        },
+        "Fortified Position": {
+          "summary": "Run two cannons at once and shield allies around them.",
+          "options": [
+            {
+              "name": "Double Firepower",
+              "summary": "Keep two cannons, create both with one Magic action (a second slot if the first cost one), and fire both with one Bonus Action in any modes. Never three."
+            },
+            {
+              "name": "Shimmering Field Projection",
+              "summary": "You and allies within 10 ft of your cannon have Half Cover.",
+              "range": 10
+            }
+          ]
+        }
+      }
+    },
+    "battle-smith": {
+      "summary": "A fighting medic and guardian who wields magic weapons with INT and fights beside a built Steel Defender.",
+      "features": {
+        "Tools of the Trade": {
+          "summary": "Smith's Tools proficiency (or another Artisan's Tool if you had it). Crafting weapons takes half the time.",
+          "grants": [
+            {
+              "kind": "tool",
+              "value": "Smith’s Tools"
+            }
+          ]
+        },
+        "Battle Smith spells": {
+          "summary": "Always prepared at levels 3, 5, 9, 13 and 17: Heroism, Shield; Shining Smite, Warding Bond; Aura of Vitality, Conjure Barrage; Aura of Purity, Fire Shield; Banishing Smite, Mass Cure Wounds."
+        },
+        "Battle Ready": {
+          "summary": "Martial weapon proficiency; any proficient weapon can be your focus; attacks with magic weapons may use INT for attack and damage.",
+          "grants": [
+            {
+              "kind": "weapon",
+              "value": "Martial weapons"
+            }
+          ]
+        },
+        "Steel Defender": {
+          "summary": "A loyal Medium construct (AC 12 + INT, HP 5 + 5 × Artificer level, Speed 40) acts on your turn and only Dodges unless you spend a Bonus Action to command it. Revive it within an hour with a Magic action and a spell slot; rebuild it after a Long Rest with Smith's Tools.",
+          "activation": "bonus",
+          "options": [
+            {
+              "name": "Force-Empowered Rend",
+              "summary": "Melee attack using your spell attack bonus, reach 5 ft: 1d8 + 2 + INT mod Force.",
+              "activation": "action",
+              "dice": "1d8",
+              "damageType": "Force",
+              "range": 5
+            },
+            {
+              "name": "Repair",
+              "summary": "The defender, or a Construct or object within 5 ft, heals 2d8 + INT mod. 3 per day.",
+              "activation": "action",
+              "dice": "2d8",
+              "range": 5,
+              "uses": {
+                "count": 3,
+                "recharge": "dawn"
+              }
+            },
+            {
+              "name": "Deflect Attack",
+              "summary": "Reaction when a creature within 5 ft attacks someone else: that roll has Disadvantage.",
+              "activation": "reaction",
+              "range": 5
+            },
+            {
+              "name": "Steel Bond",
+              "summary": "The defender adds your Proficiency Bonus to its checks and saves."
+            }
+          ]
+        },
+        "Extra Attack": {
+          "summary": "Attack twice with the Attack action on your turn; you can trade one of those attacks for the Steel Defender's Rend."
+        },
+        "Arcane Jolt": {
+          "summary": "When your magic weapon or your defender hits, channel a burst: extra Force damage to the target or healing to someone within 30 ft. Once per turn, INT mod uses (min 1) per Long Rest.",
+          "uses": {
+            "count": "INT",
+            "recharge": "long"
+          },
+          "options": [
+            {
+              "name": "Destructive Energy",
+              "summary": "The target takes +2d6 Force.",
+              "dice": "2d6",
+              "damageType": "Force"
+            },
+            {
+              "name": "Restorative Energy",
+              "summary": "A creature or object you see within 30 ft of the target regains 2d6 HP.",
+              "dice": "2d6",
+              "range": 30
+            }
+          ]
+        },
+        "Improved Defender": {
+          "summary": "Arcane Jolt grows to 4d6, and Deflect Attack hurts the attacker.",
+          "options": [
+            {
+              "name": "Improved Jolt",
+              "summary": "Arcane Jolt's damage and healing become 4d6.",
+              "dice": "4d6"
+            },
+            {
+              "name": "Improved Deflection",
+              "summary": "Each Deflect Attack deals 1d4 + INT mod Force to the attacker.",
+              "dice": "1d4",
+              "damageType": "Force"
+            }
+          ]
+        }
+      }
+    },
+    "cartographer": {
+      "summary": "A navigator and scout who links allies with magic maps, marks foes with light, and steps through short portals.",
+      "features": {
+        "Tools of the Trade": {
+          "summary": "Proficiency with Calligrapher's Supplies and Cartographer's Tools (another Artisan's Tool for each you already had). Scribing Spell Scrolls takes half the time.",
+          "grants": [
+            {
+              "kind": "tool",
+              "value": "Calligrapher’s Supplies"
+            },
+            {
+              "kind": "tool",
+              "value": "Cartographer’s Tools"
+            }
+          ]
+        },
+        "Cartographer Spells": {
+          "summary": "Always prepared at levels 3, 5, 9, 13 and 17: Faerie Fire, Guiding Bolt, Healing Word; Locate Object, Mind Spike; Call Lightning, Clairvoyance; Banishment, Locate Creature; Scrying, Teleportation Circle."
+        },
+        "Adventurer's Atlas": {
+          "summary": "After a Long Rest with Cartographer's Tools, hand magic maps to 2 to 1 + INT mod creatures (yourself allowed). They last until you die or remake them; holders roll +1d4 Initiative and always know where the other holders are.",
+          "options": [
+            {
+              "name": "Awareness",
+              "summary": "Map holders add 1d4 to Initiative.",
+              "dice": "1d4"
+            },
+            {
+              "name": "Positioning",
+              "summary": "Holders sense each other's location on the same plane, and can target one another with sight-based effects despite no line of sight or cover, if within range."
+            }
+          ]
+        },
+        "Mapping Magic": {
+          "summary": "Cast Faerie Fire with no slot INT mod times (min 1) per Long Rest, and spend half your Speed to teleport short hops.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "faerie-fire",
+              "at": 3,
+              "free": {
+                "count": "INT",
+                "recharge": "long"
+              }
+            }
+          ],
+          "options": [
+            {
+              "name": "Illuminated Cartography",
+              "summary": "Free castings of Faerie Fire, INT mod (min 1) per Long Rest."
+            },
+            {
+              "name": "Portal Jump",
+              "summary": "On your turn, use half your Speed to teleport to a space you see within 10 ft, or next to a map holder within 30 ft. Not usable at Speed 0.",
+              "range": 10
+            }
+          ]
+        },
+        "Guided Precision": {
+          "summary": "Once per turn, add your INT mod to one damage roll of a Cartographer spell or of an attack hitting a creature under your Faerie Fire. Damage never breaks your Concentration on Faerie Fire.",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          }
+        },
+        "Ingenious Movement": {
+          "summary": "Using Flash of Genius also lets you or a willing creature you see within 30 ft teleport up to 30 ft to a space you can see.",
+          "range": 30
+        },
+        "Superior Atlas": {
+          "summary": "Maps can save a falling holder, and you get a free Find the Path once per Long Rest.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "find-the-path",
+              "at": 15,
+              "free": {
+                "count": 1,
+                "recharge": "long"
+              }
+            }
+          ],
+          "options": [
+            {
+              "name": "Safe Haven",
+              "summary": "A holder dropped to 0 HP (not killed outright) can tear up its map to go to twice your Artificer level in HP instead and teleport beside you or another holder."
+            },
+            {
+              "name": "Unerring Path",
+              "summary": "While you hold a map, cast Find the Path once per Long Rest with no slot, preparation or components."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,640 @@
+{
+  "aasimar": {
+    "summary": "A mortal carrying a spark of celestial power: resists necrotic and radiant harm, sees in the dark, heals with a touch, and from level 3 can briefly take on a glowing or shadowy form.",
+    "traits": [
+      {
+        "name": "Celestial Resistance",
+        "summary": "Resistance to both Necrotic and Radiant damage.",
+        "grants": [
+          {
+            "kind": "resistance",
+            "value": "Necrotic"
+          },
+          {
+            "kind": "resistance",
+            "value": "Radiant"
+          }
+        ]
+      },
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      {
+        "name": "Healing Hands",
+        "summary": "Magic action: touch a creature and it regains HP equal to a roll of d4s, one die per point of PB. Once per Long Rest.",
+        "activation": "magic",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        },
+        "range": "Touch"
+      },
+      {
+        "name": "Light Bearer",
+        "summary": "Know the Light cantrip; cast it with CHA.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "light"
+          }
+        ]
+      },
+      {
+        "name": "Celestial Revelation",
+        "level": 3,
+        "summary": "From level 3, Bonus Action: transform for 1 minute (end it any time, no action) in one of three forms, picked each time. Once per Long Rest. While transformed, once per turn add PB damage to one target you damage with an attack or spell.",
+        "activation": "bonus",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        },
+        "duration": "1 minute",
+        "options": [
+          {
+            "name": "Heavenly Wings",
+            "summary": "Gain a Fly Speed matching your Speed; the extra damage is Radiant.",
+            "damageType": "Radiant",
+            "grants": [
+              {
+                "kind": "speed",
+                "value": "fly",
+                "amount": "walk"
+              }
+            ]
+          },
+          {
+            "name": "Inner Radiance",
+            "summary": "Shed Bright Light 10 ft and Dim Light 10 ft beyond; each creature within 10 ft takes Radiant damage equal to PB at the end of each of your turns. Extra damage is Radiant.",
+            "damageType": "Radiant",
+            "range": 10
+          },
+          {
+            "name": "Necrotic Shroud",
+            "summary": "On transforming, non-allies within 10 ft make a CHA save (DC 8 + PB + CHA) or are Frightened until your next turn ends. Extra damage is Necrotic.",
+            "damageType": "Necrotic",
+            "range": 10,
+            "save": {
+              "ability": "CHA",
+              "dc": "8+PB+CHA"
+            },
+            "duration": "until the end of your next turn"
+          }
+        ]
+      }
+    ]
+  },
+  "dragonborn": {
+    "traits": {
+      "Draconic Ancestry": {},
+      "Breath Weapon": {
+        "activation": "special",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        },
+        "dice": "1d10",
+        "save": {
+          "ability": "DEX",
+          "dc": "8+PB+CON"
+        }
+      },
+      "Damage Resistance": {},
+      "Darkvision": {
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      "Draconic Flight": {
+        "activation": "bonus",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        },
+        "duration": "10 minutes",
+        "grants": [
+          {
+            "kind": "speed",
+            "value": "fly",
+            "amount": "walk"
+          }
+        ]
+      }
+    },
+    "lineages": {
+      "label": "Draconic Ancestry",
+      "options": [
+        {
+          "name": "Black",
+          "damageType": "Acid",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Acid"
+            }
+          ]
+        },
+        {
+          "name": "Blue",
+          "damageType": "Lightning",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Lightning"
+            }
+          ]
+        },
+        {
+          "name": "Brass",
+          "damageType": "Fire",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Fire"
+            }
+          ]
+        },
+        {
+          "name": "Bronze",
+          "damageType": "Lightning",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Lightning"
+            }
+          ]
+        },
+        {
+          "name": "Copper",
+          "damageType": "Acid",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Acid"
+            }
+          ]
+        },
+        {
+          "name": "Gold",
+          "damageType": "Fire",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Fire"
+            }
+          ]
+        },
+        {
+          "name": "Green",
+          "damageType": "Poison",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Poison"
+            }
+          ]
+        },
+        {
+          "name": "Red",
+          "damageType": "Fire",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Fire"
+            }
+          ]
+        },
+        {
+          "name": "Silver",
+          "damageType": "Cold",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Cold"
+            }
+          ]
+        },
+        {
+          "name": "White",
+          "damageType": "Cold",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Cold"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "dwarf": {
+    "traits": {
+      "Darkvision": {
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 120
+          }
+        ]
+      },
+      "Dwarven Resilience": {
+        "grants": [
+          {
+            "kind": "resistance",
+            "value": "Poison"
+          }
+        ]
+      },
+      "Dwarven Toughness": {
+        "grants": [
+          {
+            "kind": "hp",
+            "perLevel": 1
+          }
+        ]
+      },
+      "Stonecunning": {
+        "activation": "bonus",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        },
+        "duration": "10 minutes",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Tremorsense",
+            "range": 60
+          }
+        ]
+      }
+    }
+  },
+  "elf": {
+    "traits": {
+      "Darkvision": {
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      "Elven Lineage": {},
+      "Fey Ancestry": {},
+      "Keen Senses": {
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1,
+            "from": ["Insight", "Perception", "Survival"]
+          }
+        ]
+      },
+      "Trance": {}
+    },
+    "lineages": {
+      "label": "Elven Lineage",
+      "options": [
+        {
+          "name": "Drow",
+          "grants": [
+            {
+              "kind": "sense",
+              "value": "Darkvision",
+              "range": 120
+            }
+          ],
+          "spells": [
+            {
+              "level": 1,
+              "spell": "dancing-lights"
+            },
+            {
+              "level": 3,
+              "spell": "faerie-fire"
+            },
+            {
+              "level": 5,
+              "spell": "darkness"
+            }
+          ]
+        },
+        {
+          "name": "High Elf",
+          "spells": [
+            {
+              "level": 1,
+              "spell": "prestidigitation"
+            },
+            {
+              "level": 3,
+              "spell": "detect-magic"
+            },
+            {
+              "level": 5,
+              "spell": "misty-step"
+            }
+          ]
+        },
+        {
+          "name": "Wood Elf",
+          "grants": [
+            {
+              "kind": "speed",
+              "value": "walk",
+              "amount": 35
+            }
+          ],
+          "spells": [
+            {
+              "level": 1,
+              "spell": "druidcraft"
+            },
+            {
+              "level": 3,
+              "spell": "longstrider"
+            },
+            {
+              "level": 5,
+              "spell": "pass-without-trace"
+            }
+          ]
+        }
+      ],
+      "spellAbility": ["INT", "WIS", "CHA"]
+    }
+  },
+  "gnome": {
+    "traits": {
+      "Darkvision": {
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      "Gnomish Cunning": {},
+      "Gnomish Lineage": {}
+    },
+    "lineages": {
+      "label": "Gnomish Lineage",
+      "options": [
+        {
+          "name": "Forest Gnome",
+          "spells": [
+            {
+              "level": 1,
+              "spell": "minor-illusion"
+            },
+            {
+              "level": 1,
+              "spell": "speak-with-animals"
+            }
+          ]
+        },
+        {
+          "name": "Rock Gnome",
+          "spells": [
+            {
+              "level": 1,
+              "spell": "mending"
+            },
+            {
+              "level": 1,
+              "spell": "prestidigitation"
+            }
+          ]
+        }
+      ],
+      "spellAbility": ["INT", "WIS", "CHA"]
+    }
+  },
+  "goliath": {
+    "traits": {
+      "Giant Ancestry": {
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        },
+        "choices": [
+          {
+            "kind": "option",
+            "count": 1,
+            "label": "Giant Ancestry"
+          }
+        ],
+        "options": [
+          {
+            "name": "Cloud’s Jaunt",
+            "activation": "bonus",
+            "range": 30
+          },
+          {
+            "name": "Fire’s Burn",
+            "dice": "1d10",
+            "damageType": "Fire"
+          },
+          {
+            "name": "Frost’s Chill",
+            "dice": "1d6",
+            "damageType": "Cold",
+            "duration": "until the start of your next turn"
+          },
+          {
+            "name": "Hill’s Tumble"
+          },
+          {
+            "name": "Stone’s Endurance",
+            "activation": "reaction",
+            "dice": "1d12"
+          },
+          {
+            "name": "Storm’s Thunder",
+            "activation": "reaction",
+            "dice": "1d8",
+            "damageType": "Thunder",
+            "range": 60
+          }
+        ]
+      },
+      "Large Form": {
+        "activation": "bonus",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        },
+        "duration": "10 minutes"
+      },
+      "Powerful Build": {}
+    }
+  },
+  "halfling": {
+    "traits": {
+      "Brave": {},
+      "Halfling Nimbleness": {},
+      "Luck": {},
+      "Naturally Stealthy": {}
+    }
+  },
+  "human": {
+    "traits": {
+      "Resourceful": {},
+      "Skillful": {
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1
+          }
+        ]
+      },
+      "Versatile": {
+        "choices": [
+          {
+            "kind": "feat",
+            "count": 1,
+            "category": ["origin"]
+          }
+        ]
+      }
+    }
+  },
+  "orc": {
+    "traits": {
+      "Adrenaline Rush": {
+        "activation": "bonus",
+        "uses": {
+          "count": "PB",
+          "recharge": "short"
+        }
+      },
+      "Darkvision": {
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 120
+          }
+        ]
+      },
+      "Relentless Endurance": {
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "tiefling": {
+    "traits": {
+      "Darkvision": {
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      "Fiendish Legacy": {},
+      "Otherworldly Presence": {
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "thaumaturgy"
+          }
+        ]
+      }
+    },
+    "lineages": {
+      "label": "Fiendish Legacy",
+      "options": [
+        {
+          "name": "Abyssal",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Poison"
+            }
+          ],
+          "spells": [
+            {
+              "level": 1,
+              "spell": "poison-spray"
+            },
+            {
+              "level": 3,
+              "spell": "ray-of-sickness"
+            },
+            {
+              "level": 5,
+              "spell": "hold-person"
+            }
+          ]
+        },
+        {
+          "name": "Chthonic",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Necrotic"
+            }
+          ],
+          "spells": [
+            {
+              "level": 1,
+              "spell": "chill-touch"
+            },
+            {
+              "level": 3,
+              "spell": "false-life"
+            },
+            {
+              "level": 5,
+              "spell": "ray-of-enfeeblement"
+            }
+          ]
+        },
+        {
+          "name": "Infernal",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Fire"
+            }
+          ],
+          "spells": [
+            {
+              "level": 1,
+              "spell": "fire-bolt"
+            },
+            {
+              "level": 3,
+              "spell": "hellish-rebuke"
+            },
+            {
+              "level": 5,
+              "spell": "darkness"
+            }
+          ]
+        }
+      ],
+      "spellAbility": ["INT", "WIS", "CHA"]
+    }
+  }
+}

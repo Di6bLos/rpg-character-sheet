@@ -1,0 +1,225 @@
+{
+  "agonizing-blast": {
+    "choices": [
+      {
+        "kind": "cantrip",
+        "count": 1,
+        "list": "warlock",
+        "label": "Agonizing Blast"
+      }
+    ]
+  },
+  "armor-of-shadows": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "mage-armor",
+        "atWill": true
+      }
+    ]
+  },
+  "ascendant-step": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "levitate",
+        "atWill": true
+      }
+    ]
+  },
+  "devils-sight": {
+    "grants": [
+      {
+        "kind": "sense",
+        "value": "Devil’s Sight",
+        "range": 120
+      }
+    ]
+  },
+  "devouring-blade": {},
+  "eldritch-mind": {},
+  "eldritch-smite": {
+    "uses": {
+      "count": 1,
+      "recharge": "turn"
+    },
+    "cost": "1 Pact Magic spell slot",
+    "dice": "1d8",
+    "damageType": "Force"
+  },
+  "eldritch-spear": {
+    "choices": [
+      {
+        "kind": "cantrip",
+        "count": 1,
+        "list": "warlock",
+        "label": "Eldritch Spear"
+      }
+    ]
+  },
+  "fiendish-vigor": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "false-life",
+        "atWill": true
+      }
+    ]
+  },
+  "gaze-of-two-minds": {
+    "activation": "bonus",
+    "range": "Touch",
+    "duration": "until the end of your next turn"
+  },
+  "gift-of-the-depths": {
+    "grants": [
+      {
+        "kind": "speed",
+        "value": "swim",
+        "amount": "walk"
+      },
+      {
+        "kind": "spell",
+        "spell": "water-breathing",
+        "free": {
+          "count": 1,
+          "recharge": "long"
+        }
+      }
+    ]
+  },
+  "gift-of-the-protectors": {
+    "uses": {
+      "count": 1,
+      "recharge": "long"
+    }
+  },
+  "investment-of-the-chain-master": {},
+  "lessons-of-the-first-ones": {
+    "choices": [
+      {
+        "kind": "feat",
+        "count": 1,
+        "category": ["origin"]
+      }
+    ]
+  },
+  "lifedrinker": {
+    "uses": {
+      "count": 1,
+      "recharge": "turn"
+    },
+    "dice": "1d6"
+  },
+  "mask-of-many-faces": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "disguise-self",
+        "atWill": true
+      }
+    ]
+  },
+  "master-of-myriad-forms": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "alter-self",
+        "atWill": true
+      }
+    ]
+  },
+  "misty-visions": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "silent-image",
+        "atWill": true
+      }
+    ]
+  },
+  "one-with-shadows": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "invisibility",
+        "atWill": true
+      }
+    ]
+  },
+  "otherworldly-leap": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "jump",
+        "atWill": true
+      }
+    ]
+  },
+  "pact-of-the-blade": {
+    "activation": "bonus"
+  },
+  "pact-of-the-chain": {
+    "activation": "magic",
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "find-familiar",
+        "atWill": true
+      }
+    ]
+  },
+  "pact-of-the-tome": {
+    "choices": [
+      {
+        "kind": "cantrip",
+        "count": 3,
+        "label": "Book of Shadows cantrips"
+      },
+      {
+        "kind": "spell",
+        "count": 2,
+        "maxLevel": 1,
+        "label": "Book of Shadows rituals"
+      }
+    ]
+  },
+  "repelling-blast": {
+    "choices": [
+      {
+        "kind": "cantrip",
+        "count": 1,
+        "list": "warlock",
+        "label": "Repelling Blast"
+      }
+    ]
+  },
+  "thirsting-blade": {},
+  "visions-of-distant-realms": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "arcane-eye",
+        "atWill": true
+      }
+    ]
+  },
+  "whispers-of-the-grave": {
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "speak-with-dead",
+        "atWill": true
+      }
+    ]
+  },
+  "witch-sight": {
+    "grants": [
+      {
+        "kind": "sense",
+        "value": "Truesight",
+        "range": 30
+      }
+    ]
+  }
+}

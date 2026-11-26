@@ -1,0 +1,242 @@
+{
+  "features": {
+    "Spellcasting": {},
+    "Innate Sorcery": {
+      "activation": "bonus",
+      "duration": "1 minute",
+      "uses": {
+        "count": 2,
+        "recharge": "long"
+      }
+    },
+    "Font of Magic": {
+      "uses": {
+        "count": "column:Sorcery Points",
+        "recharge": "long"
+      },
+      "options": [
+        {
+          "name": "Converting Spell Slots to Sorcery Points",
+          "activation": "free"
+        },
+        {
+          "name": "Creating Spell Slots",
+          "activation": "bonus"
+        }
+      ]
+    },
+    "Metamagic": {
+      "choices": [
+        {
+          "kind": "option",
+          "count": 2,
+          "group": "metamagic"
+        }
+      ]
+    },
+    "Sorcerer Subclass": {},
+    "Ability Score Improvement": {},
+    "Sorcerous Restoration": {
+      "uses": {
+        "count": 1,
+        "recharge": "long"
+      }
+    },
+    "Sorcery Incarnate": {},
+    "Epic Boon": {},
+    "Arcane Apotheosis": {}
+  },
+  "subclasses": {
+    "aberrant-sorcery": {
+      "summary": "A Sorcerer touched by alien psionics, with telepathy, mind-bending spells and a body that can mutate at will.",
+      "features": {
+        "Psionic Spells": {
+          "summary": "Extra always-prepared spells arrive at Sorcerer levels 3, 5, 7 and 9, ranging from Mind Sliver and Detect Thoughts up to Telekinesis and Telepathic Bond."
+        },
+        "Telepathic Speech": {
+          "summary": "Bonus Action: link minds with a creature you see within 30 ft for minutes equal to your Sorcerer level, talking telepathically within CHA miles (min 1) in a shared language. A new link ends the old one.",
+          "activation": "bonus",
+          "range": 30
+        },
+        "Psionic Sorcery": {
+          "summary": "Cast your level 1+ Psionic Spells with Sorcery Points equal to the spell's level instead of a slot; cast that way they need no Verbal, Somatic or Material components unless the material is consumed or has a cost."
+        },
+        "Psychic Defenses": {
+          "summary": "Resistance to Psychic damage; Advantage on saves to avoid or end Charmed and Frightened.",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Psychic"
+            }
+          ]
+        },
+        "Revelation in Flesh": {
+          "summary": "Bonus Action: spend 1+ Sorcery Points to transform for 10 minutes, picking one benefit below per point spent.",
+          "activation": "bonus",
+          "duration": "10 minutes",
+          "options": [
+            {
+              "name": "Aquatic Adaptation",
+              "summary": "Swim Speed of twice your Speed, and you breathe underwater."
+            },
+            {
+              "name": "Glistening Flight",
+              "summary": "Gain a Fly Speed matching your Speed; hovering allowed."
+            },
+            {
+              "name": "See the Invisible",
+              "summary": "You see Invisible creatures within 60 ft that lack Total Cover."
+            },
+            {
+              "name": "Wormlike Movement",
+              "summary": "Squeeze through 1-inch gaps; spend 5 ft of movement to slip nonmagical restraints or a grapple."
+            }
+          ]
+        },
+        "Warping Implosion": {
+          "summary": "Magic action: teleport up to 120 ft to a space you see. Creatures within 30 ft of where you stood make a STR save vs your spell DC: 3d10 Force and pulled toward that spot on a fail, half damage only on a success. 1/Long Rest, or 5 Sorcery Points to reuse.",
+          "activation": "magic",
+          "range": 120,
+          "save": {
+            "ability": "STR",
+            "dc": "spell"
+          },
+          "dice": "3d10",
+          "damageType": "Force",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "5 Sorcery Points"
+          }
+        }
+      }
+    },
+    "clockwork-sorcery": {
+      "summary": "A Sorcerer channeling cosmic order to cancel luck, ward allies and impose calm precision.",
+      "features": {
+        "Clockwork Spells": {
+          "summary": "Extra always-prepared spells arrive at Sorcerer levels 3, 5, 7 and 9, from Aid and Alarm up to Greater Restoration and Wall of Force. Your casting shows a cosmetic sign of order."
+        },
+        "Restore Balance": {
+          "summary": "Reaction: a creature you see within 60 ft that would roll a d20 with Advantage or Disadvantage rolls with neither instead. CHA uses (min 1) per Long Rest.",
+          "activation": "reaction",
+          "range": 60,
+          "uses": {
+            "count": "CHA",
+            "recharge": "long"
+          }
+        },
+        "Bastion of Law": {
+          "summary": "Magic action: spend 1–5 Sorcery Points to ward yourself or a creature within 30 ft with that many d8s. When hurt, the warded creature rolls any number of them to cut the damage. Lasts until your Long Rest or a new ward.",
+          "activation": "magic",
+          "range": 30,
+          "dice": "1d8"
+        },
+        "Trance of Order": {
+          "summary": "Bonus Action: for 1 minute, attacks against you can't have Advantage, and your D20 Test rolls of 9 or lower count as 10. 1/Long Rest, or 5 Sorcery Points to reuse.",
+          "activation": "bonus",
+          "duration": "1 minute",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "5 Sorcery Points"
+          }
+        },
+        "Clockwork Cavalcade": {
+          "summary": "Magic action: spirits of order fill a 30-ft Cube from you, healing up to 100 HP split as you like, mending objects inside, and ending spells of level 6 or lower on chosen targets. 1/Long Rest, or 7 Sorcery Points to reuse.",
+          "activation": "magic",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "7 Sorcery Points"
+          }
+        }
+      }
+    },
+    "draconic-sorcery": {
+      "features": {
+        "Draconic Resilience": {
+          "grants": [
+            {
+              "kind": "hp",
+              "perLevel": 1
+            },
+            {
+              "kind": "ac",
+              "formula": "10 + DEX + CHA"
+            }
+          ]
+        },
+        "Draconic Spells": {},
+        "Elemental Affinity": {
+          "choices": [
+            {
+              "kind": "damageType",
+              "count": 1,
+              "from": ["Acid", "Cold", "Fire", "Lightning", "Poison"],
+              "label": "Draconic Ancestor"
+            }
+          ]
+        },
+        "Dragon Wings": {
+          "activation": "bonus",
+          "duration": "1 hour",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "3 Sorcery Points"
+          }
+        },
+        "Dragon Companion": {
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "summon-dragon",
+              "at": 18,
+              "free": {
+                "count": 1,
+                "recharge": "long"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "wild-magic-sorcery": {
+      "summary": "A Sorcerer whose chaotic inner magic can erupt in random surges and bend luck.",
+      "features": {
+        "Wild Magic Surge": {
+          "summary": "Once per turn after casting a Sorcerer spell with a slot, you may roll a d20; a 20 means a roll on the surge table. A spell a surge creates can't take Metamagic.",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "dice": "1d20"
+        },
+        "Tides of Chaos": {
+          "summary": "Before a D20 Test, grant yourself Advantage on it. It comes back on a Long Rest or when you next cast a Sorcerer spell with a slot, which also triggers a surge roll.",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "casting a Sorcerer spell with a spell slot (also rolls a surge)"
+          }
+        },
+        "Bend Luck": {
+          "summary": "Reaction right after another creature you see rolls a D20 Test: spend 1 Sorcery Point and roll 1d4 to add to or subtract from its roll.",
+          "activation": "reaction",
+          "dice": "1d4"
+        },
+        "Controlled Chaos": {
+          "summary": "Surge table rolls are made twice; you pick which result applies."
+        },
+        "Tamed Surge": {
+          "summary": "Right after casting a Sorcerer spell with a slot, choose any surge table effect except the last row instead of rolling (roll any dice it calls for). 1/Long Rest.",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          }
+        }
+      }
+    }
+  }
+}

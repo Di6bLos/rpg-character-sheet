@@ -54,10 +54,13 @@ describe('rules index', () => {
     }
   })
 
-  it('has Nimble and PF2e ready, and 5e waiting for its files', () => {
+  it('has Nimble, PF2e and 5e ready, each with its notice', () => {
     expect(rulesSystem('nimble')?.topics.length).toBeGreaterThan(0)
     expect(rulesSystem('pf2e')?.topics.length).toBeGreaterThan(0)
-    expect(rulesSystem('dnd5e')?.topics).toEqual([])
+    expect(rulesSystem('dnd5e')?.topics.length).toBe(14)
+    expect(rulesSystem('dnd5e')?.attribution).toContain(
+      'The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License',
+    )
     expect(rulesSystem('nimble')?.attribution).toContain(
       'published under the Nimble 3rd Party Creator License and is not affiliated with Nimble Co. Nimble © 2025 Nimble Co.',
     )
@@ -215,5 +218,20 @@ describe('Nimble rules', () => {
     for (const c of CONDITIONS) expect(conditions, c.name).toContain(`| ${c.name}`)
     const actions = text('nimble', 'actions')
     for (const r of REACTIONS) expect(actions, r.name).toContain(`| ${r.name}`)
+  })
+})
+
+describe('5e rules', () => {
+  it('keeps the SRD 5.2.1 text, cited by page', () => {
+    for (const t of rulesSystem('dnd5e')?.topics ?? [])
+      for (const s of rulesSections(text('dnd5e', t.slug)).filter((x) => x.title))
+        expect(s.markdown, `${t.slug}: ${s.title}`).toMatch(/_SRD 5\.2\.1 pp?\. \d+(–\d+)?\._/)
+  })
+
+  it('states the core numbers as the SRD does', () => {
+    expect(text('dnd5e', 'core-rules')).toMatch(/^\| 10–11 \| \+0 \| 26–27 \| \+8 \|$/m)
+    expect(plain('dnd5e', 'dying-and-death')).toContain('Death Saving Throw')
+    expect(text('dnd5e', 'conditions')).toMatch(/^### Exhaustion \[Condition\]$/m)
+    expect(text('dnd5e', 'rules-glossary')).toMatch(/^### Opportunity Attacks/m)
   })
 })

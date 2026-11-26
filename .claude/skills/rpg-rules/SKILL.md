@@ -12,7 +12,7 @@ Read only the reference file you need:
 | `references/books.md`     | Finding a rule in a source PDF; turning a printed page into a PDF page; citing pages                   |
 | `references/licensing.md` | Before committing any transcribed text, and before using anything visual from a book                   |
 | `references/nimble.md`    | Nimble math: hero curve, level cadence, spell damage, monster design, and how the repo encodes classes |
-| `references/dnd5e.md`     | D&D 5e (stub until that system is data-driven)                                                         |
+| `references/dnd5e.md`     | 5e (2024): core math, slot tables, rests and dying, weapon mastery, and how `data/dnd5e/` encodes it   |
 | `references/pf2e.md`      | Pathfinder 2e: core math, encounter and creature tables, and the local rules bible built from AoN      |
 
 Ground rules for everything built on this skill:

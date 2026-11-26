@@ -1,0 +1,910 @@
+{
+  "aberrant-dragonmark": {
+    "summary": "A wild, unpredictable dragonmark: Sorcerer magic cast with CON, a save boost and Hit Die surges.",
+    "benefits": {
+      "Aberrant Fortitude": {
+        "summary": "Reaction on a failed CON save: add 1d4 to it, possibly turning it into a success. Once per Long Rest.",
+        "activation": "reaction",
+        "dice": "1d4",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        }
+      },
+      "Aberrant Magic": {
+        "summary": "Learn one Sorcerer cantrip and pick a level 1 Sorcerer spell that is always prepared; cast that spell once per Short or Long Rest without a slot, or with your slots. CON is your spellcasting ability here.",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        },
+        "choices": [
+          {
+            "kind": "cantrip",
+            "count": 1,
+            "list": "sorcerer"
+          },
+          {
+            "kind": "spell",
+            "count": 1,
+            "list": "sorcerer",
+            "maxLevel": 1
+          }
+        ]
+      },
+      "Aberrant Surge": {
+        "summary": "Casting this feat's level 1 spell, you may spend and roll a Hit Point Die: an even result grants that many Temp HP; an odd one deals that much Force damage to another creature within 30 ft (to you if there is none).",
+        "range": 30,
+        "damageType": "Force"
+      }
+    }
+  },
+  "boon-of-siberys": {
+    "summary": "An epic boon drawing on the Siberys mark for one powerful spell.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Aberrant Magic": {
+        "summary": "Pick a level 8 or lower Sorcerer spell or one from the Siberys table; it is always prepared, castable once per Short or Long Rest with no slot or components, otherwise with your slots. Cast it with INT, WIS or CHA (picked with the feat).",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        },
+        "choices": [
+          {
+            "kind": "spell",
+            "count": 1,
+            "list": "sorcerer",
+            "maxLevel": 8,
+            "note": "or pick from the Siberys mark's own spell table instead",
+            "label": "Aberrant Magic spell"
+          },
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Siberys Dragonmark Spells": {
+        "summary": "Table picks, each with a suggested mark: Animal Shapes, Control Weather, Demiplane, Heroes' Feast, Maze, Mind Blank, Plane Shift, Project Image, Regenerate, Symbol, Teleport, True Seeing."
+      }
+    }
+  },
+  "greater-aberrant-mark": {
+    "summary": "A stronger aberrant mark: a tougher save boost and cantrips that burn Hit Dice for Temp HP and Force damage.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution, max 20."
+      },
+      "Improved Fortitude": {
+        "summary": "Aberrant Fortitude rolls 1d6 instead of 1d4 and comes back on a Short or Long Rest.",
+        "dice": "1d6",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      },
+      "Mark of Inspiration": {
+        "summary": "On casting a cantrip, roll one or two unspent Hit Point Dice and spend them: gain Temp HP equal to the roll + CON mod, and another creature of your choice within 30 ft takes that much Force damage. PB times per Long Rest.",
+        "range": 30,
+        "damageType": "Force",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "greater-mark-of-detection": {
+    "summary": "A stronger mark of detection that lets an ally share your sight of the unseen.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Deductive Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Shared Detection": {
+        "summary": "When Magical Detection casts See Invisibility without a slot, one creature you see within 30 ft also gets its benefits for the duration.",
+        "range": 30
+      }
+    }
+  },
+  "greater-mark-of-finding": {
+    "summary": "A stronger mark of finding whose quarry can't hide behind invisibility.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Hunter’s Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Improved Finding": {
+        "summary": "A slot-free Hunter's Mark from Finder's Magic has double range, and you may stop its target from benefiting from being Invisible while it lasts."
+      }
+    }
+  },
+  "greater-mark-of-handling": {
+    "summary": "A stronger mark of handling for riders and beast tamers.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Wild Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Improved Handling": {
+        "summary": "While mounted, when your melee attack hits a target within 5 ft of the mount, the mount may at once spend its Reaction on one attack or on moving as far as its Speed."
+      },
+      "Subdue Animal": {
+        "summary": "Magic action: a Beast or Monstrosity you see within 30 ft makes a WIS save (DC 8 + PB + WIS) or is Frightened until the start of your next turn. PB times per Long Rest.",
+        "activation": "magic",
+        "range": 30,
+        "save": {
+          "ability": "WIS",
+          "dc": "8+PB+WIS"
+        },
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "greater-mark-of-healing": {
+    "summary": "A stronger mark of healing: more free Cure Wounds and steadier healing rolls.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Medical Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Improved Healing": {
+        "summary": "Healing Touch's slot-free Cure Wounds can be cast PB times per Long Rest. Any 1 or 2 on Cure Wounds healing dice counts as a 3.",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "greater-mark-of-hospitality": {
+    "summary": "A stronger mark of hospitality whose meals revive the weary.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Ever Hospitable die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Inspired Hospitality": {
+        "summary": "Once per Long Rest, Purify Food and Drink can instead refresh creatures of your choice within 30 ft: each loses 1 Exhaustion level and gains Temp HP equal to PB + your INT, WIS or CHA mod (picked with the feat).",
+        "range": 30,
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        },
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Inspired Hospitality ability"
+          }
+        ]
+      }
+    }
+  },
+  "greater-mark-of-making": {
+    "summary": "A stronger mark of making that empowers weapons further.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Artisan’s Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Improved Making": {
+        "summary": "A slot-free Magic Weapon from Spellsmith is cast as a level 3 spell."
+      }
+    }
+  },
+  "greater-mark-of-passage": {
+    "summary": "A stronger mark of passage that teleports companions along with you.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Intuitive Motion die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Inspired Passage": {
+        "summary": "A slot-free Misty Step from Magical Passage can bring up to two willing creatures you see within 30 ft: each may spend its Reaction to teleport up to 30 ft to a free spot in its sight.",
+        "range": 30
+      }
+    }
+  },
+  "greater-mark-of-scribing": {
+    "summary": "A stronger mark of scribing that links allies' minds.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Gifted Scribe die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Inspired Scribing": {
+        "summary": "Once per Long Rest, Comprehend Languages can also cover up to three willing creatures you see within 30 ft; while it lasts, you and they can talk telepathically within 1 mile of each other.",
+        "range": 30,
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "greater-mark-of-sentinel": {
+    "summary": "A stronger mark of the sentinel that strikes back when guarding.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Sentinel’s Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Improved Sentinel": {
+        "summary": "Vigilant Guardian's Reaction also lets you make one weapon attack or Unarmed Strike."
+      }
+    }
+  },
+  "greater-mark-of-shadow": {
+    "summary": "A stronger mark of shadow that hides more than one.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Cunning Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Improved Shadow": {
+        "summary": "A slot-free Invisibility from Shape Shadows is cast as a level 3 spell."
+      }
+    }
+  },
+  "greater-mark-of-storm": {
+    "summary": "A stronger mark of storm that lets you ride the wind.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Windwright’s Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Improved Storm": {
+        "summary": "A slot-free Gust of Wind from Storm Magic also gives you a 60 ft Fly Speed while the spell lasts."
+      }
+    }
+  },
+  "greater-mark-of-warding": {
+    "summary": "A stronger mark of warding that turns attacks aside.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Improved Intuition": {
+        "summary": "Your Warder’s Intuition die becomes 1d6 instead of 1d4.",
+        "dice": "1d6"
+      },
+      "Improved Warding": {
+        "summary": "Reaction: give Disadvantage to an attack roll aimed at you or at a creature you see within 30 ft. PB times per Long Rest.",
+        "activation": "reaction",
+        "range": 30,
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "mark-of-detection": {
+    "summary": "The mark of detection: sharper investigation and insight, plus spells that reveal magic and poison.",
+    "benefits": {
+      "Deductive Intuition": {
+        "summary": "Add 1d4 to your Investigation and Insight checks.",
+        "dice": "1d4"
+      },
+      "Magical Detection": {
+        "summary": "Detect Magic and Detect Poison and Disease are always prepared, each castable once per Long Rest without a slot, or with your slots. From level 3, See Invisibility joins them on the same terms. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "detect-magic",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "detect-poison-and-disease",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "see-invisibility",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            },
+            "at": 3
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Detection Spells": {
+        "summary": "1st: Detect Evil and Good, Identify; 2nd: Detect Thoughts, Find Traps; 3rd: Clairvoyance, Nondetection; 4th: Arcane Eye, Divination; 5th: Legend Lore."
+      }
+    }
+  },
+  "mark-of-finding": {
+    "summary": "The mark of finding: a tracker's senses and magic for marking and locating quarry.",
+    "benefits": {
+      "Hunter’s Intuition": {
+        "summary": "Add 1d4 to your Perception and Survival checks.",
+        "dice": "1d4"
+      },
+      "Finder’s Magic": {
+        "summary": "Hunter's Mark is always prepared, castable once per Long Rest without a slot, or with your slots. From level 3, Locate Object joins it on the same terms. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "hunters-mark",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "locate-object",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            },
+            "at": 3
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Finding Spells": {
+        "summary": "1st: Faerie Fire, Longstrider; 2nd: Locate Animals or Plants, Mind Spike; 3rd: Clairvoyance, Speak with Plants; 4th: Divination, Locate Creature; 5th: Commune with Nature."
+      }
+    }
+  },
+  "mark-of-handling": {
+    "summary": "The mark of handling: a bond with beasts, and later with simple monstrosities.",
+    "benefits": {
+      "Wild Intuition": {
+        "summary": "Add 1d4 to your Nature and Animal Handling checks.",
+        "dice": "1d4"
+      },
+      "Primal Connection": {
+        "summary": "Animal Friendship and Speak with Animals are always prepared, each castable once per Long Rest without a slot, or with your slots. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "animal-friendship",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "speak-with-animals",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Monstrous Connections": {
+        "summary": "From level 3, Animal Friendship and Speak with Animals can also target a Monstrosity whose INT is 3 or lower.",
+        "level": 3
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Handling Spells": {
+        "summary": "1st: Command, Find Familiar; 2nd: Beast Sense, Calm Emotions; 3rd: Beacon of Hope, Conjure Animals; 4th: Aura of Life, Dominate Beast; 5th: Awaken."
+      }
+    }
+  },
+  "mark-of-healing": {
+    "summary": "The mark of healing: medical skill and restorative magic.",
+    "benefits": {
+      "Medical Intuition": {
+        "summary": "Add 1d4 to your Medicine checks and to checks made with a Herbalism Kit.",
+        "dice": "1d4"
+      },
+      "Healing Touch": {
+        "summary": "Cure Wounds is always prepared, castable once per Long Rest without a slot, or with your slots. From level 3, Lesser Restoration joins it on the same terms. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "cure-wounds",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "lesser-restoration",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            },
+            "at": 3
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Healing Spells": {
+        "summary": "1st: False Life, Healing Word; 2nd: Arcane Vigor, Prayer of Healing; 3rd: Aura of Vitality, Mass Healing Word; 4th: Aura of Life, Aura of Purity; 5th: Greater Restoration."
+      }
+    }
+  },
+  "mark-of-hospitality": {
+    "summary": "The mark of hospitality: a gracious host's charm and household magic.",
+    "benefits": {
+      "Ever Hospitable": {
+        "summary": "Add 1d4 to your Persuasion checks and to checks made with Brewer's Supplies or Cook's Utensils.",
+        "dice": "1d4"
+      },
+      "Innkeeper’s Magic": {
+        "summary": "Purify Food and Drink and Unseen Servant are always prepared, each castable once per Long Rest without a slot, or with your slots. From level 3, Calm Emotions joins them on the same terms. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "purify-food-and-drink",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "unseen-servant",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "calm-emotions",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            },
+            "at": 3
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Hospitality Spells": {
+        "summary": "1st: Goodberry, Sleep; 2nd: Aid, Enhance Ability; 3rd: Create Food and Water, Leomund's Tiny Hut; 4th: Aura of Purity, Mordenkainen's Private Sanctum; 5th: Hallow."
+      }
+    }
+  },
+  "mark-of-making": {
+    "summary": "The mark of making: a crafter's knack and magic that mends and empowers gear.",
+    "benefits": {
+      "Artisan’s Intuition": {
+        "summary": "Add 1d4 to your Arcana checks and to checks made with Artisan's Tools.",
+        "dice": "1d4"
+      },
+      "Spellsmith": {
+        "summary": "Know Mending; Magic Weapon is always prepared, castable once per Long Rest without a slot, or with your slots. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "mending"
+          },
+          {
+            "kind": "spell",
+            "spell": "magic-weapon",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list. 1st: Identify, Tenser's Floating Disk; 2nd: Continual Flame, Spiritual Weapon; 3rd: Conjure Barrage, Elemental Weapon; 4th: Fabricate, Stone Shape; 5th: Creation."
+      }
+    }
+  },
+  "mark-of-passage": {
+    "summary": "The mark of passage: swift feet and short-range teleportation.",
+    "benefits": {
+      "Intuitive Motion": {
+        "summary": "Add 1d4 to your Athletics and Acrobatics checks.",
+        "dice": "1d4"
+      },
+      "Magical Passage": {
+        "summary": "Misty Step is always prepared, castable once per Long Rest without a slot, or with your slots. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "misty-step",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Courier’s Speed": {
+        "summary": "+5 ft Speed.",
+        "grants": [
+          {
+            "kind": "speed",
+            "value": "walk",
+            "bonus": 5
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Passage Spells": {
+        "summary": "1st: Expeditious Retreat, Jump; 2nd: Find Steed, Pass without Trace; 3rd: Blink, Phantom Steed; 4th: Dimension Door, Freedom of Movement; 5th: Teleportation Circle."
+      }
+    }
+  },
+  "mark-of-scribing": {
+    "summary": "The mark of scribing: a gift for script, language and distant messages.",
+    "benefits": {
+      "Gifted Scribe": {
+        "summary": "Add 1d4 to your History checks and to checks made with Calligrapher's Supplies.",
+        "dice": "1d4"
+      },
+      "Scribe’s Insight": {
+        "summary": "Know Message; Comprehend Languages is always prepared, castable once per Long Rest without a slot, or with your slots. From level 3, Magic Mouth joins it on the same terms. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "message"
+          },
+          {
+            "kind": "spell",
+            "spell": "comprehend-languages",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "magic-mouth",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            },
+            "at": 3
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Scribing Spells": {
+        "summary": "1st: Command, Illusory Script; 2nd: Animal Messenger, Silence; 3rd: Sending, Tongues; 4th: Arcane Eye, Confusion; 5th: Dream."
+      }
+    }
+  },
+  "mark-of-sentinel": {
+    "summary": "The mark of the sentinel: a bodyguard's vigilance and protective magic.",
+    "benefits": {
+      "Sentinel’s Intuition": {
+        "summary": "Add 1d4 to your Insight and Perception checks.",
+        "dice": "1d4"
+      },
+      "Guardian’s Shield": {
+        "summary": "Shield is always prepared, castable once per Long Rest without a slot, or with your slots. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "shield",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Vigilant Guardian": {
+        "summary": "Reaction when a creature you see within 5 ft is hit by an attack roll: trade places with it and take the hit yourself. PB times per Long Rest.",
+        "activation": "reaction",
+        "range": 5,
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Sentinel Spells": {
+        "summary": "1st: Compelled Duel, Shield of Faith; 2nd: Warding Bond, Zone of Truth; 3rd: Counterspell, Protection from Energy; 4th: Death Ward, Guardian of Faith; 5th: Bigby's Hand."
+      }
+    }
+  },
+  "mark-of-shadow": {
+    "summary": "The mark of shadow: stealth, showmanship and illusions.",
+    "benefits": {
+      "Cunning Intuition": {
+        "summary": "Add 1d4 to your Stealth and Performance checks.",
+        "dice": "1d4"
+      },
+      "Shape Shadows": {
+        "summary": "Know Minor Illusion; Invisibility is always prepared, castable once per Long Rest without a slot, or with your slots. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "minor-illusion"
+          },
+          {
+            "kind": "spell",
+            "spell": "invisibility",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Shadow Spells": {
+        "summary": "1st: Disguise Self, Silent Image; 2nd: Darkness, Pass without Trace; 3rd: Clairvoyance, Major Image; 4th: Greater Invisibility, Hallucinatory Terrain; 5th: Mislead."
+      }
+    }
+  },
+  "mark-of-storm": {
+    "summary": "The mark of storm: command over wind and weather, and a shrug at lightning.",
+    "benefits": {
+      "Windwright’s Intuition": {
+        "summary": "Add 1d4 to your Acrobatics checks and to checks made with Navigator's Tools.",
+        "dice": "1d4"
+      },
+      "Storm Magic": {
+        "summary": "Know Thunderclap. From level 3, Gust of Wind is always prepared, castable once per Long Rest without a slot, or with your slots. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "thunderclap"
+          },
+          {
+            "kind": "spell",
+            "spell": "gust-of-wind",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            },
+            "at": 3
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Storm’s Boon": {
+        "summary": "Resistance to Lightning damage.",
+        "grants": [
+          {
+            "kind": "resistance",
+            "value": "Lightning"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Storm Spells": {
+        "summary": "1st: Feather Fall, Fog Cloud; 2nd: Levitate, Shatter; 3rd: Sleet Storm, Wind Wall; 4th: Conjure Minor Elementals, Control Water; 5th: Conjure Elemental."
+      }
+    }
+  },
+  "mark-of-warding": {
+    "summary": "The mark of warding: a locksmith's eye and spells that guard and seal.",
+    "benefits": {
+      "Warder’s Intuition": {
+        "summary": "Add 1d4 to your Investigation checks and to checks made with Thieves' Tools.",
+        "dice": "1d4"
+      },
+      "Wards and Seals": {
+        "summary": "Alarm and Mage Armor are always prepared, each castable once per Long Rest without a slot, or with your slots. From level 3, Arcane Lock joins them on the same terms. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "alarm",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "mage-armor",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "arcane-lock",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            },
+            "at": 3
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Spells of the Mark": {
+        "summary": "With Spellcasting or Pact Magic, the mark's spell table joins that feature's spell list."
+      },
+      "Mark of Warding Spells": {
+        "summary": "1st: Armor of Agathys, Sanctuary; 2nd: Knock, Nystul's Magic Aura; 3rd: Glyph of Warding, Magic Circle; 4th: Leomund's Secret Chest, Mordenkainen's Faithful Hound; 5th: Antilife Shell."
+      }
+    }
+  },
+  "potent-dragonmark": {
+    "summary": "Masters any dragonmark: its whole spell table stays prepared, with a bonus slot for mark spells.",
+    "asi": {
+      "abilities": ["CON", "INT", "WIS", "CHA"],
+      "amount": 1,
+      "max": 20
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to the ability your Dragonmark feat casts with, max 20."
+      },
+      "Dragonmark Preparation": {
+        "summary": "Every spell on your Spells of the Mark table is always prepared."
+      },
+      "Dragonmark Spellcasting": {
+        "summary": "One extra spell slot of half your level rounded up (max level 5), usable only for spells your Dragonmark feat or this feat prepares. Regained on a Short or Long Rest.",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      }
+    }
+  }
+}

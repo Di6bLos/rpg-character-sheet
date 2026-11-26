@@ -1,0 +1,77 @@
+{
+  "subclasses": {
+    "hollow-warden": {
+      "summary": "A Ranger sworn to ancient wild horrors who turns into a monstrous, fear-spreading guardian.",
+      "features": {
+        "Hollow Warden Spells": {
+          "summary": "Always prepared: Wrathful Smite at Ranger 3, Alter Self at 5, Phantom Steed at 9, Dominate Beast at 13, Steel Wind Strike at 17.",
+          "grants": [
+            { "kind": "spell", "spell": "wrathful-smite", "at": 3 },
+            { "kind": "spell", "spell": "alter-self", "at": 5 },
+            { "kind": "spell", "spell": "phantom-steed", "at": 9 },
+            { "kind": "spell", "spell": "dominate-beast", "at": 13 },
+            { "kind": "spell", "spell": "steel-wind-strike", "at": 17 }
+          ]
+        },
+        "Wrath of the Wild": {
+          "summary": "Bonus Action, 1 Favored Enemy use: take a ghastly form for 1 minute (ends if Incapacitated or you die, or at will). You gain +1 AC (+2 at Ranger 11), an Opportunity Attack against a creature within 5 ft right after it damages you or an ally, and an aura that makes chosen creatures within 10 ft save (WIS) or be Frightened, on transforming and each turn start.",
+          "activation": "bonus",
+          "duration": "1 minute",
+          "options": [
+            {
+              "name": "Ancient Armor",
+              "summary": "+1 AC while transformed, +2 from Ranger 11."
+            },
+            {
+              "name": "Prowling Retribution",
+              "summary": "Right after a creature you see within 5 ft damages you or an ally, make an Opportunity Attack against it."
+            },
+            {
+              "name": "Unnerving Aura",
+              "summary": "On transforming and at each of your turn starts, chosen creatures in a 10-ft Emanation make a WIS save or are Frightened until your next turn starts.",
+              "save": { "ability": "WIS", "dc": "spell" },
+              "range": 10
+            }
+          ]
+        },
+        "Hungering Might": {
+          "summary": "Add WIS (min +1) to CON saves. Once per turn while transformed and Bloodied, an attack hit heals you 1d10 + WIS.",
+          "dice": "1d10",
+          "uses": { "count": 1, "recharge": "turn" }
+        },
+        "Rot and Violence": {
+          "summary": "While transformed: creatures failing your Unnerving Aura save also can’t heal or take Reactions until your next turn starts, and weapon hits can trigger Sap or Slow on top of the weapon’s other mastery.",
+          "options": [
+            {
+              "name": "Menacing Aura",
+              "summary": "A failed Unnerving Aura save also blocks healing and Reactions until your next turn starts."
+            },
+            {
+              "name": "Strangling Roots",
+              "summary": "A weapon hit can apply Sap or Slow in addition to the weapon’s own (different) mastery property."
+            }
+          ]
+        },
+        "Ancient Might": {
+          "summary": "Hits on Frightened creatures add WIS damage. Dropping to 0 HP (not killed) while transformed sets your HP to 2× Ranger level instead, once per Long Rest or by spending a level 4+ slot. Immune to Exhaustion.",
+          "grants": [{ "kind": "conditionImmunity", "value": "Exhaustion" }],
+          "options": [
+            {
+              "name": "Ominous Strikes",
+              "summary": "An attack hit on a Frightened creature deals extra damage equal to your WIS."
+            },
+            {
+              "name": "Persistent Wrath",
+              "summary": "At 0 HP but not killed while transformed, your HP becomes twice your Ranger level. Once per Long Rest; a level 4+ slot restores it.",
+              "uses": { "count": 1, "recharge": "long", "restore": "a level 4+ spell slot" }
+            },
+            {
+              "name": "Timeless",
+              "summary": "Immunity to the Exhaustion condition."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

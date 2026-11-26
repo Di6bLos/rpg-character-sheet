@@ -15,7 +15,7 @@ Track progress in `_features.md` (project rule: check tasks off as they land).
 
 1. **Sources and license**
    - Put the books in `.local/<system>/` and add them to `rpg-rules/references/books.md` (layout, page offset, open vs own-book).
-   - Decide what ships: open content (SRD 5.2 / ORC) only in committed data; own-book content stays local (`licensing.md`).
+   - Decide what ships: open content (SRD 5.2 / ORC) in committed data; own-book content stays local unless `licensing.md` records an exception the user approved (5e's non-SRD options ship as mechanics plus original summaries).
    - Add the attribution notice the license requires.
 2. **Types**: `data/<system>/types.ts`, modelled on `data/nimble/types.ts` (`ClassDef`, `LevelDef`, `ChoiceDef`/`ChoiceSource`, `SubclassDef`, spells, ancestry/heritage, background). Encode every mechanic the level-up needs as fields, not prose.
 3. **Data**: `data/<system>/classes/<slug>.ts` plus shared helpers, spells, ancestries, backgrounds and core (weapons, armor). Each file starts with a citation comment. Use the `source-extract` skill.

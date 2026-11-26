@@ -1,0 +1,294 @@
+{
+  "features": {
+    "Spellcasting": {
+      "choices": [
+        {
+          "kind": "spell",
+          "count": 6,
+          "list": "wizard",
+          "maxLevel": 1,
+          "label": "Spellbook"
+        }
+      ]
+    },
+    "Ritual Adept": {},
+    "Arcane Recovery": {
+      "activation": "special",
+      "uses": {
+        "count": 1,
+        "recharge": "long"
+      }
+    },
+    "Scholar": {
+      "choices": [
+        {
+          "kind": "expertise",
+          "count": 1,
+          "from": ["Arcana", "History", "Investigation", "Medicine", "Nature", "Religion"]
+        }
+      ]
+    },
+    "Wizard Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin"]
+        }
+      ]
+    },
+    "Memorize Spell": {},
+    "Spell Mastery": {
+      "choices": [
+        {
+          "kind": "spell",
+          "count": 1,
+          "list": "wizard",
+          "maxLevel": 1,
+          "label": "Spell Mastery (level 1)"
+        },
+        {
+          "kind": "spell",
+          "count": 1,
+          "list": "wizard",
+          "maxLevel": 2,
+          "label": "Spell Mastery (level 2)"
+        }
+      ]
+    },
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin"]
+        }
+      ]
+    },
+    "Signature Spells": {
+      "uses": {
+        "count": 1,
+        "recharge": "short"
+      },
+      "choices": [
+        {
+          "kind": "spell",
+          "count": 2,
+          "list": "wizard",
+          "maxLevel": 3,
+          "label": "Signature Spells"
+        }
+      ]
+    }
+  },
+  "subclasses": {
+    "abjurer": {
+      "summary": "A wizard of protective magic who shields themselves and allies with an arcane ward and breaks hostile spells.",
+      "features": {
+        "Abjuration Savant": {
+          "summary": "Two Abjuration Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Abjuration spell you can cast, also free.",
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "list": "wizard",
+              "maxLevel": 2,
+              "label": "Abjuration Savant (Abjuration)"
+            }
+          ]
+        },
+        "Arcane ward": {
+          "summary": "Casting an Abjuration spell with a slot can raise a ward on you (once per Long Rest; it lasts until then) with max HP 2 × Wizard level + INT. It soaks your damage first. Later Abjuration casts restore 2 × slot level; a Bonus Action and a slot restores the same.",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          }
+        },
+        "Projected Ward": {
+          "summary": "Reaction when a creature you see within 30 ft takes damage: your Arcane Ward absorbs it instead; leftover damage goes to that creature.",
+          "activation": "reaction",
+          "range": 30
+        },
+        "Spell Breaker": {
+          "summary": "Counterspell and Dispel Magic are always prepared. Dispel Magic can be a Bonus Action and adds PB to its check. If either fails to stop a spell, the slot comes back.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "counterspell",
+              "at": 10
+            },
+            {
+              "kind": "spell",
+              "spell": "dispel-magic",
+              "at": 10
+            }
+          ]
+        },
+        "Spell Resistance": {
+          "summary": "Advantage on saves against spells, and Resistance to damage dealt by spells."
+        }
+      }
+    },
+    "diviner": {
+      "summary": "A wizard who reads the future, swapping in foreseen d20 rolls and casting divinations cheaply.",
+      "features": {
+        "Divination Savant": {
+          "summary": "Two Divination Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Divination spell you can cast, also free.",
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "list": "wizard",
+              "maxLevel": 2,
+              "label": "Divination Savant (Divination)"
+            }
+          ]
+        },
+        "Portent": {
+          "summary": "After each Long Rest roll 2d20 and note them. Before any D20 Test by you or a creature you see, you may swap its roll for one noted result (each used once, max one swap per turn). Unused ones vanish at your next Long Rest.",
+          "uses": {
+            "count": 2,
+            "recharge": "long"
+          },
+          "dice": "1d20"
+        },
+        "Expert Divination": {
+          "summary": "Casting a Divination spell with a slot of level 2+ refunds one expended slot of a lower level (level 5 at most)."
+        },
+        "The Third Eye": {
+          "summary": "Bonus Action: take one sight benefit until your next rest begins. 1/Short or Long Rest.",
+          "activation": "bonus",
+          "uses": {
+            "count": 1,
+            "recharge": "short"
+          },
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "label": "The Third Eye"
+            }
+          ],
+          "options": [
+            {
+              "name": "Darkvision",
+              "summary": "Darkvision out to 120 ft.",
+              "grants": [
+                {
+                  "kind": "sense",
+                  "value": "Darkvision",
+                  "range": 120
+                }
+              ]
+            },
+            {
+              "name": "Greater Comprehension",
+              "summary": "You can read every language."
+            },
+            {
+              "name": "See Invisibility",
+              "summary": "Cast See Invisibility with no slot.",
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "see-invisibility",
+                  "atWill": true
+                }
+              ]
+            }
+          ]
+        },
+        "Greater Portent": {
+          "summary": "Portent now gives three foretold d20s instead of two."
+        }
+      }
+    },
+    "evoker": {
+      "features": {
+        "Evocation Savant": {
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "list": "wizard",
+              "maxLevel": 2,
+              "label": "Evocation Savant (Evocation)"
+            }
+          ]
+        },
+        "Potent Cantrip": {},
+        "Sculpt Spells": {},
+        "Empowered Evocation": {},
+        "Overchannel": {
+          "dice": "2d12",
+          "damageType": "Necrotic"
+        }
+      }
+    },
+    "illusionist": {
+      "summary": "A wizard of deception whose illusions grow stronger, summon spectral beasts and finally turn partly real.",
+      "features": {
+        "Illusion Savant": {
+          "summary": "Two Illusion Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Illusion spell you can cast, also free.",
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "list": "wizard",
+              "maxLevel": 2,
+              "label": "Illusion Savant (Illusion)"
+            }
+          ]
+        },
+        "Improved Illusions": {
+          "summary": "Your Illusion spells skip Verbal components, and those with 10+ ft range reach 60 ft farther. Learn Minor Illusion free (or another Wizard cantrip if known); it can make sound and image together and be cast as a Bonus Action.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "minor-illusion",
+              "at": 3
+            }
+          ]
+        },
+        "Phantasmal Creatures": {
+          "summary": "Summon Beast and Summon Fey are always prepared and can be cast as Illusions. Each Illusion version can be cast once per Long Rest with no slot, but the summon has half HP.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "summon-beast",
+              "at": 6,
+              "free": {
+                "count": 1,
+                "recharge": "long"
+              }
+            },
+            {
+              "kind": "spell",
+              "spell": "summon-fey",
+              "at": 6,
+              "free": {
+                "count": 1,
+                "recharge": "long"
+              }
+            }
+          ]
+        },
+        "Illusory Self": {
+          "summary": "Reaction when an attack roll hits you: a decoy of you steps in and the attack misses. 1/Short or Long Rest, or spend a level 2+ slot to reuse.",
+          "activation": "reaction",
+          "uses": {
+            "count": 1,
+            "recharge": "short",
+            "restore": "a level 2+ spell slot"
+          }
+        },
+        "Illusory Reality": {
+          "summary": "While an Illusion spell you cast with a slot lasts, a Bonus Action makes one inanimate, nonmagical object in it real for 1 minute; it can't deal damage or impose conditions.",
+          "activation": "bonus",
+          "duration": "1 minute"
+        }
+      }
+    }
+  }
+}

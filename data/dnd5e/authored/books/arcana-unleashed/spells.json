@@ -1,0 +1,113 @@
+{
+  "battle-familiar": {
+    "summary": "Summon a Celestial, Fey or Fiend familiar in animal shape (Brute, Flyer or Stalker form) that fights beside you on its own Initiative, making Rend attacks for 1d8 + 3 + spell level Force. Cast on your Find Familiar familiar instead, it takes on these statistics and gains Temporary HP equal to the summon's HP; the spell ends when those run out.",
+    "higherLevel": "The stat block uses the slot's level as the spell level."
+  },
+  "disruptive-tune": {
+    "summary": "Each creature in a 20-ft-radius Sphere within 120 ft makes a CON save; on a failure it drops Concentration and has Disadvantage on CON saves to keep Concentration while this spell lasts."
+  },
+  "dueling-ground": {
+    "summary": "Mark a 15-ft-radius rune circle and name two willing duelists inside it. A duelist reduced to 0 HP, or hit by an instant-death effect, is left Stable at 0 HP and teleported out; the spell ends if anyone else steps in, and the last one standing gets a crown of runes.",
+    "higherLevel": "One more willing duelist per slot level above 2."
+  },
+  "uncertain-footing": {
+    "summary": "Up to three creatures you see within 120 ft make an INT save or have their Speed halved and can't Dash. Each repeats the save at the end of its turns, ending the effect on a success."
+  },
+  "wither-and-bloom": {
+    "summary": "Creatures you pick in a 10-ft-radius Sphere within 60 ft make a CON save: 3d6 Necrotic, half on a success; ordinary plants there wither. One creature you pick in the area may spend a Hit Point Die and heal the roll + your spellcasting modifier.",
+    "higherLevel": "+1d6 damage and one more Hit Point Die per slot level above 2 (the modifier is still added once)."
+  },
+  "catnap": {
+    "summary": "Up to three willing creatures you see within 30 ft fall Unconscious for 10 minutes, waking if hurt or shaken awake with an action. Sleeping the full time grants a Short Rest's benefits; then it can't benefit again until a Long Rest.",
+    "higherLevel": "One more creature per slot level above 3."
+  },
+  "inflict-doubt": {
+    "summary": "A creature you see within 120 ft makes a WIS save or has Disadvantage on D20 Tests. It repeats the save at the end of each of its turns, ending the spell on a success."
+  },
+  "distorted-distance": {
+    "summary": "Warp a 60-ft-radius Sphere within 120 ft. For each creature you see there, pick one: it makes an INT save or takes 2d10 Psychic and treats the Sphere as Difficult Terrain until its turn ends, or its Speed rises by 20 ft until its next turn ends. You can apply one again when a creature enters or ends its turn there (once per turn each)."
+  },
+  "festering-blast": {
+    "summary": "A 60-ft by 10-ft Line from you: each creature makes a CON save or takes 4d10 Necrotic and is Poisoned for 1 minute. A Poisoned target takes 2d10 Poison at the start of its turns and repeats the save at the end of them, ending it on a success.",
+    "higherLevel": "Initial damage +1d10 per slot level above 4."
+  },
+  "zone-of-amicability": {
+    "summary": "For 10 minutes, a 60-ft Emanation surrounds you; on checks to sway or persuade a creature inside it, treat any d20 roll of 9 or lower as a 10."
+  },
+  "enervation": {
+    "summary": "A creature you see within 60 ft makes a DEX save: on a failure it takes 6d8 Necrotic, and on later turns you can use a Bonus Action to deal it 2d8 Necrotic automatically until it leaves range or gets Total Cover. On a success it takes half and the spell ends. You heal half of all Necrotic damage this spell deals.",
+    "higherLevel": "Initial damage +1d8 per slot level above 5."
+  },
+  "grave-ground": {
+    "summary": "Up to four connected 10-ft squares within 120 ft sprout skeletal hands and become Difficult Terrain for enemies. Enemies there when it appears, entering, or ending a turn there make a STR save (once per turn) or take 6d6 Necrotic and subtract 1d6 from their damage rolls until their next turn ends.",
+    "higherLevel": "+1d6 damage per slot level above 5."
+  },
+  "mordenkainens-lucubration": {
+    "summary": "Recover as many as two used spell slots, each of level 2 or below.",
+    "higherLevel": "Recovers slots up to level 3 with a level 6-7 slot, or up to level 4 with a level 8+ slot."
+  },
+  "negative-energy-flood": {
+    "summary": "A creature you see within 60 ft that isn't Undead makes a CON save: 3d10 + 25 Necrotic, half on a success. A Humanoid it kills rises next turn as a Zombie obeying your spoken orders for 24 hours. An Undead target instead gains 3d10 Temporary HP.",
+    "higherLevel": "+1d10 damage per slot level above 5."
+  },
+  "spirit-lantern": {
+    "summary": "For 10 minutes a ghostly lantern above you casts Dim Light 60 ft and catches the souls of enemies that die in it (up to your spellcasting modifier). Bonus Action, spend one: Drain Life (CON save, 4d8 + modifier Necrotic, half on success), Repair Undead (an Undead heals 4d8 + modifier), or Ward Ally (attacks against an ally have Disadvantage until your next turn), each within 60 ft."
+  },
+  "summon-plant": {
+    "summary": "Summon a Large plant spirit (Fungus, Tree or Vine) within 90 ft that acts right after you and follows your commands, Dodging if given none. It has 50 HP and attacks a number of times equal to half the spell level: Slam 1d10 + 3 + spell level Bludgeoning, or the Fungus's Spore Spray that Poisons.",
+    "higherLevel": "The stat block uses the slot's level as the spell level."
+  },
+  "waves-of-exhaustion": {
+    "summary": "While you concentrate, a Magic action sends a 60-ft Cone of gray light: each creature in it makes a CON save or gains 1 Exhaustion level (not past 4). These levels go away when the spell ends."
+  },
+  "summon-dinosaur": {
+    "summary": "Summon a Huge dinosaur spirit (Ankylosaur, Triceratops or Tyrannosaur) within 90 ft that acts right after you and follows your commands, Dodging if given none. It has 60 HP and attacks a number of times equal to half the spell level: Slam 1d10 + 5 + spell level Bludgeoning, a grappling Bite or a charging Gore that knocks Prone.",
+    "higherLevel": "The stat block uses the slot's level as the spell level."
+  },
+  "aura-of-evasion": {
+    "summary": "You and allies in a 30-ft Emanation have Advantage on DEX saves, and against half-damage DEX effects take none on a success and half on a failure. Incapacitated creatures don't benefit."
+  },
+  "fractured-awareness": {
+    "summary": "A creature you see within 120 ft makes an INT save: on a failure 12d10 Psychic and Disadvantage on D20 Tests, repeating the save at the end of its turns to end it; on a success half damage and the spell ends."
+  },
+  "power-word-pain": {
+    "summary": "A creature you see within 60 ft takes 6d8 Force; if it has 100 HP or fewer it is also Charmed for 1 minute. While Charmed its Speed is at most 10 ft, it has Disadvantage on D20 Tests other than CON saves, and must pass a CON save to cast a spell (a failed cast keeps its slot). It makes a CON save at the end of each of its turns to end the spell."
+  },
+  "reweave-fate": {
+    "summary": "Reaction when a creature you see within 60 ft fails a D20 Test: it rerolls with Advantage and keeps the new roll; if that succeeds, it gains 6d10 Temporary HP."
+  },
+  "transfix": {
+    "summary": "A creature you pick within 60 ft makes a CHA save or is Charmed and Incapacitated, walking straight toward you (risking Opportunity Attacks) and taking 4d8 Psychic if it ends its turn within 5 ft of you. It saves again before entering harmful terrain; later turns, a Magic action targets someone new who hasn't already resisted this casting.",
+    "higherLevel": "+1d8 damage per slot level above 7."
+  },
+  "entrancing-mirrors": {
+    "summary": "Up to three creatures you see within 90 ft make an INT save: on a failure 7d6 Psychic and Stunned with halved Speed, repeating the save at the end of their turns to end it; on a success half damage."
+  },
+  "illusory-dragon": {
+    "summary": "Create a tangible Huge shadow dragon within 120 ft that is immune to all damage and conditions. Enemies who see it appear make a WIS save or drop what they hold and are Frightened. Bonus Action: move it 60 ft and breathe a 60-ft Cone for 6d6 damage of a type picked at casting (INT save for half); a successful Investigation check against your DC exposes the illusion and grants Advantage against it."
+  },
+  "iron-body": {
+    "summary": "A willing creature you touch turns to living metal: its Exhaustion can't rise, it takes half damage from Bludgeoning, Fire, Piercing and Slashing, and it is immune to Poison damage and to Paralyzed, Petrified and Poisoned (which end at once if present)."
+  },
+  "lightning-ring": {
+    "summary": "A 10-ft Emanation of crackling lightning: when it reaches a creature or a creature enters or ends its turn in it, you can force a CON save for 3d6 Lightning plus 3d6 Thunder and Deafened 1 minute (half damage only on a success). Magic action: a 60-ft by 5-ft Line, DEX save, 6d6 Lightning, half on a success."
+  },
+  "moment-of-prescience": {
+    "summary": "Reaction when you fail a D20 Test or are hit by an attack: your roll becomes a 20, or the attacker's roll becomes a 1."
+  },
+  "detonate": {
+    "summary": "A creature you see within 500 ft makes a CON save: 10d10 Fire, half on a success. Then everyone else in a 60-ft Emanation around it makes a DEX save (with Disadvantage if the target dropped to 0 HP) for 10d10 Fire, half on a success; unattended objects there are damaged and flammable ones ignite."
+  },
+  "hindsight": {
+    "summary": "Watch visions of everything that happened within 500 ft over the last 10 years, at about one day per second, which you can pause, slow, rewind or skip while you concentrate."
+  },
+  "invulnerability": {
+    "summary": "While you concentrate, you have Immunity to all damage."
+  },
+  "vision-of-elapsing-eons": {
+    "summary": "A creature you see within 120 ft makes an INT save or takes 10d12 Psychic and is Paralyzed for 1 minute. It repeats the save at the end of its turns, gaining 1 Exhaustion level on each failure and ending the spell on a success; a creature within 5 ft can use an action to snap it out."
+  },
+  "wail-of-the-banshee": {
+    "summary": "Up to ten creatures within 60 ft that can hear you: those at 50 HP or fewer die; the rest make a CON save, taking 12d10 Psychic and Deafened 1 hour on a failure, or half damage on a success."
+  }
+}

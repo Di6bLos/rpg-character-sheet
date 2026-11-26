@@ -1,0 +1,63 @@
+{
+  "subclasses": {
+    "vestige-patron": {
+      "summary": "A warlock bound to the fading remnant of a forgotten god, which fights at their side as a floating vestige.",
+      "features": {
+        "Vestige Companion": {
+          "summary": "A Small vestige (Celestial, Fiend or Undead, re-chosen each Long Rest) obeys you and acts on your turn, only Dodging unless you spend a Bonus Action or one of your attacks. AC 13 + CHA, HP 4 + 4 × Warlock level, hover 30 ft; Vestige's Strike (spell attack, reach 5 or range 60) deals 1d6 + 3 + CHA. Remake it with a 1-minute ceremony after it drops; dismiss or recall it as a Magic action.",
+          "dice": "1d6",
+          "choices": [{ "kind": "option", "count": 1, "label": "Vestige type" }],
+          "options": [
+            {
+              "name": "Celestial",
+              "summary": "Strike deals Radiant; resists Radiant. Healing Touch (Bonus Action, 1/day): a touched creature heals 2d8 + CHA and ends Blinded, Deafened or Poisoned.",
+              "damageType": "Radiant",
+              "dice": "2d8"
+            },
+            {
+              "name": "Fiend",
+              "summary": "Strike deals Fire; resists Fire. Fiendish Swap (Bonus Action, 1/day): you and the vestige trade places by teleport if within 60 ft of each other.",
+              "damageType": "Fire",
+              "range": 60
+            },
+            {
+              "name": "Undead",
+              "summary": "Strike deals Necrotic; resists Necrotic. Cursed Invocation (Bonus Action, 1/day): for 1 minute a creature within 30 ft of it has Disadvantage attacking you or the vestige.",
+              "damageType": "Necrotic",
+              "range": 30,
+              "duration": "1 minute"
+            }
+          ]
+        },
+        "Vestige Spells": {
+          "summary": "Pick the Life, Light, Trickery or War Domain: its domain spells count as Warlock spells and are always prepared once your Warlock level reaches each row's Cleric level.",
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "from": ["Life Domain", "Light Domain", "Trickery Domain", "War Domain"],
+              "label": "Vestige Spells domain"
+            }
+          ]
+        },
+        "Vestige Power": {
+          "summary": "Divine Power now recharges on any Short or Long Rest, and whenever you use Magical Cunning. Within 30 ft of your vestige, you share its damage Resistance.",
+          "range": 30
+        },
+        "Vestige Recovery": {
+          "summary": "Reaction and a Pact Magic slot when your vestige would hit 0 HP: it returns to full HP and teleports to a space you see within 30 ft of it. Once per Long Rest.",
+          "activation": "reaction",
+          "range": 30,
+          "uses": { "count": 1, "recharge": "long" }
+        },
+        "Semblance of Life": {
+          "summary": "Magic action, vestige within 90 ft: for 1 hour it takes the Summon Celestial, Fiend or Undead spirit stat block matching its type, at spell level half your Warlock level, keeping its HP, Hit Dice, personality and Divine Power. It gains the spirit's HP as Temporary HP; the form ends when they run out. Once per Long Rest.",
+          "activation": "magic",
+          "range": 90,
+          "duration": "1 hour",
+          "uses": { "count": 1, "recharge": "long" }
+        }
+      }
+    }
+  }
+}

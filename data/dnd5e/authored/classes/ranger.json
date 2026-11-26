@@ -1,0 +1,386 @@
+{
+  "features": {
+    "Spellcasting": {},
+    "Favored Enemy": {
+      "grants": [
+        {
+          "kind": "spell",
+          "spell": "hunters-mark",
+          "at": 1,
+          "free": {
+            "count": "column:Favored Enemy",
+            "recharge": "long"
+          }
+        }
+      ]
+    },
+    "Weapon Mastery": {
+      "choices": [
+        {
+          "kind": "weaponMastery",
+          "count": 2
+        }
+      ]
+    },
+    "Deft Explorer": {
+      "choices": [
+        {
+          "kind": "expertise",
+          "count": 1
+        },
+        {
+          "kind": "language",
+          "count": 2
+        }
+      ]
+    },
+    "Fighting Style": {
+      "choices": [
+        {
+          "kind": "option",
+          "count": 1,
+          "label": "Fighting Style"
+        }
+      ],
+      "options": [
+        {
+          "name": "Fighting Style feat",
+          "choices": [
+            {
+              "kind": "feat",
+              "count": 1,
+              "category": ["fighting-style"]
+            }
+          ]
+        },
+        {
+          "name": "Druidic Warrior",
+          "choices": [
+            {
+              "kind": "cantrip",
+              "count": 2,
+              "list": "druid"
+            }
+          ]
+        }
+      ]
+    },
+    "Ranger Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin", "fighting-style"]
+        }
+      ]
+    },
+    "Extra Attack": {},
+    "Roving": {
+      "grants": [
+        {
+          "kind": "speed",
+          "value": "walk",
+          "bonus": 10
+        },
+        {
+          "kind": "speed",
+          "value": "climb",
+          "amount": "walk"
+        },
+        {
+          "kind": "speed",
+          "value": "swim",
+          "amount": "walk"
+        }
+      ]
+    },
+    "Expertise": {
+      "choices": [
+        {
+          "kind": "expertise",
+          "count": 2
+        }
+      ]
+    },
+    "Tireless": {
+      "activation": "magic",
+      "uses": {
+        "count": "WIS",
+        "recharge": "long"
+      },
+      "dice": "1d8"
+    },
+    "Relentless Hunter": {},
+    "Nature’s Veil": {
+      "activation": "bonus",
+      "uses": {
+        "count": "WIS",
+        "recharge": "long"
+      },
+      "duration": "until the end of your next turn"
+    },
+    "Precise Hunter": {},
+    "Feral Senses": {
+      "grants": [
+        {
+          "kind": "sense",
+          "value": "Blindsight",
+          "range": 30
+        }
+      ]
+    },
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin", "fighting-style"]
+        }
+      ]
+    },
+    "Foe Slayer": {
+      "dice": "1d10"
+    }
+  },
+  "subclasses": {
+    "hunter": {
+      "features": {
+        "Hunter’s Lore": {},
+        "Hunter’s Prey": {
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "label": "Hunter’s Prey"
+            }
+          ],
+          "options": [
+            {
+              "name": "Colossus Slayer",
+              "dice": "1d8",
+              "uses": {
+                "count": 1,
+                "recharge": "turn"
+              }
+            },
+            {
+              "name": "Horde Breaker",
+              "uses": {
+                "count": 1,
+                "recharge": "turn"
+              }
+            }
+          ]
+        },
+        "Defensive Tactics": {
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "label": "Defensive Tactics"
+            }
+          ],
+          "options": [
+            {
+              "name": "Escape the Horde"
+            },
+            {
+              "name": "Multiattack Defense"
+            }
+          ]
+        },
+        "Superior Hunter’s Prey": {
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "range": 30
+        },
+        "Superior Hunter’s Defense": {
+          "activation": "reaction"
+        }
+      }
+    },
+    "beast-master": {
+      "summary": "A ranger bonded to a primal beast that fights at their command.",
+      "features": {
+        "Primal Companion": {
+          "summary": "Summon a primal beast (Land, Sea or Sky) that obeys you and acts on your turn. It only Dodges unless you spend a Bonus Action, or give up one of your attacks, to have it act. Revive it within an hour with a Magic action and a spell slot; swap it on a Long Rest.",
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "label": "Primal Beast"
+            }
+          ],
+          "options": [
+            {
+              "name": "Beast of the Land",
+              "summary": "Medium; AC 13 + WIS; HP 5 + 5 × Ranger level (d8 Hit Dice); Speed 40 ft, climb 40 ft; Darkvision 60 ft. Beast's Strike: 1d8 + 2 + WIS; a 20-ft straight run first adds 1d6 and knocks Large or smaller Prone.",
+              "dice": "1d8",
+              "choices": [
+                {
+                  "kind": "damageType",
+                  "count": 1,
+                  "from": ["Bludgeoning", "Piercing", "Slashing"]
+                }
+              ]
+            },
+            {
+              "name": "Beast of the Sea",
+              "summary": "Medium; AC 13 + WIS; HP 5 + 5 × Ranger level (d8 Hit Dice); Speed 5 ft, swim 60 ft; Darkvision 90 ft; breathes air and water. Beast's Strike: 1d6 + 2 + WIS and Grapples (escape DC = your spell save DC).",
+              "dice": "1d6",
+              "choices": [
+                {
+                  "kind": "damageType",
+                  "count": 1,
+                  "from": ["Bludgeoning", "Piercing"]
+                }
+              ]
+            },
+            {
+              "name": "Beast of the Sky",
+              "summary": "Small; AC 13 + WIS; HP 4 + 4 × Ranger level (d6 Hit Dice); Speed 10 ft, fly 60 ft; Darkvision 60 ft; flying away never provokes. Beast's Strike: 1d4 + 3 + WIS Slashing.",
+              "dice": "1d4",
+              "damageType": "Slashing"
+            }
+          ]
+        },
+        "Exceptional Training": {
+          "summary": "When a Bonus Action commands your beast, it can also Dash, Disengage, Dodge or Help with its own Bonus Action, and its damaging hits may deal Force damage instead.",
+          "damageType": "Force"
+        },
+        "Bestial Fury": {
+          "summary": "Your beast makes Beast's Strike twice when commanded to use it, and its first hit each turn on your Hunter's Mark target adds that spell's bonus damage as Force.",
+          "damageType": "Force"
+        },
+        "Share Spells": {
+          "summary": "A spell you cast on yourself can also affect your beast if it's within 30 ft.",
+          "range": 30
+        }
+      }
+    },
+    "fey-wanderer": {
+      "summary": "A ranger touched by fey magic who blends charm with terrifying psychic strikes.",
+      "features": {
+        "Dreadful Strikes": {
+          "summary": "Weapon hits can deal an extra 1d4 Psychic damage (1d6 from Ranger level 11); each creature takes it at most once per turn.",
+          "dice": "1d4",
+          "damageType": "Psychic"
+        },
+        "Fey Wanderer Spells": {
+          "summary": "Subclass spells always prepared, gained at Ranger levels 3, 5, 9, 13 and 17. You also get a harmless fey quirk, chosen or rolled on a d6 table."
+        },
+        "Otherworldly Glamour": {
+          "summary": "Add your WIS mod (min +1) to Charisma checks, and gain proficiency in Deception, Performance or Persuasion.",
+          "choices": [
+            {
+              "kind": "skill",
+              "count": 1,
+              "from": ["Deception", "Performance", "Persuasion"]
+            }
+          ]
+        },
+        "Beguiling Twist": {
+          "summary": "Advantage on saves to avoid or end Charmed or Frightened. When you or a creature you see within 120 ft succeeds on one, your Reaction makes another creature within 120 ft save WIS or be Charmed or Frightened (your pick) for 1 minute, saving again each turn end.",
+          "activation": "reaction",
+          "range": 120,
+          "save": {
+            "ability": "WIS",
+            "dc": "spell"
+          },
+          "duration": "1 minute"
+        },
+        "Fey Reinforcements": {
+          "summary": "Summon Fey needs no Material component, can be cast once per Long Rest without a slot, and can skip Concentration, lasting 1 minute instead.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "summon-fey",
+              "at": 11,
+              "free": {
+                "count": 1,
+                "recharge": "long"
+              }
+            }
+          ]
+        },
+        "Misty Wanderer": {
+          "summary": "Cast Misty Step without a slot WIS mod times (min 1) per Long Rest. Any casting can carry one willing creature within 5 ft, which lands within 5 ft of you.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "misty-step",
+              "at": 15,
+              "free": {
+                "count": "WIS",
+                "recharge": "long"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "gloom-stalker": {
+      "summary": "A ranger who ambushes foes from the dark with shadow magic and dread.",
+      "features": {
+        "Dread Ambusher": {
+          "summary": "+10 ft Speed on your first turn of each combat. Once per turn a weapon hit can add 2d6 Psychic (WIS mod uses, min 1, per Long Rest). Add your WIS mod to Initiative rolls.",
+          "dice": "2d6",
+          "damageType": "Psychic",
+          "uses": {
+            "count": "WIS",
+            "recharge": "long"
+          }
+        },
+        "Gloom Stalker Spells": {
+          "summary": "Subclass spells always prepared, gained at Ranger levels 3, 5, 9, 13 and 17."
+        },
+        "Umbral Sight": {
+          "summary": "Gain 60 ft Darkvision (+60 ft if you have it). While fully in Darkness, you're Invisible to creatures that use Darkvision to see you.",
+          "grants": [
+            {
+              "kind": "sense",
+              "value": "Darkvision",
+              "range": 60
+            }
+          ]
+        },
+        "Iron Mind": {
+          "summary": "Proficiency in Wisdom saves; if you already have it, pick Intelligence or Charisma saves instead.",
+          "grants": [
+            {
+              "kind": "save",
+              "value": "WIS"
+            }
+          ]
+        },
+        "Stalker's Flurry": {
+          "summary": "Dread Ambusher's Psychic damage rises to 2d8, and each time you use it you may add Sudden Strike or Mass Fear.",
+          "dice": "2d8",
+          "options": [
+            {
+              "name": "Sudden Strike",
+              "summary": "Make one more attack with that weapon at another creature within 5 ft of the first target and within range."
+            },
+            {
+              "name": "Mass Fear",
+              "summary": "The target and everyone within 10 ft of it save WIS or are Frightened until your next turn starts.",
+              "save": {
+                "ability": "WIS",
+                "dc": "spell"
+              },
+              "duration": "until the start of your next turn"
+            }
+          ]
+        },
+        "Shadowy Dodge": {
+          "summary": "Reaction when a creature rolls to attack you: give the roll Disadvantage, then teleport up to 30 ft to a space you can see, hit or miss.",
+          "activation": "reaction",
+          "range": 30
+        }
+      }
+    }
+  }
+}

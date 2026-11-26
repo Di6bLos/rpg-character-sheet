@@ -5,6 +5,8 @@ PDFs live in `.local/` (gitignored, never committed). Cache and search them with
 
 Structured, page-cited rules references built from these PDFs live in `.local/rules/` (also gitignored): `core-rules.md`, `heroes-1.md` (Berserker–Oathsworn), `heroes-2.md` (Shadowmancer–Zephyr, story subclasses), `artificer.md`, `gm-guide.md`. Read those first; fall back to the PDF text when they mark something `[unclear]`.
 
+5e's SRD 5.2.1 is the free PDF from https://www.dndbeyond.com/srd (no account). The generator reads it through pdf.js into `.local/dnd5e/srd-items.json`; the Player's Handbook (2024) and Forge of the Artificer options it lacks come from dnd2024.wikidot.com pages cached in `.local/dnd5e/wikidot/` (`npm run dnd5e:fetch`), for facts only (see `dnd5e.md`).
+
 Pathfinder 2e has no PDFs here. Its text comes from Archives of Nethys, saved as data in `.local/pf2e/aon/`, and the rules bible built from it lives in `.local/rules/pf2e/` (everything) and `.local/rules/pf2e-orc/` (Remaster/ORC only, the shareable set). Each entry cites its book's printed page. See `pf2e.md`.
 
 ## Page numbering
@@ -18,6 +20,7 @@ Some PDFs are two-page **spreads**: one PDF page holds two printed pages. Citati
 | Nimble Artificer 1.7     | `.local/nimble/Artificer1.7.pdf`   | `Artificer1.7`   | spreads | `ceil(p / 2)` (PDF 2 = pp. 3–4)      | Nimble 3PCL (assumed; no license page) |
 | Nimble Creator's Kit 1.2 | `.local/nimble/CreatorsKit1.2.pdf` | `CreatorsKit1.2` | single  | same                                 | Nimble 3PCL (guidance, not rules)      |
 | Nimble GM's Guide 1.0    | `.local/nimble/GMG-v1.0.pdf`       | `GMG-v1.0`       | spreads | read the footer (PDF 16 = pp. 29–30) | Nimble 3PCL                            |
+| SRD 5.2.1 (5e, 2024)     | `.local/dnd5e/SRD_CC_v5.2.1.pdf`   | `SRD_CC_v5.2.1`  | single  | same                                 | CC-BY-4.0 (open)                       |
 
 The PDF → printed direction on spreads: PDF page `n` holds printed pages `2n−2` (left) and `2n−1` (right). The printed number sits on the page's footer line.
 

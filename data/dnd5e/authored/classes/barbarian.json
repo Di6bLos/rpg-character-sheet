@@ -1,0 +1,357 @@
+{
+  "features": {
+    "Rage": {
+      "activation": "bonus",
+      "uses": {
+        "count": "column:Rages",
+        "recharge": "long",
+        "short": 1
+      },
+      "duration": "up to 10 minutes"
+    },
+    "Unarmored Defense": {
+      "grants": [
+        {
+          "kind": "ac",
+          "formula": "10 + DEX + CON"
+        }
+      ]
+    },
+    "Weapon Mastery": {
+      "choices": [
+        {
+          "kind": "weaponMastery",
+          "count": 2
+        }
+      ]
+    },
+    "Danger Sense": {},
+    "Reckless Attack": {
+      "duration": "until the start of your next turn"
+    },
+    "Barbarian Subclass": {},
+    "Primal Knowledge": {
+      "choices": [
+        {
+          "kind": "skill",
+          "count": 1,
+          "from": [
+            "Animal Handling",
+            "Athletics",
+            "Intimidation",
+            "Nature",
+            "Perception",
+            "Survival"
+          ]
+        }
+      ]
+    },
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin"]
+        }
+      ]
+    },
+    "Extra Attack": {},
+    "Fast Movement": {},
+    "Feral Instinct": {},
+    "Instinctive Pounce": {},
+    "Brutal Strike": {
+      "uses": {
+        "count": 1,
+        "recharge": "turn"
+      },
+      "dice": "1d10",
+      "options": [
+        {
+          "name": "Forceful Blow"
+        },
+        {
+          "name": "Hamstring Blow",
+          "duration": "until the start of your next turn"
+        }
+      ]
+    },
+    "Relentless Rage": {
+      "save": {
+        "ability": "CON",
+        "dc": 10
+      }
+    },
+    "13:Improved Brutal Strike": {
+      "options": [
+        {
+          "name": "Staggering Blow",
+          "duration": "until the start of your next turn"
+        },
+        {
+          "name": "Sundering Blow",
+          "duration": "until the start of your next turn"
+        }
+      ]
+    },
+    "Persistent Rage": {
+      "uses": {
+        "count": 1,
+        "recharge": "long"
+      },
+      "duration": "10 minutes"
+    },
+    "17:Improved Brutal Strike": {
+      "dice": "2d10"
+    },
+    "Indomitable Might": {},
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin"]
+        }
+      ]
+    },
+    "Primal Champion": {}
+  },
+  "subclasses": {
+    "path-of-the-berserker": {
+      "features": {
+        "Frenzy": {
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          }
+        },
+        "Mindless Rage": {},
+        "Retaliation": {
+          "activation": "reaction",
+          "range": 5
+        },
+        "Intimidating Presence": {
+          "activation": "bonus",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a use of Rage"
+          },
+          "save": {
+            "ability": "WIS",
+            "dc": "8+PB+STR"
+          },
+          "range": 30,
+          "duration": "1 minute"
+        }
+      }
+    },
+    "path-of-the-wild-heart": {
+      "summary": "A barbarian who feels kinship with beasts: talks to animals and takes on an animal's gifts each time they rage.",
+      "features": {
+        "Animal Speaker": {
+          "summary": "Cast Beast Sense and Speak with Animals, as Rituals only, using Wisdom.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "beast-sense",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "speak-with-animals",
+              "at": 3
+            }
+          ]
+        },
+        "Rage of the Wilds": {
+          "summary": "Each time you start a Rage, pick one animal benefit (Bear, Eagle or Wolf) that lasts while it's active.",
+          "options": [
+            {
+              "name": "Bear",
+              "summary": "While raging, resist all damage types but Force, Necrotic, Psychic and Radiant."
+            },
+            {
+              "name": "Eagle",
+              "activation": "bonus",
+              "summary": "Dash and Disengage as part of the Bonus Action that starts the Rage; while raging, a Bonus Action does both again."
+            },
+            {
+              "name": "Wolf",
+              "range": 5,
+              "summary": "While raging, allies attack with Advantage against your enemies within 5 ft of you."
+            }
+          ]
+        },
+        "Aspect of the Wilds": {
+          "summary": "Pick one lasting animal trait (Owl, Panther or Salmon); swap it after any Long Rest.",
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "label": "Aspect of the Wilds"
+            }
+          ],
+          "options": [
+            {
+              "name": "Owl",
+              "grants": [
+                {
+                  "kind": "sense",
+                  "value": "Darkvision",
+                  "range": 60
+                }
+              ],
+              "summary": "Darkvision 60 ft, or +60 ft to Darkvision you already have."
+            },
+            {
+              "name": "Panther",
+              "grants": [
+                {
+                  "kind": "speed",
+                  "value": "climb",
+                  "amount": "walk"
+                }
+              ],
+              "summary": "Climb Speed equal to your Speed."
+            },
+            {
+              "name": "Salmon",
+              "grants": [
+                {
+                  "kind": "speed",
+                  "value": "swim",
+                  "amount": "walk"
+                }
+              ],
+              "summary": "Swim Speed equal to your Speed."
+            }
+          ]
+        },
+        "Nature Speaker": {
+          "summary": "Cast Commune with Nature, as a Ritual only, using Wisdom.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "commune-with-nature",
+              "at": 10
+            }
+          ]
+        },
+        "Power of the Wilds": {
+          "summary": "Each time you start a Rage, also pick Falcon, Lion or Ram for a stronger animal benefit while it lasts.",
+          "options": [
+            {
+              "name": "Falcon",
+              "summary": "While raging and wearing no armor, fly at your Speed."
+            },
+            {
+              "name": "Lion",
+              "range": 5,
+              "summary": "While raging, enemies within 5 ft have Disadvantage attacking anyone but you or another Barbarian using Lion."
+            },
+            {
+              "name": "Ram",
+              "summary": "While raging, a melee hit can knock a Large or smaller target Prone."
+            }
+          ]
+        }
+      }
+    },
+    "path-of-the-world-tree": {
+      "summary": "A barbarian bound to the cosmic tree, whose Rage shares life force and teleports foes and friends.",
+      "features": {
+        "Vitality of the Tree": {
+          "summary": "Starting a Rage gives you temp HP equal to your Barbarian level; while raging you can hand temp HP to an ally nearby each turn.",
+          "options": [
+            {
+              "name": "Vitality Surge",
+              "summary": "Gain temp HP equal to your Barbarian level whenever you start a Rage."
+            },
+            {
+              "name": "Life-Giving Force",
+              "range": 10,
+              "summary": "At the start of each raging turn, one other creature within 10 ft gains temp HP: roll d6s equal to your Rage Damage bonus. They vanish when the Rage ends."
+            }
+          ]
+        },
+        "Branches of the Tree": {
+          "summary": "Reaction while raging, when a creature you see starts its turn within 30 ft: it makes a STR save or is pulled next to you, and you may drop its Speed to 0 for the turn.",
+          "activation": "reaction",
+          "save": {
+            "ability": "STR",
+            "dc": "8+PB+STR"
+          },
+          "range": 30
+        },
+        "Battering Roots": {
+          "summary": "On your turn, Heavy or Versatile melee weapons get +10 ft reach, and a hit with one can also apply Push or Topple alongside its usual mastery."
+        },
+        "Travel along the Tree": {
+          "summary": "When you start a Rage, and as a Bonus Action while raging, teleport up to 60 ft. Once per Rage, make it 150 ft and take up to six willing creatures within 10 ft.",
+          "activation": "bonus",
+          "range": 60
+        }
+      }
+    },
+    "path-of-the-zealot": {
+      "summary": "A barbarian whose Rage is divine ecstasy, adding holy damage, self-healing and a winged battle form.",
+      "features": {
+        "Divine Fury": {
+          "summary": "While raging, your first weapon or Unarmed Strike hit each turn adds 1d6 + half your Barbarian level, Necrotic or Radiant (pick each time).",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "dice": "1d6"
+        },
+        "Warrior of the Gods": {
+          "summary": "Pool of d12 healing dice (4, rising to 5 at level 6, 6 at 12, 7 at 17). Bonus Action: spend any number, roll and heal that much. Refills on a Long Rest.",
+          "activation": "bonus",
+          "uses": {
+            "count": 4,
+            "recharge": "long"
+          },
+          "dice": "1d12"
+        },
+        "Fanatical Focus": {
+          "summary": "Once per Rage, reroll a failed save adding your Rage Damage bonus; the new roll stands."
+        },
+        "Zealous Presence": {
+          "summary": "Bonus Action: up to ten other creatures within 60 ft get Advantage on attacks and saves until your next turn starts. Once per Long Rest, or spend a Rage use to reuse it.",
+          "activation": "bonus",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a use of Rage"
+          },
+          "range": 60,
+          "duration": "until the start of your next turn"
+        },
+        "Rage of the Gods": {
+          "summary": "On starting a Rage, become a divine warrior for 1 minute (or until 0 HP): flight, divine resistances, and a Rage-fuelled save for dying allies. Once per Long Rest.",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          },
+          "duration": "1 minute",
+          "options": [
+            {
+              "name": "Flight",
+              "summary": "Fly at your Speed and hover."
+            },
+            {
+              "name": "Resistance",
+              "summary": "Resist Necrotic, Psychic and Radiant damage."
+            },
+            {
+              "name": "Revivification",
+              "activation": "reaction",
+              "range": 30,
+              "summary": "When a creature within 30 ft would hit 0 HP, spend a Rage use to set its HP to your Barbarian level instead."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

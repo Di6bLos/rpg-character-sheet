@@ -1,0 +1,317 @@
+{
+  "tireless-reveler": {
+    "summary": "When an ally within 60 ft whom you can see spends Heroic Inspiration, gain Heroic Inspiration if you don't have it. PB times per Short or Long Rest.",
+    "range": 60,
+    "uses": {
+      "count": "PB",
+      "recharge": "short"
+    }
+  },
+  "vampire-hunter": {
+    "summary": "Hard to pin down and hardened against life-draining harm.",
+    "benefits": {
+      "Adroit Escape": {
+        "summary": "Advantage on checks to break free of nonmagical restraints or a grapple."
+      },
+      "Vitality Ward": {
+        "summary": "Reaction on taking Necrotic damage: roll PB d6s and cut the damage by the total. Once per Short or Long Rest.",
+        "activation": "reaction",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      }
+    }
+  },
+  "vampires-plaything": {
+    "summary": "A former vampire's thrall who learned to brew remedies and slip away.",
+    "benefits": {
+      "Decanting": {
+        "summary": "On finishing a Long Rest, fill an empty vial or flask with a Potion of Healing or an Antitoxin; it vanishes at the end of your next Long Rest."
+      },
+      "Timely Retreat": {
+        "summary": "Bonus Action: Dash or Disengage. PB times per Long Rest.",
+        "activation": "bonus",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      },
+      "Vampiric Connection": {
+        "summary": "While on the same plane, your old vampire master (fate set by the DM) can speak to you telepathically, and you may let it share your senses."
+      }
+    }
+  },
+  "bloodlust": {
+    "summary": "Heal by drawing on wounded foes and recover more reliably.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength, Dexterity or Constitution, max 20."
+      },
+      "Powerful Recovery": {
+        "summary": "Hit Point Dice rolled for healing count 1s and 2s as 3."
+      },
+      "Sanguine Feast": {
+        "summary": "Once per turn when your attack roll hits a Bloodied creature that's neither Construct nor Undead, spend and roll a Hit Point Die to heal the roll + CON modifier. PB times per Long Rest.",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "bomber": {
+    "summary": "Throw flasks and thrown weapons farther and straighter.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity, max 20."
+      },
+      "Far Lobber": {
+        "summary": "A vial or flask thrown with the Attack action can target a creature or object you see within 40 ft.",
+        "range": 40
+      },
+      "Long Shots": {
+        "summary": "No Disadvantage for long range with Thrown weapons."
+      }
+    }
+  },
+  "cloying-mists": {
+    "summary": "Conjure clinging fog that douses flames and slows enemies.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Arise, Fog": {
+        "summary": "Fog Cloud is always prepared; cast it once per Long Rest without a slot, or with slots, using the ability you raised.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "fog-cloud",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ]
+      },
+      "Grasping Mist": {
+        "summary": "Your Fog Cloud puts out nonmagical fires inside it and gives non-allies in it -5 ft Speed."
+      }
+    }
+  },
+  "delicious-pain": {
+    "summary": "Shrug off physical blows after the first one lands.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Toughened Flesh": {
+        "summary": "Reaction right after taking Bludgeoning, Piercing or Slashing damage: Resistance to all three until your next turn starts. Once per Short or Long Rest.",
+        "activation": "reaction",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      }
+    }
+  },
+  "light-bringer": {
+    "summary": "Wield sunlight against the dark and heal in it.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Sacred Magic": {
+        "summary": "Learn Light (no Material components), or another Cleric cantrip if you already know it, cast with the ability you raised.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "light"
+          }
+        ]
+      },
+      "Solar Luminance": {
+        "summary": "Make one casting of Light shed sunlight. Once per Long Rest.",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        }
+      },
+      "Sun’s Healing": {
+        "summary": "Bonus Action in sunlight: spend and roll a Hit Point Die, healing the roll. Once per Short or Long Rest.",
+        "activation": "bonus",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      }
+    }
+  },
+  "love-bites": {
+    "summary": "Your strikes leave foes smitten for a moment.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Endearing Pain": {
+        "summary": "Bonus Action right after damaging a creature with a Melee weapon or Unarmed Strike: it's Charmed until your next turn starts or you or an ally damages it. Once per Short or Long Rest.",
+        "activation": "bonus",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      }
+    }
+  },
+  "putrefy": {
+    "summary": "Necrotic harm that sickens.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Necrosis": {
+        "summary": "When you roll Necrotic damage, one creature it hits is Poisoned until your next turn starts. Once per Short or Long Rest.",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      }
+    }
+  },
+  "rebuke": {
+    "summary": "Radiant harm that knocks foes down.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Radiant Strike": {
+        "summary": "When you roll Radiant damage, one Huge or smaller creature it hits falls Prone. Once per Short or Long Rest.",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      }
+    }
+  },
+  "treacherous-allure": {
+    "summary": "Charm others, then strike them while they trust you.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Enchanting Presence": {
+        "summary": "Charm Person is always prepared; cast it once per Long Rest without a slot, or with slots, using the ability you raised.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "charm-person",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ]
+      },
+      "Inevitable Betrayal": {
+        "summary": "Advantage on attack rolls against Charmed creatures."
+      }
+    }
+  },
+  "vampire-touched": {
+    "summary": "A taste of vampiric magic: wall-crawling and a minor beguiling spell.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Vampire Magic": {
+        "summary": "Spider Climb and a level 1 Enchantment or Illusion spell of your choice are always prepared; each can be cast once per Long Rest without a slot (Spider Climb on yourself only), or with slots, using the ability you raised.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "spider-climb",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "spell",
+            "count": 1,
+            "maxLevel": 1,
+            "school": ["Enchantment", "Illusion"],
+            "label": "Level 1 Enchantment or Illusion spell (free once per Long Rest)"
+          }
+        ]
+      }
+    }
+  },
+  "boon-of-blazing-dawn": {
+    "summary": "Become a vessel of sunlight: immune to Radiant, with weapon blows that blaze.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Beloved of the Sun": {
+        "summary": "Immunity to Radiant damage.",
+        "grants": [
+          {
+            "kind": "immunity",
+            "value": "Radiant"
+          }
+        ]
+      },
+      "Blazing Strike": {
+        "summary": "Weapon hits can deal Radiant damage in place of their usual type."
+      },
+      "Burst of Sunlight": {
+        "summary": "Once per turn on a hit with Radiant damage, shine sunlight around you (Bright 30 ft, Dim 30 ft more) until your next turn starts.",
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      }
+    }
+  },
+  "boon-of-looming-shadows": {
+    "summary": "Shadowy reach and evasion.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Shadowy Stretch": {
+        "summary": "Taking the Attack action adds 10 ft to your Melee weapon reach until your turn ends."
+      },
+      "Dancing Silhouette": {
+        "summary": "Bonus Action: Dodge.",
+        "activation": "bonus"
+      }
+    }
+  },
+  "boon-of-misty-escape": {
+    "summary": "Escape death by turning to mist.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 30."
+      },
+      "Gaseous Form": {
+        "summary": "When dropped to 0 HP but not killed outright, go to 1 HP and cast Gaseous Form on yourself for free with no action: Fly Speed 20 ft and regain 10 HP at the start of each of your turns while it lasts. Uses the ability you raised; once per Long Rest.",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        },
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "gaseous-form",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

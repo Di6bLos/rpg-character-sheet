@@ -1,0 +1,362 @@
+{
+  "subclasses": {
+    "oath-of-the-ebon-blade": {
+      "summary": "An undead death knight paladin who wields runes, necrotic power and cold against the Scourge.",
+      "features": {
+        "Death Coil": {
+          "summary": "Replaces Lay On Hands; you become Undead. A pool of d8s (1 + CHA, min 1) refills on a Long Rest. Bonus Action: spend up to CHA dice (min 1) on a creature you see within 60 ft, CON save for the total as Necrotic (half on success), or heal an Undead target by the total instead.",
+          "activation": "bonus",
+          "dice": "1d8",
+          "damageType": "Necrotic",
+          "range": 60
+        },
+        "Runic Smite": {
+          "summary": "Replaces Paladin's Smite: Rune Strike is always prepared and castable once per Long Rest without a slot.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "rune-strike",
+              "at": 2,
+              "free": {
+                "count": 1,
+                "recharge": "long"
+              }
+            }
+          ]
+        },
+        "Oath of the Ebon Blade Spells": {
+          "summary": "Always prepared: Death Grip (3), Death and Decay (5), Summon Undead (9), Freedom of Movement (13), Circle of Power (17), plus the spells of your inscribed rune: Blood (Vampiric Blood, Spiritual Weapon, Leeching Strike, Evard's Black Tentacles, Bonestorm), Frost (Chains of Ice, Frostscythe, Remorseless Winter, Ice Storm, Cone of Cold) or Unholy (Scourge Strike, Ray of Enfeeblement, Bestow Curse, Blight, Contagion).",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "death-grip",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "death-and-decay",
+              "at": 5
+            },
+            {
+              "kind": "spell",
+              "spell": "summon-undead",
+              "at": 9
+            },
+            {
+              "kind": "spell",
+              "spell": "freedom-of-movement",
+              "at": 13
+            },
+            {
+              "kind": "spell",
+              "spell": "circle-of-power",
+              "at": 17
+            }
+          ],
+          "options": [
+            {
+              "name": "Blood",
+              "summary": "With the Blood rune: Vampiric Blood (3), Spiritual Weapon (5), Leeching Strike (9), Evard's Black Tentacles (13), Bonestorm (17).",
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "vampiric-blood",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "spiritual-weapon",
+                  "at": 5
+                },
+                {
+                  "kind": "spell",
+                  "spell": "leeching-strike",
+                  "at": 9
+                },
+                {
+                  "kind": "spell",
+                  "spell": "black-tentacles",
+                  "at": 13
+                },
+                {
+                  "kind": "spell",
+                  "spell": "bonestorm",
+                  "at": 17
+                }
+              ]
+            },
+            {
+              "name": "Frost",
+              "summary": "With the Frost rune: Chains of Ice (3), Frostscythe (5), Remorseless Winter (9), Ice Storm (13), Cone of Cold (17).",
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "chains-of-ice",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "frostscythe",
+                  "at": 5
+                },
+                {
+                  "kind": "spell",
+                  "spell": "remorseless-winter",
+                  "at": 9
+                },
+                {
+                  "kind": "spell",
+                  "spell": "ice-storm",
+                  "at": 13
+                },
+                {
+                  "kind": "spell",
+                  "spell": "cone-of-cold",
+                  "at": 17
+                }
+              ]
+            },
+            {
+              "name": "Unholy",
+              "summary": "With the Unholy rune: Scourge Strike (3), Ray of Enfeeblement (5), Bestow Curse (9), Blight (13), Contagion (17).",
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "scourge-strike",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "ray-of-enfeeblement",
+                  "at": 5
+                },
+                {
+                  "kind": "spell",
+                  "spell": "bestow-curse",
+                  "at": 9
+                },
+                {
+                  "kind": "spell",
+                  "spell": "blight",
+                  "at": 13
+                },
+                {
+                  "kind": "spell",
+                  "spell": "contagion",
+                  "at": 17
+                }
+              ]
+            }
+          ]
+        },
+        "Runeforging": {
+          "summary": "On a Long Rest, inscribe (or move) one rune on a melee weapon you hold; swap it for another when you gain a level.",
+          "choices": [{ "kind": "option", "count": 1, "label": "Rune" }],
+          "options": [
+            {
+              "name": "Blood",
+              "summary": "Gain CHA + Paladin level Temporary HP when inscribing it and on each Long Rest, and again whenever you drop an enemy to 0 HP while wielding the weapon."
+            },
+            {
+              "name": "Frost",
+              "summary": "Your weapon attacks, Paladin spells and features ignore Cold Resistance; a Light-property extra attack that hits adds 1d4 Cold.",
+              "dice": "1d4",
+              "damageType": "Cold"
+            },
+            {
+              "name": "Unholy",
+              "summary": "Your weapon attacks, Paladin spells and features ignore Necrotic Resistance; with a Heavy weapon, the first creature you hit each turn takes extra Necrotic equal to CHA (min 1).",
+              "damageType": "Necrotic"
+            }
+          ]
+        },
+        "Runic Power": {
+          "summary": "Right after casting Rune Strike, spend a Channel Divinity use for your rune's effect.",
+          "options": [
+            {
+              "name": "Blood",
+              "summary": "Heal as much as the Rune Strike's Necrotic damage."
+            },
+            {
+              "name": "Frost",
+              "summary": "The target and each enemy in a 10-ft Emanation from it take 2d6 Cold.",
+              "dice": "2d6",
+              "damageType": "Cold",
+              "range": 10
+            },
+            {
+              "name": "Unholy",
+              "summary": "Curse the target until your next turn ends: its next save takes -1d6, then the curse ends.",
+              "dice": "1d6"
+            }
+          ]
+        },
+        "Faithful Steed": {
+          "summary": "Your Find Steed mount may be Undead: its Otherworldly Slam deals Necrotic and it gains Ghostly Stride, a once-per-Long-Rest Bonus Action letting it and its rider pass through creatures and objects as Difficult Terrain (1d10 Force if a turn ends inside one).",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "find-steed",
+              "at": 5
+            }
+          ]
+        },
+        "Aura of Deathly Endurance": {
+          "summary": "Inside your Aura of Protection, you and your allies resist Cold, Necrotic and Psychic damage."
+        },
+        "Runic Strikes": {
+          "summary": "Replaces Radiant Strikes: melee weapon and Unarmed Strike hits deal an extra 1d8 Necrotic.",
+          "dice": "1d8",
+          "damageType": "Necrotic"
+        },
+        "Improved Death Coil": {
+          "summary": "Replaces Restoring Touch: Death Coil damage adds CHA (min 1) Necrotic, pass or fail; healing an Undead with it adds your Paladin level."
+        },
+        "Runic Mastery": {
+          "summary": "Once per Long Rest, unleash your rune: Blood shields an ally, Frost breathes a cone of cold, Unholy empowers Summon Undead.",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          },
+          "options": [
+            {
+              "name": "Blood",
+              "summary": "Reaction when a creature you see within 10 ft is hit: reduce its damage by your Paladin level and lose that many HP yourself.",
+              "activation": "reaction",
+              "range": 10
+            },
+            {
+              "name": "Frost",
+              "summary": "Swap one attack of your Attack action for a 30-ft Cone: DEX save vs spell DC, 8d6 Cold, half on success.",
+              "dice": "8d6",
+              "damageType": "Cold",
+              "save": {
+                "ability": "DEX",
+                "dc": "spell"
+              },
+              "range": 30
+            },
+            {
+              "name": "Unholy",
+              "summary": "Cast Summon Undead without Concentration for 1 minute; the spirit gets Paladin level + CHA Temporary HP and its first hit each turn adds half your Paladin level (round up) Necrotic.",
+              "duration": "1 minute"
+            }
+          ]
+        },
+        "Aspect of the Horsemen": {
+          "summary": "Bonus Action for 10 minutes: restore Runic Mastery with a level 4 slot, and pick any rune's effect for Runic Power and Runic Mastery. Once per Long Rest, or restore it with a level 5 slot.",
+          "activation": "bonus",
+          "duration": "10 minutes",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a level 5 spell slot"
+          },
+          "options": [
+            {
+              "name": "Generate Runic Power",
+              "summary": "Spend a level 4 spell slot (no action) to get back a Runic Mastery use."
+            },
+            {
+              "name": "Runeforging",
+              "summary": "Runic Power and Runic Mastery can use any rune's effect, not only your inscribed one."
+            }
+          ]
+        }
+      }
+    },
+    "oath-of-the-holy": {
+      "summary": "A paladin devoted to healing and support, channelling the Light to keep allies standing.",
+      "features": {
+        "Oath of the Holy Spells": {
+          "summary": "Always prepared: Cure Wounds and Healing Word at Paladin 3; Lesser Restoration and Prayer of Healing at 5; Dispel Magic and Mass Healing Word at 9; Aura of Life and Death Ward at 13; Greater Restoration and Mass Cure Wounds at 17.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "cure-wounds",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "healing-word",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "lesser-restoration",
+              "at": 5
+            },
+            {
+              "kind": "spell",
+              "spell": "prayer-of-healing",
+              "at": 5
+            },
+            {
+              "kind": "spell",
+              "spell": "dispel-magic",
+              "at": 9
+            },
+            {
+              "kind": "spell",
+              "spell": "mass-healing-word",
+              "at": 9
+            },
+            {
+              "kind": "spell",
+              "spell": "aura-of-life",
+              "at": 13
+            },
+            {
+              "kind": "spell",
+              "spell": "death-ward",
+              "at": 13
+            },
+            {
+              "kind": "spell",
+              "spell": "greater-restoration",
+              "at": 17
+            },
+            {
+              "kind": "spell",
+              "spell": "mass-cure-wounds",
+              "at": 17
+            }
+          ]
+        },
+        "Beacon of Light": {
+          "summary": "Magic action, spend a Channel Divinity use on an ally within 60 ft: for 1 minute, when your spells or Lay On Hands heal someone else, that ally heals half as much.",
+          "activation": "magic",
+          "range": 60,
+          "duration": "1 minute"
+        },
+        "Lightbringer’s Aura": {
+          "summary": "Healing a Bloodied creature in your Aura of Protection with a spell or Lay On Hands adds 1d6 HP.",
+          "dice": "1d6"
+        },
+        "Infusion of Light": {
+          "summary": "Casting a Radiant-damage spell refills your Lay On Hands pool by the Radiant damage rolled, up to five times your Paladin level."
+        },
+        "Holy Deliverance": {
+          "summary": "Bonus Action for 10 minutes: your Aura of Protection sheds sunlight and heals Bloodied allies who start their turn in it by CHA + PB. Once per Long Rest, or restore it with a level 5 slot.",
+          "activation": "bonus",
+          "duration": "10 minutes",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a level 5 spell slot"
+          },
+          "options": [
+            {
+              "name": "Healing Power",
+              "summary": "An ally that begins its turn Bloodied in the aura heals CHA + PB."
+            },
+            {
+              "name": "Sunlight",
+              "summary": "The aura is lit with Bright Light that counts as sunlight."
+            }
+          ]
+        }
+      }
+    }
+  }
+}
