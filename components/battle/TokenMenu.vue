@@ -35,6 +35,7 @@ const jumpNote = computed(() => {
 })
 
 const busy = ref(false)
+const gmUndo = useGmUndo()
 
 async function makeActive(close: (refocus?: boolean) => void) {
   if (!canJump.value || busy.value) return
@@ -45,6 +46,7 @@ async function makeActive(close: (refocus?: boolean) => void) {
   try {
     const undo = await props.init.jumpTo(props.c.id, props.roundOffset)
     if (!undo) return
+    gmUndo?.set(`${name}'s turn`, undo)
     close()
     snackbar.show(`${name}'s turn${roundMoved ? `, round ${round}` : ''}`, 'success', 6000, {
       label: 'Undo',

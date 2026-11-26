@@ -154,6 +154,7 @@ async function onSignOut() {
     </NuxtLink>
     <BattleGmPhoneMenu v-if="role === 'gm'" :init="init" />
     <slot name="tools" />
+    <BattleUndoButton v-if="role === 'gm' || (role === 'player' && campaign.myCharacterId)" icon />
     <UiDialog v-if="gmControls" v-model="tableOpen" title="Table" width="960px">
       <BoardTableAdmin />
     </UiDialog>

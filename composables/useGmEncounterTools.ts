@@ -94,9 +94,27 @@ export function useGmEncounterTools(
  */
 export function useNewRound(init: ReturnType<typeof useInitiative>) {
   const snackbar = useSnackbarStore()
+  const gmUndo = useGmUndo()
   return async () => {
     const undo = await init.newRound()
     if (!undo) return
+    gmUndo?.set('New round', undo)
     snackbar.show(`Round ${init.round.value}`, 'success', 6000, { label: 'Undo', run: undo })
+  }
+}
+
+/**
+ * Next turn from the GM's bars, with an Undo on the toast naming who acts now: a mis-tap
+ * would otherwise refill the ended turn's summons, which Previous turn doesn't put back.
+ */
+export function useNextTurn(init: ReturnType<typeof useInitiative>) {
+  const snackbar = useSnackbarStore()
+  const gmUndo = useGmUndo()
+  return async () => {
+    const undo = await init.nextTurn()
+    if (!undo) return
+    gmUndo?.set('Next turn', undo)
+    const now = init.order.value.find((c) => c.id === init.turnId.value)?.name
+    snackbar.show(now ? `${now}'s turn` : 'Next turn', 'info', 5000, { label: 'Undo', run: undo })
   }
 }

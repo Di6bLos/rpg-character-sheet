@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The battle board's one-line bar: campaign name, the board tabs, the round, and on the
 // right "Open full sheet" for players or the GM's turn controls (Prev, Next turn, New
-// round, End encounter). For the GM the campaign name opens Table (invites, session,
+// round, End encounter), with Undo (`UndoButton`) at the very end. For the GM the campaign name opens Table (invites, session,
 // players); for players it opens a menu with the campaign switcher and "Playing as".
 // The tablet variant (768–1279px) has no right column to show. The campaign name opens a
 // menu for everyone: the GM's starts with Table, then the campaign switcher (and "Playing
@@ -45,6 +45,7 @@ function toggleDrawer(tab: DrawerTab) {
 
 const hasOrder = computed(() => props.init.order.value.length > 0)
 const newRound = useNewRound(props.init)
+const nextTurn = useNextTurn(props.init)
 const acting = computed(
   () => props.init.order.value.find((c) => c.id === props.init.turnId.value)?.name ?? '',
 )
@@ -188,7 +189,10 @@ const endOpen = ref(false)
       </button>
     </div>
 
-    <BattleGmPhoneMenu v-if="tablet && gmControls" tablet :init="init" />
+    <template v-if="tablet && gmControls">
+      <BattleGmPhoneMenu tablet :init="init" />
+      <BattleUndoButton />
+    </template>
     <div v-else-if="gmControls" class="bar__tools">
       <button
         type="button"
@@ -199,7 +203,7 @@ const endOpen = ref(false)
       >
         ◀ Prev
       </button>
-      <button type="button" class="btn btn--sm" :disabled="!hasOrder" @click="init.nextTurn">
+      <button type="button" class="btn btn--sm" :disabled="!hasOrder" @click="nextTurn">
         Next turn ▶
       </button>
       <button
@@ -219,14 +223,17 @@ const endOpen = ref(false)
       >
         End encounter
       </button>
+      <BattleUndoButton />
     </div>
-    <NuxtLink
-      v-else-if="campaign.myCharacterId"
-      :to="`/character/${campaign.myCharacterId}?campaign=${campaign.id}`"
-      class="btn btn--ghost btn--sm"
-      :class="{ bar__sheet: tablet }"
-      >{{ tablet ? 'Sheet ↗' : 'Open full sheet ↗' }}</NuxtLink
-    >
+    <div v-else-if="campaign.myCharacterId" class="bar__tools">
+      <NuxtLink
+        :to="`/character/${campaign.myCharacterId}?campaign=${campaign.id}`"
+        class="btn btn--ghost btn--sm"
+        :class="{ bar__sheet: tablet }"
+        >{{ tablet ? 'Sheet ↗' : 'Open full sheet ↗' }}</NuxtLink
+      >
+      <BattleUndoButton />
+    </div>
 
     <template v-if="gmControls">
       <UiDialog v-model="tableOpen" title="Table" width="960px">

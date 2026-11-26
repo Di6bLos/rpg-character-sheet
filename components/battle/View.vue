@@ -23,6 +23,10 @@ const snackbar = useSnackbarStore()
 
 const init = useInitiative(campaignId, isGm)
 useRosterRefresh(init.activeId)
+// The top bar's Undo for the GM's last turn change.
+const gmUndo = provideGmUndo(init)
+// Live party cards, turns that pass when a hero is out of actions, summons that sync.
+provideBattleLive(init, gmUndo)
 
 const downSummons = computed(() => downSummonKeys(init.rows.value))
 
