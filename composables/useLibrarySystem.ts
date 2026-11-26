@@ -1,18 +1,25 @@
 import { RULES_SYSTEMS, rulesSystem, type RulesSystem } from '~/data/rules'
+import type { GameSystem } from '~/types'
 
-// The game system a Library tab shows (Rules, Spells, Classes): the URL's `system`, else the
-// one last picked on any of them (per browser), else the first the tab has content for.
+// The game system a Library tab shows (Rules, Spells, Classes, Feats…): the URL's `system`,
+// else the one last picked on any of them (per browser), else the first the tab has content for.
 const STORE_KEY = 'lantern-rules-system'
 
+/** The last system picked, read from storage once and kept in step as tabs remember theirs. */
+const last = ref<string | null | undefined>(undefined)
+
 function remembered(): string | null {
+  if (last.value !== undefined) return last.value
   try {
-    return localStorage.getItem(STORE_KEY)
+    last.value = localStorage.getItem(STORE_KEY)
   } catch {
-    return null
+    last.value = null
   }
+  return last.value
 }
 
 function remember(id: string) {
+  last.value = id
   try {
     localStorage.setItem(STORE_KEY, id)
   } catch {
@@ -34,4 +41,18 @@ export function useLibrarySystem(isReady: (s: RulesSystem) => boolean) {
     { immediate: true },
   )
   return sys
+}
+
+/**
+ * The system the Library's tab bar names its tabs for (Species or Ancestries) and hides tabs
+ * by (no Feats for Nimble): the URL's, else the last picked, else the first. It remembers
+ * nothing itself.
+ */
+export function useLibraryNavSystem() {
+  const route = useRoute()
+  return computed<GameSystem | undefined>(
+    () =>
+      (rulesSystem(String(route.query.system ?? '')) ?? rulesSystem(remembered()))?.id ??
+      RULES_SYSTEMS[0]?.id,
+  )
 }
