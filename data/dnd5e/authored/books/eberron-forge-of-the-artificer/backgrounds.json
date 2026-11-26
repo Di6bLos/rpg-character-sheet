@@ -1,0 +1,53 @@
+{
+  "aberrant-heir": {
+    "summary": "Bears an aberrant dragonmark that has brought suspicion or hostility from the houses, whether hidden, flaunted or tied to House Tarkanan's outlaws."
+  },
+  "archaeologist": {
+    "summary": "A scholar of vanished civilizations who splits time between libraries and remote ruins, part historian and part treasure hunter."
+  },
+  "house-agent": {
+    "summary": "Works for a dragonmarked house, by blood or by contract, without a mark of their own, carrying out the house's business far and wide."
+  },
+  "house-cannith-heir": {
+    "summary": "A scion of the house of makers, expected to invent, study or deal on its behalf while its feuding barons fight over who leads it."
+  },
+  "house-deneith-heir": {
+    "summary": "Raised in the house of guards and mercenaries to value duty, honor and law, perhaps as a bodyguard, sellsword or bounty marshal."
+  },
+  "house-ghallanda-heir": {
+    "summary": "Grew up among the comforts of the hospitality house's inns, as a warm host or a schemer who trades on others' trust."
+  },
+  "house-jorasco-heir": {
+    "summary": "Trained by the healers' house to fight sickness and injury, for a fair fee, whether as a gentle physician or a precise killer."
+  },
+  "house-kundarak-heir": {
+    "summary": "A proud member of the dwarven house of vaults and wards, upholding, bending or defying its code of honor and order."
+  },
+  "house-lyrandar-heir": {
+    "summary": "Born into the house of wind and wave, now riding high on airships, with a past at sea, among weather-workers or on an airship crew."
+  },
+  "house-medani-heir": {
+    "summary": "Raised in the house of warning to spot plots and threats before they unfold, protecting clients through foresight rather than force."
+  },
+  "house-orien-heir": {
+    "summary": "Of the house of couriers and the lightning rail, working to keep trade moving and to reopen routes the war cut off."
+  },
+  "house-phiarlan-heir": {
+    "summary": "An heir of the house of entertainers who prizes secrets above wealth, performing in public or serving its hidden spy network."
+  },
+  "house-sivis-heir": {
+    "summary": "From the ancient house of scribes and messengers, which shapes events quietly through communication and mediation."
+  },
+  "house-tharashk-heir": {
+    "summary": "Raised in a young, scrappy house of finders that taught self-reliance and the hunter's approach to every challenge."
+  },
+  "house-thuranni-heir": {
+    "summary": "Of a young house split from the shadow-marked elves, expected to gather and pass on information for the family at every turn."
+  },
+  "house-vadalis-heir": {
+    "summary": "Brought up close to family and the natural world, wise to life's cycles and to the deceits of city dwellers."
+  },
+  "inquisitive": {
+    "summary": "A curious investigator who solves crimes, finds the missing and exposes conspiracies, freelance, for an agency, a broadsheet or the watch."
+  }
+}

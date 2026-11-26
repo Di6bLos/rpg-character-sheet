@@ -1,0 +1,88 @@
+{
+  "subclasses": {
+    "arcana-domain": {
+      "summary": "A cleric of the god of magic who bends Channel Divinity into their spells and borrows from the wizard's repertoire.",
+      "features": {
+        "Arcana Domain Spells": {
+          "summary": "Always prepared: Detect Magic, Magic Missile, Magic Weapon and Nystul's Magic Aura at Cleric 3; Counterspell and Dispel Magic at 5; Arcane Eye and Leomund's Secret Chest at 7; Bigby's Hand and Teleportation Circle at 9.",
+          "grants": [
+            { "kind": "spell", "spell": "detect-magic", "at": 3 },
+            { "kind": "spell", "spell": "magic-missile", "at": 3 },
+            { "kind": "spell", "spell": "magic-weapon", "at": 3 },
+            { "kind": "spell", "spell": "arcanists-magic-aura", "at": 3 },
+            { "kind": "spell", "spell": "counterspell", "at": 5 },
+            { "kind": "spell", "spell": "dispel-magic", "at": 5 },
+            { "kind": "spell", "spell": "arcane-eye", "at": 7 },
+            { "kind": "spell", "spell": "secret-chest", "at": 7 },
+            { "kind": "spell", "spell": "arcane-hand", "at": 9 },
+            { "kind": "spell", "spell": "teleportation-circle", "at": 9 }
+          ]
+        },
+        "Modify Magic": {
+          "summary": "As you cast a spell, spend a Channel Divinity use (no action) to alter it: one target gains 2d8 + Cleric level Temporary HP, or a creature that passes its save against the spell takes -1d6 on its next save against the spell's effect.",
+          "activation": "free",
+          "options": [
+            {
+              "name": "Fortifying Spell",
+              "summary": "One of the spell's targets gets Temporary HP of 2d8 + your Cleric level.",
+              "dice": "2d8"
+            },
+            {
+              "name": "Tenacious Spell",
+              "summary": "When a creature you see passes a save against the spell, subtract 1d6 from its first save against the spell's effect.",
+              "dice": "1d6"
+            }
+          ]
+        },
+        "Student of Arcana": {
+          "summary": "Gain Arcana (or another Cleric level 1 skill) and two Wizard cantrips; swap one of those cantrips for another Wizard cantrip each time you gain a Cleric level.",
+          "choices": [
+            {
+              "kind": "skill",
+              "count": 1,
+              "from": ["Arcana", "History", "Insight", "Medicine", "Persuasion", "Religion"]
+            },
+            { "kind": "cantrip", "count": 2, "list": "wizard", "label": "Student of Arcana" }
+          ]
+        },
+        "Dispelling Recovery": {
+          "summary": "Right after a slot-cast spell heals a creature or ends a condition on it, cast Dispel Magic without a slot as part of the same action, Bonus Action or Reaction. Once per Short or Long Rest; a Channel Divinity use restores it.",
+          "uses": { "count": 1, "recharge": "short", "restore": "1 Channel Divinity use" }
+        },
+        "Magical Mastery": {
+          "summary": "Learn four Wizard spells, one per spell level from 6 to 9; they're always prepared. Each Cleric level, you may trade one for another Wizard spell of its level.",
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 1,
+              "list": "wizard",
+              "maxLevel": 6,
+              "note": "a level 6 Wizard spell"
+            },
+            {
+              "kind": "spell",
+              "count": 1,
+              "list": "wizard",
+              "maxLevel": 7,
+              "note": "a level 7 Wizard spell"
+            },
+            {
+              "kind": "spell",
+              "count": 1,
+              "list": "wizard",
+              "maxLevel": 8,
+              "note": "a level 8 Wizard spell"
+            },
+            {
+              "kind": "spell",
+              "count": 1,
+              "list": "wizard",
+              "maxLevel": 9,
+              "note": "a level 9 Wizard spell"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

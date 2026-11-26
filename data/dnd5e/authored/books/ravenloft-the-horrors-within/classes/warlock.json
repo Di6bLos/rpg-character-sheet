@@ -1,0 +1,103 @@
+{
+  "subclasses": {
+    "undead-patron": {
+      "summary": "A Warlock bound to a lich, vampire or other deathless power, who takes on a terrifying form of undeath.",
+      "features": {
+        "Form of Dread": {
+          "summary": "Bonus Action: transform for 1 minute (ends if Incapacitated or at will), CHA-mod times (min 1) per Long Rest. Gain 1d10 + Warlock level Temp HP and Frightened immunity; once per turn an attack hit can force a WIS save or Frightened until your next turn ends.",
+          "activation": "bonus",
+          "duration": "1 minute",
+          "uses": { "count": "CHA", "recharge": "long" },
+          "options": [
+            {
+              "name": "Facsimile of Life",
+              "summary": "Gain Temporary HP equal to 1d10 + your Warlock level.",
+              "dice": "1d10"
+            },
+            {
+              "name": "Fearless Form",
+              "summary": "Immunity to Frightened while transformed; transforming ends it."
+            },
+            {
+              "name": "Frightful Avatar",
+              "summary": "Once per turn on an attack hit, the target makes a WIS save or is Frightened until the end of your next turn.",
+              "save": { "ability": "WIS", "dc": "spell" },
+              "uses": { "count": 1, "recharge": "turn" }
+            }
+          ]
+        },
+        "Undead Spells": {
+          "summary": "Always prepared: Bane, Blindness/Deafness, Phantasmal Force and Ray of Sickness at Warlock 3; Speak with Dead and Summon Undead at 5; Greater Invisibility and Phantasmal Killer at 7; Antilife Shell and Cloudkill at 9.",
+          "grants": [
+            { "kind": "spell", "spell": "bane", "at": 3 },
+            { "kind": "spell", "spell": "blindness-deafness", "at": 3 },
+            { "kind": "spell", "spell": "phantasmal-force", "at": 3 },
+            { "kind": "spell", "spell": "ray-of-sickness", "at": 3 },
+            { "kind": "spell", "spell": "speak-with-dead", "at": 5 },
+            { "kind": "spell", "spell": "summon-undead", "at": 5 },
+            { "kind": "spell", "spell": "greater-invisibility", "at": 7 },
+            { "kind": "spell", "spell": "phantasmal-killer", "at": 7 },
+            { "kind": "spell", "spell": "antilife-shell", "at": 9 },
+            { "kind": "spell", "spell": "cloudkill", "at": 9 }
+          ]
+        },
+        "Grave Touched": {
+          "summary": "Your Necrotic damage ignores Necrotic Resistance, and once per turn a damaging spell can switch to Necrotic. In Form of Dread, once per turn a Necrotic hit rolls one extra damage die. No sleep, and no Exhaustion from thirst, hunger or suffocation.",
+          "damageType": "Necrotic",
+          "options": [
+            {
+              "name": "Arcane Necrosis",
+              "summary": "Necrotic dealt by your attacks, Warlock spells or Warlock features ignores Necrotic Resistance; once per turn change a damaging spell’s type to Necrotic."
+            },
+            {
+              "name": "Dreaded Necrosis",
+              "summary": "Once per turn in Form of Dread, a hit dealing Necrotic damage rolls one more damage die.",
+              "uses": { "count": 1, "recharge": "turn" }
+            },
+            {
+              "name": "Undead Endurance",
+              "summary": "No Exhaustion from dehydration, malnutrition or suffocation; you don’t sleep and can’t be magically slept."
+            }
+          ]
+        },
+        "Necrotic Husk": {
+          "summary": "Resistance to Necrotic (Immunity in Form of Dread). Once per Short or Long Rest, on dropping to 0 HP without dying, blast chosen creatures within 30 ft (CON save, 2d10 + CHA Necrotic, half on success), return to 2× Warlock level HP and gain 1 Exhaustion.",
+          "grants": [{ "kind": "resistance", "value": "Necrotic" }],
+          "options": [
+            {
+              "name": "Necrotic Resilience",
+              "summary": "Resistance to Necrotic damage; Immunity while in Form of Dread."
+            },
+            {
+              "name": "Unholy Resuscitation",
+              "summary": "At 0 HP but not killed: chosen creatures in a 30-ft Emanation make a CON save, taking 2d10 + CHA Necrotic (half on success); your HP becomes 2× Warlock level and you gain 1 Exhaustion. Once per Short or Long Rest.",
+              "dice": "2d10",
+              "damageType": "Necrotic",
+              "save": { "ability": "CON", "dc": "spell" },
+              "range": 30,
+              "uses": { "count": 1, "recharge": "short" }
+            }
+          ]
+        },
+        "Superior Dread": {
+          "summary": "In Form of Dread: resist Bludgeoning, Piercing and Slashing; fly at your Speed with hover and pass through creatures and objects as Difficult Terrain (1d10 Force if you end inside); cast Warlock Conjuration and Necromancy spells with no V, S or non-costly M components.",
+          "options": [
+            {
+              "name": "Dread Resistance",
+              "summary": "Resistance to Bludgeoning, Piercing and Slashing damage."
+            },
+            {
+              "name": "Ghostly Flight",
+              "summary": "Fly Speed equal to your Speed with hover; move through creatures and objects as Difficult Terrain, taking 1d10 Force if you end a turn inside one.",
+              "grants": [{ "kind": "speed", "value": "fly", "amount": "walk" }]
+            },
+            {
+              "name": "Profane Casting",
+              "summary": "Warlock Conjuration and Necromancy spells need no Verbal, Somatic or Material components, except costly or consumed ones."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

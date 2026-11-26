@@ -3,29 +3,32 @@
 // licensing.md):
 // - `srd: true`: an entry of the SRD 5.2.1 (CC-BY-4.0). It keeps the SRD's text (`text`) and
 //   cites the SRD page.
-// - `srd: false`: a Player's Handbook (2024) or Eberron: Forge of the Artificer option. It has
-//   no book text, only its mechanics as fields and a short `summary` written for Lantern.
+// - `srd: false`: an option from an official book the SRD leaves out (the Player's Handbook
+//   (2024) and the later books in `./sources`). It has no book text, only its mechanics as fields
+//   and a short `summary` written for Lantern.
 // Both carry the structured fields the builder, level-up and play engine read, so code never
 // has to parse rules prose. Book art is never included.
 import type { Dnd5eAbility } from '~/types/sheets'
+import type { Dnd5eSourceBook } from './sources'
 
-export type { Dnd5eAbility }
-
-export type Dnd5eSourceBook = 'SRD 5.2.1' | 'PHB 2024' | 'Eberron: Forge of the Artificer'
+export type { Dnd5eAbility, Dnd5eSourceBook }
 
 export interface Dnd5eRecord {
   /** Unique within its set, kebab-case (`fireball`, `battle-master`). */
   slug: string
   name: string
   srd: boolean
+  /** The book whose version this is: the latest that prints it (see `./sources`). */
   source: Dnd5eSourceBook
+  /** Every book that prints it, oldest first, when more than one does (a reprint). */
+  sources?: Dnd5eSourceBook[]
   /** SRD 5.2.1 printed page (the PDF's page numbers match); SRD entries only. */
   page?: number
   /** The SRD's rules text as markdown; SRD entries only. */
   text?: string
   /**
-   * A short description in Lantern's own words: every non-SRD entry has one (it is all the
-   * prose such an entry carries). SRD entries may have one too.
+   * A one-line description: every entry has one. A non-SRD entry's is written in Lantern's own
+   * words (it is all the prose such an entry carries); an SRD entry's is drawn from its text.
    */
   summary?: string
   /** The dnd2024.wikidot.com page it was checked against (`spell:fireball`), for non-SRD entries. */
@@ -268,13 +271,28 @@ export interface Dnd5eBackgroundDef extends Dnd5eRecord {
   abilities: Dnd5eAbility[]
   /** The Origin feat's slug, and the option it fixes ("Cleric" for Magic Initiate). */
   feat: { slug: string; option?: string }
+  /**
+   * When the book lets the player take any feat of a category instead ("Survivor or a Dark Gift
+   * feat of your choice"): `feat` is then the named or recommended one.
+   */
+  featChoice?: Dnd5eChoice
   skills: string[]
   tool?: string
   toolChoice?: Dnd5eChoice
   equipment: { option: string; items: string; gp: number }[]
 }
 
-export type Dnd5eFeatCategory = 'origin' | 'general' | 'fighting-style' | 'epic-boon'
+export type Dnd5eFeatCategory =
+  | 'origin'
+  | 'general'
+  | 'fighting-style'
+  | 'epic-boon'
+  /** Eberron's Dragonmark feats (Forge of the Artificer), taken like an Origin feat. */
+  | 'dragonmark'
+  /** D&D Beyond Drops' Planar Pact feats. */
+  | 'planar-pact'
+  /** Ravenloft's Dark Gifts. */
+  | 'dark-gift'
 
 /** A feat prerequisite as fields, with the book's line beside it for display. */
 export interface Dnd5ePrerequisite {
@@ -316,6 +334,11 @@ export interface Dnd5eSpellDef extends Dnd5eRecord {
   school: Dnd5eSchool
   /** Class slugs whose spell list has it. */
   classes: string[]
+  /**
+   * Other lists that have it, as the book names them: a subclass's own list ("Paladin (Death
+   * Knight)") or a lineage's ("Void Elf").
+   */
+  extraLists?: string[]
   castingTime: string
   activation: Dnd5eActivation | 'time'
   ritual: boolean

@@ -1,0 +1,42 @@
+{
+  "shifting-combatant": {
+    "summary": "Weapon-mastery tricks: knock pushed foes into each other and leap into crowds.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Domino Strike": {
+        "summary": "When a Push mastery hit shoves a creature into a space a Large or smaller creature fills, both make a DEX save (DC 8 + PB + the ability you raised) or take 1d10 Bludgeoning.",
+        "dice": "1d10",
+        "damageType": "Bludgeoning",
+        "save": { "ability": "DEX", "dc": "8+PB+STR/DEX" }
+      },
+      "Fearless Leap": {
+        "summary": "After a running Long Jump (10+ ft first) that lands you within 5 ft of two or more enemies, attacks against you have Disadvantage until your next turn starts."
+      }
+    }
+  },
+  "tactical-combatant": {
+    "summary": "A fighter's edge: temporary HP from a solid hit and a boost to a failed check.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Buffering Strike": {
+        "summary": "On a weapon hit, gain Temporary HP equal to the weapon's damage dice total. Usable again after you roll Initiative or finish a Short or Long Rest.",
+        "uses": { "count": 1, "recharge": "short", "restore": "rolling Initiative" }
+      },
+      "Honed Instincts": {
+        "summary": "After failing an ability check, add 1d6 to it, possibly making it succeed. Usable again after you roll Initiative or finish a Short or Long Rest.",
+        "dice": "1d6",
+        "uses": { "count": 1, "recharge": "short", "restore": "rolling Initiative" }
+      }
+    }
+  },
+  "pack-fighting": {
+    "summary": "Melee weapon attacks and Unarmed Strikes deal +1 damage when an ally that isn't Incapacitated is within 5 ft of the target, or +2 if such an ally there also has this feat."
+  },
+  "prone-fighting": {
+    "summary": "Being Prone gives you no Disadvantage on attack rolls and grants attackers no Advantage against you."
+  }
+}

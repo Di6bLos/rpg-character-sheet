@@ -1,0 +1,63 @@
+{
+  "subclasses": {
+    "knowledge-domain": {
+      "summary": "A Cleric for whom learning is worship: a scholar of lore, secrets and the workings of the mind.",
+      "features": {
+        "Blessings of Knowledge": {
+          "summary": "Proficiency with one set of Artisan's Tools, and proficiency plus Expertise in two of Arcana, History, Nature and Religion.",
+          "choices": [
+            {
+              "kind": "tool",
+              "count": 1,
+              "note": "one type of Artisan's Tools",
+              "label": "Artisan's Tools"
+            },
+            {
+              "kind": "skill",
+              "count": 2,
+              "from": ["Arcana", "History", "Nature", "Religion"],
+              "note": "you also gain Expertise in both"
+            }
+          ]
+        },
+        "Knowledge Domain Spells": {
+          "summary": "Always prepared: Detect Magic, Command, Identify, Comprehend Languages, Mind Spike and Detect Thoughts at Cleric 3; Dispel Magic, Nondetection and Tongues at 5; Arcane Eye, Banishment and Confusion at 7; Legend Lore, Scrying and Synaptic Static at 9.",
+          "grants": [
+            { "kind": "spell", "spell": "command", "at": 3 },
+            { "kind": "spell", "spell": "comprehend-languages", "at": 3 },
+            { "kind": "spell", "spell": "detect-magic", "at": 3 },
+            { "kind": "spell", "spell": "detect-thoughts", "at": 3 },
+            { "kind": "spell", "spell": "identify", "at": 3 },
+            { "kind": "spell", "spell": "mind-spike", "at": 3 },
+            { "kind": "spell", "spell": "dispel-magic", "at": 5 },
+            { "kind": "spell", "spell": "nondetection", "at": 5 },
+            { "kind": "spell", "spell": "tongues", "at": 5 },
+            { "kind": "spell", "spell": "arcane-eye", "at": 7 },
+            { "kind": "spell", "spell": "banishment", "at": 7 },
+            { "kind": "spell", "spell": "confusion", "at": 7 },
+            { "kind": "spell", "spell": "legend-lore", "at": 9 },
+            { "kind": "spell", "spell": "scrying", "at": 9 },
+            { "kind": "spell", "spell": "synaptic-static", "at": 9 }
+          ]
+        },
+        "Mind Magic": {
+          "summary": "Magic action: spend a Channel Divinity use to cast a prepared Divination spell from your domain list with no slot and no Material components.",
+          "activation": "magic"
+        },
+        "Unfettered Mind": {
+          "summary": "Telepathy 60 ft, reaching up to WIS modifier creatures at once (min 1). Gain INT save proficiency, or another save you lack if you already have it.",
+          "grants": [
+            { "kind": "sense", "value": "Telepathy", "range": 60 },
+            { "kind": "save", "value": "INT" }
+          ]
+        },
+        "Divine Foreknowledge": {
+          "summary": "Bonus Action: Advantage on D20 Tests for 1 hour. Once per Long Rest, or restore it by spending a level 6+ slot.",
+          "activation": "bonus",
+          "duration": "1 hour",
+          "uses": { "count": 1, "recharge": "long", "restore": "a level 6+ spell slot" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "subclasses": {
+    "arcane-archer": {
+      "summary": "An archer trained in an old elven art of weaving spells into ammunition for magical shots, in and out of battle.",
+      "features": {
+        "Arcane Archer Lore": {
+          "summary": "Learn Druidcraft or Prestidigitation (INT casting) and gain Arcana and Nature; for each you already have, pick another Fighter level 1 skill instead.",
+          "grants": [
+            {
+              "kind": "skill",
+              "value": "Arcana"
+            },
+            {
+              "kind": "skill",
+              "value": "Nature"
+            }
+          ],
+          "choices": [
+            {
+              "kind": "cantrip",
+              "count": 1,
+              "from": ["druidcraft", "prestidigitation"],
+              "label": "Arcane Archer Lore"
+            }
+          ]
+        },
+        "Arcane Shot": {
+          "summary": "Know 2 Arcane Shot options (one more at Fighter 7, 10, 15 and 18, each time swapping one if you like). Once per turn, add one to a hit with an Ammunition weapon; INT modifier uses (min 1) per Short or Long Rest. Die d6 (d8 at 10, d10 at 15, d12 at 18); save DC 8 + PB + INT.",
+          "uses": {
+            "count": "INT",
+            "recharge": "short"
+          },
+          "dice": "1d6",
+          "choices": [
+            {
+              "kind": "option",
+              "count": 2,
+              "group": "arcane-shot"
+            }
+          ]
+        },
+        "Curving Shot": {
+          "summary": "Bonus Action after an Ammunition weapon attack misses: make a new attack roll against another creature you see in range and within 60 ft of the first target.",
+          "activation": "bonus",
+          "range": 60
+        },
+        "Magical Ammunition": {
+          "summary": "Magic action: shoot enchanted nonmagical ammunition at a surface you see for one effect (Darkening, Unlocking or Vine); a Magic action pulls it free early. Once per Short or Long Rest; a Second Wind use restores it.",
+          "activation": "magic",
+          "uses": {
+            "count": 1,
+            "recharge": "short",
+            "restore": "1 Second Wind use"
+          },
+          "options": [
+            {
+              "name": "Darkening Ammunition",
+              "summary": "For 1 minute, shadows fill a 15-ft Emanation: mundane fires go out and creatures inside take -5 to Wisdom (Perception) and Passive Perception.",
+              "duration": "1 minute"
+            },
+            {
+              "name": "Unlocking Ammunition",
+              "summary": "Each object in a 15-ft Emanation that's mundanely locked, stuck or barred opens (one lock per object); the knock is heard 300 ft away."
+            },
+            {
+              "name": "Vine Ammunition",
+              "summary": "A climbable 120-ft vine sprouts and lasts 10 minutes.",
+              "duration": "10 minutes"
+            }
+          ]
+        },
+        "Ever-Ready Shot": {
+          "summary": "Rolling Initiative gives back one spent Arcane Shot use."
+        },
+        "Indomitable Teleport": {
+          "summary": "When a save you reroll with Indomitable succeeds, teleport up to 60 ft to an unoccupied space you see.",
+          "range": 60
+        },
+        "Masterful Shots": {
+          "summary": "Reaction when a creature you see misses you with an attack: back off from it by up to half your Speed without provoking, then make a ranged attack at it if it's in range.",
+          "activation": "reaction"
+        }
+      }
+    }
+  }
+}

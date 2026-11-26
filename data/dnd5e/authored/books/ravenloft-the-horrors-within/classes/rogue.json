@@ -1,0 +1,73 @@
+{
+  "subclasses": {
+    "phantom": {
+      "summary": "A Rogue tied to death who spreads Sneak Attack as ghostly wails and carries trinkets holding fragments of souls.",
+      "features": {
+        "Wails from the Grave": {
+          "summary": "Right after dealing Sneak Attack on your turn, a second creature you see within 30 ft of the first takes Necrotic damage from half your Sneak Attack dice (round up). DEX-mod uses (min 1) per Long Rest.",
+          "damageType": "Necrotic",
+          "range": 30,
+          "uses": { "count": "DEX", "recharge": "long" }
+        },
+        "Whispers of the Dead": {
+          "summary": "After each Short or Long Rest, gain one skill or tool proficiency you lack; it lasts until you pick another."
+        },
+        "Tokens of the Departed": {
+          "summary": "Hold two soul trinkets (3 at Rogue 13, 4 at 17) that return to you past 30 ft; refill to two each Long Rest, or gain one by Reaction when a creature you see dies within 30 ft. While you hold one you have Advantage on Death and CON saves; destroy one to fire a free Wails from the Grave after Sneak Attack, or (Magic action) to cast Augury with CON or question its spirit.",
+          "options": [
+            {
+              "name": "Death’s Knell",
+              "summary": "After dealing Sneak Attack on your turn, destroy a trinket to use Wails from the Grave without spending a use."
+            },
+            {
+              "name": "Life Essence",
+              "summary": "With at least one trinket, Advantage on Death Saving Throws and CON saves."
+            },
+            {
+              "name": "Spirit Query",
+              "summary": "Magic action: destroy a trinket to cast Augury without components (CON as the ability), or ask its known spirit one question.",
+              "activation": "magic"
+            },
+            {
+              "name": "Gaining Additional Soul Trinkets",
+              "summary": "Reaction when a creature you see within 30 ft dies: gain a trinket, replacing one if at your maximum.",
+              "activation": "reaction",
+              "range": 30
+            }
+          ]
+        },
+        "Voice of Death": {
+          "summary": "Cast Speak with Dead once per Short or Long Rest without a slot or components (DEX as the ability), and target a soul trinket in place of a corpse.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "speak-with-dead",
+              "free": { "count": 1, "recharge": "short" }
+            }
+          ],
+          "uses": { "count": 1, "recharge": "short" }
+        },
+        "Ghost Walk": {
+          "summary": "Bonus Action: spectral form for 10 minutes: Fly 10 ft with hover, attacks against you have Disadvantage, and move through creatures and objects as Difficult Terrain (1d10 Force if you end a turn inside). Once per Long Rest; destroying a trinket restores it.",
+          "activation": "bonus",
+          "duration": "10 minutes",
+          "uses": { "count": 1, "recharge": "long", "restore": "destroy a soul trinket" },
+          "grants": [{ "kind": "speed", "value": "fly", "amount": 10 }]
+        },
+        "Death’s Friend": {
+          "summary": "Wails from the Grave can hit the first creature with its Necrotic damage too, and rolling Initiative with no trinkets gives you one.",
+          "options": [
+            {
+              "name": "Death’s Lament",
+              "summary": "Wails from the Grave damages both the Sneak Attack target and the second creature."
+            },
+            {
+              "name": "Draw of Death",
+              "summary": "On rolling Initiative with no soul trinkets, gain one."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

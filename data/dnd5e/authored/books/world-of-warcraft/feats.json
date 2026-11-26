@@ -1,0 +1,158 @@
+{
+  "arathi-heritage": {
+    "summary": "Half-elven Arathi blood: shrug off charms and, now and then, magical sleep.",
+    "benefits": {
+      "Fey Ancestry": {
+        "summary": "Advantage on saves to avoid or end Charmed."
+      },
+      "Lethargy Resilience": {
+        "summary": "Turn a failed save against Unconscious into a success; after that it is unusable until you finish 1d4 Long Rests."
+      }
+    }
+  },
+  "child-of-the-sea": {
+    "summary": "Kul Tiran sea legs: hold your breath for minutes and swim as fast as you walk.",
+    "benefits": {
+      "Lasting Breath": {
+        "summary": "Hold your breath for 2 + CON modifier minutes (minimum 1)."
+      },
+      "Ocean Born": {
+        "summary": "Swim Speed equal to your Speed.",
+        "grants": [
+          {
+            "kind": "speed",
+            "value": "swim",
+            "amount": "walk"
+          }
+        ]
+      }
+    }
+  },
+  "will-to-survive": {
+    "summary": "Stormwind or Stromgarde grit: on your turn, ignore Incapacitated (unless you're also Unconscious) by taking 1 Exhaustion level."
+  },
+  "clearcasting": {
+    "summary": "Spell crits that chain into a cantrip, and steadier Force damage.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, max 20."
+      },
+      "Clearcasting": {
+        "summary": "Reaction after a Critical Hit with a spell attack: cast a cantrip whose casting time is an action.",
+        "activation": "reaction"
+      },
+      "Force Adept": {
+        "summary": "Damage dice of your Force-damage spells count 1s as 2s.",
+        "damageType": "Force"
+      }
+    }
+  },
+  "elusive-brawler": {
+    "summary": "Slip into a defensive stance the moment you get hurt.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Wisdom, max 20."
+      },
+      "Reactive Dodge": {
+        "summary": "Reaction when you take damage: take the Dodge action.",
+        "activation": "reaction"
+      }
+    }
+  },
+  "enveloping-mist": {
+    "summary": "Your healing leaves a mist that blunts the next hit or turns into temporary HP.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Wisdom, max 20."
+      },
+      "Enveloping Mist": {
+        "summary": "When your spell or feature heals a creature, roll one of its healing dice as that creature's Life Cocoon value. If an attack roll hits it before its next turn starts, your Reaction cuts that damage by the value and the mist ends; if the mist lasts to its next turn, it gains that many Temporary HP.",
+        "activation": "reaction"
+      }
+    }
+  },
+  "fingers-of-frost": {
+    "summary": "Cold spells that cut through resistance and punish Restrained foes.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, max 20."
+      },
+      "Cold Mastery": {
+        "summary": "Your spells ignore Cold Resistance.",
+        "damageType": "Cold"
+      },
+      "Frostbite": {
+        "summary": "Cold damage you deal to a Restrained creature adds PB d4s of extra Cold damage.",
+        "damageType": "Cold"
+      }
+    }
+  },
+  "fists-of-fury": {
+    "summary": "Unarmed and light-weapon flurries that hit harder with each blow.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Wisdom, max 20."
+      },
+      "Clean Hits": {
+        "summary": "Damage dice of your Unarmed Strikes and Light weapons count 1s as 2s."
+      },
+      "Combo Strikes": {
+        "summary": "Unarmed Strike damage gets +1 for each earlier melee hit you landed on that creature this turn."
+      }
+    }
+  },
+  "hot-streak": {
+    "summary": "Fire spells that ignore resistance and set foes burning hotter.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, max 20."
+      },
+      "Fire Mastery": {
+        "summary": "Your spells ignore Fire Resistance.",
+        "damageType": "Fire"
+      },
+      "Ignite": {
+        "summary": "Fire damage from your spells sets the target burning; more Fire damage to a burning target raises its burning damage by 1d4.",
+        "damageType": "Fire",
+        "dice": "1d4"
+      }
+    }
+  },
+  "inscription-adept": {
+    "summary": "Written magic: Illusory Script, then Glyph of Warding and Symbol as your inscription skill grows.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Inscription Magic": {
+        "summary": "Illusory Script is always prepared: once per Long Rest without a slot, or with your slots, cast with the raised ability; herbalism resources can replace its Material component. Glyph of Warding (Journeyman, +3) and Symbol (Artisan, +5) join the same way.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "illusory-script",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "stagger-and-sway": {
+    "summary": "Soak hits now and pay for them at the end of your turn.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Wisdom, max 20."
+      },
+      "Defer Damage": {
+        "summary": "Damage you take drops by your DEX modifier (minimum 1), and a d6 joins your Delayed Reaction pool; when your turn ends, roll every die in the pool, clear it, and take the total as Force damage.",
+        "damageType": "Force"
+      },
+      "Purify": {
+        "summary": "Bonus Action: remove dice equal to your WIS modifier from the pool.",
+        "activation": "bonus"
+      }
+    }
+  }
+}

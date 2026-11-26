@@ -1,0 +1,11 @@
+{
+  "carouser": {
+    "summary": "Raised in a big city like Baldur's Gate, you spent your nights in taverns, theaters and gambling halls, coaxing secrets out of people at card tables and fancy parties."
+  },
+  "vampire-devotee": {
+    "summary": "You served a vampire or a small coven as a willing aspirant or a charmed thrall, fed on again and again, until your time in their lair came to an end."
+  },
+  "vampire-survivor": {
+    "summary": "You lived through or watched a vampire attack, frozen or fighting, and now stay ever watchful so no monster catches you or your friends unready again."
+  }
+}

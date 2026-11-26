@@ -1,0 +1,13 @@
+{
+  "searing-orb": {
+    "summary": "Ranged spell attack on one creature for 3d4 Radiant on a hit. Hit or miss the orb bursts: the target and every creature within 10 ft of it make a CON save or are Blinded until the end of their next turn.",
+    "higherLevel": "+1d4 damage per slot level above 2."
+  },
+  "tortoise-shell": {
+    "summary": "A willing creature you touch grows a hard shell: +3 AC while it stays put. Moving by any means (action, Bonus Action, Reaction or movement) drops the bonus to +1 until its next turn starts."
+  },
+  "void-star": {
+    "summary": "Ranged spell attack on a creature you see: 6d12 Necrotic on a hit. Hit or miss, when its next turn ends it takes another 3d12 Necrotic, which you regain as HP.",
+    "higherLevel": "Both the hit and the delayed damage gain +1d12 per slot level above 7."
+  }
+}

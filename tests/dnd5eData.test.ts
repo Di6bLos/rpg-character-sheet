@@ -6,8 +6,10 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Dnd5eData } from '../data/dnd5e'
+import { DND5E_SOURCES } from '../data/dnd5e/sources'
 import type { Dnd5eFeature, Dnd5eMechanics, Dnd5eRecord } from '../data/dnd5e/types'
 import { copiedRuns, prose, runs } from '../scripts/lib/dnd5eOverlap'
+import { LEAD_IN } from '../scripts/lib/dnd5eRules'
 import { cachedPage, pageContent, plainText } from '../scripts/lib/wikidot'
 
 const root = join(import.meta.dirname, '..')
@@ -43,6 +45,9 @@ const featSlugs = new Set(data.feats.map((f) => f.slug))
 const groupSlugs = new Set(data.options.map((g) => g.slug))
 const ABILITIES = new Set(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'])
 const dupes = (keys: string[]) => keys.filter((k, i) => keys.indexOf(k) !== i)
+/** The official books a non-SRD entry may come from: every source but the SRD. */
+const BOOKS: string[] = DND5E_SOURCES.map((s) => s.name).filter((n) => n !== 'SRD 5.2.1')
+const released = new Map<string, string>(DND5E_SOURCES.map((s) => [s.name, s.released]))
 
 /** Every mechanics block in the data, with where it sits. */
 function mechanics(): [string, Dnd5eMechanics][] {
@@ -86,13 +91,66 @@ describe('5e data', () => {
         expect(r.source, r.slug).toBe('SRD 5.2.1')
         expect(r.page, r.slug).toBeGreaterThan(0)
       } else {
-        expect(['PHB 2024', 'Eberron: Forge of the Artificer'], r.slug).toContain(r.source)
+        expect(BOOKS, r.slug).toContain(r.source)
         expect(r.text, r.slug).toBeUndefined()
         expect(r.page, r.slug).toBeUndefined()
         expect(r.summary?.trim(), `${r.slug}: summary`).toBeTruthy()
         expect(r.wiki, r.slug).toBeTruthy()
       }
     }
+  })
+
+  it('gives every entry a one-line summary that says something', () => {
+    // Weapons and armor show their stat lines instead.
+    for (const [set, rows] of records().filter(([k]) => k !== 'weapons' && k !== 'armor'))
+      for (const r of rows) {
+        expect(r.summary?.trim(), `${set}/${r.slug}`).toBeTruthy()
+        expect(r.summary!.trim(), `${set}/${r.slug}`).not.toMatch(LEAD_IN)
+      }
+    const leadIns: string[] = []
+    const walk = (v: unknown, where: string): void => {
+      if (Array.isArray(v)) v.forEach((x) => walk(x, where))
+      else if (v && typeof v === 'object')
+        for (const [k, x] of Object.entries(v))
+          if (k === 'summary' && typeof x === 'string' && LEAD_IN.test(x.trim()))
+            leadIns.push(`${where}: ${x}`)
+          else walk(x, where)
+    }
+    for (const [set, rows] of records()) for (const r of rows) walk(r, `${set}/${r.slug}`)
+    expect(leadIns).toEqual([])
+    // The SRD feats the user saw with "You gain the following benefits." as their line.
+    const feat = (slug: string) => data.feats.find((f) => f.slug === slug)!
+    expect(feat('alert').summary).toMatch(/Initiative/)
+    expect(feat('magic-initiate').summary).toMatch(/cantrip|spell/i)
+    expect(LEAD_IN.test('You gain the following benefits.')).toBe(true)
+    expect(LEAD_IN.test('As a Dwarf, you have these special traits.')).toBe(true)
+  })
+
+  it('names every source from the sources list, a reprint by its latest book', () => {
+    const names = DND5E_SOURCES.map((s) => s.name)
+    expect(dupes(names)).toEqual([])
+    expect(dupes(DND5E_SOURCES.map((s) => s.short))).toEqual([])
+    for (const s of DND5E_SOURCES)
+      expect(['core', 'supplement', 'setting', 'drop']).toContain(s.kind)
+    for (const [set, rows] of records())
+      for (const r of rows) {
+        expect(names, `${set}/${r.slug}`).toContain(r.source)
+        if (!r.sources) continue
+        expect(r.sources.length, `${set}/${r.slug}`).toBeGreaterThan(1)
+        expect(r.sources.at(-1), `${set}/${r.slug}`).toBe(r.source)
+        const dates = r.sources.map((x) => released.get(x)!)
+        expect(dates, `${set}/${r.slug}`).toEqual([...dates].sort())
+      }
+    const species = (slug: string) => data.species.find((x) => x.slug === slug)
+    expect(species('dhampir')).toMatchObject({
+      source: 'Ravenloft: The Horrors Within',
+      sources: ['Astarion’s Book of Hungers', 'Ravenloft: The Horrors Within'],
+    })
+    // Two books' different species of one name keep apart.
+    expect(species('changeling')?.source).toBe('Eberron: Forge of the Artificer')
+    expect(species('lorwyn-changeling')?.source).toBe('Lorwyn: First Light')
+    expect(species('elf')?.srd).toBe(true)
+    expect(species('elf-warcraft')?.source).toBe('World of Warcraft')
   })
 
   it('keeps book text only on SRD parts, and a summary on every other feature and benefit', () => {
@@ -224,24 +282,38 @@ describe('5e data', () => {
     }
   })
 
-  it('has four subclasses per PHB class and the Artificer’s own, each tied to its class', () => {
+  it('has the PHB’s four subclasses per class, the Artificer’s five, and the later books’', () => {
     for (const c of data.classes) {
       const subs = data.subclasses.filter((s) => s.class === c.slug)
-      expect(subs.length, c.slug).toBe(c.slug === 'artificer' ? 5 : 4)
+      const core = subs.filter((s) => s.srd || s.source === c.source || s.source === 'PHB 2024')
+      expect(core.length, c.slug).toBe(c.slug === 'artificer' ? 5 : 4)
       expect(subs.filter((s) => s.srd).length, c.slug).toBe(c.srd ? 1 : 0)
       for (const s of subs) {
         expect(s.features.length, s.slug).toBeGreaterThan(2)
-        for (const f of s.features)
-          expect(f.level, `${s.slug}: ${f.name}`).toBeGreaterThanOrEqual(3)
+        // A few World of Warcraft subclasses also replace level 1–2 features (Death Coil).
+        for (const f of s.features) {
+          expect(f.level, `${s.slug}: ${f.name}`).toBeGreaterThanOrEqual(1)
+          expect(f.level, `${s.slug}: ${f.name}`).toBeLessThanOrEqual(20)
+        }
+        expect(
+          s.features.some((f) => f.level === c.subclassLevel),
+          s.slug,
+        ).toBe(true)
       }
     }
+    const books = new Set(data.subclasses.map((s) => s.source))
+    for (const b of ['Arcana Unleashed', 'World of Warcraft', 'Ravenloft: The Horrors Within'])
+      expect(books, b).toContain(b)
+    expect(data.subclasses.find((s) => s.slug === 'arcane-archer')?.optionGroups).toEqual([
+      'arcane-shot',
+    ])
   })
 
   it('resolves every spell, feat and option group a record names', () => {
     for (const s of data.spells) {
       expect(s.level, s.slug).toBeGreaterThanOrEqual(0)
       expect(s.level, s.slug).toBeLessThanOrEqual(9)
-      expect(s.classes.length, s.slug).toBeGreaterThan(0)
+      expect(s.classes.length + (s.extraLists?.length ?? 0), s.slug).toBeGreaterThan(0)
       for (const c of s.classes) expect(classSlugs, s.slug).toContain(c)
     }
     for (const s of data.subclasses) {
@@ -253,6 +325,11 @@ describe('5e data', () => {
       for (const g of c.optionGroups) expect(groupSlugs, c.slug).toContain(g)
     for (const b of data.backgrounds) {
       expect(featSlugs, b.slug).toContain(b.feat.slug)
+      for (const cat of b.featChoice?.category ?? [])
+        expect(
+          data.feats.some((f) => f.category === cat),
+          `${b.slug}: ${cat}`,
+        ).toBe(true)
       expect(b.abilities, b.slug).toHaveLength(3)
       expect(b.skills, b.slug).toHaveLength(2)
     }
@@ -279,9 +356,20 @@ describe('5e data', () => {
   })
 
   it('gives every feat the fields the Feats tab filters and sorts on', () => {
-    expect(data.feats.length).toBeGreaterThanOrEqual(75)
+    expect(data.feats.length).toBeGreaterThanOrEqual(200)
     for (const f of data.feats) {
-      expect(['origin', 'general', 'fighting-style', 'epic-boon'], f.slug).toContain(f.category)
+      expect(
+        [
+          'origin',
+          'general',
+          'fighting-style',
+          'epic-boon',
+          'dragonmark',
+          'planar-pact',
+          'dark-gift',
+        ],
+        f.slug,
+      ).toContain(f.category)
       expect(typeof f.repeatable, f.slug).toBe('boolean')
       if (f.prerequisite) {
         expect(f.prerequisite.text, f.slug).toBeTruthy()
@@ -301,6 +389,13 @@ describe('5e data', () => {
     expect(feat('boon-of-fate')?.asi?.max).toBe(30)
     for (const f of data.feats.filter((x) => x.category === 'general'))
       expect(f.prerequisite?.level, f.slug).toBeGreaterThanOrEqual(4)
+    // The user's report: Arcana Unleashed's feats (Portal Jumper and the rest).
+    expect(feat('portal-jumper')).toMatchObject({
+      category: 'origin',
+      source: 'Arcana Unleashed',
+      srd: false,
+    })
+    expect(data.feats.filter((f) => f.source === 'Arcana Unleashed').length).toBe(29)
   })
 
   it('reads the spell facts the play engine needs', () => {
@@ -441,8 +536,20 @@ describe('5e licensing', () => {
       expect(checked.length).toBeGreaterThan(300)
 
       // Every other string in a non-SRD entry too, but the stat lines and item lists, which are
-      // facts in the book's own terms (a casting time's trigger, a material component, gear).
-      const FACTS = new Set(['castingTime', 'trigger', 'range', 'duration', 'm', 'items', 'name'])
+      // facts in the book's own terms (a casting time's trigger, a material component, gear, a
+      // prerequisite line, an item's type line, a species' size line).
+      const FACTS = new Set([
+        'castingTime',
+        'trigger',
+        'range',
+        'duration',
+        'm',
+        'items',
+        'name',
+        'prerequisite',
+        'category',
+        'sizeText',
+      ])
       for (const [set, rows] of records())
         for (const r of rows.filter((x) => !x.srd && x.wiki)) {
           const strings: string[] = []
@@ -451,7 +558,7 @@ describe('5e licensing', () => {
               if (!FACTS.has(k)) strings.push(v)
             } else if (Array.isArray(v)) v.forEach((x) => walk(x, k))
             else if (v && typeof v === 'object' && (v as { srd?: boolean }).srd !== true)
-              for (const [kk, x] of Object.entries(v)) walk(x, kk)
+              for (const [kk, x] of Object.entries(v)) if (!FACTS.has(kk)) walk(x, kk)
           }
           walk(r)
           for (const t of strings)

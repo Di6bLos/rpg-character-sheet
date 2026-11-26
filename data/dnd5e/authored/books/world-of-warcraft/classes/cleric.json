@@ -1,0 +1,104 @@
+{
+  "subclasses": {
+    "discipline-domain": {
+      "summary": "A cleric balancing the Light and the Void, mending allies with the same spells that wound enemies.",
+      "features": {
+        "Discipline Spells": {
+          "summary": "Always prepared: Arcane Vigor, Guiding Bolt, Magic Weapon and Shield of Faith at Cleric 3; Prayer of Mending and Protection from Energy at 5; Guardian of Faith and Stoneskin at 7; Circle of Power and Destructive Wave at 9.",
+          "grants": [
+            { "kind": "spell", "spell": "arcane-vigor", "at": 3 },
+            { "kind": "spell", "spell": "guiding-bolt", "at": 3 },
+            { "kind": "spell", "spell": "magic-weapon", "at": 3 },
+            { "kind": "spell", "spell": "shield-of-faith", "at": 3 },
+            { "kind": "spell", "spell": "prayer-of-mending", "at": 5 },
+            { "kind": "spell", "spell": "protection-from-energy", "at": 5 },
+            { "kind": "spell", "spell": "guardian-of-faith", "at": 7 },
+            { "kind": "spell", "spell": "stoneskin", "at": 7 },
+            { "kind": "spell", "spell": "circle-of-power", "at": 9 },
+            { "kind": "spell", "spell": "destructive-wave", "at": 9 }
+          ]
+        },
+        "Holy Bolt": {
+          "summary": "Bonus Action, spend a Channel Divinity use: ranged spell attack at a creature within 60 ft for 2d10 + WIS Radiant; on a hit, a creature you see within 60 ft heals 1d10 + WIS.",
+          "activation": "bonus",
+          "dice": "2d10",
+          "damageType": "Radiant",
+          "range": 60
+        },
+        "Atonement": {
+          "summary": "Creatures healed by your level 1+ spells are blessed until your next turn ends; each damaging spell you cast with a slot heals every blessed creature by the slot's level."
+        },
+        "Luminous Barrier": {
+          "summary": "Bonus Action, spend a Channel Divinity use: each creature blessed by Atonement gains Cleric level + WIS Temporary HP and has Resistance to all damage while those last.",
+          "activation": "bonus"
+        },
+        "Ultimate Penitence": {
+          "summary": "Holy Bolt upgrades: teleport up to 30 ft before the attack, and spend a spell slot to throw extra bolts equal to its level, each its own attack.",
+          "options": [
+            {
+              "name": "Ascending Step",
+              "summary": "Before the Holy Bolt attack, teleport to an unoccupied space you see within 30 ft.",
+              "range": 30
+            },
+            {
+              "name": "Ascending Volley",
+              "summary": "Spend a spell slot with the Bonus Action for extra bolts equal to its level, split among targets as you like; roll each attack separately."
+            }
+          ]
+        }
+      }
+    },
+    "shadow-domain": {
+      "summary": "A cleric of the Void who withers bodies and frays minds with shadow magic.",
+      "features": {
+        "Shadow Spells": {
+          "summary": "Always prepared: Crown of Madness, Dissonant Whispers, Mind Spike and Shadow Word: Pain at Cleric 3; Summon Undead and Vampiric Touch at 5; Evard's Black Tentacles and Psychic Horror at 7; Dominate Person and Void Eruption at 9.",
+          "grants": [
+            { "kind": "spell", "spell": "crown-of-madness", "at": 3 },
+            { "kind": "spell", "spell": "dissonant-whispers", "at": 3 },
+            { "kind": "spell", "spell": "mind-spike", "at": 3 },
+            { "kind": "spell", "spell": "shadow-word-pain", "at": 3 },
+            { "kind": "spell", "spell": "summon-undead", "at": 5 },
+            { "kind": "spell", "spell": "vampiric-touch", "at": 5 },
+            { "kind": "spell", "spell": "black-tentacles", "at": 7 },
+            { "kind": "spell", "spell": "psychic-horror", "at": 7 },
+            { "kind": "spell", "spell": "dominate-person", "at": 9 },
+            { "kind": "spell", "spell": "void-eruption", "at": 9 }
+          ]
+        },
+        "Shadowform": {
+          "summary": "Bonus Action, spend a Channel Divinity use: for 1 minute you can Hide as a Bonus Action in Dim Light or Darkness, and slot spells dealing Psychic or Necrotic damage add 1d6 to one damage roll. Ends if Incapacitated, dismissed, or you deal Radiant damage with a spell.",
+          "activation": "bonus",
+          "duration": "1 minute",
+          "options": [
+            {
+              "name": "Shadow Stealth",
+              "summary": "Hide as a Bonus Action while in Dim Light or Darkness."
+            },
+            {
+              "name": "Void Empowerment",
+              "summary": "A slot spell that deals Psychic or Necrotic damage adds 1d6 to one of its damage rolls.",
+              "dice": "1d6"
+            }
+          ]
+        },
+        "Devouring Plague": {
+          "summary": "When a creature you see within 30 ft fails a save, deal it 1d10 Necrotic and heal that much; WIS-modifier uses per Long Rest.",
+          "dice": "1d10",
+          "damageType": "Necrotic",
+          "range": 30,
+          "uses": { "count": "WIS", "recharge": "long" }
+        },
+        "Dispersion": {
+          "summary": "Reaction when an attack hits you: until your next turn ends, Resistance to all damage (that hit too), no actions, Bonus Actions or Reactions, and 40 ft fly Speed; afterwards spend up to half your Hit Dice to heal. Once per Short or Long Rest.",
+          "activation": "reaction",
+          "uses": { "count": 1, "recharge": "short" }
+        },
+        "Vampiric Embrace": {
+          "summary": "In Shadowform, each extra 1d6 you roll for spell damage also heals a creature you pick within 30 ft by that amount.",
+          "range": 30
+        }
+      }
+    }
+  }
+}
