@@ -3,6 +3,7 @@
 // line, an option list's entries. Their text is only read in memory (for facts and for the
 // overlap test); nothing written here is committed.
 
+import { DND5E_SOURCES, type Dnd5eSourceBook } from '../../data/dnd5e/sources'
 import {
   SOURCE_LINE,
   pageContent,
@@ -29,17 +30,59 @@ export const CLASSES = [
   'wizard',
 ]
 
-/** The books Lantern takes non-SRD options from, by the wiki's "Source:" line. */
-export const BOOKS: Record<string, 'PHB 2024' | 'Eberron: Forge of the Artificer'> = {
+/**
+ * The official books Lantern takes non-SRD options from, by the wiki's "Source:" line (see
+ * `data/dnd5e/sources.ts`). The wiki's Unearthed Arcana (`ua:` pages) and homebrew are left out.
+ */
+export const BOOKS: Record<string, Dnd5eSourceBook> = {
   "Player's Handbook": 'PHB 2024',
   'Eberron - Forge of the Artificer': 'Eberron: Forge of the Artificer',
+  'Forgotten Realms - Heroes of Faerun': 'Forgotten Realms: Heroes of Faerûn',
+  "Astarion's Book of Hungers": 'Astarion’s Book of Hungers',
+  'Lorwyn - First Light': 'Lorwyn: First Light',
+  'Ravenloft - The Horrors Within': 'Ravenloft: The Horrors Within',
+  'Arcana Unleashed': 'Arcana Unleashed',
+  'Project Lamordia': 'Project Lamordia',
+  'World of Warcraft': 'World of Warcraft',
 }
 
-/** The book for a wiki "Source:" value, if Lantern takes options from it. */
-export const bookFor = (source: string | undefined) =>
-  BOOKS[(source ?? '').replace(/’/g, "'").trim()]
+const released = new Map<string, string>(DND5E_SOURCES.map((s) => [s.name, s.released]))
+
+/** One book of a "Source:" value; the monthly D&D Beyond Drops are named by their month. */
+function oneBook(source: string): Dnd5eSourceBook | undefined {
+  const s = source.replace(/’/g, "'").replace(/\s+/g, ' ').trim()
+  const drop = s.match(/^(?:D&D|DND) Beyond Drops? - (\w+) (\d{4})$/i)
+  if (drop) {
+    const name = `D&D Beyond Drops: ${drop[1]} ${drop[2]}`
+    return released.has(name) ? (name as Dnd5eSourceBook) : undefined
+  }
+  return BOOKS[s]
+}
+
+/**
+ * The books Lantern carries that a "Source:" value names ("Astarion's Book of Hungers, Ravenloft
+ * - The Horrors Within"), oldest first: a Dungeon Master's Guide item reprinted in World of
+ * Warcraft counts as the latter's.
+ */
+export function booksFor(source: string | undefined): Dnd5eSourceBook[] {
+  const parts = (source ?? '').replace(/^Source:\s*/, '').split(/,\s*(?=[A-Z])/)
+  const books = parts.map(oneBook).filter((b): b is Dnd5eSourceBook => !!b)
+  return [...new Set(books)].sort((a, b) => released.get(a)!.localeCompare(released.get(b)!))
+}
+
+/** The book whose version a "Source:" value describes: the latest one it names. */
+export const bookFor = (source: string | undefined) => booksFor(source).at(-1)
 
 export const bookOf = (html: string) => bookFor(wikiSource(html))
+
+/** `source`, plus `sources` when the page names more than one book. */
+export function sourceFields(html: string): {
+  source: Dnd5eSourceBook
+  sources?: Dnd5eSourceBook[]
+} {
+  const all = booksFor(wikiSource(html))
+  return { source: all.at(-1)!, ...(all.length > 1 ? { sources: all } : {}) }
+}
 
 export interface WikiFeature {
   name: string
@@ -196,7 +239,9 @@ export function wikiFeat(html: string) {
   const text = plainText(pageContent(html))
   const header = text
     .split('\n')
-    .find((l) => /^(Origin|General|Fighting Style|Epic Boon) Feat/.test(l))
+    .find((l) =>
+      /^(Origin|General|Fighting Style|Epic Boon|Dragonmark|Planar Pact|Dark Gift) Feat/.test(l),
+    )
   return { book: bookOf(html), header, entries: wikiEntries(pageContent(html)), text }
 }
 

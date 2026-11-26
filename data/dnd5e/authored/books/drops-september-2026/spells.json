@@ -1,0 +1,15 @@
+{
+  "feign-interest": {
+    "summary": "An illusion makes you look attentive and absorbed while you doze or daydream. A creature that uses a Search action to read you sees through it with a WIS (Insight) check against your spell save DC."
+  },
+  "quick-clothier": {
+    "summary": "Restyle a set of nonmagical clothing nobody else is wearing: colour, cut, trim and form, worth up to 15 GP (rags to Fine Clothes or back). It reverts when the spell ends."
+  },
+  "conjure-tools": {
+    "summary": "Conjure any one set of Artisan's Tools, which you're proficient with while they last; they vanish when the spell ends (what you made with them stays). Ends early if you recast it or move more than 10 ft from them.",
+    "higherLevel": "With a level 3 slot you craft nonmagical items as fast as two characters."
+  },
+  "pinky-swear": {
+    "summary": "Touch a creature and vow a promise of up to 25 words. If you knowingly break it, the target learns of it if within 1 mile, and you start Burning, but take just 1 Fire damage per turn (as each of your turns begins) rather than the usual amount."
+  }
+}

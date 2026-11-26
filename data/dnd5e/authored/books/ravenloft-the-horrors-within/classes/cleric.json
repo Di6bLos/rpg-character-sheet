@@ -1,0 +1,69 @@
+{
+  "subclasses": {
+    "grave-domain": {
+      "summary": "A Cleric who tends the line between life and death, punishing the dying foe and pulling the fallen ally back.",
+      "features": {
+        "Grave Domain Spells": {
+          "summary": "Always prepared at Cleric 3: Spare the Dying, False Life, Ray of Enfeeblement, Gentle Repose, Detect Evil and Good; Revivify and Vampiric Touch at 5; Blight and Death Ward at 7; Dispel Evil and Good and Raise Dead at 9.",
+          "grants": [
+            { "kind": "spell", "spell": "detect-evil-and-good", "at": 3 },
+            { "kind": "spell", "spell": "false-life", "at": 3 },
+            { "kind": "spell", "spell": "gentle-repose", "at": 3 },
+            { "kind": "spell", "spell": "ray-of-enfeeblement", "at": 3 },
+            { "kind": "spell", "spell": "spare-the-dying", "at": 3 },
+            { "kind": "spell", "spell": "revivify", "at": 5 },
+            { "kind": "spell", "spell": "vampiric-touch", "at": 5 },
+            { "kind": "spell", "spell": "blight", "at": 7 },
+            { "kind": "spell", "spell": "death-ward", "at": 7 },
+            { "kind": "spell", "spell": "dispel-evil-and-good", "at": 9 },
+            { "kind": "spell", "spell": "raise-dead", "at": 9 }
+          ]
+        },
+        "Circle of Mortality": {
+          "summary": "Once per turn, a spell or attack hit on an already-wounded creature adds 1d4 Necrotic (1d6 at Cleric 11). Spare the Dying is a Bonus Action, and healing dice from spells or Channel Divinity on a creature at 0 HP count as their maximum.",
+          "options": [
+            {
+              "name": "Pull of Death",
+              "summary": "Once per turn, +1d4 Necrotic when your spell or attack hit damages a creature below its HP maximum; 1d6 from Cleric 11.",
+              "dice": "1d4",
+              "damageType": "Necrotic",
+              "uses": { "count": 1, "recharge": "turn" }
+            },
+            {
+              "name": "Return to Life",
+              "summary": "Spare the Dying takes only a Bonus Action to cast; healing dice on a target at 0 HP give their maximum instead of being rolled.",
+              "activation": "bonus"
+            }
+          ]
+        },
+        "Path to the Grave": {
+          "summary": "Bonus Action, 1 Channel Divinity: curse a creature you see within 30 ft until your next turn starts; it has Disadvantage on attacks and saves. When you or a visible ally hits it, end the curse to add Necrotic or Radiant damage equal to your Cleric level.",
+          "activation": "bonus",
+          "range": 30,
+          "duration": "until the start of your next turn"
+        },
+        "Sentinel at Death’s Door": {
+          "summary": "Reaction when you or a Bloodied creature you see within 60 ft is hit: halve the damage (round down) and cancel any Critical Hit effects. WIS-mod uses (min 1) per Long Rest.",
+          "activation": "reaction",
+          "range": 60,
+          "uses": { "count": "WIS", "recharge": "long" }
+        },
+        "Divine Reaper": {
+          "summary": "Spend Channel Divinity to aim a single-target Necromancy spell (level 5 or lower) or a Grave Domain spell at a second creature. When an enemy dies within 60 ft, you or a creature you see there heals twice your Cleric level; once per Short or Long Rest, or restore it with a level 6+ slot.",
+          "options": [
+            {
+              "name": "Enhanced Necromancy",
+              "summary": "1 Channel Divinity: a one-target Necromancy spell of level 5 or lower, or a Grave Domain spell, gains a second target in range (pay costly components for each)."
+            },
+            {
+              "name": "Keeper of Souls",
+              "summary": "When an enemy dies within 60 ft, you or a creature you see within 60 ft heals 2× your Cleric level. Not while Incapacitated; once per Short or Long Rest, or restore with a level 6+ slot.",
+              "range": 60,
+              "uses": { "count": 1, "recharge": "short", "restore": "a level 6+ spell slot" }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

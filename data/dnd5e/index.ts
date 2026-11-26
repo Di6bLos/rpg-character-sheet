@@ -1,7 +1,7 @@
 // Loads the generated 5e data (`generated/*.json`, typed in `./types`). Each set ships as its
 // own static file and is fetched the first time something asks for it, so the spells and magic
 // items never weigh down the app bundle. Licensing: `./NOTICE.md` (SRD 5.2.1 text, plus the
-// Player's Handbook 2024 and Forge of the Artificer options as mechanics and summaries only).
+// official books' options in `./sources` as mechanics and summaries only).
 import armorUrl from './generated/armor.json?url'
 import backgroundsUrl from './generated/backgrounds.json?url'
 import classesUrl from './generated/classes.json?url'
@@ -31,6 +31,9 @@ import type {
   Dnd5eWeaponDef,
 } from './types'
 
+export { DND5E_SOURCES, dnd5eSource } from './sources'
+export type { Dnd5eSource, Dnd5eSourceBook, Dnd5eSourceKind } from './sources'
+
 export interface Dnd5eData {
   armor: Dnd5eArmorDef[]
   backgrounds: Dnd5eBackgroundDef[]
@@ -40,7 +43,7 @@ export interface Dnd5eData {
   gear: Dnd5eGearDef[]
   magicItems: Dnd5eMagicItemDef[]
   masteries: Dnd5eMasteryDef[]
-  /** Invocations, metamagic, maneuvers and artificer plans, one group each. */
+  /** Invocations, metamagic, maneuvers, arcane shots and artificer plans, one group each. */
   options: Dnd5eOptionGroup[]
   species: Dnd5eSpeciesDef[]
   spells: Dnd5eSpellDef[]

@@ -74,14 +74,17 @@ function raised(sheet: Dnd5eSheet, st: Dnd5eBuildState): Record<Dnd5eAbility, nu
   ) as Record<Dnd5eAbility, number>
 }
 
-/** A copy of the sheet as the walk leaves it at `level`, for the plan's before/after numbers. */
+/**
+ * A copy of the sheet as the walk leaves it at `level`, for the plan's before/after numbers. The
+ * level history (a snapshot per level) stays out of the copy: the plan never reads it.
+ */
 function projected(
   sheet: Dnd5eSheet,
   st: Dnd5eBuildState,
   level: number,
   abilities = sheet.abilities,
 ) {
-  const copy = JSON.parse(JSON.stringify(sheet)) as Dnd5eSheet
+  const copy = JSON.parse(JSON.stringify({ ...sheet, levelHistory: [] })) as Dnd5eSheet
   copy.abilities = { ...abilities }
   writeBuild(copy, st, level)
   return copy

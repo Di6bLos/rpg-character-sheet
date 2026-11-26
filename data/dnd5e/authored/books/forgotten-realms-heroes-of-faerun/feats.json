@@ -1,0 +1,573 @@
+{
+  "cult-of-the-dragon-initiate": {
+    "summary": "Dragon cult training: speak Draconic and frighten foes with a glare.",
+    "benefits": {
+      "Dragon’s Tongue": {
+        "summary": "Learn Draconic; if you already speak it, pick another language instead.",
+        "grants": [{ "kind": "language", "value": "Draconic" }]
+      },
+      "Dragon’s Terror": {
+        "summary": "Magic action: a creature you see within 30 ft makes a WIS save (DC 8 + PB + WIS) or is Frightened until your next turn ends. Once it saves or the fear ends, it is immune for 24 hours.",
+        "activation": "magic",
+        "range": 30,
+        "save": { "ability": "WIS", "dc": "8+PB+WIS" }
+      },
+      "Inspired by Fear": {
+        "summary": "Frightening a creature (with you as the source) grants you Heroic Inspiration if you have none. Once per Short or Long Rest.",
+        "uses": { "count": 1, "recharge": "short" }
+      }
+    }
+  },
+  "emerald-enclave-fledgling": {
+    "summary": "A young Enclave ranger who talks to beasts and trades places with allies.",
+    "benefits": {
+      "Speak with Animals": {
+        "summary": "Speak with Animals is always prepared and castable with your slots, using INT, WIS or CHA (picked with the feat). Cast as a Ritual, it lasts 8 hours.",
+        "grants": [{ "kind": "spell", "spell": "speak-with-animals" }],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Tag Team": {
+        "summary": "When you Help, you may also swap spaces with a willing, non-Incapacitated ally within 5 ft; no Opportunity Attacks."
+      }
+    }
+  },
+  "harper-agent": {
+    "summary": "Harper training in secret speech, music and distraction.",
+    "benefits": {
+      "Thieves’ Cant": {
+        "summary": "Learn Thieves’ Cant.",
+        "grants": [{ "kind": "language", "value": "Thieves’ Cant" }]
+      },
+      "Instrument Training": {
+        "summary": "Proficiency with one Musical Instrument of your choice.",
+        "choices": [
+          {
+            "kind": "tool",
+            "count": 1,
+            "from": ["Musical Instrument"],
+            "label": "Musical Instrument"
+          }
+        ]
+      },
+      "Distracting Melody": {
+        "summary": "Helping an ally’s attack works on an enemy up to 30 ft away (not just 5 ft) if it can see or hear you.",
+        "range": 30
+      }
+    }
+  },
+  "lords-alliance-agent": {
+    "summary": "A sworn agent whose crits and loyalty spur allies on.",
+    "benefits": {
+      "Inspiring Strike": {
+        "summary": "Once per turn on a Critical Hit, give Heroic Inspiration to an ally within 30 ft who sees or hears you and has none.",
+        "range": 30,
+        "uses": { "count": 1, "recharge": "turn" }
+      },
+      "Reassert Honor": {
+        "summary": "When an enemy you see damages an ally within 5 ft of you, your next attack on that enemy before your next turn ends has Advantage."
+      }
+    }
+  },
+  "purple-dragon-rook": {
+    "summary": "A Cormyrean recruit who rallies companions as battle begins.",
+    "benefits": {
+      "Entreat": {
+        "summary": "Proficiency in Insight, Performance or Persuasion.",
+        "choices": [
+          { "kind": "skill", "count": 1, "from": ["Insight", "Performance", "Persuasion"] }
+        ]
+      },
+      "Rallying Cry": {
+        "summary": "On rolling Initiative (not Incapacitated), up to PB creatures you see within 30 ft gain Heroic Inspiration. Once per Long Rest.",
+        "range": 30,
+        "uses": { "count": 1, "recharge": "long" }
+      }
+    }
+  },
+  "spellfire-spark": {
+    "summary": "A spark of spellfire that soaks up magic and burns as holy flame.",
+    "benefits": {
+      "Magic Absorption": {
+        "summary": "Once per turn, cut damage from a spell or magical effect by 1d4 (not while Incapacitated).",
+        "dice": "1d4",
+        "uses": { "count": 1, "recharge": "turn" }
+      },
+      "Spellfire Flame": {
+        "summary": "Learn Sacred Flame, cast with INT, WIS or CHA (picked with the feat). You can cast it as a Bonus Action PB times per Long Rest.",
+        "grants": [{ "kind": "spell", "spell": "sacred-flame" }],
+        "uses": { "count": "PB", "recharge": "long" },
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      }
+    }
+  },
+  "tyro-of-the-gauntlet": {
+    "summary": "A Gauntlet recruit who holds the line beside allies.",
+    "benefits": {
+      "Stand as One": {
+        "summary": "Reaction: stop a push or pull on a non-Incapacitated ally within 5 ft.",
+        "activation": "reaction"
+      },
+      "Vigilant": {
+        "summary": "Taking the Ready action gives the next attack against you Disadvantage until your next turn starts."
+      }
+    }
+  },
+  "zhentarim-ruffian": {
+    "summary": "Mercenary tricks: punishing Opportunity Attacks and a family head start.",
+    "benefits": {
+      "Exploit Opening": {
+        "summary": "Opportunity Attack damage: roll the dice twice and pick either result."
+      },
+      "Family First": {
+        "summary": "Spend Heroic Inspiration when you roll Initiative to give you and your allies Advantage on it."
+      }
+    }
+  },
+  "cold-caster": {
+    "summary": "Frost magic that leaves foes shaky against the next save.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Cantrip": {
+        "summary": "Learn Ray of Frost (or another Wizard cantrip if you know it), cast with the ability you raised.",
+        "grants": [{ "kind": "spell", "spell": "ray-of-frost" }]
+      },
+      "Frostbite": {
+        "summary": "Once per turn, after an attack hit that deals Cold damage, the target takes −1d4 on its next save before your next turn ends.",
+        "dice": "1d4",
+        "uses": { "count": 1, "recharge": "turn" }
+      }
+    }
+  },
+  "dragonscarred": {
+    "summary": "Draconic power that resists an element and spreads terror mid-fight.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution or Charisma, max 20."
+      },
+      "Damage Resistance": {
+        "summary": "Resistance to Acid, Cold, Fire, Lightning or Poison (picked with the feat).",
+        "choices": [
+          {
+            "kind": "damageType",
+            "count": 1,
+            "from": ["Acid", "Cold", "Fire", "Lightning", "Poison"],
+            "label": "Damage Resistance"
+          }
+        ]
+      },
+      "Fearsome Power": {
+        "summary": "When your Attack or Magic action deals damage on your turn, you may use Dragon’s Terror as a Bonus Action that turn.",
+        "activation": "bonus"
+      }
+    }
+  },
+  "enclave-magic": {
+    "summary": "Deeper bond with beasts: easier persuasion and shared senses.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Friend to Animals": {
+        "summary": "Advantage on Influence checks with Beasts."
+      },
+      "Two Hearts, One Mind": {
+        "summary": "Beast Sense is always prepared; cast it once per Long Rest without a slot and without Concentration, or with your slots. The ability you raised casts it.",
+        "grants": [
+          { "kind": "spell", "spell": "beast-sense", "free": { "count": 1, "recharge": "long" } }
+        ]
+      }
+    }
+  },
+  "fairy-trickster": {
+    "summary": "Fey footwork and strikes that rattle a target’s resolve.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Charisma, max 20."
+      },
+      "Faerie Trod Trotter": {
+        "summary": "After you Disengage, Difficult Terrain costs no extra movement for the rest of the turn."
+      },
+      "Flustering Strike": {
+        "summary": "On a hit, the target makes a WIS save (DC 8 + PB + the raised ability) or has Disadvantage on saves until your next turn ends. PB times per Long Rest.",
+        "save": { "ability": "WIS", "dc": "8+PB+DEX/CHA" },
+        "uses": { "count": "PB", "recharge": "long" }
+      }
+    }
+  },
+  "genie-magic": {
+    "summary": "A genie’s wish: one level 1 Sorcerer spell a day, growing stronger with level.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Wish Magic": {
+        "summary": "Magic action: cast any level 1 Sorcerer spell with a 1-action casting time, using the raised ability. Once per Long Rest; it counts as a level 2 slot at level 11 and level 3 at 17.",
+        "activation": "magic",
+        "uses": { "count": 1, "recharge": "long" }
+      }
+    }
+  },
+  "harper-teamwork": {
+    "summary": "Harper teamwork that weakens foes and shakes allies free of fear.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Charisma, max 20."
+      },
+      "Withering Wordplay": {
+        "summary": "An enemy you Help an ally attack also has Disadvantage on its first save before your next turn starts."
+      },
+      "Inspiring Willpower": {
+        "summary": "When you save to end Frightened or Paralyzed on yourself, also end that condition on one ally you see within 30 ft.",
+        "range": 30
+      }
+    }
+  },
+  "lordly-resolve": {
+    "summary": "Raise the banner: allies stand up and shrug off charm and fear.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Charisma, max 20."
+      },
+      "Standard Bearer": {
+        "summary": "Bonus Action: up to 3 creatures within 60 ft that see you may use a Reaction to stand from Prone (Speed above 0). For 1 minute (or until you are Incapacitated) they can’t be possessed, Charmed or Frightened, and save with Advantage against such effects already on them. Once per Long Rest.",
+        "activation": "bonus",
+        "range": 60,
+        "duration": "1 minute",
+        "uses": { "count": 1, "recharge": "long" }
+      }
+    }
+  },
+  "mythal-touched": {
+    "summary": "Mythal magic that lashes back unpredictably when spells strike you.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Mythal Ward": {
+        "summary": "Reaction when you are hit by a spell attack or fail a save against a spell: roll on the Mythal-Touched Magic table; any save it calls for uses DC 8 + PB + the raised ability. PB times per Long Rest.",
+        "activation": "reaction",
+        "uses": { "count": "PB", "recharge": "long" }
+      },
+      "Mythal-Touched Magic": {
+        "summary": "d20: 1–2 Force burst (1d8 × spell level, DEX save for half) on you and all within 15 ft; 3–7 telepathic link with the caster for 1 hour; 8–10 Reverse Gravity around you for 1 minute; 11–13 you and the caster save (CON) or are Stunned for a turn; 14–17 +2 AC for 1 minute; 18–19 loose flammables near the caster ignite (1d4 Fire); 20 the spell fizzles and any slot is refunded."
+      }
+    }
+  },
+  "orders-resilience": {
+    "summary": "Gauntlet steadfastness: quick to rise and strong side by side.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength, Wisdom or Charisma, max 20."
+      },
+      "Resurge": {
+        "summary": "Standing up from Prone costs just 5 ft of movement."
+      },
+      "Stronger Together": {
+        "summary": "While you and a non-Incapacitated ally are within 5 ft of each other, both have Advantage on STR saves (not while you are Incapacitated)."
+      }
+    }
+  },
+  "purple-dragon-commandant": {
+    "summary": "A Purple Dragon officer who shores up allies and fights hardest when hurt.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Encourage Ally": {
+        "summary": "Bonus Action: an ally you see within 30 ft gains 2d6 + the raised ability’s modifier Temporary HP. PB times per Long Rest.",
+        "activation": "bonus",
+        "range": 30,
+        "dice": "2d6",
+        "uses": { "count": "PB", "recharge": "long" }
+      },
+      "Last Stand": {
+        "summary": "Advantage on attack rolls while Bloodied."
+      }
+    }
+  },
+  "spellfire-adept": {
+    "summary": "Full spellfire: feed your vitality into radiant spells that burn through Resistance.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Fueled Spellfire": {
+        "summary": "Once per turn when your spell deals Radiant damage, spend up to 2 Hit Point Dice and add their roll to one of its damage rolls.",
+        "uses": { "count": 1, "recharge": "turn" }
+      },
+      "Searing Spellfire": {
+        "summary": "Your Radiant damage ignores Resistance to Radiant."
+      }
+    }
+  },
+  "street-justice": {
+    "summary": "Rough city policing: hold suspects, tie them tight and talk tough.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Headlock": {
+        "summary": "Allies have Advantage on attacks against a creature you are Grappling."
+      },
+      "Sturdy Knot": {
+        "summary": "Chain, Manacles or Rope you bind someone with add your PB to the DC to escape or break them."
+      },
+      "Tough Talk": {
+        "summary": "Hostile creatures don’t give you Disadvantage on Intimidation checks to influence them."
+      }
+    }
+  },
+  "zhentarim-tactics": {
+    "summary": "Mercenary instincts: hit back in melee and pick up a skill for the day.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Charisma, max 20."
+      },
+      "Retaliate": {
+        "summary": "Right after a creature within 5 ft hits you in melee, make an Opportunity Attack against it."
+      },
+      "Versatile Merc": {
+        "summary": "After each Long Rest, gain Expertise in one skill you’re proficient in until the next Long Rest."
+      }
+    }
+  },
+  "boon-of-bloodshed": {
+    "summary": "Every kill and every wound sharpens your attacks.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Killer’s Fortune": {
+        "summary": "When an enemy you see drops to 0 HP, your next attack before your next turn ends has Advantage."
+      },
+      "Power from Pain": {
+        "summary": "Once per turn while Bloodied, an attack deals extra damage equal to PB, of the attack’s type.",
+        "uses": { "count": 1, "recharge": "turn" }
+      }
+    }
+  },
+  "boon-of-bountiful-health": {
+    "summary": "More Temporary HP and maximum healing from Hit Point Dice.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Augmented Health": {
+        "summary": "Whenever you gain Temporary HP, gain 5 more."
+      },
+      "Superior Recuperation": {
+        "summary": "Hit Point Dice you spend to heal can count as their maximum roll."
+      }
+    }
+  },
+  "boon-of-communication": {
+    "summary": "Understand any language and speak mind to mind.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 30."
+      },
+      "Cunning Speaker": {
+        "summary": "No Disadvantage on checks to influence Hostile creatures."
+      },
+      "Gifted Interpreter": {
+        "summary": "Grasp the literal meaning of any spoken, signed or written language."
+      },
+      "Mental Communication": {
+        "summary": "Telepathy 120 ft.",
+        "grants": [{ "kind": "sense", "value": "Telepathy", "range": 120 }]
+      }
+    }
+  },
+  "boon-of-desperate-resilience": {
+    "summary": "Near death, almost nothing hurts you fully.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Constitution, max 30."
+      },
+      "Defense of Body and Mind": {
+        "summary": "While Bloodied, Resistance to all damage except Force."
+      }
+    }
+  },
+  "boon-of-exquisite-radiance": {
+    "summary": "Radiant power that lays foes to rest for good.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Eternal Rest": {
+        "summary": "Creatures you drop to 0 HP can never rise as Undead."
+      },
+      "Powerful Radiance": {
+        "summary": "Once per Long Rest, a Radiant damage roll can use the maximum on every die.",
+        "uses": { "count": 1, "recharge": "long" }
+      }
+    }
+  },
+  "boon-of-fluid-forms": {
+    "summary": "Take the shape of a mighty beast, humanoid or monstrosity.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 30."
+      },
+      "Shapechanger": {
+        "summary": "Magic action: become a Beast, Humanoid or Monstrosity of CR 10 or lower for 1 hour, with Temporary HP equal to its HP; it ends when those run out or you change back (Magic action). You use its stat block but keep your type, mental scores, HP, Hit Dice, proficiencies, speech and spellcasting. Once per Long Rest.",
+        "activation": "magic",
+        "duration": "1 hour",
+        "uses": { "count": 1, "recharge": "long" }
+      },
+      "Hardy Transformation": {
+        "summary": "Shape-shifting with Shapechanger grants 20 extra Temporary HP."
+      }
+    }
+  },
+  "boon-of-fortunes-favor": {
+    "summary": "Luck that turns a failed save around.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Saving Throw Reroll": {
+        "summary": "Reroll a failed save and keep the new result; usable again at the start of your next turn.",
+        "uses": { "count": 1, "recharge": "turn" }
+      }
+    }
+  },
+  "boon-of-poison-mastery": {
+    "summary": "Immune to poison and deadly with it.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Antitoxic": {
+        "summary": "Immune to Poison damage and to being Poisoned.",
+        "grants": [
+          { "kind": "immunity", "value": "Poison" },
+          { "kind": "conditionImmunity", "value": "Poisoned" }
+        ]
+      },
+      "Perfect Poisoner": {
+        "summary": "Once per turn, Poison damage dice from your attack, spell or feature can all use their maximum.",
+        "uses": { "count": 1, "recharge": "turn" }
+      }
+    }
+  },
+  "boon-of-revelry": {
+    "summary": "Force foes into a helpless, singing dance.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 30."
+      },
+      "Inspire Dance": {
+        "summary": "Otto’s Irresistible Dance is always prepared; cast it once per Long Rest without a slot, or with your slots. It needs no components and damage can’t break your Concentration on it.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "irresistible-dance",
+            "free": { "count": 1, "recharge": "long" }
+          }
+        ]
+      },
+      "Sing Out": {
+        "summary": "A creature Charmed by your Irresistible Dance can’t cast Verbal spells and babbles cheerful songs if it can sing."
+      }
+    }
+  },
+  "boon-of-terror": {
+    "summary": "A fearless, terrifying presence that sends foes running.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Charisma, max 30."
+      },
+      "Fearless": {
+        "summary": "Immunity to the Frightened condition.",
+        "grants": [{ "kind": "conditionImmunity", "value": "Frightened" }]
+      },
+      "Flee, Fools!": {
+        "summary": "Reaction when a Frightened creature you see (not in Total Cover) starts its turn within 60 ft: it makes a WIS save (DC 8 + PB + CHA) or uses its turn to flee from you as fast as it can. Once per Short or Long Rest.",
+        "activation": "reaction",
+        "range": 60,
+        "save": { "ability": "WIS", "dc": "8+PB+CHA" },
+        "uses": { "count": 1, "recharge": "short" }
+      },
+      "Intimidating": {
+        "summary": "Proficiency and Expertise in Intimidation.",
+        "grants": [
+          { "kind": "skill", "value": "Intimidation" },
+          { "kind": "expertise", "value": "Intimidation" }
+        ]
+      }
+    }
+  },
+  "boon-of-the-bright-sun": {
+    "summary": "Shine with true sunlight that dispels darkness and shields allies.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution, Wisdom or Charisma, max 30."
+      },
+      "Daylight Presence": {
+        "summary": "Bonus Action: emit sunlight (Bright Light) in a 30 ft Emanation that dispels spell-made Darkness it touches. Lasts until you dismiss it, die or are Incapacitated.",
+        "activation": "bonus",
+        "range": 30
+      },
+      "Fortifying Light": {
+        "summary": "While it shines, you and allies you see in it gain 10 Temporary HP at the start of each of your turns."
+      }
+    }
+  },
+  "boon-of-the-furious-storm": {
+    "summary": "Storm magic you resist and foes struggle against.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 30."
+      },
+      "Eye of the Storm": {
+        "summary": "Resistance to Lightning and Thunder; Immunity to both while Bloodied.",
+        "grants": [
+          { "kind": "resistance", "value": "Lightning" },
+          { "kind": "resistance", "value": "Thunder" }
+        ]
+      },
+      "Storm’s Strength": {
+        "summary": "Saves against your Lightning or Thunder spells are made with Disadvantage."
+      }
+    }
+  },
+  "boon-of-the-soul-drinker": {
+    "summary": "Feed on the dying and shrug off cold and necrotic harm.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Grave Resistance": {
+        "summary": "Resistance to Cold and Necrotic damage.",
+        "grants": [
+          { "kind": "resistance", "value": "Cold" },
+          { "kind": "resistance", "value": "Necrotic" }
+        ]
+      },
+      "Siphon Life": {
+        "summary": "Reaction when an enemy within 120 ft drops to 0 HP: regain 50 HP. Once per Short or Long Rest.",
+        "activation": "reaction",
+        "range": 120,
+        "uses": { "count": 1, "recharge": "short" }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "buzzing-bee": {
+    "summary": "A loud spectral bee circles one creature you see within range, staying within 3 ft of it: it has Disadvantage on Perception and Stealth checks and on CON saves to keep Concentration, and gains nothing from being Invisible. The bee vanishes if the target leaves the range."
+  },
+  "insidious-rhythm": {
+    "summary": "A creature you see gets a catchy tune stuck in its head: on a failed WIS save it has Disadvantage on INT checks and on CON saves to keep Concentration. It saves again at the end of each of its turns, ending the spell on a success.",
+    "higherLevel": "One more target per slot level above 1."
+  },
+  "astral-flood": {
+    "summary": "A 30-ft Cone of Cold or Radiant energy (your pick): each creature makes a DEX save, taking 4d10 on a failure (half on a success). Failed Cold: Disadvantage on its next D20 Test before your next turn ends; failed Radiant: Blinded until your next turn ends.",
+    "higherLevel": "+1d10 damage per slot level above 3."
+  },
+  "sticks-to-snakes": {
+    "summary": "Up to four nonmagical sticks or wooden items you see (no longer than a Quarterstaff) become Venomous Snakes friendly to you, acting right after you; a creature holding one can stop it with a CHA save. Bonus Action: command any of them within 500 ft (otherwise they Dodge). At 0 HP a snake reverts, extra damage carrying over to the object.",
+    "higherLevel": "Two more objects per slot level above 4."
+  },
+  "leomunds-lamentable-belaborment": {
+    "summary": "Make a bold claim; creatures in a 10-ft-radius Sphere make an INT save or are Charmed, spending their turns debating it with Speed 0, Blinded and Deafened to all but you and other targets. Creatures with no shared language or INT under 3 succeed; targets save again at the end of each turn."
+  }
+}

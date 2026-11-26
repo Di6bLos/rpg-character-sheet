@@ -55,6 +55,10 @@ function firstValues(p: Dnd5ePick, prefer: { abilities: Dnd5eAbility[]; subclass
   return ok.slice(0, p.count).map((o) => o.id)
 }
 
+/** An optional subclass pick (one chosen at level 1) the test asks for. */
+const wantsSubclass = (p: Dnd5ePick, subclass: string | undefined) =>
+  p.kind === 'subclass' && !!subclass && p.options.some((o) => o.id === subclass && !o.disabled)
+
 /** Fills every unanswered pick, repeating while picks reveal more (a feat's own choices). */
 export function fill(
   ask: (picks: Record<string, string[]>) => Dnd5ePick[],
@@ -64,7 +68,9 @@ export function fill(
   const picks = { ...start }
   // One pick at a time: each changes what later picks offer (a cantrip known, a skill taken).
   for (let round = 0; round < 200; round++) {
-    const next = ask(picks).find((p) => !picks[p.key]?.length && !p.optional)
+    const next = ask(picks).find(
+      (p) => !picks[p.key]?.length && (!p.optional || wantsSubclass(p, prefer.subclass)),
+    )
     const v = next ? firstValues(next, prefer) : []
     if (!next || !v.length) break
     picks[next.key] = v
@@ -110,9 +116,9 @@ export function creation(
   return c
 }
 
-export function build(slug: string, species?: string, background?: string) {
+export function build(slug: string, species?: string, background?: string, subclass?: string) {
   const c = creation(slug, species, background)
-  const prefer = { abilities: cls(slug).primaryAbility.abilities }
+  const prefer = { abilities: cls(slug).primaryAbility.abilities, subclass }
   const choices = fill((p) => creationPicks(c, p, data), prefer)
   return { sheet: buildDnd5eSheet(c, choices, data), choices, creation: c }
 }

@@ -1,0 +1,151 @@
+{
+  "subclasses": {
+    "college-of-spirits": {
+      "summary": "A medium Bard who channels unpredictable ghosts of legend through cards, candles and crystal balls.",
+      "features": {
+        "Channeler": {
+          "summary": "Know Guidance, cast at 60 ft range. Gain playing cards with proficiency; they, a crystal or orb, a candle or an ink pen can serve as your Bard focus.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "guidance"
+            },
+            {
+              "kind": "tool",
+              "value": "Playing Cards"
+            }
+          ],
+          "options": [
+            {
+              "name": "Guiding Whispers",
+              "summary": "You know Guidance; its range is 60 ft for you.",
+              "range": 60
+            },
+            {
+              "name": "Spiritual Focus",
+              "summary": "Gain a deck of playing cards and proficiency with it; use it, a crystal or orb Arcane Focus, a candle or an ink pen as your Bard focus."
+            }
+          ]
+        },
+        "Spirits from Beyond": {
+          "summary": "When you hand out Bardic Inspiration, roll that die on the 12-spirit table to channel a spirit until you unleash it or rest. Bonus Action: spend an Inspiration use to pick a spirit numbered up to your die’s maximum. Magic action: unleash a spirit on a creature you see within 30 ft (saves use your spell DC).",
+          "activation": "magic",
+          "range": 30,
+          "options": [
+            {
+              "name": "1 Beloved",
+              "summary": "Target heals one Inspiration die + CHA."
+            },
+            {
+              "name": "2 Sharpshooter",
+              "summary": "Target takes Force damage of one Inspiration die + CHA.",
+              "damageType": "Force"
+            },
+            {
+              "name": "3 Avenger",
+              "summary": "Until your next turn ends, anyone hitting the target in melee takes one Inspiration die of Force damage.",
+              "damageType": "Force"
+            },
+            {
+              "name": "4 Renegade",
+              "summary": "Target may use its Reaction to teleport up to 30 ft to a space it sees.",
+              "range": 30
+            },
+            {
+              "name": "5 Fortune Teller",
+              "summary": "Target has Advantage on D20 Tests until your next turn starts."
+            },
+            {
+              "name": "6 Wayfarer",
+              "summary": "Target gains Temp HP of one Inspiration die + your Bard level and +10 ft Speed while they last."
+            },
+            {
+              "name": "7 Trickster",
+              "summary": "WIS save: on a fail, two Inspiration dice of Psychic and Charmed until your next turn starts; half damage only on a success.",
+              "damageType": "Psychic",
+              "save": {
+                "ability": "WIS",
+                "dc": "spell"
+              }
+            },
+            {
+              "name": "8 Shade",
+              "summary": "Target turns Invisible until its next turn ends or it attacks, deals damage or casts; when that ends, creatures within 5 ft make a CON save or take two Inspiration dice of Necrotic.",
+              "damageType": "Necrotic",
+              "save": {
+                "ability": "CON",
+                "dc": "spell"
+              }
+            },
+            {
+              "name": "9 Arsonist",
+              "summary": "DEX save: four Inspiration dice of Fire, half on a success.",
+              "damageType": "Fire",
+              "save": {
+                "ability": "DEX",
+                "dc": "spell"
+              }
+            },
+            {
+              "name": "10 Coward",
+              "summary": "Target and chosen creatures within 30 ft make a WIS save or are Frightened until your next turn starts, at half Speed and only an action or a Bonus Action.",
+              "save": {
+                "ability": "WIS",
+                "dc": "spell"
+              }
+            },
+            {
+              "name": "11 Brute",
+              "summary": "Chosen creatures within 30 ft of the target make a STR save: three Inspiration dice of Thunder and Prone, half damage only on a success.",
+              "damageType": "Thunder",
+              "save": {
+                "ability": "STR",
+                "dc": "spell"
+              }
+            },
+            {
+              "name": "12 Priest",
+              "summary": "Target heals two Inspiration dice and ends one of Blinded, Charmed, Deafened, Paralyzed, Poisoned or Stunned."
+            }
+          ]
+        },
+        "Empowered Channeling": {
+          "summary": "Once per turn add 1d6 to a damaging or healing Bard spell cast with a slot. Spirit Guardians is always prepared and castable free once per Long Rest; once per Short or Long Rest a casting also gives you and allies inside it Half Cover.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "spirit-guardians",
+              "at": 6,
+              "free": {
+                "count": 1,
+                "recharge": "long"
+              }
+            }
+          ],
+          "options": [
+            {
+              "name": "Power from Beyond",
+              "summary": "Once per turn, a Bard spell cast with a slot that damages or heals adds 1d6 to one damage roll or to the healing.",
+              "dice": "1d6",
+              "uses": {
+                "count": 1,
+                "recharge": "turn"
+              }
+            },
+            {
+              "name": "Spiritual Manifestation",
+              "summary": "Spirit Guardians always prepared, one free cast per Long Rest; once per Short or Long Rest, a casting grants Half Cover to you and allies in its Emanation.",
+              "uses": {
+                "count": 1,
+                "recharge": "short"
+              }
+            }
+          ]
+        },
+        "Mystical Connection": {
+          "summary": "Roll twice on the Spirits from Beyond table and take either result; doubles let you pick any spirit."
+        }
+      }
+    }
+  }
+}

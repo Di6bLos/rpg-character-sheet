@@ -3,7 +3,8 @@
 // (SRD 5.2.1 p. 23): Hit Points (the fixed value, a roll or the player's own roll), what the
 // level grants (Proficiency Bonus, features, slots, resources), then the picks it asks for
 // (subclass, feats, invocations, spells, Expertise…) and the optional swaps. `previous` fills in
-// a level's recorded picks (Reconfigure); picks that no longer fit show as problems.
+// a level's recorded picks (Reconfigure); picks that no longer fit show as problems. The Sources
+// menu is the builder's, shared per browser.
 import { loadDnd5e } from '~/data/dnd5e'
 import type { Dnd5eLevelInput, Dnd5eSheet } from '~/types/sheets'
 import { rollDie, sign } from '~/utils/dice'
@@ -243,6 +244,10 @@ defineExpose({ problems, progress, commit, jump })
       </div>
     </section>
 
+    <div v-if="mainPicks.length || swapPicks.length" class="source-bar">
+      <Dnd5eSourceFilter />
+    </div>
+
     <section v-for="p in mainPicks" :key="p.key" class="step-block">
       <Dnd5ePickField v-model="picks[p.key]" :pick="p" :show-errors="showErrors" />
     </section>
@@ -265,6 +270,11 @@ defineExpose({ problems, progress, commit, jump })
 </template>
 
 <style scoped lang="scss">
+.source-bar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .step-block {
   display: flex;
   flex-direction: column;

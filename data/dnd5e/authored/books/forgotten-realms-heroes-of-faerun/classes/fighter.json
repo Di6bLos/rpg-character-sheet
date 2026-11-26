@@ -1,0 +1,78 @@
+{
+  "subclasses": {
+    "banneret": {
+      "summary": "A knight-errant Fighter who leads from the front, healing, steadying and rallying allies around the banner.",
+      "features": {
+        "Knightly Envoy": {
+          "summary": "Cast Comprehend Languages as a Ritual only (CHA). Learn one language, swappable after a Long Rest for one you met in the last 24 hours. Gain one of Insight, Intimidation, Performance or Persuasion.",
+          "grants": [{ "kind": "spell", "spell": "comprehend-languages", "at": 3 }],
+          "choices": [
+            { "kind": "language", "count": 1, "label": "Polyglot" },
+            {
+              "kind": "skill",
+              "count": 1,
+              "from": ["Insight", "Intimidation", "Performance", "Persuasion"]
+            }
+          ],
+          "options": [
+            {
+              "name": "Comprehension",
+              "summary": "Comprehend Languages as a Ritual only, with CHA as the spellcasting ability."
+            },
+            {
+              "name": "Polyglot",
+              "summary": "One extra language; after a Long Rest you may trade it for a language you heard, read or saw signed in the past 24 hours."
+            },
+            {
+              "name": "Well Spoken",
+              "summary": "Proficiency in Insight, Intimidation, Performance or Persuasion."
+            }
+          ]
+        },
+        "Group Recovery": {
+          "summary": "When Second Wind heals you, up to CHA modifier allies (min 1) in a 30-ft Emanation each regain 1d4 + Fighter level HP. Once per Short or Long Rest.",
+          "uses": { "count": 1, "recharge": "short" },
+          "dice": "1d4",
+          "range": 30
+        },
+        "Team Tactics": {
+          "summary": "Allies you pick for Group Recovery gain Advantage on D20 Tests until your next turn starts."
+        },
+        "Rallying Surge": {
+          "summary": "On Action Surge, up to CHA modifier allies (min 1) in a 30-ft Emanation may each use a Reaction to make one weapon attack or Unarmed Strike, or move half their Speed without provoking Opportunity Attacks.",
+          "range": 30,
+          "options": [
+            { "name": "Attack", "summary": "Make a single weapon attack or Unarmed Strike." },
+            {
+              "name": "Move",
+              "summary": "Move up to half Speed without provoking Opportunity Attacks."
+            }
+          ]
+        },
+        "Shared Resilience": {
+          "summary": "Reaction when an ally you see within 60 ft fails a save: spend an Indomitable use so it rerolls with a bonus equal to your Fighter level, keeping the new roll.",
+          "activation": "reaction",
+          "range": 60
+        },
+        "Inspiring Commander": {
+          "summary": "Group Recovery and Rallying Surge reach a 60-ft Emanation, and you're immune to Charmed and Frightened.",
+          "grants": [
+            { "kind": "conditionImmunity", "value": "Charmed" },
+            { "kind": "conditionImmunity", "value": "Frightened" }
+          ],
+          "options": [
+            {
+              "name": "Bolstered Rally",
+              "summary": "Group Recovery and Rallying Surge use a 60-ft Emanation.",
+              "range": 60
+            },
+            {
+              "name": "Unshakable Bravery",
+              "summary": "Immune to the Charmed and Frightened conditions."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

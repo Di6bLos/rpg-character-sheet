@@ -1,0 +1,64 @@
+{
+  "upper-planes-pact": {
+    "summary": "A bargain with the Upper Planes: religious lore, radiant resistance and a sense for good and evil.",
+    "benefits": {
+      "Celestial Lore": {
+        "summary": "Proficiency in Religion.",
+        "grants": [{ "kind": "skill", "value": "Religion" }]
+      },
+      "Celestial Resistance": {
+        "summary": "Resistance to Radiant damage.",
+        "grants": [{ "kind": "resistance", "value": "Radiant" }]
+      },
+      "Detect Evil and Good": {
+        "summary": "Detect Evil and Good is always prepared, cast with INT, WIS or CHA (picked with the feat); once per Short or Long Rest without a slot, or with your slots.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "detect-evil-and-good",
+            "free": { "count": 1, "recharge": "short" }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      }
+    }
+  },
+  "elysium-diplomat": {
+    "summary": "An envoy of Elysium's calm: extra languages, easy persuasion and a graceful retreat.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Celestial Communicator": {
+        "summary": "Learn two languages of your choice from the Player's Handbook tables.",
+        "choices": [{ "kind": "language", "count": 2 }]
+      },
+      "Divine Calm": {
+        "summary": "A Hostile attitude toward you doesn't give Disadvantage on your CHA (Persuasion) checks to influence that creature."
+      },
+      "Quick Retreat": {
+        "summary": "Reaction as an adjacent enemy (within 5 ft) finishes its turn: move up to half your Speed without provoking Opportunity Attacks.",
+        "activation": "reaction"
+      }
+    }
+  },
+  "ysgardian-warrior": {
+    "summary": "A warrior of Ysgard who hits back hardest when hurt.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength, Dexterity or Constitution, max 20."
+      },
+      "Ysgardian Spirit": {
+        "summary": "On becoming Bloodied, your next attack roll before your next turn ends has Advantage, and a hit adds PB damage of the attack's type. Once per Short or Long Rest.",
+        "uses": { "count": 1, "recharge": "short" }
+      }
+    }
+  }
+}

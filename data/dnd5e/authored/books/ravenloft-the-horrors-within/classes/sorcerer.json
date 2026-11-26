@@ -1,0 +1,68 @@
+{
+  "subclasses": {
+    "shadow-sorcery": {
+      "summary": "A Sorcerer whose magic springs from the Shadowfell, seeing through darkness, cheating death and calling shadow hounds.",
+      "features": {
+        "Shadow Spells": {
+          "summary": "Always prepared: Bane, Darkness, Inflict Wounds and Pass Without Trace at Sorcerer 3; Hunger of Hadar and Nondetection at 5; Greater Invisibility and Phantasmal Killer at 7; Contagion and Creation at 9.",
+          "grants": [
+            { "kind": "spell", "spell": "bane", "at": 3 },
+            { "kind": "spell", "spell": "darkness", "at": 3 },
+            { "kind": "spell", "spell": "inflict-wounds", "at": 3 },
+            { "kind": "spell", "spell": "pass-without-trace", "at": 3 },
+            { "kind": "spell", "spell": "hunger-of-hadar", "at": 5 },
+            { "kind": "spell", "spell": "nondetection", "at": 5 },
+            { "kind": "spell", "spell": "greater-invisibility", "at": 7 },
+            { "kind": "spell", "spell": "phantasmal-killer", "at": 7 },
+            { "kind": "spell", "spell": "contagion", "at": 9 },
+            { "kind": "spell", "spell": "creation", "at": 9 }
+          ]
+        },
+        "Power of Shadow": {
+          "summary": "Darkvision 120 ft and Blindsight 10 ft, and you see through Darkness your own spells make. Once per Long Rest, when you would drop to 0 HP without dying, a CHA save (DC 5 + damage) leaves you at CHA + Sorcerer level HP.",
+          "grants": [
+            { "kind": "sense", "value": "Darkvision", "range": 120 },
+            { "kind": "sense", "value": "Blindsight", "range": 10 }
+          ],
+          "options": [
+            {
+              "name": "Eyes of the Dark",
+              "summary": "Darkvision 120 ft, Blindsight 10 ft; your spells’ Darkness doesn’t block your sight."
+            },
+            {
+              "name": "Strength of the Grave",
+              "summary": "On dropping to 0 HP (not killed), CHA save DC 5 + damage taken; success sets your HP to CHA + Sorcerer level. Once per Long Rest after a success.",
+              "uses": { "count": 1, "recharge": "long" }
+            }
+          ]
+        },
+        "Beasts of Ill Omen": {
+          "summary": "Spend 3 Sorcery Points: cast Summon Beast as a Bonus Action with no slot, preparation or Material components; it looks like shadow, and enemies within 5 ft of it have Disadvantage on saves against your spells. You may drop Concentration, making it last 1 minute and end if you recast.",
+          "activation": "bonus",
+          "grants": [{ "kind": "spell", "spell": "summon-beast" }]
+        },
+        "Shadow Walk": {
+          "summary": "Bonus Action in Dim Light or Darkness: teleport up to 120 ft to a space you see that is also dim or dark.",
+          "activation": "bonus",
+          "range": 120
+        },
+        "Umbral Form": {
+          "summary": "When you use Innate Sorcery, become shadow while it lasts: move through creatures and objects as Difficult Terrain (1d10 Force if you end a turn inside) and resist all damage but Force and Radiant. Once per Long Rest, or spend 6 Sorcery Points.",
+          "uses": { "count": 1, "recharge": "long", "restore": "6 Sorcery Points" },
+          "options": [
+            {
+              "name": "Incorporeal Movement",
+              "summary": "Pass through creatures and objects as Difficult Terrain; ending your turn inside one deals 1d10 Force to you.",
+              "dice": "1d10",
+              "damageType": "Force"
+            },
+            {
+              "name": "Shadow Resilience",
+              "summary": "Resistance to every damage type except Force and Radiant."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

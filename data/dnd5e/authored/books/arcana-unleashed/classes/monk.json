@@ -1,0 +1,41 @@
+{
+  "subclasses": {
+    "warrior-of-the-mystic-arts": {
+      "summary": "A monk who blends martial discipline with sorcery, trading Focus Points and spell slots back and forth.",
+      "features": {
+        "Spellcasting": {
+          "summary": "Third-caster on the Sorcerer list with WIS: 2 cantrips (3 at Monk 10) and 3 prepared level 1+ spells at Monk 3, rising to 13 by Monk 20 with slots up to level 4. An Arcane Focus works as your focus; swap one cantrip and one spell each Monk level.",
+          "choices": [
+            {
+              "kind": "cantrip",
+              "count": 2,
+              "list": "sorcerer",
+              "label": "Warrior of the Mystic Arts"
+            },
+            {
+              "kind": "spell",
+              "count": 3,
+              "list": "sorcerer",
+              "maxLevel": 1,
+              "label": "Warrior of the Mystic Arts"
+            }
+          ]
+        },
+        "Mystic Fighting Style": {
+          "summary": "When you take the Attack action, one Unarmed Strike can become a casting of a 1-action Sorcerer cantrip."
+        },
+        "Mystic Focus": {
+          "summary": "Spend a spell slot (no action) to regain Focus Points equal to its level. On a Short Rest or Uncanny Metabolism, pay Focus Points for one spent slot: level 1 for 2 (Monk 6), 2 for 3 (Monk 7), 3 for 5 (Monk 13), 4 for 6 (Monk 19).",
+          "activation": "free"
+        },
+        "Focused Strike": {
+          "summary": "Whatever the result of your Stunning Strike's save, that target has Disadvantage on saves against your spells until your next turn starts.",
+          "duration": "until the start of your next turn"
+        },
+        "Improved Mystic Fighting Style": {
+          "summary": "With Flurry of Blows, swap two of its Unarmed Strikes for a 1-action level 1 or 2 Sorcerer spell, cast within that same Bonus Action."
+        }
+      }
+    }
+  }
+}

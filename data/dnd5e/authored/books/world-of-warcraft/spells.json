@@ -1,0 +1,243 @@
+{
+  "arcane-pulse": {
+    "summary": "Chosen creatures within 10 ft of you make a CON save or take 1d8 Force and lose 10 ft of Speed until your next turn ends."
+  },
+  "wrath": {
+    "summary": "Ranged spell attack: 1d8 Lightning, and the target's Speed drops by 10 ft until your next turn ends.",
+    "higherLevel": "+1d8 damage at levels 5, 11 and 17."
+  },
+  "azure-strike": {
+    "summary": "Up to two targets no more than 30 ft apart: a ranged spell attack against each deals 2d6 Force and cuts its Speed by 10 ft until its next turn ends.",
+    "higherLevel": "+1d6 damage per slot level above 1."
+  },
+  "chains-of-ice": {
+    "summary": "A creature you can see makes a DEX save: on a failure 1d10 Cold and its Speed is halved until its next turn ends; on a success half damage.",
+    "higherLevel": "+1d10 damage per slot level above 1."
+  },
+  "consume-soul": {
+    "summary": "A creature makes a CON save or takes 4d4 Force, and you get Temp HP equal to half of it; half damage and no Temp HP on a success.",
+    "higherLevel": "+1d4 damage per slot level above 1."
+  },
+  "death-grip": {
+    "summary": "A creature you can see makes a STR save or is yanked in a straight line to the closest free space within 5 ft of you."
+  },
+  "ebon-might": {
+    "summary": "Chosen creatures within 10 ft of you add 1d4 Force to each attack roll that hits until the end of your next turn."
+  },
+  "entropic-embrace": {
+    "summary": "Triggered by rolling doubles on a D20 Test with Advantage or Disadvantage. For 1 minute you auto-succeed on Concentration saves, your space is Lightly Obscured, and once per turn you add 1d4 Necrotic to damage you deal or 1d4 to healing you give.",
+    "higherLevel": "+1d4 to the extra damage or healing per slot level above 1."
+  },
+  "fel-rush": {
+    "summary": "This turn you gain +30 ft Speed and provoke no Opportunity Attacks; each creature or unattended object you pass within 5 ft of makes a DEX save (once per turn) for 2d6 Fire, half on a success.",
+    "higherLevel": "+1d6 damage per slot level above 1."
+  },
+  "freezing-trap": {
+    "summary": "Plant an invisible trap at a point; the first creature to come within 5 ft sets it off and makes a CON save or is Restrained for 1 minute. Any damage frees it, and the spell ends once triggered."
+  },
+  "frost-nova": {
+    "summary": "Chosen creatures within 15 ft of you make a CON save: on a failure 2d6 Cold and Restrained until the end of your next turn; half damage on a success.",
+    "higherLevel": "+1d6 damage per slot level above 1."
+  },
+  "infernal-strike": {
+    "summary": "Leap up to 30 ft without provoking Opportunity Attacks; creatures within 10 ft of where you land make a DEX save or take 2d6 Fire and have Disadvantage attacking anyone but you until your next turn starts (half damage only on a success).",
+    "higherLevel": "+1d6 damage per slot level above 1."
+  },
+  "living-flame": {
+    "summary": "Pick one per target: it heals 2d6 HP, or you make a ranged attack that deals 2d8 Fire on a hit.",
+    "higherLevel": "One extra target per two slot levels above 1 (up to five with a level 9 slot), each with its own choice."
+  },
+  "moonfire": {
+    "summary": "A creature makes a DEX save or takes 2d8 Radiant, glows with 10-ft Dim Light and can't be Invisible, then takes 1d8 Radiant more at the end of its next turn; on a success it takes half the first hit only.",
+    "higherLevel": "+1d8 to both the first and the later damage per slot level above 1."
+  },
+  "rune-strike": {
+    "summary": "Right after you hit with a melee weapon or Unarmed Strike, the target takes +2d8 Necrotic (+1d8 more against a Celestial).",
+    "higherLevel": "+1d8 damage per slot level above 1."
+  },
+  "scourge-strike": {
+    "summary": "Right after you hit with a melee weapon or Unarmed Strike, the target takes +2d6 Necrotic and makes a CON save or is Poisoned for up to 1 minute, saving again at the end of each of its turns.",
+    "higherLevel": "+1d6 damage per slot level above 1."
+  },
+  "shadow-word-pain": {
+    "summary": "A creature makes a WIS save or takes 1d10 + your spellcasting modifier Psychic and is cursed (half damage, no curse on a success). The cursed target takes 1d10 Psychic as each of its turns starts and saves again as each ends, for up to 1 minute.",
+    "higherLevel": "+1d10 to the first hit per slot level above 1."
+  },
+  "throw-glaive": {
+    "summary": "Ranged spell attack: 1d8 Slashing + 1d8 Fire, and on a hit the glaive bounces to another target within 30 ft for a fresh attack.",
+    "higherLevel": "+1d8 Fire per slot level above 1; it can bounce as many times as the slot's level, never hitting the same creature twice."
+  },
+  "vampiric-blood": {
+    "summary": "While you concentrate (up to 1 minute), your HP maximum rises by 10 and any healing you receive gives 1d6 HP more.",
+    "higherLevel": "+1d6 to the extra healing per slot level above 1."
+  },
+  "consecration": {
+    "summary": "A 15-ft Emanation around you deals 1d8 Radiant to chosen creatures that start their turn in it and is Difficult Terrain for Fiends and Undead, while you concentrate."
+  },
+  "curse-of-agony": {
+    "summary": "A creature makes a CON save each time (now and at the end of each of its turns), taking the curse's damage, starting at 1d4 Psychic. On a failure the die grows one size, up to 1d12; on a success it takes the damage and the curse ends."
+  },
+  "death-and-decay": {
+    "summary": "Creatures in a 20-ft-radius Sphere make a WIS save or take 2d6 Necrotic and are cursed until your next turn ends (half damage, no curse on a success). Your attack rolls that damage a cursed target add 1d6 Necrotic."
+  },
+  "dream-breath": {
+    "summary": "Chosen creatures in a 15-ft Cone regain 2d6 HP.",
+    "higherLevel": "+2d6 healing per slot level above 2."
+  },
+  "eruption": {
+    "summary": "Creatures in a 20-ft-radius Sphere make a DEX save for 3d8 Fire, half on a success; the area is Difficult Terrain until your next turn ends.",
+    "higherLevel": "+1d8 damage per slot level above 2."
+  },
+  "eye-beam": {
+    "summary": "On casting and as a Magic action on later turns while you concentrate, creatures in a 15-ft Cone make a DEX save for 3d6 Force, half on a success.",
+    "higherLevel": "+1d6 damage per slot level above 1."
+  },
+  "feral-prowl": {
+    "summary": "Take a Wild Shape form without spending a use, and stay Invisible for up to 1 minute until you attack, deal damage, cast a spell or change back."
+  },
+  "fiery-brand": {
+    "summary": "A creature makes a WIS save or takes 3d10 Fire and is cursed, giving you Resistance to all its damage; half damage and no curse on a success. It saves again at the end of each of its turns to end it."
+  },
+  "frostscythe": {
+    "summary": "Creatures in a 20-ft Cone make a CON save: on a failure 3d8 Cold and -10 ft Speed for 1 minute; half damage on a success.",
+    "higherLevel": "+1d8 damage per slot level above 2."
+  },
+  "roar-of-ursoc": {
+    "summary": "Take a Wild Shape form without spending a use; until your next turn starts, creatures starting their turn within 5 ft of you have Disadvantage attacking anyone but you."
+  },
+  "sigil-of-flame": {
+    "summary": "A creature you can see makes a CON save for 2d8 Fire, half on a success, and then gives off heat in a 10-ft Emanation: at the start of its next turn it and everyone in that area make a CON save or take 1d8 Fire.",
+    "higherLevel": "+1d8 to both the first and the later damage per slot level above 2."
+  },
+  "blistering-scales": {
+    "summary": "A willing creature gets five explosive scales and +1 AC while you concentrate; each melee hit against it pops a scale for 1d8 Fire to the attacker, and the spell ends when none remain.",
+    "higherLevel": "One more scale per slot level above 3."
+  },
+  "demon-spikes": {
+    "summary": "For 1 minute you have +2 AC, and a creature within 5 ft that hits you with a melee attack takes 10 Piercing."
+  },
+  "emerald-blossom": {
+    "summary": "A spectral bulb grows in a free space; at the end of each of your turns, chosen allies within 10 ft of it regain 5 HP. It fades after healing 20 HP in total, or when your Concentration ends.",
+    "higherLevel": "+5 to the bulb's total healing per slot level above 3."
+  },
+  "flurry": {
+    "summary": "Three ice shards, each a ranged spell attack at the same or different targets: 3d6 Cold on a hit, and a Critical Hit leaves the target Restrained until your next turn ends.",
+    "higherLevel": "One more shard per slot level above 3."
+  },
+  "guided-prayer": {
+    "summary": "Heal 8d4 + your spellcasting modifier and gain Advantage on your next attack roll before the end of your next turn."
+  },
+  "hand-of-guldan": {
+    "summary": "Creatures in a 20-ft-radius Sphere make a DEX save for 2d8 Fire + 2d8 Necrotic, half on a success. While you concentrate, a creature entering or ending its turn there saves again (once per turn) for 1d8 Fire + 1d8 Necrotic, half on a success."
+  },
+  "leeching-strike": {
+    "summary": "Right after you hit with a melee weapon or Unarmed Strike, the target takes +3d8 Necrotic and you heal 3d4 HP.",
+    "higherLevel": "+1d8 damage and +1d4 healing per slot level above 3."
+  },
+  "metamorphosis": {
+    "summary": "For 1 minute pick one form: Devourer (1s and 2s on Force damage dice count as 3), Havoc (melee weapon hits add 1d6 Fire) or Vengeance (+2 AC and +5 to both current and maximum HP)."
+  },
+  "prayer-of-mending": {
+    "summary": "A willing creature carries a ward for 1 minute; when it next takes damage it heals 1d8 + your spellcasting modifier, then the ward leaps to another ally within 30 ft. Ends after five heals or when no ally is in reach.",
+    "higherLevel": "One more heal per slot level above 3."
+  },
+  "rain-of-fire": {
+    "summary": "A 20-ft-radius, 40-ft-high Cylinder: creatures in it, entering it, ending a turn in it or overtaken by it make a DEX save (once per turn) for 3d8 Fire, half on a success. A Magic action moves it 60 ft, and you have Advantage on spell attacks against creatures inside, adding 1d6 Necrotic on a hit.",
+    "higherLevel": "+1d8 Fire per slot level above 3."
+  },
+  "regrowth": {
+    "summary": "A creature you can see heals 3d8 HP, then 1d8 more at the start of each of your turns while you concentrate, ending once it has healed 24 HP or more."
+  },
+  "remorseless-winter": {
+    "summary": "Chosen creatures within 30 ft of you make a CON save for 6d6 Cold, half on a success; either way their Speed is 10 ft until the end of their next turn.",
+    "higherLevel": "+1d6 damage per slot level above 3."
+  },
+  "serpent-sting": {
+    "summary": "Right after you hit a creature with a weapon, it takes +4d6 Poison and is Poisoned for up to 1 minute; at the end of each of its turns it makes a CON save, taking 2d6 Poison on a failure and ending the spell on a success."
+  },
+  "soul-reap": {
+    "summary": "Ranged spell attack that ignores Half and Three-Quarters Cover: 6d6 Force on a hit. Each 6 rolled adds another d6, up to your spellcasting modifier in extra dice.",
+    "higherLevel": "+1d6 damage per slot level above 3."
+  },
+  "breath-of-eons": {
+    "summary": "While you concentrate you gain a 60-ft Fly Speed with hover and your movement provokes no Opportunity Attacks; moving within 5 ft of a creature can curse it (once per turn) so the next damage it takes adds 1d10 Force."
+  },
+  "chaos-nova": {
+    "summary": "Chosen creatures within 20 ft of you take 2d6 Force and make a WIS save or are Stunned until the end of your next turn."
+  },
+  "collapsing-star": {
+    "summary": "Chosen creatures in a 20-ft-radius Sphere make a CON save for 4d12 Force, half on a success."
+  },
+  "divine-shield": {
+    "summary": "When you take damage, become immune to all damage (the trigger included) until your next turn starts; meanwhile your Speed can't be lowered and nothing can move you against your will."
+  },
+  "emberstorm": {
+    "summary": "Creatures in a 20-ft-radius Sphere make a CON save for 6d8 Fire, half on a success. Creatures and unattended flammable objects there catch fire and take 1d8 Fire as each of their turns begins.",
+    "higherLevel": "+1d8 damage per slot level above 4."
+  },
+  "holy-nova": {
+    "summary": "In a 30-ft Emanation, chosen creatures make a CON save for 5d6 Radiant (half on a success) and every other creature heals 3d6 HP.",
+    "higherLevel": "+1d6 damage and +1d6 healing per slot level above 4."
+  },
+  "psychic-horror": {
+    "summary": "A creature makes a WIS save or takes 2d10 Psychic and is Frightened for 1 minute (Stunned too until the end of your next turn), saving again at the end of each of its turns; half damage only on a success.",
+    "higherLevel": "+1d10 damage per slot level above 4."
+  },
+  "starfall": {
+    "summary": "Creatures in a 30-ft-radius, 40-ft-high Cylinder make a DEX save for 7d8 Radiant, half on a success. Until your next turn starts, a creature entering it or ending its turn there takes Radiant equal to your Druid level, once per turn."
+  },
+  "time-dilation": {
+    "summary": "When you or a creature you can see within 60 ft takes damage, cut that damage by 4d8; the target then loses 1d8 HP at the end of each of its turns until it has lost a separately rolled 4d8."
+  },
+  "upheaval": {
+    "summary": "Creatures in a 20-ft-radius, 10-ft-tall Cylinder make a DEX save: on a failure 1d12 Bludgeoning + 3d8 Fire and they're thrown to the top and fall; half damage only on a success. The ground is Difficult Terrain until your next turn ends.",
+    "higherLevel": "+1d12 Bludgeoning per slot level above 4."
+  },
+  "bonestorm": {
+    "summary": "You heal 4d6 HP, and creatures within 10 ft of you make a CON save for 4d8 Necrotic, half on a success."
+  },
+  "dream-flight": {
+    "summary": "While you concentrate you gain a 60-ft Fly Speed with hover and your movement provokes no Opportunity Attacks; moving within 5 ft of a creature can heal it 5d4 HP, once per turn per creature."
+  },
+  "explosive-trap": {
+    "summary": "Plant an invisible trap at a point; the first creature within 5 ft sets it off, and creatures in a 20-ft-radius Sphere make a DEX save or take 8d6 Fire and, if Huge or smaller, are pushed 20 ft away."
+  },
+  "innervate": {
+    "summary": "A creature within 30 ft gets a level 4 spell slot for its prepared spells, lost once used or at its next Long Rest; you also regain one Wild Shape use."
+  },
+  "rescue": {
+    "summary": "Teleport to a free space you can see within 120 ft, bringing one willing creature within 60 ft of your starting point to a space within 5 ft of you."
+  },
+  "shattering-star": {
+    "summary": "Ranged spell attack: 10d8 Force, and the target has -2 AC until your next turn starts.",
+    "higherLevel": "+1d8 damage per slot level above 5."
+  },
+  "sigil-of-chains": {
+    "summary": "Creatures in a 20-ft-radius Sphere make a DEX save: on a failure 5d6 Force, pulled up to 10 ft toward the center and Restrained until your next turn ends; on a success half damage and -10 ft Speed for that time."
+  },
+  "void-eruption": {
+    "summary": "Creatures in a 20-ft-radius Sphere make a CON save for 5d6 Necrotic, half on a success. While you concentrate, you're Invisible in Dim Light or Darkness and can fire a Bonus Action ranged spell attack within 60 ft for 2d6 + your spellcasting modifier Necrotic."
+  },
+  "azure-sweep": {
+    "summary": "Chosen creatures within 30 ft of you make a CON save: on a failure 7d8 Force and -20 ft Speed for 1 minute; half damage only on a success."
+  },
+  "combustion": {
+    "summary": "For 1 minute you blaze with 20-ft Bright Light (plus 10 ft Dim), are immune to Fire and have Advantage on spell attacks; at the end of each of your turns, chosen creatures within 5 ft take 3d8 Fire."
+  },
+  "tranquility": {
+    "summary": "While you concentrate, chosen creatures within 60 ft resist Bludgeoning, Piercing and Slashing, and as a Bonus Action you can heal each ally there 2d8 + your spellcasting modifier.",
+    "higherLevel": "+1d8 healing per slot level above 6."
+  },
+  "lay-waste": {
+    "summary": "Creatures in a 120-ft-long, 10-ft-wide Line make a DEX save for 12d6 Fire, half on a success; then you teleport to a free space within 5 ft of the Line's far end."
+  },
+  "tree-of-life": {
+    "summary": "For 1 minute you become a Large tree: Speed 10 ft (can't be lowered, Difficult Terrain costs nothing extra), +2 AC, 10 Temp HP, immune to Paralyzed, Restrained and forced shape-shifting. Your slot healing spells heal +1d8, and your Druid spells get +1 save DC and Advantage on attack rolls."
+  },
+  "apotheosis": {
+    "summary": "For 1 minute you gain a 90-ft Fly Speed and Resistance to Bludgeoning, Piercing, Radiant and Slashing; spells you cast with a slot that heal or deal Radiant work as if cast 2 slot levels higher (max 9)."
+  },
+  "mass-polymorph": {
+    "summary": "Any creatures you pick within 30 ft make a WIS save or turn into the same CR 0 Beast while you concentrate (up to 1 hour); only Beasts, Giants, Humanoids and Monstrosities can fail. Each gains Temp HP equal to the Beast's HP and reverts when those run out; it keeps its HP, mind and type but can't speak, cast or use its gear."
+  }
+}

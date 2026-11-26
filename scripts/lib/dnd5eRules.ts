@@ -255,3 +255,52 @@ export function skillChoice(text: string) {
   const options = SKILLS.filter((k) => new RegExp(`\\b${k}\\b`).test(s))
   return { count, options }
 }
+
+/**
+ * A lead-in that says nothing on its own ("You gain the following benefits.", "As a Dwarf, you
+ * have these special traits."): never a summary.
+ */
+export const LEAD_IN =
+  /^(?:You gain the following (?:benefits|features)|.*\b(?:the following|these) (?:special )?(?:benefits?|features?|effects?|traits?)\b)[.:]?$/i
+
+/** The longest a generated one-liner runs before it is cut at a word. */
+const SUMMARY_MAX = 220
+
+/** Markdown to plain words: no emphasis, links or table rows. */
+const unmark = (s: string) =>
+  s
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[*_]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+/** The first sentence of a paragraph, cut at a word when it runs long. */
+export function firstSentence(para: string): string {
+  const p = unmark(para)
+  const m = p.match(/^.+?[.!?](?=\s+[A-Z(]|$)/)
+  const s = (m?.[0] ?? p).trim()
+  if (s.length <= SUMMARY_MAX) return s
+  return `${s.slice(0, SUMMARY_MAX).replace(/\s+\S*$/, '')}…`
+}
+
+/**
+ * A one-liner drawn from SRD text (CC-BY-4.0): the first sentence of its first real paragraph,
+ * past the italic tagline, the "**Field:**" lines, tables and lead-ins. `benefits` (a feat's)
+ * picks the first named benefit other than its Ability Score Increase.
+ */
+export function srdSummary(text: string, benefits?: { name: string; text?: string }[]): string {
+  const named = benefits?.filter((b) => b.text && !LEAD_IN.test(unmark(b.text)))
+  const pickB = named?.find((b) => b.name !== 'Ability Score Increase') ?? named?.[0]
+  if (pickB?.text) return firstSentence(pickB.text)
+  const paras = text
+    .replace(/^_[^_\n]+_\s*/, '')
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter((p) => p && !p.startsWith('|') && !/^\*\*[^*]+:\*\*/.test(p) && !p.startsWith('#'))
+  for (const p of paras) {
+    const body = p.replace(/^\*\*\*[^*]+\*\*\*\s*/, '')
+    const s = firstSentence(body)
+    if (s && !LEAD_IN.test(s)) return s
+  }
+  return ''
+}
