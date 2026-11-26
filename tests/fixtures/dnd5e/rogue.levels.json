@@ -8,7 +8,8 @@
         "Human: Resourceful",
         "Human: Skillful",
         "Human: Versatile",
-        "Feat · Human: Crafter",
+        "Feat · Human: Magic Initiate",
+        "Magic Initiate: Spell list: Cleric",
         "Rogue 1: Expertise",
         "Rogue 1: Sneak Attack",
         "Rogue 1: Thieves’ Cant",
@@ -20,7 +21,10 @@
         "L1:species:size size×1",
         "L1:species:skillful:0 skill×1",
         "L1:species:versatile:0 feat×1",
-        "L1:species:versatile:0>b0:0 tool×3",
+        "L1:species:versatile:0>1 ability×1",
+        "L1:species:versatile:0>0 option×1",
+        "L1:species:versatile:0>0>cleric:0 cantrip×2",
+        "L1:species:versatile:0>0>cleric:1 spell×1",
         "L1:languages language×2",
         "L1:expertise:0 expertise×2",
         "L1:thieves-cant:0 language×1",
@@ -34,7 +38,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 2
@@ -56,7 +62,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 2
@@ -81,7 +89,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 2
@@ -105,7 +115,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 3
@@ -128,7 +140,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 3
@@ -149,7 +163,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 3
@@ -172,7 +188,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 3
@@ -196,7 +214,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 4
@@ -218,7 +238,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 4
@@ -242,7 +264,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 5
@@ -264,7 +288,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 5
@@ -288,7 +314,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 6
@@ -310,7 +338,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 6
@@ -332,7 +362,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 6
@@ -354,7 +386,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 6
@@ -378,7 +412,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 7
@@ -400,7 +436,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 7
@@ -422,7 +460,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 7
@@ -446,7 +486,9 @@
         "pact": null,
         "cantrips": 0,
         "prepared": 0,
-        "resources": [],
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
         "options": 0,
         "masteries": 2,
         "feats": 8
@@ -469,6 +511,7 @@
         "cantrips": 0,
         "prepared": 0,
         "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
           "Stroke of Luck 1/short"
         ],
         "options": 0,

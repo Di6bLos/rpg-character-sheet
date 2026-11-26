@@ -266,6 +266,12 @@ export interface Dnd5eCreation {
   bonus: Partial<Record<Dnd5eAbility, number>>
   /** Starting equipment: the class's and the background's option letter (the last is gold). */
   equipment: { class: string; background: string }
+  /**
+   * A background the player made (`backgroundSlug` "custom", SRD 5.2.1 p. 193): its name, its
+   * three abilities and the gear bought with its 50 GP (data slugs). Its feat, skills and tool
+   * are picks in `choices` like any other.
+   */
+  custom?: { name: string; abilities: Dnd5eAbility[]; gear: string[] }
 }
 
 export interface Dnd5eSheet extends SheetCommon {

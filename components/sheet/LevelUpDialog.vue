@@ -2,6 +2,7 @@
 import { classBySlug } from '~/data/nimble/classes'
 import { loadPf2e } from '~/data/pf2e'
 import type {
+  Dnd5eLevelInput,
   Dnd5eSheet,
   NimbleLevelInput,
   NimbleSheet,
@@ -22,8 +23,8 @@ import { systemLabel } from '~/utils/systems'
 
 const open = defineModel<boolean>({ required: true })
 const props = defineProps<{
-  /** A level's recorded picks to start from (Reconfigure): Nimble's or PF2e's. */
-  previous?: NimbleLevelInput | Pf2eLevelInput
+  /** A level's recorded picks to start from (Reconfigure): Nimble's, PF2e's or 5e's. */
+  previous?: NimbleLevelInput | Pf2eLevelInput | Dnd5eLevelInput
   progress?: string
 }>()
 const { draft, saveNow } = useSheet()
@@ -149,24 +150,42 @@ const pf2eMode = computed(
   () => pf2eBuilt.value && pf2eClassKnown.value !== false && level.value < MAX_LEVEL,
 )
 const pf2ePrevious = computed(() =>
-  props.previous && !('hpGain' in props.previous) ? props.previous : undefined,
+  props.previous && 'boosts' in props.previous ? props.previous : undefined,
 )
-const pf2eBody = ref<{
+/** The data-driven level-up body (PF2e's or 5e's): what it still needs, and writing the level. */
+interface LevelBody {
   problems: { section: string; text: string }[]
   progress: { done: number; total: number }
   commit: () => boolean
   jump: (section: string) => void
-} | null>(null)
-const pf2eProblems = computed(() =>
-  pf2eMode.value ? (pf2eBody.value?.problems ?? [{ section: '', text: 'Loading the rules' }]) : [],
+}
+const pf2eBody = ref<LevelBody | null>(null)
+
+// Data-driven 5e level-up (sheets made in the 5e builder); hand-made sheets keep free text.
+const dnd5eMode = computed(
+  () =>
+    system.value === 'dnd5e' &&
+    !!(draft.value.sheet as Dnd5eSheet).classSlug &&
+    !!(draft.value.sheet as Dnd5eSheet).creation &&
+    level.value < MAX_LEVEL,
+)
+const dnd5ePrevious = computed(() =>
+  props.previous && 'hpRoll' in props.previous ? props.previous : undefined,
+)
+const dnd5eBody = ref<LevelBody | null>(null)
+/** Either system's data-driven body takes over the dialog. */
+const bodyMode = computed(() => pf2eMode.value || dnd5eMode.value)
+const body = computed(() => (pf2eMode.value ? pf2eBody.value : dnd5eBody.value))
+const bodyProblems = computed(() =>
+  bodyMode.value ? (body.value?.problems ?? [{ section: '', text: 'Loading the rules' }]) : [],
 )
 
 /** What still blocks Confirm, shown beside it; each item jumps to its section. */
 const todo = computed(() => {
-  if (pf2eMode.value)
-    return pf2eProblems.value.map((p) => ({
+  if (bodyMode.value)
+    return bodyProblems.value.map((p) => ({
       text: p.text,
-      go: () => (p.section ? pf2eBody.value?.jump(p.section) : undefined),
+      go: () => (p.section ? body.value?.jump(p.section) : undefined),
     }))
   return nimbleProblems.value.map((p) => ({
     text: p.text,
@@ -181,8 +200,8 @@ const todo = computed(() => {
 
 async function confirmPf2e() {
   showErrors.value = true
-  if (pf2eProblems.value.length) return todo.value[0]?.go()
-  if (!pf2eBody.value?.commit()) return
+  if (bodyProblems.value.length) return todo.value[0]?.go()
+  if (!body.value?.commit()) return
   const next = level.value + 1
   draft.value.level = next
   open.value = false
@@ -295,7 +314,7 @@ async function confirmNimble() {
 }
 
 async function confirm() {
-  if (pf2eMode.value) return confirmPf2e()
+  if (bodyMode.value) return confirmPf2e()
   if (plan.value) return confirmNimble()
   showErrors.value = true
   if (!gainValid.value) return
@@ -377,8 +396,8 @@ async function confirm() {
         <span class="badge" :class="`badge--${system}`">{{ systemLabel(system) }}</span>
         <span class="small" style="color: var(--page-soft)">{{ draft.name }}</span>
         <span v-if="progress" class="badge badge--outline">{{ progress }}</span>
-        <span v-if="pf2eMode && pf2eBody?.progress.total" class="badge badge--outline">
-          {{ pf2eBody.progress.done }} of {{ pf2eBody.progress.total }} chosen
+        <span v-if="bodyMode && body?.progress.total" class="badge badge--outline">
+          {{ body.progress.done }} of {{ body.progress.total }} chosen
         </span>
       </div>
     </template>
@@ -414,12 +433,19 @@ async function confirm() {
         :show-errors="showErrors"
       />
 
+      <Dnd5eLevelUp
+        v-if="dnd5eMode && open"
+        ref="dnd5eBody"
+        :previous="dnd5ePrevious"
+        :show-errors="showErrors"
+      />
+
       <p v-if="pf2eBuilt && pf2eClassKnown === false" class="notice small" role="status">
         This hero's class ({{ (draft.sheet as Pf2eSheet).classSlug }}) isn't in the Pathfinder rules
         data, so this level-up is filled in by hand.
       </p>
 
-      <section v-if="!pf2eMode" class="step-block" aria-labelledby="lu-hp">
+      <section v-if="!bodyMode" class="step-block" aria-labelledby="lu-hp">
         <div class="step-head">
           <h3 id="lu-hp">1 · Hit points</h3>
           <span class="small muted">{{ hpHint }}</span>
@@ -482,7 +508,7 @@ async function confirm() {
         </p>
       </section>
 
-      <section v-if="!pf2eMode && (!plan || statRule)" class="step-block" aria-labelledby="lu-ab">
+      <section v-if="!bodyMode && (!plan || statRule)" class="step-block" aria-labelledby="lu-ab">
         <div class="step-head">
           <h3 id="lu-ab">2 · {{ rules.boostTitle }}</h3>
           <span class="small points" :class="{ done: left === 0 }">
@@ -606,7 +632,7 @@ async function confirm() {
         </section>
       </template>
 
-      <section v-else-if="!pf2eMode" class="step-block" aria-labelledby="lu-ft">
+      <section v-else-if="!bodyMode" class="step-block" aria-labelledby="lu-ft">
         <h3 id="lu-ft">3 · New features</h3>
         <div class="feats">
           <div class="field">
@@ -624,7 +650,7 @@ async function confirm() {
         </div>
       </section>
 
-      <section v-if="!pf2eMode" class="summary" aria-label="Summary">
+      <section v-if="!bodyMode" class="summary" aria-label="Summary">
         <div class="caps" style="margin-bottom: 8px">Updates automatically</div>
         <dl>
           <div v-for="r in summary" :key="r.label">

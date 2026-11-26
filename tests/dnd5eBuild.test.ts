@@ -6,8 +6,11 @@ import { describe, expect, it } from 'vitest'
 import type { Dnd5eSheet } from '../types/sheets'
 import {
   type Dnd5ePick,
+  CUSTOM_BACKGROUND,
   bonusProblem,
   buildDnd5eSheet,
+  customGearOptions,
+  customProblem,
   columnNumber,
   creationPicks,
   creationProblems,
@@ -181,6 +184,56 @@ describe('5e level 1', () => {
         data.spells.find((s) => s.slug === o.id)!.classes.includes('cleric'),
       ),
     ).toBe(true)
+  })
+
+  it('a custom background (SRD 5.2.1 p. 193): name, three abilities, Origin feat, two skills, a tool, 50 GP', () => {
+    const c = creation('fighter', 'human', 'acolyte')
+    c.backgroundSlug = CUSTOM_BACKGROUND
+    c.custom = {
+      name: 'Lighthouse Keeper',
+      abilities: ['STR', 'CON', 'WIS'],
+      gear: ['rope', 'lamp'],
+    }
+    c.bonus = { STR: 2, CON: 1 }
+    expect(customProblem(c, data)).toBeNull()
+    const asked = creationPicks(c, {}, data).filter((p) => p.key.startsWith('L1:background'))
+    expect(asked.map((p) => [p.key, p.kind, p.count])).toEqual([
+      ['L1:background:feat', 'feat', 1],
+      ['L1:background:skills', 'skill', 2],
+      ['L1:background:tool', 'tool', 1],
+    ])
+    const feat = asked[0]!
+    expect(
+      feat.options.every((o) => data.feats.find((f) => f.slug === o.id)?.category === 'origin'),
+    ).toBe(true)
+    const choices = fill((p) => creationPicks(c, p, data), prefer('fighter'), {
+      'L1:background:feat': ['tough'],
+      'L1:background:skills': ['Athletics', 'Survival'],
+      'L1:background:tool': ['Navigator’s Tools'],
+    })
+    expect(creationProblems(c, choices, data)).toEqual([])
+    const sheet = buildDnd5eSheet(c, choices, data)
+    expect(sheet.background).toBe('Lighthouse Keeper')
+    expect(sheet.backgroundSlug).toBe('custom')
+    expect(sheet.creation?.custom?.name).toBe('Lighthouse Keeper')
+    expect(sheet.proficiencies!.skills).toEqual(expect.arrayContaining(['Athletics', 'Survival']))
+    expect(sheet.proficiencies!.tools).toContain('Navigator’s Tools')
+    expect(sheet.featsTaken!.map((f) => f.slug)).toContain('tough')
+    expect(sheet.abilities.STR).toBe(c.base.STR + 2)
+    const spent = customGearOptions(data)
+      .filter((g) => ['rope', 'lamp'].includes(g.slug))
+      .reduce((n, g) => n + g.cost, 0)
+    expect(sheet.inventory.map((i) => i.name)).toEqual(expect.arrayContaining(['Rope', 'Lamp']))
+    expect(sheet.coins!.gp).toBe(4 + Math.floor((5000 - spent) / 100))
+    // Level-ups and undo replay it from the sheet's creation and picks.
+    levelTo(sheet, 1, 4)
+    restoreLevel(sheet, 3)
+    expect(sheet.background).toBe('Lighthouse Keeper')
+    expect(sheet.featsTaken!.map((f) => f.slug)).toContain('tough')
+    c.custom.abilities = ['STR', 'CON']
+    expect(customProblem(c, data)).toMatch(/three abilities/)
+    c.custom.name = ' '
+    expect(customProblem(c, data)).toMatch(/Name/)
   })
 
   it('a hand-made sheet has no plan', () => {

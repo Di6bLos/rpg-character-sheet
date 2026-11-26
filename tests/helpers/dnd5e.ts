@@ -24,8 +24,25 @@ export const data = Object.fromEntries(
 export const cls = (slug: string): Dnd5eClassDef => data.classes.find((c) => c.slug === slug)!
 
 /** First valid values for a pick; increases go to the class's primary ability first. */
+/**
+ * SRD records first, then the Player's Handbook and Forge of the Artificer ones, so the tables
+ * don't move when other books' entries join the data.
+ */
+const ranks = new Map(
+  [
+    ...data.feats,
+    ...data.spells,
+    ...data.subclasses,
+    ...data.options.flatMap((g) => g.entries),
+  ].map((r) => [
+    r.slug,
+    r.srd ? 0 : ['PHB 2024', 'Eberron: Forge of the Artificer'].includes(r.source) ? 1 : 2,
+  ]),
+)
+const rank = (id: string) => ranks.get(id) ?? 0
+
 function firstValues(p: Dnd5ePick, prefer: { abilities: Dnd5eAbility[]; subclass?: string }) {
-  const ok = p.options.filter((o) => !o.disabled)
+  const ok = p.options.filter((o) => !o.disabled).sort((a, b) => rank(a.id) - rank(b.id))
   if (p.kind === 'subclass' && prefer.subclass && ok.some((o) => o.id === prefer.subclass))
     return [prefer.subclass]
   if (p.kind === 'asi') {

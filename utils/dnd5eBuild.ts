@@ -1537,14 +1537,16 @@ function origin(w: Walker) {
     )
   // The background's Origin feat (its fixed option: Magic Initiate's spell list), taken first so
   // a species' feat pick (Versatile) can't take it again.
-  addFeature(st, background.name, 'Background', background)
-  takeFeat(
-    w,
-    background.feat.slug,
-    `${key}:background:feat`,
-    background.name,
-    background.feat.option,
-  )
+  if (background.slug) addFeature(st, background.name, 'Background', background)
+  if (background.slug === CUSTOM_BACKGROUND) customPicks(w)
+  else
+    takeFeat(
+      w,
+      background.feat.slug,
+      `${key}:background:feat`,
+      background.name,
+      background.feat.option,
+    )
   // Class core traits.
   cls.saves.forEach((a) => st.saves.add(a))
   cls.armor.forEach((a) => st.armor.add(a))
@@ -1631,6 +1633,21 @@ function origin(w: Walker) {
   )
 }
 
+/** A custom background's picks (SRD 5.2.1 p. 193): an Origin feat, two skills and a tool. */
+function customPicks(w: Walker) {
+  const name = w.st.ctx.background.name
+  const key = 'L1:background'
+  featChoice(w, `${key}:feat`, `${name}: Origin feat`, name, ['origin'])
+  runChoice(
+    w,
+    { kind: 'skill', count: 2, from: allSkills(), label: `${name}: two skills` },
+    `${key}:skills`,
+    name,
+    {},
+  )
+  runChoice(w, { kind: 'tool', count: 1, label: `${name}: a tool` }, `${key}:tool`, name, {})
+}
+
 function speciesTraits(w: Walker) {
   const st = w.st
   const { species } = st.ctx
@@ -1701,11 +1718,98 @@ export interface Dnd5eWalkInput {
   choices: Picks
 }
 
-/** The hero's records, or null when one of them isn't in the data. */
+/** A background not picked yet: the builder asks the species' picks before it. */
+const NO_BACKGROUND: Dnd5eBackgroundDef = {
+  slug: '',
+  name: '',
+  srd: true,
+  source: 'SRD 5.2.1',
+  abilities: [],
+  feat: { slug: '' },
+  skills: [],
+  equipment: [],
+}
+
+/** The slug of a background the player makes (SRD 5.2.1 p. 193). */
+export const CUSTOM_BACKGROUND = 'custom'
+/** A custom background's equipment budget: 50 GP, unspent gold included (SRD 5.2.1 p. 193). */
+export const CUSTOM_GEAR_CP = 5000
+
+/**
+ * What a custom background can buy (SRD 5.2.1 p. 193): adventuring gear, tools, packs, foci,
+ * ammunition and Simple weapons, but no Martial weapons or armor. Costs in copper pieces.
+ */
+export function customGearOptions(
+  data: Dnd5eBuildData,
+): { slug: string; name: string; cost: number; kind: string }[] {
+  return [
+    ...data.gear
+      .filter(
+        (g) => g.kind !== 'mount' && g.kind !== 'vehicle' && g.cost > 0 && g.cost <= CUSTOM_GEAR_CP,
+      )
+      .map((g) => ({ slug: g.slug, name: g.name, cost: g.cost, kind: g.kind })),
+    ...data.weapons
+      .filter((x) => x.category === 'Simple' && x.cost <= CUSTOM_GEAR_CP)
+      .map((x) => ({ slug: x.slug, name: x.name, cost: x.cost, kind: 'weapon' })),
+  ]
+}
+
+/**
+ * A custom background as a background record: the player's name and abilities, no fixed feat,
+ * skills or tool (they're picks), and two equipment options: the gear bought with its leftover
+ * gold, or the 50 GP.
+ */
+export function customBackground(c: Dnd5eCreation, data: Dnd5eBuildData): Dnd5eBackgroundDef {
+  const custom = c.custom ?? { name: '', abilities: [], gear: [] }
+  const shop = customGearOptions(data)
+  const bought = custom.gear.flatMap((slug) => shop.filter((g) => g.slug === slug).slice(0, 1))
+  const spent = bought.reduce((n, g) => n + g.cost, 0)
+  const left = Math.max(0, Math.floor((CUSTOM_GEAR_CP - spent) / 100))
+  return {
+    slug: CUSTOM_BACKGROUND,
+    name: custom.name.trim() || 'Custom background',
+    srd: true,
+    source: 'SRD 5.2.1',
+    page: 193,
+    summary:
+      'A background of your own making: three abilities, an Origin feat, two skills, a tool and 50 GP of equipment.',
+    abilities: [...custom.abilities],
+    feat: { slug: '' },
+    skills: [],
+    equipment: [
+      { option: 'A', items: [...bought.map((g) => g.name), `${left} GP`].join(', '), gp: left },
+      { option: 'B', items: '50 GP', gp: 50 },
+    ],
+  }
+}
+
+/** What a custom background still needs: a name and three different abilities. */
+export function customProblem(c: Dnd5eCreation, data: Dnd5eBuildData): string | null {
+  if (c.backgroundSlug !== CUSTOM_BACKGROUND) return null
+  const custom = c.custom
+  if (!custom?.name.trim()) return 'Name your background'
+  if (new Set(custom.abilities).size !== 3) return 'Choose three abilities for your background'
+  const shop = customGearOptions(data)
+  const spent = custom.gear.reduce(
+    (n, slug) => n + (shop.find((g) => g.slug === slug)?.cost ?? 0),
+    0,
+  )
+  if (spent > CUSTOM_GEAR_CP) return 'The background’s gear costs more than 50 GP'
+  return null
+}
+
+/**
+ * The hero's records, or null when one of them isn't in the data. A background left empty
+ * (the builder before its Background step) gives nothing; "custom" is the player's own.
+ */
 export function dnd5eContext(creation: Dnd5eCreation, data: Dnd5eBuildData): Ctx | null {
   const cls = bySlug(data.classes, creation.classSlug)
   const species = bySlug(data.species, creation.speciesSlug)
-  const background = bySlug(data.backgrounds, creation.backgroundSlug)
+  const background = !creation.backgroundSlug
+    ? NO_BACKGROUND
+    : creation.backgroundSlug === CUSTOM_BACKGROUND
+      ? customBackground(creation, data)
+      : bySlug(data.backgrounds, creation.backgroundSlug)
   return cls && species && background ? { data, cls, species, background } : null
 }
 
@@ -1744,6 +1848,10 @@ export function walkDnd5e(
 }
 
 // --- Problems ------------------------------------------------------------------------
+
+/** The element id of a pick's section, for the builder's and level-up's jump links. */
+export const pickElementId = (key: string) =>
+  `dnd5e-pick-${key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
 /** What a pick still needs, or null when it's done. */
 export function pickProblem(p: Dnd5ePick, values: string[] | undefined): string | null {
@@ -2210,13 +2318,16 @@ export function buildDnd5eSheet(
   choices: Picks,
   data: Dnd5eBuildData,
 ): Dnd5eSheet {
-  const st = walkDnd5e({ creation: c, choices }, 1, data)
+  const st = c.backgroundSlug ? walkDnd5e({ creation: c, choices }, 1, data) : null
   if (!st) throw new Error('A 5e build needs a class, species and background from the data')
   const { cls, background } = st.ctx
   const sheet = defaultSheet('dnd5e')
   sheet.creation = JSON.parse(JSON.stringify(c)) as Dnd5eCreation
+  if (c.backgroundSlug !== CUSTOM_BACKGROUND) delete sheet.creation.custom
+  // Only the picks the build asked for: a changed species or feat leaves old keys behind.
+  const asked = new Set(st.asked.map((p) => p.key))
   sheet.choices = Object.fromEntries(
-    Object.entries(choices).filter(([k, v]) => k.startsWith('L1:') && v.length),
+    Object.entries(choices).filter(([k, v]) => asked.has(k) && v.length),
   )
   sheet.abilities = { ...st.abilities }
   // Starting equipment: the chosen options, with the tools they say to fill in.

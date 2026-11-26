@@ -43,9 +43,9 @@ async function loadCampaigns() {
 const route = useRoute()
 
 onMounted(async () => {
-  // The PF2e builder's "start a blank sheet" link lands here with `?blank=pf2e`.
-  if (route.query.blank === 'pf2e') {
-    openBlank('pf2e')
+  // The PF2e and 5e builders' "start a blank sheet" links land here with `?blank=<system>`.
+  if (route.query.blank === 'pf2e' || route.query.blank === 'dnd5e') {
+    openBlank(route.query.blank)
     void navigateTo({ query: {} }, { replace: true })
   }
   try {
@@ -55,15 +55,15 @@ onMounted(async () => {
   }
 })
 
-/** Class slug of a Nimble character built from class data, for its sigil. */
-function nimbleClass(c: (typeof store.characters)[number]): string {
-  return c.system === 'nimble' ? ((c.sheet as { classSlug?: string }).classSlug ?? '') : ''
+/** Class slug of a Nimble or 5e character built from class data, for its sigil. */
+function builtClass(c: (typeof store.characters)[number], system: GameSystem): string {
+  return c.system === system ? ((c.sheet as { classSlug?: string }).classSlug ?? '') : ''
 }
 
 function start(system: GameSystem) {
-  // Nimble and PF2e heroes are built from class data in a dedicated flow; the PF2e builder
-  // links back here for a blank sheet.
-  if (system === 'nimble' || system === 'pf2e') {
+  // Heroes of every system are built from class data in a dedicated flow; the PF2e and 5e
+  // builders link back here for a blank sheet.
+  if (system === 'nimble' || system === 'pf2e' || system === 'dnd5e') {
     void navigateTo(`/characters/new/${system}`)
     return
   }
@@ -109,8 +109,11 @@ async function create() {
       <NuxtLink v-for="c in store.characters" :key="c.id" :to="`/character/${c.id}`" class="slot">
         <div class="slot__art">
           <img v-if="c.portrait_path" :src="portraitUrl(c.portrait_path) ?? ''" alt="" />
-          <div v-else-if="nimbleClass(c)" class="slot__initials slot__sigil">
-            <NimbleSigil :slug="nimbleClass(c)" :size="76" />
+          <div v-else-if="builtClass(c, 'nimble')" class="slot__initials slot__sigil">
+            <NimbleSigil :slug="builtClass(c, 'nimble')" :size="76" />
+          </div>
+          <div v-else-if="builtClass(c, 'dnd5e')" class="slot__initials slot__sigil">
+            <Dnd5eSigil :slug="builtClass(c, 'dnd5e')" :size="60" />
           </div>
           <div v-else class="slot__initials">{{ initials(c.name) }}</div>
           <span class="badge slot__system" :class="`badge--${c.system}`">{{
