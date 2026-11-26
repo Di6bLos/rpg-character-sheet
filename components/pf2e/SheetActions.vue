@@ -25,10 +25,12 @@ const {
   weaponsFor,
   tiersFor,
   dmgPreview,
-  use,
-  strikeDamage,
+  act,
+  actDamage,
+  typedPrompt,
+  typedSubmit,
 } = usePf2eActions()
-const { claim, resultFor } = useResultOwner()
+const { resultFor } = useResultOwner()
 const onTurn = computed(() => !!sheet.value.turn?.active)
 const inCombat = computed(() => onTurn.value || (sheet.value.turn?.round ?? 0) > 0)
 
@@ -178,8 +180,10 @@ const sections = computed<Section[]>(() => [
               :tiers="tiersFor(e)"
               :dmg="dmgPreview(e)"
               :result="resultFor(`act:${e.key}`)"
-              @use="(st) => claim(`act:${e.key}`, () => use(e, st))"
-              @damage="(crit, st) => claim(`act:${e.key}`, () => strikeDamage(e, crit, st))"
+              @use="(st) => act(e, st)"
+              @damage="(crit, st) => actDamage(e, crit, st)"
+              :typed-label="typedPrompt(e)"
+              @typed="typedSubmit"
             />
           </div>
         </template>

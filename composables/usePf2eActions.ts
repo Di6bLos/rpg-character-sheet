@@ -436,7 +436,29 @@ function create(strikesApi: Pf2eStrikes) {
       .map((d) => `${diceAt(d, level.value)}${d.type ? ` ${d.type}` : ''}`)
       .join(', ')
 
+  /**
+   * Use and damage as the panels call them: claimed under the row (`act:<key>`), and with
+   * Manual dice played with the player's dice, the row asking for them (`typedRoll`).
+   */
+  const { claim } = useResultOwner()
+  const typedRoll = usePf2eTypedRoll({
+    save: strikesApi.saveState,
+    load: strikesApi.loadState as (s: never) => void,
+  })
+  function act(e: Entry, st: Pf2eRowState) {
+    typedRoll.run(`act:${e.key}`, e.name, () => claim(`act:${e.key}`, () => use(e, st)))
+  }
+  function actDamage(e: Entry, crit: boolean, st: Pf2eRowState) {
+    typedRoll.run(`act:${e.key}`, `${e.name} damage`, () =>
+      claim(`act:${e.key}`, () => strikeDamage(e, crit, st)),
+    )
+  }
+
   return {
+    act,
+    actDamage,
+    typedPrompt: (e: Entry) => typedRoll.prompt(`act:${e.key}`),
+    typedSubmit: typedRoll.submit,
     sheet,
     level,
     grouped,

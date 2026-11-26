@@ -116,6 +116,11 @@
   gap: 12px;
   padding: 16px;
 
+  // Above the 44px touch areas of the rules words over them (SheetRuleTip).
+  .btn {
+    position: relative;
+  }
+
   > .btn {
     margin-top: auto;
   }

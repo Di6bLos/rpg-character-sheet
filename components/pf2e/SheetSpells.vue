@@ -122,12 +122,14 @@ const edit = ref(false)
 function rollSpellAttack() {
   const n = headNumbers.value
   if (!n) return
-  claim('spells-head', () => {
-    const r = rollCheck(n.attack.value)
-    const line = `Spell attack: ${r.total} (${r.d20} ${sign(n.attack.value)})`
-    showOutcome({ label: 'Spell attack', total: r.total, detail: line })
-    say(line)
-  })
+  typedRoll.run('spells-head', 'Spell attack', () =>
+    claim('spells-head', () => {
+      const r = rollCheck(n.attack.value)
+      const line = `Spell attack: ${r.total} (${r.d20} ${sign(n.attack.value)})`
+      showOutcome({ label: 'Spell attack', total: r.total, detail: line })
+      say(line)
+    }),
+  )
 }
 
 const castRanks = (spell: Pf2eSpellRef) => openRanks(sc.value, spell)
@@ -201,8 +203,15 @@ function cast(
 ) {
   if (!canEdit.value) return
   const why = castWhy(def)
-  claim(key, () => (why ? say(`${def?.name ?? 'Cast'}: ${why}.`) : castIn(key, spend(), def, rank)))
+  typedRoll.run(key, def?.name ?? 'Cast', () =>
+    claim(key, () =>
+      why ? say(`${def?.name ?? 'Cast'}: ${why}.`) : castIn(key, spend(), def, rank),
+    ),
+  )
 }
+
+/** Manual dice for a cast's attack, damage and healing, asked for in the card that cast it. */
+const typedRoll = usePf2eTypedRoll()
 
 function castIn(key: string, message: string, def: Pf2eSpellDef | undefined, rank: number) {
   lastCast.value = null
@@ -326,6 +335,8 @@ const spellAttacks = computed<Pf2eSpellAttack[]>(() => {
       text: def.text,
       why: blockedExtra || castWhy(def),
       cast: castIt,
+      prompt: typedRoll.prompt(key),
+      typed: typedRoll.submit,
     })
   }
   for (const c of sc.value?.cantrips ?? [])
@@ -523,6 +534,12 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
       </div>
     </div>
     <p v-if="stopped" class="small spell__stopped" role="status">Can’t cast: {{ stopped }}</p>
+    <NimbleDiceEntry
+      v-if="typedRoll.prompt('spells-head')"
+      :label="typedRoll.prompt('spells-head')"
+      action="Roll"
+      @submit="typedRoll.submit"
+    />
     <p v-if="resultFor('spells-head')" class="roll-status" role="status" aria-live="polite">
       {{ resultFor('spells-head') }}
     </p>
@@ -595,6 +612,12 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
                 ×
               </button>
             </div>
+            <NimbleDiceEntry
+              v-if="typedRoll.prompt(`spell:${s.id}`)"
+              :label="typedRoll.prompt(`spell:${s.id}`)"
+              action="Roll"
+              @submit="typedRoll.submit"
+            />
             <Pf2eSpellResult
               :result="resultFor(`spell:${s.id}`)"
               :offers="offersFor(`spell:${s.id}`)"
@@ -735,6 +758,12 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
                 ×
               </button>
             </div>
+            <NimbleDiceEntry
+              v-if="typedRoll.prompt(`spell:${s.id}`)"
+              :label="typedRoll.prompt(`spell:${s.id}`)"
+              action="Roll"
+              @submit="typedRoll.submit"
+            />
             <Pf2eSpellResult
               :result="resultFor(`spell:${s.id}`)"
               :offers="offersFor(`spell:${s.id}`)"
@@ -814,6 +843,12 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
                 {{ p.cast ? 'Spent' : (p.id && whyFor(p.id)) || 'Cast' }}
               </button>
             </div>
+            <NimbleDiceEntry
+              v-if="typedRoll.prompt(`slot:${r.rank}:${i}`)"
+              :label="typedRoll.prompt(`slot:${r.rank}:${i}`)"
+              action="Roll"
+              @submit="typedRoll.submit"
+            />
             <Pf2eSpellResult
               :result="resultFor(`slot:${r.rank}:${i}`)"
               :offers="offersFor(`slot:${r.rank}:${i}`)"
@@ -904,6 +939,12 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
               }}
             </button>
           </div>
+          <NimbleDiceEntry
+            v-if="typedRoll.prompt('spell:font')"
+            :label="typedRoll.prompt('spell:font')"
+            action="Roll"
+            @submit="typedRoll.submit"
+          />
           <Pf2eSpellResult
             :result="resultFor('spell:font')"
             :offers="offersFor('spell:font')"
@@ -1003,6 +1044,12 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
                 ×
               </button>
             </div>
+            <NimbleDiceEntry
+              v-if="typedRoll.prompt(`spell:${s.id}`)"
+              :label="typedRoll.prompt(`spell:${s.id}`)"
+              action="Roll"
+              @submit="typedRoll.submit"
+            />
             <Pf2eSpellResult
               :result="resultFor(`spell:${s.id}`)"
               :offers="offersFor(`spell:${s.id}`)"

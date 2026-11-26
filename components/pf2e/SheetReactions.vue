@@ -19,10 +19,12 @@ const {
   weaponsFor,
   tiersFor,
   dmgPreview,
-  use,
-  strikeDamage,
+  act,
+  actDamage,
+  typedPrompt,
+  typedSubmit,
 } = usePf2eActions()
-const { claim, resultFor, unclaimed } = useResultOwner()
+const { resultFor, unclaimed } = useResultOwner()
 const isReaction = (e: { rules: { cost?: { kind: string } } }) => e.rules.cost?.kind === 'reaction'
 /** The hero's own reactions, then their class's and trained skills', then everyone's (Aid). */
 const reactions = computed(() => [
@@ -66,8 +68,10 @@ const blocks = computed(() => hasShieldBlock(sheet.value) && !!sheet.value.shiel
         :tiers="tiersFor(e)"
         :dmg="dmgPreview(e)"
         :result="resultFor(`act:${e.key}`)"
-        @use="(st) => claim(`act:${e.key}`, () => use(e, st))"
-        @damage="(crit, st) => claim(`act:${e.key}`, () => strikeDamage(e, crit, st))"
+        @use="(st) => act(e, st)"
+        @damage="(crit, st) => actDamage(e, crit, st)"
+        :typed-label="typedPrompt(e)"
+        @typed="typedSubmit"
       />
     </div>
     <p v-if="!reactions.length" class="empty">None of your abilities is a reaction.</p>

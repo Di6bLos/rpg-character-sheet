@@ -18,6 +18,9 @@ export interface Pf2eSpellAttack {
   text: string
   why: string
   cast: () => void
+  /** Manual dice: what the cast still needs typed, or ''; `typed` gives it. */
+  prompt: string
+  typed: (values: number[]) => void
 }
 
 const KEY: InjectionKey<Ref<Record<string, Pf2eSpellAttack[]>>> = Symbol('pf2e-spell-attacks')

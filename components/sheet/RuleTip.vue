@@ -17,6 +17,22 @@ defineProps<{ title?: string; text?: string; chip?: boolean }>()
   cursor: help;
   text-decoration: underline dotted;
   text-underline-offset: 3px;
+
+  // A 44px tall touch target around the word that doesn't move the layout (as UiFold's);
+  // the controls after it are positioned, so they stay on top where the two meet.
+  @media (pointer: coarse) {
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: -2px;
+      right: -2px;
+      height: 44px;
+      transform: translateY(-50%);
+    }
+  }
 }
 
 .rule-tip--chip {

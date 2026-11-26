@@ -266,15 +266,18 @@ const { draft, canEdit, campaignId } = useSheet()
     );
   }
 
+  // PF2e's reaction: a filled circle in its own colour while ready, apart from the
+  // actions' (secondary) and extra actions' (accent); dashed like a spent action once used.
   &--reaction {
+    --reaction: #7a5ccc;
+
     margin-left: 4px;
     font-size: 18px;
-    border-style: solid;
 
     &.on {
-      background: var(--accent);
-      color: var(--on-accent);
-      border-color: var(--accent);
+      background: var(--reaction);
+      color: #fff;
+      border: 2px solid var(--reaction);
     }
   }
 }

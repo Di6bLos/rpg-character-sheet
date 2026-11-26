@@ -142,6 +142,7 @@ onBeforeUnmount(() => {
   }
 }
 
+// The word itself is the trigger (a skill's name): a 44px tall touch target around it.
 .help__btn--text {
   display: inline;
   width: auto;
@@ -158,6 +159,18 @@ onBeforeUnmount(() => {
   &[aria-expanded='true'] {
     color: inherit;
     text-decoration-color: var(--accent);
+  }
+
+  @media (pointer: coarse) {
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: -2px;
+      right: -2px;
+      height: 44px;
+      transform: translateY(-50%);
+    }
   }
 }
 

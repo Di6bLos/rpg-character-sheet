@@ -379,5 +379,6 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Feats as an ability card grid; inventory alignment
 - [x] Manual dice for PF2e Strikes and their damage, checks, saves, Perception, initiative and the recovery check
 - [x] Actions by category (Attacks & maneuvers, Movement, Defense, Senses & knowledge, Influence, Help & healing, Other) and skill actions by skill; Reactions in a card grid with Aid and Grab an Edge; any reaction used spends the reaction
-- [ ] Manual dice for PF2e ability uses (Actions, Reactions) and spell casts
+- [x] Manual dice for PF2e ability uses (their checks, Strikes, damage and healing) and spell casts (attack, damage, healing): `withTypedDice` in utils/dice.ts, `usePf2eTypedRoll`
+- [x] 44px touch areas for the "?" help words and rules words (pseudo-element, no layout change); the reaction circle filled in its own colour
 - [x] Accessibility and touch sweep (44px skill rolls, group folds, full-text folds, coins)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Pf2eSheet } from '../types/sheets'
-import { rollCheckTwice, typedCheck } from '../utils/dice'
+import { rollCheck, rollCheckTwice, rollDice, typedCheck, withTypedDice } from '../utils/dice'
 import {
   checkBreakdown,
   heroRerollProblem,
@@ -115,5 +115,31 @@ describe('strikeChances (p. 401)', () => {
 
   it('fortune keeps the higher of two dice', () => {
     expect(strikeChances(10, 20, { fortune: 'fortune' }).hit).toBeGreaterThan(50)
+  })
+})
+
+describe('withTypedDice (Manual dice inside the rules)', () => {
+  it('uses the typed dice in order and adds the maths', () => {
+    const r = withTypedDice([12, 3, 5], () => [
+      rollCheck(4).total,
+      rollDice({ count: 2, sides: 6, mod: 1 }).total,
+    ])
+    expect(r).toEqual({ done: true, result: [16, 9] })
+  })
+
+  it('asks for the whole next roll when the dice run out', () => {
+    expect(
+      withTypedDice([12], () => [rollCheck(4), rollDice({ count: 2, sides: 6, mod: 0 })]),
+    ).toEqual({
+      done: false,
+      need: { count: 2, sides: 6 },
+    })
+  })
+
+  it('refuses extra dice and dice out of range', () => {
+    expect(() => withTypedDice([12, 3], () => rollCheck(0))).toThrow('1 more die than rolled')
+    expect(() => withTypedDice([7], () => rollDice({ count: 1, sides: 6, mod: 0 }))).toThrow(
+      'isn’t a d6 roll',
+    )
   })
 })

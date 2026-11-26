@@ -33,9 +33,60 @@ export function findDice(text: string): { text: string; dice: DiceExpr } | null 
 
 let detailed = 0
 
+/**
+ * Manual dice for rules that roll inside (a PF2e ability's check and damage, a spell's attack,
+ * damage and healing): while `withTypedDice` runs, every die comes from the player's values in
+ * order instead of the rng. When they run out, the roll asking stops the run with `NeedDice`
+ * (how many of which die, all of a roll at once), so the caller can ask for them and run again
+ * from the start with more.
+ */
+let typed: { values: number[]; used: number } | null = null
+
+export class NeedDice extends Error {
+  constructor(
+    public count: number,
+    public sides: number,
+  ) {
+    super(`Needs ${count}d${sides}`)
+  }
+}
+
+/**
+ * Runs `fn` with the player's dice. Returns its result, or what it still needs; throws on dice
+ * left over (more typed than the rules rolled) or out of range for their die.
+ */
+export function withTypedDice<T>(
+  values: number[],
+  fn: () => T,
+): { done: true; result: T } | { done: false; need: { count: number; sides: number } } {
+  const before = typed
+  typed = { values, used: 0 }
+  try {
+    const result = fn()
+    const extra = values.length - typed.used
+    if (extra > 0) throw new RangeError(`${extra} more ${extra === 1 ? 'die' : 'dice'} than rolled`)
+    return { done: true, result }
+  } catch (e) {
+    if (e instanceof NeedDice) return { done: false, need: { count: e.count, sides: e.sides } }
+    throw e
+  } finally {
+    typed = before
+  }
+}
+
+/** The next typed die for a die of `sides`; out of range is the player's mistake. */
+function typedDie(sides: number, count = 1): number {
+  const t = typed!
+  if (t.values.length - t.used < count) throw new NeedDice(count, sides)
+  const v = t.values[t.used++]!
+  if (!Number.isInteger(v) || v < 1 || v > sides)
+    throw new RangeError(`${v} isn’t a d${sides} roll (1–${sides})`)
+  return v
+}
+
 /** One die. The dice tray is told about it unless a whole roll reports itself (`quietly`). */
 export function rollDie(sides: number, rng: Rng = Math.random): number {
-  const value = 1 + Math.floor(rng() * sides)
+  const value = typed ? typedDie(sides) : 1 + Math.floor(rng() * sides)
   if (!detailed)
     showDice({
       sides,
@@ -78,6 +129,9 @@ export interface RollResult {
 
 /** Rolls a plain expression; the dice tray shows it as one roll with its total. */
 export function rollDice(expr: DiceExpr, rng: Rng = Math.random): RollResult {
+  // Typed dice: ask for all of this roll's dice at once.
+  if (typed && expr.count > 0 && typed.values.length - typed.used < expr.count)
+    throw new NeedDice(expr.count, expr.sides)
   const rolls = quietly(() => Array.from({ length: expr.count }, () => rollDie(expr.sides, rng)))
   const total = rolls.reduce((a, b) => a + b, 0) + expr.mod
   if (!detailed && rolls.length)

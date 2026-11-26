@@ -48,6 +48,7 @@ const tip = computed(() => props.breakdown?.join('\n') ?? '')
 
 <style scoped lang="scss">
 .skill__roll {
+  position: relative;
   min-height: 30px;
   padding: 2px 10px;
 }

@@ -224,8 +224,13 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
               >
             </div>
             <SheetDmg
-              :dmg="w.dmg"
-              :why="w.dmgChanged ? w.dmgNote : undefined"
+              :dmg="w.dice"
+              :why="
+                [
+                  `${w.dice} ${w.type.toLowerCase()} damage`,
+                  ...(w.dmgChanged ? w.dmgNote.split(', ') : []),
+                ].join('\n')
+              "
               style="font-size: 15px; white-space: nowrap"
             />
           </div>
@@ -344,6 +349,13 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
           >
             {{ sp.why || 'Cast' }}
           </button>
+          <NimbleDiceEntry
+            v-if="sp.prompt"
+            :label="sp.prompt"
+            action="Roll"
+            :disabled="!canEdit"
+            @submit="sp.typed"
+          />
           <p v-if="resultFor(sp.key)" class="roll-status attack__result" role="status">
             {{ resultFor(sp.key) }}
           </p>
@@ -367,8 +379,10 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
           :tiers="actions.tiersFor(e)"
           :dmg="actions.dmgPreview(e)"
           :result="resultFor(`act:${e.key}`)"
-          @use="(st) => claim(`act:${e.key}`, () => actions.use(e, st))"
-          @damage="(crit, st) => claim(`act:${e.key}`, () => actions.strikeDamage(e, crit, st))"
+          @use="(st) => actions.act(e, st)"
+          @damage="(crit, st) => actions.actDamage(e, crit, st)"
+          :typed-label="actions.typedPrompt(e)"
+          @typed="actions.typedSubmit"
         />
       </div>
     </details>

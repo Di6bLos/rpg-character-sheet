@@ -22,10 +22,13 @@ const props = defineProps<{
   dmg: string
   /** The result of its last use, shown under it. */
   result?: string
+  /** Manual dice: what its roll needs typed (usePf2eTypedRoll's prompt), or ''. */
+  typedLabel?: string
 }>()
 const emit = defineEmits<{
   use: [state: Pf2eRowState]
   damage: [crit: boolean, state: Pf2eRowState]
+  typed: [values: number[]]
 }>()
 
 const state = reactive<Pf2eRowState>({})
@@ -190,6 +193,12 @@ const checkLabel = computed(() => {
         </button>
       </template>
     </div>
+    <NimbleDiceEntry
+      v-if="typedLabel"
+      :label="typedLabel"
+      action="Roll"
+      @submit="(v) => emit('typed', v)"
+    />
     <p v-if="result" class="roll-status arow__result" role="status" aria-live="polite">
       {{ result }}
     </p>

@@ -317,6 +317,8 @@ function create() {
         /** What a critical hit adds: "+1d10 fatal d10, +1d8 deadly d8", for the crit button. */
         critNote: crit.after.map((x) => `+${x.count}d${x.sides} ${x.label}`).join(', '),
         dmg: `${dmg}${added.map((x) => `+${x.dice}`).join('')}${typeInitial}`,
+        /** The card's dice badge, as Nimble's ("1d8+4"); the type is spelled out beside it. */
+        dice: `${dmg}${added.map((x) => `+${x.dice}`).join('')}`,
         dmgExpr: dmg,
         extra,
         runeDice: fromRunes,
@@ -541,7 +543,27 @@ function create() {
     }
   }
 
+  /** The panel state a roll changes, kept and put back around a Manual dice retry. */
+  function saveState() {
+    return {
+      situation: { ...situation.value },
+      lastDegree: { ...lastDegree.value },
+      loose: loose.value,
+      flags: { ...damageFlags.value },
+      struck: stratagemStruck.value,
+    }
+  }
+  function loadState(x: ReturnType<typeof saveState>) {
+    situation.value = x.situation
+    lastDegree.value = x.lastDegree
+    loose.value = x.loose
+    damageFlags.value = x.flags
+    stratagemStruck.value = x.struck
+  }
+
   return {
+    saveState,
+    loadState,
     targetAc,
     targetAcNow,
     targetFlags,
