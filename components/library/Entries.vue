@@ -3,8 +3,10 @@
 // sortable table (a card list on phones), filtered by the facets that system has (category,
 // prerequisite, level, source…); a row opens the entry in a modal. Like Spells, the search,
 // filters, sort and open entry are in the URL (?tab=feats&system=dnd5e&category=origin&
-// entry=alert), so a link opens the same view. PF2e has ~3,800 feats, so the list shows 100
-// rows at a time.
+// entry=alert), so a link opens the same view. Feats fold into sections by category (5e Origin,
+// General, Fighting Style, Epic Boon; PF2e ancestry, class, skill…), remembered per browser
+// (useLibrarySections); the other tabs are one flat list. PF2e has ~3,800 feats, so a section
+// renders its rows only while open, 100 at a time.
 import type { RulesSystem } from '~/data/rules'
 import type { GameSystem } from '~/types'
 import type { SortDir } from '~/utils/libraryCompendium'
@@ -20,6 +22,7 @@ import {
   type EntryTab,
   type EntryView,
 } from '~/utils/libraryEntries'
+import { SECTION_PAGE, groupSections, sectionStorageKey } from '~/utils/librarySections'
 import { loreHtml } from '~/utils/loreText'
 
 const props = defineProps<{ tab: EntryTab }>()
@@ -103,13 +106,22 @@ const sortKey = computed(() =>
 )
 const all = computed(() => entryRows(index.value, { ...state.value, q: q.value }, sortKey.value))
 
-const PAGE = 100
-const limit = ref(PAGE)
-const shown = computed(() => all.value.slice(0, limit.value))
-watch(
-  () => [q.value, sys.value?.id, JSON.stringify({ ...state.value, q: '' })],
-  () => (limit.value = PAGE),
-)
+/** A list without sections is one section with no header, so paging works the same. */
+const grouped = computed(() => !!list.value?.sections)
+const sections = computed(() => {
+  const by = list.value?.sections
+  if (!by) return all.value.length ? [{ key: 'all', label: noun.value.many, rows: all.value }] : []
+  return groupSections(all.value, by.defs, (e) => e.facets[by.facet] ?? [])
+})
+const fold = useLibrarySections({
+  sections,
+  storageKey: computed(() =>
+    grouped.value && sys.value ? sectionStorageKey(props.tab, sys.value.id) : '',
+  ),
+  search: q,
+  reset: () => [q.value, sys.value?.id, JSON.stringify({ ...state.value, q: '' })],
+})
+const sectionId = (key: string) => `${props.tab}-section-${key}`
 const total = computed(() => list.value?.entries.length ?? 0)
 const loading = computed(() => !list.value && !failed.value)
 
@@ -256,15 +268,19 @@ const toolbarStuck = useStuck(toolbarEl)
       <p class="small muted" role="status">
         <template v-if="loading">Loading {{ noun.many }}…</template>
         <template v-else>
-          {{ all.length }} of {{ total }} {{ total === 1 ? noun.one : noun.many
-          }}<template v-if="all.length > shown.length"
-            >, showing the first {{ shown.length }}</template
-          >
+          {{ all.length }} of {{ total }} {{ total === 1 ? noun.one : noun.many }}
         </template>
       </p>
       <button v-if="filtering" type="button" class="btn btn--quiet btn--sm" @click="clearFilters">
         Clear filters
       </button>
+      <LibrarySectionTools
+        v-if="grouped && sections.length > 1"
+        :all-open="fold.allOpen.value"
+        :all-closed="fold.allClosed.value"
+        @expand="fold.expandAll"
+        @collapse="fold.collapseAll"
+      />
       <div v-if="phone && columns.length" class="summary__sort">
         <label :for="`${tab}-sort`" class="sr-only">Sort by</label>
         <select :id="`${tab}-sort`" v-model="phoneSort" class="input">
@@ -290,23 +306,50 @@ const toolbarStuck = useStuck(toolbarEl)
     <section v-else class="panel panel--flush" :aria-label="`${sys?.label ?? ''} ${label}`">
       <div v-if="loading" class="spinner" role="status" :aria-label="`Loading ${noun.many}`" />
 
-      <ul v-else-if="phone" class="cards">
-        <li v-for="v in shown" :key="v.id">
-          <button type="button" class="card" aria-haspopup="dialog" @click="readEntry(v.id)">
-            <span class="card__head">
-              <strong>{{ v.name }}</strong>
-              <span v-if="v.glyph" class="glyph"
-                ><span aria-hidden="true">{{ v.glyph }}</span
-                ><span class="sr-only">{{ v.glyphWords }}</span></span
-              >
-              <span v-if="v.rarity" class="rarity">{{ v.rarity }}</span>
-              <span v-if="v.tag" class="badge badge--outline">{{ v.tag }}</span>
-              <span class="card__level">{{ v.badge }}</span>
-            </span>
-            <span v-if="v.meta" class="card__meta">{{ v.meta }}</span>
+      <div v-else-if="phone">
+        <div v-for="sec in sections" :key="sec.key" class="group">
+          <LibrarySectionHead
+            v-if="grouped"
+            :label="sec.label"
+            :count="sec.rows.length"
+            :open="fold.isOpen(sec.key)"
+            :controls="sectionId(sec.key)"
+            @toggle="fold.toggle(sec.key)"
+          />
+          <ul
+            :id="sectionId(sec.key)"
+            class="cards"
+            :class="{ 'cards--grouped': grouped }"
+            :hidden="!fold.isOpen(sec.key)"
+          >
+            <li v-for="v in fold.isOpen(sec.key) ? fold.shown(sec) : []" :key="v.id">
+              <button type="button" class="card" aria-haspopup="dialog" @click="readEntry(v.id)">
+                <span class="card__head">
+                  <strong>{{ v.name }}</strong>
+                  <span v-if="v.glyph" class="glyph"
+                    ><span aria-hidden="true">{{ v.glyph }}</span
+                    ><span class="sr-only">{{ v.glyphWords }}</span></span
+                  >
+                  <span v-if="v.rarity" class="rarity">{{ v.rarity }}</span>
+                  <span v-if="v.tag" class="badge badge--outline">{{ v.tag }}</span>
+                  <span v-if="v.badge" class="card__level">{{ v.badge }}</span>
+                </span>
+                <span v-if="v.meta" class="card__meta">{{ v.meta }}</span>
+              </button>
+            </li>
+          </ul>
+          <button
+            v-if="fold.isOpen(sec.key) && fold.hidden(sec)"
+            type="button"
+            class="btn btn--ghost more"
+            @click="fold.showMore(sec.key)"
+          >
+            Show {{ Math.min(SECTION_PAGE, fold.hidden(sec)) }} more<span class="sr-only">
+              in {{ sec.label }}</span
+            >
           </button>
-        </li>
-      </ul>
+        </div>
+      </div>
 
       <div
         v-else
@@ -334,8 +377,23 @@ const toolbarStuck = useStuck(toolbarEl)
               </th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="v in shown" :key="v.id" @click="readEntry(v.id)">
+          <tbody v-for="sec in sections" :id="sectionId(sec.key)" :key="sec.key">
+            <tr v-if="grouped" class="group-row">
+              <th :colspan="columns.length" scope="rowgroup">
+                <LibrarySectionHead
+                  :label="sec.label"
+                  :count="sec.rows.length"
+                  :open="fold.isOpen(sec.key)"
+                  :controls="sectionId(sec.key)"
+                  @toggle="fold.toggle(sec.key)"
+                />
+              </th>
+            </tr>
+            <tr
+              v-for="v in fold.isOpen(sec.key) ? fold.shown(sec) : []"
+              :key="v.id"
+              @click="readEntry(v.id)"
+            >
               <td v-for="c in columns" :key="c.key" :class="`col-${c.key}`">
                 <template v-if="c.key === 'name'">
                   <button type="button" class="name" aria-haspopup="dialog">
@@ -353,6 +411,19 @@ const toolbarStuck = useStuck(toolbarEl)
                 <template v-else>{{ v.cells[c.key] || '—' }}</template>
               </td>
             </tr>
+            <tr v-if="fold.isOpen(sec.key) && fold.hidden(sec)" class="more-row">
+              <td :colspan="columns.length">
+                <button
+                  type="button"
+                  class="btn btn--ghost btn--sm"
+                  @click="fold.showMore(sec.key)"
+                >
+                  Show {{ Math.min(SECTION_PAGE, fold.hidden(sec)) }} more<span class="sr-only">
+                    in {{ sec.label }}</span
+                  >
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -366,15 +437,6 @@ const toolbarStuck = useStuck(toolbarEl)
         </button>
       </p>
     </section>
-
-    <button
-      v-if="all.length > shown.length"
-      type="button"
-      class="btn btn--ghost more"
-      @click="limit += PAGE"
-    >
-      Show {{ Math.min(PAGE, all.length - shown.length) }} more
-    </button>
 
     <LibraryNotice v-if="sys" :text="sys.attribution" />
 
@@ -511,12 +573,25 @@ const toolbarStuck = useStuck(toolbarEl)
     padding-left: 20px;
   }
 
-  tbody tr {
+  tbody tr:not(.group-row, .more-row) {
     cursor: pointer;
 
     &:hover td {
       background: var(--accent-tint);
     }
+  }
+
+  .group-row th {
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  tbody:first-of-type .group-row th {
+    border-top: 0;
+  }
+
+  .more-row td {
+    padding: 8px 20px 12px;
   }
 
   .col-name {
@@ -682,8 +757,24 @@ const toolbarStuck = useStuck(toolbarEl)
   padding: 24px 20px;
 }
 
+.group + .group {
+  border-top: 1px solid var(--line);
+}
+
+.cards {
+  &--grouped {
+    border-top: 1px solid var(--line);
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
 .more {
-  align-self: center;
+  display: flex;
+  width: calc(100% - 32px);
+  margin: 8px 16px 12px;
 }
 
 .read__eyebrow {

@@ -37,6 +37,7 @@ import {
   type EntryList,
   type EntryView,
 } from '~/utils/libraryEntries'
+import type { SectionDef } from '~/utils/librarySections'
 import { actionGlyph, actionWords } from '~/utils/pf2eBuild'
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
@@ -88,6 +89,12 @@ const dnd5eSourceSort = (r: { source: Dnd5eSourceBook; page?: number }) =>
 
 const DND5E_CATEGORIES: Dnd5eFeatCategory[] = ['origin', 'general', 'fighting-style', 'epic-boon']
 
+/** One section per category, as the 2024 PHB orders its feats chapter. */
+export const DND5E_FEAT_SECTIONS: SectionDef[] = DND5E_CATEGORIES.map((c) => ({
+  key: c,
+  label: `${DND5E_FEAT_CATEGORY[c]} feats`,
+}))
+
 /** What a 5e feat's prerequisite asks for, as filter values. */
 function dnd5ePrereqKinds(f: Dnd5eFeatDef): string[] {
   const p = f.prerequisite
@@ -118,9 +125,8 @@ export function dnd5eFeatList(feats: readonly Dnd5eFeatDef[]): EntryList {
     const prereq = f.prerequisite?.text ?? ''
     const level = f.prerequisite?.level ?? 1
     return view(f.slug, f.name, {
-      cells: { category, prereq: prereq || '—', source: dnd5eSource(f) },
+      cells: { prereq: prereq || '—', source: dnd5eSource(f) },
       sort: {
-        category: DND5E_CATEGORIES.indexOf(f.category),
         prereq: `${String(level).padStart(2, '0')} ${prereq.toLowerCase()}`,
         source: dnd5eSourceSort(f),
       },
@@ -130,7 +136,6 @@ export function dnd5eFeatList(feats: readonly Dnd5eFeatDef[]): EntryList {
         level: [String(level)],
         source: [DND5E_SOURCE_KEY[f.source]],
       },
-      badge: category,
       meta: prereq,
       tag: dnd5eTag(f),
       eyebrow: `${category} feat${f.repeatable ? ' · Repeatable' : ''}`,
@@ -155,7 +160,6 @@ export function dnd5eFeatList(feats: readonly Dnd5eFeatDef[]): EntryList {
     entries,
     columns: [
       { key: 'name', label: 'Name' },
-      { key: 'category', label: 'Category' },
       { key: 'prereq', label: 'Prerequisite' },
       { key: 'source', label: 'Source' },
     ],
@@ -196,6 +200,7 @@ export function dnd5eFeatList(feats: readonly Dnd5eFeatDef[]): EntryList {
       dnd5eSourceFilter(entries),
     ],
     defaultSort: 'name',
+    sections: { facet: 'category', defs: DND5E_FEAT_SECTIONS },
   }
 }
 
@@ -208,6 +213,14 @@ const PF2E_FEAT_CATEGORY: Record<string, string> = {
   mythic: 'Mythic',
   other: 'Other',
 }
+
+/** Ancestry and class feats first, as a character picks them; then skill, general, archetype. */
+const PF2E_FEAT_ORDER = ['ancestry', 'class', 'skill', 'general', 'archetype', 'mythic', 'other']
+
+export const PF2E_FEAT_SECTIONS: SectionDef[] = PF2E_FEAT_ORDER.map((c) => ({
+  key: c,
+  label: `${PF2E_FEAT_CATEGORY[c] ?? c} feats`,
+}))
 
 /** A PF2e feat's lists: a class, an ancestry, an archetype, skill or general, or neither. */
 export function pf2eFeatCategories(f: Pf2eFeatDef): string[] {
@@ -302,7 +315,7 @@ export function pf2eFeatList(feats: readonly Pf2eFeatDef[]): EntryList {
           entries,
           'category',
           (v) => PF2E_FEAT_CATEGORY[v] ?? v,
-          Object.keys(PF2E_FEAT_CATEGORY),
+          PF2E_FEAT_ORDER,
         ),
       },
       {
@@ -348,6 +361,7 @@ export function pf2eFeatList(feats: readonly Pf2eFeatDef[]): EntryList {
       },
     ],
     defaultSort: 'level',
+    sections: { facet: 'category', defs: PF2E_FEAT_SECTIONS },
   }
 }
 

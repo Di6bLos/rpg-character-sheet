@@ -1,7 +1,7 @@
 // Library → Spells and Feats sections (utils/librarySections.ts): rows land in their sections in
 // level or category order with empty ones left out, a section opens from the saved choice or on
-// its own while searching, the saved list reads back safely, and every spell of every system
-// lands in one of its system's named sections.
+// its own while searching, the saved list reads back safely, and every spell and feat of every
+// system lands in one of its system's named sections.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -20,6 +20,12 @@ import {
   pf2eSpellRank,
   pf2eSpellSection,
 } from '../utils/libraryCompendium'
+import {
+  DND5E_FEAT_SECTIONS,
+  PF2E_FEAT_SECTIONS,
+  dnd5eFeatList,
+  pf2eFeatList,
+} from '../utils/libraryOrigins'
 import {
   groupSections,
   readSavedSections,
@@ -146,5 +152,31 @@ describe('spell sections', () => {
     expect(keys).not.toContain('rank')
     expect(keys).not.toContain('tier')
     expect(keys).not.toContain('level')
+  })
+})
+
+describe('feat sections', () => {
+  it('5e: Origin, General, Fighting Style, Epic Boon, each feat in its own', () => {
+    const list = dnd5eFeatList(load5e('feats'))
+    expect(list.sections?.defs).toBe(DND5E_FEAT_SECTIONS)
+    const out = groupSections(list.entries, DND5E_FEAT_SECTIONS, (e) => e.facets.category ?? [])
+    expect(out.map((s) => s.label)).toEqual([
+      'Origin feats',
+      'General feats',
+      'Fighting Style feats',
+      'Epic Boon feats',
+    ])
+    expect(out.reduce((n, s) => n + s.rows.length, 0)).toBe(list.entries.length)
+  })
+
+  it('PF2e: ancestry and class first; a feat on two lists shows in both', () => {
+    const list = pf2eFeatList(loadPf2e('feats'))
+    const out = groupSections(list.entries, PF2E_FEAT_SECTIONS, (e) => e.facets.category ?? [])
+    expect(out.slice(0, 2).map((s) => s.key)).toEqual(['ancestry', 'class'])
+    const known = new Set(PF2E_FEAT_SECTIONS.map((d) => d.key))
+    expect(out.every((s) => known.has(s.key))).toBe(true)
+    const listed = new Set(out.flatMap((s) => s.rows))
+    expect(listed.size).toBe(list.entries.length)
+    expect(out.reduce((n, s) => n + s.rows.length, 0)).toBeGreaterThan(list.entries.length)
   })
 })

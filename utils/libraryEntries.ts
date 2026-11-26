@@ -4,6 +4,7 @@
 // of them. Filters live in the URL by their own keys (`category=general,origin&level=4`).
 import type { GameSystem } from '~/types'
 import type { EntryItem } from '~/utils/libraryDnd5e'
+import type { SectionDef } from '~/utils/librarySections'
 import {
   compendiumList,
   searchable,
@@ -101,6 +102,9 @@ export interface EntryList {
   columns: EntryColumn[]
   filters: EntryFilter[]
   defaultSort: string
+  /** Folding sections by one facet's values, in `defs`' order (feats by category); none shows
+   * one flat list. An entry with several values shows in each of their sections. */
+  sections?: { facet: string; defs: SectionDef[] }
 }
 
 export interface EntryQuery {

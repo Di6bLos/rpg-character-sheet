@@ -137,7 +137,7 @@ describe('filters and search', () => {
     expect(both.length).toBeGreaterThan(origin.length)
     const srdGeneral = rows('feats:dnd5e', { picked: { category: ['general'], source: ['srd'] } })
     expect(srdGeneral.length).toBeGreaterThan(0)
-    expect(srdGeneral.every((e) => !e.tag && e.cells.category === 'General')).toBe(true)
+    expect(srdGeneral.every((e) => !e.tag && e.facets.category?.includes('general'))).toBe(true)
   })
 
   it('filters 5e feats by prerequisite and level', () => {
