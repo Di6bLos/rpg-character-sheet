@@ -144,7 +144,7 @@ const DIE_STEP: Record<string, string> = {
 const monkWeapon = (d: Dnd5eWeaponDef) =>
   d.type === 'Melee' && (d.category === 'Simple' || d.properties.includes('Light'))
 
-function adjustTest(
+export function adjustAttackTest(
   s: Dnd5eSheet,
   t: Dnd5eD20,
   o: { melee: boolean; strength: boolean; target?: Dnd5eTarget },
@@ -235,7 +235,7 @@ export function weaponAttack(
   }
   const strength = ability === 'STR'
   const t = d20Test(s, level, { label: w.name, kind: 'attack', ability, bonus, lines })
-  adjustTest(s, t, { melee, strength, ...(o.target ? { target: o.target } : {}) })
+  adjustAttackTest(s, t, { melee, strength, ...(o.target ? { target: o.target } : {}) })
   if (def && props.has('Heavy')) {
     if (melee && (s.abilities.STR ?? 10) < 13) t.dis.push('Heavy, Strength under 13')
     if (!melee && (s.abilities.DEX ?? 10) < 13) t.dis.push('Heavy, Dexterity under 13')
@@ -312,7 +312,7 @@ export function unarmedAttack(
     bonus: mod + hero.pb,
     lines,
   })
-  adjustTest(s, t, {
+  adjustAttackTest(s, t, {
     melee: true,
     strength: ability === 'STR',
     ...(o.target ? { target: o.target } : {}),
