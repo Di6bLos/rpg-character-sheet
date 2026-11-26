@@ -151,6 +151,7 @@
         },
         "Runeforging": {
           "summary": "On a Long Rest, inscribe (or move) one rune on a melee weapon you hold; swap it for another when you gain a level.",
+          "choices": [{ "kind": "option", "count": 1, "label": "Rune" }],
           "options": [
             {
               "name": "Blood",
