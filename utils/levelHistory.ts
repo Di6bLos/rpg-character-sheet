@@ -2,6 +2,7 @@
 // character's level removes exactly what the higher levels granted.
 import type {
   AnySheet,
+  Dnd5eLevelInput,
   LevelHistoryEntry,
   NimbleLevelInput,
   NimbleSheet,
@@ -65,8 +66,8 @@ type Loose = Record<string, unknown>
 
 /**
  * Fields a level-up can add to a sheet that didn't have them (PF2e: the sheet's level, partial
- * boosts, level-up choices, a first focus spell): gone again when a snapshot without them is
- * restored.
+ * boosts, level-up choices, a first focus spell; 5e: a subclass's spellcasting): gone again when
+ * a snapshot without them is restored.
  */
 const ADDED_BY_LEVELS = [
   'level',
@@ -74,6 +75,7 @@ const ADDED_BY_LEVELS = [
   'levelChoices',
   'focusSpells',
   'archetypeCasting',
+  'castingStats',
 ]
 
 /**
@@ -120,7 +122,7 @@ function snapshot(sheet: AnySheet): Loose {
 }
 
 /**
- * Records the sheet before it reaches `level`, with what was picked (Nimble or PF2e) so
+ * Records the sheet before it reaches `level`, with what was picked (Nimble, PF2e or 5e) so
  * Reconfigure can replay it. Call before applying the level-up.
  */
 export function recordLevel(
@@ -128,11 +130,13 @@ export function recordLevel(
   level: number,
   nimble?: NimbleLevelInput,
   pf2e?: Pf2eLevelInput,
+  dnd5e?: Dnd5eLevelInput,
 ): void {
   const history = (sheet.levelHistory ?? []).filter((e) => e.level < level)
   const entry: LevelHistoryEntry = { level, before: snapshot(sheet) }
   if (nimble) entry.nimble = JSON.parse(JSON.stringify(nimble)) as NimbleLevelInput
   if (pf2e) entry.pf2e = JSON.parse(JSON.stringify(pf2e)) as Pf2eLevelInput
+  if (dnd5e) entry.dnd5e = JSON.parse(JSON.stringify(dnd5e)) as Dnd5eLevelInput
   history.push(entry)
   sheet.levelHistory = history
 }

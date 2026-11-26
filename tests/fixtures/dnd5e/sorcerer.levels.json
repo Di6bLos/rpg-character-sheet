@@ -1,0 +1,810 @@
+{
+  "draconic-sorcery": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Noble",
+        "Feat · Noble: Skilled",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Sorcerer 1: Spellcasting",
+        "Sorcerer 1: Innate Sorcery"
+      ],
+      "picks": [
+        "L1:background:tool tool×1",
+        "L1:background:feat>0 skill×3",
+        "L1:class:skills skill×2",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:languages language×2",
+        "L1:spells:cantrips cantrip×4",
+        "L1:spells:prepared spell×2"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 8,
+        "ac": 11,
+        "slots": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 2,
+        "resources": [
+          "Innate Sorcery 2/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Sorcerer 2: Font of Magic",
+        "Sorcerer 2: Metamagic",
+        "Metamagic: Careful Spell",
+        "Metamagic: Distant Spell"
+      ],
+      "picks": [
+        "L2:metamagic:0 option×2",
+        "L2:spells:prepared spell×2",
+        "L2:swap:cantrip:out swapOut×1?",
+        "L2:swap:prepared-spell:out swapOut×1?",
+        "L2:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 14,
+        "ac": 11,
+        "slots": [
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 4,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 2/long"
+        ],
+        "options": 2,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "Draconic Sorcery 3: Draconic Resilience",
+        "Draconic Sorcery 3: Draconic Spells"
+      ],
+      "picks": [
+        "L3:subclass subclass×1",
+        "L3:spells:prepared spell×2",
+        "L3:swap:cantrip:out swapOut×1?",
+        "L3:swap:prepared-spell:out swapOut×1?",
+        "L3:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 23,
+        "ac": 14,
+        "slots": [
+          4,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 6,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 3/long"
+        ],
+        "options": 2,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Feat · Sorcerer 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2",
+        "L4:spells:cantrips cantrip×1",
+        "L4:spells:prepared spell×1",
+        "L4:swap:cantrip:out swapOut×1?",
+        "L4:swap:prepared-spell:out swapOut×1?",
+        "L4:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 30,
+        "ac": 15,
+        "slots": [
+          4,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 5,
+        "prepared": 7,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 4/long"
+        ],
+        "options": 2,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Sorcerer 5: Sorcerous Restoration"
+      ],
+      "picks": [
+        "L5:spells:prepared spell×2",
+        "L5:swap:cantrip:out swapOut×1?",
+        "L5:swap:prepared-spell:out swapOut×1?",
+        "L5:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 37,
+        "ac": 15,
+        "slots": [
+          4,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 5,
+        "prepared": 9,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 5/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 2,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 6,
+      "features": [
+        "Draconic Sorcery 6: Elemental Affinity"
+      ],
+      "picks": [
+        "L6:draconic-sorcery:elemental-affinity:0 damageType×1",
+        "L6:spells:prepared spell×1",
+        "L6:swap:cantrip:out swapOut×1?",
+        "L6:swap:prepared-spell:out swapOut×1?",
+        "L6:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 44,
+        "ac": 15,
+        "slots": [
+          4,
+          3,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 5,
+        "prepared": 10,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 6/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 2,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Sorcerer 7: Sorcery Incarnate"
+      ],
+      "picks": [
+        "L7:spells:prepared spell×1",
+        "L7:swap:cantrip:out swapOut×1?",
+        "L7:swap:prepared-spell:out swapOut×1?",
+        "L7:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 51,
+        "ac": 15,
+        "slots": [
+          4,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 5,
+        "prepared": 11,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 7/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 2,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Sorcerer 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2",
+        "L8:spells:prepared spell×1",
+        "L8:swap:cantrip:out swapOut×1?",
+        "L8:swap:prepared-spell:out swapOut×1?",
+        "L8:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 58,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 5,
+        "prepared": 12,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 8/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 2,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 9,
+      "features": [],
+      "picks": [
+        "L9:spells:prepared spell×2",
+        "L9:swap:cantrip:out swapOut×1?",
+        "L9:swap:prepared-spell:out swapOut×1?",
+        "L9:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 65,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 5,
+        "prepared": 14,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 9/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 2,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Metamagic: Empowered Spell",
+        "Metamagic: Extended Spell"
+      ],
+      "picks": [
+        "L10:metamagic:0 option×2",
+        "L10:spells:cantrips cantrip×1",
+        "L10:spells:prepared spell×1",
+        "L10:swap:cantrip:out swapOut×1?",
+        "L10:swap:prepared-spell:out swapOut×1?",
+        "L10:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 72,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 15,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 10/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 11,
+      "features": [],
+      "picks": [
+        "L11:spells:prepared spell×1",
+        "L11:swap:cantrip:out swapOut×1?",
+        "L11:swap:prepared-spell:out swapOut×1?",
+        "L11:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 79,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 16,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 11/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Sorcerer 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2",
+        "L12:swap:cantrip:out swapOut×1?",
+        "L12:swap:prepared-spell:out swapOut×1?",
+        "L12:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 98,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 16,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 12/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 13,
+      "features": [],
+      "picks": [
+        "L13:spells:prepared spell×1",
+        "L13:swap:cantrip:out swapOut×1?",
+        "L13:swap:prepared-spell:out swapOut×1?",
+        "L13:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 106,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 17,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 13/long",
+          "Sorcerous Restoration 1/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "Draconic Sorcery 14: Dragon Wings"
+      ],
+      "picks": [
+        "L14:swap:cantrip:out swapOut×1?",
+        "L14:swap:prepared-spell:out swapOut×1?",
+        "L14:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 114,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 17,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 14/long",
+          "Sorcerous Restoration 1/long",
+          "Dragon Wings 1/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 15,
+      "features": [],
+      "picks": [
+        "L15:spells:prepared spell×1",
+        "L15:swap:cantrip:out swapOut×1?",
+        "L15:swap:prepared-spell:out swapOut×1?",
+        "L15:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 122,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          0
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 18,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 15/long",
+          "Sorcerous Restoration 1/long",
+          "Dragon Wings 1/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Sorcerer 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2",
+        "L16:swap:cantrip:out swapOut×1?",
+        "L16:swap:prepared-spell:out swapOut×1?",
+        "L16:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 146,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          0
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 18,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 16/long",
+          "Sorcerous Restoration 1/long",
+          "Dragon Wings 1/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 17,
+      "features": [
+        "Metamagic: Heightened Spell",
+        "Metamagic: Quickened Spell"
+      ],
+      "picks": [
+        "L17:metamagic:0 option×2",
+        "L17:spells:prepared spell×1",
+        "L17:swap:cantrip:out swapOut×1?",
+        "L17:swap:prepared-spell:out swapOut×1?",
+        "L17:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 155,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 19,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 17/long",
+          "Sorcerous Restoration 1/long",
+          "Dragon Wings 1/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Draconic Sorcery 18: Dragon Companion"
+      ],
+      "picks": [
+        "L18:spells:prepared spell×1",
+        "L18:swap:cantrip:out swapOut×1?",
+        "L18:swap:prepared-spell:out swapOut×1?",
+        "L18:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 164,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 20,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 18/long",
+          "Sorcerous Restoration 1/long",
+          "Dragon Wings 1/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Sorcerer 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2",
+        "L19:spells:prepared spell×1",
+        "L19:swap:cantrip:out swapOut×1?",
+        "L19:swap:prepared-spell:out swapOut×1?",
+        "L19:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 192,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 21,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 19/long",
+          "Sorcerous Restoration 1/long",
+          "Dragon Wings 1/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 7
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Sorcerer 20: Arcane Apotheosis"
+      ],
+      "picks": [
+        "L20:spells:prepared spell×1",
+        "L20:swap:cantrip:out swapOut×1?",
+        "L20:swap:prepared-spell:out swapOut×1?",
+        "L20:swap:metamagic:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 202,
+        "ac": 16,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 6,
+        "prepared": 22,
+        "resources": [
+          "Innate Sorcery 2/long",
+          "Font of Magic 20/long",
+          "Sorcerous Restoration 1/long",
+          "Dragon Wings 1/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 7
+      }
+    }
+  ]
+}

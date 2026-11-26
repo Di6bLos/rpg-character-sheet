@@ -1,0 +1,514 @@
+{
+  "warrior-of-the-open-hand": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Hermit",
+        "Feat · Hermit: Healer",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Monk 1: Martial Arts",
+        "Monk 1: Unarmored Defense"
+      ],
+      "picks": [
+        "L1:class:tool tool×1",
+        "L1:class:skills skill×2",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:languages language×2"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 10,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Monk 2: Monk’s Focus",
+        "Monk 2: Unarmored Movement",
+        "Monk 2: Uncanny Metabolism"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 17,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 2/short",
+          "Uncanny Metabolism 1×1d6/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "Monk 3: Deflect Attacks",
+        "Warrior of the Open Hand 3: Open Hand Technique"
+      ],
+      "picks": [
+        "L3:subclass subclass×1"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 24,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 3/short",
+          "Uncanny Metabolism 1×1d6/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Monk 4: Slow Fall",
+        "Feat · Monk 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 31,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 4/short",
+          "Uncanny Metabolism 1×1d6/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Monk 5: Extra Attack",
+        "Monk 5: Stunning Strike"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 38,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 5/short",
+          "Uncanny Metabolism 1×1d8/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 6,
+      "features": [
+        "Monk 6: Empowered Strikes",
+        "Warrior of the Open Hand 6: Wholeness of Body"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 45,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 6/short",
+          "Uncanny Metabolism 1×1d8/long",
+          "Wholeness of Body 3×1d8/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Monk 7: Evasion"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 52,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 7/short",
+          "Uncanny Metabolism 1×1d8/long",
+          "Wholeness of Body 3×1d8/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Monk 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 59,
+        "ac": 17,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 8/short",
+          "Uncanny Metabolism 1×1d8/long",
+          "Wholeness of Body 3×1d8/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 9,
+      "features": [
+        "Monk 9: Acrobatic Movement"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 66,
+        "ac": 17,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 9/short",
+          "Uncanny Metabolism 1×1d8/long",
+          "Wholeness of Body 3×1d8/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Monk 10: Heightened Focus",
+        "Monk 10: Self-Restoration"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 73,
+        "ac": 17,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 10/short",
+          "Uncanny Metabolism 1×1d8/long",
+          "Wholeness of Body 3×1d8/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 11,
+      "features": [
+        "Warrior of the Open Hand 11: Fleet Step"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 80,
+        "ac": 17,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 11/short",
+          "Uncanny Metabolism 1×1d10/long",
+          "Wholeness of Body 3×1d10/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Monk 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 87,
+        "ac": 18,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 12/short",
+          "Uncanny Metabolism 1×1d10/long",
+          "Wholeness of Body 3×1d10/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 13,
+      "features": [
+        "Monk 13: Deflect Energy"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 94,
+        "ac": 18,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 13/short",
+          "Uncanny Metabolism 1×1d10/long",
+          "Wholeness of Body 3×1d10/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "Monk 14: Disciplined Survivor"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 101,
+        "ac": 18,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 14/short",
+          "Uncanny Metabolism 1×1d10/long",
+          "Wholeness of Body 3×1d10/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 15,
+      "features": [
+        "Monk 15: Perfect Focus"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 108,
+        "ac": 18,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 15/short",
+          "Uncanny Metabolism 1×1d10/long",
+          "Wholeness of Body 3×1d10/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Monk 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 115,
+        "ac": 19,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 16/short",
+          "Uncanny Metabolism 1×1d10/long",
+          "Wholeness of Body 4×1d10/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 17,
+      "features": [
+        "Warrior of the Open Hand 17: Quivering Palm"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 122,
+        "ac": 19,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 17/short",
+          "Uncanny Metabolism 1×1d12/long",
+          "Wholeness of Body 4×1d12/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Monk 18: Superior Defense"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 129,
+        "ac": 19,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 18/short",
+          "Uncanny Metabolism 1×1d12/long",
+          "Wholeness of Body 4×1d12/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Monk 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 136,
+        "ac": 20,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 19/short",
+          "Uncanny Metabolism 1×1d12/long",
+          "Wholeness of Body 5×1d12/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 7
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Monk 20: Body and Mind"
+      ],
+      "picks": [],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 143,
+        "ac": 20,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Monk’s Focus 20/short",
+          "Uncanny Metabolism 1×1d12/long",
+          "Wholeness of Body 5×1d12/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 7
+      }
+    }
+  ]
+}

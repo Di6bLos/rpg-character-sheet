@@ -10,6 +10,7 @@ import type {
   Pf2eRuneNumbers,
   Pf2eRuneVsDamage,
 } from '~/data/pf2e/types'
+import type { Dnd5eRecharge, Dnd5eSpellcastingKind, Dnd5eUses } from '~/data/dnd5e/types'
 
 export interface SheetCommon {
   /** Race / ancestry. */
@@ -42,6 +43,8 @@ export interface LevelHistoryEntry {
   nimble?: NimbleLevelInput
   /** What was picked (PF2e sheets built from class data), to replay the level. */
   pf2e?: Pf2eLevelInput
+  /** What was picked (5e sheets built from class data), to replay the level. */
+  dnd5e?: Dnd5eLevelInput
 }
 
 export interface NimbleLevelInput {
@@ -180,6 +183,89 @@ export interface Dnd5eWeapon {
   dmg: string
   type: string
   range: string
+  /** The weapon's data slug when the builder added it; its numbers follow the hero's level-ups. */
+  slug?: string
+}
+
+/** A feature on the sheet. `from` marks one the builder added ("Fighter 2", "Elf", "Alert"). */
+export interface Dnd5eFeatureEntry extends NamedEntry {
+  from?: string
+}
+
+/** What a built hero is trained in, by the books' names ("Athletics", "Martial weapons"). */
+export interface Dnd5eProficiencies {
+  skills: string[]
+  /** Skills with Expertise (twice the Proficiency Bonus, SRD 5.2.1 p. 182). */
+  expertise: string[]
+  tools: string[]
+  languages: string[]
+  weapons: string[]
+  armor: string[]
+}
+
+/** A spell a built hero has: a class spell, or one a subclass, species, feat or option gives. */
+export interface Dnd5eSpellRef {
+  slug: string
+  name: string
+  /** 0 for a cantrip. */
+  level: number
+  /** What gives it ("Wizard", "High Elf", "Magic Initiate", "Life Domain"). */
+  from: string
+  ability: Dnd5eAbility
+  /**
+   * Always prepared and not counted against the class's prepared spells (subclass, species,
+   * feat and option spells). Class picks leave it out.
+   */
+  always?: boolean
+  /** Casts without a slot this often. */
+  free?: Dnd5eUses
+  /** Casts at will, without a slot (Armor of Shadows). */
+  atWill?: boolean
+  /** In the wizard's spellbook but not prepared. */
+  book?: boolean
+}
+
+/** The class's spellcasting numbers at the hero's level (SRD 5.2.1 p. 106). */
+export interface Dnd5eCasting {
+  ability: Dnd5eAbility
+  kind: Dnd5eSpellcastingKind
+  /** The class whose spell list it uses. */
+  list: string
+  saveDc: number
+  attack: number
+  /** Spell slots per spell level 1–9. */
+  slots: number[]
+  /** Pact Magic slots (Warlock). */
+  pact?: { slots: number; level: number }
+  cantrips: number
+  prepared: number
+}
+
+/** A limited-use feature at the hero's level (Rage, Channel Divinity, Sorcery Points). */
+export interface Dnd5eResource {
+  name: string
+  /** What gives it ("Barbarian", "Battle Master", "Dragonborn"). */
+  from: string
+  max: number
+  recharge: Dnd5eRecharge
+  /** Uses a Short Rest gives back when the recharge is a Long Rest. */
+  short?: number | 'all'
+  dice?: string
+}
+
+/** The level 1 choices a built 5e hero was made from (SRD 5.2.1 pp. 19–23). */
+export interface Dnd5eCreation {
+  classSlug: string
+  speciesSlug: string
+  backgroundSlug: string
+  /** How the scores were made; `manual` covers rolled scores typed in. */
+  method: 'standard' | 'pointBuy' | 'manual'
+  /** Scores before the background's increases. */
+  base: Record<Dnd5eAbility, number>
+  /** The background's +2/+1 or +1/+1/+1. */
+  bonus: Partial<Record<Dnd5eAbility, number>>
+  /** Starting equipment: the class's and the background's option letter (the last is gold). */
+  equipment: { class: string; background: string }
 }
 
 export interface Dnd5eSheet extends SheetCommon {
@@ -194,7 +280,40 @@ export interface Dnd5eSheet extends SheetCommon {
   /** Condition names from DND5E_CONDITIONS (the GM can set them from the battle board). */
   conditions: string[]
   weapons: Dnd5eWeapon[]
-  features: NamedEntry[]
+  features: Dnd5eFeatureEntry[]
+  // Built from data/dnd5e by the hero builder and the data-driven level-up. All absent on a
+  // hand-made sheet, which keeps the free-text level-up.
+  /** Class slug; empty or absent means a hand-made sheet. */
+  classSlug?: string
+  subclassSlug?: string
+  speciesSlug?: string
+  backgroundSlug?: string
+  creation?: Dnd5eCreation
+  /** Every pick, keyed "L<level>:<choice>" (`L1:class:skills`, `L4:asi`, `L4:asi>asi`). */
+  choices?: Record<string, string[]>
+  proficiencies?: Dnd5eProficiencies
+  /** Feats taken, with the level each came at. */
+  featsTaken?: { slug: string; name: string; level: number }[]
+  /** Option-group picks: invocations, metamagic, maneuvers, artificer plans. */
+  options?: { group: string; slug: string; name: string; level: number }[]
+  /** Weapon kinds whose mastery property the hero can use (weapon slugs). */
+  masteries?: string[]
+  castingStats?: Dnd5eCasting
+  spells?: Dnd5eSpellRef[]
+  resources?: Dnd5eResource[]
+  senses?: { name: string; range: number }[]
+  defenses?: { resistances: string[]; immunities: string[]; conditionImmunities: string[] }
+  size?: string
+  coins?: { gp: number }
+}
+
+/**
+ * A 5e level-up's picks (SRD 5.2.1 p. 23): the Hit Die result (rolled, or the fixed value)
+ * before CON, and every choice by its key.
+ */
+export interface Dnd5eLevelInput {
+  hpRoll: number
+  picks: Record<string, string[]>
 }
 
 // --- Pathfinder 2e --------------------------------------------------------

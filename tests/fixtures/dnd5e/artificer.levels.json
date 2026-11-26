@@ -1,0 +1,836 @@
+{
+  "alchemist": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Sage",
+        "Feat · Sage: Magic Initiate",
+        "Magic Initiate: Spell list: Wizard",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Artificer 1: Spellcasting",
+        "Artificer 1: Tinker’s Magic"
+      ],
+      "picks": [
+        "L1:background:feat>1 ability×1",
+        "L1:background:feat>0>wizard:0 cantrip×2",
+        "L1:background:feat>0>wizard:1 spell×1",
+        "L1:class:tool tool×1",
+        "L1:class:skills skill×2",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:languages language×2",
+        "L1:spells:cantrips cantrip×2",
+        "L1:spells:prepared spell×2"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 10,
+        "ac": 13,
+        "slots": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 2,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 3/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Artificer 2: Replicate Magic Item",
+        "Magic Item Plans: Alchemy Jug",
+        "Magic Item Plans: Bag of Holding",
+        "Magic Item Plans: Cap of Water Breathing",
+        "Magic Item Plans: Common Magic Item"
+      ],
+      "picks": [
+        "L2:replicate-magic-item:0 option×4",
+        "L2:spells:prepared spell×1",
+        "L2:swap:cantrip:out swapOut×1?",
+        "L2:swap:prepared-spell:out swapOut×1?",
+        "L2:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 17,
+        "ac": 13,
+        "slots": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 3,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 3/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "Alchemist 3: Tools of the Trade",
+        "Alchemist 3: Alchemist Spells",
+        "Alchemist 3: Experimental Elixir"
+      ],
+      "picks": [
+        "L3:subclass subclass×1",
+        "L3:alchemist:tools-of-the-trade>dup-alchemists-supplies tool×1",
+        "L3:spells:prepared spell×1",
+        "L3:swap:cantrip:out swapOut×1?",
+        "L3:swap:prepared-spell:out swapOut×1?",
+        "L3:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 24,
+        "ac": 13,
+        "slots": [
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 4,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 3/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Feat · Artificer 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2",
+        "L4:spells:prepared spell×1",
+        "L4:swap:cantrip:out swapOut×1?",
+        "L4:swap:prepared-spell:out swapOut×1?",
+        "L4:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 31,
+        "ac": 13,
+        "slots": [
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 5,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 4/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Alchemist 5: Alchemical Savant"
+      ],
+      "picks": [
+        "L5:spells:prepared spell×1",
+        "L5:swap:cantrip:out swapOut×1?",
+        "L5:swap:prepared-spell:out swapOut×1?",
+        "L5:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 38,
+        "ac": 13,
+        "slots": [
+          4,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 6,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 4/long"
+        ],
+        "options": 4,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 6,
+      "features": [
+        "Artificer 6: Magic Item Tinker"
+      ],
+      "picks": [
+        "L6:replicate-magic-item:0 option×1",
+        "L6:swap:cantrip:out swapOut×1?",
+        "L6:swap:prepared-spell:out swapOut×1?",
+        "L6:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 45,
+        "ac": 13,
+        "slots": [
+          4,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 6,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 4/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long"
+        ],
+        "options": 5,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Artificer 7: Flash of Genius"
+      ],
+      "picks": [
+        "L7:spells:prepared spell×1",
+        "L7:swap:cantrip:out swapOut×1?",
+        "L7:swap:prepared-spell:out swapOut×1?",
+        "L7:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 52,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 7,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 4/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 4/long"
+        ],
+        "options": 5,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Artificer 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2",
+        "L8:swap:cantrip:out swapOut×1?",
+        "L8:swap:prepared-spell:out swapOut×1?",
+        "L8:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 59,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 7,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 5,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 9,
+      "features": [
+        "Alchemist 9: Restorative Reagents"
+      ],
+      "picks": [
+        "L9:spells:prepared spell×2",
+        "L9:swap:cantrip:out swapOut×1?",
+        "L9:swap:prepared-spell:out swapOut×1?",
+        "L9:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 66,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 9,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 5,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Artificer 10: Magic Item Adept"
+      ],
+      "picks": [
+        "L10:replicate-magic-item:0 option×1",
+        "L10:spells:cantrips cantrip×1",
+        "L10:swap:cantrip:out swapOut×1?",
+        "L10:swap:prepared-spell:out swapOut×1?",
+        "L10:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 73,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 9,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 11,
+      "features": [
+        "Artificer 11: Spell-Storing Item"
+      ],
+      "picks": [
+        "L11:spells:prepared spell×1",
+        "L11:swap:cantrip:out swapOut×1?",
+        "L11:swap:prepared-spell:out swapOut×1?",
+        "L11:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 80,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 10,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Artificer 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2",
+        "L12:swap:cantrip:out swapOut×1?",
+        "L12:swap:prepared-spell:out swapOut×1?",
+        "L12:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 99,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 10,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 13,
+      "features": [],
+      "picks": [
+        "L13:spells:prepared spell×1",
+        "L13:swap:cantrip:out swapOut×1?",
+        "L13:swap:prepared-spell:out swapOut×1?",
+        "L13:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 107,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 11,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "Artificer 14: Advanced Artifice"
+      ],
+      "picks": [
+        "L14:replicate-magic-item:0 option×1",
+        "L14:spells:cantrips cantrip×1",
+        "L14:swap:cantrip:out swapOut×1?",
+        "L14:swap:prepared-spell:out swapOut×1?",
+        "L14:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 115,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 11,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 7,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 15,
+      "features": [
+        "Alchemist 15: Chemical Mastery"
+      ],
+      "picks": [
+        "L15:spells:prepared spell×1",
+        "L15:swap:cantrip:out swapOut×1?",
+        "L15:swap:prepared-spell:out swapOut×1?",
+        "L15:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 123,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 12,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 7,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Artificer 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2",
+        "L16:swap:cantrip:out swapOut×1?",
+        "L16:swap:prepared-spell:out swapOut×1?",
+        "L16:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 147,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 12,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 7,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 17,
+      "features": [],
+      "picks": [
+        "L17:spells:prepared spell×2",
+        "L17:swap:cantrip:out swapOut×1?",
+        "L17:swap:prepared-spell:out swapOut×1?",
+        "L17:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 156,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 14,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 7,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Artificer 18: Magic Item Master"
+      ],
+      "picks": [
+        "L18:replicate-magic-item:0 option×1",
+        "L18:swap:cantrip:out swapOut×1?",
+        "L18:swap:prepared-spell:out swapOut×1?",
+        "L18:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 165,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 14,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 8,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Artificer 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2",
+        "L19:spells:prepared spell×1",
+        "L19:swap:cantrip:out swapOut×1?",
+        "L19:swap:prepared-spell:out swapOut×1?",
+        "L19:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 193,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 15,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 8,
+        "masteries": 0,
+        "feats": 7
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Artificer 20: Soul of Artifice"
+      ],
+      "picks": [
+        "L20:swap:cantrip:out swapOut×1?",
+        "L20:swap:prepared-spell:out swapOut×1?",
+        "L20:swap:plans:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 203,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 15,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Tinker’s Magic 5/long",
+          "Magic Item Tinker: Drain Magic Item 1/long",
+          "Magic Item Tinker: Transmute Magic Item 1/long",
+          "Flash of Genius 5/long"
+        ],
+        "options": 8,
+        "masteries": 0,
+        "feats": 7
+      }
+    }
+  ]
+}

@@ -1,0 +1,527 @@
+{
+  "path-of-the-berserker": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Soldier",
+        "Feat · Soldier: Savage Attacker",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Barbarian 1: Rage",
+        "Barbarian 1: Unarmored Defense",
+        "Barbarian 1: Weapon Mastery"
+      ],
+      "picks": [
+        "L1:background:tool tool×1",
+        "L1:class:skills skill×2",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:languages language×2",
+        "L1:weapon-mastery:0 weaponMastery×2"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 14,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 2/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 2
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Barbarian 2: Danger Sense",
+        "Barbarian 2: Reckless Attack"
+      ],
+      "picks": [
+        "L2:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 23,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 2/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 2
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "Barbarian 3: Primal Knowledge",
+        "Path of the Berserker 3: Frenzy"
+      ],
+      "picks": [
+        "L3:subclass subclass×1",
+        "L3:primal-knowledge:0 skill×1",
+        "L3:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 32,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 3/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 2
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Feat · Barbarian 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2",
+        "L4:weapon-mastery:0 weaponMastery×1",
+        "L4:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 41,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 3/long"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 3
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Barbarian 5: Extra Attack",
+        "Barbarian 5: Fast Movement"
+      ],
+      "picks": [
+        "L5:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 50,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 3/long"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 3
+      }
+    },
+    {
+      "level": 6,
+      "features": [
+        "Path of the Berserker 6: Mindless Rage"
+      ],
+      "picks": [
+        "L6:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 59,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 4/long"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 3
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Barbarian 7: Feral Instinct",
+        "Barbarian 7: Instinctive Pounce"
+      ],
+      "picks": [
+        "L7:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 68,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 4/long"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 3
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Barbarian 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2",
+        "L8:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 77,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 4/long"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 4
+      }
+    },
+    {
+      "level": 9,
+      "features": [
+        "Barbarian 9: Brutal Strike"
+      ],
+      "picks": [
+        "L9:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 86,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 4/long"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 4
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Path of the Berserker 10: Retaliation"
+      ],
+      "picks": [
+        "L10:weapon-mastery:0 weaponMastery×1",
+        "L10:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 95,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 4/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 4
+      }
+    },
+    {
+      "level": 11,
+      "features": [
+        "Barbarian 11: Relentless Rage"
+      ],
+      "picks": [
+        "L11:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 104,
+        "ac": 13,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 4/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 4
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Barbarian 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2",
+        "L12:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 125,
+        "ac": 14,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 5/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 5
+      }
+    },
+    {
+      "level": 13,
+      "features": [
+        "Barbarian 13: Improved Brutal Strike"
+      ],
+      "picks": [
+        "L13:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 135,
+        "ac": 14,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 5/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 5
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "Path of the Berserker 14: Intimidating Presence"
+      ],
+      "picks": [
+        "L14:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 145,
+        "ac": 14,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 5/long",
+          "Intimidating Presence 1/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 5
+      }
+    },
+    {
+      "level": 15,
+      "features": [
+        "Barbarian 15: Persistent Rage"
+      ],
+      "picks": [
+        "L15:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 155,
+        "ac": 14,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 5/long",
+          "Intimidating Presence 1/long",
+          "Persistent Rage 1/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 5
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Barbarian 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2",
+        "L16:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 181,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 5/long",
+          "Intimidating Presence 1/long",
+          "Persistent Rage 1/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 6
+      }
+    },
+    {
+      "level": 17,
+      "features": [],
+      "picks": [
+        "L17:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 192,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 6/long",
+          "Intimidating Presence 1/long",
+          "Persistent Rage 1/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 6
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Barbarian 18: Indomitable Might"
+      ],
+      "picks": [
+        "L18:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 203,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 6/long",
+          "Intimidating Presence 1/long",
+          "Persistent Rage 1/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 6
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Barbarian 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2",
+        "L19:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 233,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 6/long",
+          "Intimidating Presence 1/long",
+          "Persistent Rage 1/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 7
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Barbarian 20: Primal Champion"
+      ],
+      "picks": [
+        "L20:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 245,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Rage 6/long",
+          "Intimidating Presence 1/long",
+          "Persistent Rage 1/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 7
+      }
+    }
+  ]
+}
