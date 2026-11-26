@@ -23,6 +23,7 @@ const FILTER_KEY = 'lantern-battle-filter'
 const FILTERS: ActionFilter[] = ['ready', 'all', 'attack', 'spell', 'react', 'ability']
 
 const { canEdit } = useSheet<NimbleSheet>()
+const undo = useActionUndo()
 // On touch (touch desktops too) the filter chips and search are touch-sized too.
 const { touch } = useBoardLayout()
 const announce = useAnnounce()
@@ -116,6 +117,17 @@ const empty = computed(() =>
     <p v-if="lastResult && !sheet" class="actions__result" role="status">
       <span class="actions__last" :title="lastDetail || undefined">{{ lastResult }}</span>
       <span class="actions__posted">Posted to party chat</span>
+      <button
+        v-if="undo?.label.value"
+        type="button"
+        class="actions__undo"
+        data-track="Undo action"
+        :aria-label="`Undo ${undo.label.value}`"
+        :title="`Put your sheet back as it was before ${undo.label.value} (the dice stay rolled)`"
+        @click="undo.undo()"
+      >
+        Undo
+      </button>
     </p>
   </section>
 </template>
@@ -202,6 +214,27 @@ const empty = computed(() =>
   margin-left: auto;
   font-size: 11px;
   opacity: 0.85;
+}
+
+// A text button in the result's own colour, so it reads as part of the line.
+.actions__undo {
+  all: unset;
+  align-self: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--ok-text) 45%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--ok-text) 12%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
 
 // --- Compact (phone, tablet) -------------------------------------------------------------

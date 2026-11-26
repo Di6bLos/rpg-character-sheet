@@ -52,6 +52,7 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
   const sheet = computed(() => draft.value.sheet)
   // Shared with the phone's result bar (one per hero editor, see useBattleResult).
   const result = useBattleResult()
+  const undo = useActionUndo()
   /** The tile being used, while its click runs. */
   let using = ''
   const onResult = (message: string) => {
@@ -70,7 +71,9 @@ export function useBattleActions(options: NimbleResultOptions = {}) {
     return () => {
       using = name
       try {
-        use()
+        // The sheet from before the click, for the result line's Undo.
+        if (undo) undo.run(name, use)
+        else use()
       } finally {
         using = ''
       }
