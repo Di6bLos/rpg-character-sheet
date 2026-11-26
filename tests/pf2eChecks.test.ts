@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { Pf2eSheet } from '../types/sheets'
 import { rollCheckTwice, typedCheck } from '../utils/dice'
-import { checkBreakdown, heroRerollProblem, rollPf2eCheck, skillUses } from '../utils/pf2ePlay'
+import {
+  checkBreakdown,
+  heroRerollProblem,
+  rollPf2eCheck,
+  skillUses,
+  strikeChances,
+} from '../utils/pf2ePlay'
 import { defaultSheet } from '../utils/sheetDefaults'
 
 function hero(over: Partial<Pf2eSheet> = {}): Pf2eSheet {
@@ -89,5 +95,25 @@ describe('heroRerollProblem (p. 413)', () => {
     expect(heroRerollProblem(hero({ heroPoints: 0 }), 'normal')).toBe('No Hero Points left.')
     expect(heroRerollProblem(hero({ heroPoints: 1 }), 'fortune')).toContain('fortune')
     expect(heroRerollProblem(hero({ heroPoints: 1 }), 'misfortune')).toBe('')
+  })
+})
+
+describe('strikeChances (p. 401)', () => {
+  it('counts the d20 faces of each degree', () => {
+    // +10 vs AC 20: 10–19 hit, 20 crits; 2–9 miss; 1 is a critical miss.
+    expect(strikeChances(10, 20)).toEqual({ crit: 5, hit: 50, miss: 40, fumble: 5 })
+  })
+
+  it('moves a natural 20 and 1 one step at the extremes', () => {
+    // +30 vs AC 15: every face is 10 over; a natural 1 drops to a success.
+    expect(strikeChances(30, 15)).toEqual({ crit: 95, hit: 5, miss: 0, fumble: 0 })
+  })
+
+  it('keen makes a natural 19 that hits a critical hit', () => {
+    expect(strikeChances(10, 20, { keen: true }).crit).toBe(10)
+  })
+
+  it('fortune keeps the higher of two dice', () => {
+    expect(strikeChances(10, 20, { fortune: 'fortune' }).hit).toBeGreaterThan(50)
   })
 })

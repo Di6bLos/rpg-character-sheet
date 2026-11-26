@@ -1,0 +1,123 @@
+// The attack cards of the Nimble and PF2e sheets' Attacks panels (nimble/SheetAttacks,
+// pf2e/SheetAttacks): the folding groups and tiers, the card grid, a card's head, its cost pill
+// and its result line. Each panel `@use`s this in its scoped style.
+
+.attack__result {
+  margin: 0;
+  font-size: 13px;
+}
+
+.atk-group {
+  display: flex;
+  flex-direction: column;
+
+  > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: '▾';
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--accent-text);
+    }
+  }
+
+  &[open] > summary {
+    margin-bottom: 10px;
+
+    &::after {
+      content: '▴';
+    }
+  }
+
+  .badge--low {
+    color: var(--danger);
+  }
+}
+
+.atk-tier {
+  margin-left: 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+
+  & + & {
+    margin-top: 8px;
+  }
+
+  > summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--page-muted);
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::before {
+      content: '▸';
+      font-size: 10px;
+      letter-spacing: normal;
+      color: var(--accent-text);
+      transition: transform 0.15s ease;
+    }
+
+    &::after {
+      content: none;
+    }
+  }
+
+  &[open] {
+    border-left-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  }
+
+  &[open] > summary {
+    margin-bottom: 8px;
+
+    &::before {
+      transform: rotate(90deg);
+    }
+  }
+}
+
+.boost {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.attacks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 12px;
+}
+
+.attack {
+  gap: 12px;
+  padding: 16px;
+
+  > .btn {
+    margin-top: auto;
+  }
+}
+
+.attack__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}

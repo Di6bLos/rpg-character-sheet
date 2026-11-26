@@ -967,3 +967,33 @@ export function heroRerollProblem(s: Pf2eSheet, fortune: Pf2eFortune): string {
   if (fortune === 'fortune') return 'That roll already had a fortune effect.'
   return ''
 }
+
+/**
+ * The chance of each degree of an attack with this bonus against an AC (Player Core p. 401),
+ * over the d20's 20 faces: 10 or more over the AC is a critical success, a natural 20 or 1
+ * moves it one step; keen makes a natural 19 that hits a critical hit (GM Core p. 237).
+ * Percentages; `fortune` and `misfortune` roll twice and keep the higher or lower.
+ */
+export function strikeChances(
+  bonus: number,
+  ac: number,
+  o: { keen?: boolean; fortune?: Pf2eFortune } = {},
+): { crit: number; hit: number; miss: number; fumble: number } {
+  const p = { 'critical success': 0, success: 0, failure: 0, 'critical failure': 0 }
+  const face = (d: number) => degreeOf(d + bonus, d, ac, o.keen)
+  const fortune = o.fortune ?? 'normal'
+  if (fortune === 'normal') for (let d = 1; d <= 20; d++) p[face(d)] += 1 / 20
+  else
+    for (let a = 1; a <= 20; a++)
+      for (let b = 1; b <= 20; b++) {
+        const d = fortune === 'fortune' ? Math.max(a, b) : Math.min(a, b)
+        p[face(d)] += 1 / 400
+      }
+  const pct = (x: number) => Math.round(x * 100)
+  return {
+    crit: pct(p['critical success']),
+    hit: pct(p.success),
+    miss: pct(p.failure),
+    fumble: pct(p['critical failure']),
+  }
+}

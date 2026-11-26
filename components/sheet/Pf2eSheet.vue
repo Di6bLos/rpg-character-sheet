@@ -5,14 +5,11 @@
 import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
 import { sign } from '~/utils/dice'
 import { isDead } from '~/utils/pf2ePlay'
-import { NOT_YOUR_TURN, cantAct, offTurn } from '~/utils/pf2eActions'
 
-const { draft, canEdit, say } = useSheet<Pf2eSheet>()
+const { draft, canEdit } = useSheet<Pf2eSheet>()
 // The GM's HP and condition changes from the battle board.
 useHeroHpChanges()
 useHeroConditionChanges()
-/** Results show in the panel that made them. */
-const { claim, resultIn } = useResultOwner()
 const sheet = computed(() => draft.value.sheet)
 
 const ATTR_NAME: Record<Pf2eAttr, string> = {
@@ -64,34 +61,7 @@ watch(
 
 const strikesApi = providePf2eStrikes()
 providePf2eActions(strikesApi)
-const { targetAc, damageFlags, conditionsOffered, strikes, nextAttack } = strikesApi
 const turnActive = computed(() => !!sheet.value.turn?.active)
-
-/**
- * Why a Strike can't be made now, or '': it takes one action on your turn (Player Core
- * p. 418), so off your turn in an encounter it waits ("Not your turn"); a finisher ends
- * your attacks for the turn.
- */
-const strikeWhy = computed(() => {
-  const s = sheet.value
-  const stopped = cantAct(s)
-  if (stopped) return stopped
-  if (offTurn(s)) return NOT_YOUR_TURN
-  const t = s.turn
-  if (t?.active && t.finisher) return 'Finisher used'
-  if (t?.active && t.actions < 1) return 'No actions left'
-  return ''
-})
-const STRIKE_COST = { kind: 'actions', min: 1, max: 1 } as const
-
-/** A Strike from the table: one action while the turn tracker runs (Player Core p. 418). */
-function strikeFromTable(index: number, step: number) {
-  if (!canEdit.value) return
-  if (strikeWhy.value) return say(`Strike: ${strikeWhy.value}.`)
-  const t = sheet.value.turn
-  if (t?.active) t.actions -= 1
-  strikesApi.attack(index, { map: step })
-}
 </script>
 
 <template>
@@ -148,154 +118,7 @@ function strikeFromTable(index: number, step: number) {
     </div>
     <div class="play__col">
       <Pf2eSheetTurn style="order: 2" />
-      <section
-        class="panel stack"
-        :style="{ gap: '14px', order: turnActive ? 3 : 4 }"
-        aria-labelledby="atk-h"
-      >
-        <UiFold name="Attacks" :open="turnActive" />
-        <div class="panel-title" style="margin: 0">
-          <div class="title-help">
-            <h2 id="atk-h">Attacks</h2>
-            <UiHelp
-              label="About attacks"
-              text="Each Strike takes 1 action. Its three buttons are the 1st, 2nd and 3rd attack of your turn: the multiple attack penalty is −5 and −10 (agile −4 and −8). With the target's AC the result says the degree: 10 or more over is a critical hit, a natural 20 or 1 moves it one step (Player Core pp. 401–402)."
-            />
-          </div>
-          <label class="target">
-            Target AC
-            <input
-              v-model.number="targetAc"
-              class="input"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              placeholder="—"
-            />
-          </label>
-          <label v-if="conditionsOffered.includes('offGuard')" class="target">
-            <input v-model="damageFlags.offGuard" type="checkbox" />
-            Target off-guard
-          </label>
-          <label v-if="conditionsOffered.includes('huntedPrey')" class="target">
-            <input v-model="damageFlags.huntedPrey" type="checkbox" />
-            First hit on your prey this round
-          </label>
-          <label v-if="conditionsOffered.includes('stratagem')" class="target">
-            <input v-model="damageFlags.stratagem" type="checkbox" />
-            Devise a Stratagem (next Strike: INT to the attack)
-          </label>
-        </div>
-        <div
-          v-if="strikes.length"
-          class="table-wrap"
-          tabindex="0"
-          role="region"
-          aria-label="Table, scroll sideways for more"
-        >
-          <table class="table" style="min-width: 480px">
-            <thead>
-              <tr>
-                <th scope="col">Strike</th>
-                <th scope="col">Attack (MAP)</th>
-                <th scope="col">Damage</th>
-                <th scope="col">Traits</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(w, i) in strikes" :key="i">
-                <td>
-                  <div class="row" style="gap: 8px; flex-wrap: nowrap">
-                    <strong>{{ w.name }}</strong>
-                    <Pf2eCostPill :cost="STRIKE_COST" />
-                  </div>
-                </td>
-                <td>
-                  <button
-                    v-if="strikeWhy && canEdit"
-                    type="button"
-                    class="atk atk--why"
-                    disabled
-                    :aria-label="`${w.name}: ${strikeWhy}`"
-                  >
-                    {{ strikeWhy }}
-                  </button>
-                  <div v-else class="row" style="gap: 6px; flex-wrap: nowrap">
-                    <button
-                      v-for="(a, n) in w.atks"
-                      :key="n"
-                      type="button"
-                      class="atk"
-                      :class="{
-                        'atk--first': n === (turnActive ? nextAttack : 0),
-                        'is-changed': w.changed,
-                      }"
-                      :title="w.changed ? w.note : undefined"
-                      :aria-label="a.label"
-                      :disabled="!canEdit"
-                      @click="claim(`strike:${w.index}`, () => strikeFromTable(w.index, n))"
-                    >
-                      {{ a.text }}
-                    </button>
-                  </div>
-                </td>
-                <td>
-                  <div class="row" style="gap: 6px; flex-wrap: nowrap">
-                    <button
-                      type="button"
-                      class="dmg dmg-btn"
-                      :class="{ 'is-changed': w.dmgChanged }"
-                      :title="w.dmgChanged ? w.dmgNote : undefined"
-                      :aria-label="`Roll damage for ${w.name}`"
-                      @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, false))"
-                    >
-                      {{ w.dmg }}
-                    </button>
-                    <button
-                      type="button"
-                      class="atk crit-btn"
-                      :aria-label="`Roll critical damage for ${w.name}`"
-                      :title="`Critical hit: double damage${w.critNote ? `, then ${w.critNote}` : ''}`"
-                      @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, true))"
-                    >
-                      ×2
-                    </button>
-                  </div>
-                </td>
-                <td>
-                  <div class="row" style="gap: 6px">
-                    <span v-for="t in w.traits" :key="t" class="trait">{{ t }}</span>
-                    <button
-                      v-if="w.twoHandDie"
-                      type="button"
-                      class="chip grip"
-                      :aria-pressed="w.twoHands"
-                      :title="`Two-hand: d${w.twoHandDie} damage dice while held in two hands`"
-                      @click="strikesApi.toggleTwoHands(w.index)"
-                    >
-                      Two hands
-                    </button>
-                    <button
-                      v-if="w.versatile"
-                      type="button"
-                      class="chip grip"
-                      :aria-pressed="w.versatileOn"
-                      :title="`Versatile: deal ${w.versatile.toLowerCase()} damage instead`"
-                      @click="strikesApi.toggleVersatile(w.index)"
-                    >
-                      {{ w.versatile }}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p v-else class="empty">No strikes yet. Use “Edit sheet” to add one.</p>
-        <p v-if="resultIn('strike:')" class="roll-status" role="status" aria-live="polite">
-          {{ resultIn('strike:') }}
-        </p>
-      </section>
+      <Pf2eSheetAttacks :style="{ order: turnActive ? 3 : 4 }" />
       <Pf2eSheetReactions :style="{ order: turnActive ? 4 : 3 }" />
       <Pf2eSheetResources style="order: 5" />
       <Pf2eSheetActions style="order: 6" />
@@ -312,69 +135,4 @@ function strikeFromTable(index: number, step: number) {
 
 <style scoped lang="scss">
 @use '../../assets/styles/sheet-layout';
-
-.is-changed {
-  color: var(--warn-text);
-}
-
-.target {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-
-  .input {
-    width: 80px;
-  }
-}
-
-.atk {
-  min-height: 40px;
-  min-width: 52px;
-  padding: 0 10px;
-  border-radius: min(var(--radius-control), 8px);
-  border: 1px solid var(--line);
-  background: var(--field);
-  color: var(--page-soft);
-  font-weight: 700;
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-
-  &--first {
-    border-color: var(--secondary);
-    background: color-mix(in srgb, var(--secondary) 14%, var(--field));
-    color: var(--page-text);
-  }
-}
-
-.atk--why {
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.dmg-btn {
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: min(var(--radius-control), 8px);
-  font-size: 14px;
-}
-
-.grip {
-  min-height: 28px;
-  padding: 0 10px;
-  font-size: 12px;
-}
-
-.trait {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: var(--track);
-  border: 1px solid var(--line);
-  color: var(--page-soft);
-}
 </style>

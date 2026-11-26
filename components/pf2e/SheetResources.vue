@@ -84,7 +84,7 @@ function toggle(name: string) {
         >
           {{ on.has(e.name) ? `End ${e.name}` : e.name }}
         </button>
-        <span class="small muted">Use it from Actions to pay its actions too.</span>
+        <span class="small muted">Using it from Actions or Reactions also pays its cost.</span>
       </div>
       <p v-if="resultIn(`res:${e.name}`)" class="roll-status" role="status" aria-live="polite">
         {{ resultIn(`res:${e.name}`) }}
