@@ -3,11 +3,9 @@
 // details lines, the six attribute tiles), then the play panels in Nimble's two columns
 // (components/pf2e/Sheet*.vue), then Feats & features.
 import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
-import { rollCheck, showOutcome, sign } from '~/utils/dice'
-import { type Pf2eStatContext, SAVE_ATTR, adjusted, degreeOf, isDead } from '~/utils/pf2ePlay'
-import { shiftedDegree } from '~/utils/pf2eEffects'
+import { sign } from '~/utils/dice'
+import { isDead } from '~/utils/pf2ePlay'
 import { NOT_YOUR_TURN, cantAct, offTurn } from '~/utils/pf2eActions'
-import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
 // The GM's HP and condition changes from the battle board.
@@ -55,62 +53,6 @@ const attrs = computed(() =>
     key: sheet.value.keyAttr === k,
   })),
 )
-
-const saveContext = (label: string): Pf2eStatContext =>
-  label === 'Perception'
-    ? { kind: 'perception', attr: 'WIS' }
-    : label === 'Class DC'
-      ? { kind: 'classDc', attr: sheet.value.keyAttr }
-      : { kind: 'save', attr: SAVE_ATTR[label], save: label as 'Fortitude' | 'Reflex' | 'Will' }
-const saves = computed(() =>
-  sheet.value.saves.map((x) => ({
-    ...x,
-    now: adjusted(sheet.value, x.value, saveContext(x.label)),
-  })),
-)
-const skills = computed(() =>
-  sheet.value.skills.map((x) => ({
-    ...x,
-    now: adjusted(sheet.value, x.value, { kind: 'skill', attr: x.attr, skill: x.name }),
-  })),
-)
-
-const natNote = (n: number | null) => (n === 20 ? ', natural 20' : n === 1 ? ', natural 1' : '')
-
-/** A check with this modifier; the dice tray shows the die, modifier and total. */
-function check(name: string, bonus: number) {
-  const r = rollCheck(bonus)
-  const line = `${name}: ${r.total} (${r.d20} ${sign(bonus)}${natNote(r.natural)})`
-  showOutcome({ label: name, total: r.total, detail: line })
-  say(line)
-}
-
-/** The DC of the effect the hero is saving against, for the save's degree. */
-const saveDc = ref<number | null>(null)
-
-/**
- * A saving throw: with a DC it says the degree of success (p. 401) after the hero's
- * upgrades (Juggernaut: a success is a critical success), and notes the ones that hold only
- * against some effects (Bravery against fear).
- */
-function rollSave(label: string, bonus: number) {
-  if (label !== 'Fortitude' && label !== 'Reflex' && label !== 'Will') return check(label, bonus)
-  const r = rollCheck(bonus)
-  const head = `${label}: ${r.total} (${r.d20} ${sign(bonus)}${natNote(r.natural)})`
-  const dc = saveDc.value
-  if (!dc) {
-    showOutcome({ label, total: r.total, detail: head })
-    return say(head)
-  }
-  const rolled = degreeOf(r.total, r.d20, dc)
-  const shift = shiftedDegree(sheet.value, label, rolled)
-  const by = shift.by ? ` → ${shift.degree} (${shift.by})` : ''
-  const notes = shift.notes.length ? ` ${shift.notes.join('; ')}.` : ''
-  const line = `${head} vs DC ${dc}: ${rolled}${by}.${notes}`
-  const degree = shift.degree.replace(/^\w/, (c) => c.toUpperCase())
-  showOutcome({ label: `${label} save`, total: r.total, detail: line, degree })
-  say(line)
-}
 
 watch(
   () => draft.value.level,
@@ -357,69 +299,7 @@ function strikeFromTable(index: number, step: number) {
       <Pf2eSheetReactions :style="{ order: turnActive ? 4 : 3 }" />
       <Pf2eSheetResources style="order: 5" />
       <Pf2eSheetActions style="order: 6" />
-      <section class="panel stack" style="gap: 12px; order: 11" aria-labelledby="sk-h">
-        <UiFold name="Skills" />
-        <div class="title-help" style="margin: 0">
-          <h2 id="sk-h">Skills</h2>
-          <UiHelp
-            label="About skills and saves"
-            text="A check is d20 + the modifier. Proficiency adds your level + 2 trained (T), 4 expert (E), 6 master (M), 8 legendary (L); untrained (U) adds nothing (Player Core p. 11). Saves and Perception come first; give a Save DC for the degree of success."
-          />
-        </div>
-        <label class="target">
-          Save DC
-          <input
-            v-model.number="saveDc"
-            class="input"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            placeholder="—"
-            aria-describedby="save-dc-help"
-          />
-          <span id="save-dc-help" class="small muted">for the degree of success</span>
-        </label>
-        <div class="skills">
-          <button
-            v-for="x in saves.filter((v) => v.label !== 'Class DC')"
-            :key="x.label"
-            type="button"
-            class="skill is-trained"
-            :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.label}`"
-            :aria-label="`Roll ${x.label} ${sign(x.now.value)}`"
-            @click="claim('skills:save', () => rollSave(x.label, x.now.value))"
-          >
-            <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
-              x.rank
-            }}</span>
-            <span class="skill__name">{{ x.label }}</span>
-            <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
-          </button>
-        </div>
-        <div class="skills">
-          <button
-            v-for="x in skills"
-            :key="x.name"
-            type="button"
-            class="skill"
-            :class="{ 'is-trained': x.rank !== 'U' }"
-            :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.name}`"
-            :aria-label="`Roll ${x.name} ${sign(x.now.value)}`"
-            @click="claim('skills:check', () => check(x.name, x.now.value))"
-          >
-            <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
-              x.rank
-            }}</span>
-            <span class="skill__name"
-              >{{ x.name }} <small>{{ x.attr }}</small></span
-            >
-            <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
-          </button>
-        </div>
-        <p v-if="resultIn('skills:')" class="roll-status" role="status" aria-live="polite">
-          {{ resultIn('skills:') }}
-        </p>
-      </section>
+      <Pf2eSheetSkills style="order: 11" />
     </div>
   </div>
 
@@ -437,20 +317,6 @@ function strikeFromTable(index: number, step: number) {
   color: var(--warn-text);
 }
 
-.roll-value {
-  border: 0;
-  background: none;
-  padding: 0;
-  text-align: left;
-  color: inherit;
-  font-family: inherit;
-  cursor: pointer;
-
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
 .target {
   display: inline-flex;
   align-items: center;
@@ -460,89 +326,6 @@ function strikeFromTable(index: number, step: number) {
 
   .input {
     width: 80px;
-  }
-}
-
-.rank {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
-  background: var(--track);
-  color: var(--page-muted);
-  font-family: Inter, system-ui, sans-serif;
-
-  &--T {
-    background: transparent;
-    box-shadow: inset 0 0 0 1.5px var(--page-text);
-    color: var(--page-text);
-  }
-
-  &--E {
-    background: var(--secondary);
-    color: var(--on-secondary);
-  }
-
-  &--M,
-  &--L {
-    background: var(--accent);
-    color: var(--on-accent);
-  }
-}
-
-.skills {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  column-gap: 20px;
-}
-
-.skill {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 40px;
-  padding: 0;
-  border: 0;
-  border-bottom: 1px solid var(--track);
-  background: none;
-  font: inherit;
-  font-size: 14px;
-  text-align: left;
-  color: var(--page-soft);
-  cursor: pointer;
-
-  &:hover .skill__name {
-    text-decoration: underline;
-  }
-
-  &.is-trained {
-    color: var(--page-text);
-
-    .skill__name {
-      font-weight: 600;
-    }
-  }
-
-  strong {
-    font-size: 15px;
-    color: var(--page-text);
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.skill__name {
-  flex: 1 1 auto;
-
-  small {
-    font-size: 11px;
-    font-weight: 400;
-    color: var(--page-muted);
   }
 }
 

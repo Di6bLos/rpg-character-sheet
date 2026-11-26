@@ -141,6 +141,42 @@ export function rollCheck(bonus: number, rng: Rng = Math.random): AttackRoll {
   return r
 }
 
+/** A d20 the player rolled at the table (Manual dice), with its modifier, as `rollCheck` gives one. */
+export function typedCheck(d20: number, bonus: number): AttackRoll {
+  const die = Math.max(1, Math.min(20, Math.round(d20)))
+  return { d20: die, total: die + bonus, natural: die === 20 ? 20 : die === 1 ? 1 : null }
+}
+
+/**
+ * Pathfinder 2e fortune or misfortune (Player Core p. 400): roll the d20 twice and keep the
+ * higher (fortune) or the lower (misfortune). The tray shows both dice with the other dropped.
+ */
+export function rollCheckTwice(
+  bonus: number,
+  keep: 'higher' | 'lower',
+  rng: Rng = Math.random,
+): AttackRoll & { rolls: [number, number] } {
+  const [a, b] = quietly(() => [rollDie(20, rng), rollDie(20, rng)] as const)
+  const first = keep === 'higher' ? a >= b : a <= b
+  const d20 = first ? a : b
+  const r = typedCheck(d20, bonus)
+  if (!detailed)
+    showDice({
+      sides: 20,
+      dice: [a, b],
+      dropped: [first ? 1 : 0],
+      primary: first ? 0 : 1,
+      explosions: [],
+      extra: null,
+      mod: bonus,
+      total: r.total,
+      miss: false,
+      crit: false,
+      odds: 0,
+    })
+  return { ...r, rolls: [a, b] }
+}
+
 /** One roll as the dice tray throws it: every die in order, the Primary, what was dropped. */
 export interface ShownRoll {
   sides: number

@@ -3,7 +3,18 @@
 // (p. 401), and damage, Shield Block, knocked out, dying, wounded and doomed (pp. 269,
 // 406, 410–412). Pure functions on the sheet; the sheet panels call them and `say()` the result.
 import type { Pf2eAttr, Pf2eConditionEnd, Pf2eRank, Pf2eSheet } from '~/types/sheets'
-import { type Rng, parseDice, rollCheck, rollDice } from '~/utils/dice'
+import {
+  type AttackRoll,
+  type Rng,
+  parseDice,
+  rollCheck,
+  rollCheckTwice,
+  rollDice,
+  showOutcome,
+  sign,
+  typedCheck,
+} from '~/utils/dice'
+import { PF2E_SKILLS } from '~/data/pf2e/skills'
 import {
   ASSISTED_DC,
   PERSISTENT_DC,
@@ -21,6 +32,7 @@ import {
   recoveryDcChange,
   shieldAc,
   shieldBroken,
+  shiftedDegree,
   toggleEffect,
 } from '~/utils/pf2eEffects'
 import { runeMods } from '~/utils/pf2eInventory'
@@ -292,6 +304,7 @@ export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext, extra
     note: applied
       .map((m) => `${m.value > 0 ? '+' : '−'}${Math.abs(m.value)} ${m.source}`)
       .join(', '),
+    applied,
   }
 }
 
@@ -828,4 +841,129 @@ export function resurrect(s: Pf2eSheet): string {
     if (c.font) c.font.used = c.font.max
   }
   return 'Resurrected (Player Core p. 394): back at 1 HP with clumsy 1, drained 1 and enfeebled 1 for a week, which nothing removes or lowers before then. No spells prepared and no Focus Points until your next daily preparations.'
+}
+
+// --- Checks: breakdown, what a skill is for, fortune and misfortune ----------------------
+
+const ATTR_FULL: Record<Pf2eAttr, string> = {
+  STR: 'Strength',
+  DEX: 'Dexterity',
+  CON: 'Constitution',
+  INT: 'Intelligence',
+  WIS: 'Wisdom',
+  CHA: 'Charisma',
+}
+const RANK_WORD: Record<Pf2eRank, string> = {
+  U: 'Untrained',
+  T: 'Trained',
+  E: 'Expert',
+  M: 'Master',
+  L: 'Legendary',
+}
+
+/**
+ * Where a check's modifier comes from, a line each, for its tooltip (Player Core pp. 11, 400):
+ * the attribute, the proficiency (level + 2/4/6/8, untrained +0), item and other bonuses the
+ * sheet's number holds beyond those two, then each bonus and penalty applied now with its type.
+ */
+export function checkBreakdown(
+  s: Pf2eSheet,
+  row: { value: number; rank: Pf2eRank; attr?: Pf2eAttr },
+  ctx: Pf2eStatContext,
+  level: number,
+): { value: number; lines: string[] } {
+  const pm = (n: number) => (n < 0 ? `−${-n}` : `+${n}`)
+  const now = adjusted(s, row.value, ctx)
+  const attr = row.attr ?? ctx.attr
+  const attrMod = attr ? s.attrs[attr] : 0
+  const prof = proficiency(row.rank, level)
+  const other = row.value - attrMod - prof
+  const lines = [
+    ...(attr ? [`${ATTR_FULL[attr]} ${pm(attrMod)}`] : []),
+    row.rank === 'U'
+      ? 'Untrained +0'
+      : `${RANK_WORD[row.rank]} ${pm(prof)} (level ${level} + ${prof - level})`,
+    ...(other ? [`Item and other ${pm(other)}`] : []),
+    ...now.applied.map((m) => `${m.source} ${pm(m.value)} ${m.type}`),
+  ]
+  return { value: now.value, lines }
+}
+
+/**
+ * What a skill, save or Perception is for, from Player Core (`data/pf2e/skills.ts`): the
+ * book's opening line and its skill actions, untrained and trained. Lore skills share Lore's.
+ */
+export function skillUses(name: string): string {
+  const info = PF2E_SKILLS[name] ?? (/lore$/i.test(name) ? PF2E_SKILLS.Lore : undefined)
+  if (!info) return ''
+  const acts = [
+    info.untrained?.length ? `Untrained: ${info.untrained.join(', ')}.` : '',
+    info.trained?.length ? `Trained: ${info.trained.join(', ')}.` : '',
+  ].filter(Boolean)
+  const extra = name === 'Perception' ? ' It also rolls your initiative (p. 436).' : ''
+  return [`${info.what}${extra}`, ...acts, `(Player Core p. ${info.page})`].join(' ')
+}
+
+/** Normal, or one of fortune and misfortune (Player Core p. 400). */
+export type Pf2eFortune = 'normal' | 'fortune' | 'misfortune'
+
+export interface Pf2eCheckRoll {
+  /** Against this DC, for the degree of success (p. 401). */
+  dc?: number | null
+  fortune?: Pf2eFortune
+  /** The d20 the player rolled (Manual dice), instead of rolling it. */
+  d20?: number
+  /** A Hero Point reroll (p. 413), named in the line. */
+  reroll?: boolean
+  rng?: Rng
+}
+
+/**
+ * A check, save or Perception roll (pp. 400–401): fortune rolls twice and keeps the higher,
+ * misfortune the lower; both cancel out, and a typed d20 is taken as it is. With a DC it
+ * says the degree, a save's after the hero's upgrades (Juggernaut) and with the notes that
+ * hold only against some effects (Bravery). The tray shows the dice and the outcome.
+ */
+export function rollPf2eCheck(
+  s: Pf2eSheet,
+  name: string,
+  bonus: number,
+  o: Pf2eCheckRoll = {},
+): { line: string; total: number; d20: number; degree?: Pf2eDegree } {
+  const fortune = o.fortune ?? 'normal'
+  let r: AttackRoll
+  if (o.d20 !== undefined) r = typedCheck(o.d20, bonus)
+  else if (fortune === 'normal') r = rollCheck(bonus, o.rng)
+  else r = rollCheckTwice(bonus, fortune === 'fortune' ? 'higher' : 'lower', o.rng)
+  const twice = 'rolls' in r ? ` (${fortune}: ${(r.rolls as number[]).join(' and ')})` : ''
+  const nat = r.natural ? `, natural ${r.natural}` : ''
+  const how = o.reroll ? ' (Hero Point reroll)' : ''
+  const head = `${name}${how}: ${r.total} (${r.d20} ${sign(bonus)}${nat})${twice}`
+  if (!o.dc) {
+    showOutcome({ label: name, total: r.total, detail: head })
+    return { line: head, total: r.total, d20: r.d20 }
+  }
+  const rolled = degreeOf(r.total, r.d20, o.dc)
+  const save = name === 'Fortitude' || name === 'Reflex' || name === 'Will' ? name : null
+  const shift = save ? shiftedDegree(s, save, rolled) : { degree: rolled, notes: [] as string[] }
+  const by = 'by' in shift && shift.by ? ` → ${shift.degree} (${shift.by})` : ''
+  const notes = shift.notes.length ? ` ${shift.notes.join('; ')}.` : ''
+  const line = `${head} vs DC ${o.dc}: ${rolled}${by}.${notes}`
+  showOutcome({
+    label: save ? `${name} save` : name,
+    total: r.total,
+    detail: line,
+    degree: shift.degree.replace(/^\w/, (c) => c.toUpperCase()),
+  })
+  return { line, total: r.total, d20: r.d20, degree: shift.degree }
+}
+
+/**
+ * Spends a Hero Point to reroll a check (Player Core p. 413): a fortune effect, so not on a
+ * roll that already had one; the second result stands. Why not, or ''.
+ */
+export function heroRerollProblem(s: Pf2eSheet, fortune: Pf2eFortune): string {
+  if (s.heroPoints < 1) return 'No Hero Points left.'
+  if (fortune === 'fortune') return 'That roll already had a fortune effect.'
+  return ''
 }

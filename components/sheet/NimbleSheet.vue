@@ -64,7 +64,7 @@ const details = computed(() =>
 const { claim, resultIn } = useResultOwner()
 const situation = useAttackSituation()
 /** Advantage (-1) or disadvantage (+1) the GM called for the next check; back to normal after it. */
-const checkOdds = ref(0)
+const checkOdds = ref<string | number>(0)
 const ODDS = [
   { value: 0, label: 'Normal' },
   { value: -1, label: 'Advantage' },
@@ -83,7 +83,7 @@ function rollSkill(name: string) {
   if (!canEdit.value) return
   claim(`skill:${name}`, () => {
     const { message, blocked } = skillCheck(sheet.value, name, {
-      odds: checkOdds.value,
+      odds: Number(checkOdds.value),
       frightened: situation.value.includes('Frightened'),
     })
     if (message) say(message)
@@ -171,53 +171,38 @@ const skills = computed(() =>
             :text="`A skill’s bonus is its stat plus the skill points you put in it, up to +${MAX_SKILL_BONUS}.`"
           />
         </div>
-        <div class="check-odds" role="group" aria-label="Next skill check">
-          <span class="caps">Next check</span>
-          <button
-            v-for="o in ODDS"
-            :key="o.value"
-            type="button"
-            class="chip"
-            :class="{ 'chip--on': checkOdds === o.value }"
-            :aria-pressed="checkOdds === o.value"
-            :disabled="!canEdit"
-            @click="checkOdds = o.value"
-          >
-            {{ o.label }}
-          </button>
-          <button
-            v-if="frightened"
-            type="button"
-            class="chip"
-            :class="{ 'chip--on': situation.includes('Frightened') }"
-            :aria-pressed="situation.includes('Frightened')"
-            :disabled="!canEdit"
-            title="Same chip as above the attacks; cleared each turn"
-            @click="toggleFear"
-          >
-            Frightened: source nearby · +1 disadvantage
-          </button>
-        </div>
-        <div v-for="s in skills" :key="s.name" class="skill">
-          <span class="grow">
-            <UiHelp v-if="s.uses" :label="`About ${s.name}`" :text="s.uses">{{ s.name }}</UiHelp>
-            <template v-else>{{ s.name }}</template>
-            {{ ' ' }}<small>{{ s.stat }}</small>
-          </span>
-          <span class="skill__pts" :aria-label="`${s.points} skill points`">
-            <i v-for="p in Math.max(0, s.points)" :key="p" />
-          </span>
-          <strong>{{ s.v }}</strong>
-          <button
-            type="button"
-            class="btn btn--ghost btn--sm skill__roll"
-            :disabled="!canEdit"
-            :aria-label="`Roll a ${s.name} check`"
-            @click="rollSkill(s.name)"
-          >
-            Roll
-          </button>
-        </div>
+        <SheetNextCheck v-model="checkOdds" :options="ODDS" :disabled="!canEdit">
+          <template #extra>
+            <button
+              v-if="frightened"
+              type="button"
+              class="chip"
+              :class="{ 'chip--on': situation.includes('Frightened') }"
+              :aria-pressed="situation.includes('Frightened')"
+              :disabled="!canEdit"
+              title="Same chip as above the attacks; cleared each turn"
+              @click="toggleFear"
+            >
+              Frightened: source nearby · +1 disadvantage
+            </button>
+          </template>
+        </SheetNextCheck>
+        <SheetSkillRow
+          v-for="s in skills"
+          :key="s.name"
+          :name="s.name"
+          :sub="s.stat"
+          :help="s.uses"
+          :value="s.v"
+          :disabled="!canEdit"
+          @roll="rollSkill(s.name)"
+        >
+          <template #marks>
+            <span class="skill__pts" :aria-label="`${s.points} skill points`">
+              <i v-for="p in Math.max(0, s.points)" :key="p" />
+            </span>
+          </template>
+        </SheetSkillRow>
         <p v-if="resultIn('skill:')" class="roll-status" role="status">{{ resultIn('skill:') }}</p>
       </section>
     </div>
@@ -231,44 +216,11 @@ const skills = computed(() =>
 <style scoped lang="scss">
 @use '../../assets/styles/sheet-layout';
 
-.check-odds {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-
-  .chip--on {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 18%, transparent);
-    color: var(--page-text);
-  }
-}
-
-.skill__roll {
-  min-height: 30px;
-  padding: 2px 10px;
-}
-
-.skill {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 36px;
-  border-bottom: 1px solid var(--track);
-  font-size: 14px;
-
-  small {
-    font-size: 11px;
-    color: var(--page-muted);
-  }
-
-  strong {
-    min-width: 32px;
-    text-align: right;
-    font-size: 15px;
-    font-variant-numeric: tabular-nums;
-  }
+// The Frightened chip sits in SheetNextCheck's slot, so it takes the slot's "on" look here.
+.check-odds .chip--on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--page-text);
 }
 
 .skill__pts {
