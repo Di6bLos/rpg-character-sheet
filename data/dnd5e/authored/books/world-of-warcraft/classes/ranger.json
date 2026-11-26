@@ -30,6 +30,7 @@
             { "kind": "spell", "spell": "chaos-nova", "at": 13 },
             { "kind": "spell", "spell": "destructive-wave", "at": 17 }
           ],
+          "choices": [{ "kind": "option", "count": 1, "label": "Spell Column" }],
           "options": [
             {
               "name": "Devourer",

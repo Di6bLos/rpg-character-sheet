@@ -309,6 +309,18 @@ describe('5e data', () => {
     ])
   })
 
+  it('asks for the pick behind every grouped subclass spell list', () => {
+    for (const s of data.subclasses) {
+      const groups = new Set((s.spells ?? []).flatMap((r) => (r.group ? [r.group] : [])))
+      if (!groups.size) continue
+      const picks = s.features.filter((f) =>
+        f.choices?.some((c) => c.kind === 'option' && !c.group),
+      )
+      const names = new Set(picks.flatMap((f) => (f.options ?? []).map((o) => o.name)))
+      for (const g of groups) expect(names, `${s.slug}: ${g}`).toContain(g)
+    }
+  })
+
   it('resolves every spell, feat and option group a record names', () => {
     for (const s of data.spells) {
       expect(s.level, s.slug).toBeGreaterThanOrEqual(0)

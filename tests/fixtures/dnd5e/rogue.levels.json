@@ -17,7 +17,6 @@
       ],
       "picks": [
         "L1:class>dup-thieves-tools tool×1",
-        "L1:class:skills skill×4",
         "L1:species:size size×1",
         "L1:species:skillful:0 skill×1",
         "L1:species:versatile:0 feat×1",
@@ -25,6 +24,7 @@
         "L1:species:versatile:0>0 option×1",
         "L1:species:versatile:0>0>cleric:0 cantrip×2",
         "L1:species:versatile:0>0>cleric:1 spell×1",
+        "L1:class:skills skill×4",
         "L1:languages language×2",
         "L1:expertise:0 expertise×2",
         "L1:thieves-cant:0 language×1",

@@ -1712,7 +1712,10 @@ function earlySubclassChoice(w: Walker) {
   }
 }
 
-/** The level 1 origin: background, species, class core traits, languages. */
+/**
+ * The level 1 origin: what is fixed first (background, its Origin feat, class core traits), then
+ * the species, then the class's tool and skill picks, then languages.
+ */
 function origin(w: Walker) {
   const st = w.st
   const { cls, species, background } = st.ctx
@@ -1746,26 +1749,6 @@ function origin(w: Walker) {
   cls.armor.forEach((a) => st.armor.add(a))
   cls.weapons.forEach((x) => st.weapons.add(x))
   for (const t of cls.tools) grantSkill(w, t, cls.name, `${key}:class`)
-  if (cls.toolChoice)
-    runChoice(
-      w,
-      { ...cls.toolChoice, label: `${cls.name} tool${cls.toolChoice.count > 1 ? 's' : ''}` },
-      `${key}:class:tool`,
-      cls.name,
-      {},
-    )
-  runChoice(
-    w,
-    {
-      kind: 'skill',
-      count: cls.skills.count,
-      from: cls.skills.options,
-      label: `${cls.name} skills`,
-    },
-    `${key}:class:skills`,
-    cls.name,
-    {},
-  )
   // Species.
   if (species.sizes.length > 1) {
     const v = ask(w, {
@@ -1817,6 +1800,27 @@ function origin(w: Walker) {
     }
   }
   speciesTraits(w)
+  // The class's picks come after the species', so they skip what the species gave.
+  if (cls.toolChoice)
+    runChoice(
+      w,
+      { ...cls.toolChoice, label: `${cls.name} tool${cls.toolChoice.count > 1 ? 's' : ''}` },
+      `${key}:class:tool`,
+      cls.name,
+      {},
+    )
+  runChoice(
+    w,
+    {
+      kind: 'skill',
+      count: cls.skills.count,
+      from: cls.skills.options,
+      label: `${cls.name} skills`,
+    },
+    `${key}:class:skills`,
+    cls.name,
+    {},
+  )
   // Two languages besides Common (SRD 5.2.1 p. 20).
   runChoice(
     w,
@@ -2537,6 +2541,35 @@ export function creationProblems(
   return creationPicks(c, choices, data).flatMap((p) => {
     const e = pickProblem(p, choices[p.key])
     return e ? [{ key: p.key, text: `${p.label}: ${e}` }] : []
+  })
+}
+
+/** The builder steps that ask level 1 picks. */
+export type Dnd5ePickStep = 'subclass' | 'species' | 'background' | 'choices' | 'spells'
+
+/** The builder step a level 1 pick belongs to. */
+export function pickStep(p: Dnd5ePick): Dnd5ePickStep {
+  if (p.kind === 'cantrip' || p.kind === 'spell') return 'spells'
+  if (p.kind === 'subclass') return 'subclass'
+  if (p.key.startsWith('L1:species')) return 'species'
+  if (p.key.startsWith('L1:background')) return 'background'
+  return 'choices'
+}
+
+/**
+ * Picks of a step before the current one that a later choice broke (a Skillful skill the
+ * background now gives): the builder asks them on the current step instead of going back.
+ * `stepIndex` gives a step's place in the builder, or -1 when it isn't shown.
+ */
+export function clashPicks(
+  picks: Dnd5ePick[],
+  choices: Picks,
+  stepIndex: (s: Dnd5ePickStep) => number,
+  current: number,
+): Dnd5ePick[] {
+  return picks.filter((p) => {
+    const at = stepIndex(pickStep(p))
+    return at >= 0 && at < current && !!pickProblem(p, choices[p.key])
   })
 }
 

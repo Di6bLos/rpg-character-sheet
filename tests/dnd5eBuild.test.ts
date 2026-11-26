@@ -9,6 +9,7 @@ import {
   CUSTOM_BACKGROUND,
   bonusProblem,
   buildDnd5eSheet,
+  clashPicks,
   customGearOptions,
   customProblem,
   columnNumber,
@@ -17,6 +18,7 @@ import {
   emptyCreation,
   parseEquipment,
   pickProblem,
+  pickStep,
   proficiencyBonus,
   scoresProblem,
   walkDnd5e,
@@ -89,6 +91,28 @@ describe('5e level 1', () => {
     const dup = asked.find((p) => p.key.includes('>dup-thieves'))!
     expect(dup.kind).toBe('tool')
     expect(dup.options.some((o) => o.id === 'Thieves’ Tools')).toBe(false)
+  })
+
+  it('class skills skip a species skill picked first; a later clash is asked where it appears', () => {
+    const skillful = { 'L1:species:skillful:0': ['Stealth'] }
+    const sage = creation('rogue', 'human', 'sage')
+    const skills = creationPicks(sage, skillful, data).find((p) => p.key === 'L1:class:skills')!
+    expect(skills.options.find((o) => o.id === 'Stealth')?.disabled).toBe('Already proficient')
+    const choices = fill((p) => creationPicks(sage, p, data), prefer('rogue'), skillful)
+    expect(choices['L1:class:skills']).not.toContain('Stealth')
+    expect(creationProblems(sage, choices, data)).toEqual([])
+    // Criminal gives Stealth too: Skillful's pick breaks on the Background step, which asks it.
+    const criminal = creation('rogue', 'human', 'criminal')
+    const made = fill((p) => creationPicks(criminal, p, data), prefer('rogue'), skillful)
+    const asked = creationPicks(criminal, made, data)
+    const steps = ['class', 'species', 'background', 'abilities', 'choices']
+    const at = (s: string) => steps.indexOf(s)
+    const broken = asked.find((p) => p.key === 'L1:species:skillful:0')!
+    expect(pickStep(broken)).toBe('species')
+    expect(clashPicks(asked, made, at, at('species'))).toEqual([])
+    expect(clashPicks(asked, made, at, at('background')).map((p) => p.key)).toEqual([
+      'L1:species:skillful:0',
+    ])
   })
 
   it('Rogue Expertise offers only skills the rogue is proficient in, after the skill picks', () => {
@@ -589,6 +613,40 @@ describe('5e: the later 2024 books', () => {
     )
     const warrior = dnd5eLevelPlan(sheet, 2, data, { [style.key]: ['Void Warrior'] })!
     expect(warrior.picks.some((p) => p.kind === 'cantrip' && p.label === 'Void Warrior')).toBe(true)
+  })
+
+  it('a spell column follows its pick: Demon Hunter’s column, Ebon Blade’s rune', () => {
+    const always = (c: string, sub: string, key: string, column: string) => {
+      const sheet = levelTo(build(c, undefined, undefined, sub).sheet, 1, 2, sub)
+      const plan = dnd5eLevelPlan(sheet, 3, data, { 'L3:subclass': [sub] })!
+      expect(plan.picks.find((p) => p.key === key)?.options.map((o) => o.id)).toHaveLength(3)
+      for (let l = 3; l <= 5; l++) {
+        const picks = fill(
+          (p) => dnd5eLevelPlan(sheet, l, data, p)!.picks,
+          prefer(c, sub),
+          l === 3 ? { 'L3:subclass': [sub], [key]: [column] } : {},
+        )
+        applyDnd5eLevel(sheet, l, { hpRoll: 6, picks }, data)
+      }
+      return sheet.spells!.filter((s) => s.always).map((s) => s.slug)
+    }
+    const havoc = always('ranger', 'demon-hunter', 'L3:demon-hunter:demon-hunter-spells:0', 'Havoc')
+    expect(havoc).toEqual(
+      expect.arrayContaining(['throw-glaive', 'sigil-of-flame', 'fel-rush', 'eye-beam']),
+    )
+    expect(havoc).not.toContain('consume-soul')
+    expect(havoc).not.toContain('infernal-strike')
+    const frost = always(
+      'paladin',
+      'oath-of-the-ebon-blade',
+      'L3:oath-of-the-ebon-blade:runeforging:0',
+      'Frost',
+    )
+    expect(frost).toEqual(
+      expect.arrayContaining(['death-grip', 'death-and-decay', 'chains-of-ice', 'frostscythe']),
+    )
+    expect(frost).not.toContain('vampiric-blood')
+    expect(frost).not.toContain('scourge-strike')
   })
 
   it('a subclass’s own list joins its class list (Paladin [Death Knight])', () => {

@@ -15,11 +15,11 @@
       "picks": [
         "L1:background:tool tool×1",
         "L1:background:feat>b0:0 tool×3",
-        "L1:class:tool tool×3",
-        "L1:class:skills skill×3",
         "L1:species:size size×1",
         "L1:species:skillful:0 skill×1",
         "L1:species:versatile:0 feat×1",
+        "L1:class:tool tool×3",
+        "L1:class:skills skill×3",
         "L1:languages language×2",
         "L1:spells:cantrips cantrip×2",
         "L1:spells:prepared spell×4"
