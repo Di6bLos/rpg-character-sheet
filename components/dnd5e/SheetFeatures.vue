@@ -99,6 +99,11 @@ const profs = computed(() => {
           <small v-if="detail(e)" class="ability__detail">{{ detail(e) }}</small>
           <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
           <div v-if="e.text" class="ability__text" v-html="loreHtml(e.text)" />
+          <details v-if="e.full" class="full">
+            <summary class="small">Full rules (SRD 5.2.1)</summary>
+            <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+            <div class="ability__text" v-html="loreHtml(e.full)" />
+          </details>
         </article>
       </div>
     </template>
@@ -135,6 +140,25 @@ const profs = computed(() => {
   :deep(p) {
     margin: 0.3em 0;
   }
+}
+
+.full summary {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  color: var(--page-muted);
+  cursor: pointer;
+
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
+}
+
+.ability__text :deep(table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 12px;
 }
 
 .profs {

@@ -197,8 +197,10 @@ export function weaponAttack(
   const lines: string[] = []
   let dice: string
   let dmgMod: number
-  if (def) {
-    const prof = proficientWith(s.proficiencies?.weapons ?? [], def) || !s.proficiencies
+  // A hand-made sheet's typed attack and damage stand (they may hold a +1 weapon); the data
+  // only adds the weapon's properties and mastery.
+  if (def && s.classSlug) {
+    const prof = proficientWith(s.proficiencies?.weapons ?? [], def)
     bonus = mod + (prof ? hero.pb : 0)
     lines.push(
       `${ability} ${sign(mod)}`,
@@ -222,6 +224,8 @@ export function weaponAttack(
     const m = /^\s*(\d*d\d+)\s*([+-]\s*\d+)?/i.exec(w.dmg)
     dice = m?.[1] ?? w.dmg
     dmgMod = m?.[2] ? Number(m[2].replace(/\s+/g, '')) : 0
+    if (def && grip.twoHands && props.has('Versatile'))
+      dice = def.versatile ?? DIE_STEP[dice] ?? dice
   }
   if (grip.offhand) {
     if (dmgMod > 0 && !hero.feat('two-weapon-fighting')) {

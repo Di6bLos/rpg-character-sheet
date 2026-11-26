@@ -62,10 +62,11 @@ const RESOURCE_PIPS = 8
       >
     </div>
     <p v-if="facts.length" class="small entry__facts">{{ facts.join(' · ') }}</p>
+    <p v-if="e.text && e.full" class="small entry__sum">{{ e.text }}</p>
     <details v-if="e.text" class="entry__text">
       <summary class="small">Rules</summary>
       <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
-      <div class="small" v-html="loreHtml(e.text)" />
+      <div class="small" v-html="loreHtml(e.full ?? e.text)" />
     </details>
     <div v-if="!e.passive" class="entry__act">
       <label v-if="e.rule?.pool" class="pool">
@@ -142,6 +143,11 @@ const RESOURCE_PIPS = 8
   &.on {
     background: var(--secondary);
   }
+}
+
+.entry__sum {
+  margin: 0;
+  color: var(--page-soft);
 }
 
 .entry__facts {

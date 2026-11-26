@@ -17,6 +17,7 @@ const usable = computed(() =>
     (e) =>
       !e.passive &&
       !e.attack &&
+      !e.rule?.skip &&
       e.cost !== 'reaction' &&
       !(e.kind === 'option' && e.resource && e.cost === 'special'),
   ),

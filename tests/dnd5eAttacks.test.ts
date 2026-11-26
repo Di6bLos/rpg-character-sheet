@@ -20,6 +20,7 @@ const def = (slug: string) => data.weapons.find((w) => w.slug === slug)!
 function hero(patch: Partial<Dnd5eSheet> = {}): Dnd5eSheet {
   return {
     ...defaultSheet('dnd5e'),
+    classSlug: 'fighter',
     profBonus: 2,
     abilities: { STR: 16, DEX: 14, CON: 12, INT: 10, WIS: 10, CHA: 10 },
     proficiencies: {
@@ -160,6 +161,14 @@ describe('weapon attacks', () => {
     const p = unarmedAttack(s, 1, { columns: { 'Martial Arts': '1d6' } })
     expect(damageText(p)).toBe('1d6+3 Bludgeoning')
     expect(unarmedAttack(hero(), 1).mod).toBe(4)
+  })
+
+  it('keeps a hand-made sheet’s typed attack and damage, with the data’s properties', () => {
+    const s = { ...hero(), classSlug: '' }
+    const w = { name: 'Longsword', atk: 6, dmg: '1d8+4', type: 'Slashing', range: '5 ft' }
+    const p = weaponAttack(s, 1, w, def('longsword'), { key: 'w', grip: { twoHands: true } })
+    expect(p.test.bonus).toBe(6)
+    expect(damageText(p)).toBe('1d10+4 Slashing')
   })
 
   it('finds a weapon by slug or name', () => {

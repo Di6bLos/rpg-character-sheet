@@ -61,7 +61,7 @@ export interface Dnd5eFeatureRule {
   diceAt?: Record<number, string>
   /** What it costs when the data doesn't say. */
   cost?: Dnd5eCost
-  /** Not used from the Actions panel: its own panel does it (Font of Magic's conversions). */
+  /** Not used from the Actions panel: the Resources panel does it (Font of Magic, Arcane Recovery). */
   skip?: boolean
 }
 
@@ -89,6 +89,8 @@ export const DND5E_FEATURE_RULES: Record<string, Dnd5eFeatureRule> = {
   'Breath Weapon': { diceAt: { 1: '1d10', 5: '2d10', 11: '3d10', 17: '4d10' } },
   'Channel Divinity: Divine Spark': { diceAt: { 1: '1d8', 7: '2d8', 13: '3d8', 18: '4d8' } },
   'Durable: Speedy Recovery': { hitDie: true },
+  'Arcane Recovery': { skip: true },
+  'Magical Cunning': { skip: true },
   'Converting Spell Slots to Sorcery Points': { skip: true },
   'Creating Spell Slots': { skip: true },
   'Spell Slot to Wild Shape': { skip: true },
@@ -102,8 +104,10 @@ export interface Dnd5eEntry {
   /** What gives it, as the sheet records it ("Fighter 2", "Elf", "Feat · Human", "Metamagic"). */
   from: string
   kind: 'class' | 'subclass' | 'species' | 'feat' | 'option' | 'other'
-  /** The rules text: SRD text or Lantern's summary, or what a hand-made sheet says. */
+  /** The rules in short: the data's summary, else the sheet's or the SRD's text. */
   text: string
+  /** The SRD's full text, when `text` is its summary. */
+  full?: string
   cost: Dnd5eCost | null
   /** The limited use it spends, and how many. */
   resource?: string
@@ -293,7 +297,8 @@ function makeEntry(
     name: p.name,
     from: p.from,
     kind: p.kind,
-    text: p.text || mech.summary || mech.text || '',
+    text: mech.summary || p.text || mech.text || '',
+    ...(mech.text && mech.summary && mech.text !== mech.summary ? { full: mech.text } : {}),
     cost,
     ...(resource ? { resource } : {}),
     spend,
