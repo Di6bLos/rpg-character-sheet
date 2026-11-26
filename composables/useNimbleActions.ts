@@ -20,6 +20,7 @@ import {
 import { itemAttack, rollRiders } from '~/utils/nimbleItems'
 import { weaponEnchantment } from '~/utils/nimbleSpellRules'
 import { addCondition, conditionMods, oddsReasons, spendHelp } from '~/utils/nimbleConditions'
+import { armorPiece, tracksWorn } from '~/utils/nimbleWornArmor'
 import {
   armorDice,
   armorDiceWhy,
@@ -621,11 +622,21 @@ export function useNimbleActions(options: NimbleResultOptions = {}) {
       })),
   )
 
+  /**
+   * Shield Expert's second Defend needs a shield worn ("While wearing a shield"); a sheet from
+   * before Equip, with nothing marked worn, counts any shield it carries.
+   */
+  const wearsShield = computed(() => {
+    const s = sheet.value
+    const tracked = tracksWorn(s)
+    return s.inventory.some((i) => (!tracked || i.worn) && armorPiece(s, i)?.shield)
+  })
+
   function reactionMax(name: string): number {
     const expert =
       name === 'Defend' &&
       sheet.value.abilities.some((a) => /\byou may Defend 2× each round\b/.test(a.desc)) &&
-      sheet.value.inventory.some((i) => i.tag === 'Shield' || i.custom?.kind === 'shield')
+      wearsShield.value
     return expert ? 2 : 1
   }
 

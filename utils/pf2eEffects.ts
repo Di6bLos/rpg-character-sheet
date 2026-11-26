@@ -153,15 +153,26 @@ export function derivedEffects(r: Pf2eAbilityRules, book = ''): Pf2eEffectDef[] 
   return out
 }
 
+/**
+ * Bloodlines whose blood magic has a written entry (Player Core 2 p. 144): the toggle read from
+ * the bloodline's text would only repeat it (Fey's Cloak of Ribbons, Imperial's Imperious
+ * Defense, Aesir, Diabolic, Elemental).
+ */
+const WRITTEN_BLOOD_MAGIC = new Set(
+  PF2E_EFFECTS.filter((e) => e.has?.type === 'Bloodline').map((e) => e.has!.name),
+)
+
 /** Derived effects of the hero's abilities that have no written entry. */
 function sheetDerived(s: Pf2eSheet): Pf2eEffectDef[] {
-  return s.feats.flatMap((f) =>
-    derivedEffects(featRules(f), f.type).filter(
+  return s.feats.flatMap((f) => {
+    const blood = f.type.toLowerCase() === 'bloodline' && WRITTEN_BLOOD_MAGIC.has(f.name)
+    return derivedEffects(featRules(f), f.type).filter(
       (d) =>
+        !(blood && d.mode === 'toggle') &&
         !BY_NAME.has(d.name) &&
         !BY_NAME.has(d.name.replace(/ \((?:when it applies|Rage damage)\)$/, '')),
-    ),
-  )
+    )
+  })
 }
 
 /** Effects of items: a used consumable's (an elixir's bonus) and worn or held items' bonuses. */
@@ -623,6 +634,29 @@ function endToggle(s: Pf2eSheet, name: string) {
   return `${name} ends: you lose its ${lost} remaining temporary Hit Points.`
 }
 
+/** Rounds in a duration as an item prints it ("3 rounds", "10 minutes", "24 hours"; p. 418). */
+export function durationRounds(duration: string | undefined): number | undefined {
+  const m = /^(\d+) (round|minute|hour|day)s?$/i.exec((duration ?? '').trim())
+  if (!m) return undefined
+  const per = { round: 1, minute: 10, hour: 600, day: 14400 }[m[2]!.toLowerCase() as 'round']
+  return Number(m[1]) * per
+}
+
+/**
+ * Time passing for the effects of consumables the hero used (an elixir's 1 hour), in rounds: a
+ * turn starting is a round, the turn steps' 1 minute, 10 minutes and 1 hour are 10, 100 and
+ * 600; each ends when its time runs out (GM Core p. 220). Returns what ended.
+ */
+export function passItemTime(s: Pf2eSheet, rounds: number): string[] {
+  const out: string[] = []
+  for (const def of s.effects?.items ?? []) {
+    if (def.rounds === undefined || !s.effects?.on.includes(def.name)) continue
+    def.rounds -= rounds
+    if (def.rounds <= 0) out.push(endToggle(s, def.name))
+  }
+  return out
+}
+
 /**
  * Turns one of the hero's toggles on or off; Rage's temp HP don't stack with others. `value`
  * is a spell's number at the rank it was cast (Competitive Edge +2 at 7th, False Vitality's
@@ -634,6 +668,8 @@ export function toggleEffect(s: Pf2eSheet, name: string, level: number, value?: 
   const effects = (s.effects ??= { on: [], given: [] })
   if (effects.on.includes(name)) return endToggle(s, name)
   effects.on = [...effects.on, name]
+  // Turned on during your turn, it lasts through the end of your next one.
+  if (def.ends === 'endOfNextTurn' && s.turn?.active) s.turn.carry = [...(s.turn.carry ?? []), name]
   if (value !== undefined) effects.values = { ...effects.values, [name]: value }
   const temp = def.effects.find((e) => e.kind === 'tempHp')
   if (temp) {

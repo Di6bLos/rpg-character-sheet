@@ -1,16 +1,18 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '~/lib/supabase'
 import type { HeroConditionChange } from '~/types'
-import type { NimbleSheet } from '~/types/sheets'
 import { keyedQueue } from '~/utils/keyedQueue'
 import {
-  applyConditionChange,
+  applyConditionChangeFor,
   freshConditionChanges,
   lastPerCondition,
 } from '~/utils/heroConditionChange'
 import { CONDITION_ENDS } from '~/utils/nimbleConditions'
 
-type Row = Pick<HeroConditionChange, 'id' | 'condition' | 'add' | 'created_at'>
+type Row = Pick<
+  HeroConditionChange,
+  'id' | 'condition' | 'add' | 'persistent_type' | 'persistent_dice' | 'created_at'
+>
 
 const ROSTER_AFTER_MS = 4000
 
@@ -27,6 +29,9 @@ const queue = keyedQueue()
 export function useSendHeroCondition() {
   const snackbar = useSnackbarStore()
   const { campaignId, reloadRoster } = useCampaignBoard()
+  // Only used on the board, so the campaign decides; Nimble while it loads, so a Nimble
+  // add never goes out without its end.
+  const features = useBattleFeatures()
 
   /** False when it failed. */
   async function send(characterId: string, name: string, condition: string, add: boolean) {
@@ -35,7 +40,8 @@ export function useSendHeroCondition() {
       p_character: characterId,
       p_condition: condition,
       p_add: add,
-      p_end: add ? (CONDITION_ENDS[condition] ?? null) : null,
+      // Only Nimble conditions end on their own; 5e and PF2e ones stay until removed.
+      p_end: add && features.value.nimbleHero ? (CONDITION_ENDS[condition] ?? null) : null,
     }
     try {
       const { error } = await queue.run(
@@ -56,21 +62,57 @@ export function useSendHeroCondition() {
     return true
   }
 
-  return { send }
+  /**
+   * PF2e persistent damage of a type (Player Core p. 445) through `gm_set_hero_persistent`:
+   * `dice` replaces any of that type, null ends it. False when it failed.
+   */
+  async function sendPersistent(
+    characterId: string,
+    name: string,
+    type: string,
+    dice: string | null,
+  ) {
+    const args = {
+      p_campaign: campaignId.value,
+      p_character: characterId,
+      p_type: type,
+      p_dice: dice,
+    }
+    try {
+      const { error } = await queue.run(
+        characterId,
+        async () => await supabase.rpc('gm_set_hero_persistent', args),
+      )
+      if (error) {
+        snackbar.error(error, `Could not change ${name}'s persistent damage`)
+        return false
+      }
+    } catch (err) {
+      snackbar.error(err, `Could not change ${name}'s persistent damage`)
+      return false
+    }
+    const refresh = () => void reloadRoster().catch(() => undefined)
+    refresh()
+    setTimeout(refresh, ROSTER_AFTER_MS)
+    return true
+  }
+
+  return { send, sendPersistent }
 }
 
 /**
  * Picks up condition changes the GM sent this hero while its sheet is open or the next
- * time it loads, applies them with the sheet's own rules and clears them. Same pattern
+ * time it loads, applies them with the sheet's own system's rules (Nimble's addCondition
+ * and usual ends; a plain add or remove for 5e and PF2e) and clears them. Same pattern
  * as useHeroHpChanges: claim by deleting first, so a second open copy can't apply twice.
  */
 export function useHeroConditionChanges() {
-  const { draft, canEdit, say } = useSheet<NimbleSheet>()
+  const { draft, canEdit, held, say } = useSheet()
   let channel: RealtimeChannel | null = null
   const taken = new Set<string>()
 
   async function take(rows: Row[]) {
-    if (!canEdit.value) return
+    if (!canEdit.value || held.value) return
     const fresh = freshConditionChanges(rows, taken)
     if (!fresh.length) return
     const { data, error } = await supabase
@@ -88,7 +130,7 @@ export function useHeroConditionChanges() {
     }
     const claimed = new Set((data ?? []).map((r: { id: string }) => r.id))
     for (const row of lastPerCondition(fresh.filter((r) => claimed.has(r.id)))) {
-      const message = applyConditionChange(draft.value.sheet, row)
+      const message = applyConditionChangeFor(draft.value.system, draft.value.sheet, row)
       if (message) say(message)
     }
   }
@@ -104,7 +146,7 @@ export function useHeroConditionChanges() {
   async function catchUp(id: string) {
     const { data } = await supabase
       .from('hero_condition_changes')
-      .select('id, condition, add, created_at')
+      .select('id, condition, add, persistent_type, persistent_dice, created_at')
       .eq('character_id', id)
       .order('created_at')
     await take((data ?? []) as Row[])
@@ -113,7 +155,7 @@ export function useHeroConditionChanges() {
   // Read what is waiting now, and again each time the listener is (re)connected, so a
   // change sent while joining or while disconnected isn't missed; `taken` drops repeats.
   function start() {
-    if (channel || draft.value.system !== 'nimble') return
+    if (channel) return
     const id = draft.value.id
     serial(() => catchUp(id))
     channel = supabase
@@ -141,6 +183,9 @@ export function useHeroConditionChanges() {
       },
       { immediate: true },
     )
+    watch(held, (on) => {
+      if (!on && channel) serial(() => catchUp(draft.value.id))
+    })
   })
 
   onBeforeUnmount(() => {

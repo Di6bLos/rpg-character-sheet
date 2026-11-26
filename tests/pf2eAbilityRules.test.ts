@@ -13,16 +13,22 @@ import {
   readAbility,
   readCost,
   readFrequency,
+  usedAction,
 } from '../utils/pf2eAbilityRules'
 import {
   blockedReason,
+  endPf2eEncounter,
   endPf2eTurn,
   featStatLines,
+  inEncounter,
+  newTurn,
   mapIndex,
   payFor,
   resolveUse,
   startPf2eTurn,
+  strikeCountAs,
   timePasses,
+  uncounted,
   usesLeft,
 } from '../utils/pf2eActions'
 import {
@@ -207,7 +213,7 @@ describe('pf2e ability rules: Player Core abilities', () => {
     expect(readCost('single action to three actions')).toEqual({ kind: 'actions', min: 1, max: 3 })
     expect(readCost('↺')).toEqual({ kind: 'reaction' })
     expect(readCost('◇')).toEqual({ kind: 'free' })
-    expect(readCost('free or 1')).toEqual({ kind: 'free' })
+    expect(readCost('free or 1')).toEqual({ kind: 'actions', min: 1, max: 1 })
     expect(readCost('1 to 3')).toEqual({ kind: 'actions', min: 1, max: 3 })
     expect(readCost('reaction or 2')).toEqual({ kind: 'reaction' })
     expect(readFrequency('once per 10 minutes')).toMatchObject({ period: '10min', times: 1 })
@@ -596,5 +602,187 @@ describe('pf2e ability rules: every pattern still matches the data', () => {
     const source = flags.includes('m') ? re.source : re.source.replace(/^\^/, '')
     const one = new RegExp(source, flags)
     expect(texts.some((t) => one.test(t)) || cleaned.some((t) => one.test(t))).toBe(true)
+  })
+})
+
+describe('pf2e ability rules: review fixes', () => {
+  const pool = [
+    ...feats,
+    ...actions,
+    ...classes.flatMap((c) => [...c.features, ...c.subclasses]),
+  ] as Ability[]
+  const ability = (name: string) => {
+    const r = readAbility(find(pool, name))
+    return r.strike ? r : (r.embedded.find((e) => e.strike) ?? r)
+  }
+
+  it('counts a Strike as the two or three attacks its text says, however it words it (p. 402)', () => {
+    const two = [
+      'Swipe',
+      'Spellstrike',
+      'Penetrating Shot',
+      'Piston Punch',
+      'Stab and Blast',
+      'Demolish Defenses',
+      'Beast Gunner Dedication',
+      'History of Violence',
+      'Finish Their Story!',
+      'Penetrating Fire',
+      'Swiping Trace',
+      'Vicious Swing',
+    ]
+    for (const name of two) expect([name, ability(name).strike?.mapCount]).toEqual([name, 2])
+    expect(ability('Overwhelming Blow').strike?.mapCount).toBe(3)
+    expect(strikeCountAs(ability('Overwhelming Blow').strike!)).toBe(3)
+    expect(strikeCountAs(ability('Reactive Strike').strike!)).toBe(0)
+  })
+
+  it('Exacting Strike: only a failure is left out of the multiple attack penalty (Player Core p. 140)', () => {
+    const strike = ability('Exacting Strike').strike!
+    expect(strike).toMatchObject({ mapCount: 1, mapNoneOn: 'failure' })
+    const s = hero([])
+    startPf2eTurn(s)
+    s.turn!.attacks = 2
+    expect(uncounted(s, strike, 'success', 1)).toBe(false)
+    expect(s.turn!.attacks).toBe(2)
+    expect(uncounted(s, strike, 'failure', 1)).toBe(true)
+    expect(s.turn!.attacks).toBe(1)
+    expect(uncounted(s, strike, 'critical failure', 1)).toBe(false)
+  })
+  it('spends a reaction only in an encounter; time passing gives it back (p. 434)', () => {
+    const r = readAbility(find(feats, 'Reactive Shield'))
+    expect(r.cost).toEqual({ kind: 'reaction' })
+    const s = hero(['Reactive Shield'])
+    payFor(s, r, { name: r.name })
+    expect(s.turn?.reaction ?? true).toBe(true)
+    startPf2eTurn(s)
+    endPf2eTurn(s)
+    payFor(s, r, { name: r.name })
+    expect(s.turn?.reaction).toBe(false)
+    expect(blockedReason(s, r)).toBe('Reaction already used this round')
+    endPf2eEncounter(s)
+    s.turn!.reaction = false
+    timePasses(s, 'minute')
+    expect(s.turn?.reaction).toBe(true)
+  })
+
+  it('stunned for a duration, with no value, takes every action (Player Core p. 446)', () => {
+    const s = hero([])
+    s.conditions = ['Stunned', 'Quickened']
+    expect(startPf2eTurn(s)).toContain('can’t act while it lasts')
+    expect(s.turn?.actions).toBe(0)
+    expect(s.conditions).toContain('Stunned')
+  })
+
+  it('an end-of-next-turn toggle turned on by hand during your turn lasts through your next', () => {
+    const s = hero(['Panache'])
+    startPf2eTurn(s)
+    toggleEffect(s, 'Panache (until your next turn ends)', 1)
+    endPf2eTurn(s)
+    expect(s.effects?.on).toContain('Panache (until your next turn ends)')
+    startPf2eTurn(s)
+    endPf2eTurn(s)
+    expect(s.effects?.on).not.toContain('Panache (until your next turn ends)')
+  })
+
+  it('Devise a Stratagem costs 1 action, free only for a lead’s subject (Player Core 2 p. 103)', () => {
+    const r = action('Devise a Stratagem')
+    expect(r.cost).toEqual({ kind: 'actions', min: 1, max: 1 })
+    expect(r.costNote).toMatch(/as a free action if you're aware that creature could help answer/)
+    expect(readCost('free')).toEqual({ kind: 'free' })
+    // The investigator's class feature writes it as "## Devise a Stratagem ◇ or ◆".
+    const inner = feature('Devise a Stratagem').embedded
+    expect(inner.map((e) => [e.name, e.cost])).toEqual([
+      ['Devise a Stratagem', { kind: 'actions', min: 1, max: 1 }],
+    ])
+    expect(inner[0]?.costNote).toMatch(/as a free action if/)
+    expect(feature('Impulses').embedded.find((e) => e.name === 'Elemental Blast')?.cost).toEqual({
+      kind: 'actions',
+      min: 1,
+      max: 2,
+    })
+  })
+
+  it('keeps the rolled initiative on the sheet through the turns, until the encounter ends', () => {
+    const s = hero([])
+    expect(inEncounter(s)).toBe(false)
+    s.turn = { ...newTurn(), initiative: 17 }
+    expect(inEncounter(s)).toBe(true)
+    startPf2eTurn(s)
+    endPf2eTurn(s)
+    expect(s.turn.initiative).toBe(17)
+    endPf2eEncounter(s)
+    expect(s.turn.initiative).toBeUndefined()
+    expect(inEncounter(s)).toBe(false)
+  })
+
+  it('scales “for every level you have beyond 6th” from that level, as one roll', () => {
+    for (const name of ['Storming Breath', 'Enervating Wail']) {
+      const damage = feat(name).damage
+      expect(damage.map((d) => d.dice)).toEqual(['4d6'])
+      expect([6, 9, 20].map((l) => diceAt(damage[0]!, l))).toEqual(['4d6', '7d6', '18d6'])
+    }
+  })
+
+  it('a hero who can’t act can’t use anything, reactions and free actions included (pp. 444–446)', () => {
+    const reaction = readAbility(find(feats, 'Reactive Shield'))
+    const strike = action('Strike')
+    const free = action('Release')
+    expect(free.cost).toEqual({ kind: 'free' })
+    for (const c of ['Unconscious', 'Paralyzed', 'Petrified', 'Stunned']) {
+      const s = hero([])
+      s.conditions = [c]
+      const why = `You can’t act while ${c.toLowerCase()}.`
+      for (const r of [reaction, strike, free]) expect(blockedReason(s, r)).toBe(why)
+    }
+    const dead = hero([], { dying: 4 })
+    expect(blockedReason(dead, reaction)).toBe('Your hero is dead.')
+    expect(blockedReason(hero([]), reaction)).toBe('')
+  })
+
+  it('Rage rolls nothing: “You can Seek while raging” only allows Seek (Player Core 2 p. 72)', () => {
+    const checks = actions
+      .filter((a) => {
+        const r = readAbility(a)
+        return r.check && r.outcomes.length
+      })
+      .map((a) => a.name)
+    const rage = feature('Rage').embedded.find((e) => e.name === 'Rage')!
+    expect(rage.check).toBeUndefined()
+    expect(usedAction(rage.body ?? '', checks)).toBeUndefined()
+    const s = hero(['Rage'])
+    const lines = resolveUse(s, rage, { name: 'Rage', level: 1, rng: () => 0.5 })
+    expect(lines.join(' ')).not.toMatch(/Perception|\(\d+/)
+    expect(usedAction('You can Seek the hidden door.', checks)).toBe('Seek')
+  })
+
+  it('reads Hammer Quake, Spell Swipe and Rejoin in Flight as Strikes, and Wing Buffet as 2 attacks', () => {
+    expect(ability('Hammer Quake').strike).toMatchObject({ count: 1, mapCount: 3 })
+    expect(ability('Spell Swipe').strike).toMatchObject({
+      count: 2,
+      mapCount: 2,
+      melee: true,
+      sameMap: true,
+    })
+    // "the penalty doesn't increase until after you've made both attacks": both at the
+    // current penalty, then counted as two.
+    const rejoin = ability('Mated Birds in Paired Flight').strike!
+    expect(rejoin).toMatchObject({ count: 2, mapCount: 2, sameMap: true })
+    expect(strikeCountAs(rejoin)).toBe(0)
+    const wing = readAbility(find(feats, 'Wing Buffet'))
+    expect(wing.check).toMatchObject({ skills: ['Athletics'], attack: true, mapCount: 2 })
+    const s = hero([])
+    s.skills = [{ name: 'Athletics', attr: 'STR', rank: 'T', value: 5 }]
+    startPf2eTurn(s)
+    resolveUse(s, wing, { name: 'Wing Buffet', level: 1, rng: () => 0.5 })
+    expect(s.turn?.attacks).toBe(2)
+  })
+
+  it('“Both attacks count toward your multiple attack penalty” counts 2, after both are made', () => {
+    for (const name of ['Rebounding Toss', 'Slam Down', 'Tandem Strike', 'Bat Around']) {
+      const strike = ability(name).strike!
+      expect([name, strike.mapCount]).toEqual([name, 2])
+    }
+    expect(ability('Slam Down').strike).toMatchObject({ sameMap: true })
   })
 })

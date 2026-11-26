@@ -1,8 +1,10 @@
 import type { Ref } from 'vue'
 import type { SheetEditor } from '~/composables/useSheetEditor'
-import type { NimbleSheet } from '~/types/sheets'
+import type { NimbleSheet, Pf2eSheet } from '~/types/sheets'
 import { endTurn, newRound, startTurn } from '~/utils/nimblePlay'
 import { slaySummon } from '~/utils/nimbleSummons'
+import { endPf2eTurn, startPf2eTurn } from '~/utils/pf2eActions'
+import { trackerTurnStep } from '~/utils/turnSteps'
 
 /**
  * The turn steps the GM's initiative tracker drives on a seated hero's sheet editor:
@@ -65,8 +67,54 @@ export function useTrackerTurnSteps(
 }
 
 /**
+ * The tracker's turn steps on a seated PF2e hero's sheet editor (Player Core p. 436): Start
+ * turn when initiative reaches the hero, End turn when it moves past (or comes back to them
+ * alone in a new round), and a one-time line-up with a tracker already running
+ * (`trackerTurnStep`). A turn the tracker started records its round (`turn.trackerRound`),
+ * so a reload mid-round doesn't start it again. New round needs nothing more in PF2e: the
+ * reaction comes back with the hero's own turn. End encounter is the sheet editor's
+ * (leaving the tracker). The full sheet (Shell) and the board (HeroEditor) run it.
+ */
+export function usePf2eTrackerTurnSteps(
+  editor: SheetEditor,
+  props: {
+    characterId: string
+    turnCharacterId: Ref<string | null>
+    round: Ref<number | null>
+  },
+): void {
+  let synced = false
+  function step(now: string | null, before: string | null, prevRound: number | null) {
+    if (!editor.canEdit.value) return
+    const sheet = editor.draft.value.sheet as Pf2eSheet
+    const round = props.round.value
+    const { end, start } = trackerTurnStep({
+      mine: props.characterId,
+      now,
+      before,
+      round,
+      prevRound,
+      active: !!sheet.turn?.active,
+      startedRound: sheet.turn?.trackerRound,
+      synced,
+    })
+    if (now !== null) synced = true
+    if (end) editor.say(endPf2eTurn(sheet))
+    if (!start) return
+    const line = startPf2eTurn(sheet)
+    if (round !== null && sheet.turn) sheet.turn.trackerRound = round
+    editor.say(line)
+  }
+  watch(
+    () => [props.turnCharacterId.value, props.round.value] as const,
+    ([now], [before, prevRound]) => step(now, before, prevRound),
+  )
+  step(props.turnCharacterId.value, null, null)
+}
+
+/**
  * The board's automatic turn steps for the player's seated hero, run on the board's
- * own sheet editor (the quick-action panel below 1200px, the battle board above): the
+ * own sheet editor (the battle board's hero scope): the
  * tracker's turn steps (useTrackerTurnSteps), and marking summons the GM dropped to
  * 0 HP slain (posted to party chat). Call once per editor.
  */

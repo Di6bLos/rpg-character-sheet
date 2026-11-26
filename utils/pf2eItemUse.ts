@@ -4,10 +4,10 @@
 // through the spell rules at the item's rank. The bookkeeping (Bulk, runes, charges) is in
 // `utils/pf2eInventory.ts`.
 import type { Pf2eEffectDef, Pf2eSpellDef } from '~/data/pf2e/types'
-import type { InventoryItem, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import type { InventoryItem, Pf2eItemState, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { type Rng, parseDice, rollAttack, rollDice, rollDie, sign } from '~/utils/dice'
 import { attacked, mapIndex } from '~/utils/pf2eActions'
-import { toggleEffect } from '~/utils/pf2eEffects'
+import { durationRounds, toggleEffect } from '~/utils/pf2eEffects'
 import { highestSlot, spendOne, spendStaff, useWand } from '~/utils/pf2eInventory'
 import { adjusted, degreeOf, heal, proficiency, strikeResult } from '~/utils/pf2ePlay'
 import { type Pf2eBuildData, higher } from '~/utils/pf2eBuild'
@@ -87,14 +87,16 @@ export interface Pf2eItemUseOptions {
 }
 
 /**
- * An elixir's or potion's bonuses as an effect the hero has on until it ends (data/pf2e
- * effects engine): bonuses that hold only sometimes and the duration go in its note; one
- * that lasts a minute ends with the turn steps' "a minute passes".
+ * An elixir's or potion's effect the hero has on until it ends (data/pf2e effects engine): its
+ * bonuses, those that hold only sometimes and the duration in its note. Whatever duration it
+ * lists ends by itself: its rounds count down with the turn steps (`passItemTime`). One with
+ * neither bonuses nor a duration is no effect.
  */
 export function consumableEffect(item: InventoryItem): Pf2eEffectDef | undefined {
   const st = item.pf2e
   const always = (st?.bonuses ?? []).filter((b) => !b.when)
-  if (!st || !always.length) return undefined
+  const rounds = durationRounds(st?.duration)
+  if (!st || (!always.length && !rounds)) return undefined
   const sometimes = (st.bonuses ?? []).filter((b) => b.when).map((b) => b.when)
   return {
     name: item.name,
@@ -108,7 +110,7 @@ export function consumableEffect(item: InventoryItem): Pf2eEffectDef | undefined
       ...(b.skills ? { skills: b.skills } : {}),
     })),
     note: [st.duration ? `Lasts ${st.duration}.` : '', ...sometimes].filter(Boolean).join(' '),
-    ...(st.duration === '1 minute' ? { ends: 'minute' as const } : {}),
+    ...(rounds ? { rounds } : {}),
   }
 }
 
@@ -123,15 +125,17 @@ function throwBomb(s: Pf2eSheet, item: InventoryItem, o: Pf2eItemUseOptions): st
   const b = st.bomb!
   const rank = o.bombRank ?? 'T'
   const base = proficiency(rank, o.level) + s.attrs.DEX
-  const attack = adjusted(s, base, {
-    kind: 'attack',
-    attr: 'DEX',
-    traits: ['thrown', 'splash'],
-    level: o.level,
-  })
+  // The bomb's item bonus stacks like any other: only the highest item bonus counts (p. 400).
+  const own = b.attack ? [{ value: b.attack, type: 'item' as const, source: item.name }] : []
+  const attack = adjusted(
+    s,
+    base,
+    { kind: 'attack', attr: 'DEX', traits: ['thrown', 'splash'], level: o.level },
+    own,
+  )
   const step = mapIndex(s)
   const penalty = [0, 5, 10][step] ?? 0
-  const bonus = attack.value + (b.attack ?? 0) - penalty
+  const bonus = attack.value - penalty
   const r = rollAttack(bonus, o.rng)
   attacked(s)
   const ac = o.targetAc
@@ -157,18 +161,60 @@ function throwBomb(s: Pf2eSheet, item: InventoryItem, o: Pf2eItemUseOptions): st
   return `${vs}: ${dmg} ${b.damage.type}${crit ? ` (2 × ${rolled})` : ''}${splash}${pers}.`
 }
 
+/** A poison's affliction in a line: "DC 18 Fortitude; maximum 3 rounds; stage 1 1d4 poison…". */
+export function afflictionLine(p: NonNullable<Pf2eItemState['poison']>) {
+  return [
+    `DC ${p.dc} ${p.save}`,
+    p.onset ? `onset ${p.onset}` : '',
+    p.maxDuration ? `maximum ${p.maxDuration}` : '',
+    ...p.stages.map((x, i) => `stage ${i + 1} ${x}`),
+  ]
+    .filter(Boolean)
+    .join('; ')
+}
+
+/**
+ * A poison (GM Core p. 249): an injury poison goes on the weapon the hero holds, for its next
+ * Strike that hits; the others are said with their DC and stages for the target to resist.
+ */
+function usePoison(s: Pf2eSheet, item: InventoryItem): string {
+  const p = item.pf2e!.poison!
+  if (!p.exposure.includes('injury'))
+    return `${item.name} (${p.exposure.join(', ') || 'poison'}): ${afflictionLine(p)}.`
+  const weapon = s.inventory.find(
+    (i) => (i.pf2e?.kind === 'weapon' || i.pf2e?.kind === 'staff') && i.pf2e.carry === 'held',
+  )
+  if (!weapon?.pf2e) return 'Hold a weapon to apply an injury poison to it.'
+  weapon.pf2e.poisoned = {
+    name: item.name,
+    dc: p.dc,
+    save: p.save,
+    stages: p.stages,
+    ...(p.maxDuration ? { maxDuration: p.maxDuration } : {}),
+  }
+  return `Applied ${item.name} to ${weapon.name}: your next Strike that hits exposes the target (${afflictionLine(p)}).`
+}
+
 /**
  * Uses a consumable (GM Core p. 220): pays its actions while the turn runs, spends one, and
- * does what it does: Hit Points through `heal`, bonuses as an effect, a bomb's Strike.
+ * does what it does: Hit Points through `heal`, bonuses as an effect, a bomb's Strike, a
+ * poison on the weapon or said for the target.
  */
 export function useConsumable(s: Pf2eSheet, index: number, o: Pf2eItemUseOptions): string {
   const item = s.inventory[index]
   const st = item?.pf2e
   if (!item || !st) return 'Nothing to use.'
   const act = st.activations?.[0]
+  const needsWeapon =
+    st.poison?.exposure.includes('injury') &&
+    !s.inventory.some(
+      (i) => (i.pf2e?.kind === 'weapon' || i.pf2e?.kind === 'staff') && i.pf2e.carry === 'held',
+    )
+  if (needsWeapon) return 'Hold a weapon to apply an injury poison to it.'
   const blocked = payActions(s, act?.actions ?? (st.bomb ? 1 : undefined))
   if (blocked) return blocked
   const parts: string[] = []
+  if (st.poison) parts.push(usePoison(s, item))
   if (st.bomb) parts.push(throwBomb(s, item, o))
   if (st.healing) {
     const dice = parseDice(st.healing)
@@ -178,7 +224,14 @@ export function useConsumable(s: Pf2eSheet, index: number, o: Pf2eItemUseOptions
   const effect = consumableEffect(item)
   if (effect) {
     const effects = (s.effects ??= { on: [], given: [] })
-    if (effects.on.includes(effect.name)) parts.push(`${effect.name} is already on.`)
+    const had = effects.items?.find((d) => d.name === effect.name)
+    // Another dose of the same item doesn't stack: the newer one applies (Player Core p. 398), starting its duration over.
+    if (effects.on.includes(effect.name) && had) {
+      had.rounds = effect.rounds
+      parts.push(
+        `${effect.name} is already on: the new dose starts its duration over${st.duration ? ` (${st.duration})` : ''}.`,
+      )
+    } else if (effects.on.includes(effect.name)) parts.push(`${effect.name} is already on.`)
     else {
       effects.items = [...(effects.items ?? []).filter((d) => d.name !== effect.name), effect]
       parts.push(toggleEffect(s, effect.name, o.level))

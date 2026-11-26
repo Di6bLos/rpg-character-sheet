@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The PF2e sheet's damage, healing and dying controls (Player Core pp. 407–411): an amount
 // to take with its damage type (for immunities, weaknesses and resistances, p. 408), Crit,
-// From a spell (when a resistance cares), and Shield Block while a shield is raised, or heal;
+// From a spell (when a resistance cares), and Shield Block while a shield is raised (with the
+// feat, against physical damage, spending the reaction: Player Core p. 262), or heal;
 // dying, wounded and doomed steppers; the recovery check and Heroic Recovery while dying.
 // Rules in utils/pf2ePlay.ts and utils/pf2eDamage.ts.
 import type { Pf2eSheet } from '~/types/sheets'
@@ -16,7 +17,7 @@ import {
   isDead,
   recoveryCheck,
   recoveryDc,
-  shieldBroken,
+  shieldBlockProblem,
   takeDamage,
 } from '~/utils/pf2ePlay'
 
@@ -32,10 +33,17 @@ const fromSpell = ref(false)
 const spellMatters = computed(() =>
   defensesOf(sheet.value, draft.value.level).resistances.some((r) => /spell/i.test(r.type)),
 )
-const canBlock = computed(
-  () => !!sheet.value.shield.name && sheet.value.shield.raised && !shieldBroken(sheet.value),
+/** A resistance to one tradition's spells (Superstition) asks which tradition dealt it. */
+const traditionMatters = computed(() =>
+  defensesOf(sheet.value, draft.value.level).resistances.some((r) =>
+    /\b(?:arcane|divine|occult|primal) spells?\b/i.test(r.type),
+  ),
 )
-watch(canBlock, (ok) => !ok && (block.value = false))
+const tradition = ref('')
+/** Shield Block needs the feat, physical damage and the reaction (Player Core p. 262). */
+const shieldUp = computed(() => !!sheet.value.shield.name && sheet.value.shield.raised)
+const blockProblem = computed(() => shieldBlockProblem(sheet.value, [dmgType.value]))
+watch(blockProblem, (why) => why && (block.value = false))
 
 const dead = computed(() => isDead(sheet.value))
 const dying = computed(() => sheet.value.dying > 0 && !dead.value)
@@ -48,6 +56,7 @@ function hurt() {
       shieldBlock: block.value,
       type: dmgType.value,
       spell: fromSpell.value,
+      ...(fromSpell.value && tradition.value ? { tradition: tradition.value } : {}),
     }),
   )
   amount.value = null
@@ -167,12 +176,24 @@ function adjust(k: Track, by: number) {
         <input v-model="fromSpell" type="checkbox" :disabled="!canEdit" />
         From a spell
       </label>
+      <template v-if="fromSpell && traditionMatters">
+        <label class="sr-only" for="pf-dmg-tradition">The spell's tradition</label>
+        <select id="pf-dmg-tradition" v-model="tradition" class="input hurt__type">
+          <option value="">Tradition?</option>
+          <option v-for="t in ['Arcane', 'Divine', 'Occult', 'Primal']" :key="t" :value="t">
+            {{ t }}
+          </option>
+        </select>
+      </template>
       <label
-        v-if="canBlock"
+        v-if="shieldUp"
         class="check"
-        title="Your raised shield takes up to its Hardness, then you both take the rest"
+        :title="
+          blockProblem ||
+          'Your reaction: the raised shield takes up to its Hardness, then you both take the rest'
+        "
       >
-        <input v-model="block" type="checkbox" :disabled="!canEdit" />
+        <input v-model="block" type="checkbox" :disabled="!canEdit || !!blockProblem" />
         Shield Block
       </label>
     </form>

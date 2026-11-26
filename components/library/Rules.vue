@@ -9,6 +9,7 @@ import type { GameSystem } from '~/types'
 import { loreHtml } from '~/utils/loreText'
 import {
   expandRules,
+  loadTopics,
   rulesMatch,
   rulesNeeds,
   rulesPlain,
@@ -84,20 +85,35 @@ async function expanded(file: string): Promise<string> {
   return expandRules(raw, data)
 }
 
+const names = (list: string[]) =>
+  list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : (list[0] ?? '')
+
+/** Only the latest load says whether it failed, so an older one can't flag a newer page. */
+let loads = 0
 async function ensure(topics: RulesTopic[]) {
-  const missing = topics.filter((t) => !texts.has(t.file))
-  if (!missing.length) return
-  loading.value = true
+  const run = ++loads
   failed.value = ''
-  try {
-    const loaded = await Promise.all(missing.map((t) => expanded(t.file)))
-    missing.forEach((t, i) => texts.set(t.file, loaded[i] ?? ''))
-  } catch (err) {
-    console.error(err)
-    failed.value = 'Could not load these rules.'
-  } finally {
-    loading.value = false
-  }
+  const missing = topics.filter((t) => !texts.has(t.file))
+  loading.value = missing.length > 0
+  if (!missing.length) return
+  const { loaded, lost } = await loadTopics(missing, (t) => expanded(t.file))
+  for (const [t, md] of loaded) texts.set(t.file, md)
+  for (const { error } of lost) console.error(error)
+  if (run !== loads) return
+  loading.value = false
+  if (!lost.length) return
+  const titles = lost.map((l) => l.topic.title)
+  failed.value = searching.value
+    ? `Could not load ${names(titles)}, so the results leave ${titles.length === 1 ? 'it' : 'them'} out.`
+    : 'Could not load these rules.'
+}
+
+/**
+ * The browser keeps a failed module import failed, so trying again means reloading the page;
+ * the URL keeps the system, topic and search.
+ */
+function retry() {
+  window.location.reload()
 }
 
 const searching = computed(() => terms.value.length > 0)
@@ -130,6 +146,8 @@ const hitCount = (t: RulesTopic) =>
   hits.value.find((h) => h.topic.slug === t.slug)?.sections.length ?? 0
 const totalHits = computed(() => hits.value.reduce((n, h) => n + h.sections.length, 0))
 const allLoaded = computed(() => (sys.value?.topics ?? []).every((t) => texts.has(t.file)))
+/** Every topic loaded, or the rest failed: the results are as complete as they'll get. */
+const searched = computed(() => allLoaded.value || (!!failed.value && !loading.value))
 
 /** A search hit: the topic's name over its section (the intro gets none of its own). */
 const hitHtml = (h: TopicHits) => html(h.sections.map((s) => s.markdown).join('\n\n'), 4)
@@ -142,7 +160,11 @@ function mark(root: HTMLElement, words: string[]) {
     `(${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
     'gi',
   )
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  // Text already marked is skipped: the results re-mark when another topic loads.
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) =>
+      n.parentElement?.closest('mark') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+  })
   const nodes: Text[] = []
   for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n as Text)
   for (const node of nodes) {
@@ -235,15 +257,15 @@ const phoneTopic = computed({
       <article class="panel rules__text" :aria-busy="loading">
         <p v-if="failed" class="rules__error" role="alert">
           {{ failed }}
-          <button type="button" class="btn btn--ghost btn--sm" @click="load">Try again</button>
+          <button type="button" class="btn btn--ghost btn--sm" @click="retry">Try again</button>
         </p>
 
-        <template v-else-if="searching">
+        <template v-if="searching">
           <header class="rules__head">
             <div class="eyebrow">{{ sys.label }}</div>
             <h2>Search results</h2>
             <p class="rules__meta" role="status">
-              <template v-if="!allLoaded">Searching…</template>
+              <template v-if="!searched">Searching…</template>
               <template v-else-if="totalHits">
                 {{ totalHits }} {{ totalHits === 1 ? 'section' : 'sections' }} in {{ hits.length }}
                 {{ hits.length === 1 ? 'topic' : 'topics' }} match “{{ q.trim() }}”
@@ -253,7 +275,8 @@ const phoneTopic = computed({
               >
             </p>
           </header>
-          <div ref="textEl">
+          <!-- Keyed on the words so a new search starts from unmarked text. -->
+          <div ref="textEl" :key="terms.join(' ')">
             <section v-for="h in hits" :key="h.topic.slug" class="rules__hit">
               <h3 class="rules__hit-title">
                 <NuxtLink :to="topicLink(h.topic)" :aria-current="undefined">{{
@@ -266,7 +289,7 @@ const phoneTopic = computed({
           </div>
         </template>
 
-        <template v-else-if="topic">
+        <template v-else-if="topic && !failed">
           <header class="rules__head">
             <div class="eyebrow">{{ sys.label }}</div>
             <h2>{{ topic.title }}</h2>

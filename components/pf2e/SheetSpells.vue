@@ -11,14 +11,16 @@
 // own spellcasting (Player Core p. 215) instead, without the focus spells.
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
-import type { Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
+import type { Pf2eArchetypeCasting, Pf2eSheet, Pf2eSpellRef } from '~/types/sheets'
 import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import { actionGlyph } from '~/utils/pf2eBuild'
 import { type Pf2eBloodMagic, bloodMagic } from '~/utils/pf2eClassActions'
 import { pf2eEffectDef, toggleEffect } from '~/utils/pf2eEffects'
 import { heal } from '~/utils/pf2ePlay'
 import {
+  castBlocked,
   castCantrip,
+  castRankFor,
   castEffect,
   castFocus,
   castFont,
@@ -30,14 +32,16 @@ import {
   focusNumbers,
   heightenedRank,
   highestRank,
+  openRanks,
+  payCast,
   refocus,
   setSlotMax,
   spellNumbers,
   spontaneousRank,
 } from '~/utils/pf2eSpells'
-import { defaultActions, spellRules } from '~/utils/pf2eSpellRules'
+import { attackCount, defaultActions, spellRules } from '~/utils/pf2eSpellRules'
 import { readCost } from '~/utils/pf2eAbilityRules'
-import { actionCostLabel, attacked } from '~/utils/pf2eActions'
+import { actionCostLabel } from '~/utils/pf2eActions'
 import { loreHtml } from '~/utils/loreText'
 
 const props = defineProps<{ archetype?: string }>()
@@ -61,6 +65,13 @@ const sc = computed(() =>
     : sheet.value.spellcasting,
 )
 const level = computed(() => draft.value.level)
+/** The class's own second track names itself (Apparition spells); an archetype's says whose. */
+const title = computed(() =>
+  props.archetype
+    ? ((sc.value as Pf2eArchetypeCasting | undefined)?.label ??
+      `${props.archetype} archetype spells`)
+    : 'Spells',
+)
 
 const spells = shallowRef<Pf2eSpellDef[]>([])
 onMounted(async () => {
@@ -76,8 +87,14 @@ const cantripIds = computed(
 )
 
 const numbers = computed(() => (sc.value ? spellNumbers(sheet.value, sc.value, level.value) : null))
-/** Focus-only heroes cast with their class DC. */
-const castNumbers = computed(() => numbers.value ?? focusNumbers(sheet.value))
+/** Focus-only heroes cast with their class's focus attribute at their class DC's rank. */
+const castNumbers = computed(() => numbers.value ?? focusNumbers(sheet.value, level.value))
+/** The attack and DC tiles: the spellcasting's, or a focus-only hero's for their focus spells. */
+const headNumbers = computed(
+  () =>
+    numbers.value ??
+    (!props.archetype && sheet.value.focusSpells?.length ? castNumbers.value : null),
+)
 const ranks = computed(() =>
   (sc.value?.slots ?? [])
     .map((r, i) => ({ rank: i + 1, ...r }))
@@ -87,7 +104,7 @@ const edit = ref(false)
 const open = ref<string | null>(null)
 
 function rollSpellAttack() {
-  const n = numbers.value
+  const n = headNumbers.value
   if (!n) return
   claim('spells-head', () => {
     const r = rollCheck(n.attack.value)
@@ -97,15 +114,9 @@ function rollSpellAttack() {
   })
 }
 
-/** Ranks with a slot left that this spell can be cast at (its own rank or higher). */
-function castRanks(spell: Pf2eSpellRef) {
-  return (sc.value?.slots ?? [])
-    .map((r, i) => ({ rank: i + 1, left: r.max - r.used }))
-    .filter((r) => r.rank >= spell.rank && r.left > 0)
-}
+const castRanks = (spell: Pf2eSpellRef) => openRanks(sc.value, spell)
 const castAt = ref<Record<string, number>>({})
-const castRank = (spell: Pf2eSpellRef) =>
-  castAt.value[spell.id] ?? castRanks(spell)[0]?.rank ?? spell.rank
+const castRank = (spell: Pf2eSpellRef) => castRankFor(sc.value, spell, castAt.value[spell.id])
 const fontRank = computed(() => (sc.value ? highestRank(sc.value) : 0))
 
 function run(message: string) {
@@ -122,16 +133,15 @@ const attackNumber = ref(nextAttack.value)
 watch(nextAttack, (n) => (attackNumber.value = n))
 
 /**
- * While the turn tracker runs, a cast spends its actions (or the reaction), and a spell
- * attack counts toward the multiple attack penalty for Strikes and the next spell attack.
+ * Why a spell can't be cast now (`castBlocked`): dead or unable to act, too few actions left
+ * this turn, the reaction spent. Dead and unable to act show once, at the top.
  */
-function payCast(def: Pf2eSpellDef) {
-  const t = sheet.value.turn
-  const cost = readCost(def.actions)
-  if (t && cost?.kind === 'reaction') t.reaction = false
-  if (t?.active && cost?.kind === 'actions')
-    t.actions = Math.max(0, t.actions - (actionsOf(def) ?? cost.min))
-  if (spellRules(def).attack) attacked(sheet.value)
+const castWhy = (def: Pf2eSpellDef | undefined) =>
+  castBlocked(sheet.value, def, def ? actionsOf(def) : undefined)
+const stopped = computed(() => castBlocked(sheet.value, undefined))
+const whyFor = (id: string | null | undefined) => {
+  const why = castWhy(id ? byId.value.get(id) : undefined)
+  return why === stopped.value ? '' : why
 }
 const knownIds = computed(() => [
   ...(sc.value?.cantrips ?? []),
@@ -147,6 +157,7 @@ const hasAttackSpell = computed(() =>
 /** Per spell: the action version and a melee spell attack. */
 const actionsFor = ref<Record<string, number | undefined>>({})
 const meleeFor = ref<Record<string, boolean>>({})
+const targetsFor = ref<Record<string, number | undefined>>({})
 const actionsOf = (def: Pf2eSpellDef) => actionsFor.value[def.id] ?? defaultActions(spellRules(def))
 
 /** What the last cast left to apply: healing, temporary HP, a buff cast on a target. */
@@ -167,26 +178,37 @@ const lastCast = ref<{
  * that rank.
  */
 function cast(
-  message: string,
+  spend: () => string,
   def: Pf2eSpellDef | undefined,
   rank: number,
   key = `spell:${def?.id ?? ''}`,
 ) {
   if (!canEdit.value) return
-  claim(key, () => castIn(key, message, def, rank))
+  const why = castWhy(def)
+  claim(key, () => (why ? say(`${def?.name ?? 'Cast'}: ${why}.`) : castIn(key, spend(), def, rank)))
 }
 
 function castIn(key: string, message: string, def: Pf2eSpellDef | undefined, rank: number) {
   lastCast.value = null
-  if (!def || !castWentOff(message)) return say(message)
+  if (!def) return say(message)
+  if (!castWentOff(message)) {
+    // Disrupted: the slot and the actions are spent all the same (p. 446).
+    if (message.startsWith('Cast '))
+      payCast(sheet.value, def, { actions: actionsOf(def), attacks: 0 })
+    return say(message)
+  }
   const r = castEffect(sheet.value, def, rank, level.value, {
     sc: sc.value,
     actions: actionsOf(def),
     melee: !!meleeFor.value[def.id],
+    targets: targetsFor.value[def.id],
     attackNumber: attackNumber.value,
     targetAc: targetAc.value,
   })
-  payCast(def)
+  payCast(sheet.value, def, {
+    actions: actionsOf(def),
+    attacks: attackCount(def, { rank, actions: actionsOf(def), targets: targetsFor.value[def.id] }),
+  })
   const blood = bloodMagic(sheet.value, def.name, rank)
   const target = blood?.damage ? ` Or a target takes ${blood.damage} damage.` : ''
   const bloodLine = blood ? ` Blood magic, ${blood.name}: ${blood.text}${target}` : ''
@@ -222,7 +244,7 @@ function bloodSelf(name: string) {
 function castFromSlot(s: Pf2eSpellRef) {
   const slot = castRank(s)
   cast(
-    castSpontaneous(sheet.value, s, slot, sc.value),
+    () => castSpontaneous(sheet.value, s, slot, sc.value),
     byId.value.get(s.id),
     spontaneousRank(s, slot),
   )
@@ -230,10 +252,26 @@ function castFromSlot(s: Pf2eSpellRef) {
 
 function castFromPrepared(rank: number, index: number, id: string | null) {
   cast(
-    castPrepared(sheet.value, rank, index, sc.value),
+    () => castPrepared(sheet.value, rank, index, sc.value),
     id ? byId.value.get(id) : undefined,
     rank,
     `slot:${rank}:${index}`,
+  )
+}
+
+function castOwnCantrip(s: Pf2eSpellRef) {
+  cast(
+    () => castCantrip(sheet.value, s, level.value),
+    byId.value.get(s.id),
+    heightenedRank(level.value),
+  )
+}
+
+function castFocusSpell(s: Pf2eSpellRef) {
+  cast(
+    () => castFocus(sheet.value, s, level.value, cantripIds.value.has(s.id)),
+    byId.value.get(s.id),
+    heightenedRank(level.value),
   )
 }
 
@@ -245,14 +283,21 @@ const fontDef = computed(() =>
     : undefined,
 )
 function castFromFont() {
-  const rank = fontRank.value
-  cast(castFont(sheet.value), fontDef.value, rank, 'spell:font')
+  cast(() => castFont(sheet.value), fontDef.value, fontRank.value, 'spell:font')
 }
 
 function healSelf() {
   const last = lastCast.value
   if (!canEdit.value || !last?.healing) return
   claim(last.key, () => say(`${last.def.name}: ${heal(sheet.value, last.healing!)}`))
+  lastCast.value = { ...last, healing: undefined }
+}
+
+/** The healing went to someone else: say so, and it's no longer on offer. */
+function healTarget() {
+  const last = lastCast.value
+  if (!canEdit.value || !last?.healing) return
+  claim(last.key, () => say(`${last.def.name}: the target regains ${last.healing} Hit Points.`))
   lastCast.value = { ...last, healing: undefined }
 }
 
@@ -328,32 +373,32 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
 
 <template>
   <section class="panel stack" style="gap: 14px" :aria-labelledby="`${panelId}-h`">
-    <UiFold :name="archetype ? `${archetype} archetype spells` : 'Spells'" />
+    <UiFold :name="title" />
     <div class="panel-title" style="margin: 0">
-      <h2 :id="`${panelId}-h`">{{ archetype ? `${archetype} archetype spells` : 'Spells' }}</h2>
+      <h2 :id="`${panelId}-h`">{{ title }}</h2>
       <span v-if="sc" class="small muted">{{ sc.tradition }} · {{ sc.kind }}</span>
     </div>
 
     <div class="head">
       <button
-        v-if="numbers"
+        v-if="headNumbers"
         type="button"
         class="tile head__tile"
-        :class="{ 'is-changed': numbers.attack.changed }"
-        :title="numbers.attack.changed ? numbers.attack.note : 'Roll a spell attack'"
+        :class="{ 'is-changed': headNumbers.attack.changed }"
+        :title="headNumbers.attack.changed ? headNumbers.attack.note : 'Roll a spell attack'"
         @click="rollSpellAttack"
       >
         <span class="tile__label">Spell attack</span>
-        <span class="tile__value">{{ sign(numbers.attack.value) }}</span>
+        <span class="tile__value">{{ sign(headNumbers.attack.value) }}</span>
       </button>
       <div
-        v-if="numbers"
+        v-if="headNumbers"
         class="tile head__tile"
-        :class="{ 'is-changed': numbers.dc.changed }"
-        :title="numbers.dc.changed ? numbers.dc.note : undefined"
+        :class="{ 'is-changed': headNumbers.dc.changed }"
+        :title="headNumbers.dc.changed ? headNumbers.dc.note : undefined"
       >
         <span class="tile__label">Spell DC</span>
-        <span class="tile__value">{{ numbers.dc.value }}</span>
+        <span class="tile__value">{{ headNumbers.dc.value }}</span>
       </div>
       <div class="head__tools">
         <button
@@ -370,6 +415,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
         </label>
       </div>
     </div>
+    <p v-if="stopped" class="small spell__stopped" role="status">Can’t cast: {{ stopped }}</p>
     <p v-if="resultFor('spells-head')" class="roll-status" role="status" aria-live="polite">
       {{ resultFor('spells-head') }}
     </p>
@@ -421,6 +467,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             v-if="byId.get(s.id)"
             v-model:actions="actionsFor[s.id]"
             v-model:melee="meleeFor[s.id]"
+            v-model:targets="targetsFor[s.id]"
             :spell="byId.get(s.id)!"
             :rank="heightenedRank(level)"
           />
@@ -429,12 +476,14 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           <button
             type="button"
             class="btn btn--ghost btn--sm"
-            :disabled="!canEdit"
+            :disabled="!canEdit || !!stopped || !!whyFor(s.id)"
+            :title="whyFor(s.id) || undefined"
             :aria-label="`Cast ${s.name}`"
-            @click="cast(castCantrip(sheet, s, level), byId.get(s.id), heightenedRank(level))"
+            @click="castOwnCantrip(s)"
           >
             Cast
           </button>
+          <small v-if="whyFor(s.id)" class="spell__why">{{ whyFor(s.id) }}</small>
           <button
             v-if="edit"
             type="button"
@@ -456,6 +505,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           :offers="offersFor(`spell:${s.id}`)"
           :disabled="!canEdit"
           @heal="healSelf"
+          @heal-target="healTarget"
           @temp="tempSelf"
           @buff="buffSelf"
           @blood="bloodSelf"
@@ -549,6 +599,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
               v-if="byId.get(s.id)"
               v-model:actions="actionsFor[s.id]"
               v-model:melee="meleeFor[s.id]"
+              v-model:targets="targetsFor[s.id]"
               :spell="byId.get(s.id)!"
               :rank="spontaneousRank(s, castRank(s))"
             />
@@ -557,12 +608,14 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             <button
               type="button"
               class="btn btn--ghost btn--sm"
-              :disabled="!canEdit || !castRanks(s).length"
+              :disabled="!canEdit || !castRanks(s).length || !!stopped || !!whyFor(s.id)"
+              :title="whyFor(s.id) || undefined"
               :aria-label="`Cast ${s.name}`"
               @click="castFromSlot(s)"
             >
               Cast
             </button>
+            <small v-if="whyFor(s.id)" class="spell__why">{{ whyFor(s.id) }}</small>
             <button
               v-if="edit"
               type="button"
@@ -584,6 +637,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             :offers="offersFor(`spell:${s.id}`)"
             :disabled="!canEdit"
             @heal="healSelf"
+            @heal-target="healTarget"
             @temp="tempSelf"
             @buff="buffSelf"
             @blood="bloodSelf"
@@ -618,6 +672,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
               v-if="p.id && byId.get(p.id)"
               v-model:actions="actionsFor[p.id]"
               v-model:melee="meleeFor[p.id]"
+              v-model:targets="targetsFor[p.id]"
               :spell="byId.get(p.id)!"
               :rank="r.rank"
             />
@@ -628,18 +683,23 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             <button
               type="button"
               class="btn btn--ghost btn--sm"
-              :disabled="!canEdit || !p.id || p.cast"
+              :disabled="!canEdit || !p.id || p.cast || !!stopped || !!whyFor(p.id)"
+              :title="whyFor(p.id) || undefined"
               :aria-label="`Cast rank ${r.rank} slot ${i + 1}`"
               @click="castFromPrepared(r.rank, i, p.id)"
             >
               Cast
             </button>
+            <small v-if="p.id && !p.cast && whyFor(p.id)" class="spell__why">{{
+              whyFor(p.id)
+            }}</small>
           </div>
           <Pf2eSpellResult
             :result="resultFor(`slot:${r.rank}:${i}`)"
             :offers="offersFor(`slot:${r.rank}:${i}`)"
             :disabled="!canEdit"
             @heal="healSelf"
+            @heal-target="healTarget"
             @temp="tempSelf"
             @buff="buffSelf"
             @blood="bloodSelf"
@@ -693,6 +753,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             v-if="fontDef && fontRank"
             v-model:actions="actionsFor[fontDef.id]"
             v-model:melee="meleeFor[fontDef.id]"
+            v-model:targets="targetsFor[fontDef.id]"
             :spell="fontDef"
             :rank="fontRank"
           />
@@ -701,22 +762,30 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           <button
             type="button"
             class="btn btn--ghost btn--sm"
-            :disabled="!canEdit || sc.font.used >= sc.font.max || !fontRank"
+            :disabled="
+              !canEdit ||
+              sc.font.used >= sc.font.max ||
+              !fontRank ||
+              !!stopped ||
+              !!whyFor(fontDef?.id)
+            "
             :title="
               !fontRank
                 ? 'Your divine font casts at your highest slot rank: add slots first'
-                : undefined
+                : whyFor(fontDef?.id) || undefined
             "
             @click="castFromFont"
           >
             Cast {{ sc.font.spell }}{{ fontRank ? ` · rank ${fontRank}` : '' }}
           </button>
+          <small v-if="whyFor(fontDef?.id)" class="spell__why">{{ whyFor(fontDef?.id) }}</small>
         </div>
         <Pf2eSpellResult
           :result="resultFor('spell:font')"
           :offers="offersFor('spell:font')"
           :disabled="!canEdit"
           @heal="healSelf"
+          @heal-target="healTarget"
           @temp="tempSelf"
           @buff="buffSelf"
           @blood="bloodSelf"
@@ -767,6 +836,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             v-if="byId.get(s.id)"
             v-model:actions="actionsFor[s.id]"
             v-model:melee="meleeFor[s.id]"
+            v-model:targets="targetsFor[s.id]"
             :spell="byId.get(s.id)!"
             :rank="heightenedRank(level)"
           />
@@ -775,18 +845,19 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           <button
             type="button"
             class="btn btn--ghost btn--sm"
-            :disabled="!canEdit || (!cantripIds.has(s.id) && sheet.focus.current < 1)"
-            :aria-label="`Cast ${s.name}`"
-            @click="
-              cast(
-                castFocus(sheet, s, level, cantripIds.has(s.id)),
-                byId.get(s.id),
-                heightenedRank(level),
-              )
+            :disabled="
+              !canEdit ||
+              (!cantripIds.has(s.id) && sheet.focus.current < 1) ||
+              !!stopped ||
+              !!whyFor(s.id)
             "
+            :title="whyFor(s.id) || undefined"
+            :aria-label="`Cast ${s.name}`"
+            @click="castFocusSpell(s)"
           >
             Cast
           </button>
+          <small v-if="whyFor(s.id)" class="spell__why">{{ whyFor(s.id) }}</small>
           <button
             v-if="edit"
             type="button"
@@ -808,6 +879,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           :offers="offersFor(`spell:${s.id}`)"
           :disabled="!canEdit"
           @heal="healSelf"
+          @heal-target="healTarget"
           @temp="tempSelf"
           @buff="buffSelf"
           @blood="bloodSelf"
@@ -960,8 +1032,23 @@ button.head__tile {
 .spell__act {
   grid-area: act;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 4px;
+}
+
+.spell__why {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: 12px;
+  color: var(--page-muted);
+}
+
+.spell__stopped {
+  margin: 0;
+  font-weight: 600;
+  color: var(--danger-text);
 }
 
 .spell__slot {

@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import type { Pf2eSheet } from '../types/sheets'
+import { cantAct } from '../utils/pf2eActions'
+import { toggleEffect } from '../utils/pf2eEffects'
 import {
+  PF2E_CONDITION_DEFS,
+  acFromParts,
+  acNow,
+  acParts,
+  activeConditions,
   adjusted,
   conditionMods,
   deathAt,
   degreeOf,
   heal,
   heroicRecovery,
+  initiativeCheck,
   isDead,
   raisedShieldBonus,
   recoveryCheck,
+  shieldBlockProblem,
   shieldBroken,
   stackMods,
   strikeDamage,
@@ -20,6 +29,7 @@ import { defaultSheet } from '../utils/sheetDefaults'
 function hero(over: Partial<Pf2eSheet> = {}): Pf2eSheet {
   return { ...defaultSheet('pf2e'), hp: 20, hpMax: 20, ...over }
 }
+const SHIELD_BLOCK = { type: 'General', level: '1', action: '↺', name: 'Shield Block', desc: '' }
 
 describe('pf2e degrees of success (Player Core p. 401)', () => {
   it('beats the DC by 10 for a critical success, misses by 10 for a critical failure', () => {
@@ -131,6 +141,7 @@ describe('pf2e damage and dying (pp. 410–411)', () => {
 
   it('Shield Block takes up to the Hardness, then shield and hero share the rest', () => {
     const s = hero({
+      feats: [SHIELD_BLOCK],
       shield: { name: 'Steel Shield', hardness: 5, hp: 20, hpMax: 20, bt: 10, raised: true },
     })
     const msg = takeDamage(s, 12, { shieldBlock: true })
@@ -183,6 +194,7 @@ describe('pf2e damage and dying (pp. 410–411)', () => {
 
   it('massive damage counts what gets past Shield Block, and respects doomed', () => {
     const s = hero({
+      feats: [SHIELD_BLOCK],
       shield: { name: 'Steel Shield', hardness: 5, hp: 20, hpMax: 20, bt: 10, raised: true },
     })
     takeDamage(s, 44, { shieldBlock: true })
@@ -191,6 +203,15 @@ describe('pf2e damage and dying (pp. 410–411)', () => {
     takeDamage(t, 40)
     expect(t.dying).toBe(2)
     expect(isDead(t)).toBe(true)
+  })
+
+  // Player Core p. 411: damage while dying raises dying, but temporary HP take it first.
+  it('while dying, temporary HP take the damage first; dying rises only if some gets through', () => {
+    const s = hero({ hp: 0, dying: 1, tempHp: 6, conditions: ['Unconscious'] })
+    expect(takeDamage(s, 4)).toContain('Temporary HP took 4')
+    expect(s).toMatchObject({ dying: 1, tempHp: 2 })
+    takeDamage(s, 5)
+    expect(s).toMatchObject({ dying: 2, tempHp: 0 })
   })
 
   it('the dead are not healed and roll no recovery checks or Heroic Recovery', () => {
@@ -221,8 +242,30 @@ describe('pf2e shields (Player Core pp. 269, 274)', () => {
     expect(raisedShieldBonus(hero({ shield: shield({ raised: false }) }))).toBe(0)
   })
 
+  // Player Core p. 262: the feat, physical damage from an attack, and the reaction.
+  it('Shield Block needs the feat, physical damage and an unspent reaction, and spends it', () => {
+    expect(shieldBlockProblem(hero({ shield: shield() }))).toMatch(/Shield Block feat/)
+    const s = hero({ shield: shield(), feats: [SHIELD_BLOCK] })
+    expect(shieldBlockProblem(s, ['slashing'])).toBe('')
+    expect(shieldBlockProblem(s, [''])).toBe('')
+    expect(shieldBlockProblem(s, ['fire'])).toMatch(/physical/)
+    const fire = takeDamage(s, 8, { shieldBlock: true, type: 'fire' })
+    expect(fire).toMatch(/No Shield Block/)
+    expect([s.shield.hp, s.hp]).toEqual([20, 12])
+    s.turn = { active: false, actions: 0, reaction: true, attacks: 0, round: 1 }
+    expect(takeDamage(s, 8, { shieldBlock: true, type: 'piercing' })).toContain('blocks 5')
+    expect(s.turn.reaction).toBe(false)
+    expect(shieldBlockProblem(s, ['piercing'])).toMatch(/reaction is spent/)
+    expect(takeDamage(s, 8, { shieldBlock: true })).toMatch(/No Shield Block/)
+    const held = hero({ shield: shield() })
+    held.inventory = [
+      { name: 'Shield', qty: '1', pf2e: { count: 1, bulk: 1, carry: 'held', shieldBlock: true } },
+    ]
+    expect(shieldBlockProblem(held)).toBe('')
+  })
+
   it('is broken at or below its Broken Threshold: no AC bonus and no Shield Block', () => {
-    const s = hero({ shield: shield({ hp: 10 }) })
+    const s = hero({ shield: shield({ hp: 10 }), feats: [SHIELD_BLOCK] })
     expect(shieldBroken(s)).toBe(true)
     expect(raisedShieldBonus(s)).toBe(0)
     const msg = takeDamage(s, 8, { shieldBlock: true })
@@ -238,5 +281,106 @@ describe('pf2e damage rolls (Player Core p. 406)', () => {
     expect(strikeDamage(0, true)).toBe(2)
     expect(strikeDamage(7, true)).toBe(14)
     expect(strikeDamage(7)).toBe(7)
+  })
+})
+
+describe('pf2e initiative (Player Core p. 436)', () => {
+  it('rolls Perception after conditions, as the sheet and the battle board both use it', () => {
+    const s = hero({
+      saves: [{ label: 'Perception', rank: 'T', value: 7 }],
+      conditions: ['Frightened'],
+      conditionValues: { Frightened: 2 },
+    })
+    expect(initiativeCheck(s).value).toBe(5)
+    expect(initiativeCheck(hero({ saves: [] })).value).toBe(0)
+  })
+})
+
+describe('pf2e conditions the GM can set from the board (Player Core pp. 442–447)', () => {
+  const def = (name: string) => PF2E_CONDITION_DEFS.find((d) => d.name === name)
+  const shield = { name: 'Steel Shield', ac: 2, hardness: 5, hp: 20, hpMax: 20, bt: 10 }
+
+  it('defines controlled, petrified and the awareness states, observed the default', () => {
+    for (const name of ['Controlled', 'Petrified', 'Observed', 'Undetected', 'Unnoticed'])
+      expect(def(name)?.effect, name).toBeTruthy()
+    expect(['Observed', 'Hidden', 'Undetected', 'Unnoticed'].every((n) => def(n)?.awareness)).toBe(
+      true,
+    )
+    expect(def('Observed')?.effect).toMatch(/default/)
+  })
+
+  it('petrified stops every action and makes the hero an object with AC 9 (p. 445)', () => {
+    const s = hero({ ac: 18, conditions: ['Petrified'] })
+    expect(cantAct(s)).toBe('You can’t act while petrified.')
+    expect(acNow(s).value).toBe(9)
+    expect(acFromParts({ ...s, acParts: acParts(s) })).toBe(9)
+  })
+
+  it('controlled leaves the hero acting, as the controller says (p. 442)', () => {
+    expect(cantAct(hero({ conditions: ['Controlled'] }))).toBe('')
+  })
+
+  it('unnoticed is undetected too, and awareness states change none of the hero’s numbers', () => {
+    const s = hero({ ac: 18, conditions: ['Unnoticed'] })
+    expect(activeConditions(s).has('Undetected')).toBe(true)
+    expect(conditionMods(s, { kind: 'ac' })).toEqual([])
+    expect(conditionMods(hero({ conditions: ['Observed'] }), { kind: 'attack' })).toEqual([])
+  })
+
+  it('AC now counts a raised, unbroken shield’s own bonus and off-guard (pp. 274, 444)', () => {
+    const s = hero({ ac: 18, shield: { ...shield, raised: true } })
+    expect(acNow(s).value).toBe(20)
+    s.conditions = ['Off-guard']
+    expect(acNow(s).value).toBe(18)
+    s.shield.hp = 10
+    expect(acNow(s).value).toBe(16)
+  })
+
+  it('the board’s AC from the roster matches the sheet’s, whatever changed', () => {
+    const cases: [string, (s: Pf2eSheet) => void][] = [
+      ['plain', () => {}],
+      ['raised shield', (s) => (s.shield.raised = true)],
+      ['off-guard and raised', (s) => ((s.shield.raised = true), (s.conditions = ['Off-guard']))],
+      ['prone gives off-guard', (s) => (s.conditions = ['Prone'])],
+      [
+        'frightened 2',
+        (s) => ((s.conditions = ['Frightened']), (s.conditionValues = { Frightened: 2 })),
+      ],
+      [
+        'the Shield spell and a raised shield',
+        (s) => ((s.shield.raised = true), toggleEffect(s, 'Shield', 1)),
+      ],
+      [
+        'Enlarge’s clumsy 1 and clumsy 2',
+        (s) => {
+          toggleEffect(s, 'Enlarge', 3)
+          s.conditions = ['Clumsy']
+          s.conditionValues = { Clumsy: 2 }
+        },
+      ],
+      ['unconscious', (s) => (s.conditions = ['Unconscious'])],
+    ]
+    const seen: number[] = []
+    for (const [label, set] of cases) {
+      const s = hero({ ac: 18, shield: { ...shield, raised: false } })
+      set(s)
+      const summary = {
+        ac: s.ac,
+        acParts: acParts(s),
+        conditions: s.conditions,
+        conditionValues: s.conditionValues,
+        shield: s.shield,
+      }
+      expect(acFromParts(summary), label).toBe(acNow(s).value)
+      seen.push(acNow(s).value)
+    }
+    expect(seen).toEqual([18, 20, 18, 16, 16, 20, 16, 12])
+  })
+
+  it('without saved parts, conditions and the shield still count on the board', () => {
+    expect(
+      acFromParts({ ac: 18, conditions: ['Off-guard'], shield: { ...shield, raised: true } }),
+    ).toBe(18)
+    expect(acFromParts({ conditions: [] })).toBeUndefined()
   })
 })

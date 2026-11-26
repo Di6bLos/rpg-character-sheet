@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Under the spell row that was cast: the cast's result line, and what the cast left to apply
-// to the caster (heal yourself, gain its temporary HP, put the buff on yourself, a sorcerer's
+// (heal yourself or a target, gain its temporary HP, put the buff on yourself, a sorcerer's
 // blood magic on yourself).
 defineProps<{
   result: string
@@ -13,7 +13,14 @@ defineProps<{
   } | null
   disabled: boolean
 }>()
-const emit = defineEmits<{ heal: []; temp: []; buff: []; blood: [name: string]; dismiss: [] }>()
+const emit = defineEmits<{
+  heal: []
+  healTarget: []
+  temp: []
+  buff: []
+  blood: [name: string]
+  dismiss: []
+}>()
 </script>
 
 <template>
@@ -31,6 +38,15 @@ const emit = defineEmits<{ heal: []; temp: []; buff: []; blood: [name: string]; 
         @click="emit('heal')"
       >
         Heal yourself {{ offers.healing }} HP
+      </button>
+      <button
+        v-if="offers.healing"
+        type="button"
+        class="btn btn--ghost btn--sm"
+        :disabled="disabled"
+        @click="emit('healTarget')"
+      >
+        Heal a target {{ offers.healing }} HP
       </button>
       <button
         v-if="offers.temp"

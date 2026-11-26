@@ -19,11 +19,10 @@ _Core pp. 10–11, 36, 56._
 
 **Smoldering**, **Charged**, **Distracted** and the like do nothing on their own and **end when combat does**. Certain spells and abilities do more against creatures that have them:
 
-| Status     | Meaning                                                                          |
-| ---------- | -------------------------------------------------------------------------------- |
-| Smoldering | Set by some fire spells; other fire spells hit it harder                         |
-| Charged    | Taking lightning damage charges you for 1 minute                                 |
-| Distracted | Adjacent to or Taunted by an ally of yours, or unable to see you                 |
-| Hampered   | Actions or movement reduced: Dazed, Grappled, Prone, difficult terrain and so on |
+| Status     | Meaning                                                          |
+| ---------- | ---------------------------------------------------------------- |
+| Smoldering | Set by some fire spells; other fire spells hit it harder         |
+| Charged    | Taking lightning damage charges you for 1 minute                 |
+| Distracted | Adjacent to or Taunted by an ally of yours, or unable to see you |
 
 _Core pp. 11, 46, 48, 56._

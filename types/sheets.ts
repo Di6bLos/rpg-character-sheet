@@ -7,6 +7,8 @@ import type {
   Pf2eItemDamage,
   Pf2eItemKind,
   Pf2eItemNumbers,
+  Pf2eRuneNumbers,
+  Pf2eRuneVsDamage,
 } from '~/data/pf2e/types'
 
 export interface SheetCommon {
@@ -62,6 +64,8 @@ export interface InventoryItem {
   custom?: CustomItem
   /** PF2e: what the inventory tracks about the item; `qty` stays the Bulk of one. */
   pf2e?: Pf2eItemState
+  /** Nimble: armor or a shield the hero is wearing; what they wear sets their Armor. */
+  worn?: boolean
 }
 
 /**
@@ -82,8 +86,10 @@ export interface Pf2eItemState extends Pf2eItemNumbers {
   carry: 'worn' | 'held' | 'stowed'
   usage?: string
   traits?: string[]
-  /** Invested today (GM Core p. 219: at most 10). */
+  /** Invested now (GM Core p. 219). */
   invested?: boolean
+  /** Invested since daily preparations, even if taken off since: it counts against the 10. */
+  investedToday?: boolean
   activations?: Pf2eActivation[]
   /** Armor's category (light, medium, heavy, unarmored) and a weapon's melee or ranged, for runes. */
   category?: string
@@ -96,16 +102,25 @@ export interface Pf2eItemState extends Pf2eItemNumbers {
   wand?: { cast: boolean; overcharged: boolean; broken: boolean }
   /** The spell in a scroll or wand, at the item's rank. */
   spell?: { id: string; name: string; rank: number }
+  /** An item that grants Shield Block while held, as its text says (Scale of Igroon). */
+  shieldBlock?: boolean
+  /**
+   * An injury poison applied to this weapon (GM Core p. 249): its affliction, spent by the next
+   * Strike that hits.
+   */
+  poisoned?: { name: string; dc: number; save: string; stages: string[]; maxDuration?: string }
 }
 
 export interface Pf2eItemRunes {
-  /** Weapon or armor potency +0–3. */
+  /** Weapon or armor potency +0–4. */
   potency: number
-  /** Striking 0–3: extra weapon damage dice (striking, greater, major). */
+  /** Striking 0–4: extra weapon damage dice (striking, greater, major, mythic). */
   striking: number
-  /** Resilient +0–3: item bonus to saves. */
+  /** Resilient +0–4: item bonus to saves. */
   resilient: number
   property: Pf2ePropertyRune[]
+  /** A shield's reinforcing rune (GM Core p. 232), by name, with what it adds. */
+  reinforcing?: { id: string; name: string } & NonNullable<Pf2eRuneNumbers['reinforcing']>
 }
 
 export interface Pf2ePropertyRune {
@@ -113,7 +128,13 @@ export interface Pf2ePropertyRune {
   name: string
   level: number
   damage?: Pf2eItemDamage
+  /** Persistent damage on a hit (wounding), a condition the target tracks. */
+  persistent?: Pf2eItemDamage
+  /** Damage against some foes only (vitalizing against undead). */
+  vs?: Pf2eRuneVsDamage[]
   crit?: string
+  /** Keen: a natural 19 that hits is a critical hit (GM Core p. 237). */
+  keen?: boolean
 }
 
 export type CustomItemEffectKind =
@@ -169,6 +190,9 @@ export interface Dnd5eSheet extends SheetCommon {
   speed: string
   profBonus: number
   deathSaves: { successes: number; failures: number }
+  tempHp: number
+  /** Condition names from DND5E_CONDITIONS (the GM can set them from the battle board). */
+  conditions: string[]
   weapons: Dnd5eWeapon[]
   features: NamedEntry[]
 }
@@ -280,6 +304,14 @@ export interface Pf2eSheet extends SheetCommon {
   /** Values of valued conditions in `conditions` (frightened 2); absent means 1. */
   conditionValues?: Record<string, number>
   /**
+   * Saved by the sheet editor for the battle board (`acParts` in utils/pf2ePlay.ts): the AC
+   * modifiers not from conditions or the raised shield, and the conditions effects give.
+   */
+  acParts?: {
+    mods: { value: number; type: 'status' | 'circumstance' | 'item' | 'untyped'; source: string }[]
+    given: Record<string, number>
+  }
+  /**
    * Persistent damage conditions (Player Core p. 445), one per damage type: the dice or
    * amount taken at the end of each turn, and the round of its last assisted recovery.
    */
@@ -358,7 +390,13 @@ export interface Pf2eSheet extends SheetCommon {
     carry?: string[]
     /** A finisher was used this turn: no more attack actions (Player Core 2 p. 163). */
     finisher?: boolean
+    /** The initiative rolled this encounter (one roll, p. 434), kept until it ends. */
+    initiative?: number
+    /** The GM tracker's round whose turn the tracker started for the hero (board turn steps). */
+    trackerRound?: number
   }
+  /** The GM's tracker seat (combatant id) the sheet last joined, as Nimble's `gmCombatant`. */
+  gmCombatant?: string
 }
 
 /** A spell from `data/pf2e`: its AoN id, name and lowest rank (cantrips are rank 1). */
@@ -400,10 +438,15 @@ export interface Pf2eSpellcasting {
 /**
  * An archetype's spellcasting (Player Core p. 215): its own tradition, attribute and rank, the
  * cantrips its dedication grants, and the slots its basic, expert and master spellcasting feats
- * give by level.
+ * give by level. Also holds a class's second track of slots (`label`).
  */
 export interface Pf2eArchetypeCasting extends Pf2eSpellcasting {
   archetype: string
+  /**
+   * The panel's name when this is the class's own second track (an animist's "Apparition
+   * spells", War of Immortals p. 10) rather than an archetype's.
+   */
+  label?: string
 }
 
 /** The choices a Pathfinder 2e hero was built from (Player Core pp. 22–27); ids are AoN ids. */
@@ -428,15 +471,18 @@ export interface Pf2eCreation {
   skills: string[]
   /** Names for the Lore skills a background leaves to the player, in its order ("Desert"). */
   lores?: string[]
-  /** Feat slot (`ancestry`, `class`, `skill`) → feat id. */
+  /** Feat slot (`ancestry`, `class`, `class2` for a bonus class feat, `skill`) → feat id. */
   feats: Record<string, string>
   armor?: string
   shield?: string
   weapons: string[]
   /** Other gear and consumables bought (AoN ids), with how many of each. */
   items?: { id: string; count: number }[]
-  /** Spells picked at creation (AoN ids): cantrips, then 1st-rank spells. */
-  spells?: { cantrips: string[]; rank1: string[] }
+  /**
+   * Spells picked at creation (AoN ids): cantrips, 1st-rank spells, and a wizard's 1st-rank
+   * curriculum spells (Player Core p. 197).
+   */
+  spells?: { cantrips: string[]; rank1: string[]; curriculum?: string[] }
   /** A cleric's divine font when the deity offers both. */
   font?: string
   /** The tradition a draconic bloodline or dragon eidolon leaves to the player. */

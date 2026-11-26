@@ -43,8 +43,13 @@ export interface Pf2eStrikeRule {
   count: number
   /** Strides before the Strike (Sudden Charge: 2). */
   strides: number
-  /** Attacks it counts as for the multiple attack penalty: 2 (Vicious Swing), 0 (Reactive Strike). */
+  /**
+   * Attacks it counts as for the multiple attack penalty: 2 (Vicious Swing), 3 (Overwhelming
+   * Blow), 0 (Reactive Strike).
+   */
   mapCount: number
+  /** It doesn't count when it gets this degree (Exacting Strike's failure, Player Core p. 140). */
+  mapNoneOn?: Pf2eDegreeName
   /** The multiple attack penalty doesn't apply to it. */
   ignoreMap?: boolean
   /** Extra weapon damage dice on a hit, by level (Vicious Swing: 1, 2 at 10th, 3 at 18th). */
@@ -74,6 +79,8 @@ export interface Pf2eCheckRule {
   tiers?: { rank: Pf2eRank; dc: number; bonus: number }[]
   /** Has the attack trait: the multiple attack penalty applies and it counts (p. 418). */
   attack?: boolean
+  /** Attacks it counts as when its text says more than one (Wing Buffet: 2). */
+  mapCount?: number
 }
 
 /** Dice the ability rolls, at a level: `diceAt` gives the expression. */
@@ -289,8 +296,11 @@ export const PF2E_RULE_PATTERNS = {
   timeCost:
     /^(?:You )?(?:spend|spending|take|takes) (1 minute|10 minutes|1 hour|(?:\d+|one|two|several) (?:minutes|hours|days))\b/i,
   strike:
-    /\b(?:[Mm]ake|[Aa]ttempt) (a|an|one|two|three) (?:(melee|ranged|unarmed|weapon|slashing|piercing|bludgeoning)(?: or (?:melee|ranged|unarmed|weapon|slashing|piercing|bludgeoning))? )*(?:weapon )?Strikes?\b|\bStrike (twice|two times)\b/,
-  sameMap: /\beach using your current multiple attack penalty\b/i,
+    /\b(?:[Mm]ake|[Aa]ttempt) (a|an|one|two|three) (?:single )?(?:(melee|ranged|unarmed|weapon|thrown|dynamo|slashing|piercing|bludgeoning)(?: or (?:melee|ranged|unarmed|weapon|thrown|dynamo|slashing|piercing|bludgeoning))? )*(?:weapon )?Strikes?\b|\bStrike (twice|two times)\b/,
+  sameMap:
+    /\beach using your current multiple attack penalty\b|\bthe penalty doesn(?:'|’)t increase until (?:after )?(?:you(?:'|’)ve made |you make )?both\b/i,
+  strikeMay: /\byou can Strike (?:that|the|an?|one)\b/,
+  strikeSeparate: /\broll separate Strikes to attack (two|three) creatures\b/i,
   twoWeapons: /\bone with each of your two (?:melee )?weapons\b/i,
   secondPenalty:
     /\bIf the second Strike is made with a weapon that doesn(?:'|’)t have the agile trait, it takes a [–−-](\d+) penalty/i,
@@ -298,7 +308,10 @@ export const PF2E_RULE_PATTERNS = {
   strideTwice: /\bStride (?:up to )?(twice|two times|three times)\b/,
   strideOnce:
     /\b(?:You |you |then |can )?(Stride|Step)\b(?! (?:up to )?(?:twice|two times|three times))/,
-  mapTwo: /\bcounts? as two attacks when (?:calculating|determining) your multiple attack penalty/i,
+  mapBoth: /\b(Both|All three) attacks count toward your multiple attack penalty\b/i,
+  freeWhen: /[^.]*\bas a free action if\b[^.]*\./,
+  mapCounted:
+    /\bcounts? as (two|three) attacks (?:when (?:calculating|determining)|for(?: the purposes? of (?:calculating|determining)| calculating)?|toward) your multiple attack penalty/i,
   mapNone: /\b(?:doesn't|does not|don't) count toward your multiple attack penalty/i,
   mapIgnored: /\byour multiple attack penalty doesn't apply to this Strike/i,
   extraDie: /\b(?:deal|deals) an extra die of weapon damage/i,
@@ -328,9 +341,11 @@ export const PF2E_RULE_PATTERNS = {
   increaseSteps:
     /increases? to (\d+d\d+) at (\d+)(?:st|nd|rd|th) level((?:,? (?:and )?\d+d\d+ at \d+(?:st|nd|rd|th) level)*)/i,
   perLevels:
-    /^[^.]{0,40}?(?:per|for every|for each) (\d+|two|three|level)(?: levels?)?(?: you have)?\b(?! beyond)/i,
+    /^[^.]{0,40}?(?:per|for every|for each) (\d+|two|three|level)(?: levels?)?(?: you have)?\b(?!(?: you have)? beyond)/i,
   beyondLevel:
-    /(\d+d\d+) (?:for every|for each|per) level (?:you have )?beyond (\d+)(?:st|nd|rd|th)/i,
+    /(\d+d\d+)(?: damage)? (?:for every|for each|per) level (?:you have )?beyond (\d+)(?:st|nd|rd|th)/i,
+  scalingDice: /^\s*(?:for every|for each|per) (?:\d+ |two |three |four )?levels?\b/i,
+  damageIs: /\bThe damage is (\d+d\d+)(?=, plus \d+d\d+ (?:damage )?(?:for every|for each|per) )/g,
   tempHp:
     /\b(?:gain|gains|gaining|grant you|get) (?:a number of )?temporary Hit Points equal to (your level plus your Constitution modifier|your level|half your level|your Constitution modifier|double your level|twice your level|three times your level)/i,
   tempHpFixed: /\b(?:gain|gains|gaining|get) (\d+) temporary Hit Points/i,
@@ -382,7 +397,7 @@ export const PF2E_RULE_PATTERNS = {
   levelHeading: /^#{1,4} [^\n]*?Level (\d+)\s*$/gm,
   labelledOption: /^(?:[-•]\s*)?\*\*[^*]+\*\*/,
   youAndAllies: /\byou and (?:all |your |each |any )*(?:allies|ally)\b/i,
-  embeddedHeading: /^#{1,4} ([^\n]+?) ([◆↺◇]+(?: to [◆↺◇]+)?)\s*$/gm,
+  embeddedHeading: /^#{1,4} ([^\n]+?) ([◆↺◇]+(?: (?:to|or) [◆↺◇]+)?)\s*$/gm,
   embeddedBold:
     /^\s*\*\*\s*(?:(?:Activate|Transcendence)\s*[—–-]\s*)?([^*\n]+?)\s*\*\*\s*(?:[—–-]\s*([^◆↺◇(*\n]+?)\s*)?([◆↺◇]+)\s*(\([^)\n]*\))?([^\n]*)$/gm,
 }
@@ -418,6 +433,12 @@ export function readCost(a: Pf2eActionCost | undefined): Pf2eCost | undefined {
   if (typeof a === 'number') return { kind: 'actions', min: a, max: a }
   const v = a.trim().toLowerCase()
   if (v === 'reaction' || v.startsWith('↺') || v.startsWith('reaction')) return { kind: 'reaction' }
+  // "free or 1", "◇ or ◆" (Devise a Stratagem): free only in a case its text names, so 1 action.
+  const freeOr = /^(?:free|◇) or (\d|◆+)$/.exec(v)
+  if (freeOr) {
+    const n = /\d/.test(freeOr[1]!) ? Number(freeOr[1]) : freeOr[1]!.length
+    return { kind: 'actions', min: n, max: n }
+  }
   if (v === 'free' || v === '◇' || v.startsWith('free')) return { kind: 'free' }
   const glyphs = [...v.matchAll(/◆+/g)].map((m) => m[0].length)
   if (glyphs.length) return { kind: 'actions', min: glyphs[0]!, max: glyphs.at(-1)! }
@@ -636,9 +657,19 @@ function readDice(text: string, heal: boolean): Pf2eDiceRule[] {
   const re = heal ? P.healing : P.damage
   re.lastIndex = 0
   const out: Pf2eDiceRule[] = []
-  for (const m of text.matchAll(re)) {
+  // "The damage is 4d6, plus 1d6 for every level…" (Enervating Wail): damage named before it.
+  const found = [...text.matchAll(re), ...(heal ? [] : text.matchAll(P.damageIs))].sort(
+    (a, b) => (a.index ?? 0) - (b.index ?? 0),
+  )
+  const seen = new Set<number>()
+  for (const m of found) {
     const index = m.index ?? 0
+    const at = index + m[0].indexOf(m[1]!)
+    if (seen.has(at)) continue
+    seen.add(at)
     const after = text.slice(index + m[0].length)
+    // "plus 1d6 damage for every level you have beyond 6th" is the scaling, not more damage.
+    if (/\bplus\s*$/.test(text.slice(0, index)) && P.scalingDice.test(after)) continue
     // Dice for durations ("for 1d4 rounds") aren't damage.
     const rule: Pf2eDiceRule = { dice: m[1]!.replace(/\s+/g, '') }
     if (!heal) {
@@ -814,7 +845,11 @@ function readCheck(text: string, traits: string[]): Pf2eCheckRule | undefined {
     const fixed = P.fixedDc.exec(sentence)
     if (fixed) rule.dc = Number(fixed[1])
   }
-  if (traits.some((t) => t.toLowerCase() === 'attack')) rule.attack = true
+  if (traits.some((t) => t.toLowerCase() === 'attack')) {
+    rule.attack = true
+    const counted = P.mapCounted.exec(text)
+    if (counted) rule.mapCount = num(counted[1]!)
+  }
   if (P.sameDcAsTreatWounds.test(text)) rule.tiers = TREAT_WOUNDS_TIERS
   return rule
 }
@@ -838,18 +873,37 @@ function readTiers(raw: string): Pf2eCheckRule['tiers'] {
 }
 
 function readStrike(text: string): Pf2eStrikeRule | undefined {
-  const m = P.strike.exec(text)
+  // "you can Strike that enemy" (Hammer Quake); "roll separate Strikes to attack two
+  // creatures" (Spell Swipe, which Spellstrikes in melee).
+  const separate = P.strikeSeparate.exec(text)
+  const m = P.strike.exec(text) ?? P.strikeMay.exec(text) ?? separate
   if (!m) return undefined
-  const kinds = m[0].toLowerCase()
-  const count = m[3] ? 2 : m[1] ? num(m[1]) : 1
+  const kinds = (separate ? 'melee' : m[0]).toLowerCase()
+  const count = separate ? num(separate[1]!) : m[3] ? 2 : m[1] ? num(m[1]) : 1
   const before = text.slice(0, m.index)
   const twice = P.strideTwice.exec(before)
   const strides = twice ? num(twice[1]!) : P.strideOnce.test(before) ? 1 : 0
+  const counted = P.mapCounted.exec(text)
+  // "Both attacks count toward your multiple attack penalty" (Slam Down: a Strike and a Trip).
+  const both = P.mapBoth.exec(text)
+  // "**Failure** This attack does not count toward your multiple attack penalty" (Exacting
+  // Strike): only that degree's attack is left out.
+  const none = P.mapNone.exec(text)
+  const noneOn = none ? degreeAt(text, none.index) : undefined
   const rule: Pf2eStrikeRule = {
     count,
     strides,
-    mapCount: P.mapTwo.test(text) ? 2 : P.mapNone.test(text) ? 0 : count,
+    mapCount: counted
+      ? num(counted[1]!)
+      : both
+        ? both[1]!.toLowerCase() === 'both'
+          ? 2
+          : 3
+        : none && !noneOn
+          ? 0
+          : count,
   }
+  if (noneOn) rule.mapNoneOn = noneOn
   if (/melee/.test(kinds) && !/ranged/.test(kinds)) rule.melee = true
   if (/ranged/.test(kinds) && !/melee/.test(kinds)) rule.ranged = true
   if (/unarmed/.test(kinds) && !/melee|ranged|weapon/.test(kinds)) rule.unarmed = true
@@ -1044,7 +1098,11 @@ export function readAbility(input: Pf2eAbilityInput): Pf2eAbilityRules {
     embedded: inner.map((e) => ({ ...readAbility(e), body: e.text })),
   }
   if (cost) rules.cost = cost
-  const costNote = input.cost ?? field(P.costField, text)
+  const freeWhen =
+    typeof input.actions === 'string' && /^(?:free|◇) or/i.test(input.actions)
+      ? P.freeWhen.exec(text)?.[0]
+      : undefined
+  const costNote = input.cost ?? field(P.costField, text) ?? freeWhen
   if (costNote) rules.costNote = costNote
   if (input.usage) rules.usage = input.usage
   if (frequency) rules.frequency = frequency
@@ -1087,7 +1145,7 @@ export function usedAction(text: string, known: Iterable<string>): string | unde
   for (const name of known) {
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const m = new RegExp(
-      `(?:\\b(?:[Yy]ou can|[Yy]ou may|[Tt]hen|[Aa]ttempt to|and|or)\\s+|(?:^|[.!:]\\s+)(?:[Yy]ou\\s+)?)${esc}\\b`,
+      `(?:\\b(?:[Yy]ou can|[Yy]ou may|[Tt]hen|[Aa]ttempt to|and|or)\\s+|(?:^|[.!:]\\s+)(?:[Yy]ou\\s+)?)${esc}\\b(?!\\s+while\\b)`,
     ).exec(own)
     if (m && (!best || (m.index ?? 0) < best.at)) best = { name, at: m.index ?? 0 }
   }

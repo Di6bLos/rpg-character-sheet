@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { Pf2eAttr, Pf2eRank, Pf2eSheet } from '~/types/sheets'
+import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
 import { rollCheck, showOutcome, sign } from '~/utils/dice'
 import {
   type Pf2eStatContext,
   SAVE_ATTR,
+  acNow as acAfter,
   adjusted,
   degreeOf,
   heal,
@@ -13,19 +14,16 @@ import {
   takeDamage,
 } from '~/utils/pf2ePlay'
 import { shiftedDegree, speedNow } from '~/utils/pf2eEffects'
+import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
 
 const { draft, canEdit, hpPct, xpPct, xpLabel, say } = useSheet<Pf2eSheet>()
+// The GM's HP and condition changes from the battle board.
+useHeroHpChanges()
+useHeroConditionChanges()
 /** Results show in the panel that made them; anything else in Defenses, beside HP. */
 const { claim, resultIn, unclaimed } = useResultOwner()
 const sheet = computed(() => draft.value.sheet)
 
-const RANK_NAME: Record<Pf2eRank, string> = {
-  U: 'Untrained',
-  T: 'Trained',
-  E: 'Expert',
-  M: 'Master',
-  L: 'Legendary',
-}
 const ATTR_NAME: Record<Pf2eAttr, string> = {
   STR: 'Strength',
   DEX: 'Dexterity',
@@ -66,8 +64,8 @@ function stepHp(by: number) {
   if (sheet.value.dying !== dyingBefore) say(message)
 }
 
-/** AC after conditions (off-guard, clumsy, frightened…). */
-const acNow = computed(() => adjusted(sheet.value, ac.value, { kind: 'ac' }))
+/** AC after conditions (off-guard, clumsy, frightened…), a raised shield; petrified is 9. */
+const acNow = computed(() => acAfter(sheet.value))
 
 const saveContext = (label: string): Pf2eStatContext =>
   label === 'Perception'
@@ -262,7 +260,7 @@ function setFocus(n: number) {
           >
             {{ acNow.value }}
           </div>
-          <div class="caps" style="font-size: 11px">AC · {{ RANK_NAME[sheet.acRank] }}</div>
+          <div class="caps" style="font-size: 11px">AC · {{ PF2E_RANK_NAME[sheet.acRank] }}</div>
         </div>
         <div v-if="hasShield" class="tile shield">
           <div class="shield__head">
@@ -320,7 +318,7 @@ function setFocus(n: number) {
         <div v-for="x in saves" :key="x.label" class="tile" style="gap: 6px; padding: 12px">
           <div class="save__head">
             <span class="tile__label">{{ x.label }}</span>
-            <span class="rank" :class="`rank--${x.rank}`" :title="RANK_NAME[x.rank]">{{
+            <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
               x.rank
             }}</span>
           </div>
@@ -423,7 +421,7 @@ function setFocus(n: number) {
           :aria-label="`Roll ${x.name} ${sign(x.now.value)}`"
           @click="claim('skills:check', () => check(x.name, x.now.value))"
         >
-          <span class="rank" :class="`rank--${x.rank}`" :title="RANK_NAME[x.rank]">{{
+          <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
             x.rank
           }}</span>
           <span class="skill__name"
@@ -543,6 +541,26 @@ function setFocus(n: number) {
             <td>
               <div class="row" style="gap: 6px">
                 <span v-for="t in w.traits" :key="t" class="trait">{{ t }}</span>
+                <button
+                  v-if="w.twoHandDie"
+                  type="button"
+                  class="chip grip"
+                  :aria-pressed="w.twoHands"
+                  :title="`Two-hand: d${w.twoHandDie} damage dice while held in two hands`"
+                  @click="strikesApi.toggleTwoHands(w.index)"
+                >
+                  Two hands
+                </button>
+                <button
+                  v-if="w.versatile"
+                  type="button"
+                  class="chip grip"
+                  :aria-pressed="w.versatileOn"
+                  :title="`Versatile: deal ${w.versatile.toLowerCase()} damage instead`"
+                  @click="strikesApi.toggleVersatile(w.index)"
+                >
+                  {{ w.versatile }}
+                </button>
               </div>
             </td>
           </tr>
@@ -964,6 +982,12 @@ function setFocus(n: number) {
   padding: 0 12px;
   border-radius: min(var(--radius-control), 8px);
   font-size: 14px;
+}
+
+.grip {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .trait {

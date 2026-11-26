@@ -37,9 +37,11 @@ const DEGREES: Pf2eDegree[] = ['critical failure', 'failure', 'success', 'critic
 /**
  * Degree of success (Player Core p. 401): beat the DC by 10 for a critical success, miss it
  * by 10 for a critical failure; a natural 20 is one degree better, a natural 1 one worse.
+ * `keen`: a Strike with a keen rune is a critical hit on a natural 19 that hits (GM Core p. 237).
  */
-export function degreeOf(total: number, natural: number, dc: number): Pf2eDegree {
+export function degreeOf(total: number, natural: number, dc: number, keen = false): Pf2eDegree {
   let i = total >= dc + 10 ? 3 : total >= dc ? 2 : total <= dc - 10 ? 0 : 1
+  if (keen && natural === 19 && i === 2) i = 3
   if (natural === 20) i = Math.min(3, i + 1)
   if (natural === 1) i = Math.max(0, i - 1)
   return DEGREES[i]!
@@ -114,6 +116,8 @@ export interface Pf2eConditionDef {
   effect: string
   /** Other conditions it gives (prone → off-guard). */
   gives?: string[]
+  /** How aware others are of you (observed, hidden, undetected, unnoticed; p. 444). */
+  awareness?: boolean
 }
 
 /** The conditions the sheet tracks, with their effect in a line (Player Core pp. 442–447). */
@@ -125,6 +129,10 @@ export const PF2E_CONDITION_DEFS: Pf2eConditionDef[] = [
     effect: '−X status to DEX-based rolls and DCs, including AC and Reflex',
   },
   { name: 'Concealed', effect: 'Attackers need a DC 5 flat check' },
+  {
+    name: 'Controlled',
+    effect: "Can't act on your own: the controller dictates your actions, reactions included",
+  },
   {
     name: 'Confused',
     effect: 'Off-guard; no allies, no reactions; must attack',
@@ -152,11 +160,20 @@ export const PF2E_CONDITION_DEFS: Pf2eConditionDef[] = [
     effect: '−X status to all checks and DCs; drops by 1 at the end of your turn',
   },
   { name: 'Grabbed', effect: 'Off-guard and immobilized', gives: ['Off-guard', 'Immobilized'] },
-  { name: 'Hidden', effect: 'Attackers need a DC 11 flat check' },
+  { name: 'Hidden', effect: 'Attackers need a DC 11 flat check', awareness: true },
   { name: 'Immobilized', effect: "Can't use move actions" },
   { name: 'Invisible', effect: 'Undetected to everyone' },
+  {
+    name: 'Observed',
+    effect: 'In plain view: the default, no flat check to target you',
+    awareness: true,
+  },
   { name: 'Off-guard', effect: '−2 circumstance to AC' },
   { name: 'Paralyzed', effect: "Off-guard; can't act", gives: ['Off-guard'] },
+  {
+    name: 'Petrified',
+    effect: "Can't act or sense anything; an object with AC 9 and Hardness 8, saves as an object",
+  },
   { name: 'Prone', effect: 'Off-guard; −2 circumstance to attack rolls', gives: ['Off-guard'] },
   { name: 'Quickened', effect: '1 extra action at the start of your turn' },
   {
@@ -181,15 +198,30 @@ export const PF2E_CONDITION_DEFS: Pf2eConditionDef[] = [
     effect: '−4 status to AC, Perception and Reflex; blinded and off-guard',
     gives: ['Blinded', 'Off-guard'],
   },
+  {
+    name: 'Undetected',
+    effect: "Can't be seen or targeted: attackers guess your square, DC 11 flat check",
+    awareness: true,
+  },
+  {
+    name: 'Unnoticed',
+    effect: 'No one knows you are there; undetected too',
+    gives: ['Undetected'],
+    awareness: true,
+  },
 ]
 const DEF = new Map(PF2E_CONDITION_DEFS.map((d) => [d.name, d]))
 
+/** The conditions with those they give (prone → off-guard). */
+function withGiven(own: Iterable<string>) {
+  const out = new Set(own)
+  for (const c of out) for (const g of DEF.get(c)?.gives ?? []) out.add(g)
+  return out
+}
+
 /** Active conditions, those another condition gives included (prone → off-guard). */
 export function activeConditions(s: Pf2eSheet) {
-  const own = [...s.conditions, ...effectConditions(s).keys()]
-  const out = new Set(own)
-  for (const c of own) for (const g of DEF.get(c)?.gives ?? []) out.add(g)
-  return out
+  return withGiven([...s.conditions, ...effectConditions(s).keys()])
 }
 
 /** A condition's value: the hero's own, or what an effect gives (Enlarge: clumsy 1), whichever is higher. */
@@ -201,7 +233,10 @@ export const conditionValue = (s: Pf2eSheet, name: string) =>
 
 /** The penalties conditions put on one number. */
 export function conditionMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
-  const on = activeConditions(s)
+  return modsOf(activeConditions(s), (name) => conditionValue(s, name), ctx)
+}
+
+function modsOf(on: Set<string>, valueOf: (name: string) => number, ctx: Pf2eStatContext) {
   const mods: Pf2eMod[] = []
   const status = (name: string, value: number) =>
     value &&
@@ -212,20 +247,19 @@ export function conditionMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
     })
   const isCheckOrDc = ctx.kind !== 'damage'
   if (isCheckOrDc) {
-    status('Frightened', conditionValue(s, 'Frightened'))
-    status('Sickened', conditionValue(s, 'Sickened'))
+    status('Frightened', valueOf('Frightened'))
+    status('Sickened', valueOf('Sickened'))
   }
   // Encumbered makes you clumsy 1 (p. 443); the higher value applies.
   if (ctx.attr === 'DEX' || ctx.kind === 'ac' || ctx.save === 'Reflex') {
-    const clumsy = conditionValue(s, 'Clumsy')
+    const clumsy = valueOf('Clumsy')
     if (clumsy) status('Clumsy', clumsy)
     else if (on.has('Encumbered')) status('Encumbered (clumsy 1)', 1)
   }
-  if (ctx.attr === 'STR') status('Enfeebled', conditionValue(s, 'Enfeebled'))
-  if (ctx.attr === 'CON' || ctx.save === 'Fortitude')
-    status('Drained', conditionValue(s, 'Drained'))
+  if (ctx.attr === 'STR') status('Enfeebled', valueOf('Enfeebled'))
+  if (ctx.attr === 'CON' || ctx.save === 'Fortitude') status('Drained', valueOf('Drained'))
   if (ctx.attr === 'INT' || ctx.attr === 'WIS' || ctx.attr === 'CHA' || ctx.save === 'Will')
-    if (isCheckOrDc) status('Stupefied', conditionValue(s, 'Stupefied'))
+    if (isCheckOrDc) status('Stupefied', valueOf('Stupefied'))
   if (on.has('Fatigued') && (ctx.kind === 'ac' || ctx.kind === 'save')) status('Fatigued', 1)
   if (on.has('Fascinated') && (ctx.kind === 'perception' || ctx.kind === 'skill'))
     status('Fascinated', 2)
@@ -241,12 +275,16 @@ export function conditionMods(s: Pf2eSheet, ctx: Pf2eStatContext): Pf2eMod[] {
   return mods
 }
 
-/** A number after conditions, active effects and runes, with what changed it for its tooltip. */
-export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext) {
+/**
+ * A number after conditions, active effects and runes, with what changed it for its tooltip.
+ * `extra` are the roll's own modifiers, stacked with the rest (a bomb's item bonus).
+ */
+export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext, extra: Pf2eMod[] = []) {
   const { total, applied } = stackMods([
     ...conditionMods(s, ctx),
     ...effectMods(s, ctx),
     ...runeMods(s, ctx.kind, ctx.weapon),
+    ...extra,
   ])
   return {
     value: base + total,
@@ -255,6 +293,84 @@ export function adjusted(s: Pf2eSheet, base: number, ctx: Pf2eStatContext) {
       .map((m) => `${m.value > 0 ? '+' : '−'}${Math.abs(m.value)} ${m.source}`)
       .join(', '),
   }
+}
+
+/** A petrified hero is an object with AC 9 (Player Core p. 445). */
+const PETRIFIED_AC = 9
+
+/** The raised shield's modifier's source in `effectMods`. */
+const RAISED_SHIELD = 'Raised shield'
+
+/**
+ * AC now (p. 274, pp. 442–447): the sheet's AC after conditions, active effects, runes and a
+ * raised, unbroken shield's own bonus; a petrified hero's is the object's 9.
+ */
+export function acNow(s: Pf2eSheet): { value: number; changed: boolean; note: string } {
+  if (activeConditions(s).has('Petrified'))
+    return { value: PETRIFIED_AC, changed: s.ac !== PETRIFIED_AC, note: 'Petrified: an object' }
+  return adjusted(s, s.ac, { kind: 'ac' })
+}
+
+/**
+ * What the battle board needs to work out `acNow` from the roster when only conditions and
+ * the shield change there (the GM's condition picker, a closed sheet): the AC modifiers that
+ * aren't from conditions or the raised shield, and the conditions effects give (Enlarge's
+ * clumsy 1). The sheet editor keeps it on the sheet as `acParts`.
+ */
+export type Pf2eAcParts = NonNullable<Pf2eSheet['acParts']>
+
+export function acParts(s: Pf2eSheet): Pf2eAcParts {
+  return {
+    mods: [
+      ...effectMods(s, { kind: 'ac' }).filter((m) => m.source !== RAISED_SHIELD),
+      ...runeMods(s, 'ac'),
+    ],
+    given: Object.fromEntries(effectConditions(s)),
+  }
+}
+
+/** The fields of a roster summary or hero card that `acFromParts` reads. */
+export interface Pf2eAcSource {
+  ac?: number
+  acParts?: Pf2eAcParts
+  conditions?: string[]
+  conditionValues?: Record<string, number>
+  shield?: Partial<Pf2eSheet['shield']> | null
+}
+
+/**
+ * `acNow` from a roster summary or hero card: the saved `acParts` with the conditions and the
+ * shield as they are now, stacked as the sheet stacks them. Without `acParts` (a sheet not
+ * opened since) the effects' part is missing; conditions and the shield still count.
+ */
+export function acFromParts(src: Pf2eAcSource): number | undefined {
+  if (typeof src.ac !== 'number') return undefined
+  const given = src.acParts?.given ?? {}
+  const own = src.conditions ?? []
+  const on = withGiven([...own, ...Object.keys(given)])
+  if (on.has('Petrified')) return PETRIFIED_AC
+  const value = (name: string) =>
+    Math.max(
+      own.includes(name) ? Math.max(1, src.conditionValues?.[name] ?? 1) : 0,
+      given[name] ?? 0,
+    )
+  const shield = { name: '', hardness: 0, hp: 0, hpMax: 0, bt: 0, raised: false, ...src.shield }
+  const raised = raisedShieldBonus({ shield } as Pf2eSheet)
+  const { total } = stackMods([
+    ...modsOf(on, value, { kind: 'ac' }),
+    ...(src.acParts?.mods ?? []),
+    ...(raised ? [{ value: raised, type: 'circumstance' as const, source: RAISED_SHIELD }] : []),
+  ])
+  return src.ac + total
+}
+
+/**
+ * The Initiative modifier (p. 436): Perception after conditions and initiative bonuses
+ * (Incredible Initiative), as the sheet's turn tracker and the battle board roll it.
+ */
+export function initiativeCheck(s: Pf2eSheet) {
+  const p = s.saves.find((x) => x.label === 'Perception')
+  return adjusted(s, p?.value ?? 0, { kind: 'perception', attr: 'WIS', initiative: true })
 }
 
 /** The attribute behind a skill, save or the class DC. */
@@ -339,11 +455,37 @@ function afterDefenses(s: Pf2eSheet, parts: Pf2eDamagePart[]) {
   return { total, notes, type: types.length === 1 ? `${types[0]} ` : '' }
 }
 
+/** The damage Shield Block can be used against (Player Core p. 262). */
+const BLOCKABLE = ['bludgeoning', 'piercing', 'slashing']
+
+/** Whether the hero has Shield Block: the feat (or the class feature), or a shield granting it. */
+export const hasShieldBlock = (s: Pf2eSheet) =>
+  s.feats.some((f) => f.name.trim().toLowerCase() === 'shield block') ||
+  s.inventory.some((i) => i.pf2e?.shieldBlock && i.pf2e.carry === 'held')
+
 /**
- * Take damage (p. 410): Shield Block first, then temp HP, then HP. At 0 HP you're knocked
- * out with dying 1 (2 on a crit) plus your wounded value; damage while dying raises it by 1
- * (2 on a crit). One blow of at least double your max HP kills outright (massive damage,
- * p. 412); it's counted after Shield Block, as that's the damage the hero takes.
+ * Why the hero can't Shield Block this damage, or '' (Player Core p. 262): the feat or a shield
+ * that grants it, a raised shield that isn't broken, physical damage from an attack
+ * (bludgeoning, piercing or slashing; untyped damage is taken to be), and the reaction unspent.
+ */
+export function shieldBlockProblem(s: Pf2eSheet, types: (string | undefined)[] = []) {
+  if (!s.shield.name) return 'No shield.'
+  if (!s.shield.raised) return 'Raise your shield first.'
+  if (shieldBroken(s)) return 'Your shield is broken.'
+  if (!hasShieldBlock(s)) return 'You need the Shield Block feat.'
+  const typed = types.filter(Boolean).map((t) => t!.toLowerCase())
+  if (typed.length && !typed.some((t) => BLOCKABLE.includes(t)))
+    return 'Shield Block works against physical damage (bludgeoning, piercing or slashing).'
+  if (s.turn && !s.turn.reaction) return 'Your reaction is spent.'
+  return ''
+}
+
+/**
+ * Take damage (p. 410): Shield Block first (it spends the reaction), then temp HP, then HP.
+ * At 0 HP you're knocked out with dying 1 (2 on a crit) plus your wounded value; damage while
+ * dying takes temp HP first and raises dying by 1 (2 on a crit) only if some gets through.
+ * One blow of at least double your max HP kills outright (massive damage, p. 412); it's
+ * counted after Shield Block, as that's the damage the hero takes.
  */
 export function takeDamage(
   s: Pf2eSheet,
@@ -354,12 +496,28 @@ export function takeDamage(
   const typed = Array.isArray(amount) || o.type !== undefined || !!o.spell
   const parts: Pf2eDamagePart[] = Array.isArray(amount)
     ? amount
-    : [{ amount, ...(o.type ? { type: o.type } : {}), spell: o.spell, persistent: o.persistent }]
+    : [
+        {
+          amount,
+          ...(o.type ? { type: o.type } : {}),
+          spell: o.spell,
+          ...(o.tradition ? { tradition: o.tradition } : {}),
+          persistent: o.persistent,
+        },
+      ]
   const defended = typed ? afterDefenses(s, parts) : undefined
   let left = defended?.total ?? Math.max(0, Math.floor(parts[0]?.amount ?? 0))
   const kind = defended?.type ?? ''
   const notes: string[] = [...(defended?.notes ?? [])]
-  if (o.shieldBlock && s.shield.name && !shieldBroken(s)) {
+  const blockProblem = o.shieldBlock
+    ? shieldBlockProblem(
+        s,
+        parts.map((p) => p.type),
+      )
+    : ''
+  if (blockProblem) notes.push(`No Shield Block: ${blockProblem}`)
+  else if (o.shieldBlock) {
+    if (s.turn) s.turn.reaction = false
     const prevented = Math.min(left, s.shield.hardness)
     left -= prevented
     s.shield.hp = Math.max(0, s.shield.hp - left)
@@ -377,6 +535,10 @@ export function takeDamage(
     return [...notes, `${took} massive damage, your hero dies instantly.`].join(' ')
   }
   if (s.hp === 0 && s.dying > 0) {
+    const absorbed = Math.min(s.tempHp, left)
+    s.tempHp -= absorbed
+    left -= absorbed
+    if (absorbed) notes.push(`Temporary HP took ${absorbed}.`)
     if (left === 0) return notes.join(' ')
     return `${notes.join(' ')}${worsen(s, o.crit ? 2 : 1)}`.trim()
   }

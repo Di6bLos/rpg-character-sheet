@@ -2,6 +2,7 @@
 // `data/pf2e/`: what a level 1 hero has to choose, what is still missing, and the sheet the
 // choices make. Level-ups are `utils/pf2eLevelUp.ts`.
 import type { Pf2eData } from '~/data/pf2e'
+import { SUBCLASS_GRANTS } from '~/data/pf2e/subclassGrants'
 import type {
   Pf2eActionCost,
   Pf2eAncestryDef,
@@ -24,6 +25,7 @@ import type {
   Pf2eFeat,
   Pf2eRank,
   Pf2eSheet,
+  Pf2eSpellRef,
   Pf2eStrike,
 } from '~/types/sheets'
 import { itemFromDef } from '~/utils/pf2eInventory'
@@ -151,6 +153,18 @@ export function emptyCreation(): Pf2eCreation {
   }
 }
 
+/** What a subclass option grants that the data leaves out (a druidic order's skill, feat, spell). */
+export const subclassGrants = (o: Pf2eSubclassOption) => SUBCLASS_GRANTS[`${o.kind}:${o.name}`]
+
+/** A subclass option with the skills `subclassGrants` adds, and no `gap` once they cover it. */
+export function withGrants(o: Pf2eSubclassOption): Pf2eSubclassOption {
+  const g = subclassGrants(o)
+  if (!g) return o
+  const out = { ...o, skills: [...new Set([...o.skills, ...g.skills])] }
+  delete out.gap
+  return out
+}
+
 /** What the choices point at, looked up once. */
 export function resolve(c: Pf2eCreation, data: Pf2eBuildData) {
   const cls = byId(data.classes, c.class)
@@ -162,8 +176,18 @@ export function resolve(c: Pf2eCreation, data: Pf2eBuildData) {
     cls,
     deity: byId(data.deities, c.deity),
     /** Every subclass option picked (a racket, a doctrine, three ikons…). */
-    subclassPicks: cls?.subclasses.filter((s) => ids.includes(s.id)) ?? [],
+    subclassPicks: cls?.subclasses.filter((s) => ids.includes(s.id)).map(withGrants) ?? [],
   }
+}
+
+/** The feats the 1st-level choices grant (a druidic order's order feat, Player Core p. 125). */
+export function grantedFeats(c: Pf2eCreation, data: Pf2eBuildData): Pf2eFeatDef[] {
+  const { cls, subclassPicks } = resolve(c, data)
+  if (!cls) return []
+  return subclassPicks
+    .flatMap((o) => subclassGrants(o)?.feats ?? [])
+    .map((name) => data.feats.find((f) => f.name === name && f.classes.includes(cls.name)))
+    .filter(present)
 }
 
 // --- Attribute boosts ---------------------------------------------------------
@@ -460,7 +484,7 @@ export function subclassChoices(cls: Pf2eClassDef): Pf2eSubclassChoice[] {
     .map((k) => ({
       key: k,
       label: shortKind(cls, k).replace(/^\w/, (x) => x.toUpperCase()),
-      options: cls.subclasses.filter((s) => s.kind === k),
+      options: cls.subclasses.filter((s) => s.kind === k).map(withGrants),
       count: { min: 1, max: 1 },
     }))
   const extra = (rules.choices ?? []).map(({ kinds: ks, maxLevel, ...rest }) => ({
@@ -533,7 +557,8 @@ export function wantsDeity(c: Pf2eCreation, data: Pf2eBuildData) {
 export const deityOptions = (data: Pf2eBuildData) =>
   data.deities.filter((d) => d.divineFont.length > 0)
 
-export type Pf2eFeatSlot = 'ancestry' | 'class' | 'skill'
+/** `class2`: a 1st-level choice's bonus class feat (`bonusClassFeat`). */
+export type Pf2eFeatSlot = 'ancestry' | 'class' | 'class2' | 'skill'
 
 /**
  * A class whose 1st-level class feat is a special kind names it on the table: the summoner's
@@ -548,11 +573,35 @@ export function classFeatTrait(cls?: Pf2eClassDef) {
   return undefined
 }
 
-/** Feats chosen at 1st level: always an ancestry feat, plus what the class table lists. */
-export function featSlots(cls?: Pf2eClassDef): Pf2eFeatSlot[] {
+/**
+ * A 1st-level choice's bonus class feat, with the trait it needs: "You gain a bonus 1st-level
+ * barbarian feat" (the fury instinct, Player Core 2 p. 75), "an additional 1st-level wizard
+ * class feat" (the school of unified magical theory, Player Core p. 200), "one 1st-level
+ * spellshape wizard feat of your choice" (Experimental Spellshaping, p. 195).
+ */
+export function bonusClassFeat(cls?: Pf2eClassDef, picks: Pf2eSubclassOption[] = []) {
+  if (!cls) return null
+  const name = norm(cls.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(
+    `\\byou gain (?:a bonus|an additional|one) 1st-level (?:(\\w+) )?${name} (?:class )?feat\\b`,
+    'i',
+  )
+  for (const p of picks) {
+    const m = re.exec(levelOneText(p.text))
+    if (m) return { from: p.name, trait: m[1]?.replace(/^\w/, (x) => x.toUpperCase()) }
+  }
+  return null
+}
+
+/**
+ * Feats chosen at 1st level: always an ancestry feat, plus what the class table lists, plus a
+ * 1st-level choice's bonus class feat.
+ */
+export function featSlots(cls?: Pf2eClassDef, picks: Pf2eSubclassOption[] = []): Pf2eFeatSlot[] {
   const l1 = norm(levelOneFeatures(cls).join(', '))
   const slots: Pf2eFeatSlot[] = ['ancestry']
   if (cls && (l1.includes(`${norm(cls.name)} feat`) || classFeatTrait(cls))) slots.push('class')
+  if (bonusClassFeat(cls, picks)) slots.push('class2')
   if (l1.includes('skill feat')) slots.push('skill')
   return slots
 }
@@ -571,16 +620,28 @@ export function heritageFeatLists(h?: Pf2eHeritageDef) {
   return [...new Set([h.name, ...words])]
 }
 
-/** 1st-level feats for a slot; prerequisites are shown, not checked. */
+/**
+ * 1st-level feats for a slot; prerequisites are shown, not checked. A class slot leaves out the
+ * feat the other class slot holds and the ones a choice grants (an order feat).
+ */
 export function featOptions(slot: Pf2eFeatSlot, c: Pf2eCreation, data: Pf2eBuildData) {
-  const { ancestry, heritage, cls } = resolve(c, data)
+  const { ancestry, heritage, cls, subclassPicks } = resolve(c, data)
   const lists = [ancestry?.name, ...heritageFeatLists(heritage)].filter(Boolean)
-  const trait = classFeatTrait(cls)
+  const trait = slot === 'class2' ? bonusClassFeat(cls, subclassPicks)?.trait : classFeatTrait(cls)
+  const taken = new Set([
+    ...grantedFeats(c, data).map((f) => f.id),
+    ...(slot === 'class' ? [c.feats.class2] : slot === 'class2' ? [c.feats.class] : []),
+  ])
   return data.feats.filter((f) => {
     if (f.level !== 1) return false
     if (slot === 'ancestry') return f.ancestries.some((a) => lists.includes(a))
-    if (slot === 'class')
-      return !!cls && f.classes.includes(cls.name) && (!trait || f.traits.includes(trait))
+    if (slot === 'class' || slot === 'class2')
+      return (
+        !!cls &&
+        f.classes.includes(cls.name) &&
+        (!trait || f.traits.includes(trait)) &&
+        !taken.has(f.id)
+      )
     return f.skill
   })
 }
@@ -775,17 +836,155 @@ export function spellAttribute(c: Pf2eCreation, data: Pf2eBuildData): Pf2eAttr {
   return said ?? c.keyAttribute
 }
 
+const NUMBER_WORD: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+}
+const countWord = (w: string) => NUMBER_WORD[w.toLowerCase()] ?? Number(w)
+
+/**
+ * The spells a caster knows at 1st level when its text says more than the slots: a spellbook of
+ * "your choice of 10 arcane cantrips and five 1st-rank arcane spells" (wizard, Player Core
+ * p. 197; a magus's eight and five, Impossible Magic p. 11), a familiar that "starts off knowing
+ * 10 cantrips, five 1st-rank spells" (witch, Player Core p. 178), a dirge of "eight occult
+ * cantrips, the 1st-rank spell harm, and four other 1st-rank occult spells" (necromancer,
+ * Impossible Magic p. 31), or a repertoire's "two 1st-rank spells of your choice and four
+ * cantrips of your choice" (sorcerer, Player Core 2 p. 144). `named`: spells the text adds by
+ * name (the dirge's harm). Null when the text says none.
+ */
+export function knownAtFirst(cls: Pf2eClassDef) {
+  const text = plain(
+    cls.features
+      .filter((f) => f.level === 1)
+      .map((f) => f.text)
+      .join(' '),
+  )
+  const book =
+    /(?:spellbook contains your choice of|familiar starts off knowing|dirge contains your choice of) (\w+) (?:\w+ )?cantrips(?:,| and) (?:the 1st-rank spell ([^,]+), and )?(\w+) (?:other )?1st-rank/i.exec(
+      text,
+    )
+  if (book)
+    return {
+      cantrips: countWord(book[1]!),
+      rank1: countWord(book[3]!),
+      named: book[2] ? [book[2]] : [],
+    }
+  const learn =
+    /At 1st level, you learn (\w+) 1st-rank (?:\w+ )?spells? of your choice and (\w+) (?:\w+ )?cantrips? of your choice/i.exec(
+      text,
+    )
+  return learn
+    ? { cantrips: countWord(learn[2]!), rank1: countWord(learn[1]!), named: [] as string[] }
+    : null
+}
+
+/**
+ * Spells a subclass lists by rank ("**Sorcerous Gifts**", "**Granted Spells**": "- **Cantrip**
+ * Daze", "- **3rd** Vampiric Feast"), cantrips at 0.
+ */
+export function listedSpellNames(o: Pf2eSubclassOption): Record<number, string> {
+  const block = /\*\*(?:Sorcerous Gifts|Granted Spells)\*\*([\s\S]*?)(?:\n\s*\n\*\*|$)/.exec(o.text)
+  const out: Record<number, string> = {}
+  for (const m of block?.[1]?.matchAll(/- \*\*(Cantrip|\d+(?:st|nd|rd|th))\*\*\s*([^\n]+)/g) ?? [])
+    out[m[1] === 'Cantrip' ? 0 : Number.parseInt(m[1]!)] = m[2]!.trim()
+  return out
+}
+
+/**
+ * A wizard school's curriculum (Player Core p. 197): its spells by rank, cantrips at 0. Empty
+ * for a choice without one (the school of unified magical theory, p. 200).
+ */
+export function curriculumOf(picks: Pf2eSubclassOption[]): Record<number, string[]> {
+  const out: Record<number, string[]> = {}
+  for (const p of picks) {
+    const block = /\*\*Curriculum\*\*([\s\S]*?)(?:\n\s*\n\*\*|$)/.exec(p.text)?.[1] ?? ''
+    for (const m of block.matchAll(
+      /- (Cantrips|\d+)(?:st|nd|rd|th)?:\s*([^\n]+(?:\n(?!-)[^\n]+)*)/g,
+    ))
+      out[m[1] === 'Cantrips' ? 0 : Number(m[1])] = m[2]!
+        .split(/,\s*/)
+        .map((x) => x.trim())
+        .filter(Boolean)
+  }
+  return out
+}
+
+/**
+ * The curriculum spells a wizard adds: "one extra curriculum cantrip and one extra curriculum
+ * spell of each rank you can cast" (a slot per rank), "two 1st-rank spells from the curriculum"
+ * at 1st level and one "when you gain spell slots of a new rank" (Player Core p. 197). Null for
+ * classes without a curriculum and for a school without one.
+ */
+export function curriculumRules(cls: Pf2eClassDef, picks: Pf2eSubclassOption[]) {
+  const text = plain(cls.features.map((f) => f.text).join(' '))
+  const list = curriculumOf(picks)
+  if (!Object.keys(list).length) return null
+  const first = /add (\w+) 1st-rank spells from the curriculum/i.exec(text)
+  return {
+    list,
+    slots: /one extra curriculum spell of each rank you can cast/i.test(text),
+    first: first ? countWord(first[1]!) : 0,
+    newRank:
+      /When you gain spell slots of a new rank, you also add an additional spell from your school's curriculum/i.test(
+        text,
+      ),
+  }
+}
+
+/**
+ * A spellcasting class's slots at a level: its spells-per-day row (found by level), plus a
+ * curriculum slot at each rank it can cast that the curriculum has spells for (Player Core p.
+ * 197; the table leaves them out).
+ */
+export function classSlotRow(cls: Pf2eClassDef, picks: Pf2eSubclassOption[], level: number) {
+  const row = cls.spellSlots?.find((r) => r.level === level)
+  if (!row) return undefined
+  const curriculum = curriculumRules(cls, picks)
+  if (!curriculum?.slots) return row
+  return {
+    ...row,
+    slots: row.slots.map((n, i) => (n > 0 && curriculum.list[i + 1]?.length ? n + 1 : n)),
+  }
+}
+
+/**
+ * A class's second track of spell slots, printed after a plus sign in its table (`extra` on the
+ * slot rows): an animist's apparition spellcasting, spontaneous, from the spells of the
+ * apparitions attuned that day, all of them signature spells (War of Immortals p. 10). The sheet
+ * keeps it as an `archetypeCasting` entry under `key`.
+ */
+export const EXTRA_TRACK: Record<string, { key: string; label: string; note: string }> = {
+  Animist: {
+    key: 'Apparition',
+    label: 'Apparition spells',
+    note: 'Apparition spellcasting: attune two apparitions in your daily preparations and add their spells to Apparition spells; every apparition spell is a signature spell (War of Immortals p. 10).',
+  },
+}
+
 /**
  * A caster's 1st-level spellcasting (Player Core pp. 297–298, each class entry): the
  * tradition (a sorcerer's bloodline, witch's patron or summoner's eidolon sets it; a draconic
  * bloodline or dragon eidolon leaves it to the player, `traditionChoice`), prepared or
- * spontaneous (classes with a spell repertoire are spontaneous), and how many cantrips and
- * 1st-rank spells to choose, from the class's spells-per-day table (its level 1 row, found by
- * level).
+ * spontaneous (classes with a spell repertoire are spontaneous), the slots from the class's
+ * spells-per-day table (its level 1 row, found by level, with a wizard's curriculum slot), and
+ * how many cantrips and 1st-rank spells to choose: the spells the class knows when its text says
+ * more than the slots (`knownAtFirst`: a spellbook, familiar or dirge), else one per slot. A
+ * school of unified magical theory adds "one 1st-rank spell of your choice" (p. 200).
+ * `curriculum`: the 1st-rank curriculum spells a wizard adds. `granted`: spells added without a
+ * choice (a bloodline's sorcerous gift cantrip and 1st-rank spell, Player Core 2 p. 144; the
+ * spell a witch's patron teaches, "your familiar learns _enfeeble_"; the necromancer's harm).
  */
 export function spellcastingPlan(c: Pf2eCreation, data: Pf2eBuildData) {
   const { cls, deity, subclassPicks } = resolve(c, data)
-  const row = cls?.spellSlots?.find((r) => r.level === 1)
+  const row = cls ? classSlotRow(cls, subclassPicks, 1) : undefined
   if (!cls || !row) return null
   const l1 = norm(levelOneFeatures(cls).join(', '))
   // The choice that sets the tradition: its other options name one (bloodlines, eidolons).
@@ -799,15 +998,57 @@ export function spellcastingPlan(c: Pf2eCreation, data: Pf2eBuildData) {
       ? cls.traditions[0]!
       : (fromPick ?? (traditionChoice && c.tradition ? c.tradition : ''))
   const fonts = l1.includes('divine font') ? (deity?.divineFont ?? []) : []
+  const kind = l1.includes('spell repertoire') ? ('spontaneous' as const) : ('prepared' as const)
+  const known = knownAtFirst(cls)
+  const picksText = plain(subclassPicks.map((s) => levelOneText(s.text)).join(' '))
+  const extra = /\badd one 1st-\s?rank spell of your choice to your spellbook\b/i.test(picksText)
+    ? 1
+    : 0
+  const curriculum = curriculumRules(cls, subclassPicks)
+  const named = [
+    ...(known?.named ?? []),
+    ...(kind === 'spontaneous'
+      ? subclassPicks.flatMap((o) => {
+          const listed = listedSpellNames(o)
+          return [listed[0], listed[1]].filter((x): x is string => !!x)
+        })
+      : []),
+    ...subclassPicks.flatMap((o) =>
+      [...o.text.matchAll(/your familiar learns _([^_]+)_/gi)].map((m) => m[1]!),
+    ),
+  ]
+  const granted = uniqueNames(
+    named.map((n) => findSpellNamed(data, n)).filter((s): s is Pf2eSpellDef => !!s),
+  )
   return {
     tradition,
     traditionChoice,
-    kind: l1.includes('spell repertoire') ? ('spontaneous' as const) : ('prepared' as const),
-    cantrips: row.cantrips,
-    rank1: row.slots[0] ?? 0,
+    kind,
+    cantrips: known?.cantrips ?? row.cantrips,
+    rank1: (known?.rank1 ?? row.slots[0] ?? 0) + extra,
     slots: row.slots,
+    ...(row.extra && EXTRA_TRACK[cls.name] ? { extra: row.extra } : {}),
     fonts,
+    ...(curriculum?.first
+      ? { curriculum: { count: curriculum.first, names: curriculum.list[1] ?? [] } }
+      : {}),
+    ...(curriculum?.list[0]?.length ? { curriculumCantrips: curriculum.list[0] } : {}),
+    granted,
   }
+}
+
+const isCantrip = (r: { id: string }, data: Pick<Pf2eBuildData, 'spells'>) =>
+  data.spells.find((s) => s.id === r.id)?.kind === 'cantrip'
+
+const findSpellNamed = (data: Pick<Pf2eBuildData, 'spells'>, name: string) => {
+  const want = norm(name.replace(/[_*]/g, '').trim())
+  return data.spells.find((s) => norm(s.name) === want)
+}
+
+/** The curriculum's 1st-rank spells a wizard adds two of at 1st level (Player Core p. 197). */
+export function curriculumOptions(c: Pf2eCreation, data: Pf2eBuildData) {
+  const names = new Set((spellcastingPlan(c, data)?.curriculum?.names ?? []).map(norm))
+  return uniqueNames(data.spells.filter((s) => s.kind === 'spell' && names.has(norm(s.name))))
 }
 
 /** Common-or-better spells of the hero's tradition: cantrips, or 1st-rank spells. */
@@ -825,17 +1066,28 @@ export function spellOptions(which: 'cantrip' | 'spell', c: Pf2eCreation, data: 
 export const spellNamed = (text: string, name: string) =>
   new RegExp(`\\b${name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text)
 
+/**
+ * A class's own spell: a focus spell, or a class cantrip (a composition, a hex cantrip). A
+ * cantrip on a tradition's list that the data ties to a class only because a bloodline or
+ * mystery grants it (Daze, Shield) is a spell, not one of these.
+ */
+export const isClassSpell = (s: Pf2eSpellDef, className: string) =>
+  s.classes.includes(className) &&
+  (s.kind === 'focus' || (s.kind === 'cantrip' && !s.traditions.length))
+
 /** The class's focus spells and class cantrips up to 1st rank, once each. */
 const classFocusSpells = (c: Pf2eCreation, data: Pf2eBuildData) => {
   const { cls } = resolve(c, data)
   if (!cls) return []
-  return uniqueNames(
-    data.spells.filter(
-      (s) =>
-        (s.kind === 'focus' || s.kind === 'cantrip') && s.classes.includes(cls.name) && s.rank <= 1,
-    ),
-  )
+  return uniqueNames(data.spells.filter((s) => isClassSpell(s, cls.name) && s.rank <= 1))
 }
+
+/**
+ * The sentence that leaves a focus spell to the player: "Choose either _shields of the
+ * spirit_ or…" (a champion), "You learn your choice of the _patron's puppet_ hex or _phase
+ * familiar_ hex" (a witch, Player Core p. 178).
+ */
+const FOCUS_CHOICE = /(?:\bChoose either\b|\bYou learn your choice of\b)[^.]*\./gi
 
 /**
  * A focus spell the class text has the player choose: "Choose either _shields of the spirit_
@@ -847,10 +1099,10 @@ export function focusChoice(c: Pf2eCreation, data: Pf2eBuildData) {
   const { cls, deity } = resolve(c, data)
   const sentence = cls?.features
     .filter((f) => f.level === 1)
-    .map((f) => /Choose either [^.]*\./.exec(f.text.replace(/\s+/g, ' '))?.[0])
+    .map((f) => f.text.replace(/\s+/g, ' ').match(FOCUS_CHOICE)?.[0])
     .find(Boolean)
   if (!sentence) return null
-  const lower = sentence.replace(/[_*]/g, ' ').toLowerCase()
+  const lower = sentence.replace(/[_*]/g, ' ').replace(/’/g, "'").toLowerCase()
   const options = classFocusSpells(c, data).filter((s) => {
     if (!spellNamed(lower, s.name)) return false
     const font = new RegExp(`${s.name.toLowerCase()}\\s+if your deity allows (heal|harm)`).exec(
@@ -864,22 +1116,30 @@ export function focusChoice(c: Pf2eCreation, data: Pf2eBuildData) {
 /**
  * Focus spells the 1st-level features and subclass picks grant: those of the class whose
  * name the features' text mentions (a bard's composition cantrips, a muse's spell…), except
- * the ones a "Choose either…" leaves to the player (`focusChoice`).
+ * the ones a "Choose either…" or "your choice of" leaves to the player (`focusChoice`), plus
+ * those a choice grants that the data leaves out (a druidic order's spell, `subclassGrants`)
+ * and the ones its granted feats name (Untamed Form's _untamed form_).
  */
 export function creationFocusSpells(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSpellDef[] {
   const { cls, subclassPicks } = resolve(c, data)
   if (!cls) return []
+  const grants = subclassPicks.flatMap((o) => subclassGrants(o) ?? [])
   const text = [
     ...cls.features.filter((f) => f.level === 1).map((f) => f.text),
     ...subclassPicks.map((s) => s.text),
+    ...grantedFeats(c, data).map((f) => f.text),
   ]
     .join(' ')
+    .replace(/\s+/g, ' ')
+    .replace(FOCUS_CHOICE, ' ')
     // Spell names are italic in the rules text (_courageous anthem_).
     .replace(/[_*]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/Choose either [^.]*\./g, ' ')
+    .replace(/’/g, "'")
     .toLowerCase()
-  return classFocusSpells(c, data).filter((s) => spellNamed(text, s.name))
+  const named = new Set(grants.flatMap((g) => g.focus).map(norm))
+  return classFocusSpells(c, data).filter(
+    (s) => spellNamed(text, s.name.replace(/’/g, "'")) || named.has(norm(s.name)),
+  )
 }
 
 /** The class's focus spells and class cantrips up to 1st rank, to pick from. */
@@ -898,20 +1158,21 @@ const COUNT: Record<string, number> = { one: 1, two: 2, three: 3 }
 /**
  * Focus Points at 1st level, from the text: "you start with a focus pool of 2 Focus Points"
  * (a psychic, whose psi cantrips cost none), "you also gain a focus pool of 1 Focus Point" (a
- * champion). Without such a line, one point per focus spell that costs one, up to 3 (p. 298).
+ * champion), and at least one point per focus spell that costs one, up to 3 (p. 298): an
+ * untamed druid's two order spells make two.
  */
 export function focusPool(c: Pf2eCreation, data: Pf2eBuildData) {
   const { features, picks } = levelOneRules(c, data)
   const said = [...`${features} ${picks}`.matchAll(/(?:start with|gain) a focus pool of (\w+)/gi)]
     .map((m) => COUNT[m[1]!.toLowerCase()] ?? Number(m[1]))
     .filter((n) => n > 0)
-  if (said.length) return Math.min(3, Math.max(...said))
   const spells = chosenFocusSpells(c, data)
   const cantrips = new Set(spells.filter((f) => f.traits.includes('Cantrip')).map((f) => f.id))
-  return focusPoolMax(
+  const counted = focusPoolMax(
     spells.map((f) => ({ id: f.id, name: f.name, rank: f.rank })),
     cantrips,
   )
+  return Math.min(3, Math.max(counted, ...said))
 }
 
 // --- Proficiencies --------------------------------------------------------------
@@ -1110,7 +1371,7 @@ function strike(
 
 /** What is missing, by builder step: ancestry, background, class, attributes, skills & feats, gear. */
 export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
-  const { ancestry, heritage, background, cls, deity } = resolve(c, data)
+  const { ancestry, heritage, background, cls, deity, subclassPicks } = resolve(c, data)
   const ancestryStep = [
     ancestry ? '' : 'Choose an ancestry',
     heritage ? '' : 'Choose a heritage',
@@ -1128,14 +1389,20 @@ export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
             : `Choose ${ch.count.min}–${ch.count.max} for ${ch.label.toLowerCase()}`,
         )
     }
-    if (wantsDeity(c, data) && !deity) classStep.push('Choose a deity')
+    if (needsDeity(cls, subclassPicks) && !deity) classStep.push('Choose a deity')
   }
+  // Raised by Belief asks for the deity on the Background step, unless the class already did.
+  const backgroundDeity =
+    !!background?.deitySkill && !deity && !(cls && needsDeity(cls, subclassPicks))
   const trait = classFeatTrait(cls)
+  const bonus = bonusClassFeat(cls, subclassPicks)
   const featStep = [
     ...skillProblems(c, data),
-    ...featSlots(cls)
+    ...featSlots(cls, subclassPicks)
       .filter((s) => !c.feats[s])
       .map((s) => {
+        if (s === 'class2')
+          return `Choose the bonus ${bonus?.trait ? `${bonus.trait.toLowerCase()} ` : ''}class feat from ${bonus?.from}`
         const kind = s === 'class' && trait ? trait.toLowerCase() : s
         return `Choose ${/^[aeiou]/.test(kind) ? 'an' : 'a'} ${kind} feat`
       }),
@@ -1145,7 +1412,9 @@ export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   return {
     spells: spellProblems(c, data),
     ancestry: ancestryStep,
-    background: background ? backgroundBoostProblems(c, data) : ['Choose a background'],
+    background: background
+      ? [...(backgroundDeity ? ['Choose a deity'] : []), ...backgroundBoostProblems(c, data)]
+      : ['Choose a background'],
     class: classStep,
     attributes:
       ancestry && background && cls ? boostProblems(c, data) : ['Finish the steps before'],
@@ -1159,7 +1428,10 @@ export function creationProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   }
 }
 
-/** What the spells step still needs: the picks the class's table asks for, a divine font. */
+/**
+ * What the spells step still needs: the cantrips and 1st-rank spells `spellcastingPlan` asks
+ * for, a wizard's curriculum spells, a divine font.
+ */
 export function spellProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   const plan = spellcastingPlan(c, data)
   const choice = focusChoice(c, data)
@@ -1181,6 +1453,12 @@ export function spellProblems(c: Pf2eCreation, data: Pf2eBuildData) {
   if (n(c.spells?.cantrips) !== plan.cantrips) out.push(`Choose ${plan.cantrips} cantrips`)
   if (n(c.spells?.rank1) !== plan.rank1)
     out.push(`Choose ${plan.rank1} 1st-rank spell${plan.rank1 === 1 ? '' : 's'}`)
+  if (plan.curriculum) {
+    const allowed = new Set(curriculumOptions(c, data).map((s) => s.id))
+    const picked = c.spells?.curriculum ?? []
+    if (picked.length !== plan.curriculum.count || picked.some((id) => !allowed.has(id)))
+      out.push(`Choose ${plan.curriculum.count} 1st-rank curriculum spells`)
+  }
   if (plan.fonts.length > 1 && !c.font)
     out.push(`Choose your divine font: ${plan.fonts.join(' or ')}`)
   return out
@@ -1302,9 +1580,15 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
   const subclassPicks = subclassChoices(cls).flatMap((ch) =>
     cls.subclasses.filter((s) => (c.subclasses[ch.key] ?? []).includes(s.id)),
   )
-  const feats = (['ancestry', 'class', 'skill'] as const)
+  const feats = (['ancestry', 'class', 'class2', 'skill'] as const)
     .map((slot) => [slot, byId(data.feats, c.feats[slot])] as const)
     .filter((e): e is readonly [Pf2eFeatSlot, Pf2eFeatDef] => !!e[1])
+  const FEAT_TYPE: Record<Pf2eFeatSlot, string> = {
+    ancestry: 'Ancestry feat',
+    class: 'Class feat',
+    class2: 'Class feat',
+    skill: 'Skill feat',
+  }
   const backgroundFeats = background.feats
     .map((name) => data.feats.find((f) => f.name === name))
     .filter(present)
@@ -1314,10 +1598,23 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
     return sp ? [{ id: sp.id, name: sp.name, rank: sp.rank }] : []
   }
   const plan = spellcastingPlan(c, data)
-  const rank1 = (c.spells?.rank1 ?? []).flatMap(spellRef)
+  const picked1 = (c.spells?.rank1 ?? []).flatMap(spellRef)
+  const curriculum = plan?.curriculum ? (c.spells?.curriculum ?? []).flatMap(spellRef) : []
+  const granted = (plan?.granted ?? []).map((sp) => ({ id: sp.id, name: sp.name, rank: sp.rank }))
+  const known = (list: Pf2eSpellRef[]) =>
+    list.filter((x, i) => list.findIndex((y) => y.id === x.id) === i)
+  const rank1 = known([...picked1, ...curriculum, ...granted.filter((g) => !isCantrip(g, data))])
+  const cantrips = known([
+    ...(c.spells?.cantrips ?? []).flatMap(spellRef),
+    ...granted.filter((g) => isCantrip(g, data)),
+  ])
   const slots = plan ? slotsFor(plan.slots, plan.kind) : []
-  // A prepared caster starts with the 1st-rank picks in its 1st-rank slots.
-  slots[0]?.prepared?.forEach((p, i) => (p.id = rank1[i]?.id ?? null))
+  // A prepared caster starts with the 1st-rank picks in its 1st-rank slots, a curriculum spell
+  // in the curriculum slot.
+  const prepare = curriculum.length
+    ? [...picked1.slice(0, Math.max(0, (slots[0]?.max ?? 0) - 1)), curriculum[0]!]
+    : picked1
+  slots[0]?.prepared?.forEach((p, i) => (p.id = prepare[i]?.id ?? null))
   const font = plan?.fonts.length ? (plan.fonts.length === 1 ? plan.fonts[0] : c.font) : undefined
   const focusDefs = chosenFocusSpells(c, data)
   const focusSpells = focusDefs.map((f) => ({ id: f.id, name: f.name, rank: f.rank }))
@@ -1415,7 +1712,8 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
           s,
         ),
       ),
-      ...feats.map(([slot, f]) => featEntry(`${slot[0]!.toUpperCase()}${slot.slice(1)} feat`, f)),
+      ...feats.map(([slot, f]) => featEntry(FEAT_TYPE[slot], f)),
+      ...grantedFeats(c, data).map((f) => featEntry('Class feat', f)),
       ...backgroundFeats.map((f) => featEntry('Skill feat (background)', f)),
     ],
     inventory: [
@@ -1430,6 +1728,12 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
       `Languages: ${ancestry.languages.join(', ')}${extraLanguages ? ` (+${extraLanguages} of your choice)` : ''}`,
       ...penalty.notes,
       ...[ancestry, heritage, ...picked].filter((r) => r.gap).map((r) => `${r.name}: ${r.gap}`),
+      ...(plan?.extra ? [EXTRA_TRACK[cls.name]!.note] : []),
+      ...(plan?.curriculumCantrips
+        ? [
+            `Curriculum: one extra cantrip (${plan.curriculumCantrips.join(' or ')}) and one extra spell of each rank you can cast, from your school's curriculum (Player Core p. 197).`,
+          ]
+        : []),
     ].join('\n'),
     ...(plan?.tradition
       ? {
@@ -1438,11 +1742,28 @@ export function buildPf2eSheet(c: Pf2eCreation, data: Pf2eBuildData): Pf2eSheet 
             kind: plan.kind,
             attr: spellAttribute(c, data),
             rank: 'T' as const,
-            cantrips: (c.spells?.cantrips ?? []).flatMap(spellRef),
+            cantrips,
             spells: rank1,
             slots,
             ...(font ? { font: { spell: font, max: fontSlots(1), used: 0 } } : {}),
           },
+        }
+      : {}),
+    ...(plan?.tradition && plan.extra
+      ? {
+          archetypeCasting: [
+            {
+              archetype: EXTRA_TRACK[cls.name]!.key,
+              label: EXTRA_TRACK[cls.name]!.label,
+              tradition: plan.tradition,
+              kind: 'spontaneous' as const,
+              attr: spellAttribute(c, data),
+              rank: 'T' as const,
+              cantrips: [],
+              spells: [],
+              slots: slotsFor(plan.extra.slots, 'spontaneous'),
+            },
+          ],
         }
       : {}),
     ...(focusSpells.length

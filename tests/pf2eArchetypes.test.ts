@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import type { Pf2eLevelInput, Pf2eSheet } from '../types/sheets'
 import { restoreLevel } from '../utils/levelHistory'
 import {
+  applyArchetypeCasting,
   archetypeSlots,
   dedicationCasting,
+  psiCantrips,
   dedicationLock,
   featSkills,
   grantedFeat,
@@ -15,6 +17,7 @@ import {
   applyPf2eLevel,
   featPrerequisites,
   levelFeatOptions,
+  levelSpellOptions,
   pf2eLevelPlan,
   profileAt,
   weaponRankIn,
@@ -179,13 +182,16 @@ describe('pf2e archetypes: Fighter Dedication on a wizard (Player Core p. 219)',
 describe('pf2e archetypes: Wizard Dedication and Basic Wizard Spellcasting (Player Core p. 223)', () => {
   it('reads the spellcasting a dedication grants', () => {
     const attrs = { STR: 0, DEX: 0, CON: 0, INT: 2, WIS: 0, CHA: 3 }
+    // "a spellbook with four common arcane cantrips … You can prepare two cantrips each day".
     expect(dedicationCasting(feat('Wizard Dedication'), attrs)).toEqual({
       archetype: 'Wizard',
       tradition: 'Arcane',
       attr: 'INT',
       kind: 'prepared',
-      cantrips: 4,
+      cantrips: 2,
     })
+    for (const name of ['Magus Dedication', 'Necromancer Dedication'])
+      expect(dedicationCasting(feat(name), attrs)?.cantrips, name).toBe(2)
     expect(dedicationCasting(feat('Bard Dedication'), attrs)).toMatchObject({
       tradition: 'Occult',
       kind: 'spontaneous',
@@ -209,13 +215,13 @@ describe('pf2e archetypes: Wizard Dedication and Basic Wizard Spellcasting (Play
     ])
   })
 
-  it('a fighter with the free archetype: four cantrips, then a slot and two spells each new rank', () => {
+  it('a fighter with the free archetype: two cantrips, then a slot and two spells each new rank', () => {
     const s = hero('Fighter', true)
     expect(s.attrs.INT).toBeGreaterThanOrEqual(2)
     const { plan } = level(s, 2, { archetype: feat('Wizard Dedication').id })
     expect(plan.feats.map((f) => f.kind)).toEqual(['class', 'skill', 'archetype'])
     expect(plan.spells).toContainEqual(
-      expect.objectContaining({ key: 'arch:Wizard:cantrip', count: 4, cantrip: true }),
+      expect.objectContaining({ key: 'arch:Wizard:cantrip', count: 2, cantrip: true }),
     )
     const casting = () => s.archetypeCasting!.find((e) => e.archetype === 'Wizard')!
     expect(casting()).toMatchObject({
@@ -224,7 +230,7 @@ describe('pf2e archetypes: Wizard Dedication and Basic Wizard Spellcasting (Play
       kind: 'prepared',
       rank: 'T',
     })
-    expect(casting().cantrips).toHaveLength(4)
+    expect(casting().cantrips).toHaveLength(2)
     expect(s.skills.find((x) => x.name === 'Arcana')?.rank).toBe('T')
     level(s, 3)
     const four = level(s, 4, { archetype: feat('Basic Wizard Spellcasting').id }).plan
@@ -315,5 +321,79 @@ describe('pf2e archetypes: going back', () => {
     expect(restoreLevel(s, 1)).toBe(true)
     expect(s.archetypeCasting).toBeUndefined()
     expect(s.feats.some((f) => f.archetype)).toBe(false)
+  })
+})
+
+describe('pf2e archetypes: review fixes (Player Core p. 215)', () => {
+  it('offers Psychic Dedication only the standard psi cantrips (Dark Archive p. 9)', () => {
+    const psi = psiCantrips(cls('Psychic'))
+    expect(psi).toEqual(expect.arrayContaining(['Telekinetic Hand', 'Telekinetic Projectile']))
+    const s = hero('Fighter', true)
+    s.attrs.CHA = 2
+    s.attrs.INT = 2
+    const picks = autoLevelPicks(s, 2, data)
+    picks.feats.archetype = feat('Psychic Dedication').id
+    const plan = pf2eLevelPlan(s, 2, data, picks)!
+    const pick = plan.spells.find((x) => x.key === 'arch:Psychic:cantrip')!
+    expect(pick).toMatchObject({ count: 1, cantrip: true, only: psi })
+    applyPf2eLevel(s, 2, { ...picks, spells: {} }, data)
+    const names = levelSpellOptions(pick, s, data).map((x) => x.name)
+    expect(names.length).toBeGreaterThan(0)
+    expect(names.every((n) => psi.includes(n))).toBe(true)
+  })
+
+  it('keeps a repertoire spell learned again at a higher rank (Player Core 2 p. 144)', () => {
+    const s = hero('Fighter')
+    const fear = named(data.spells, 'Fear')
+    s.archetypeCasting = [
+      {
+        archetype: 'Sorcerer',
+        tradition: 'Occult',
+        kind: 'spontaneous',
+        attr: 'CHA',
+        rank: 'T',
+        cantrips: [],
+        spells: [{ id: fear.id, name: fear.name, rank: 1 }],
+        slots: [],
+      },
+    ]
+    const pick = {
+      key: 'arch:Sorcerer:rank3',
+      label: '',
+      count: 1,
+      rank: 3,
+      learnAt: 3,
+      archetype: 'Sorcerer',
+    }
+    applyArchetypeCasting(
+      s,
+      { slots: [], spells: [pick] },
+      { boosts: [], feats: {}, skills: [], spells: { [pick.key]: [fear.id] }, choices: {} },
+      data,
+      [],
+    )
+    expect(s.archetypeCasting[0]!.spells.map((x) => [x.name, x.rank])).toEqual([
+      ['Fear', 1],
+      ['Fear', 3],
+    ])
+  })
+
+  it('asks a spontaneous archetype for a signature spell at 6th (p. 215)', () => {
+    const s = hero('Fighter', true)
+    s.attrs.CHA = 2
+    level(s, 2, { archetype: feat('Bard Dedication').id })
+    level(s, 3)
+    level(s, 4, { archetype: feat('Basic Bard Spellcasting').id })
+    level(s, 5)
+    const bard = () => s.archetypeCasting!.find((e) => e.archetype === 'Bard')!
+    expect(bard().spells.length).toBeGreaterThan(0)
+    const plan = pf2eLevelPlan(s, 6, data, autoLevelPicks(s, 6, data))!
+    const choice = plan.choices.find((c) => c.key === 'signature:Bard')
+    expect(choice).toMatchObject({ count: 1 })
+    level(s, 6)
+    expect(bard().spells.filter((x) => x.signature)).toHaveLength(1)
+    expect(pf2eLevelPlan(s, 7, data)!.choices.some((c) => c.key.startsWith('signature:'))).toBe(
+      false,
+    )
   })
 })

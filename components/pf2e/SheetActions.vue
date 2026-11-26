@@ -32,7 +32,9 @@ import {
   payFor,
   resolveUse,
   skillRank,
+  strikeCountAs,
   timePasses,
+  uncounted,
   usesLeft,
 } from '~/utils/pf2eActions'
 import { showOutcome } from '~/utils/dice'
@@ -316,13 +318,7 @@ function use(e: Entry, st: Pf2eRowState) {
       for (let k = 0; k < strike.count; k++) {
         const at = k > 0 && second !== undefined ? second : index
         const w = strikesApi.strikes.value[at]
-        const countAs = strike.sameMap
-          ? 0
-          : strike.count === 1
-            ? strike.mapCount
-            : strike.mapCount === 0
-              ? 0
-              : 1
+        const countAs = strikeCountAs(strike)
         const fixed = strike.ignoreMap || e.rules.cost?.kind === 'reaction' ? 0 : undefined
         const penalty = k > 0 && strike.secondPenalty && w && !w.agile ? strike.secondPenalty : 0
         const res = strikesApi.attack(at, {
@@ -332,6 +328,8 @@ function use(e: Entry, st: Pf2eRowState) {
           ...(penalty ? { penalty } : {}),
         })
         lines.push(res.text)
+        if (uncounted(s, strike, res.degree, countAs))
+          lines.push('It doesn’t count toward your multiple attack penalty.')
         st.struck.push({
           index: at,
           extraDie: extraDiceAt(e.rules),

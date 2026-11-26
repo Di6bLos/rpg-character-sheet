@@ -103,3 +103,33 @@ export function turnHeadline(ctx: {
   }
   return ctx.inEncounter ? 'Waiting for your turn' : 'Not in combat'
 }
+
+/**
+ * What the GM's tracker moving does to a seated hero's own turn tracker (the rule
+ * useTrackerTurnSteps applies to Nimble, here for PF2e): End turn when the turn passes from
+ * the hero, or comes back to them in a new round with no one else to act; Start turn when it
+ * reaches them; with `synced` false (a sheet just loaded onto a tracker already running) it
+ * lines up once, starting the hero's turn only if the tracker hasn't already started it this
+ * round (`startedRound`).
+ */
+export function trackerTurnStep(p: {
+  mine: string
+  now: string | null
+  before: string | null
+  round: number | null
+  prevRound: number | null
+  active: boolean
+  startedRound?: number
+  synced: boolean
+}): { end: boolean; start: boolean } {
+  if (!p.synced) {
+    if (p.now === null) return { end: false, start: false }
+    if (p.now !== p.mine) return { end: p.active, start: false }
+    return { end: false, start: !p.active && p.startedRound !== (p.round ?? undefined) }
+  }
+  const wrapped = p.round !== null && p.prevRound !== null && p.round > p.prevRound
+  const again = wrapped && p.now === p.before && p.now === p.mine
+  const end = p.active && ((p.before === p.mine && p.now !== p.mine) || again)
+  const start = p.now === p.mine && (p.now !== p.before || again) && (!p.active || end)
+  return { end, start }
+}

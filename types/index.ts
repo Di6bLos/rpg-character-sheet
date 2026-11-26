@@ -1,5 +1,12 @@
 import type { ThemeId } from '~/utils/themes'
-import type { NimbleSummon } from '~/types/sheets'
+import type {
+  Dnd5eAbility,
+  NimbleSummon,
+  Pf2eAttr,
+  Pf2eProficiency,
+  Pf2eSheet,
+  Pf2eSkill,
+} from '~/types/sheets'
 
 export type UserRole = 'admin' | 'moderator' | 'member'
 export type GameSystem = 'dnd5e' | 'pf2e' | 'nimble'
@@ -127,6 +134,23 @@ export interface RosterEntry {
     actionsSpent?: number
     /** Nimble mana pool. */
     mana?: { current: number; max: number; temp: number }
+    /** PF2e hero points and focus pool. */
+    heroPoints?: number
+    focus?: { current: number; max: number }
+    /** PF2e Wounded value. */
+    wounded?: number
+    /** PF2e Doomed value: lowers the Dying value that kills. */
+    doomed?: number
+    /** PF2e values of valued conditions (frightened 2); absent means 1. */
+    conditionValues?: Record<string, number>
+    /** PF2e feat names (Diehard changes when the hero dies). */
+    featNames?: string[]
+    /** PF2e: the shield, the AC parts the sheet saves, and persistent damage. */
+    shield?: Pick<Pf2eSheet['shield'], 'name' | 'ac' | 'hp' | 'hpMax' | 'bt' | 'raised'>
+    acParts?: Pf2eSheet['acParts']
+    persistent?: Pf2eSheet['persistent']
+    /** PF2e AC now, worked out on load from the fields above (`acFromParts`). */
+    acNow?: number
     summons?: NimbleSummon[]
     abilityNames?: string[]
     portraitOverride?: string
@@ -196,7 +220,7 @@ export interface Message {
   sender_id: string
   body: string
   recipient_ids: string[] | null
-  /** 'action': a game-generated line (a roll or cast from the quick-action panel). */
+  /** 'action': a game-generated line (a roll or cast from the battle board). */
   kind: MessageKind
   created_at: string
 }
@@ -261,8 +285,12 @@ export interface InitiativeRow {
   initiative_rolled: boolean
 }
 
-/** What `campaign_hero_card()` returns: the public part of a seated hero. */
-export interface HeroCard {
+/**
+ * What `campaign_hero_card()` returns for every system: the public part of a seated hero.
+ * The Nimble keys (stats, saves, resource, summons) come back for every system, empty off
+ * Nimble; `skills` and `abilities` take each system's own shape (see the per-system cards).
+ */
+interface HeroCardBase {
   name: string
   level: number
   portrait_path: string | null
@@ -280,13 +308,66 @@ export interface HeroCard {
   stats: Record<'STR' | 'DEX' | 'INT' | 'WIL', number>
   saveAdv: string
   saveDis: string
-  skills: { name: string; stat: string; points: number }[]
   mana: { current: number; max: number } | null
   resource: { name: string; count: number; dice: number; die: number } | null
   conditions: string[]
   summons: { name: string; hp: number; hpMax: number }[]
+}
+
+export interface NimbleHeroCard extends HeroCardBase {
+  system: 'nimble'
+  skills: { name: string; stat: string; points: number }[]
   abilities: { name: string; desc: string; src: string }[]
 }
+
+export interface Dnd5eHeroCard extends HeroCardBase {
+  system: 'dnd5e'
+  skills: { name: string; stat: string; points: number }[]
+  /** The six ability scores (Nimble's ability list is not returned for 5e). */
+  abilities: Record<Dnd5eAbility, number>
+  saveProfs: Dnd5eAbility[]
+  profBonus: number
+  passivePerception: number
+  hitDie: number
+  deathSaves: { successes: number; failures: number }
+  /** Class and other features, the dialog's Key abilities. */
+  features: { name: string; desc: string }[]
+}
+
+export interface Pf2eHeroCard extends HeroCardBase {
+  system: 'pf2e'
+  /** Each skill with its rank and total (Nimble's skills are not returned for PF2e). */
+  skills: Pf2eSkill[]
+  abilities: { name: string; desc: string; src: string }[]
+  /** The six attribute modifiers. */
+  attrs: Record<Pf2eAttr, number>
+  /** Fortitude, Reflex, Will, Perception, Class DC. */
+  saves: Pf2eProficiency[]
+  heroPoints: number
+  focus: { current: number; max: number }
+  dying: number
+  wounded: number
+  doomed: number
+  /** Values of valued conditions (frightened 2); absent means 1. */
+  conditionValues: Record<string, number>
+  shield: {
+    name: string
+    /** Its circumstance bonus to AC while raised. */
+    ac: number
+    hardness: number
+    hp: number
+    hpMax: number
+    bt: number
+    raised: boolean
+  } | null
+  /** Feats, the dialog's Key abilities (`type` and `level` make the source line). */
+  feats: { name: string; desc: string; type: string; level: string }[]
+  /** The AC parts the sheet saves (null before it has) and persistent damage. */
+  acParts?: Pf2eSheet['acParts'] | null
+  persistent?: Pf2eSheet['persistent']
+}
+
+export type HeroCard = NimbleHeroCard | Dnd5eHeroCard | Pf2eHeroCard
 
 /** An HP change the GM sent to a seated hero, waiting for the hero's own sheet (`hero_hp_changes`). */
 export interface HeroHpChange {
@@ -296,6 +377,10 @@ export interface HeroHpChange {
   /** Negative is damage, positive is healing. */
   amount: number
   crit: boolean
+  /** PF2e damage: its type, whether a spell dealt it, and Shield Block; null otherwise. */
+  damage_type?: string | null
+  spell?: boolean | null
+  shield_block?: boolean | null
   created_by: string | null
   created_at: string
 }
@@ -307,6 +392,9 @@ export interface HeroConditionChange {
   condition: string
   /** True adds the condition, false removes it. */
   add: boolean
+  /** PF2e persistent damage ("Persistent Damage"): its type, and its dice (null ends it). */
+  persistent_type?: string | null
+  persistent_dice?: string | null
   created_by: string | null
   created_at: string
 }

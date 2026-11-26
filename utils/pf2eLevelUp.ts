@@ -45,12 +45,17 @@ import {
   PF2E_SKILL_NAMES,
   type Pf2eBuildData,
   type WeaponRule,
+  EXTRA_TRACK,
   armorPenalties,
   armorRank,
+  classSlotRow,
+  curriculumRules,
   featEntry,
   featureAction,
   heritageFeatLists,
   higher,
+  isClassSpell,
+  listedSpellNames,
   plain,
   resolve,
   shortKind,
@@ -61,7 +66,7 @@ import {
   weaponRules,
 } from '~/utils/pf2eBuild'
 import { proficiency } from '~/utils/pf2ePlay'
-import { focusPoolMax, fontSlots, setSlotMax } from '~/utils/pf2eSpells'
+import { fontSlots, setSlotMax } from '~/utils/pf2eSpells'
 
 const RANKS: Pf2eRank[] = ['U', 'T', 'E', 'M', 'L']
 const RANK_WORD: Record<string, Pf2eRank> = {
@@ -124,7 +129,6 @@ const rankAbove = (a: Pf2eRank, b: Pf2eRank) => RANKS.indexOf(a) > RANKS.indexOf
 /** The class row for a level, found by level (the generated rows aren't guaranteed in order). */
 const tableRow = (cls: Pf2eClassDef, level: number) =>
   (cls.advancement.find((a) => a.level === level)?.features ?? []).map((f) => norm(f.trim()))
-const slotRow = (cls: Pf2eClassDef, level: number) => cls.spellSlots?.find((r) => r.level === level)
 
 /** What the hero was built from, looked up once. Null for hand-made sheets. */
 export function pf2eContext(sheet: Pf2eSheet, data: Pf2eBuildData) {
@@ -404,7 +408,27 @@ export function profileAt(
     for (const skill of featSkillRanks(def, choices))
       p.skills[skill] = higher(p.skills[skill] ?? 'U', 'T')
   }
+  followArmor(p, ctx.picks)
   return p
+}
+
+/**
+ * An armor category that rises with another: "When you gain light armor expertise, you also
+ * gain expert proficiency in medium armor, and when you gain light armor mastery, you also gain
+ * master proficiency in medium armor" (a ruffian, Player Core p. 166; an avenger, War of
+ * Immortals p. 58).
+ */
+function followArmor(p: Pf2eProfile, picks: Pf2eSubclassOption[]) {
+  const re =
+    /when you gain (light|medium|heavy) armor (expertise|mastery), you also gain (expert|master) proficiency in (light|medium|heavy) armor/gi
+  for (const o of picks)
+    for (const m of plain(o.text).matchAll(re)) {
+      const need: Pf2eRank = m[2]!.toLowerCase() === 'expertise' ? 'E' : 'M'
+      const from = m[1]!.toLowerCase() as ArmorCat
+      const to = m[4]!.toLowerCase() as ArmorCat
+      if (!rankAbove(need, p.armor[from]))
+        p.armor[to] = higher(p.armor[to], RANK_WORD[m[3]!.toLowerCase()]!)
+    }
 }
 
 /** A feat's "## X leads to..." list, which names feats rather than granting anything. */
@@ -454,7 +478,55 @@ export interface Pf2eFeatSlotPlan {
   grant?: { className: string; maxLevel: number; from: string }
 }
 
-/** The feat slots a level's table row lists (Player Core p. 29): class, skill, general, ancestry. */
+/**
+ * The levels a class feature's text says it applies at: "At 3rd level and every odd-numbered
+ * level thereafter", "At 3rd level, 7th level, and 15th level", else its own level.
+ */
+function featureLevels(text: string, base: number): number[] {
+  const t = plain(text)
+  const every =
+    /^At (\d+)(?:st|nd|rd|th) level and every (?:odd|even)-numbered level thereafter/i.exec(t)
+  if (every)
+    return Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).filter(
+      (l) => l >= Number(every[1]) && (l - Number(every[1])) % 2 === 0,
+    )
+  const list = /^At ((?:\d+(?:st|nd|rd|th) level(?:,? and |, )?)+)/i.exec(t)
+  if (list) return [...list[1]!.matchAll(/(\d+)(?:st|nd|rd|th)/g)].map((m) => Number(m[1]))
+  return [base]
+}
+
+/**
+ * Skill feats and skill increases a class feature adds to a level beyond the table's: Skillful
+ * Lessons' skill feat "At 3rd level and every odd-numbered level thereafter" (investigator,
+ * Player Core 2 p. 100), Stylish Tricks' "additional skill increase" and "additional skill feat"
+ * at 3rd, 7th and 15th (swashbuckler, p. 158), Thaumaturgic Expertise's skill increase (Dark
+ * Archive p. 31). Each with what it's limited to, which the player checks.
+ */
+export function featureSkillBonuses(cls: Pf2eClassDef, level: number) {
+  const feats: { from: string; help?: string }[] = []
+  const increases: { from: string; note?: string }[] = []
+  for (const f of cls.features) {
+    if (f.level > level || GENERIC_FEATURE.test(f.name.trim())) continue
+    const t = plain(f.text)
+    const feat = /\byou (?:also )?gain (?:a|an additional) skill feat\b/i.test(t)
+    const increase = /\byou (?:also )?gain an additional skill increase\b/i.test(t)
+    if ((!feat && !increase) || !featureLevels(f.text, f.level).includes(level)) continue
+    if (feat) feats.push({ from: f.name, help: /This feat must be for [^.]+\./i.exec(t)?.[0] })
+    if (increase)
+      increases.push({
+        from: f.name,
+        note: /additional skill increase,? (?:which )?you can apply only to ([^.]+)\./i.exec(
+          t,
+        )?.[1],
+      })
+  }
+  return { feats, increases }
+}
+
+/**
+ * The feat slots a level's table row lists (Player Core p. 29): class, skill, general, ancestry;
+ * plus the skill feats a class feature adds (`featureSkillBonuses`).
+ */
 export function levelFeatSlots(cls: Pf2eClassDef, level: number): Pf2eFeatSlotPlan[] {
   const row = tableRow(cls, level)
   const kinds: [Pf2eLevelFeatKind, RegExp, string][] = [
@@ -463,11 +535,21 @@ export function levelFeatSlots(cls: Pf2eClassDef, level: number): Pf2eFeatSlotPl
     ['skill', /^skill feat/, 'Skill feat'],
     ['general', /^general feat/, 'General feat'],
   ]
-  return kinds.flatMap(([kind, re, label]) =>
+  const slots: Pf2eFeatSlotPlan[] = kinds.flatMap(([kind, re, label]) =>
     row
       .filter((f) => re.test(f))
       .map((_, i) => ({ key: i ? `${kind}${i + 1}` : kind, kind, label })),
   )
+  for (const b of featureSkillBonuses(cls, level).feats) {
+    const n = slots.filter((x) => x.kind === 'skill').length
+    slots.push({
+      key: n ? `skill${n + 1}` : 'skill',
+      kind: 'skill',
+      label: `Skill feat (${b.from})`,
+      ...(b.help ? { help: b.help } : {}),
+    })
+  }
+  return slots
 }
 
 const known = new WeakMap<object, Set<string>>()
@@ -609,6 +691,8 @@ export interface Pf2eSpellPick {
   tradition?: string
   /** Only spells of `rank` itself ("two common spells of that rank"). */
   exact?: boolean
+  /** Only these spells, by name (a wizard school's curriculum), of any tradition. */
+  only?: string[]
 }
 
 export interface Pf2eChoicePlan {
@@ -633,13 +717,18 @@ export interface Pf2eLevelPlan {
   /** Skills to train from an Intelligence increase. */
   trained: number
   boosts: number
-  /** Spell slots by rank; `archetype` for a multiclass archetype's own (Player Core p. 215). */
-  slots: { rank: number; from: number; to: number; archetype?: string }[]
+  /**
+   * Spell slots by rank; `archetype` for a multiclass archetype's own (Player Core p. 215) or
+   * the class's second track (an animist's apparition slots), `label` for the latter.
+   */
+  slots: { rank: number; from: number; to: number; archetype?: string; label?: string }[]
   font?: { from: number; to: number }
   spells: Pf2eSpellPick[]
   /** Spells the level adds by itself (a bloodline's sorcerous gift). */
   granted: Pf2eSpellRef[]
   focus: Pf2eSpellRef[]
+  /** The focus pool's size before and after the level, when it grows. */
+  focusPoints?: { from: number; to: number }
   choices: Pf2eChoicePlan[]
   notes: string[]
 }
@@ -765,15 +854,6 @@ function tableCount(text: string, level: number) {
   return Number(rows.find((r) => Number(r[1]) === level)?.[2] ?? 0)
 }
 
-/** Spells a subclass lists by rank ("**Sorcerous Gifts**", "**Granted Spells**": "- **3rd** X"). */
-function grantedSpellNames(o: Pf2eSubclassOption): Record<number, string> {
-  const block = /\*\*(?:Sorcerous Gifts|Granted Spells)\*\*([\s\S]*?)(?:\n\s*\n\*\*|$)/.exec(o.text)
-  const out: Record<number, string> = {}
-  for (const m of block?.[1]?.matchAll(/- \*\*(\d+)(?:st|nd|rd|th)\*\*\s*([^\n]+)/g) ?? [])
-    out[Number(m[1])] = m[2]!.trim()
-  return out
-}
-
 const findSpell = (data: Pf2eBuildData, name: string) =>
   data.spells.find((s) => norm(s.name) === norm(name.replace(/[_*]/g, '').trim()))
 const ref = (s: Pf2eSpellDef, rank = s.rank): Pf2eSpellRef => ({ id: s.id, name: s.name, rank })
@@ -789,13 +869,9 @@ function bookSpells(cls: Pf2eClassDef) {
   return ({ one: 1, two: 2, three: 3 } as Record<string, number>)[m[1]!.toLowerCase()] ?? 0
 }
 
-/** The class's focus spells and class cantrips. */
+/** The class's focus spells and class cantrips (`isClassSpell`). */
 const classFocus = (cls: Pf2eClassDef, data: Pf2eBuildData) =>
-  data.spells.filter(
-    (s) =>
-      (s.kind === 'focus' || (s.kind === 'cantrip' && s.classes.length > 0)) &&
-      s.classes.includes(cls.name),
-  )
+  data.spells.filter((s) => isClassSpell(s, cls.name))
 
 /**
  * Focus spells a feature or feat grants: italic spell names (_fortissimo composition_) in a
@@ -1042,13 +1118,15 @@ export function pf2eLevelPlan(
   for (const [skill, rank] of Object.entries(after.skills))
     diff(skill, before.skills[skill] ?? 'U', rank)
 
-  const skillIncreases = row.filter((f) => f.startsWith('skill increase')).length
+  const bonuses = featureSkillBonuses(cls, level)
+  const skillIncreases =
+    row.filter((f) => f.startsWith('skill increase')).length + bonuses.increases.length
   const intUp = boosted.attrs.INT > sheet.attrs.INT
 
   // Spells.
   const sc = sheet.spellcasting
-  const prevRow = slotRow(cls, level - 1)
-  const nowRow = slotRow(cls, level)
+  const prevRow = classSlotRow(cls, ctx.picks, level - 1)
+  const nowRow = classSlotRow(cls, ctx.picks, level)
   const slots: Pf2eLevelPlan['slots'] = []
   const spells: Pf2eSpellPick[] = []
   const granted: Pf2eSpellRef[] = []
@@ -1065,7 +1143,7 @@ export function pf2eLevelPlan(
     if (newCantrips > 0)
       spells.push({ key: 'cantrip', label: 'Cantrips', count: newCantrips, rank: 1, cantrip: true })
     const book = bookSpells(cls)
-    const gifts = sc.kind === 'spontaneous' ? ctx.picks.map(grantedSpellNames) : []
+    const gifts = sc.kind === 'spontaneous' ? ctx.picks.map(listedSpellNames) : []
     const giftFirst = /first new spell is always/i.test(cls.features.map((f) => f.text).join(' '))
     for (const s of slots) {
       const gained = s.to - s.from
@@ -1102,6 +1180,29 @@ export function pf2eLevelPlan(
         label: `${book} new spell${book === 1 ? '' : 's'} of rank ${top} or lower`,
         count: book,
         rank: top,
+      })
+    // A wizard's curriculum spell with each new rank (Player Core p. 197).
+    const curriculum = curriculumRules(cls, ctx.picks)
+    if (curriculum?.newRank)
+      for (const s of slots) {
+        const names = curriculum.list[s.rank] ?? []
+        if (s.from || !s.to || !names.some((n) => findSpell(data, n))) continue
+        spells.push({
+          key: `curriculum${s.rank}`,
+          label: `Rank ${s.rank} curriculum spell`,
+          count: 1,
+          rank: s.rank,
+          exact: true,
+          only: names,
+        })
+      }
+    // A second track of slots (an animist's apparition spellcasting, War of Immortals p. 10).
+    const track = EXTRA_TRACK[cls.name]
+    if (track && prevRow.extra && nowRow.extra)
+      nowRow.extra.slots.forEach((n, i) => {
+        const was = prevRow.extra!.slots[i] ?? 0
+        if (n !== was)
+          slots.push({ rank: i + 1, from: was, to: n, archetype: track.key, label: track.label })
       })
   }
 
@@ -1145,11 +1246,24 @@ export function pf2eLevelPlan(
   const focus = uniqueNames(focusDefs)
     .filter((s) => !have.has(s.id))
     .map((s) => ref(s))
+  // Focus Points (p. 298): one more for each new focus spell that costs one, and for each
+  // feature or feat that says so ("Increase the number of Focus Points in your focus pool by
+  // 1", a psychic's Clarity of Focus; an animist's third apparition), up to 3.
+  const costs = focus.filter(
+    (f) => !data.spells.find((s) => s.id === f.id)?.traits.includes('Cantrip'),
+  )
+  const raises = [...features.map((f) => f.text), ...pickedFeats.map((f) => f.text)].filter((t) =>
+    FOCUS_UP.test(plain(t)),
+  ).length
+  const poolFrom = sheet.focus.max
+  const poolTo = Math.max(poolFrom, Math.min(3, poolFrom + costs.length + raises))
 
   const notes: string[] = []
   for (const f of realFeatures(cls, level))
     if (/\b(?:choose|select)\b/i.test(plain(f.text)) && !handled.has(f.name))
       notes.push(`${f.name}: make its choice on the sheet.`)
+  for (const b of bonuses.increases)
+    if (b.note) notes.push(`${b.from}: its skill increase applies only to ${b.note}.`)
   if (intUp)
     notes.push('Intelligence went up: you also learn a new language (note it on the sheet).')
   notes.push(...archetypeNotes)
@@ -1175,10 +1289,14 @@ export function pf2eLevelPlan(
     spells,
     granted,
     focus,
+    ...(poolTo !== poolFrom ? { focusPoints: { from: poolFrom, to: poolTo } } : {}),
     choices,
     notes,
   }
 }
+
+const FOCUS_UP =
+  /\b(?:Increase the number of Focus Points in your focus pool by 1|The number of Focus Points in your focus pool increases by 1)\b/i
 
 /** Skill ranks after a list of increases, each one step, as far as the level allows. */
 function raiseSkills(
@@ -1217,11 +1335,19 @@ export interface Pf2eLevelProblem {
   text: string
 }
 
-/** What the picks still need, in the order the dialog shows them. */
+/**
+ * What the picks still need, in the order the dialog shows them. With `data`, picks that no
+ * longer fit are problems too (Reconfigure replays a level's recorded picks onto a sheet that
+ * changed): a feat its slot doesn't offer or whose prerequisites the hero now lacks (read
+ * against `projected`, the sheet after this level's boosts and skills), a spell its pick
+ * doesn't offer.
+ */
 export function pf2eLevelProblems(
   plan: Pf2eLevelPlan,
   picks: Pf2eLevelInput,
   sheet: Pf2eSheet,
+  data?: Pf2eBuildData,
+  projected: Pf2eSheet = sheet,
 ): Pf2eLevelProblem[] {
   const out: Pf2eLevelProblem[] = []
   const add = (section: string, text: string) => out.push({ section, text })
@@ -1238,11 +1364,16 @@ export function pf2eLevelProblems(
       c.count === 1 ? `Choose ${article(what)} ${what}` : `Choose ${c.count}: ${what}`,
     )
   }
-  for (const slot of plan.feats)
-    if (!picks.feats[slot.key]) {
-      const what = slot.label.toLowerCase()
+  for (const slot of plan.feats) {
+    const id = picks.feats[slot.key]
+    const what = slot.label.toLowerCase()
+    if (!id) {
       add(`feat:${slot.key}`, `Choose ${article(what)} ${what}`)
+      continue
     }
+    const stale = data && staleFeat(slot, id, picks, sheet, projected, plan.level, data)
+    if (stale) add(`feat:${slot.key}`, stale)
+  }
   const ranks = Object.fromEntries(sheet.skills.map((s) => [s.name, s.rank]))
   const increases = picks.skills.filter(Boolean)
   if (increases.length !== plan.skillIncreases)
@@ -1260,14 +1391,44 @@ export function pf2eLevelProblems(
   for (const s of trained)
     if ((raised.ranks[s] ?? 'U') !== 'U') add('skills', `${s} is already trained`)
   for (const sp of plan.spells) {
-    const n = (picks.spells[sp.key] ?? []).length
+    const ids = picks.spells[sp.key] ?? []
+    const n = ids.length
     if (sp.optional ? n > sp.count : n !== sp.count)
       add(
         `spells:${sp.key}`,
         `${sp.optional ? 'Up to' : 'Choose'} ${sp.count}: ${sp.label.toLowerCase()}`,
       )
+    if (!data) continue
+    const offered = new Set(levelSpellOptions(sp, sheet, data).map((s) => s.id))
+    for (const id of ids.filter((x) => !offered.has(x)))
+      add(
+        `spells:${sp.key}`,
+        `${data.spells.find((s) => s.id === id)?.name ?? 'A spell'} isn't an option for ${sp.label.toLowerCase()} any more: pick again`,
+      )
   }
   return out
+}
+
+/** Why a picked feat no longer fits its slot, or null when it does. */
+function staleFeat(
+  slot: Pf2eFeatSlotPlan,
+  id: string,
+  picks: Pf2eLevelInput,
+  sheet: Pf2eSheet,
+  projected: Pf2eSheet,
+  level: number,
+  data: Pf2eBuildData,
+) {
+  const f = data.feats.find((x) => x.id === id)
+  const name = f?.name ?? 'That feat'
+  const what = slot.label.toLowerCase()
+  if (!f || !levelFeatOptions(slot, sheet, level, data).some((x) => x.id === id))
+    return `${name} isn't an option for the ${what} any more: pick again`
+  const others = Object.entries(picks.feats)
+    .filter(([k]) => k !== slot.key)
+    .map(([, v]) => v)
+  const { unmet } = featPrerequisites(f, projected, data, others)
+  return unmet.length ? `${name} needs ${unmet.join('; ')}: pick again` : null
 }
 
 /**
@@ -1285,10 +1446,11 @@ export function levelSpellOptions(pick: Pf2eSpellPick, sheet: Pf2eSheet, data: P
       .filter((s) => pick.learnAt === undefined || s.rank === pick.learnAt)
       .map((s) => s.id),
   )
+  const only = pick.only && new Set(pick.only.map(norm))
   return uniqueNames(
     data.spells.filter(
       (s) =>
-        s.traditions.includes(tradition) &&
+        (only ? only.has(norm(s.name)) : s.traditions.includes(tradition)) &&
         (pick.cantrip
           ? s.kind === 'cantrip'
           : s.kind === 'spell' && (pick.exact ? s.rank === pick.rank : s.rank <= pick.rank)) &&
@@ -1453,9 +1615,10 @@ export function applyPf2eLevel(
   }
   sheet.bulkLimit += d('STR')
 
-  // Hit Points (p. 29): class HP + CON, every earlier level's CON too, Toughness.
+  // Hit Points (p. 29): class HP + CON, every earlier level's CON too, Toughness. A dying
+  // hero doesn't heal by levelling: at 0 HP the gain goes to max HP only.
   sheet.hpMax += plan.hp.total
-  sheet.hp += plan.hp.total
+  if (sheet.hp > 0) sheet.hp += plan.hp.total
 
   // Spellcasting.
   const sc = sheet.spellcasting
@@ -1477,19 +1640,16 @@ export function applyPf2eLevel(
   }
 
   applyArchetypeCasting(sheet, plan, picks, data, added)
+  // The class's second track (apparition spells) casts with the class's rank.
+  const track = EXTRA_TRACK[ctx.cls.name]
+  const second = track && sheet.archetypeCasting?.find((e) => e.archetype === track.key)
+  if (second && sc) second.rank = sc.rank
 
-  // Focus spells and the pool (p. 298: one point per focus spell, up to 3).
-  if (plan.focus.length) {
-    const list = [...(sheet.focusSpells ?? []), ...plan.focus]
-    sheet.focusSpells = list
-    const cantrips = new Set(
-      data.spells
-        .filter((s) => list.some((f) => f.id === s.id) && s.traits.includes('Cantrip'))
-        .map((s) => s.id),
-    )
-    const max = Math.max(sheet.focus.max, focusPoolMax(list, cantrips))
-    sheet.focus.current += max - sheet.focus.max
-    sheet.focus.max = max
+  // Focus spells and the pool (p. 298).
+  if (plan.focus.length) sheet.focusSpells = [...(sheet.focusSpells ?? []), ...plan.focus]
+  if (plan.focusPoints) {
+    sheet.focus.current += plan.focusPoints.to - sheet.focus.max
+    sheet.focus.max = plan.focusPoints.to
   }
 
   sheet.level = level

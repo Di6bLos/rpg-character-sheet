@@ -1,9 +1,12 @@
 <script setup lang="ts">
-// Adds a PF2e item from the data to the inventory: a search over gear, consumables, magic items,
-// staves, wands, weapons, armor and shields (fetched when the dialog opens), items above the
+// Adds a PF2e item from the data to the inventory: a search over gear (assistive items too),
+// consumables (poisons and other consumables too), snares, magic items (companion items too),
+// specific and precious-material arms and armor, staves, wands, weapons, armor and shields
+// (fetched when the dialog opens), items above the
 // hero's level and uncommon or rare ones behind switches (GM Core p. 222: rarity; Player Core
-// p. 25: buying at your level), how many, the spell a scroll or wand holds (a spell of that rank
-// that isn't a cantrip or focus spell, GM Core pp. 262, 282), and whether to pay from the coins.
+// p. 25: buying at your level), how many, the spell a scroll or Magic Wand holds (a spell of
+// that rank that isn't a cantrip or focus spell, GM Core pp. 262, 282; a specific wand casts
+// its own), and whether to pay from the coins.
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import type { InventoryItem } from '~/types/sheets'
@@ -19,7 +22,9 @@ const GROUPS = [
   { key: 'all', label: 'All' },
   { key: 'gear', label: 'Gear' },
   { key: 'consumables', label: 'Consumables' },
+  { key: 'snares', label: 'Snares' },
   { key: 'magicItems', label: 'Worn & held' },
+  { key: 'arms', label: 'Magic arms & armor' },
   { key: 'staves', label: 'Staves' },
   { key: 'wands', label: 'Wands' },
   { key: 'weapons', label: 'Weapons' },
@@ -45,7 +50,7 @@ async function load() {
   loading.value = true
   failed.value = ''
   try {
-    const sets = ['gear', 'consumables', 'magicItems', 'staves', 'wands'] as const
+    const sets = ['gear', 'consumables', 'snares', 'magicItems', 'arms', 'staves', 'wands'] as const
     const [items, weapons, armor, shields, spellList] = await Promise.all([
       Promise.all(sets.map((s) => loadPf2e(s))),
       loadPf2e('weapons'),
@@ -129,8 +134,17 @@ watch(picked, () => {
 })
 
 const pickedItem = computed(() => (picked.value?.own.set === 'item' ? picked.value.own.def : null))
-/** A scroll or wand holds one spell of its rank (no cantrips or focus spells). */
-const spellRank = computed(() => pickedItem.value?.spellRank)
+/**
+ * A scroll or a Magic Wand holds one spell of its rank the buyer picks (no cantrips or focus
+ * spells); a specific wand casts its own (GM Core p. 282: Wand of Smoldering Fireballs).
+ */
+const fixedSpell = computed(() => {
+  const name = pickedItem.value?.castsSpell
+  return name ? spells.value.find((s) => s.name === name) : undefined
+})
+const spellRank = computed(() =>
+  pickedItem.value?.castsSpell ? undefined : pickedItem.value?.spellRank,
+)
 const spellChoices = computed(() =>
   spellRank.value
     ? spells.value.filter(
@@ -149,7 +163,7 @@ const needsSpell = computed(() => !!spellRank.value && !spellId.value)
 function add() {
   const e = picked.value
   if (!e || needsSpell.value || short.value) return
-  const spell = spells.value.find((s) => s.id === spellId.value)
+  const spell = fixedSpell.value ?? spells.value.find((s) => s.id === spellId.value)
   emit('add', itemFromDef(e.own, count.value, spell), payFor.value ? cost.value : 0)
   picked.value = null
   open.value = false
@@ -240,6 +254,11 @@ const meta = (e: Entry) => {
             max="999"
           />
         </div>
+        <p v-if="pickedItem?.castsSpell" class="small muted grow">
+          Casts {{ pickedItem.castsSpell }} at rank {{ pickedItem.spellRank
+          }}<template v-if="!fixedSpell"> (a spell from outside the data: cast it by hand)</template
+          >.
+        </p>
         <div v-if="spellRank" class="field grow">
           <label for="pf-item-spell">Spell (rank {{ spellRank }} or lower)</label>
           <select id="pf-item-spell" v-model="spellId" class="input">
