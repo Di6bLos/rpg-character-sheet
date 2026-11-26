@@ -531,7 +531,7 @@ export function takeDamage(
     : ''
   if (blockProblem) notes.push(`No Shield Block: ${blockProblem}`)
   else if (o.shieldBlock) {
-    if (s.turn) s.turn.reaction = false
+    s.turn = { ...(s.turn ?? { active: false, actions: 0, attacks: 0, round: 0 }), reaction: false }
     const prevented = Math.min(left, s.shield.hardness)
     left -= prevented
     s.shield.hp = Math.max(0, s.shield.hp - left)

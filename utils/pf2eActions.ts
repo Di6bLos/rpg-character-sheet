@@ -492,7 +492,8 @@ export function payFor(
 ) {
   const t = s.turn
   if (t?.active && r.cost?.kind === 'actions') t.actions -= opts.actions ?? r.cost.min
-  if (t && inEncounter(s) && r.cost?.kind === 'reaction') t.reaction = false
+  // Any reaction spends the one a round (p. 436); out of combat Time passes gives it back.
+  if (r.cost?.kind === 'reaction') turnOf(s).reaction = false
   if (t?.active && r.traits.some((x) => x.toLowerCase() === 'flourish')) t.flourish = true
   if (r.frequency) spendUse(s, opts.name, r.frequency, opts.target)
   return spendFinisher(s, r)
@@ -751,3 +752,52 @@ export function featStatLines(
 
 const GLYPH: Record<string, string> = { 1: '◆', 2: '◆◆', 3: '◆◆◆', reaction: '↺', free: '◇' }
 const glyph = (a: string | number) => GLYPH[String(a)] ?? String(a)
+
+// --- Categories for the Actions panel ---------------------------------------------------
+
+export type Pf2eActionCategory =
+  | 'attack'
+  | 'move'
+  | 'defense'
+  | 'senses'
+  | 'influence'
+  | 'help'
+  | 'other'
+
+/** The Actions panel's categories, in order, with their headings. */
+export const PF2E_ACTION_CATEGORIES: { id: Pf2eActionCategory; label: string }[] = [
+  { id: 'attack', label: 'Attacks & maneuvers' },
+  { id: 'move', label: 'Movement' },
+  { id: 'defense', label: 'Defense' },
+  { id: 'senses', label: 'Senses & knowledge' },
+  { id: 'influence', label: 'Influence' },
+  { id: 'help', label: 'Help & healing' },
+  { id: 'other', label: 'Other' },
+]
+
+const DEFENSE = ['raise a shield', 'take cover', 'avert gaze', 'shield block']
+const SENSES = ['seek', 'sense motive', 'recall knowledge', 'hide', 'point out']
+const HELP = ['aid', 'administer first aid', 'treat wounds', 'battle medicine', 'treat poison']
+
+/**
+ * What an action is for, from its name and traits (Player Core pp. 414–419): an attack
+ * (the attack trait, a Strike), movement (move), defense (Raise a Shield, Take Cover),
+ * senses and knowledge (Seek, Recall Knowledge, Hide), influence (mental or emotion actions
+ * such as Demoralize and Create a Diversion), help and healing (Aid, First Aid), or other.
+ */
+export function actionCategory(
+  name: string,
+  traits: string[],
+  r?: Pick<Pf2eAbilityRules, 'strike'>,
+): Pf2eActionCategory {
+  const n = name.trim().toLowerCase()
+  const t = traits.map((x) => x.toLowerCase())
+  if (DEFENSE.includes(n)) return 'defense'
+  if (HELP.includes(n)) return 'help'
+  if (SENSES.includes(n)) return 'senses'
+  if (r?.strike || t.includes('attack')) return 'attack'
+  if (t.includes('move')) return 'move'
+  if (t.includes('mental') || t.includes('emotion') || t.includes('linguistic')) return 'influence'
+  if (t.includes('healing')) return 'help'
+  return 'other'
+}

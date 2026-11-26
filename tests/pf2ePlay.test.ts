@@ -148,6 +148,9 @@ describe('pf2e damage and dying (pp. 410–411)', () => {
     expect(s.shield.hp).toBe(13)
     expect(s.hp).toBe(13)
     expect(msg).toContain('blocks 5')
+    expect(s.turn?.reaction).toBe(false)
+    expect(takeDamage(s, 1, { shieldBlock: true })).toContain('Your reaction is spent')
+    s.turn!.reaction = true
     takeDamage(s, 9, { shieldBlock: true })
     expect(s.shield.hp).toBe(9)
     expect(s.shield.raised).toBe(false)

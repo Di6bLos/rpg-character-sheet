@@ -3,6 +3,7 @@ import type { Pf2eSheet } from '../types/sheets'
 import { readAbility } from '../utils/pf2eAbilityRules'
 import {
   NOT_YOUR_TURN,
+  actionCategory,
   blockedReason,
   endPf2eEncounter,
   endPf2eTurn,
@@ -242,5 +243,22 @@ describe('rest and resurrection', () => {
     resurrect(s)
     expect(s.doomed).toBe(3)
     expect(isDead(s)).toBe(false)
+  })
+})
+
+describe('actionCategory', () => {
+  it('sorts actions by what they are for', () => {
+    expect(actionCategory('Trip', ['Attack'])).toBe('attack')
+    expect(
+      actionCategory('Sudden Charge', ['Fighter', 'Flourish', 'Open'], { strike: {} as never }),
+    ).toBe('attack')
+    expect(actionCategory('Stride', ['Move'])).toBe('move')
+    expect(actionCategory('Raise a Shield', [])).toBe('defense')
+    expect(actionCategory('Seek', ['Concentrate', 'Secret'])).toBe('senses')
+    expect(
+      actionCategory('Demoralize', ['Auditory', 'Concentrate', 'Emotion', 'Fear', 'Mental']),
+    ).toBe('influence')
+    expect(actionCategory('Administer First Aid', ['Manipulate'])).toBe('help')
+    expect(actionCategory('Interact', ['Manipulate'])).toBe('other')
   })
 })

@@ -8,10 +8,29 @@ import { hasShieldBlock } from '~/utils/pf2ePlay'
 
 const { draft } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
-const { grouped, why, left, choicesFor, weaponsFor, tiersFor, dmgPreview, use, strikeDamage } =
-  usePf2eActions()
+const {
+  grouped,
+  basicReactions,
+  skillActions,
+  classActions,
+  why,
+  left,
+  choicesFor,
+  weaponsFor,
+  tiersFor,
+  dmgPreview,
+  use,
+  strikeDamage,
+} = usePf2eActions()
 const { claim, resultFor, unclaimed } = useResultOwner()
-const reactions = computed(() => grouped.value.find((g) => g.id === 'reactions')?.entries ?? [])
+const isReaction = (e: { rules: { cost?: { kind: string } } }) => e.rules.cost?.kind === 'reaction'
+/** The hero's own reactions, then their class's and trained skills', then everyone's (Aid). */
+const reactions = computed(() => [
+  ...(grouped.value.find((g) => g.id === 'reactions')?.entries ?? []),
+  ...classActions.value.filter(isReaction),
+  ...skillActions.value.filter(isReaction),
+  ...basicReactions.value,
+])
 const ready = computed(() => sheet.value.turn?.reaction !== false)
 const blocks = computed(() => hasShieldBlock(sheet.value) && !!sheet.value.shield.name.trim())
 </script>
@@ -24,7 +43,7 @@ const blocks = computed(() => hasShieldBlock(sheet.value) && !!sheet.value.shiel
         <h2 id="rea-h">Reactions</h2>
         <UiHelp
           label="About reactions"
-          text="One reaction a round, on any turn, when its trigger happens; it comes back at the start of your turn (Player Core p. 436). Using one here spends it; ↺ in the Turn panel gives it back."
+          text="One reaction a round, on any turn, when its trigger happens; it comes back at the start of your turn (Player Core p. 436), or when time passes out of combat. Using one here, a reaction spell or Shield Block spends it, and the Turn panel's ↺ shows it; tap ↺ to give it back."
         />
       </div>
       <span class="small" :class="ready ? 'rea-ready' : 'muted'">{{
@@ -35,26 +54,36 @@ const blocks = computed(() => hasShieldBlock(sheet.value) && !!sheet.value.shiel
       Shield Block: raise your shield, then tick Shield Block beside Hit points before you take the
       hit; the shield takes its Hardness off it.
     </p>
-    <Pf2eActionRow
-      v-for="e in reactions"
-      :key="e.key"
-      :entry="e"
-      :why="why(e)"
-      :left="left(e)"
-      :choices="choicesFor(e)"
-      :weapons="weaponsFor(e)"
-      :tiers="tiersFor(e)"
-      :dmg="dmgPreview(e)"
-      :result="resultFor(`act:${e.key}`)"
-      @use="(st) => claim(`act:${e.key}`, () => use(e, st))"
-      @damage="(crit, st) => claim(`act:${e.key}`, () => strikeDamage(e, crit, st))"
-    />
+    <div class="rows">
+      <Pf2eActionRow
+        v-for="e in reactions"
+        :key="e.key"
+        :entry="e"
+        :why="why(e)"
+        :left="left(e)"
+        :choices="choicesFor(e)"
+        :weapons="weaponsFor(e)"
+        :tiers="tiersFor(e)"
+        :dmg="dmgPreview(e)"
+        :result="resultFor(`act:${e.key}`)"
+        @use="(st) => claim(`act:${e.key}`, () => use(e, st))"
+        @damage="(crit, st) => claim(`act:${e.key}`, () => strikeDamage(e, crit, st))"
+      />
+    </div>
     <p v-if="!reactions.length" class="empty">None of your abilities is a reaction.</p>
     <p v-if="unclaimed" class="roll-status" role="status" aria-live="polite">{{ unclaimed }}</p>
   </section>
 </template>
 
 <style scoped lang="scss">
+// Two cards a row on wider panels, as Nimble's reactions.
+.rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
 .rea-ready {
   font-weight: 700;
   color: var(--accent-text);

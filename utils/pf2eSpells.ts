@@ -18,7 +18,7 @@ import {
   NOT_YOUR_TURN,
   attacked,
   cantAct,
-  inEncounter,
+  newTurn,
   offTurn,
   usableOffTurn,
 } from '~/utils/pf2eActions'
@@ -231,8 +231,7 @@ export function castBlocked(s: Pf2eSheet, spell: Pf2eSpellDef | undefined, actio
   if (stopped) return stopped
   const cost = readCost(spell?.actions)
   const t = s.turn
-  if (cost?.kind === 'reaction' && t && inEncounter(s) && !t.reaction)
-    return 'Reaction already used this round'
+  if (cost?.kind === 'reaction' && t && !t.reaction) return 'Reaction already used this round'
   if (offTurn(s) && cost && !usableOffTurn({ cost, trigger: spell?.trigger })) return NOT_YOUR_TURN
   if (cost?.kind === 'actions' && t?.active) {
     const n = actions ?? cost.min
@@ -253,7 +252,7 @@ export function payCast(
 ) {
   const t = s.turn
   const cost = readCost(spell.actions)
-  if (t && inEncounter(s) && cost?.kind === 'reaction') t.reaction = false
+  if (cost?.kind === 'reaction') (s.turn ??= newTurn()).reaction = false
   if (t?.active && cost?.kind === 'actions')
     t.actions = Math.max(0, t.actions - (o.actions ?? cost.min))
   if (o.attacks) attacked(s, o.attacks)

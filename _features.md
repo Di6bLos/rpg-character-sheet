@@ -378,5 +378,6 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Spell cards with folding ranks; Spells and Abilities groups in Attacks
 - [x] Feats as an ability card grid; inventory alignment
 - [x] Manual dice for PF2e Strikes and their damage, checks, saves, Perception, initiative and the recovery check
+- [x] Actions by category (Attacks & maneuvers, Movement, Defense, Senses & knowledge, Influence, Help & healing, Other) and skill actions by skill; Reactions in a card grid with Aid and Grab an Edge; any reaction used spends the reaction
 - [ ] Manual dice for PF2e ability uses (Actions, Reactions) and spell casts
 - [x] Accessibility and touch sweep (44px skill rolls, group folds, full-text folds, coins)

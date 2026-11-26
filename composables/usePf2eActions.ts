@@ -64,7 +64,6 @@ const BASIC = [
   'Hide',
   'Sneak',
   'Take Cover',
-  'Aid',
   'Ready',
   'Delay',
   'Drop Prone',
@@ -78,6 +77,11 @@ const BASIC = [
   'Administer First Aid',
 ]
 const CORE_BOOKS = new Set(['Player Core', 'Player Core 2'])
+/**
+ * Reactions everyone has (Player Core pp. 416–417): Aid an ally's check, Grab an Edge when
+ * you fall. They show in the Reactions panel with the hero's own.
+ */
+const BASIC_REACTIONS = ['Aid', 'Grab an Edge']
 
 const GROUPS: { id: Pf2eActionGroup; label: string }[] = [
   { id: 'actions', label: 'Actions' },
@@ -195,9 +199,23 @@ function create(strikesApi: Pf2eStrikes) {
     }),
   )
 
+  const basicReactions = computed<Entry[]>(() =>
+    BASIC_REACTIONS.flatMap((name) => {
+      const a = actionData.value.find((x) => x.name === name)
+      const r = actionRules.value.get(name)
+      if (!a || !r || mineNames.value.has(name)) return []
+      return [entryFor(`r-${name}`, name, r, a.text)]
+    }),
+  )
+
   const skillActions = computed<Entry[]>(() =>
     actionData.value
-      .filter((a) => CORE_BOOKS.has(a.source.book) && !BASIC.includes(a.name))
+      .filter(
+        (a) =>
+          CORE_BOOKS.has(a.source.book) &&
+          !BASIC.includes(a.name) &&
+          !BASIC_REACTIONS.includes(a.name),
+      )
       .flatMap((a) => {
         const r = actionRules.value.get(a.name)
         const skills = r?.check?.skills ?? []
@@ -423,6 +441,7 @@ function create(strikesApi: Pf2eStrikes) {
     level,
     grouped,
     basic,
+    basicReactions,
     skillActions,
     classActions,
     targetDc,

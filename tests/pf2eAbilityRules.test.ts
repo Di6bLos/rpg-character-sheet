@@ -649,12 +649,12 @@ describe('pf2e ability rules: review fixes', () => {
     expect(s.turn!.attacks).toBe(1)
     expect(uncounted(s, strike, 'critical failure', 1)).toBe(false)
   })
-  it('spends a reaction only in an encounter; time passing gives it back (p. 434)', () => {
+  it('spends the reaction whenever one is used; a turn or time passing gives it back (p. 436)', () => {
     const r = readAbility(find(feats, 'Reactive Shield'))
     expect(r.cost).toEqual({ kind: 'reaction' })
     const s = hero(['Reactive Shield'])
     payFor(s, r, { name: r.name })
-    expect(s.turn?.reaction ?? true).toBe(true)
+    expect(s.turn?.reaction).toBe(false)
     startPf2eTurn(s)
     endPf2eTurn(s)
     payFor(s, r, { name: r.name })
