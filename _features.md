@@ -38,6 +38,8 @@ Design reference: `design/README.md`. Check tasks off as they land.
 
 - [x] Library: upload, system and category tags, filters, search, PDF viewer
 - [x] Library Rules tab: basic rules by topic for Nimble and Pathfinder 2e (5e coming soon), system picker, search, deep links
+- [x] Library Spells tab: searchable, sortable spell table for Nimble and Pathfinder 2e (filters, phone cards, spell modal, shareable links)
+- [x] Library Classes tab: searchable class index (says what matched); a class opens in a modal with a jump nav, its advancement table, features, subclasses and spell slots; `class=` links
 - [x] Report a file (library, board, journal attachment)
 - [x] Admin: users table, roles, permission switches, restriction reason, moderation history, suspend
 - [x] Admin: reports queue (dismiss, remove, remove + restrict), campaigns and documents lists

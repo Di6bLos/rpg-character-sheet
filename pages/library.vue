@@ -12,14 +12,23 @@ const store = useLibraryStore()
 const site = useSiteStore()
 const route = useRoute()
 
-/** Documents, the basic rules, or the shared NPC pool (hidden when admins switch it off). */
+const TAB_TITLES = { rules: 'Rules', spells: 'Spells', classes: 'Classes' } as const
+type CompendiumTab = keyof typeof TAB_TITLES
+
+/**
+ * Documents, the basic rules, spells, classes, or the shared NPC pool (hidden when admins
+ * switch it off).
+ */
 const tab = computed(() => {
-  if (route.query.tab === 'rules') return 'rules'
-  return route.query.tab === 'npcs' && site.settings.npc_pool_library ? 'npcs' : 'documents'
+  const t = route.query.tab
+  if (typeof t === 'string' && t in TAB_TITLES) return t as CompendiumTab
+  return t === 'npcs' && site.settings.npc_pool_library ? 'npcs' : 'documents'
 })
 useHead({
   title: computed(() =>
-    tab.value === 'rules' ? 'Rules · Library · Lantern' : 'Library · Lantern',
+    tab.value in TAB_TITLES
+      ? `${TAB_TITLES[tab.value as CompendiumTab]} · Library · Lantern`
+      : 'Library · Lantern',
   ),
 })
 const snackbar = useSnackbarStore()
@@ -38,12 +47,36 @@ watch(
     subnavObserver?.disconnect()
     subnavH.value = node?.offsetHeight ?? 0
     if (!node) return
-    subnavObserver = new ResizeObserver(() => (subnavH.value = node.offsetHeight))
+    subnavObserver = new ResizeObserver(() => {
+      subnavH.value = node.offsetHeight
+      tabEdges()
+    })
     subnavObserver.observe(node)
+    showActiveTab()
   },
   { flush: 'post' },
 )
 onBeforeUnmount(() => subnavObserver?.disconnect())
+
+// Phones: the tabs scroll sideways in one row, faded at an edge with more tabs past it, and
+// the current tab is scrolled into view.
+const tabFade = reactive({ start: false, end: false })
+function tabEdges() {
+  const nav = subnavEl.value
+  if (!nav) return
+  tabFade.start = nav.scrollLeft > 2
+  tabFade.end = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2
+}
+function showActiveTab() {
+  const nav = subnavEl.value
+  const current = nav?.querySelector<HTMLElement>('[aria-current=page]')
+  if (nav && current) {
+    const left = current.getBoundingClientRect().left - nav.getBoundingClientRect().left
+    nav.scrollLeft += left - (nav.clientWidth - current.offsetWidth) / 2
+  }
+  tabEdges()
+}
+watch(tab, () => nextTick(showActiveTab))
 
 const cat = ref<'All' | LibraryCategory>('All')
 const q = ref('')
@@ -209,8 +242,9 @@ function report(doc: LibraryDocument) {
         </div>
         <h1 style="margin-top: 6px">Library</h1>
         <p>
-          The basic rules of each game, plus references and homebrew any player or GM can read from
-          their dashboard. Campaign-specific notes go in that campaign’s journal.
+          The basic rules, spells and classes of each game, plus references and homebrew any player
+          or GM can read from their dashboard. Campaign-specific notes go in that campaign’s
+          journal.
         </p>
       </div>
       <button
@@ -246,7 +280,13 @@ function report(doc: LibraryDocument) {
       />
     </header>
 
-    <nav ref="subnavEl" aria-label="Library sections" class="lib-tabs sticky-bar">
+    <nav
+      ref="subnavEl"
+      aria-label="Library sections"
+      class="lib-tabs sticky-bar"
+      :class="{ 'fade-start': tabFade.start, 'fade-end': tabFade.end }"
+      @scroll.passive="tabEdges"
+    >
       <NuxtLink to="/library" :aria-current="tab === 'documents' ? 'page' : undefined"
         >Documents</NuxtLink
       >
@@ -256,16 +296,31 @@ function report(doc: LibraryDocument) {
         >Rules</NuxtLink
       >
       <NuxtLink
+        :to="{ path: '/library', query: { tab: 'spells' } }"
+        :aria-current="tab === 'spells' ? 'page' : undefined"
+        >Spells</NuxtLink
+      >
+      <NuxtLink
+        :to="{ path: '/library', query: { tab: 'classes' } }"
+        :aria-current="tab === 'classes' ? 'page' : undefined"
+        >Classes</NuxtLink
+      >
+      <NuxtLink
         v-if="site.settings.npc_pool_library"
         :to="{ path: '/library', query: { tab: 'npcs' } }"
         :aria-current="tab === 'npcs' ? 'page' : undefined"
-        >NPCs &amp; monsters</NuxtLink
+        ><span class="tab-long">NPCs &amp; monsters</span
+        ><span class="tab-short">NPCs</span></NuxtLink
       >
     </nav>
 
     <LibraryNpcPool v-if="tab === 'npcs'" />
 
     <LibraryRules v-else-if="tab === 'rules'" />
+
+    <LazyLibrarySpells v-else-if="tab === 'spells'" />
+
+    <LazyLibraryClasses v-else-if="tab === 'classes'" />
 
     <template v-else>
       <RestrictedNotice v-if="!canUpload" title="Uploads are turned off for your account">
@@ -573,12 +628,54 @@ function report(doc: LibraryDocument) {
 
   .lib-tabs {
     position: static;
+    flex-wrap: nowrap;
     gap: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     a {
+      flex: none;
       padding: 0 10px;
       font-size: 16px;
+      white-space: nowrap;
     }
+
+    &.fade-start {
+      mask-image: linear-gradient(90deg, transparent, #000 32px);
+    }
+
+    &.fade-end {
+      mask-image: linear-gradient(270deg, transparent, #000 32px);
+    }
+
+    &.fade-start.fade-end {
+      mask-image: linear-gradient(
+        90deg,
+        transparent,
+        #000 32px,
+        #000 calc(100% - 32px),
+        transparent
+      );
+    }
+  }
+}
+
+.tab-short {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .tab-long {
+    display: none;
+  }
+
+  .tab-short {
+    display: inline;
   }
 }
 </style>

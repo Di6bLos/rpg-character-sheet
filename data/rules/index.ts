@@ -130,9 +130,6 @@ export function rulesSystem(id: string | null | undefined): RulesSystem | undefi
   return RULES_SYSTEMS.find((s) => s.id === id)
 }
 
-/** Systems with at least one topic, in picker order. */
-export const READY_SYSTEMS = RULES_SYSTEMS.filter((s) => s.topics.length)
-
 const FILES = import.meta.glob<string>('./*/*.md', { query: '?raw', import: 'default' })
 
 /** Every topic file on disk, as `<system>/<file>.md` (for the test that checks the index). */
