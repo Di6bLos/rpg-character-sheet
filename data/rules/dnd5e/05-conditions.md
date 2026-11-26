@@ -7,7 +7,6 @@ Every condition, with the rules for exhaustion.
 A condition is a temporary game state. The definition of a condition says how it affects its recipient, and various rules define how to end a condition. This glossary defines these conditions:
 
 | Blinded | Grappled | Poisoned |
-| --- | --- | --- |
 | Charmed | Incapacitated | Prone |
 | Deafened | Invisible | Restrained |
 | Exhaustion | Paralyzed | Stunned |

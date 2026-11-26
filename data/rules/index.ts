@@ -24,6 +24,11 @@ export interface RulesSystem {
   label: string
   /** The books the summaries come from, as cited on the page. */
   sources: string
+  /**
+   * The line under a topic's title when its text isn't a summary (5e prints the SRD's own
+   * text); otherwise "Summarised from <sources>…".
+   */
+  credit?: string
   /** The license notice the tab's footer shows. */
   attribution: string
   topics: RulesTopic[]
@@ -119,6 +124,8 @@ export const RULES_SYSTEMS: RulesSystem[] = [
     id: 'dnd5e',
     label: '5e',
     sources: 'System Reference Document 5.2.1',
+    credit:
+      'The System Reference Document 5.2.1’s own text, by Wizards of the Coast LLC under CC-BY-4.0, with its page numbers.',
     attribution:
       'This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.',
     topics: [

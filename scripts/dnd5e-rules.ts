@@ -9,6 +9,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type SrdSection, find, flatBlocks, lastPage, sectionTree, srdIndex } from './lib/dnd5eSrd'
+import { TABLE_PATCHES, mendTables, patchTables } from './lib/dnd5eRulesTables'
 import { blocksMarkdown, srdBlocks, srdItems } from './lib/srd'
 
 const ROOT = join(import.meta.dirname, '..')
@@ -16,7 +17,7 @@ const LOCAL = join(ROOT, '.local', 'dnd5e')
 const OUT = join(ROOT, 'data', 'rules', 'dnd5e')
 
 const items = await srdItems(join(LOCAL, 'SRD_CC_v5.2.1.pdf'), join(LOCAL, 'srd-items.json'))
-const root = sectionTree(srdBlocks(items, 5, 253))
+const root = sectionTree(mendTables(srdBlocks(items, 5, 253, { columns: true })))
 const srd = srdIndex(root)
 
 const cite = (first: number, last: number) =>
@@ -24,7 +25,7 @@ const cite = (first: number, last: number) =>
 
 /** One `##` section: the SRD section's text, its subsections one level down, then the cite. */
 function part(s: SrdSection, title = s.title, skip: (c: SrdSection) => boolean = () => false) {
-  const body = blocksMarkdown(flatBlocks(s, skip), 3)
+  const body = blocksMarkdown(flatBlocks(s, skip), 3, { headerFont: true })
   return `## ${title}\n\n${body}\n\n${cite(s.page, lastPage(s))}`
 }
 
@@ -46,18 +47,7 @@ const toolbox = chapter('Gameplay Toolbox')
 const equipment = chapter('Equipment')
 const glossary = srd.glossary
 const travel = need('Travel Pace', toolbox)
-/**
- * The Gameplay Toolbox's "Creating a Background" steps (SRD pp. 192–193) lose their heading in
- * the PDF and land under Travel Pace; they belong with character creation.
- */
-const backgroundStep = (c: SrdSection) => /^\d: Choose/.test(c.title)
-const creatingBackground: SrdSection = {
-  title: 'Creating a Background',
-  size: 18,
-  page: travel.children.find(backgroundStep)?.page ?? 193,
-  blocks: [],
-  children: travel.children.filter(backgroundStep),
-}
+const creatingBackground = need('Creating a Background', toolbox)
 const gloss = (name: string) => {
   const g = glossary.find((e) => e.name === name)
   if (!g) throw new Error(`glossary entry not found: ${name}`)
@@ -67,7 +57,10 @@ const glossPart = (names: string[], title: string) => {
   const entries = names.map(gloss)
   const pages = entries.map((e) => e.page)
   return `## ${title}\n\n${entries
-    .map((e) => `### ${e.section.title}\n\n${blocksMarkdown(flatBlocks(e.section), 4)}`)
+    .map(
+      (e) =>
+        `### ${e.section.title}\n\n${blocksMarkdown(flatBlocks(e.section), 4, { headerFont: true })}`,
+    )
     .join('\n\n')}\n\n${cite(Math.min(...pages), Math.max(...pages))}`
 }
 
@@ -158,7 +151,7 @@ const TOPICS: { file: string; intro: string; parts: string[] }[] = [
     intro: 'Exploring: vision and light, hiding, hazards, travel and the environment.',
     parts: [
       ...need('Exploration', playing).children.map((c) => part(c)),
-      part({ ...travel, children: travel.children.filter((c) => !backgroundStep(c)) }),
+      part(travel),
       part(need('Environmental Effects', toolbox)),
     ],
   },
@@ -220,7 +213,12 @@ const TOPICS: { file: string; intro: string; parts: string[] }[] = [
   },
 ]
 
+for (const p of TABLE_PATCHES)
+  if (!TOPICS.some((t) => t.file === p.topic)) throw new Error(`5e rules: no topic ${p.topic}`)
 mkdirSync(OUT, { recursive: true })
 for (const t of TOPICS)
-  writeFileSync(join(OUT, `${t.file}.md`), `${t.intro}\n\n${t.parts.join('\n\n')}\n`)
+  writeFileSync(
+    join(OUT, `${t.file}.md`),
+    patchTables(t.file, `${t.intro}\n\n${t.parts.join('\n\n')}\n`),
+  )
 console.log(`${TOPICS.length} topics in ${OUT}`)

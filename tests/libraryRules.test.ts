@@ -234,4 +234,33 @@ describe('5e rules', () => {
     expect(text('dnd5e', 'conditions')).toMatch(/^### Exhaustion \[Condition\]$/m)
     expect(text('dnd5e', 'rules-glossary')).toMatch(/^### Opportunity Attacks/m)
   })
+
+  it('sets each SRD table whole, as printed across columns and pages', () => {
+    const tables = (md: string) => md.split(/\n{2,}/).filter((b) => b.startsWith('|'))
+    const rows = (table: string) => table.split('\n').filter((r) => !r.startsWith('| ---'))
+    const after = (md: string, title: string) => tables(md.slice(md.indexOf(title)))[0] ?? ''
+    for (const t of rulesSystem('dnd5e')?.topics ?? [])
+      for (const table of tables(text('dnd5e', t.slug))) {
+        expect(table, t.slug).not.toMatch(/ = /)
+        expect(table, t.slug).not.toMatch(/\| • \|/)
+      }
+    const trinkets = rows(after(text('dnd5e', 'character-basics'), '### Trinkets'))
+    expect(trinkets).toHaveLength(101)
+    expect(trinkets[1]).toBe('| 01 | A mummified goblin hand |')
+    expect(trinkets[100]).toBe('| 00 | A metal urn containing the ashes of a hero |')
+    expect(text('dnd5e', 'leveling-up')).not.toContain('| Trinket |')
+    const slots = rows(after(text('dnd5e', 'leveling-up'), 'Multiclass Spellcaster'))
+    expect(slots.map((r) => r.split(' | ')[0])).toEqual([
+      '| Level',
+      ...Array.from({ length: 20 }, (_, i) => `| ${i + 1}`),
+    ])
+    const equipment = text('dnd5e', 'equipment')
+    expect(after(equipment, '##### Weapons')).toContain('| **Martial Ranged Weapons** |')
+    expect(after(equipment, '##### Armor')).toMatch(
+      /^\| Plate Armor \| 18 \| Str 15 \| Disadvantage \| 65 lb\. \| 1,500 GP \|$/m,
+    )
+    expect(text('dnd5e', 'core-rules')).toContain(
+      '**Base AC** = 10 + the creature’s Dexterity modifier',
+    )
+  })
 })

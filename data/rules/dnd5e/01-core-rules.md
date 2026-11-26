@@ -149,6 +149,22 @@ Saving throws are named for the ability modifiers they use: a Constitution savin
 | Wisdom | Resist a mental assault |
 | Charisma | Assert your identity |
 
+#### Proficiency Bonus
+
+You add your Proficiency Bonus to your saving throw if you have proficiency in that kind of save. See “Proficiency” later in “Playing the Game.”
+
+#### Difficulty Class
+
+The Difficulty Class for a saving throw is determined by the effect that causes it or by the GM. For example, if a spell forces you to make a save, the DC is determined by the caster’s spellcasting ability and Proficiency Bonus. Monster abilities that call for saves specify the DC.
+
+### Attack Rolls
+
+An attack roll determines whether an attack hits a target. An attack roll hits if the roll equals or exceeds the target’s Armor Class. Attack rolls usually occur in battle, described in “Combat” later in “Playing the Game,” but the GM might also ask for an attack roll in other situations, such as an archery competition.
+
+#### Ability Modifier
+
+The Attack Roll Abilities table shows which ability modifier to use for different types of attack rolls.
+
 ##### Attack Roll Abilities
 
 | Ability | Attack Type |
@@ -169,24 +185,7 @@ A creature’s Armor Class represents how well the creature avoids being wounded
 
 ***Calculating AC.*** All creatures start with the same base AC calculation:
 
-#### Proficiency Bonus
-
-| You add your Proficiency Bonus to your saving | = |
-| --- | --- |
-
-throw if you have proficiency in that kind of save. See “Proficiency” later in “Playing the Game.”
-
-#### Difficulty Class
-
-The Difficulty Class for a saving throw is determined by the effect that causes it or by the GM. For example, if a spell forces you to make a save, the DC is determined by the caster’s spellcasting ability and Proficiency Bonus. Monster abilities that call for saves specify the DC.
-
-### Attack Rolls
-
-An attack roll determines whether an attack hits a target. An attack roll hits if the roll equals or exceeds the target’s Armor Class. Attack rolls usually occur in battle, described in “Combat” later in “Playing the Game,” but the GM might also ask for an attack roll in other situations, such as an archery competition.
-
-#### Ability Modifier
-
-The Attack Roll Abilities table shows which ability modifier to use for different types of attack rolls.
+**Base AC** = 10 + the creature’s Dexterity modifier
 
 A creature’s AC can then be modified by armor, magic items, spells, and more.
 
@@ -261,13 +260,11 @@ Most ability checks involve using a skill, which represents a category of things
 
 If a creature is proficient in a skill, the creature applies its Proficiency Bonus to ability checks involving that skill. Without proficiency in a skill, a creature can still make ability checks involving that skill but doesn’t add its Proficiency Bonus. For example, if a character tries to climb a cliff, the GM might ask for a Strength (Athletics) check. If the character has Athletics proficiency, the character adds their Proficiency Bonus to the Strength check. If the character lacks that proficiency, they make the check without adding their Proficiency Bonus.
 
-| Skill | Ability | Example Uses |
-| --- | --- | --- |
-
 ##### Skills
 
-| Acrobatics | Dexterity | Stay on your feet in a tricky situation, or perform an acrobatic stunt. |
+| Skill | Ability | Example Uses |
 | --- | --- | --- |
+| Acrobatics | Dexterity | Stay on your feet in a tricky situation, or perform an acrobatic stunt. |
 | Animal Handling | Wisdom | Calm or train an animal, or get an animal to behave in a certain way. |
 | Arcana | Intelligence | Recall lore about spells, magic items, and the planes of existence. |
 | Athletics | Strength | Jump farther than normal, stay afloat in rough water, or break something. |

@@ -144,7 +144,17 @@ A spell’s duration is the length of time the spell persists after it is cast. 
 
 ### Effects
 
-The effects of a spell are detailed after its duration entry. Those details present exactly what the spell does, which ignores mundane physical laws;
+The effects of a spell are detailed after its duration entry. Those details present exactly what the spell does, which ignores mundane physical laws; any outcomes beyond those effects are under the GM’s purview. Whatever the effects, they typically deal with targets, saving throws, attack rolls, or all three, each of which is detailed below.
+
+#### Targets
+
+A typical spell requires the caster to pick one or more targets to be affected by the spell’s magic. A spell’s description says whether the spell targets creatures, objects, or something else.
+
+***A Clear Path to the Target.*** To target something with a spell, a caster must have a clear path to it, so it can’t be behind Total Cover.
+
+***Targeting Yourself.*** If a spell targets a creature of your choice, you can choose yourself unless the creature must be Hostile or specifically a creature other than you.
+
+***Areas of Effect.*** Some spells, such as _Thunderwave_, cover an area called an area of effect, which is defined in “Rules Glossary.” The area determines what the spell targets. The description of a spell specifies whether it has an area of effect, which is typically one of these shapes: Cone, Cube, Cylinder, Emanation, Line, or Sphere.
 
 ***Awareness of Being Targeted.*** Unless a spell has a perceptible effect, a creature doesn’t know it was targeted by the spell. An effect like lightning is obvious, but a more subtle effect, such as an attempt to read thoughts, goes unnoticed unless a spell’s description says otherwise.
 
@@ -156,27 +166,13 @@ If the spell normally has no effect on a target that succeeds on a saving throw,
 
 Many spells specify that a target makes a saving throw to avoid some or all of a spell’s effects. The spell specifies the ability that the target uses for the save and what happens on a success or failure. Here’s how to calculate the DC for your spells:
 
-**Spell save DC** = 8 + your spellcasting ability modifier
-
-+ your Proficiency Bonus
+**Spell save DC** = 8 + your spellcasting ability modifier + your Proficiency Bonus
 
 #### Attack Rolls
 
-Some spells require the caster to make an attack roll to determine whether the spell hits a target. Here’s how to calculate the attack modifier for your spells: any outcomes beyond those effects are under the three, each of which is detailed below.
+Some spells require the caster to make an attack roll to determine whether the spell hits a target. Here’s how to calculate the attack modifier for your spells:
 
-| GM’s purview. Whatever the effects, they typically | = your spellcasting ability |
-| --- | --- |
-| deal with targets, saving throws, attack rolls, or all | modifier + your Proficiency Bonus |
-
-#### Targets
-
-A typical spell requires the caster to pick one or more targets to be affected by the spell’s magic. A spell’s description says whether the spell targets creatures, objects, or something else.
-
-***A Clear Path to the Target.*** To target something with a spell, a caster must have a clear path to it, so it can’t be behind Total Cover.
-
-***Targeting Yourself.*** If a spell targets a creature of your choice, you can choose yourself unless the creature must be Hostile or specifically a creature other than you.
-
-***Areas of Effect.*** Some spells, such as _Thunderwave_, cover an area called an area of effect, which is defined in “Rules Glossary.” The area determines what the spell targets. The description of a spell specifies whether it has an area of effect, which is typically one of these shapes: Cone, Cube, Cylinder, Emanation, Line, or Sphere.
+**Spell attack modifier** = your spellcasting ability modifier + your Proficiency Bonus
 
 #### Combining Spell Effects
 

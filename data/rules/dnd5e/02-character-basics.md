@@ -22,14 +22,14 @@ Choose a class, and write it on your character sheet. The Class Overview table s
 
 | Class | Likes ... | Primary Ability | Complexity |
 | --- | --- | --- | --- |
-| Barbarian Battle | Strength | Average |  |
+| Barbarian | Battle | Strength | Average |
 | Bard | Performing | Charisma | High |
 | Cleric | Gods | Wisdom | Average |
 | Druid | Nature | Wisdom | High |
 | Fighter | Weapons | Strength or Dexterity | Low |
 | Monk | Unarmed combat | Dexterity and Wisdom | High |
 | Paladin | Defense | Strength and Charisma | Average |
-| Ranger | Survival | Dexterity and Wisdom | Average Class Likes ... Primary Complexity Ability |
+| Ranger | Survival | Dexterity and Wisdom | Average |
 | Rogue | Stealth | Dexterity | Low |
 | Sorcerer | Power | Charisma | High |
 | Warlock | Occult lore | Charisma | High |
@@ -65,12 +65,8 @@ The background you choose influences step 3, when you determine your character�
 | --- | --- |
 | Strength | Soldier |
 | Dexterity | Soldier |
-
-Constitution Soldier
-
+| Constitution | Soldier |
 | Intelligence | Acolyte |
-| --- | --- |
-| Ability | Background |
 | Wisdom | Acolyte |
 | Charisma | Acolyte |
 
@@ -123,11 +119,8 @@ The Standard Languages table lists languages that are widespread in the setting.
 | 7 | Giant |
 | 8 | Gnomish |
 | 9 | Goblin |
-
-10–11 Halfling
-
+| 10–11 | Halfling |
 | 12 | Orc |
-| --- | --- |
 
 The Rare Languages table lists languages that are either secret or derived from other planes of existence and thus less widespread in the worlds of the Material Plane. Some features let a character learn a rare language.
 
@@ -139,8 +132,7 @@ The Rare Languages table lists languages that are either secret or derived from 
 | Celestial | Sylvan |
 | Deep Speech | Thieves’ Cant |
 | Druidic | Undercommon |
-
-Infernal
+| Infernal |  |
 
 *Primordial includes the Aquan, Auran, Ignan, and Terran dialects. Creatures that know one of these dialects can communicate with those that know a different one.
 
@@ -264,9 +256,7 @@ Note these numbers on your character sheet.
 
 ***Passive Perception.*** Sometimes your GM will determine whether your character notices something without asking you to make a Wisdom (Perception) check; the GM uses your Passive Perception instead. Passive Perception is a score that reflects a general awareness of your surroundings when you’re not actively looking for something. Use this formula to determine your Passive Perception score:
 
-**Passive Perception** = 10 + Wisdom (Perception)
-
-check modifier
+**Passive Perception** = 10 + Wisdom (Perception) check modifier
 
 Include all modifiers that apply to your Wisdom (Perception) checks. For example, if your character has a Wisdom of 15 and proficiency in the Perception skill, you have a Passive Perception of 14 (10 + 2 for your Wisdom modifier + 2 for proficiency).
 
@@ -278,12 +268,8 @@ Include all modifiers that apply to your Wisdom (Perception) checks. For example
 | --- | --- |
 | Barbarian | 12 + Con. modifier |
 | Fighter, Paladin, or Ranger | 10 + Con. modifier |
-| Bard, Cleric, Druid, Monk, | 8 + Con. modifier |
-
-Rogue, or Warlock
-
+| Bard, Cleric, Druid, Monk, Rogue, or Warlock | 8 + Con. modifier |
 | Sorcerer or Wizard | 6 + Con. modifier |
-| --- | --- |
 
 The character sheet includes room to note your current Hit Points when you take damage, as well as any Temporary Hit Points you might gain. There’s also space to track Death Saving Throws.
 
@@ -295,22 +281,17 @@ The character sheet includes room to note your current Hit Points when you take 
 
 ***Attacks.*** In the Weapons & Damage Cantrips section of the character sheet, write your starting weapons. The attack roll bonus for a weapon with which you have proficiency is one of the following unless a weapon’s property says otherwise:
 
-| Melee attack bonus = + Proficiency Bonus | Strength modifier |
-| --- | --- |
+**Melee attack bonus** = Strength modifier + Proficiency Bonus
 
-**Ranged attack bonus** = Dexterity modifier
-
-+ Proficiency Bonus
+**Ranged attack bonus** = Dexterity modifier + Proficiency Bonus
 
 Look up the damage and properties of your weapons in “Equipment.” You add the same ability modifier you use for attacks with a weapon to your damage rolls with that weapon.
 
 ***Spellcasting.*** Note both the saving throw DC for your spells and the attack bonus for attacks you make with them, using these formulas:
 
-**Spell save DC** = 8 + spellcasting ability modifier
+**Spell save DC** = 8 + spellcasting ability modifier + Proficiency Bonus
 
-+ Proficiency Bonus **Spell attack bonus** = spellcasting ability modifier
-
-+ Proficiency Bonus
+**Spell attack bonus** = spellcasting ability modifier + Proficiency Bonus
 
 Your spellcasting ability modifier for a spell is determined by whatever feature gives you the ability to cast the spell.
 
@@ -319,6 +300,22 @@ Your spellcasting ability modifier for a spell is determined by whatever feature
 _SRD 5.2.1 pp. 19–23._
 
 ## Creating a background
+
+A character’s background represents what the character did prior to becoming an adventurer. Creating a unique background or customizing an existing one can reflect the particular theme of your campaign or elements of your world. You can also create a background to help a player craft the story they have in mind for their character.
+
+This section describes, step by step, how you can create backgrounds tailored for your world and the heroes in it.
+
+### 1: Choose Abilities
+
+Choose three abilities that seem appropriate for the background:
+
+**Strength or Dexterity.** These abilities are ideal for a background involving physical exertion.
+
+**Constitution.** This ability is ideal for a background that involves endurance or long hours of activity.
+
+**Intelligence or Wisdom.** One or both abilities are ideal for a background that focuses on cerebral or spiritual matters.
+
+**Charisma.** This ability is ideal for a background that involves performance or social interaction.
 
 ### 2: Choose a Feat
 
@@ -336,9 +333,13 @@ Choose one tool used in the practice of the background or often associated with 
 
 Assemble a package of equipment worth 50 GP (including unspent gold). Don’t include Martial weapons or armor, as characters get them from their class choices.
 
-_SRD 5.2.1 p. 193._
+_SRD 5.2.1 pp. 192–193._
 
 ## Trinkets
+
+When you make your character, you can roll once on the Trinkets table to gain a Tiny trinket, a simple item lightly touched by mystery. The GM might also use this table. It can help stock a room in a dungeon or fill a creature’s pockets.
+
+### Trinkets
 
 | 1d100 | Trinket |
 | --- | --- |
@@ -348,29 +349,99 @@ _SRD 5.2.1 p. 193._
 | 04 | A diary written in a language you don’t know |
 | 05 | A brass ring that never tarnishes |
 | 06 | An old chess piece made from glass |
-| 07 | A pair of knucklebone dice, each with a skull symbol on the side that would normally show |
+| 07 | A pair of knucklebone dice, each with a skull symbol on the side that would normally show six pips |
+| 08 | A small idol depicting a nightmarish creature that gives you unsettling dreams when you sleep near it |
+| 09 | A lock of someone’s hair |
+| 10 | The deed for a parcel of land in a realm unknown to you |
+| 11 | A 1-ounce block made from an unknown material |
+| 12 | A small cloth doll skewered with needles |
+| 13 | A tooth from an unknown beast |
+| 14 | An enormous scale, perhaps from a dragon |
+| 15 | A bright-green feather |
+| 16 | An old divination card bearing your likeness |
+| 17 | A glass orb filled with moving smoke |
+| 18 | A 1-pound egg with a bright-red shell |
+| 19 | A pipe that blows bubbles |
+| 20 | A glass jar containing a bit of flesh floating in pickling fluid |
+| 21 | A gnome-crafted music box that plays a song you dimly remember from your childhood |
+| 22 | A wooden statuette of a smug halfling |
+| 23 | A brass orb etched with strange runes |
+| 24 | A multicolored stone disk |
+| 25 | A silver icon of a raven |
+| 26 | A bag containing forty-seven teeth, one of which is rotten |
+| 27 | A shard of obsidian that always feels warm to the touch |
+| 28 | A dragon’s talon strung on a leather necklace |
+| 29 | A pair of old socks |
+| 30 | A blank book whose pages refuse to hold ink, chalk, graphite, or any other marking |
+| 31 | A silver badge that is a five-pointed star |
+| 32 | A knife that belonged to a relative |
+| 33 | A glass vial filled with nail clippings |
+| 34 | A rectangular metal device with two tiny metal cups on one end that throws sparks when wet |
+| 35 | A white, sequined glove sized for a human |
+| 36 | A vest with one hundred tiny pockets |
+| 37 | A weightless stone |
+| 38 | A sketch of a goblin |
+| 39 | An empty glass vial that smells of perfume |
+| 40 | A gemstone that looks like a lump of coal when examined by anyone but you |
+| 41 | A scrap of cloth from an old banner |
+| 42 | A rank insignia from a lost legionnaire |
+| 43 | A silver bell without a clapper |
+| 44 | A mechanical canary inside a lamp |
+| 45 | A miniature chest carved to look like it has numerous feet on the bottom |
+| 46 | A dead sprite inside a clear glass bottle |
+| 47 | A metal can that has no opening but sounds as if it is filled with liquid, sand, spiders, or broken glass (your choice) |
+| 48 | A glass orb filled with water, in which swims a clockwork goldfish |
+| 49 | A silver spoon with an M engraved on the handle |
+| 50 | A whistle made from gold-colored wood |
+| 51 | A dead scarab beetle the size of your hand |
+| 52 | Two toy soldiers, one missing a head |
+| 53 | A small box filled with different-sized buttons |
+| 54 | A candle that can’t be lit |
+| 55 | A miniature cage with no door |
+| 56 | An old key |
+| 57 | An indecipherable treasure map |
+| 58 | A hilt from a broken sword |
+| 59 | A rabbit’s foot |
+| 60 | A glass eye |
+| 61 | A cameo of a hideous person |
+| 62 | A silver skull the size of a coin |
+| 63 | An alabaster mask |
+| 64 | A cone of sticky black incense that stinks |
+| 65 | A nightcap that gives you pleasant dreams when you wear it |
+| 66 | A single caltrop made from bone |
+| 67 | A gold monocle frame without the lens |
+| 68 | A 1-inch cube, each side a different color |
+| 69 | A crystal doorknob |
+| 70 | A packet filled with pink dust |
+| 71 | A fragment of a beautiful song, written as musical notes on two pieces of parchment |
+| 72 | A silver teardrop earring containing a real teardrop |
+| 73 | An eggshell painted with scenes of misery in disturbing detail |
+| 74 | A fan that, when unfolded, shows a sleepy cat |
+| 75 | A set of bone pipes |
+| 76 | A four-leaf clover pressed inside a book discussing manners and etiquette |
+| 77 | A sheet of parchment upon which is drawn a mechanical contraption |
+| 78 | An ornate scabbard that fits no blade you have found |
+| 79 | An invitation to a party where a murder happened |
+| 80 | A bronze pentacle with an etching of a rat’s head in its center |
+| 81 | A purple handkerchief embroidered with the name of an archmage |
+| 82 | Half a floor plan for a temple, a castle, or another structure |
+| 83 | A bit of folded cloth that, when unfolded, turns into a stylish cap |
+| 84 | A receipt of deposit at a bank in a far-off city |
+| 85 | A diary with seven missing pages |
+| 86 | An empty silver snuffbox bearing the inscription “dreams” on its lid |
+| 87 | An iron holy symbol devoted to an unknown god |
+| 88 | A book about a legendary hero’s rise and fall, with the last chapter missing |
+| 89 | A vial of dragon blood |
+| 90 | An ancient arrow of elven design |
+| 91 | A needle that never bends |
+| 92 | An ornate brooch of dwarven design |
+| 93 | An empty wine bottle bearing a pretty label that says, “The Wizard of Wines Winery, Red Dragon Crush, 331422-W” |
+| 94 | A mosaic tile with a multicolored, glazed surface |
+| 95 | A petrified mouse |
+| 96 | A black pirate flag adorned with a dragon’s skull and crossbones |
+| 97 | A tiny mechanical crab or spider that moves about when it’s not being observed |
+| 98 | A glass jar containing lard with a label that reads, “Griffon Grease” |
+| 99 | A wooden box with a ceramic bottom that holds a living worm with a head on each end of its body |
+| 00 | A metal urn containing the ashes of a hero |
 
-six pips
-
-| 08 | A small idol depicting a nightmarish creature that gives you unsettling dreams when you sleep near it |  |  |  |  |  |  |  |  |  |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 09 | A lock of someone’s hair |  |  |  |  |  |  |  |  |  |
-| 10 | The deed for a parcel of land in a realm unknown to you |  |  |  |  |  |  |  |  |  |
-| 11 | A 1-ounce block made from an unknown material |  |  |  |  |  |  |  |  |  |
-| 12 | A small cloth doll skewered with needles |  |  |  |  |  |  |  |  |  |
-| 13 | A tooth from an unknown beast |  |  |  |  |  |  |  |  |  |
-| 14 | An enormous scale, perhaps from a dragon |  |  |  |  |  |  |  |  |  |
-| 15 | A bright-green feather |  |  |  |  |  |  |  |  |  |
-| 16 | An old divination card bearing your likeness |  |  |  |  |  |  |  |  |  |
-| 17 | A glass orb filled with moving smoke |  |  |  |  |  |  |  |  |  |
-| 18 | A 1-pound egg with a bright-red shell |  |  |  |  |  |  |  |  |  |
-| 19 | A pipe that blows bubbles |  |  |  |  |  |  |  |  |  |
-| 20 | A glass jar containing a bit of flesh floating in pickling fluid |  |  |  |  |  |  |  |  |  |
-| 15 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — | you dimly remember from your childhood |
-| 16 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — |  |
-| 17 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | 1 |  |
-| 18 | 4 | 3 | 3 | 3 | 3 | 1 | 1 | 1 | 1 |  |
-| 19 | 4 | 3 | 3 | 3 | 3 | 2 | 1 | 1 | 1 |  |
-| 20 | 4 | 3 | 3 | 3 | 3 | 2 | 2 | 1 | 1 |  |
-
-_SRD 5.2.1 p. 26._
+_SRD 5.2.1 pp. 26–27._

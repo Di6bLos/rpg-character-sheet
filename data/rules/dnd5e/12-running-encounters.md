@@ -32,9 +32,9 @@ Using the XP Budget per Character table, cross-reference the party’s level wit
 
 ##### XP Budget per Character
 
-**——— Encounter Difficulty ———** **Party’s**
+**——— Encounter Difficulty ———**
 
-| Level | Low | Moderate | High |
+| Party’s Level | Low | Moderate | High |
 | --- | --- | --- | --- |
 | 1 | 50 | 75 | 100 |
 | 2 | 100 | 150 | 200 |
@@ -285,7 +285,11 @@ _Deadly Trap (Levels 1–4)_
 
 **Trigger:** A creature moves onto the pit’s lid
 
-**Duration:** Instantaneous A 10-foot-deep pit has a hinged lid constructed from material identical to the surrounding floor. When a creature moves onto the lid, it swings open like a trapdoor, causing the creature to fall into the pit, which has sharpened wooden or metal spikes at the bottom. The lid remains open thereafter. A creature that falls into the pit lands at the bottom and takes 3 (1d6) Bludgeoning damage from the fall plus 9 (2d8) Piercing damage from the spikes.
+**Duration:** Instantaneous
+
+A 10-foot-deep pit has a hinged lid constructed from material identical to the surrounding floor. When a creature moves onto the lid, it swings open like a trapdoor, causing the creature to fall into the pit, which has sharpened wooden or metal spikes at the bottom. The lid remains open thereafter.
+
+A creature that falls into the pit lands at the bottom and takes 3 (1d6) Bludgeoning damage from the fall plus 9 (2d8) Piercing damage from the spikes.
 
 ***Detect and Disarm.*** As a Study action, a creature can examine the section of floor that forms the pit’s lid and make a DC 15 Intelligence (Investigation) check, detecting the pit on a successful check. Once the hidden pit is detected, an Iron Spike or a similar object can be wedged between the pit’s lid and the surrounding floor to prevent the lid from opening, thereby making it safe to cross. The cover can also be held shut using an _Arcane Lock_ spell or similar magic.
 
@@ -329,9 +333,7 @@ Example poisons are detailed here in alphabetical order. Each poison’s descrip
 
 #### Assassin’s Blood (150 GP)
 
-_Ingested Poison_
-
-A creature subjected to Assassin’s Blood makes a DC 10 Constitution saving throw. On a failed save, the creature takes 6 (1d12) Poison damage and has the Poisoned condition for 24 hours. On a successful save, the creature takes half as much damage only.
+_Ingested Poison_ A creature subjected to Assassin’s Blood makes a DC 10 Constitution saving throw. On a failed save, the creature takes 6 (1d12) Poison damage and has the Poisoned condition for 24 hours. On a successful save, the creature takes half as much damage only.
 
 #### Burnt Othur Fumes (500 GP)
 
@@ -455,9 +457,7 @@ _Magical Contagion_ Cheaply made potions and elixirs are sometimes tainted by Ca
 
 #### Sewer Plague
 
-_Magical Contagion_
-
-Fouled potions and alchemical waste can give rise to Sewer Plague, which incubates in sewers and refuse heaps and is sometimes transmitted by creatures that dwell in such areas, including otyughs and rats. Any Humanoid that is wounded by a creature that carries the contagion or that comes into contact with contaminated filth or offal must succeed on a DC 11 Constitution saving throw or become infected with Sewer Plague. A creature suffers the following effects 1d4 days after infection:
+_Magical Contagion_ Fouled potions and alchemical waste can give rise to Sewer Plague, which incubates in sewers and refuse heaps and is sometimes transmitted by creatures that dwell in such areas, including otyughs and rats. Any Humanoid that is wounded by a creature that carries the contagion or that comes into contact with contaminated filth or offal must succeed on a DC 11 Constitution saving throw or become infected with Sewer Plague. A creature suffers the following effects 1d4 days after infection:
 
 **Fatigue.** The creature gains 1 Exhaustion level.
 
@@ -487,23 +487,13 @@ If you plan to use any of these rules, discuss them with your players at the sta
 
 Whenever the characters encounter something that is supernaturally frightful, use the Frightened condition as the baseline effect. Fear effects typically require a Wisdom saving throw, with a save DC based on how terrifying the situation is. The Sample Fear DCs table provides some examples.
 
-##### Sample Fear Dcs
+##### Sample Fear DCs
 
 | Example | Save DC |
 | --- | --- |
-| When the characters open a sarcophagus, a | 10 |
-
-harmless yet terrifying apparition appears.
-
-| A character triggers a magical trap that | 15 |
-| --- | --- |
-
-creates an illusory manifestation of that character’s worst fears, visible only to that character.
-
-| A portal to the Abyss opens, revealing a | 20 |
-| --- | --- |
-
-nightmarish realm of torment and slaughter.
+| When the characters open a sarcophagus, a harmless yet terrifying apparition appears. | 10 |
+| A character triggers a magical trap that creates an illusory manifestation of that character’s worst fears, visible only to that character. | 15 |
+| A portal to the Abyss opens, revealing a nightmarish realm of torment and slaughter. | 20 |
 
 Typically, a Frightened creature repeats the saving throw at the end of each of its turns, ending the effect on itself on a success.
 
@@ -511,10 +501,7 @@ At your discretion, a Frightened creature might be subject to other effects as l
 
 - The Frightened creature must take the Dash action on each of its turns and uses its movement to get farther away from the source of its fear.
 - Attack rolls against the Frightened creature have Advantage.
-| • | The Frightened creature can do only one of the |
-| --- | --- |
-
-following on each of its turns: move, take an action, or take a Bonus Action.
+- The Frightened creature can do only one of the following on each of its turns: move, take an action, or take a Bonus Action.
 
 ### Mental Stress Effects
 
@@ -526,19 +513,9 @@ The Sample Mental Stress Effects table provides a few examples of such effects, 
 
 | Example | Save DC | Psychic Damage |
 | --- | --- | --- |
-| A character ingests a hallucinogenic | 10 | 1d6 |
-
-substance that distorts the character’s perception of reality.
-
-| A character touches a fiendish idol | 15 | 3d6 |
-| --- | --- | --- |
-
-that tears at the character’s mind, threatening to shatter it.
-
-| A magical trap flings a character into | 20 | 9d6 |
-| --- | --- | --- |
-
-the Far Realm until the end of that character’s next turn.
+| A character ingests a hallucinogenic substance that distorts the character’s perception of reality. | 10 | 1d6 |
+| A character touches a fiendish idol that tears at the character’s mind, threatening to shatter it. | 15 | 3d6 |
+| A magical trap flings a character into the Far Realm until the end of that character’s next turn. | 20 | 9d6 |
 
 #### Prolonged Effects
 

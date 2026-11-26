@@ -128,11 +128,8 @@ If you hit a creature with this weapon and deal damage to the creature, you have
 
 | Name | Damage | Properties | Mastery | Weight | Cost |
 | --- | --- | --- | --- | --- | --- |
-
-Simple Melee Weapons
-
+| **Simple Melee Weapons** |  |  |  |  |  |
 | Club | 1d4 Bludgeoning | Light | Slow | 2 lb. | 1 SP |
-| --- | --- | --- | --- | --- | --- |
 | Dagger | 1d4 Piercing | Finesse, Light, Thrown (Range 20/60) | Nick | 1 lb. | 2 GP |
 | Greatclub | 1d8 Bludgeoning | Two-Handed | Push | 10 lb. | 2 SP |
 | Handaxe | 1d6 Slashing | Light, Thrown (Range 20/60) | Vex | 2 lb. | 5 GP |
@@ -142,19 +139,13 @@ Simple Melee Weapons
 | Quarterstaff | 1d6 Bludgeoning | Versatile (1d8) | Topple | 4 lb. | 2 SP |
 | Sickle | 1d4 Slashing | Light | Nick | 2 lb. | 1 GP |
 | Spear | 1d6 Piercing | Thrown (Range 20/60), Versatile (1d8) | Sap | 3 lb. | 1 GP |
-
-Simple Ranged Weapons
-
+| **Simple Ranged Weapons** |  |  |  |  |  |
 | Dart | 1d4 Piercing | Finesse, Thrown (Range 20/60) | Vex | 1/4 lb. | 5 CP |
-| --- | --- | --- | --- | --- | --- |
 | Light Crossbow | 1d8 Piercing | Ammunition (Range 80/320; Bolt), Loading, Two-Handed | Slow | 5 lb. | 25 GP |
 | Shortbow | 1d6 Piercing | Ammunition (Range 80/320; Arrow), Two-Handed | Vex | 2 lb. | 25 GP |
 | Sling | 1d4 Bludgeoning | Ammunition (Range 30/120; Bullet) | Slow | — | 1 SP |
-
-Martial Melee Weapons
-
+| **Martial Melee Weapons** |  |  |  |  |  |
 | Battleaxe | 1d8 Slashing | Versatile (1d10) | Topple | 4 lb. | 10 GP |
-| --- | --- | --- | --- | --- | --- |
 | Flail | 1d8 Bludgeoning | — | Sap | 2 lb. | 10 GP |
 | Glaive | 1d10 Slashing | Heavy, Reach, Two-Handed | Graze | 6 lb. | 20 GP |
 | Greataxe | 1d12 Slashing | Heavy, Two-Handed | Cleave | 7 lb. | 30 GP |
@@ -172,11 +163,8 @@ Martial Melee Weapons
 | Warhammer | 1d8 Bludgeoning | Versatile (1d10) | Push | 5 lb. | 15 GP |
 | War Pick | 1d8 Piercing | Versatile (1d10) | Sap | 2 lb. | 5 GP |
 | Whip | 1d4 Slashing | Finesse, Reach | Slow | 3 lb. | 2 GP |
-
-Martial Ranged Weapons
-
+| **Martial Ranged Weapons** |  |  |  |  |  |
 | Blowgun | 1 Piercing | Ammunition (Range 25/100; Needle), Loading | Vex | 1 lb. | 10 GP |
-| --- | --- | --- | --- | --- | --- |
 | Hand Crossbow | 1d6 Piercing | Ammunition (Range 30/120; Bolt), Light, Loading | Vex | 3 lb. | 75 GP |
 | Heavy Crossbow | 1d10 Piercing | Ammunition (Range 100/400; Bolt), Heavy, Loading, Two-Handed | Push | 18 lb. | 50 GP |
 | Longbow | 1d8 Piercing | Ammunition (Range 150/600; Arrow), Heavy, Two-Handed | Slow | 2 lb. | 50 GP |
@@ -199,37 +187,25 @@ The Armor table lists the game’s main armor. The table includes the cost and w
 
 ##### Armor
 
-| Armor | Armor Class (AC) |
-| --- | --- |
-
-Light Armor (1 Minute to Don or Doff)
-
-| Padded Armor | 11 + Dex modifier |
-| --- | --- |
-| Leather Armor | 11 + Dex modifier |
-| Studded Leather Armor | 12 + Dex modifier |
-
-Medium Armor (5 Minutes to Don and 1 Minute to Doff)
-
-| Hide Armor | 12 + Dex modifier (max 2) |
-| --- | --- |
-| Chain Shirt | 13 + Dex modifier (max 2) |
-| Scale Mail | 14 + Dex modifier (max 2) |
-| Breastplate | 14 + Dex modifier (max 2) |
-| Half Plate Armor | 15 + Dex modifier (max 2) |
-
-Heavy Armor (10 Minutes to Don and 5 Minutes to Doff)
-
-| Ring Mail | 14 |
-| --- | --- |
-| Chain Mail | 16 |
-| Splint Armor | 17 |
-| Plate Armor | 18 |
-
-Shield (Utilize Action to Don or Doff)
-
-| Shield | +2 |
-| --- | --- |
+| Armor | Armor Class (AC) | Strength | Stealth | Weight | Cost |
+| --- | --- | --- | --- | --- | --- |
+| **Light Armor (1 Minute to Don or Doff)** |  |  |  |  |  |
+| Padded Armor | 11 + Dex modifier | — | Disadvantage | 8 lb. | 5 GP |
+| Leather Armor | 11 + Dex modifier | — | — | 10 lb. | 10 GP |
+| Studded Leather Armor | 12 + Dex modifier | — | — | 13 lb. | 45 GP |
+| **Medium Armor (5 Minutes to Don and 1 Minute to Doff)** |  |  |  |  |  |
+| Hide Armor | 12 + Dex modifier (max 2) | — | — | 12 lb. | 10 GP |
+| Chain Shirt | 13 + Dex modifier (max 2) | — | — | 20 lb. | 50 GP |
+| Scale Mail | 14 + Dex modifier (max 2) | — | Disadvantage | 45 lb. | 50 GP |
+| Breastplate | 14 + Dex modifier (max 2) | — | — | 20 lb. | 400 GP |
+| Half Plate Armor | 15 + Dex modifier (max 2) | — | Disadvantage | 40 lb. | 750 GP |
+| **Heavy Armor (10 Minutes to Don and 5 Minutes to Doff)** |  |  |  |  |  |
+| Ring Mail | 14 | — | Disadvantage | 40 lb. | 30 GP |
+| Chain Mail | 16 | Str 13 | Disadvantage | 55 lb. | 75 GP |
+| Splint Armor | 17 | Str 15 | Disadvantage | 60 lb. | 200 GP |
+| Plate Armor | 18 | Str 15 | Disadvantage | 65 lb. | 1,500 GP |
+| **Shield (Utilize Action to Don or Doff)** |  |  |  |  |  |
+| Shield | +2 | — | — | 6 lb. | 10 GP |
 
 ### Armor Training
 
@@ -246,22 +222,6 @@ You gain the Armor Class benefit of a Shield only if you have training with it.
 ### One at a Time
 
 A creature can wear only one suit of armor at a time and wield only one Shield at a time.
-
-| Strength | Stealth | Weight | Cost |
-| --- | --- | --- | --- |
-| — | Disadvantage | 8 lb. | 5 GP |
-| — | — | 10 lb. | 10 GP |
-| — | — | 13 lb. | 45 GP |
-| — | — | 12 lb. | 10 GP |
-| — | — | 20 lb. | 50 GP |
-| — | Disadvantage | 45 lb. | 50 GP |
-| — | — | 20 lb. | 400 GP |
-| — | Disadvantage | 40 lb. | 750 GP |
-| — | Disadvantage | 40 lb. | 30 GP |
-| Str 13 | Disadvantage | 55 lb. | 75 GP |
-| Str 15 | Disadvantage | 60 lb. | 200 GP |
-| Str 15 | Disadvantage | 65 lb. | 1,500 GP |
-| — | — | 6 lb. | 10 GP |
 
 _SRD 5.2.1 p. 92._
 
@@ -310,11 +270,8 @@ A saddle comes with a bit, a bridle, reins, and any other equipment needed to us
 | Cart | 200 lb. | 15 GP |
 | Chariot | 100 lb. | 250 GP |
 | Feed per day | 10 lb. | 5 CP |
-
-Saddle
-
+| **Saddle** |  |  |
 | Exotic | 40 lb. | 60 GP |
-| --- | --- | --- |
 | Military | 30 lb. | 20 GP |
 | Riding | 25 lb. | 10 GP |
 | Sled | 300 lb. | 20 GP |
@@ -331,15 +288,15 @@ A ship sailing against a strong wind moves at half speed. In a dead calm (no win
 
 ##### Airborne and Waterborne Vehicles
 
-| Ship | Speed | Crew | Passengers | Cargo (Tons) |
-| --- | --- | --- | --- | --- |
-| Airship | 8 mph | 10 | 20 |  |
-| Galley | 4 mph | 80 | — 150 |  |
-| Keelboat | 1 mph | 1 | 6 |  |
-| Longship | 3 mph | 40 | 150 |  |
-| Rowboat | 1½ mph | 1 | 3 |  |
-| Sailing Ship | 2 mph | 20 | 20 100 |  |
-| Warship | 2½ mph | 60 | 60 200 |  |
+| Ship | Speed | Crew | Passengers | Cargo (Tons) | AC | HP | Damage Threshold | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Airship | 8 mph | 10 | 20 | 1 | 13 | 300 | — | 40,000 GP |
+| Galley | 4 mph | 80 | — | 150 | 15 | 500 | 20 | 30,000 GP |
+| Keelboat | 1 mph | 1 | 6 | 1/2 | 15 | 100 | 10 | 3,000 GP |
+| Longship | 3 mph | 40 | 150 | 10 | 15 | 300 | 15 | 10,000 GP |
+| Rowboat | 1½ mph | 1 | 3 | — | 11 | 50 | — | 50 GP |
+| Sailing Ship | 2 mph | 20 | 20 | 100 | 15 | 300 | 15 | 10,000 GP |
+| Warship | 2½ mph | 60 | 60 | 200 | 15 | 500 | 20 | 25,000 GP |
 
 #### Crew
 
@@ -370,29 +327,6 @@ Lifestyles have no inherent consequences, but the GM might take them into accoun
 ### Wretched (Free)
 
 You survive via chance and charity. You’re often exposed to natural dangers as a result of sleeping outside.
-
-1
-
-| 13 | 300 | — | 40,000 GP |
-| --- | --- | --- | --- |
-| 15 | 500 | 20 | 30,000 GP |
-
-1/2
-
-| 15 | 100 | 10 | 3,000 GP |
-| --- | --- | --- | --- |
-
-10
-
-| 15 | 300 | 15 | 10,000 GP |
-| --- | --- | --- | --- |
-
-—
-
-| 11 | 50 | — | 50 GP |
-| --- | --- | --- | --- |
-| 15 | 300 | 15 | 10,000 GP |
-| 15 | 500 | 20 | 25,000 GP |
 
 ### Squalid (1 SP per Day)
 
@@ -426,19 +360,28 @@ The Food, Drink, and Lodging table gives prices for food and a single night’s 
 
 ### Food, Drink, and Lodging
 
-| Item | Cost | Item | Cost |
-| --- | --- | --- | --- |
-| Ale (mug) | 4 CP | Comfortable | 8 SP |
-| Bread (loaf) | 2 CP | Wealthy | 2 GP |
-| Cheese (wedge) | 1 SP | Aristocratic | 4 GP |
-| Inn Stay per Day | Meal |  |  |
-| Squalid | 7 CP | Squalid | 1 CP |
-| Poor | 1 SP | Poor | 2 CP |
-| Modest | 5 SP | Modest | 1 SP |
-| Item | Cost | Item | Cost |
-| Comfortable | 2 SP | Wine (bottle) |  |
-| Wealthy | 3 SP | Common | 2 SP |
-| Aristocratic | 6 SP | Fine | 10 GP |
+| Item | Cost |
+| --- | --- |
+| Ale (mug) | 4 CP |
+| Bread (loaf) | 2 CP |
+| Cheese (wedge) | 1 SP |
+| **Inn Stay per Day** |  |
+| Squalid | 7 CP |
+| Poor | 1 SP |
+| Modest | 5 SP |
+| Comfortable | 8 SP |
+| Wealthy | 2 GP |
+| Aristocratic | 4 GP |
+| **Meal** |  |
+| Squalid | 1 CP |
+| Poor | 2 CP |
+| Modest | 1 SP |
+| Comfortable | 2 SP |
+| Wealthy | 3 SP |
+| Aristocratic | 6 SP |
+| **Wine (bottle)** |  |
+| Common | 2 SP |
+| Fine | 10 GP |
 
 _SRD 5.2.1 pp. 101–102._
 

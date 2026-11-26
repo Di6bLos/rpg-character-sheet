@@ -63,7 +63,8 @@ interface Seg {
   sc?: boolean
 }
 
-const MID = 297
+/** The gutter between the two columns of a page, in PDF points. */
+export const MID = 297
 const HEADING = (font: string, size: number) =>
   /GillSans-SemiBold(-SC700)?$|GillSans-Bold$/.test(font) && size >= 10.5 && size !== 11
 /** Small-caps runs come out as "SplASh": back to "Splash". */
@@ -104,12 +105,29 @@ function styled(font: string, s: string) {
   return s
 }
 
+/**
+ * How `srdBlocks` reads the two columns. The 5e data generator reads the SRD without these; the
+ * rules topics need them for the tables and formulas set beside text.
+ */
+export interface SrdOptions {
+  /**
+   * Runs in the other column join a line only on its exact baseline (a formula's runs sit a
+   * point apart, and would otherwise catch the line beside them), and a right-column line
+   * beside a page's wide rows is read with them instead of being dropped.
+   */
+  columns?: boolean
+}
+
 /** One page's runs as segments: runs on one baseline in one column, split where there's a gap. */
-function segments(items: SrdItem[]): Seg[] {
+function segments(items: SrdItem[], opts: SrdOptions): Seg[] {
   const rows = new Map<number, SrdItem[]>()
+  const side = (x: number) => x < MID - 6
+  const near = (it: SrdItem) => (y: number) =>
+    Math.abs(y - it[2]) <
+    (!opts.columns || rows.get(y)!.some((o) => side(o[1]) === side(it[1])) ? 1.6 : 0.6)
   for (const it of items) {
     if (!it[5].trim() && it[7] === 0) continue
-    const key = [...rows.keys()].find((y) => Math.abs(y - it[2]) < 1.6) ?? it[2]
+    const key = [...rows.keys()].find(near(it)) ?? it[2]
     rows.set(key, [...(rows.get(key) ?? []), it])
   }
   const segs: Seg[] = []
@@ -158,7 +176,7 @@ function segments(items: SrdItem[]): Seg[] {
 }
 
 /** A page's segments in reading order: full-width rows above, the two columns, rows below. */
-function ordered(segs: Seg[]): Seg[] {
+function ordered(segs: Seg[], opts: SrdOptions): Seg[] {
   const wide = segs.filter((s) => s.x < MID - 20 && s.end > MID + 20 && s.cells.length > 1)
   const rest = segs.filter((s) => !wide.includes(s))
   const byY = (a: Seg, b: Seg) => b.y - a.y || a.x - b.x
@@ -175,7 +193,7 @@ function ordered(segs: Seg[]): Seg[] {
   ]
   const inWide = rest.filter(
     (s) =>
-      s.x < MID - 20 &&
+      (s.x < MID - 20 || opts.columns) &&
       s.y >= bottom - 2 &&
       (s.y <= top || (s.y <= top + 24 && HEADING(s.font, s.size))),
   )
@@ -190,7 +208,7 @@ const TABLE_FONT = (s: Seg) => s.font.startsWith('GillSans') && s.size < 10.5
 const BULLET = /^[•●▪]\s*/
 
 /** Joins a wrapped line onto the text before it, undoing the book's end-of-line hyphens. */
-function joinLine(a: string, b: string) {
+export function joinLine(a: string, b: string) {
   if (/[a-z]-$/.test(a) && /^[a-z]/.test(b)) return a.slice(0, -1) + b
   const mark = a.match(/[a-z]-(_|\*\*\*?)$/)?.[1]
   if (mark && b.startsWith(mark) && /^[a-z]/.test(b.slice(mark.length)))
@@ -199,7 +217,12 @@ function joinLine(a: string, b: string) {
 }
 
 /** The whole SRD as a stream of blocks in reading order. */
-export function srdBlocks(items: SrdItem[], first = 1, last = 9999): SrdBlock[] {
+export function srdBlocks(
+  items: SrdItem[],
+  first = 1,
+  last = 9999,
+  opts: SrdOptions = {},
+): SrdBlock[] {
   const pages = new Map<number, SrdItem[]>()
   for (const it of items)
     if (it[0] >= first && it[0] <= last) pages.set(it[0], [...(pages.get(it[0]) ?? []), it])
@@ -208,7 +231,7 @@ export function srdBlocks(items: SrdItem[], first = 1, last = 9999): SrdBlock[] 
   let prev: Seg | undefined
   for (const [page, its] of [...pages].sort((a, b) => a[0] - b[0])) {
     prev = undefined
-    for (const s of ordered(segments(its))) {
+    for (const s of ordered(segments(its, opts), opts)) {
       if (/^\d+$/.test(s.plain) && s.y < 35) continue
       if (HEADING(s.font, s.size) && s.cells.length === 1) {
         const last = out.at(-1)
@@ -342,25 +365,36 @@ function rejoin(blocks: SrdBlock[]): SrdBlock[] {
   return out
 }
 
-/** Markdown for a run of blocks (the rules pages and the SRD entries' text). */
-export function blocksMarkdown(blocks: SrdBlock[], headingBase = 2): string {
+/**
+ * Markdown for a run of blocks (the rules pages and the SRD entries' text). With `headerFont`,
+ * a table whose first row isn't set in bold (a grid of terms, like the glossary's list of
+ * conditions) gets no header row.
+ */
+export function blocksMarkdown(
+  blocks: SrdBlock[],
+  headingBase = 2,
+  opts: { headerFont?: boolean } = {},
+): string {
   const sizes = [...new Set(blocks.flatMap((b) => (b.kind === 'heading' ? [b.size] : [])))].sort(
     (a, b) => b - a,
   )
   const lines: string[] = []
   let table: string[][] = []
+  let headed = true
   const flush = () => {
     if (!table.length) return
     const width = Math.max(...table.map((r) => r.length))
     const pad = (r: string[]) => [...r, ...Array(width - r.length).fill('')]
     const [head, ...body] = table.map(pad)
-    lines.push(`| ${head!.join(' | ')} |`, `| ${head!.map(() => '---').join(' | ')} |`)
+    lines.push(`| ${head!.join(' | ')} |`)
+    if (headed) lines.push(`| ${head!.map(() => '---').join(' | ')} |`)
     for (const r of body) lines.push(`| ${r.join(' | ')} |`)
     lines.push('')
     table = []
   }
   for (const b of blocks) {
     if (b.kind === 'row') {
+      if (!table.length) headed = !opts.headerFont || /Bold/.test(b.font)
       table.push(b.cells.map((c) => c.replace(/\|/g, '\\|')))
       continue
     }

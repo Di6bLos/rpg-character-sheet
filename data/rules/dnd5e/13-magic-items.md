@@ -13,22 +13,10 @@ Every magic item belongs to a category. The Magic Item Categories table lists th
 | Rings | Ring of Invisibility |
 | Rods | Immovable Rod |
 | Scrolls | Spell Scroll |
-
-When a character mixes two potions together, roll on the Potion Miscibility table. If more than two are combined, roll again for each subsequent potion, combining the results. Unless the effects are immediately obvious, reveal them only when they become evident.
-
-#### Potion Miscibility
-
-| 1d100 | Result |  |
-| --- | --- | --- |
-| 01 | Both potions lose their effects, and the mixture creates a magical explosion in a 5-foot-radius Sphere centered on itself. Each creature in that area takes 4d10 Force damage. |  |
-| 02–08 | Both potions lose their effects, and the mixture becomes an ingested poison of your choice (see “Poison” in “Gameplay Toolbox”). |  |
-| 09–15 | Both potions lose their effects. |  |
-| 16–25 | One potion loses its effect. |  |
-| 26–35 | Both potions work, but with their numerical effects and durations halved. If a potion has |  |
-| Staffs | Staff of Striking | loses its effect. |
-| Wands | Wand of Fireballs |  |
-| Weapons | +1 Ammunition, +1 Longsword |  |
-| Wondrous Items | Bag of Holding, Boots of Elvenkind | and duration of one potion are doubled. If nei- |
+| Staffs | Staff of Striking |
+| Wands | Wand of Fireballs |
+| Weapons | +1 Ammunition, +1 Longsword |
+| Wondrous Items | Bag of Holding, Boots of Elvenkind |
 
 ### Armor
 
@@ -44,12 +32,20 @@ An item in the Potion category might be a magical brew that must be imbibed or a
 
 ***Mixing Potions.*** A character might drink one potion while still under the effects of another or pour several potions into a single container. The strange ingredients used in creating potions can result in unpredictable interactions.
 
-ther potion has anything to double in this way, they work normally.
+When a character mixes two potions together, roll on the Potion Miscibility table. If more than two are combined, roll again for each subsequent potion, combining the results. Unless the effects are immediately obvious, reveal them only when they become evident.
 
-| 00 | Only one potion works, but its effects are permanent. Choose the simplest effect to make permanent or the one that seems the most fun. For example, a Potion of Healing |
+#### Potion Miscibility
+
+| 1d100 | Result |
 | --- | --- |
-
-might increase the drinker’s Hit Point maximum by 2d4 + 2, or a Potion of Invisibility might give the drinker the Invisible condition indefinitely. At your discretion, a Dispel Magic spell or similar magic might end this lasting effect.
+| 01 | Both potions lose their effects, and the mixture creates a magical explosion in a 5-foot-radius Sphere centered on itself. Each creature in that area takes 4d10 Force damage. |
+| 02–08 | Both potions lose their effects, and the mixture becomes an ingested poison of your choice (see “Poison” in “Gameplay Toolbox”). |
+| 09–15 | Both potions lose their effects. |
+| 16–25 | One potion loses its effect. |
+| 26–35 | Both potions work, but with their numerical effects and durations halved. If a potion has no numerical effect and no duration, it instead loses its effect. |
+| 36–90 | Both potions work normally. |
+| 91–99 | Both potions work, but the numerical effects and duration of one potion are doubled. If neither potion has anything to double in this way, they work normally. |
+| 00 | Only one potion works, but its effects are permanent. Choose the simplest effect to make permanent or the one that seems the most fun. For example, a Potion of Healing might increase the drinker’s Hit Point maximum by 2d4 + 2, or a Potion of Invisibility might give the drinker the Invisible condition indefinitely. At your discretion, a Dispel Magic spell or similar magic might end this lasting effect. |
 
 ### Rings
 
@@ -270,19 +266,10 @@ You can give a sentient item an objective it pursues, perhaps to the exclusion o
 | 1d100 | Alignment | 1d100 | Alignment |
 | --- | --- | --- | --- |
 | 01–15 | Lawful Good | 74–85 | Chaotic Neutral |
-| 16–35 | Neutral Good | 86–89 | Lawful Evil 1d10 Special Purpose |
-| 5 | Destroyer. The item craves destruction and goads its user to fight arbitrarily. |  |  |
-| 6 | Glory Seeker. The item seeks renown as the greatest magic item in the world by winning fame or notoriety for its user. |  |  |
-
-7
-
-**Lore Seeker.** The item craves knowledge or is determined to solve a mystery, learn a secret, or unravel a cryptic prophecy.
-
-| 8 | Protector. The item seeks to defend a particular kind of creature, such as elves or werewolves. |  |  |  |
-| --- | --- | --- | --- | --- |
-| 36–50 | Chaotic Good | 90–96 | Neutral Evil | sentient magic item, perhaps one that is similar |
-| 51–63 | Lawful Neutral | 97–00 | Chaotic Evil |  |
-| 64–73 | Neutral |  |  |  |
+| 16–35 | Neutral Good | 86–89 | Lawful Evil |
+| 36–50 | Chaotic Good | 90–96 | Neutral Evil |
+| 51–63 | Lawful Neutral | 97–00 | Chaotic Evil |
+| 64–73 | Neutral |  |  |
 
 ##### Sentient Item’s Communication
 
@@ -308,7 +295,12 @@ You can give a sentient item an objective it pursues, perhaps to the exclusion o
 | 1 | Aligned. The item seeks to defeat or destroy those of a diametrically opposed alignment. Such an item is never Neutral. |
 | 2 | Bane. The item seeks to thwart or destroy creatures of a particular type, such as Constructs, Fiends, or Undead. |
 | 3 | Creator Seeker. The item seeks its creator and wants to understand why it was created. |
-| 4 | Destiny Seeker. The item believes it and its bearer have key roles to play in future events. to itself. |
+| 4 | Destiny Seeker. The item believes it and its bearer have key roles to play in future events. |
+| 5 | Destroyer. The item craves destruction and goads its user to fight arbitrarily. |
+| 6 | Glory Seeker. The item seeks renown as the greatest magic item in the world by winning fame or notoriety for its user. |
+| 7 | Lore Seeker. The item craves knowledge or is determined to solve a mystery, learn a secret, or unravel a cryptic prophecy. |
+| 8 | Protector. The item seeks to defend a particular kind of creature, such as elves or werewolves. |
+| 9 | Soulmate Seeker. The item seeks another sentient magic item, perhaps one that is similar to itself. |
 | 10 | Templar. The item seeks to defend the servants and interests of a particular deity. |
 
 #### Conflict

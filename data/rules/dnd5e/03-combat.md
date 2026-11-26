@@ -144,8 +144,7 @@ A target can benefit from cover only when an attack or other effect originates o
 | Degree | Benefit to Target | Offered By … |
 | --- | --- | --- |
 | Half | +2 bonus to AC and Dexterity saving throws | Another creature or an object that covers at least half of the target |
-| Three- | +5 bonus to AC | An object that covers at |
-| Quarters | and Dexterity saving throws | least three-quarters of the target |
+| Three-Quarters | +5 bonus to AC and Dexterity saving throws | An object that covers at least three-quarters of the target |
 | Total | Can’t be targeted directly | An object that covers the whole target |
 
 _SRD 5.2.1 p. 15._
