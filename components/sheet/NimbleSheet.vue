@@ -9,7 +9,6 @@ import { knownSpells, knownUtilitySpells } from '~/utils/nimbleBuild'
 import { hasTransforms } from '~/utils/nimbleEffects'
 import { isDead, skillCheck } from '~/utils/nimblePlay'
 import { statusStats } from '~/utils/nimbleConditions'
-import { DEAD_PORTRAIT } from '~/utils/deadPortrait'
 import { availableSummons } from '~/utils/nimbleSummons'
 
 const { draft, canEdit, say } = useSheet<NimbleSheet>()
@@ -22,7 +21,6 @@ const STATS: NimbleStat[] = ['STR', 'DEX', 'INT', 'WIL']
 
 const cls = computed(() => classBySlug(sheet.value.classSlug))
 const dead = computed(() => isDead(sheet.value))
-const deadImageFailed = ref(false)
 
 const hasForms = computed(() => hasTransforms(sheet.value))
 
@@ -104,20 +102,12 @@ const skills = computed(() =>
 
 <template>
   <section class="identity" aria-label="Identity">
-    <SheetPortrait placeholder="Portrait" class="nb-portrait">
+    <SheetPortrait placeholder="Portrait" class="id-portrait">
       <template v-if="cls" #empty>
         <NimbleSigil :slug="cls.slug" :size="140" class="nb-sigil" />
       </template>
       <template v-if="dead" #overlay>
-        <div class="dead-overlay" role="img" :aria-label="`${draft.name} is dead`">
-          <img
-            v-if="!deadImageFailed"
-            :src="DEAD_PORTRAIT"
-            alt=""
-            @error="deadImageFailed = true"
-          />
-          <UiSkull v-else :size="96" />
-        </div>
+        <SheetDeadOverlay :name="draft.name" />
       </template>
     </SheetPortrait>
     <div class="identity__body">
@@ -239,176 +229,7 @@ const skills = computed(() =>
 </template>
 
 <style scoped lang="scss">
-.dead-overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: inherit;
-  background: #000;
-  color: #d9d2c5;
-
-  img {
-    position: absolute;
-    inset: 3% 0;
-    width: 100%;
-    height: 94%;
-    object-fit: contain;
-  }
-}
-
-.dead-tag {
-  font-size: 0.6em;
-  color: var(--danger);
-}
-
-.identity {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  align-items: stretch;
-}
-
-.nb-portrait {
-  flex: 0 0 180px;
-  --portrait-w: 180px;
-  --portrait-h: 220px;
-  --portrait-radius: min(var(--radius-panel), 12px);
-}
-
-// Fill most of the portrait frame; it keeps its square shape.
-.nb-sigil {
-  width: min(140px, 100%);
-  height: auto;
-}
-
-.identity__body {
-  flex: 999 1 420px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
-
-  h1 {
-    font-size: clamp(32px, 4.2vw, 52px);
-    font-weight: 700;
-    line-height: 1.05;
-    overflow-wrap: anywhere;
-  }
-}
-
-.identity__line {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 15px;
-  color: var(--page-soft);
-
-  strong {
-    color: var(--page-text);
-  }
-}
-
-.identity__details {
-  display: flex;
-  gap: 4px 16px;
-  flex-wrap: wrap;
-  font-size: 13px;
-  color: var(--page-muted);
-
-  strong {
-    color: var(--page-text);
-    font-weight: 600;
-  }
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 14px 10px 12px;
-  border-radius: var(--radius-panel);
-  background: var(--panel-bg);
-  color: var(--panel-text);
-  border: 1px solid var(--panel-line);
-  box-shadow: var(--panel-shadow);
-
-  &--key {
-    border: 1.5px solid var(--accent);
-  }
-
-  &--adv .stat__save {
-    background: var(--warn-bg);
-    color: var(--warn-text);
-  }
-
-  // The tile uses the panel palette (parchment on Cursed), so its chip does too.
-  &--dis .stat__save {
-    background: var(--panel-track);
-  }
-}
-
-.stat__k {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: var(--panel-muted);
-
-  abbr {
-    text-decoration: none;
-  }
-}
-
-.stat__v {
-  font-family: var(--font-heading);
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 1.05;
-}
-
-.stat__save {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 4px;
-  color: var(--panel-muted);
-}
-
-.play {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.play__col {
-  display: contents;
-}
-
-@media (min-width: 960px) {
-  .play {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
-
-  .play__col {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    min-width: 0;
-  }
-}
+@use '../../assets/styles/sheet-layout';
 
 .check-odds {
   display: flex;
