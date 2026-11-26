@@ -303,7 +303,7 @@ function makeEntry(
     ...(save ? { save } : {}),
     ...(rule ? { rule } : {}),
     attack: !!dice && !heals && !rule?.give && (!!save || !!mech.damageType) && !!cost,
-    passive: !cost && !resource && !oncePerTurn,
+    passive: !cost && !resource && !(oncePerTurn && (!!dice || !!save)),
     ...(mech.duration ? { duration: mech.duration } : {}),
     ...(oncePerTurn ? { oncePerTurn } : {}),
   }
@@ -455,7 +455,7 @@ export function useEntry(
   const parts: string[] = []
   const spent = e.pact
     ? 'a Pact Magic slot'
-    : e.resource
+    : e.resource && e.resource !== e.name
       ? `${e.spend > 1 ? `${e.spend} ` : ''}${e.resource}`
       : ''
   if (r?.effect && DND5E_EFFECTS[r.effect]) {

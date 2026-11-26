@@ -1,4 +1,5 @@
 import type { InjectionKey } from 'vue'
+import type { Dnd5eSheetApi } from '~/composables/useDnd5eSheet'
 import type { Dnd5eSpellDef } from '~/data/dnd5e/types'
 import type { Dnd5eSheet, Dnd5eSpellRef } from '~/types/sheets'
 import { showOutcome } from '~/utils/dice'
@@ -35,12 +36,13 @@ const KEY: InjectionKey<Dnd5eCastingApi> = Symbol('dnd5e-casting')
  * Casting for the 5e sheet in the current sheet editor, shared by the Spells panel and the
  * Attacks panel's Spells group: the spells with their options (slots, pact slots, free casts,
  * rituals), the upcast picked per spell, why one can't be cast, and Cast (it pays the action
- * on the turn, then castSpell in utils/dnd5eSpells.ts rolls against the Target row). Manual dice
+ * on the turn, then castSpell in utils/dnd5eSpells.ts rolls against the Target row). The sheet
+ * passes its own provideDnd5eSheet(), since a component can't inject what it provides. Manual dice
  * go through useTypedRoll; results show under the spell (`spell:<slug>`).
  */
-export function provideDnd5eCasting(): Dnd5eCastingApi {
+export function provideDnd5eCasting(sheetApi: Dnd5eSheetApi = useDnd5eSheet()): Dnd5eCastingApi {
   const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
-  const { data, target, attackMode } = useDnd5eSheet()
+  const { data, target, attackMode } = sheetApi
   const { claim } = useResultOwner()
   const typed = useTypedRoll()
   const sheet = computed(() => draft.value.sheet)

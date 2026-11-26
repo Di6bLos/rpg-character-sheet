@@ -231,12 +231,9 @@ const riders = computed(() =>
                 :title="`${c.plan.name} ${sign(c.plan.test.bonus)}`"
                 :text="oddsWhy(c.plan)"
               >
-                <span class="odds" tabindex="0"
-                  >{{ oddsText(c.plan)
-                  }}<template v-if="modeLabel(c.plan)">
-                    {{ oddsText(c.plan) ? '·' : '' }} {{ modeLabel(c.plan) }}</template
-                  ></span
-                >
+                <span class="odds" tabindex="0">{{
+                  [oddsText(c.plan), modeLabel(c.plan)].filter(Boolean).join(' · ')
+                }}</span>
               </UiTooltip>
             </div>
             <SheetDmg

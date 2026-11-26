@@ -412,14 +412,15 @@ function rollPart(
     const rolls = o.gwf ? r.rolls.map((v) => (v < 3 ? 3 : v)) : r.rolls
     return { total: rolls.reduce((n, v) => n + v, 0), rolls }
   }
-  let r = once()
+  const first = once()
+  let r = first
   let note = ''
   if (o.savage) {
     const again = once()
-    note = ` / ${again.rolls.join('+')}, Savage Attacker keeps ${Math.max(r.total, again.total)}`
-    if (again.total > r.total) r = again
+    note = ` / ${again.rolls.join('+')}, Savage Attacker keeps ${Math.max(first.total, again.total)}`
+    if (again.total > first.total) r = again
   }
-  return { total: r.total, text: `${count}d${expr.sides}: ${r.rolls.join('+')}${note}` }
+  return { total: r.total, text: `${count}d${expr.sides}: ${first.rolls.join('+')}${note}` }
 }
 
 export interface Dnd5eAttackResult {

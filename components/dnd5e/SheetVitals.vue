@@ -515,7 +515,7 @@ function toggleInspiration() {
         </div>
         <button
           type="button"
-          class="btn btn--ghost btn--sm rest-btn"
+          class="btn btn--ghost btn--sm hd-btn"
           :disabled="!canEdit || diceLeft < 1 || dead"
           :title="`Roll a d${sheet.hitDie} + CON and heal that much (at least 1), as on a Short Rest (SRD 5.2.1 p. 186)`"
           @click="hitDie()"
@@ -649,6 +649,10 @@ function toggleInspiration() {
 
 .insp {
   margin-top: 4px;
+}
+
+.hd-btn {
+  align-self: flex-start;
 }
 
 .death-row {

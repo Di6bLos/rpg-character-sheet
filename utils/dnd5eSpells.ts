@@ -471,14 +471,14 @@ export function castSpell(
       const hit = r.natural === 1 ? false : crit ? true : ac === null ? null : r.total >= ac
       const roll = `${r.total} to hit${ac !== null ? ` vs AC ${ac}` : ''} (${r.rolls.length > 1 ? `${r.rolls.join(' / ')} → ` : ''}${r.d20} ${sign(t.bonus)})`
       if (hit === false) {
-        lines.push(`${t.label}: ${roll} · miss.`)
+        lines.push(`${count > 1 ? `${t.label}: ` : ''}${roll} · miss.`)
         continue
       }
       const d = rollParts(dmg.parts, crit, o.rng)
       const n = againstTarget(Math.max(0, d.total + add), o.target)
       total += n
       lines.push(
-        `${t.label}: ${roll} · ${crit ? 'Critical Hit! ' : hit ? '' : 'if it hits, '}${n} damage (${d.text.join(' + ')}${add ? ` ${sign(add)}` : ''}).`,
+        `${count > 1 ? `${t.label}: ` : ''}${roll} · ${crit ? 'Critical Hit! ' : hit ? '' : 'if it hits, '}${n} damage (${d.text.join(' + ')}${add ? ` ${sign(add)}` : ''}).`,
       )
     }
     damage = total

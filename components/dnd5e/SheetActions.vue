@@ -11,7 +11,6 @@ const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
 const { claim, resultFor } = useResultOwner()
 const { entries } = useDnd5eSheet()
 const sheet = computed(() => draft.value.sheet)
-const onTurn = computed(() => !!sheet.value.turn?.active)
 
 const usable = computed(() =>
   entries.value.filter(
@@ -67,12 +66,7 @@ function core(id: string) {
         text="Your features by what they take: an action, a Bonus Action, or nothing. Use pays it on the Turn panel, spends a use and rolls what it rolls. Uses come back on a Short or Long Rest as each says. The core actions anyone can take are below (SRD 5.2.1 pp. 9–11)."
       />
     </div>
-    <details
-      v-for="s in sections"
-      :key="s.id"
-      class="atk-group"
-      :open="s.id !== 'other' || !onTurn"
-    >
+    <details v-for="s in sections" :key="s.id" class="atk-group" open>
       <summary>
         <span class="caps">{{ s.label }}</span>
         <span class="badge badge--outline">{{ s.entries.length }}</span>
