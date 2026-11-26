@@ -1,9 +1,11 @@
 <script setup lang="ts">
 // Library → Spells: every spell of a game system as a searchable, sortable table (a card list
-// on phones), filtered by rank or tier, tradition or school and the rest; a row opens the
+// on phones) in folding sections by level (cantrips, then ranks, tiers or levels; PF2e focus
+// spells together), filtered by rank or tier, tradition or school and the rest; a row opens the
 // spell's full text. The search, filters, sort and open spell are in the URL (?tab=spells&
-// system=pf2e&q=fire&rank=3&sort=actions&spell=spell-1530) so a link opens the same view. PF2e
-// has ~1,200 spells, so the list shows 100 rows at a time, filtered from text lower-cased once.
+// system=pf2e&q=fire&rank=3&sort=actions&spell=spell-1530) so a link opens the same view; which
+// sections are open is remembered per browser (useLibrarySections). PF2e has ~1,200 spells, so
+// a section renders its rows only while open, 100 at a time, filtered from text lower-cased once.
 // 5e SRD spells show the SRD's text and page; the others their summary, their mechanics as
 // fact lines and a source tag ("PHB 2024").
 import { loadDnd5e } from '~/data/dnd5e'
@@ -18,20 +20,26 @@ import {
   COMPENDIUM_SYSTEMS,
   DEFAULT_SPELL_SORT,
   DND5E_SPELL_COLUMNS,
+  DND5E_SPELL_SECTIONS,
   NIMBLE_SPELL_COLUMNS,
+  NIMBLE_SPELL_SECTIONS,
   PF2E_SPELL_COLUMNS,
+  PF2E_SPELL_SECTIONS,
   compendiumList,
   dnd5eLevelLabel,
   dnd5eSpellKeep,
+  dnd5eSpellSection,
   dnd5eTimeLabel,
   nimbleCast,
   nimbleCost,
   nimbleSpellKeep,
+  nimbleTierKey,
   nimbleTierLabel,
   pf2eRangeArea,
   pf2eSpellClasses,
   pf2eSpellKeep,
   pf2eSpellRank,
+  pf2eSpellSection,
   pf2eSpellTraits,
   readSpellQuery,
   searchable,
@@ -48,6 +56,7 @@ import {
   dnd5eSource,
   slugName,
 } from '~/utils/libraryDnd5e'
+import { SECTION_PAGE, groupSections, sectionStorageKey } from '~/utils/librarySections'
 import { loreHtml } from '~/utils/loreText'
 import { actionGlyph, actionWords } from '~/utils/pf2eBuild'
 
@@ -184,6 +193,8 @@ const KINDS = [
 interface SpellView {
   id: string
   name: string
+  /** The key of the level section it's listed in. */
+  section: string
   /** Display text per column key. */
   cells: Record<string, string>
   /** Action glyphs (PF2e) with their words for screen readers. */
@@ -221,8 +232,8 @@ function pf2eView(s: Pf2eSpellDef): SpellView {
   return {
     id: s.id,
     name: s.name,
+    section: pf2eSpellSection(s),
     cells: {
-      rank: rank === 0 ? 'Cantrip' : s.kind === 'focus' ? `${rank} focus` : String(rank),
       traditions: where,
       defense: s.defense ?? '',
       range: rangeArea,
@@ -263,8 +274,8 @@ function nimbleView(s: SpellDef): SpellView {
   return {
     id: s.name,
     name: s.name,
+    section: nimbleTierKey(s),
     cells: {
-      tier: nimbleTierLabel(s),
       school,
       cost: cost ? `${cost} mana` : '—',
       actions,
@@ -312,8 +323,8 @@ function dnd5eView(s: Dnd5eSpellDef): SpellView {
   return {
     id: s.slug,
     name: s.name,
+    section: dnd5eSpellSection(s),
     cells: {
-      level: s.level === 0 ? 'Cantrip' : String(s.level),
       school: s.school,
       time,
       range: s.range,
@@ -353,9 +364,7 @@ const columns = computed<
 )
 const sortKey = computed(() => {
   const keys = columns.value.map((c) => c.key)
-  return keys.includes(state.value.sort)
-    ? state.value.sort
-    : (DEFAULT_SPELL_SORT[sys.value?.id ?? ''] ?? 'name')
+  return keys.includes(state.value.sort) ? state.value.sort : DEFAULT_SPELL_SORT
 })
 
 const all = computed<SpellView[]>(() => {
@@ -385,13 +394,20 @@ const all = computed<SpellView[]>(() => {
   }).map((x) => memo(x, nimbleView))
 })
 
-const PAGE = 100
-const limit = ref(PAGE)
-const shown = computed(() => all.value.slice(0, limit.value))
-watch(
-  () => [q.value, sys.value?.id, JSON.stringify({ ...state.value, q: '' })],
-  () => (limit.value = PAGE),
+const sections = computed(() =>
+  groupSections(
+    all.value,
+    pf2e.value ? PF2E_SPELL_SECTIONS : dnd5e.value ? DND5E_SPELL_SECTIONS : NIMBLE_SPELL_SECTIONS,
+    (v) => v.section,
+  ),
 )
+const fold = useLibrarySections({
+  sections,
+  storageKey: computed(() => (sys.value ? sectionStorageKey('spells', sys.value.id) : '')),
+  search: q,
+  reset: () => [q.value, sys.value?.id, JSON.stringify({ ...state.value, q: '' })],
+})
+const sectionId = (key: string) => `spells-section-${key}`
 
 const total = computed(() =>
   pf2e.value
@@ -406,15 +422,14 @@ const loading = computed(
 
 function sortBy(key: string) {
   const dir: SortDir = sortKey.value === key && state.value.dir === 'asc' ? 'desc' : 'asc'
-  update({ sort: key === DEFAULT_SPELL_SORT[sys.value?.id ?? ''] && dir === 'asc' ? '' : key, dir })
+  update({ sort: key === DEFAULT_SPELL_SORT && dir === 'asc' ? '' : key, dir })
 }
 const ariaSort = (key: string) =>
   sortKey.value === key ? (state.value.dir === 'desc' ? 'descending' : 'ascending') : undefined
 
 const phoneSort = computed({
   get: () => sortKey.value,
-  set: (key: string) =>
-    update({ sort: key === DEFAULT_SPELL_SORT[sys.value?.id ?? ''] ? '' : key, dir: 'asc' }),
+  set: (key: string) => update({ sort: key === DEFAULT_SPELL_SORT ? '' : key, dir: 'asc' }),
 })
 function flipDir() {
   update({ sort: state.value.sort, dir: state.value.dir === 'asc' ? 'desc' : 'asc' })
@@ -726,15 +741,18 @@ const toolbarStuck = useStuck(toolbarEl)
     <div class="summary">
       <p class="small muted" role="status">
         <template v-if="loading">Loading spells…</template>
-        <template v-else>
-          {{ all.length }} of {{ total }} spells<template v-if="all.length > shown.length"
-            >, showing the first {{ shown.length }}</template
-          >
-        </template>
+        <template v-else> {{ all.length }} of {{ total }} spells </template>
       </p>
       <button v-if="filtering" type="button" class="btn btn--quiet btn--sm" @click="clearFilters">
         Clear filters
       </button>
+      <LibrarySectionTools
+        v-if="sections.length > 1"
+        :all-open="fold.allOpen.value"
+        :all-closed="fold.allClosed.value"
+        @expand="fold.expandAll"
+        @collapse="fold.collapseAll"
+      />
       <div v-if="phone" class="summary__sort">
         <label for="spells-sort" class="sr-only">Sort by</label>
         <select id="spells-sort" v-model="phoneSort" class="input">
@@ -760,31 +778,52 @@ const toolbarStuck = useStuck(toolbarEl)
     <section v-else class="panel panel--flush" :aria-label="`${sys?.label ?? ''} spells`">
       <div v-if="loading" class="spinner" role="status" aria-label="Loading spells" />
 
-      <ul v-else-if="phone" class="cards">
-        <li v-for="v in shown" :key="v.id">
-          <button type="button" class="card" aria-haspopup="dialog" @click="readSpell(v.id)">
-            <span class="card__head">
-              <strong>{{ v.name }}</strong>
-              <span v-if="v.glyph" class="glyph"
-                ><span aria-hidden="true">{{ v.glyph }}</span
-                ><span class="sr-only">{{ v.glyphWords }}</span></span
-              >
-              <span v-if="v.rarity" class="rarity">{{ v.rarity }}</span>
-              <span
-                v-for="f in v.flags"
-                :key="f.abbr"
-                class="flag"
-                :title="f.label"
-                :aria-label="f.label"
-                >{{ f.abbr }}</span
-              >
-              <span v-if="v.tag" class="badge badge--outline">{{ v.tag }}</span>
-              <span class="card__level">{{ v.level }}</span>
-            </span>
-            <span v-if="v.meta" class="card__meta">{{ v.meta }}</span>
+      <div v-else-if="phone">
+        <div v-for="sec in sections" :key="sec.key" class="group">
+          <LibrarySectionHead
+            :label="sec.label"
+            :count="sec.rows.length"
+            :open="fold.isOpen(sec.key)"
+            :controls="sectionId(sec.key)"
+            @toggle="fold.toggle(sec.key)"
+          />
+          <ul :id="sectionId(sec.key)" class="cards" :hidden="!fold.isOpen(sec.key)">
+            <li v-for="v in fold.isOpen(sec.key) ? fold.shown(sec) : []" :key="v.id">
+              <button type="button" class="card" aria-haspopup="dialog" @click="readSpell(v.id)">
+                <span class="card__head">
+                  <strong>{{ v.name }}</strong>
+                  <span v-if="v.glyph" class="glyph"
+                    ><span aria-hidden="true">{{ v.glyph }}</span
+                    ><span class="sr-only">{{ v.glyphWords }}</span></span
+                  >
+                  <span v-if="v.rarity" class="rarity">{{ v.rarity }}</span>
+                  <span
+                    v-for="f in v.flags"
+                    :key="f.abbr"
+                    class="flag"
+                    :title="f.label"
+                    :aria-label="f.label"
+                    >{{ f.abbr }}</span
+                  >
+                  <span v-if="v.tag" class="badge badge--outline">{{ v.tag }}</span>
+                  <span v-if="sec.mixed" class="card__level">{{ v.level }}</span>
+                </span>
+                <span v-if="v.meta" class="card__meta">{{ v.meta }}</span>
+              </button>
+            </li>
+          </ul>
+          <button
+            v-if="fold.isOpen(sec.key) && fold.hidden(sec)"
+            type="button"
+            class="btn btn--ghost more"
+            @click="fold.showMore(sec.key)"
+          >
+            Show {{ Math.min(SECTION_PAGE, fold.hidden(sec)) }} more<span class="sr-only">
+              in {{ sec.label }}</span
+            >
           </button>
-        </li>
-      </ul>
+        </div>
+      </div>
 
       <div
         v-else
@@ -812,13 +851,29 @@ const toolbarStuck = useStuck(toolbarEl)
               </th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="v in shown" :key="v.id" @click="readSpell(v.id)">
+          <tbody v-for="sec in sections" :id="sectionId(sec.key)" :key="sec.key">
+            <tr class="group-row">
+              <th :colspan="columns.length" scope="rowgroup">
+                <LibrarySectionHead
+                  :label="sec.label"
+                  :count="sec.rows.length"
+                  :open="fold.isOpen(sec.key)"
+                  :controls="sectionId(sec.key)"
+                  @toggle="fold.toggle(sec.key)"
+                />
+              </th>
+            </tr>
+            <tr
+              v-for="v in fold.isOpen(sec.key) ? fold.shown(sec) : []"
+              :key="v.id"
+              @click="readSpell(v.id)"
+            >
               <td v-for="c in columns" :key="c.key" :class="`col-${c.key}`">
                 <template v-if="c.key === 'name'">
                   <button type="button" class="name" aria-haspopup="dialog">
                     <strong>{{ v.name }}</strong>
                   </button>
+                  <span v-if="sec.mixed" class="level">{{ v.level }}</span>
                   <span v-if="v.rarity" class="rarity">{{ v.rarity }}</span>
                   <span
                     v-for="f in v.flags"
@@ -839,6 +894,19 @@ const toolbarStuck = useStuck(toolbarEl)
                 <template v-else>{{ v.cells[c.key] || '—' }}</template>
               </td>
             </tr>
+            <tr v-if="fold.isOpen(sec.key) && fold.hidden(sec)" class="more-row">
+              <td :colspan="columns.length">
+                <button
+                  type="button"
+                  class="btn btn--ghost btn--sm"
+                  @click="fold.showMore(sec.key)"
+                >
+                  Show {{ Math.min(SECTION_PAGE, fold.hidden(sec)) }} more<span class="sr-only">
+                    in {{ sec.label }}</span
+                  >
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -850,15 +918,6 @@ const toolbarStuck = useStuck(toolbarEl)
         </button>
       </p>
     </section>
-
-    <button
-      v-if="all.length > shown.length"
-      type="button"
-      class="btn btn--ghost more"
-      @click="limit += PAGE"
-    >
-      Show {{ Math.min(PAGE, all.length - shown.length) }} more
-    </button>
 
     <LibraryNotice v-if="sys" :text="sys.attribution" />
 
@@ -991,7 +1050,7 @@ const toolbarStuck = useStuck(toolbarEl)
     padding-left: 20px;
   }
 
-  tbody tr {
+  tbody tr:not(.group-row, .more-row) {
     cursor: pointer;
 
     &:hover td {
@@ -999,12 +1058,23 @@ const toolbarStuck = useStuck(toolbarEl)
     }
   }
 
+  .group-row th {
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  tbody:first-of-type .group-row th {
+    border-top: 0;
+  }
+
+  .more-row td {
+    padding: 8px 20px 12px;
+  }
+
   .col-name {
     min-width: 200px;
   }
 
-  .col-rank,
-  .col-tier,
   .col-cost {
     white-space: nowrap;
   }
@@ -1103,6 +1173,14 @@ const toolbarStuck = useStuck(toolbarEl)
   margin-left: 8px;
 }
 
+.level {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--page-muted);
+  white-space: nowrap;
+}
+
 .glyph {
   font-size: 13px;
   letter-spacing: 0.05em;
@@ -1181,8 +1259,22 @@ const toolbarStuck = useStuck(toolbarEl)
   padding: 24px 20px;
 }
 
+.group + .group {
+  border-top: 1px solid var(--line);
+}
+
+.cards {
+  border-top: 1px solid var(--line);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
 .more {
-  align-self: center;
+  display: flex;
+  width: calc(100% - 32px);
+  margin: 8px 16px 12px;
 }
 
 .read__eyebrow {

@@ -157,14 +157,14 @@ describe('sorting', () => {
         })
         expect(list).toHaveLength(pf2eSpells.length)
       }
-    const byRank = compendiumList(rows, {
+    const byName = compendiumList(rows, {
       q: '',
       full: true,
       keep: () => true,
-      value: column('rank').value,
+      value: column('name').value,
       dir: 'asc',
     })
-    expect(byRank.map(pf2eSpellRank)).toEqual(byRank.map(pf2eSpellRank).sort((a, b) => a - b))
+    expect(byName[0]?.name.localeCompare(byName.at(-1)?.name ?? '')).toBeLessThan(0)
   })
 })
 

@@ -26,6 +26,7 @@ import type {
 } from '~/data/nimble/types'
 import type { GameSystem } from '~/types'
 import { DND5E_ACTIVATION, DND5E_SOURCE_KEY } from '~/utils/libraryDnd5e'
+import type { SectionDef } from '~/utils/librarySections'
 
 /** Systems with spell and class data to show; the rest are "coming soon". */
 export const COMPENDIUM_SYSTEMS: GameSystem[] = ['nimble', 'pf2e', 'dnd5e']
@@ -293,7 +294,6 @@ export const sourceLabel = (src: { book: string; page?: number }) =>
 
 export const PF2E_SPELL_COLUMNS: SpellColumn<Pf2eSpellDef>[] = [
   { key: 'name', label: 'Name', value: (s) => s.name.toLowerCase() },
-  { key: 'rank', label: 'Rank', value: pf2eSpellRank },
   { key: 'actions', label: 'Actions', value: (s) => actionSortValue(s.actions) },
   {
     key: 'traditions',
@@ -367,7 +367,6 @@ export function nimbleCast(s: SpellDef): { actions: string; value?: number; targ
 
 export const NIMBLE_SPELL_COLUMNS: SpellColumn<SpellDef>[] = [
   { key: 'name', label: 'Name', value: (s) => s.name.toLowerCase() },
-  { key: 'tier', label: 'Tier', value: (s) => s.tier },
   { key: 'school', label: 'School', value: (s) => SCHOOL_LABELS[s.school].toLowerCase() },
   { key: 'cost', label: 'Cost', value: nimbleCost },
   { key: 'actions', label: 'Actions', value: (s) => nimbleCast(s).value },
@@ -422,7 +421,6 @@ const dnd5eSourceValue = (s: { source: Dnd5eSpellDef['source']; page?: number })
 
 export const DND5E_SPELL_COLUMNS: SpellColumn<Dnd5eSpellDef>[] = [
   { key: 'name', label: 'Name', value: (s) => s.name.toLowerCase() },
-  { key: 'level', label: 'Level', value: (s) => s.level },
   { key: 'school', label: 'School', value: (s) => s.school.toLowerCase() },
   { key: 'time', label: 'Casting time', value: dnd5eTimeValue },
   { key: 'range', label: 'Range', value: (s) => dnd5eRangeValue(s.range) },
@@ -441,11 +439,38 @@ export function dnd5eSpellKeep(q: SpellQuery): (s: Dnd5eSpellDef) => boolean {
     (!q.src.length || q.src.includes(DND5E_SOURCE_KEY[s.source]))
 }
 
-export const DEFAULT_SPELL_SORT: Record<string, string> = {
-  pf2e: 'rank',
-  nimble: 'tier',
-  dnd5e: 'level',
-}
+/** Each section is one level, so the list sorts by name within it unless asked otherwise. */
+export const DEFAULT_SPELL_SORT = 'name'
+
+// --- Spell sections ------------------------------------------------------------------
+
+const levels = (count: number, label: (n: number) => string): SectionDef[] =>
+  Array.from({ length: count }, (_, i) => ({ key: String(i + 1), label: label(i + 1) }))
+
+/** PF2e: cantrips, ranks 1–10, then focus spells (of any rank) together. */
+export const PF2E_SPELL_SECTIONS: SectionDef[] = [
+  { key: '0', label: 'Cantrips' },
+  ...levels(10, (n) => `Rank ${n}`),
+  { key: 'focus', label: 'Focus spells', mixed: true },
+]
+
+export const pf2eSpellSection = (s: Pf2eSpellDef) =>
+  s.kind === 'focus' ? 'focus' : String(pf2eSpellRank(s))
+
+/** Nimble: cantrips, utility spells, then tiers 1–9 (the Core Rules' names). */
+export const NIMBLE_SPELL_SECTIONS: SectionDef[] = [
+  { key: 'cantrip', label: 'Cantrips' },
+  { key: 'utility', label: 'Utility spells' },
+  ...levels(9, (n) => `Tier ${n}`),
+]
+
+/** 5e: cantrips, then spell levels 1–9. */
+export const DND5E_SPELL_SECTIONS: SectionDef[] = [
+  { key: '0', label: 'Cantrips' },
+  ...levels(9, (n) => `Level ${n}`),
+]
+
+export const dnd5eSpellSection = (s: Dnd5eSpellDef) => String(s.level)
 
 // --- Classes -------------------------------------------------------------------------
 
