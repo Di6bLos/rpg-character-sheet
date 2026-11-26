@@ -360,3 +360,22 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 ### 8.6 Battle board
 
 - [ ] PF2e heroes on the battle board (tiles, turn bar, GM HP and condition changes)
+
+### 8.7 Sheet parity with Nimble (the PF2e sheet looks and works like the Nimble one)
+
+- [x] Shared draggable HP bar (`SheetHpBar`, preview maths in `utils/hpPreview.ts`): PF2e drags with temp HP and Shield Block's Hardness; Crit and Shield Block beside Hit points; damage, healing and ±1 through the PF2e engine
+- [x] PF2e Vitals: AC badge with the raised shield, Dying / Wounded / Doomed pips, Hero Points (with the recovery check and Heroic Recovery), Speed / Initiative / Class DC tiles, typed and persistent damage folded, Time passes and Rest for the night
+- [x] Shared Turn panel (`SheetTurnPanel` + `TurnModel`): PF2e's tappable action circles and reaction, actions stunned or slowed took struck out, one step at a time (no New round), typed initiative with Manual dice and Resend, the GM's tracker driving the turn
+- [x] "Not your turn" for PF2e Strikes, action spells, abilities and item activations off your turn in an encounter (reactions and triggered free actions stay); cost pills on Strikes, abilities and spells
+- [x] Nimble's header and two-column layout (shared `_sheet-layout.scss`), every panel folds, Attacks and Reactions swap and fold with the turn
+- [x] PF2e Reactions panel (`usePf2eActions` shared with Actions)
+- [x] Shared conditions block (`SheetConditions`) with PF2e condition ends and what they do to the numbers; ally effects folded in
+- [x] Dead overlay and "(dead)" (`SheetDeadOverlay`); PF2e Resurrect (the ritual's success)
+- [x] PF2e Resources panel: Focus Points and the class toggles (Rage, Hunt Prey, Panache…)
+- [ ] Skills, saves and Perception rows with breakdown and "what it's for" tooltips, Fortune / Misfortune, a DC on every check, the Hero Point reroll
+- [ ] Attack cards (MAP buttons, degree odds vs Target AC, shared Dmg and Situation, per-card results), no sideways table on phones
+- [ ] Tooltips and help sweep (`UiTooltip` for every changed number)
+- [ ] Spell cards with folding ranks; Spells and Abilities groups in Attacks
+- [ ] Feats as an ability card grid; inventory alignment
+- [ ] Manual dice for PF2e attacks, checks, saves and damage
+- [ ] Accessibility and touch sweep

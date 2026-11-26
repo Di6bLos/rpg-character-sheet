@@ -35,7 +35,8 @@ export function usePf2eTurnSteps() {
     const t = turn.value
     const round = trackerRound.value
     return {
-      inEncounter: inEncounter(sheet.value),
+      // Seated in the GM's encounter counts before the hero rolls (Nimble joins it then too).
+      inEncounter: inEncounter(sheet.value) || gmEncounter.value,
       active: active.value,
       rolled: t?.initiative !== undefined,
       ownDice: ownDice.value,

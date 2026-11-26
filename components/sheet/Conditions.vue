@@ -154,6 +154,12 @@ const { canEdit } = useSheet()
   align-items: center;
   flex-wrap: wrap;
   gap: 6px 10px;
+
+  // On a phone the end choice wraps under the text instead of squeezing it to a word a line.
+  > .grow {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
 }
 
 .cond-end select {
