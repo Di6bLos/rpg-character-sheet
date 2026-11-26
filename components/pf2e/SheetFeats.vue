@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The PF2e sheet's feats and features, with archetype feats grouped under their archetype
+// The PF2e sheet's feats and features as Nimble's ability cards, with archetype feats grouped under their archetype
 // (Player Core p. 215): its dedication first, then the feats taken for it, and whether a new
 // dedication is open yet (two more feats of the archetype first). The archetype's introduction
 // comes from `data/pf2e`, fetched when the sheet has an archetype.
@@ -7,6 +7,7 @@ import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eArchetypeDef } from '~/data/pf2e/types'
 import type { Pf2eFeat, Pf2eSheet } from '~/types/sheets'
 import { DEDICATION_FEATS, heroArchetypes } from '~/utils/pf2eArchetypes'
+import { loreHtml } from '~/utils/loreText'
 
 const { draft } = useSheet<Pf2eSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -46,16 +47,19 @@ const detail = (f: Pf2eFeat) =>
 </script>
 
 <template>
-  <div v-for="(f, i) in own" :key="`own-${i}`" class="feat">
-    <div class="feat__meta">
-      <span>{{ f.type }}</span>
-      <small>{{ f.level }}</small>
-    </div>
-    <div class="feat__body">
-      <strong>{{ f.action }} {{ f.name }}</strong>
-      <span v-if="detail(f)" class="small muted">{{ detail(f) }}</span>
-      <span>{{ f.desc }}</span>
-    </div>
+  <div class="abilities">
+    <article v-for="(f, i) in own" :key="`own-${i}`" class="tile ability">
+      <div class="ability__head">
+        <strong
+          ><span v-if="f.action" class="glyph" aria-hidden="true">{{ f.action }} </span
+          >{{ f.name }}</strong
+        >
+        <small>{{ f.type }}{{ f.level ? ` · ${f.level}` : '' }}</small>
+      </div>
+      <small v-if="detail(f)" class="ability__detail">{{ detail(f) }}</small>
+      <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+      <div class="ability__text" v-html="loreHtml(f.desc)" />
+    </article>
   </div>
 
   <section v-for="g in groups" :key="g.name" class="archetype" :aria-label="`${g.name} archetype`">
@@ -69,16 +73,22 @@ const detail = (f: Pf2eFeat) =>
       <summary class="small">About the {{ g.name.toLowerCase() }} archetype</summary>
       <p class="small">{{ intro(g.name)!.text.split('\n\n')[0] }}</p>
     </details>
-    <div v-for="(f, i) in members(g.name)" :key="`${g.name}-${i}`" class="feat">
-      <div class="feat__meta">
-        <span>{{ f.dedication ? 'Dedication' : f.via ? `Via ${f.via}` : f.type }}</span>
-        <small>{{ f.level }}</small>
-      </div>
-      <div class="feat__body">
-        <strong>{{ f.action }} {{ f.name }}</strong>
-        <span v-if="detail(f)" class="small muted">{{ detail(f) }}</span>
-        <span>{{ f.desc }}</span>
-      </div>
+    <div class="abilities">
+      <article v-for="(f, i) in members(g.name)" :key="`${g.name}-${i}`" class="tile ability">
+        <div class="ability__head">
+          <strong
+            ><span v-if="f.action" class="glyph" aria-hidden="true">{{ f.action }} </span
+            >{{ f.name }}</strong
+          >
+          <small
+            >{{ f.dedication ? 'Dedication' : f.via ? `Via ${f.via}` : f.type
+            }}{{ f.level ? ` · ${f.level}` : '' }}</small
+          >
+        </div>
+        <small v-if="detail(f)" class="ability__detail">{{ detail(f) }}</small>
+        <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+        <div class="ability__text" v-html="loreHtml(f.desc)" />
+      </article>
     </div>
   </section>
 
@@ -86,55 +96,31 @@ const detail = (f: Pf2eFeat) =>
 </template>
 
 <style scoped lang="scss">
-.feat {
-  display: flex;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--track);
+@use '../../assets/styles/abilities';
+
+.glyph {
+  color: var(--secondary);
 }
 
-.feat__meta {
-  flex: 0 0 72px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-
-  span {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--page-muted);
-    overflow-wrap: anywhere;
-  }
-
-  small {
-    font-size: 12px;
-    color: var(--page-soft);
-  }
+.ability__detail {
+  font-size: 12px;
+  color: var(--page-muted);
 }
 
-.feat__body {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+.ability__text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--page-soft);
 
-  strong {
-    font-size: 14px;
-  }
-
-  span {
-    font-size: 13px;
-    color: var(--page-soft);
-    line-height: 1.45;
+  :deep(p) {
+    margin: 0.3em 0;
   }
 }
 
 .archetype {
   display: flex;
   flex-direction: column;
+  gap: 8px;
   margin-top: 6px;
   padding-left: 10px;
   border-left: 3px solid var(--accent);
