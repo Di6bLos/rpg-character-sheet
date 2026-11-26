@@ -360,3 +360,25 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 ### 8.6 Battle board
 
 - [ ] PF2e heroes on the battle board (tiles, turn bar, GM HP and condition changes)
+
+### 8.7 Sheet parity with Nimble (the PF2e sheet looks and works like the Nimble one)
+
+- [x] Shared draggable HP bar (`SheetHpBar`, preview maths in `utils/hpPreview.ts`): PF2e drags with temp HP and Shield Block's Hardness; Crit and Shield Block beside Hit points; damage, healing and ±1 through the PF2e engine
+- [x] PF2e Vitals: AC badge with the raised shield, Dying / Wounded / Doomed pips, Hero Points (with the recovery check and Heroic Recovery), Speed / Initiative / Class DC tiles, typed and persistent damage folded, Time passes and Rest for the night
+- [x] Shared Turn panel (`SheetTurnPanel` + `TurnModel`): PF2e's tappable action circles and reaction, actions stunned or slowed took struck out, one step at a time (no New round), typed initiative with Manual dice and Resend, the GM's tracker driving the turn
+- [x] "Not your turn" for PF2e Strikes, action spells, abilities and item activations off your turn in an encounter (reactions and triggered free actions stay); cost pills on Strikes, abilities and spells
+- [x] Nimble's header and two-column layout (shared `_sheet-layout.scss`), every panel folds, Attacks and Reactions swap and fold with the turn
+- [x] PF2e Reactions panel (`usePf2eActions` shared with Actions)
+- [x] Shared conditions block (`SheetConditions`) with PF2e condition ends and what they do to the numbers; ally effects folded in
+- [x] Dead overlay and "(dead)" (`SheetDeadOverlay`); PF2e Resurrect (the ritual's success)
+- [x] PF2e Resources panel: Focus Points and the class toggles (Rage, Hunt Prey, Panache…)
+- [x] Skills, saves and Perception rows with breakdown and "what it's for" tooltips, Fortune / Misfortune, a DC on every check, the Hero Point reroll
+- [x] Attack cards (MAP step, degree odds vs Target AC, off-guard / concealed / hidden, shared Dmg and Situation, per-card results), no sideways table on phones
+- [x] Tooltips and help sweep (`UiTooltip` for derived numbers; rules on hover for weapon traits and properties, runes and spell names on both sheets)
+- [x] Spell cards with folding ranks; Spells and Abilities groups in Attacks
+- [x] Feats as an ability card grid; inventory alignment
+- [x] Manual dice for PF2e Strikes and their damage, checks, saves, Perception, initiative and the recovery check
+- [x] Actions by category (Attacks & maneuvers, Movement, Defense, Senses & knowledge, Influence, Help & healing, Other) and skill actions by skill; Reactions in a card grid with Aid and Grab an Edge; any reaction used spends the reaction
+- [x] Manual dice for PF2e ability uses (their checks, Strikes, damage and healing) and spell casts (attack, damage, healing): `withTypedDice` in utils/dice.ts, `usePf2eTypedRoll`
+- [x] 44px touch areas for the "?" help words and rules words (pseudo-element, no layout change); the reaction circle filled in its own colour
+- [x] Accessibility and touch sweep (44px skill rolls, group folds, full-text folds, coins)

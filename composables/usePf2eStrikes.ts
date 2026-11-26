@@ -10,7 +10,15 @@
 import type { InjectionKey } from 'vue'
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSheet } from '~/types/sheets'
-import { parseDice, rollCheck, rollDice, showOutcome, sign } from '~/utils/dice'
+import {
+  parseDice,
+  rollCheck,
+  rollCheckTwice,
+  rollDice,
+  showOutcome,
+  sign,
+  typedCheck,
+} from '~/utils/dice'
 import { attacked, mapIndex } from '~/utils/pf2eActions'
 import { finisherDice } from '~/utils/pf2eClassActions'
 import {
@@ -32,7 +40,16 @@ import {
   stratagemDamaged,
   stratagemUsesInt,
 } from '~/utils/pf2eEffects'
-import { type Pf2eDegree, adjusted, degreeOf, strikeDamage, strikeResult } from '~/utils/pf2ePlay'
+import {
+  type Pf2eDegree,
+  type Pf2eFortune,
+  type Pf2eMod,
+  adjusted,
+  degreeOf,
+  strikeChances,
+  strikeDamage,
+  strikeResult,
+} from '~/utils/pf2ePlay'
 
 export interface Pf2eStrikeRoll {
   /** Which attack it is for the multiple attack penalty (0–2); the turn's count when absent. */
@@ -45,6 +62,8 @@ export interface Pf2eStrikeRoll {
   quiet?: boolean
   /** A penalty of its own (Double Slice's −2 on a second Strike that isn't agile). */
   penalty?: number
+  /** The d20 the player rolled (Manual dice). */
+  d20?: number
 }
 
 export interface Pf2eDamageRoll {
@@ -61,6 +80,8 @@ export interface Pf2eDamageRoll {
   noExtra?: boolean
   /** Return the result instead of saying it (Double Slice says both together). */
   quiet?: boolean
+  /** The dice the player rolled (Manual dice), in the order `damageDice` lists them. */
+  dice?: number[]
 }
 
 /** Dice a Strike's damage adds to its weapon dice, with what they're from. */
@@ -162,8 +183,59 @@ function create() {
       stratagemStruck.value = undefined
     },
   )
-  /** The attack the next Strike is this turn (0–2), for the table's highlight. */
-  const nextAttack = computed(() => mapIndex(sheet.value))
+  /**
+   * The target as the attacks see it (Player Core pp. 431, 443–444): off-guard takes 2 off its
+   * AC (and lets sneak attack in); concealed and hidden ask for a DC 5 or DC 11 flat check
+   * before the attack roll counts.
+   */
+  const targetFlags = ref({ concealed: false, hidden: false })
+  const targetAcNow = computed(() =>
+    targetAc.value && targetAc.value > 0
+      ? targetAc.value - (damageFlags.value.offGuard ? 2 : 0)
+      : null,
+  )
+
+  /**
+   * The attack the next Strike is for the multiple attack penalty (0–2, p. 402): the turn's
+   * count of attacks on your turn, which the Attacks panel's stepper can change; off a turn
+   * the panel's own count, which each attack moves on and a turn starting or ending clears.
+   */
+  const loose = ref(0)
+  const nextAttack = computed(() =>
+    sheet.value.turn?.active ? mapIndex(sheet.value) : Math.min(2, loose.value),
+  )
+  function setNextAttack(n: number) {
+    const step = Math.max(0, Math.min(2, n))
+    const t = sheet.value.turn
+    if (t?.active) t.attacks = step
+    else loose.value = step
+  }
+  watch(
+    () => !!sheet.value.turn?.active,
+    () => (loose.value = 0),
+  )
+
+  /**
+   * What the table decides for the next attacks (Player Core p. 400): fortune or misfortune
+   * for the next roll, and a circumstance bonus (Aid) or penalty the GM calls; only the best
+   * circumstance bonus and worst penalty count. Fortune goes after a roll; all of it when a
+   * turn starts or ends.
+   */
+  const situation = ref({ fortune: 'normal' as Pf2eFortune, bonus: 0, penalty: 0 })
+  watch(
+    () => !!sheet.value.turn?.active,
+    () => (situation.value = { fortune: 'normal', bonus: 0, penalty: 0 }),
+  )
+  const situationMods = computed<Pf2eMod[]>(() => [
+    ...(situation.value.bonus
+      ? [{ value: situation.value.bonus, type: 'circumstance' as const, source: 'GM’s call' }]
+      : []),
+    ...(situation.value.penalty
+      ? [{ value: -situation.value.penalty, type: 'circumstance' as const, source: 'GM’s call' }]
+      : []),
+  ])
+  /** The degree each Strike's last attack got (when the target's AC was set), by index. */
+  const lastDegree = ref<Record<number, Pf2eDegree>>({})
 
   const strikes = computed(() =>
     sheet.value.strikes.map((w, index) => {
@@ -182,14 +254,19 @@ function create() {
       const attackBase = intAttack
         ? w.bonus - sheet.value.attrs[attr] + sheet.value.attrs.INT
         : w.bonus
-      const attack = adjusted(sheet.value, attackBase, {
-        kind: 'attack',
-        attr: intAttack ? 'INT' : attr,
-        traits,
-        level,
-        weapon: w.name,
-        ...(w.rank ? { rank: w.rank } : {}),
-      })
+      const attack = adjusted(
+        sheet.value,
+        attackBase,
+        {
+          kind: 'attack',
+          attr: intAttack ? 'INT' : attr,
+          traits,
+          level,
+          weapon: w.name,
+          ...(w.rank ? { rank: w.rank } : {}),
+        },
+        situationMods.value,
+      )
       // Melee damage adds STR, so enfeebled lowers it (p. 443); effects like Rage and
       // Courageous Anthem add theirs (Rage only to melee, halved for agile).
       const dmgMods = adjusted(sheet.value, 0, {
@@ -240,6 +317,8 @@ function create() {
         /** What a critical hit adds: "+1d10 fatal d10, +1d8 deadly d8", for the crit button. */
         critNote: crit.after.map((x) => `+${x.count}d${x.sides} ${x.label}`).join(', '),
         dmg: `${dmg}${added.map((x) => `+${x.dice}`).join('')}${typeInitial}`,
+        /** The card's dice badge, as Nimble's ("1d8+4"); the type is spelled out beside it. */
+        dice: `${dmg}${added.map((x) => `+${x.dice}`).join('')}`,
         dmgExpr: dmg,
         extra,
         runeDice: fromRunes,
@@ -264,13 +343,28 @@ function create() {
         critNotes,
         changed: attack.changed,
         note: attack.note,
+        applied: attack.applied,
         intAttack,
         bonus: attack.value,
         atks: penalties.map((penalty, i) => ({
           text: sign(attack.value - penalty),
           label: `${w.name} attack ${i + 1}`,
           penalty,
+          chances:
+            targetAcNow.value !== null
+              ? strikeChances(attack.value - penalty, targetAcNow.value, {
+                  keen: (runes?.property ?? []).some((p) => p.keen),
+                  fortune: situation.value.fortune,
+                })
+              : null,
         })),
+        runes: runes
+          ? [
+              runes.potency ? `+${runes.potency} weapon potency` : '',
+              runes.striking ? `${runes.striking + 1} dice striking` : '',
+              ...runes.property.map((p) => p.name),
+            ].filter(Boolean)
+          : [],
       }
     }),
   )
@@ -285,18 +379,44 @@ function create() {
     const step = o.map ?? nextAttack.value
     const penalty = (w.atks[step]?.penalty ?? 0) + (o.penalty ?? 0)
     const bonus = w.bonus - penalty
-    const r = rollCheck(bonus)
+    const fortune = o.d20 === undefined ? situation.value.fortune : 'normal'
+    const r =
+      o.d20 !== undefined
+        ? typedCheck(o.d20, bonus)
+        : fortune === 'normal'
+          ? rollCheck(bonus)
+          : rollCheckTwice(bonus, fortune === 'fortune' ? 'higher' : 'lower')
+    const twice = 'rolls' in r ? ` (${fortune}: ${(r.rolls as number[]).join(' and ')})` : ''
+    situation.value = { ...situation.value, fortune: 'normal' }
     attacked(sheet.value, o.countAs ?? 1)
+    if (!sheet.value.turn?.active) loose.value = Math.min(2, loose.value + (o.countAs ?? 1))
     const st = stratagemAttacked(stratagemState(), index, w.intAttack)
     damageFlags.value.stratagem = st.ready
     stratagemStruck.value = st.struck
-    const ac = targetAc.value
-    const degree = ac ? degreeOf(r.total, r.d20, ac, w.keen) : undefined
+    const ac = targetAcNow.value
+    let degree = ac ? degreeOf(r.total, r.d20, ac, w.keen) : undefined
     const keen = w.keen && r.d20 === 19 ? ' (keen: a critical hit if it hits)' : ''
-    const vs = ac && degree ? ` vs AC ${ac}: ${strikeResult(degree)}` : keen
+    // A concealed or hidden target: a flat check first, a failure and the attack misses.
+    const flatDc = targetFlags.value.hidden ? 11 : targetFlags.value.concealed ? 5 : 0
+    let flat = ''
+    if (flatDc && o.d20 !== undefined)
+      flat = ` Roll a DC ${flatDc} flat check: below it, the attack misses.`
+    else if (flatDc) {
+      const f = rollCheck(0)
+      const lost = f.d20 < flatDc
+      flat = ` Flat check ${f.d20} vs DC ${flatDc}: ${lost ? 'the attack misses' : 'it counts'}.`
+      if (lost && degree) degree = 'failure'
+    }
+    const vs = (ac && degree ? ` vs AC ${ac}: ${strikeResult(degree)}` : keen) + flat
     const by = o.by && !o.quiet ? `${o.by}: ` : ''
     const own = o.penalty ? `, −${o.penalty}` : ''
-    const text = `${by}${w.name} (attack ${step + 1}${own}, ${sign(bonus)}): ${r.total}${natNote(r.natural)}${vs}`
+    const text = `${by}${w.name} (attack ${step + 1}${own}, ${sign(bonus)}): ${r.total}${natNote(r.natural)}${twice}${vs}`
+    if (degree) lastDegree.value = { ...lastDegree.value, [index]: degree }
+    else {
+      const rest = { ...lastDegree.value }
+      delete rest[index]
+      lastDegree.value = rest
+    }
     showOutcome({
       label: `${w.name} attack`,
       total: r.total,
@@ -321,6 +441,13 @@ function create() {
       say(`${w.name}: “${w.dmgExpr}” isn’t a dice expression like 1d8+4`)
       return
     }
+    if (o.dice) {
+      const need = damageDice(index, crit, o)
+      if (o.dice.length !== need.count) {
+        say(`${w.name}: type ${need.count} dice (${need.label}), one number each.`)
+        return
+      }
+    }
     const c = crit ? critDiceFor(w.traits, expr) : { sides: expr.sides, after: [] }
     const precise = o.finisher && w.precise ? finisherDice(sheet.value, draft.value.level) : ''
     const flat = precise ? w.precise : 0
@@ -334,13 +461,19 @@ function create() {
       ...addedDice(w, o.noExtra),
       ...(precise ? [{ dice: precise, label: 'precise strike finisher' }] : []),
     ]
-    const parts = [rollDice(more).total]
+    // With Manual dice the player's dice stand in, in order: the weapon's, each extra, then
+    // the critical ones; the flat modifiers are added here.
+    const typed = o.dice ? [...o.dice] : null
+    const take = (n: number) => (typed ? typed.splice(0, n).reduce((a, b) => a + b, 0) : 0)
+    const roll = (e: { count: number; sides: number; mod: number }) =>
+      typed ? take(e.count) + e.mod : rollDice(e).total
+    const parts = [roll(more)]
     for (const x of extra) {
       const e = parseDice(x.dice)
-      if (e) parts.push(rollDice(e).total)
+      if (e) parts.push(roll(e))
     }
     const rolled = strikeDamage(parts.reduce((a, b) => a + b, 0))
-    const after = c.after.map((x) => rollDice({ count: x.count, sides: x.sides, mod: 0 }).total)
+    const after = c.after.map((x) => roll({ count: x.count, sides: x.sides, mod: 0 }))
     const afterTotal = after.reduce((a, b) => a + b, 0)
     const total = crit ? strikeDamage(rolled, true) + afterTotal : rolled
     const extras = [
@@ -373,14 +506,77 @@ function create() {
     return { total, text, type: w.type }
   }
 
+  /**
+   * The dice a damage roll throws, in order (Manual dice asks for them): the weapon's, its
+   * extra dice, then a critical hit's deadly and fatal dice.
+   */
+  function damageDice(
+    index: number,
+    crit: boolean,
+    o: Pf2eDamageRoll = {},
+  ): { label: string; count: number } {
+    const w = strikes.value[index]
+    const expr = w ? parseDice(w.dmgExpr) : null
+    if (!w || !expr) return { label: '', count: 0 }
+    const c = crit ? critDiceFor(w.traits, expr) : { sides: expr.sides, after: [] }
+    const precise = o.finisher && w.precise ? finisherDice(sheet.value, draft.value.level) : ''
+    const list = [
+      { count: expr.count + (o.extraDie ?? 0), sides: c.sides, label: '' },
+      ...addedDice(w, o.noExtra).flatMap((x) => {
+        const e = parseDice(x.dice)
+        return e ? [{ count: e.count, sides: e.sides, label: ` ${x.label}` }] : []
+      }),
+      ...(precise
+        ? [
+            {
+              count: parseDice(precise)?.count ?? 0,
+              sides: parseDice(precise)?.sides ?? 0,
+              label: ' precise strike',
+            },
+          ]
+        : []),
+      ...c.after.map((x) => ({ count: x.count, sides: x.sides, label: ` ${x.label}` })),
+    ]
+    return {
+      label: list.map((x) => `${x.count}d${x.sides}${x.label}`).join(', '),
+      count: list.reduce((n, x) => n + x.count, 0),
+    }
+  }
+
+  /** The panel state a roll changes, kept and put back around a Manual dice retry. */
+  function saveState() {
+    return {
+      situation: { ...situation.value },
+      lastDegree: { ...lastDegree.value },
+      loose: loose.value,
+      flags: { ...damageFlags.value },
+      struck: stratagemStruck.value,
+    }
+  }
+  function loadState(x: ReturnType<typeof saveState>) {
+    situation.value = x.situation
+    lastDegree.value = x.lastDegree
+    loose.value = x.loose
+    damageFlags.value = x.flags
+    stratagemStruck.value = x.struck
+  }
+
   return {
+    saveState,
+    loadState,
     targetAc,
+    targetAcNow,
+    targetFlags,
+    setNextAttack,
     damageFlags,
     conditionsOffered,
     strikes,
     nextAttack,
+    situation,
+    lastDegree,
     attack,
     damage,
+    damageDice,
     toggleTwoHands,
     toggleVersatile,
   }

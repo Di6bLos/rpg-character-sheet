@@ -1,131 +1,147 @@
 <script setup lang="ts">
-// The PF2e sheet's conditions: a chip per condition (its effect on hover and to screen
-// readers), and a value stepper on valued ones that are on (frightened 2). What they do to
-// the numbers is `conditionMods` in utils/pf2ePlay.ts; the sheet shows the changed values.
-import type { Pf2eSheet } from '~/types/sheets'
-import { endOnUnconscious } from '~/utils/pf2eEffects'
-import { PF2E_CONDITION_DEFS, activeConditions, conditionValue } from '~/utils/pf2ePlay'
+// The PF2e sheet's conditions in the shared SheetConditions block (usePf2eConditions): a chip
+// per condition with its effect, valued ones with their value and −/+ (frightened 2), those
+// another condition gives dashed; each active one with when it ends; what they do to the
+// numbers; then the effects allies give (Bless, Heroism +2), folded to those on you.
+import type { Pf2eConditionEnd } from '~/types/sheets'
 
-const { draft, canEdit, say } = useSheet<Pf2eSheet>()
-const sheet = computed(() => draft.value.sheet)
-const implied = computed(() => {
-  const on = activeConditions(sheet.value)
-  return new Set([...on].filter((c) => !sheet.value.conditions.includes(c)))
-})
+const { canEdit } = useSheet()
+const {
+  chips,
+  active,
+  effects,
+  toggle,
+  step,
+  setEnd,
+  ENDS,
+  given,
+  alliesOpen,
+  shownGiven,
+  giveToggle,
+  setValue,
+  always,
+  withToggle,
+  givenNotes,
+} = usePf2eConditions()
+const groups = computed(() => [{ chips: chips.value }])
+const allEffects = computed(() => [...effects.value, ...givenNotes.value])
 
-function toggle(name: string) {
-  if (!canEdit.value) return
-  const s = sheet.value
-  if (s.conditions.includes(name)) {
-    s.conditions = s.conditions.filter((c) => c !== name)
-    if (s.conditionValues) delete s.conditionValues[name]
-    return
-  }
-  s.conditions = [...s.conditions, name]
-  // Stunned without a value lasts a duration and takes every action (p. 446): the chip gives 1.
-  if (name === 'Stunned') s.conditionValues = { ...s.conditionValues, Stunned: 1 }
-  // Falling unconscious ends Rage (Player Core 2 p. 72).
-  const ended = name === 'Unconscious' ? endOnUnconscious(s) : ''
-  if (ended) say(ended)
-}
-
-/** " 2" after a valued condition that's on; nothing for stunned for a duration. */
-function valueLabel(name: string, valued?: boolean) {
-  const s = sheet.value
-  if (!valued || !s.conditions.includes(name)) return ''
-  if (name === 'Stunned' && s.conditionValues?.Stunned === undefined) return ''
-  return ` ${conditionValue(s, name)}`
-}
-
-function step(name: string, by: number) {
-  if (!canEdit.value) return
-  const s = sheet.value
-  const next = conditionValue(s, name) + by
-  if (next < 1) return toggle(name)
-  s.conditionValues = { ...s.conditionValues, [name]: Math.min(9, next) }
+function onEnd(name: string, end: string) {
+  setEnd(name, end as Pf2eConditionEnd | 'manual')
 }
 </script>
 
 <template>
-  <div class="stack" style="gap: 8px">
-    <div class="caps">Conditions</div>
-    <div class="conds">
-      <div
-        v-for="c in PF2E_CONDITION_DEFS"
-        :key="c.name"
-        class="cond"
-        :class="{ 'is-on': sheet.conditions.includes(c.name), 'is-implied': implied.has(c.name) }"
-      >
+  <SheetConditions
+    :groups="groups"
+    :active="active"
+    :ends="ENDS"
+    :effects="allEffects"
+    @toggle="toggle"
+    @step="step"
+    @set-end="onEnd"
+  >
+    <template #after-groups>
+      <div class="chips" style="gap: 6px">
         <button
           type="button"
-          class="chip cond__chip"
-          :aria-pressed="sheet.conditions.includes(c.name)"
-          :aria-describedby="`cond-${c.name}`"
-          :title="implied.has(c.name) ? `${c.effect} (from another condition)` : c.effect"
-          :disabled="!canEdit"
-          @click="toggle(c.name)"
+          class="cond-group fx-fold"
+          :aria-expanded="alliesOpen"
+          @click="alliesOpen = !alliesOpen"
         >
-          {{ c.name }}{{ valueLabel(c.name, c.valued) }}
+          Ally effects{{ given.size ? ` · ${given.size} on` : '' }}
+          <span aria-hidden="true">{{ alliesOpen ? '▴' : '▾' }}</span>
         </button>
-        <span :id="`cond-${c.name}`" class="sr-only">{{ c.effect }}</span>
-        <span v-if="c.valued && sheet.conditions.includes(c.name)" class="cond__step">
+        <span v-for="e in shownGiven" :key="e.name" class="fx-given">
           <button
             type="button"
-            class="step step--xs"
-            :aria-label="`Lower ${c.name}`"
+            class="chip cond"
+            :aria-pressed="given.has(e.name)"
+            :title="e.note"
             :disabled="!canEdit"
-            @click="step(c.name, -1)"
+            @click="giveToggle(e.name, e.values)"
           >
-            −
+            {{ e.name.replace(' (ally)', '') }}
           </button>
-          <button
-            type="button"
-            class="step step--xs"
-            :aria-label="`Raise ${c.name}`"
+          <select
+            v-if="e.values && given.has(e.name)"
+            class="input fx-value"
+            :aria-label="`${e.name} bonus`"
+            :value="given.get(e.name)?.value ?? e.values[0]"
             :disabled="!canEdit"
-            @click="step(c.name, 1)"
+            @change="setValue(e.name, Number(($event.target as HTMLSelectElement).value))"
           >
-            +
-          </button>
+            <option v-for="v in e.values" :key="v" :value="v">+{{ v }}</option>
+          </select>
         </span>
       </div>
-    </div>
-  </div>
+      <p v-if="always.length" class="small muted fx-line">
+        Always on: {{ always.map((e) => e.name).join(', ') }}
+      </p>
+      <p v-for="[toggleName, names] in withToggle" :key="toggleName" class="small muted fx-line">
+        With {{ toggleName }}: {{ names.join(', ') }}
+      </p>
+    </template>
+  </SheetConditions>
 </template>
 
 <style scoped lang="scss">
-.conds {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.cond-group {
+  align-self: center;
+  margin-right: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--page-muted);
 }
 
-.cond {
+.fx-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.fx-given {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
 
-  &.is-on {
-    padding-right: 4px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
+.cond {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &[aria-pressed='true'] {
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    border-color: var(--accent);
   }
 }
 
-.cond__chip[aria-pressed='true'] {
-  border-color: var(--accent);
-  color: var(--page-text);
-  font-weight: 700;
+.fx-value {
+  width: auto;
+  min-height: 34px;
+  padding: 2px 6px;
+  font-size: 13px;
 }
 
-// On because another condition gives it (prone → off-guard): outlined, not filled.
-.is-implied .cond__chip {
-  border-style: dashed;
-  border-color: var(--accent);
+.fx-line {
+  margin: 0;
 }
 
-.cond__step {
-  display: inline-flex;
-  gap: 2px;
+@media (pointer: coarse) {
+  .fx-fold,
+  .cond,
+  .fx-value {
+    min-height: 44px;
+  }
 }
 </style>

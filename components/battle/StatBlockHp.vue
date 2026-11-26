@@ -43,7 +43,7 @@ function setHp() {
         hp <= 0 ? 'Slain' : `${hp} / ${hpMax}`
       }}</span>
     </div>
-    <NimbleHpBar
+    <SheetHpBar
       class="sbk__drag"
       :hp="hp"
       :max="hpMax"

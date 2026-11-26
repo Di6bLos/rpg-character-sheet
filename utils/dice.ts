@@ -33,9 +33,60 @@ export function findDice(text: string): { text: string; dice: DiceExpr } | null 
 
 let detailed = 0
 
+/**
+ * Manual dice for rules that roll inside (a PF2e ability's check and damage, a spell's attack,
+ * damage and healing): while `withTypedDice` runs, every die comes from the player's values in
+ * order instead of the rng. When they run out, the roll asking stops the run with `NeedDice`
+ * (how many of which die, all of a roll at once), so the caller can ask for them and run again
+ * from the start with more.
+ */
+let typed: { values: number[]; used: number } | null = null
+
+export class NeedDice extends Error {
+  constructor(
+    public count: number,
+    public sides: number,
+  ) {
+    super(`Needs ${count}d${sides}`)
+  }
+}
+
+/**
+ * Runs `fn` with the player's dice. Returns its result, or what it still needs; throws on dice
+ * left over (more typed than the rules rolled) or out of range for their die.
+ */
+export function withTypedDice<T>(
+  values: number[],
+  fn: () => T,
+): { done: true; result: T } | { done: false; need: { count: number; sides: number } } {
+  const before = typed
+  typed = { values, used: 0 }
+  try {
+    const result = fn()
+    const extra = values.length - typed.used
+    if (extra > 0) throw new RangeError(`${extra} more ${extra === 1 ? 'die' : 'dice'} than rolled`)
+    return { done: true, result }
+  } catch (e) {
+    if (e instanceof NeedDice) return { done: false, need: { count: e.count, sides: e.sides } }
+    throw e
+  } finally {
+    typed = before
+  }
+}
+
+/** The next typed die for a die of `sides`; out of range is the player's mistake. */
+function typedDie(sides: number, count = 1): number {
+  const t = typed!
+  if (t.values.length - t.used < count) throw new NeedDice(count, sides)
+  const v = t.values[t.used++]!
+  if (!Number.isInteger(v) || v < 1 || v > sides)
+    throw new RangeError(`${v} isn’t a d${sides} roll (1–${sides})`)
+  return v
+}
+
 /** One die. The dice tray is told about it unless a whole roll reports itself (`quietly`). */
 export function rollDie(sides: number, rng: Rng = Math.random): number {
-  const value = 1 + Math.floor(rng() * sides)
+  const value = typed ? typedDie(sides) : 1 + Math.floor(rng() * sides)
   if (!detailed)
     showDice({
       sides,
@@ -78,6 +129,9 @@ export interface RollResult {
 
 /** Rolls a plain expression; the dice tray shows it as one roll with its total. */
 export function rollDice(expr: DiceExpr, rng: Rng = Math.random): RollResult {
+  // Typed dice: ask for all of this roll's dice at once.
+  if (typed && expr.count > 0 && typed.values.length - typed.used < expr.count)
+    throw new NeedDice(expr.count, expr.sides)
   const rolls = quietly(() => Array.from({ length: expr.count }, () => rollDie(expr.sides, rng)))
   const total = rolls.reduce((a, b) => a + b, 0) + expr.mod
   if (!detailed && rolls.length)
@@ -139,6 +193,42 @@ export function rollCheck(bonus: number, rng: Rng = Math.random): AttackRoll {
       odds: 0,
     })
   return r
+}
+
+/** A d20 the player rolled at the table (Manual dice), with its modifier, as `rollCheck` gives one. */
+export function typedCheck(d20: number, bonus: number): AttackRoll {
+  const die = Math.max(1, Math.min(20, Math.round(d20)))
+  return { d20: die, total: die + bonus, natural: die === 20 ? 20 : die === 1 ? 1 : null }
+}
+
+/**
+ * Pathfinder 2e fortune or misfortune (Player Core p. 400): roll the d20 twice and keep the
+ * higher (fortune) or the lower (misfortune). The tray shows both dice with the other dropped.
+ */
+export function rollCheckTwice(
+  bonus: number,
+  keep: 'higher' | 'lower',
+  rng: Rng = Math.random,
+): AttackRoll & { rolls: [number, number] } {
+  const [a, b] = quietly(() => [rollDie(20, rng), rollDie(20, rng)] as const)
+  const first = keep === 'higher' ? a >= b : a <= b
+  const d20 = first ? a : b
+  const r = typedCheck(d20, bonus)
+  if (!detailed)
+    showDice({
+      sides: 20,
+      dice: [a, b],
+      dropped: [first ? 1 : 0],
+      primary: first ? 0 : 1,
+      explosions: [],
+      extra: null,
+      mod: bonus,
+      total: r.total,
+      miss: false,
+      crit: false,
+      odds: 0,
+    })
+  return { ...r, rolls: [a, b] }
 }
 
 /** One roll as the dice tray throws it: every die in order, the Primary, what was dropped. */

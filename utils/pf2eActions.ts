@@ -20,6 +20,7 @@ import {
   diceAt,
 } from '~/utils/pf2eAbilityRules'
 import { bravado, finisherBlock, spendFinisher } from '~/utils/pf2eClassActions'
+import type { TurnPip } from '~/utils/turnSteps'
 import {
   pf2eEffectDef,
   endPf2eEffects,
@@ -30,6 +31,7 @@ import {
 import {
   activeConditions,
   adjusted,
+  clearPf2eConditionsAt,
   conditionValue,
   degreeOf,
   heal,
@@ -62,10 +64,33 @@ function setCondition(s: Pf2eSheet, name: string, value: number) {
   if (value <= 0) {
     s.conditions = s.conditions.filter((c) => c !== name)
     if (s.conditionValues) delete s.conditionValues[name]
+    if (s.conditionEnds?.[name]) {
+      const ends = { ...s.conditionEnds }
+      delete ends[name]
+      s.conditionEnds = ends
+    }
     return
   }
   if (!s.conditions.includes(name)) s.conditions = [...s.conditions, name]
   s.conditionValues = { ...s.conditionValues, [name]: value }
+}
+
+/** What a Strike, a spell or an ability that costs actions says off your turn in an encounter. */
+export const NOT_YOUR_TURN = 'Not your turn'
+
+/** In an encounter and not on your turn: actions wait for your turn (p. 436). */
+export const offTurn = (s: Pf2eSheet) => inEncounter(s) && !s.turn?.active
+
+/**
+ * What can be used off your turn (Player Core p. 15): reactions, and free actions with a
+ * trigger, which work like reactions; anything else with no cost (a limited use on its own).
+ */
+export function usableOffTurn(r: Pick<Pf2eAbilityRules, 'cost' | 'trigger'>): boolean {
+  const cost = r.cost
+  if (!cost) return true
+  if (cost.kind === 'reaction') return true
+  if (cost.kind === 'free') return !!r.trigger
+  return false
 }
 
 /** Conditions that keep the hero from acting at all, reactions and free actions too (pp. 444–446). */
@@ -92,14 +117,18 @@ export function startPf2eTurn(s: Pf2eSheet): string {
   const t = turnOf(s)
   const notes: string[] = []
   notes.push(...endPf2eEffects(s, ['startOfTurn', 'trigger']))
+  const cleared = clearPf2eConditionsAt(s, 'turnStart')
+  if (cleared) notes.push(cleared)
   // A round goes by from one turn to the next: consumables' durations count down.
   if (t.round > 0) notes.push(...passItemTime(s, 1))
   if (s.shield.raised) {
     s.shield.raised = false
     notes.push('Your shield lowers.')
   }
-  const cantAct =
-    isDead(s) || ['Paralyzed', 'Petrified', 'Unconscious'].some((c) => s.conditions.includes(c))
+  const stoppedBy = isDead(s)
+    ? 'Dead'
+    : ['Paralyzed', 'Petrified', 'Unconscious'].find((c) => s.conditions.includes(c))
+  const cantAct = !!stoppedBy
   let actions = 3 + (s.conditions.includes('Quickened') ? 1 : 0)
   // Stunned with a duration instead of a value takes every action while it lasts (p. 446).
   const stunnedFor = s.conditions.includes('Stunned') && s.conditionValues?.Stunned === undefined
@@ -112,9 +141,15 @@ export function startPf2eTurn(s: Pf2eSheet): string {
   }
   const slowLoss = Math.max(0, conditionValue(s, 'Slowed') - stunLoss)
   if (slowLoss) notes.push(`Slowed: ${slowLoss} fewer.`)
+  t.lost = {
+    stunned: stunLoss,
+    slowed: Math.min(slowLoss, actions - stunLoss),
+    ...(stoppedBy ? { all: stoppedBy } : stunnedFor ? { all: 'Stunned' } : {}),
+  }
   actions = cantAct ? 0 : Math.max(0, actions - stunLoss - slowLoss)
   Object.assign(t, { active: true, actions, reaction: !cantAct, attacks: 0, flourish: false })
   delete t.finisher
+  delete t.extra
   t.round += 1
   refreshUses(s, TURN_PERIODS)
   if (s.dying > 0 && !isDead(s)) notes.push('Dying: roll your recovery check.')
@@ -147,8 +182,12 @@ export function endPf2eTurn(s: Pf2eSheet, rng: Rng = Math.random): string {
       if (pf2eEffectDef(s, name)?.ends === 'endOfNextTurn' && !later.includes(name))
         notes.push(toggleEffect(s, name, 0))
     }
+  const cleared = clearPf2eConditionsAt(s, 'turnEnd')
+  if (cleared) notes.push(cleared)
   delete t.carry
   delete t.finisher
+  delete t.extra
+  delete t.lost
   t.active = false
   t.actions = 0
   return ['Turn ended.', ...notes].join(' ')
@@ -164,6 +203,8 @@ export function endPf2eEncounter(s: Pf2eSheet): string {
     'encounter',
     'minute',
   ])
+  const cleared = clearPf2eConditionsAt(s, 'encounter')
+  if (cleared) ended.push(cleared)
   s.turn = newTurn()
   refreshUses(s, ['turn', 'round', 'minute'])
   // Like "minute" effects, a consumable's minute is taken as over with the fight.
@@ -190,11 +231,88 @@ export function timePasses(s: Pf2eSheet, period: 'minute' | '10min' | 'hour'): s
     'minute',
   ])
   ended.push(...passItemTime(s, { minute: 10, '10min': 100, hour: 600 }[period]))
+  // Wounded ends once you're at full HP and rest 10 minutes (Player Core p. 447).
+  if (period !== 'minute' && s.wounded > 0 && s.hp >= s.hpMax) {
+    s.wounded = 0
+    ended.push('Wounded ends: full HP and 10 minutes of rest.')
+  }
   const label = { minute: '1 minute', '10min': '10 minutes', hour: '1 hour' }[period]
   return [
     `${label} passes: uses per ${label === '1 hour' ? 'hour' : 'minute'} and shorter come back.`,
     ...ended,
   ].join(' ')
+}
+
+/**
+ * The Turn panel's view of a PF2e turn (pp. 436–437): one circle per action, 3 plus quickened,
+ * those stunned and slowed took at its start struck out at the end (p. 446), extra actions
+ * gained mid-turn in between; actions and reaction left in words; which attack the next Strike
+ * is for the multiple attack penalty (p. 402). Off your turn the circles wait for it.
+ */
+export function pf2eTurnView(s: Pf2eSheet): { pips: TurnPip[]; leftText: string; note: string } {
+  const base = 3 + (activeConditions(s).has('Quickened') ? 1 : 0)
+  const t = s.turn
+  const reaction = t?.reaction === false ? 'reaction used' : 'reaction ready'
+  const dying = s.dying > 0 && !isDead(s) ? ' (Dying)' : ''
+  if (!t?.active) {
+    const when = inEncounter(s) ? 'at the start of your turn' : 'each turn'
+    return {
+      pips: Array.from({ length: base }, (_, i) => ({ n: i + 1, on: false, extra: false })),
+      leftText: `${base} actions ${when} · ${reaction}${dying}`,
+      note: 'Next Strike: 1st attack',
+    }
+  }
+  const lost = t.lost
+  const extra = t.extra ?? 0
+  const lostLabels = lost?.all
+    ? Array.from({ length: base }, () => lost.all!)
+    : [
+        ...Array.from({ length: lost?.stunned ?? 0 }, () => 'Stunned'),
+        ...Array.from({ length: lost?.slowed ?? 0 }, () => 'Slowed'),
+      ].slice(0, base)
+  const avail = base - lostLabels.length
+  const pips: TurnPip[] = [
+    ...Array.from({ length: avail + extra }, (_, i) => ({
+      n: i + 1,
+      on: i + 1 <= t.actions,
+      extra: i >= avail,
+    })),
+    ...lostLabels.map((why, i) => ({
+      n: avail + extra + i + 1,
+      on: false,
+      extra: false,
+      lost: why,
+    })),
+  ]
+  const left =
+    t.actions > avail
+      ? `${t.actions} left (${t.actions - avail} extra)`
+      : `${t.actions} of ${avail} left`
+  const ord = ['1st attack', '2nd attack (−5, agile −4)', '3rd attack (−10, agile −8)']
+  return {
+    pips,
+    leftText: `${left} · ${reaction}${dying}${lost?.all ? ` (${lost.all})` : ''}`,
+    note: t.finisher
+      ? 'Finisher used: no more attacks this turn'
+      : `Next Strike: ${ord[mapIndex(s)]}`,
+  }
+}
+
+/** Tap an action circle on your turn: one you have spends it, one you don't gets it back. */
+export function togglePf2eAction(s: Pf2eSheet, n: number) {
+  const t = s.turn
+  if (!t?.active) return
+  const max = pf2eTurnView(s).pips.filter((p) => !p.lost).length
+  t.actions = n <= t.actions ? n - 1 : Math.min(n, max)
+}
+
+/** An extra action this turn (quickened mid-turn, the GM's call); it goes when the turn ends. */
+export function gainPf2eAction(s: Pf2eSheet): string {
+  const t = s.turn
+  if (!t?.active) return 'Extra actions come on your turn.'
+  t.extra = (t.extra ?? 0) + 1
+  t.actions += 1
+  return `Extra action: ${t.actions} left this turn.`
 }
 
 /** The attack the next roll is (0, 1, 2) for the multiple attack penalty this turn. */
@@ -350,6 +468,7 @@ export function blockedReason(
   const t = s.turn
   if (!t?.active) {
     if (r.cost?.kind === 'reaction' && t && !t.reaction) return 'Reaction already used this round'
+    if (offTurn(s) && !usableOffTurn(r)) return NOT_YOUR_TURN
     return finisherBlock(s, r)
   }
   if (r.cost?.kind === 'reaction' && !t.reaction) return 'Reaction already used this round'
@@ -373,7 +492,8 @@ export function payFor(
 ) {
   const t = s.turn
   if (t?.active && r.cost?.kind === 'actions') t.actions -= opts.actions ?? r.cost.min
-  if (t && inEncounter(s) && r.cost?.kind === 'reaction') t.reaction = false
+  // Any reaction spends the one a round (p. 436); out of combat Time passes gives it back.
+  if (r.cost?.kind === 'reaction') turnOf(s).reaction = false
   if (t?.active && r.traits.some((x) => x.toLowerCase() === 'flourish')) t.flourish = true
   if (r.frequency) spendUse(s, opts.name, r.frequency, opts.target)
   return spendFinisher(s, r)
@@ -632,3 +752,52 @@ export function featStatLines(
 
 const GLYPH: Record<string, string> = { 1: '◆', 2: '◆◆', 3: '◆◆◆', reaction: '↺', free: '◇' }
 const glyph = (a: string | number) => GLYPH[String(a)] ?? String(a)
+
+// --- Categories for the Actions panel ---------------------------------------------------
+
+export type Pf2eActionCategory =
+  | 'attack'
+  | 'move'
+  | 'defense'
+  | 'senses'
+  | 'influence'
+  | 'help'
+  | 'other'
+
+/** The Actions panel's categories, in order, with their headings. */
+export const PF2E_ACTION_CATEGORIES: { id: Pf2eActionCategory; label: string }[] = [
+  { id: 'attack', label: 'Attacks & maneuvers' },
+  { id: 'move', label: 'Movement' },
+  { id: 'defense', label: 'Defense' },
+  { id: 'senses', label: 'Senses & knowledge' },
+  { id: 'influence', label: 'Influence' },
+  { id: 'help', label: 'Help & healing' },
+  { id: 'other', label: 'Other' },
+]
+
+const DEFENSE = ['raise a shield', 'take cover', 'avert gaze', 'shield block']
+const SENSES = ['seek', 'sense motive', 'recall knowledge', 'hide', 'point out']
+const HELP = ['aid', 'administer first aid', 'treat wounds', 'battle medicine', 'treat poison']
+
+/**
+ * What an action is for, from its name and traits (Player Core pp. 414–419): an attack
+ * (the attack trait, a Strike), movement (move), defense (Raise a Shield, Take Cover),
+ * senses and knowledge (Seek, Recall Knowledge, Hide), influence (mental or emotion actions
+ * such as Demoralize and Create a Diversion), help and healing (Aid, First Aid), or other.
+ */
+export function actionCategory(
+  name: string,
+  traits: string[],
+  r?: Pick<Pf2eAbilityRules, 'strike'>,
+): Pf2eActionCategory {
+  const n = name.trim().toLowerCase()
+  const t = traits.map((x) => x.toLowerCase())
+  if (DEFENSE.includes(n)) return 'defense'
+  if (HELP.includes(n)) return 'help'
+  if (SENSES.includes(n)) return 'senses'
+  if (r?.strike || t.includes('attack')) return 'attack'
+  if (t.includes('move')) return 'move'
+  if (t.includes('mental') || t.includes('emotion') || t.includes('linguistic')) return 'influence'
+  if (t.includes('healing')) return 'help'
+  return 'other'
+}

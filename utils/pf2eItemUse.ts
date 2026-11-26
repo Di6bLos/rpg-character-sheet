@@ -6,7 +6,7 @@
 import type { Pf2eEffectDef, Pf2eSpellDef } from '~/data/pf2e/types'
 import type { InventoryItem, Pf2eItemState, Pf2eRank, Pf2eSheet } from '~/types/sheets'
 import { type Rng, parseDice, rollAttack, rollDice, rollDie, sign } from '~/utils/dice'
-import { attacked, mapIndex } from '~/utils/pf2eActions'
+import { NOT_YOUR_TURN, attacked, mapIndex, offTurn } from '~/utils/pf2eActions'
 import { durationRounds, toggleEffect } from '~/utils/pf2eEffects'
 import { highestSlot, spendOne, spendStaff, useWand } from '~/utils/pf2eInventory'
 import { adjusted, degreeOf, heal, proficiency, strikeResult } from '~/utils/pf2ePlay'
@@ -48,6 +48,8 @@ function actionsProblem(s: Pf2eSheet, cost: unknown): string | undefined {
   const t = s.turn
   if (cost === 'reaction') return t && !t.reaction ? 'Your reaction is spent.' : undefined
   const n = actionCount(cost)
+  // Off your turn in an encounter, an activation that takes actions waits for it (p. 436).
+  if (n > 0 && offTurn(s)) return `${NOT_YOUR_TURN}.`
   if (t?.active && n > t.actions)
     return `It takes ${n} action${n === 1 ? '' : 's'}; you have ${t.actions}.`
   return undefined

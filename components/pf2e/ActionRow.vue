@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// One ability in the PF2e Actions panel: its action glyph (named for screen readers), name,
+// One ability in the PF2e Actions panel: its name, its cost as a pill (Pf2eCostPill),
 // frequency with uses left, trigger, requirements, cost and usage, what it does in short (the rest folded),
 // the choices its Use needs (skill, Treat Wounds DC, weapon, actions, healing yourself) and
 // Use; after it makes a Strike, that Strike's damage buttons. SheetActions.vue does the rest.
@@ -9,8 +9,6 @@ import {
   type Pf2eActionEntry,
   type Pf2eCheckChoice,
   type Pf2eRowState,
-  costGlyph,
-  actionCostLabel,
   frequencyLabel,
 } from '~/utils/pf2eActions'
 
@@ -24,10 +22,13 @@ const props = defineProps<{
   dmg: string
   /** The result of its last use, shown under it. */
   result?: string
+  /** Manual dice: what its roll needs typed (usePf2eTypedRoll's prompt), or ''. */
+  typedLabel?: string
 }>()
 const emit = defineEmits<{
   use: [state: Pf2eRowState]
   damage: [crit: boolean, state: Pf2eRowState]
+  typed: [values: number[]]
 }>()
 
 const state = reactive<Pf2eRowState>({})
@@ -50,8 +51,6 @@ const critNote = computed(
     '',
 )
 const r = computed(() => props.entry.rules)
-const glyph = computed(() => costGlyph(r.value.cost))
-const label = computed(() => actionCostLabel(r.value.cost))
 const range = computed(() => {
   const c = r.value.cost
   return c?.kind === 'actions' && c.max > c.min
@@ -81,13 +80,9 @@ const checkLabel = computed(() => {
 <template>
   <div class="arow tile" :aria-labelledby="`${id}-name`" role="group">
     <div class="arow__head">
-      <span v-if="glyph" class="arow__glyph"
-        ><span aria-hidden="true">{{ glyph }}</span
-        ><span class="sr-only">{{ label }}</span></span
-      >
-      <span v-else-if="label" class="arow__time">{{ label }}</span>
       <strong :id="`${id}-name`">{{ entry.name }}</strong>
       <small v-if="entry.from" class="muted">· {{ entry.from }}</small>
+      <Pf2eCostPill :cost="r.cost" />
       <span v-if="r.frequency" class="arow__freq small">
         {{ frequencyLabel(r.frequency) }}
         <template v-if="!r.frequency.perTarget">
@@ -198,6 +193,12 @@ const checkLabel = computed(() => {
         </button>
       </template>
     </div>
+    <NimbleDiceEntry
+      v-if="typedLabel"
+      :label="typedLabel"
+      action="Roll"
+      @submit="(v) => emit('typed', v)"
+    />
     <p v-if="result" class="roll-status arow__result" role="status" aria-live="polite">
       {{ result }}
     </p>
@@ -221,20 +222,6 @@ const checkLabel = computed(() => {
   }
 }
 
-.arow__glyph {
-  color: var(--secondary);
-  font-size: 13px;
-  letter-spacing: 1px;
-}
-
-.arow__time {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--page-muted);
-}
-
 .arow__freq {
   margin-left: auto;
   color: var(--page-soft);
@@ -253,6 +240,14 @@ const checkLabel = computed(() => {
 .arow__more summary {
   cursor: pointer;
   color: var(--page-muted);
+}
+
+@media (pointer: coarse) {
+  .arow__more summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 
 .arow__full {

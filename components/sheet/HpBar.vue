@@ -1,12 +1,17 @@
 <script setup lang="ts">
+// The draggable HP bar of the Nimble and PF2e sheets and the battle board: a drag of 4px or
+// more, or the arrow keys, previews the change (temp HP and the system's `takes` rule
+// included, utils/hpPreview.ts); release or Enter applies it, Esc cancels, a tap does nothing.
+import { type HpTakes, hpPreview } from '~/utils/hpPreview'
+
 const props = defineProps<{
   hp: number
   max: number
   temp?: number
   tone: '' | 'accent' | 'danger'
   disabled?: boolean
-  /** Warding Bond: a hit takes half; the preview shows what lands. */
-  warded?: boolean
+  /** What a hit lands (Nimble's Warded half, PF2e's Shield Block); the preview shows it. */
+  takes?: HpTakes
 }>()
 const emit = defineEmits<{ change: [delta: number] }>()
 
@@ -19,18 +24,12 @@ const moved = ref(false)
 let startX = 0
 
 const shown = computed(() => preview.value ?? props.hp)
-const delta = computed(() => shown.value - props.hp)
-const damage = computed(() => Math.max(0, -delta.value))
-const taken = computed(() => (props.warded ? Math.floor(damage.value / 2) : damage.value))
-const absorbed = computed(() => Math.min(Math.max(0, props.temp ?? 0), taken.value))
-const result = computed(() =>
-  delta.value < 0 ? props.hp - (taken.value - absorbed.value) : shown.value,
+const view = computed(() =>
+  hpPreview({ hp: props.hp, shown: shown.value, temp: props.temp, takes: props.takes }),
 )
-const label = computed(() =>
-  delta.value < 0
-    ? `−${damage.value} damage${props.warded ? ` (Warded: you take ${taken.value})` : ''} → ${result.value} HP${absorbed.value ? ` (${absorbed.value} temp absorbed)` : ''}`
-    : `+${delta.value} healing → ${result.value} HP`,
-)
+const delta = computed(() => view.value.delta)
+const result = computed(() => view.value.result)
+const label = computed(() => view.value.label)
 const pct = (n: number) => (props.max > 0 ? Math.round((n / props.max) * 100) : 0)
 
 function valueAt(x: number): number {

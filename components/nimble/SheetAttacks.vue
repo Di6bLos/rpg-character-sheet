@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { WEAPON_PROPERTIES } from '~/data/nimble/core'
+import { ruleKey, tipText } from '~/utils/ruleTips'
 import type { NimbleSheet } from '~/types/sheets'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
@@ -52,6 +54,14 @@ const hasAttacks = computed(
       attackAbilities.value.length >
     0,
 )
+
+/** A weapon's properties, each with its rules on hover (Core p. 34). */
+const propParts = (props: string) =>
+  props
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((label) => ({ label, title: label, text: WEAPON_PROPERTIES[ruleKey(label)] }))
 </script>
 
 <template>
@@ -97,11 +107,11 @@ const hasAttacks = computed(
             <div class="attack__head">
               <div class="stack" style="gap: 2px">
                 <strong style="font-size: 16px">{{ w.name }}</strong>
-                <span class="muted" style="font-size: 12px">{{ w.props }}</span>
+                <SheetRuleList class="muted" style="font-size: 12px" :parts="propParts(w.props)" />
                 <span v-if="w.boost" class="boost">{{ w.boost }}</span>
                 <NimbleOdds :rushed="w.rushed" :advantage="w.advantage" :why="w.oddsWhy" />
               </div>
-              <NimbleDmg
+              <SheetDmg
                 :dmg="w.dmg"
                 :armor-dmg="w.armorDmg"
                 :why="w.armorWhy"
@@ -213,7 +223,7 @@ const hasAttacks = computed(
                   :why="inv.oddsWhy"
                 />
               </div>
-              <NimbleDmg
+              <SheetDmg
                 :dmg="inv.dmg"
                 :armor-dmg="inv.armorDmg"
                 :why="inv.armorWhy"
@@ -277,7 +287,11 @@ const hasAttacks = computed(
             <div v-for="a in g.spells" :key="a.key" class="tile attack attack--spell">
               <div class="attack__head">
                 <div class="stack" style="gap: 2px">
-                  <strong style="font-size: 16px">{{ a.name }}</strong>
+                  <strong style="font-size: 16px"
+                    ><SheetRuleTip :title="a.name" :text="tipText(a.spell.desc)">{{
+                      a.name
+                    }}</SheetRuleTip></strong
+                  >
                   <span class="muted" style="font-size: 12px">{{ a.props }}</span>
                   <span class="boost">{{ a.cost }}</span>
                   <NimbleOdds
@@ -287,7 +301,7 @@ const hasAttacks = computed(
                     :why="a.oddsWhy"
                   />
                 </div>
-                <NimbleDmg
+                <SheetDmg
                   :dmg="a.dmg"
                   :armor-dmg="a.armorDmg"
                   :why="a.armorWhy"
@@ -344,7 +358,7 @@ const hasAttacks = computed(
                 <span class="muted" style="font-size: 12px">{{ a.props }}</span>
                 <span class="boost">{{ a.cost }}</span>
               </div>
-              <NimbleDmg
+              <SheetDmg
                 :dmg="a.dmg"
                 :armor-dmg="a.armorDmg"
                 :why="a.armorWhy"
@@ -404,97 +418,7 @@ const hasAttacks = computed(
 </template>
 
 <style scoped lang="scss">
-.attack__result {
-  margin: 0;
-  font-size: 13px;
-}
-
-.atk-group {
-  display: flex;
-  flex-direction: column;
-
-  > summary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 32px;
-    cursor: pointer;
-    list-style: none;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-
-    &::after {
-      content: '▾';
-      margin-left: auto;
-      font-size: 12px;
-      color: var(--accent-text);
-    }
-  }
-
-  &[open] > summary {
-    margin-bottom: 10px;
-
-    &::after {
-      content: '▴';
-    }
-  }
-
-  .badge--low {
-    color: var(--danger);
-  }
-}
-
-.atk-tier {
-  margin-left: 6px;
-  padding-left: 12px;
-  border-left: 2px solid var(--line);
-
-  & + & {
-    margin-top: 8px;
-  }
-
-  > summary {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 28px;
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    color: var(--page-muted);
-    cursor: pointer;
-    list-style: none;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-
-    &::before {
-      content: '▸';
-      font-size: 10px;
-      letter-spacing: normal;
-      color: var(--accent-text);
-      transition: transform 0.15s ease;
-    }
-
-    &::after {
-      content: none;
-    }
-  }
-
-  &[open] {
-    border-left-color: color-mix(in srgb, var(--accent) 45%, var(--line));
-  }
-
-  &[open] > summary {
-    margin-bottom: 8px;
-
-    &::before {
-      transform: rotate(90deg);
-    }
-  }
-}
+@use '../../assets/styles/attacks';
 
 .attack__desc {
   font-size: 12px;
@@ -570,33 +494,5 @@ const hasAttacks = computed(
     font-size: 12px;
     color: var(--page-muted);
   }
-}
-
-.boost {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent-text);
-}
-
-.attacks {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-  gap: 12px;
-}
-
-.attack {
-  gap: 12px;
-  padding: 16px;
-
-  > .btn {
-    margin-top: auto;
-  }
-}
-
-.attack__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
 }
 </style>

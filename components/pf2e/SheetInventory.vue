@@ -287,7 +287,13 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   <section class="panel stack" style="gap: 10px" aria-labelledby="inv-h">
     <UiFold name="Inventory" />
     <div class="panel-title" style="margin: 0">
-      <h2 id="inv-h">Inventory</h2>
+      <div class="title-help">
+        <h2 id="inv-h">Inventory</h2>
+        <UiHelp
+          label="About Bulk"
+          text="You can carry up to 10 + STR Bulk and are encumbered over 5 + STR (clumsy 1, −10 feet Speed). 10 light items make 1 Bulk; negligible items don't count. Worn magic items need investing, up to 10 (Player Core p. 269, GM Core p. 219)."
+        />
+      </div>
       <span class="bulk" :class="{ over: bulk.encumbered }">
         Bulk {{ bulk.bulk }} / {{ bulk.limit }}
       </span>
@@ -329,7 +335,9 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
       <li v-for="r in rows" :key="r.index" class="item">
         <div class="item__head">
           <div class="item__text">
-            <span class="item__name">{{ r.name }}</span>
+            <span class="item__name"
+              >{{ r.name }}<span v-if="r.st.kind" class="tag">{{ r.st.kind }}</span></span
+            >
             <span class="item__meta">
               Bulk {{ r.bulk
               }}<template v-if="r.st.level !== undefined"> · Item {{ r.st.level }}</template
@@ -518,25 +526,28 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
       <button type="button" class="btn btn--ghost btn--sm" @click="picking = true">
         Add item from the rules
       </button>
-      <form class="add__name" @submit.prevent="addByName">
-        <label class="field grow" for="pf-inv-name">
-          <span class="caps">Or write one in</span>
-          <input
-            id="pf-inv-name"
-            v-model="newName"
-            class="input"
-            maxlength="80"
-            placeholder="Grandfather’s compass"
-          />
-        </label>
-        <label class="field bulk-in" for="pf-inv-bulk">
-          <span class="caps">Bulk</span>
-          <input id="pf-inv-bulk" v-model="newBulk" class="input" maxlength="4" />
-        </label>
-        <button type="submit" class="btn btn--ghost btn--sm" :disabled="!newName.trim()">
-          Add<span class="sr-only"> {{ newName.trim() || 'item' }}</span>
-        </button>
-      </form>
+      <details class="add__more">
+        <summary>Write one in</summary>
+        <form class="add__name" @submit.prevent="addByName">
+          <label class="field grow" for="pf-inv-name">
+            <span class="caps">Or write one in</span>
+            <input
+              id="pf-inv-name"
+              v-model="newName"
+              class="input"
+              maxlength="80"
+              placeholder="Grandfather’s compass"
+            />
+          </label>
+          <label class="field bulk-in" for="pf-inv-bulk">
+            <span class="caps">Bulk</span>
+            <input id="pf-inv-bulk" v-model="newBulk" class="input" maxlength="4" />
+          </label>
+          <button type="submit" class="btn btn--ghost btn--sm" :disabled="!newName.trim()">
+            Add<span class="sr-only"> {{ newName.trim() || 'item' }}</span>
+          </button>
+        </form>
+      </details>
     </div>
 
     <div class="coins" role="group" aria-label="Coins">
@@ -654,6 +665,32 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   font-size: 14px;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+// The item's kind beside its name, as Nimble's inventory tags weapons and armor.
+.tag {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--page-muted);
+}
+
+.add__more > summary {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--page-soft);
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .add__more > summary {
+    min-height: 44px;
+  }
 }
 
 .item__meta,
@@ -838,6 +875,12 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   .remove {
     width: 44px;
     height: 44px;
+  }
+}
+
+@media (pointer: coarse) {
+  .coin input {
+    min-height: 44px;
   }
 }
 </style>

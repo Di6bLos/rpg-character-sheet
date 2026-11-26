@@ -69,53 +69,7 @@ const schools = computed(() =>
 </template>
 
 <style scoped lang="scss">
-.tier {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  > summary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    list-style: none;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-
-    small {
-      font-size: 11px;
-      letter-spacing: normal;
-      color: var(--page-muted);
-    }
-
-    &::after {
-      content: '▾';
-      margin-left: auto;
-      font-size: 12px;
-      letter-spacing: normal;
-      color: var(--accent-text);
-    }
-  }
-
-  &[open] > summary {
-    margin-bottom: 8px;
-
-    &::after {
-      content: '▴';
-    }
-  }
-}
-
-// Two columns on wider panels, like the reactions.
-.spell-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
-  gap: 8px;
-  align-items: start;
-}
+@use '../../assets/styles/spells-list';
 
 .utility summary {
   display: flex;

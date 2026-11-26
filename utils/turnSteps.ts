@@ -77,6 +77,84 @@ export function seatChange(
   return before || s.gmCombatant ? 'end' : null
 }
 
+/**
+ * PF2e's step buttons (Player Core pp. 434–437): rolling initiative starts the encounter, so
+ * there's no New encounter; actions and the reaction come back at the start of your own turn,
+ * so there's no New round. Out of an encounter: Roll initiative; in one, End encounter and
+ * Start turn between turns, End turn on it. In the GM's encounter: Roll initiative until it's
+ * rolled, then Start turn on the hero's turn (once a round) and End turn. With Manual dice the
+ * typed total (`pf2eTypesInitiative`) takes Roll initiative's place.
+ */
+export function pf2eTurnSteps(s: {
+  inEncounter: boolean
+  active: boolean
+  rolled: boolean
+  ownDice: boolean
+  gmEncounter?: boolean
+  myTurn?: boolean
+  turnDone?: boolean
+}): TurnStep[] {
+  if (s.active) return ['end']
+  if (s.gmEncounter) {
+    if (!s.rolled) return s.ownDice ? [] : ['initiative']
+    return s.myTurn === false || s.turnDone ? [] : ['start']
+  }
+  if (!s.inEncounter) return s.ownDice ? [] : ['initiative']
+  return ['endEncounter', 'start']
+}
+
+/** PF2e with Manual dice: the Initiative total is typed while it would be rolled. */
+export function pf2eTypesInitiative(s: Parameters<typeof pf2eTurnSteps>[0]): boolean {
+  return s.ownDice && !s.active && !s.rolled && (!!s.gmEncounter || !s.inEncounter)
+}
+
+/** One action circle of the Turn panel: lost ones (stunned, slowed) show struck out. */
+export interface TurnPip {
+  n: number
+  on: boolean
+  extra: boolean
+  /** What took it this turn ("Slowed 1"). */
+  lost?: string
+}
+
+/**
+ * What the shared Turn panel (components/sheet/TurnPanel.vue) shows and does, filled per
+ * system: Nimble from useTurnSteps, PF2e from usePf2eTurnSteps.
+ */
+export interface TurnModel {
+  help: string
+  active: boolean
+  inEncounter: boolean
+  initiative: number | null
+  pips: TurnPip[]
+  /** The pips and +1 can't be used now (PF2e off your turn: actions wait for it). */
+  pipsLocked?: boolean
+  /** PF2e's one reaction a round (p. 436); Nimble tracks reactions by name instead. */
+  reaction?: { ready: boolean }
+  leftText: string
+  note: string
+  /** Nimble's multi-turn casting. */
+  casting?: { spell: string; actions: number }
+  steps: TurnStep[]
+  typed: boolean
+  unsent: number | null
+  extraTitle: string
+  endEncounterTitle: string
+  /** The panel's own result line (PF2e shows its turn results here). */
+  result?: string
+  toggleAction(n: number): void
+  extraAction(): void
+  toggleReaction?(): void
+  cancelCasting?(): void
+  startEncounter(): void
+  rollInitiative(values?: number[]): void
+  resendInitiative(): void
+  beginTurn(): void
+  finishTurn(): void
+  nextRound(): void
+  finishEncounter(): void
+}
+
 /** Players who roll their own dice type their Initiative total instead of rolling. */
 export function typesInitiative(s: TurnState): boolean {
   return s.ownDice && !!s.awaitingInitiative && !s.turnActive

@@ -503,10 +503,10 @@ describe('pf2e casting and the turn (Player Core pp. 302, 436)', () => {
     expect(castBlocked(s, def('Air Bubble'))).toBe('Reaction already used this round')
   })
 
-  it('a reaction spell out of an encounter doesn’t spend the reaction; daily preparations restore it', () => {
+  it('a reaction spell spends the reaction, in an encounter or not; daily preparations restore it', () => {
     const s = caster('spontaneous')
     payCast(s, def('Air Bubble'), { attacks: 0 })
-    expect(s.turn?.reaction ?? true).toBe(true)
+    expect(s.turn?.reaction).toBe(false)
     startPf2eTurn(s)
     endPf2eTurn(s)
     payCast(s, def('Air Bubble'), { attacks: 0 })

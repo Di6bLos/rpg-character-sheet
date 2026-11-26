@@ -16,7 +16,7 @@ const {
   crit,
   revive,
   changeHp,
-  warded,
+  takes,
   adjustTemp,
   setWounds,
 } = useNimbleVitals()
@@ -53,13 +53,13 @@ function apply(sign: 1 | -1) {
         <b v-if="sheet.tempHp" class="hp__temp">+{{ sheet.tempHp }} temp</b>
       </span>
     </div>
-    <NimbleHpBar
+    <SheetHpBar
       :hp="sheet.hp"
       :max="sheet.hpMax"
       :temp="sheet.tempHp"
       :tone="hpTone"
       :disabled="!canEdit"
-      :warded="warded"
+      :takes="takes"
       @change="changeHp"
     />
     <div class="hp__ctl">
