@@ -21,6 +21,7 @@
         "L1:species:skillful:0 skill×1",
         "L1:species:versatile:0 feat×1",
         "L1:languages language×2",
+        "L1:subclass subclass×1?",
         "L1:weapon-mastery:0 weaponMastery×2",
         "L1:spells:prepared spell×2"
       ],

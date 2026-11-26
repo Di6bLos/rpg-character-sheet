@@ -53,7 +53,7 @@ describe('5e build: every class and subclass', () => {
   for (const c of data.classes)
     for (const sub of data.subclasses.filter((s) => s.class === c.slug))
       it(`${c.slug} / ${sub.slug} builds and levels 1→20 with every pick answerable`, () => {
-        const { sheet, choices, creation: made } = build(c.slug)
+        const { sheet, choices, creation: made } = build(c.slug, undefined, undefined, sub.slug)
         expect(creationProblems(made, choices, data)).toEqual([])
         for (let level = 2; level <= 20; level++) levelOnce(sheet, level, sub.slug)
         expect(sheet.subclassSlug).toBe(sub.slug)
@@ -467,5 +467,137 @@ describe('5e level-up', () => {
     expect(
       walkDnd5e({ creation: sheet.creation!, choices: sheet.choices! }, 3, data)!.options,
     ).toHaveLength(3)
+  })
+})
+
+describe('5e: the later 2024 books', () => {
+  const ask = (c: ReturnType<typeof creation>, picks: Record<string, string[]> = {}) =>
+    creationPicks(c, picks, data)
+
+  it('a background with a featChoice offers its feat or any feat of the category', () => {
+    const c = creation('fighter', 'human', 'haunted-one')
+    const pick = ask(c).find((p) => p.key === 'L1:background:feat')!
+    expect(pick.kind).toBe('feat')
+    const ids = pick.options.map((o) => o.id)
+    expect(ids).toContain('survivor')
+    expect(ids).toContain('mist-walker')
+    expect(pick.options.find((o) => o.id === 'mist-walker')?.disabled).toBeUndefined()
+    expect(ids).not.toContain('alert')
+    const choices = fill((p) => creationPicks(c, p, data), prefer('fighter'), {
+      'L1:background:feat': ['mist-walker'],
+    })
+    const sheet = buildDnd5eSheet(c, choices, data)
+    expect(sheet.featsTaken!.map((f) => f.slug)).toContain('mist-walker')
+    expect(sheet.featsTaken!.map((f) => f.slug)).not.toContain('survivor')
+  })
+
+  it('“Can’t have another” feats and feat prerequisites read the feats taken', () => {
+    const c = creation('fighter', 'human', 'pact-seeker')
+    const choices = fill((p) => creationPicks(c, p, data), prefer('fighter'), {
+      'L1:background:feat': ['infernal-pact'],
+    })
+    const sheet = levelTo(buildDnd5eSheet(c, choices, data), 1, 3)
+    const asi = dnd5eLevelPlan(sheet, 4, data, {})!.picks.find((p) => p.key === 'L4:asi')!
+    expect(asi.options.some((o) => o.id === 'fey-pact')).toBe(false)
+    expect(asi.options.find((o) => o.id === 'infernal-bulwark')?.disabled).toBeUndefined()
+    expect(asi.options.find((o) => o.id === 'fey-sentinel')?.disabled).toMatch(/Fey Pact Feat/)
+    const healer = levelTo(build('cleric', 'human', 'house-jorasco-heir').sheet, 1, 3)
+    const marks = dnd5eLevelPlan(healer, 4, data, {})!.picks.find((p) => p.key === 'L4:asi')!
+    expect(marks.options.find((o) => o.id === 'greater-mark-of-healing')?.disabled).toBeUndefined()
+    expect(marks.options.find((o) => o.id === 'greater-mark-of-storm')?.disabled).toBeTruthy()
+  })
+
+  it('Portal Jumper is an Origin feat: a background’s and a Versatile pick', () => {
+    const { sheet } = build('wizard', 'human', 'horizon-weaver-initiate')
+    expect(sheet.featsTaken!.map((f) => f.slug)).toContain('portal-jumper')
+    const versatile = ask(creation('wizard', 'human', 'sage')).find((p) =>
+      p.key.startsWith('L1:species:versatile'),
+    )!
+    expect(versatile.options.find((o) => o.id === 'portal-jumper')?.meta).toMatch(
+      /Origin.*Arcana Unleashed/,
+    )
+  })
+
+  it('pick options carry their book for the source filter', () => {
+    const versatile = ask(creation('wizard')).find((p) => p.key.startsWith('L1:species:versatile'))!
+    expect(versatile.options.find((o) => o.id === 'portal-jumper')?.source).toBe('Arcana Unleashed')
+    expect(versatile.options.find((o) => o.id === 'alert')?.source).toBe('SRD 5.2.1')
+  })
+
+  it('an Arcane Archer knows 2 Arcane Shots at 3 and one more at 7, its die grows', () => {
+    const sheet = levelTo(build('fighter').sheet, 1, 3, 'arcane-archer')
+    const shots = () => sheet.options!.filter((o) => o.group === 'arcane-shot').length
+    expect(shots()).toBe(2)
+    expect(sheet.resources?.find((r) => r.name === 'Arcane Shot')?.dice).toBe('1d6')
+    levelTo(sheet, 3, 10, 'arcane-archer')
+    expect(shots()).toBe(4)
+    expect(sheet.resources?.find((r) => r.name === 'Arcane Shot')?.dice).toBe('1d8')
+  })
+
+  it('a Vestige Patron’s domain lends that domain’s spells, row by row', () => {
+    const sheet = levelTo(build('warlock').sheet, 1, 2)
+    const picks = fill((p) => dnd5eLevelPlan(sheet, 3, data, p)!.picks, prefer('warlock'), {
+      'L3:subclass': ['vestige-patron'],
+      'L3:vestige-patron:vestige-spells:0': ['Life Domain'],
+    })
+    applyDnd5eLevel(sheet, 3, { hpRoll: 5, picks }, data)
+    const always = () => sheet.spells!.filter((s) => s.always).map((s) => s.slug)
+    expect(always()).toEqual(expect.arrayContaining(['aid', 'bless', 'cure-wounds']))
+    expect(always()).not.toContain('revivify')
+    levelTo(sheet, 3, 5, 'vestige-patron')
+    expect(always()).toContain('revivify')
+  })
+
+  it('a subclass with level 1 features is chosen at level 1 and replaces class features', () => {
+    const c = creation('paladin')
+    const early = ask(c).find((p) => p.key === 'L1:subclass')!
+    expect(early.optional).toBe(true)
+    expect(early.options.map((o) => o.id)).toEqual(['oath-of-the-ebon-blade'])
+    const { sheet } = build('paladin', undefined, undefined, 'oath-of-the-ebon-blade')
+    const names = () => sheet.features.map((f) => f.name)
+    expect(sheet.subclassSlug).toBe('oath-of-the-ebon-blade')
+    expect(names()).toContain('Death Coil')
+    expect(names()).not.toContain('Lay on Hands')
+    expect(sheet.resources?.some((r) => r.name === 'Lay on Hands')).toBe(false)
+    levelTo(sheet, 1, 3, 'oath-of-the-ebon-blade')
+    expect(names()).toContain('Runic Smite')
+    expect(names()).not.toContain('Paladin’s Smite')
+    expect(sheet.spells!.some((s) => s.slug === 'divine-smite')).toBe(false)
+    expect(sheet.spells!.some((s) => s.slug === 'rune-strike')).toBe(true)
+    const plan = dnd5eLevelPlan(sheet, 4, data, {})!
+    expect(plan.picks.some((p) => p.kind === 'subclass')).toBe(false)
+    // Without it, the paladin keeps Lay on Hands and picks a subclass at level 3.
+    const plain = build('paladin').sheet
+    expect(plain.subclassSlug).toBe('')
+    expect(plain.features.map((f) => f.name)).toContain('Lay on Hands')
+  })
+
+  it('a subclass chosen at level 3 still gets its level 1 and 2 features', () => {
+    const sheet = levelTo(build('paladin').sheet, 1, 3, 'oath-of-the-ebon-blade')
+    expect(sheet.features.map((f) => f.name)).toEqual(
+      expect.arrayContaining(['Death Coil', 'Runic Smite']),
+    )
+    expect(sheet.features.map((f) => f.name)).not.toContain('Lay on Hands')
+  })
+
+  it('a subclass’s option joins the class feature’s pick (Void Warrior)', () => {
+    const sheet = build('ranger', undefined, undefined, 'demon-hunter').sheet
+    const plan = dnd5eLevelPlan(sheet, 2, data, {})!
+    const style = plan.picks.find((p) => p.label === 'Fighting Style')!
+    expect(style.options.map((o) => o.id)).toEqual(
+      expect.arrayContaining(['Fighting Style feat', 'Druidic Warrior', 'Void Warrior']),
+    )
+    const warrior = dnd5eLevelPlan(sheet, 2, data, { [style.key]: ['Void Warrior'] })!
+    expect(warrior.picks.some((p) => p.kind === 'cantrip' && p.label === 'Void Warrior')).toBe(true)
+  })
+
+  it('a subclass’s own list joins its class list (Paladin [Death Knight])', () => {
+    const pool = (sub: string) => {
+      const sheet = levelTo(build('paladin', undefined, undefined, sub).sheet, 1, 4, sub)
+      const plan = dnd5eLevelPlan(sheet, 5, data, {})!
+      return plan.picks.find((p) => p.key === 'L5:spells:prepared')?.options.map((o) => o.id)
+    }
+    expect(pool('oath-of-the-ebon-blade')).toContain('frostscythe')
+    expect(pool('oath-of-devotion')).not.toContain('frostscythe')
   })
 })

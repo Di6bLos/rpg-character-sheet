@@ -2,9 +2,12 @@
 // 5e (2024) hero builder (SRD 5.2.1 pp. 19–23), class first like the Nimble and PF2e builders:
 // class → species → background → abilities → skills & choices → equipment → spells → review.
 // The rules data is fetched on open (`loadDnd5e`); `utils/dnd5eBuild.ts` asks the picks, checks
-// each step and builds the level 1 sheet. A subclass step shows only for a class that picks one
-// at level 1 (in the 2024 rules every class picks at level 3).
-import { loadDnd5e } from '~/data/dnd5e'
+// each step and builds the level 1 sheet. A subclass step shows only when level 1 offers one (in
+// the 2024 rules every class picks at level 3, but some World of Warcraft subclasses start at
+// level 1; theirs comes after Species, whose picks it joins). The Sources menu hides the books
+// the player turns off from every picker.
+import { dnd5eSource, loadDnd5e } from '~/data/dnd5e'
+import type { Dnd5eSourceBook } from '~/data/dnd5e'
 import type { Dnd5eClassDef, Dnd5eFeature } from '~/data/dnd5e/types'
 import { MAX_CHARACTERS } from '~/stores/character'
 import type { Dnd5eAbility, Dnd5eCreation } from '~/types/sheets'
@@ -21,12 +24,14 @@ import {
   SUGGESTED_ARRAY,
   CUSTOM_BACKGROUND,
   CUSTOM_GEAR_CP,
+  DND5E_FEAT_CATEGORY_NAME,
   bonusProblem,
   customBackground,
   customGearOptions,
   customProblem,
   buildDnd5eSheet,
   creationPicks,
+  earlySubclasses,
   emptyCreation,
   parseEquipment,
   pickElementId,
@@ -129,10 +134,19 @@ const STEP_LABEL: Record<StepId, string> = {
   spells: 'Spells',
   review: 'Review',
 }
+/** A subclass that starts before the class's subclass level can be taken now, after Species. */
+const earlySubclass = computed(
+  () =>
+    !!cls.value &&
+    !!data.value &&
+    cls.value.subclassLevel > 1 &&
+    earlySubclasses(cls.value, data.value).length > 0,
+)
 const steps = computed<StepId[]>(() => [
   'class',
   ...(cls.value?.subclassLevel === 1 ? (['subclass'] as const) : []),
   'species',
+  ...(earlySubclass.value ? (['subclass'] as const) : []),
   'background',
   'abilities',
   'choices',
@@ -201,11 +215,22 @@ const castingWord = {
   pact: 'Pact Magic',
 }
 const levelOne = computed(() => (cls.value?.features ?? []).filter((f) => f.level === 1))
+const sources = useDnd5eSourceFilter()
+/** Records the source filter shows, plus the one already chosen. */
+const shown = <T extends { slug: string; source: Dnd5eSourceBook }>(list: T[], chosen?: string) =>
+  list.filter((r) => sources.shows(r.source) || r.slug === chosen)
+const classCards = computed(() => shown(data.value?.classes ?? [], c.value.classSlug))
 const subclasses = computed(() =>
-  (data.value?.subclasses ?? []).filter((s) => s.class === c.value.classSlug),
+  shown((data.value?.subclasses ?? []).filter((s) => s.class === c.value.classSlug)),
+)
+const earlyNames = computed(() =>
+  subclasses.value
+    .filter((s) => cls.value && s.features.some((f) => f.level < cls.value!.subclassLevel))
+    .map((s) => s.name),
 )
 const prose = (r: { text?: string; summary?: string }) => r.text ?? r.summary ?? ''
-const sourceNote = (r: { srd: boolean; source: string }) => (r.srd ? 'SRD 5.2.1' : r.source)
+const sourceNote = (r: { srd: boolean; source: Dnd5eSourceBook }) =>
+  r.srd ? 'SRD 5.2.1' : (dnd5eSource(r.source)?.short ?? r.source)
 function featureMeta(f: Dnd5eFeature) {
   const bits = [
     f.activation
@@ -228,7 +253,7 @@ function featureMeta(f: Dnd5eFeature) {
 
 // --- Species and background ----------------------------------------------------------
 const speciesCards = computed(() =>
-  (data.value?.species ?? []).map((s) => ({
+  shown(data.value?.species ?? [], c.value.speciesSlug).map((s) => ({
     id: s.slug,
     name: s.name,
     meta: [s.sizes.join(' or '), `Speed ${s.speed} ft`, sourceNote(s)].join(' · '),
@@ -245,14 +270,25 @@ const speciesPick = computed({
   },
 })
 const featName = (slug: string) => data.value?.feats.find((f) => f.slug === slug)?.name ?? slug
+/** "Magic Initiate (Cleric)", "Survivor or a Dark Gift feat". */
+const backgroundFeat = (b: {
+  feat: { slug: string; option?: string }
+  featChoice?: { category?: string[] }
+}) =>
+  [
+    `${featName(b.feat.slug)}${b.feat.option ? ` (${b.feat.option})` : ''}`,
+    ...(b.featChoice?.category ?? []).map(
+      (k) => `a ${DND5E_FEAT_CATEGORY_NAME[k as keyof typeof DND5E_FEAT_CATEGORY_NAME]} feat`,
+    ),
+  ].join(' or ')
 const backgroundCards = computed(() =>
-  (data.value?.backgrounds ?? [])
+  shown(data.value?.backgrounds ?? [], c.value.backgroundSlug)
     .map((b) => ({
       id: b.slug,
       name: b.name,
       meta: [
         b.abilities.join(', '),
-        `${featName(b.feat.slug)}${b.feat.option ? ` (${b.feat.option})` : ''}`,
+        backgroundFeat(b),
         b.skills.join(', '),
         b.tool ?? b.toolChoice?.from?.join(' or ') ?? '',
         sourceNote(b),
@@ -261,14 +297,18 @@ const backgroundCards = computed(() =>
         .join(' · '),
       text: prose(b),
     }))
-    .concat([
-      {
-        id: CUSTOM_BACKGROUND,
-        name: 'Custom background',
-        meta: 'Your own: three abilities, an Origin feat, two skills, a tool, 50 GP of gear · SRD 5.2.1',
-        text: 'Make your own background (SRD 5.2.1 p. 193): name it, choose the three abilities it raises, one Origin feat, two skills and one tool, and spend 50 GP on equipment (no Martial weapons or armor), or keep the gold.',
-      },
-    ]),
+    .concat(
+      !sources.shows('SRD 5.2.1') && c.value.backgroundSlug !== CUSTOM_BACKGROUND
+        ? []
+        : [
+            {
+              id: CUSTOM_BACKGROUND,
+              name: 'Custom background',
+              meta: 'Your own: three abilities, an Origin feat, two skills, a tool, 50 GP of gear · SRD 5.2.1',
+              text: 'Make your own background (SRD 5.2.1 p. 193): name it, choose the three abilities it raises, one Origin feat, two skills and one tool, and spend 50 GP on equipment (no Martial weapons or armor), or keep the gold.',
+            },
+          ],
+    ),
 )
 
 // --- Custom background (SRD 5.2.1 p. 193) ----------------------------------------------
@@ -510,6 +550,7 @@ function jumpToProblem() {
           </li>
         </ol>
       </nav>
+      <div class="source-bar"><Dnd5eSourceFilter /></div>
       <p v-if="actionError" class="step-error" role="alert">
         <button type="button" class="jump" @click="jumpToProblem">{{ actionError }}</button>
       </p>
@@ -522,12 +563,12 @@ function jumpToProblem() {
         </div>
         <div class="heroes">
           <NimbleHeroCard
-            v-for="k in data.classes"
+            v-for="k in classCards"
             :key="k.slug"
             :slug="k.slug"
             :name="k.name"
             :tagline="tagline(k)"
-            :badge="k.srd ? undefined : 'Artificer book'"
+            :badge="k.srd ? undefined : sourceNote(k)"
             :selected="k.slug === c.classSlug"
             @select="chooseClass(k.slug)"
           >
@@ -593,6 +634,9 @@ function jumpToProblem() {
             </div>
             <div class="stack" style="gap: 8px">
               <h4 class="caps">Subclasses · chosen at level {{ cls.subclassLevel }}</h4>
+              <p v-if="earlyNames.length" class="small muted">
+                {{ earlyNames.join(', ') }} can be chosen at level 1 instead, after Species.
+              </p>
               <details v-for="s in subclasses" :key="s.slug" class="gain">
                 <summary>
                   <strong>{{ s.name }}</strong>
@@ -605,9 +649,12 @@ function jumpToProblem() {
         </article>
       </section>
 
-      <!-- Subclass (only for a class that picks one at level 1) ---------------- -->
+      <!-- Subclass (only when level 1 offers one) ------------------------------ -->
       <section v-else-if="stepId === 'subclass'" class="section stack" aria-labelledby="sub-h">
         <div class="section-head"><h2 id="sub-h">Choose your subclass</h2></div>
+        <p v-if="cls && cls.subclassLevel > 1" class="small muted">
+          Optional: most {{ cls.name }} subclasses are chosen at level {{ cls.subclassLevel }}.
+        </p>
         <Dnd5ePickField
           v-for="p in subclassPicks"
           :key="p.key"
@@ -1020,6 +1067,11 @@ function jumpToProblem() {
   color: var(--accent-text);
   text-decoration: none;
   font-weight: 600;
+}
+
+.source-bar {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .steps {

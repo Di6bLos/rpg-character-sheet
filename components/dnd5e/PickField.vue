@@ -1,19 +1,23 @@
 <script setup lang="ts">
 // One pick of the 5e builder or level-up (`Dnd5ePick` from utils/dnd5eBuild): a short list as
 // chips, a long one or one with rules text (feats, spells, invocations) as option cards, and an
-// Ability Score Improvement as +1 steps (+2 to one ability is the same ability twice).
+// Ability Score Improvement as +1 steps (+2 to one ability is the same ability twice). Options
+// from books the source filter turns off are hidden unless already picked.
 import { type Dnd5ePick, pickElementId, pickProblem } from '~/utils/dnd5eBuild'
 
 const props = defineProps<{ pick: Dnd5ePick; showErrors?: boolean }>()
 const model = defineModel<string[] | undefined>({ required: true })
 const values = computed(() => model.value ?? [])
+const filter = useDnd5eSourceFilter()
+const options = computed(() =>
+  props.pick.options.filter((o) => filter.shows(o.source) || values.value.includes(o.id)),
+)
+const hidden = computed(() => props.pick.options.length - options.value.length)
 
 /** The element id of a pick, for the level-up's and builder's jump links. */
 const id = computed(() => pickElementId(props.pick.key))
 const problem = computed(() => pickProblem(props.pick, model.value))
-const asCards = computed(
-  () => props.pick.options.length > 18 || props.pick.options.some((o) => o.text),
-)
+const asCards = computed(() => options.value.length > 18 || options.value.some((o) => o.text))
 const countText = computed(() => (props.pick.optional ? 'optional' : `choose ${props.pick.count}`))
 
 function toggle(optionId: string) {
@@ -44,14 +48,12 @@ function step(optionId: string, by: 1 | -1) {
       <span class="small muted">{{ pick.from }} · {{ countText }}</span>
     </div>
     <p v-if="pick.note" class="small muted">{{ pick.note }}</p>
+    <p v-if="hidden" class="small muted">
+      {{ hidden }} {{ hidden === 1 ? 'option' : 'options' }} hidden by the source filter.
+    </p>
 
     <div v-if="pick.repeat" class="steps" role="group" :aria-label="pick.label">
-      <div
-        v-for="o in pick.options"
-        :key="o.id"
-        class="steps__row"
-        :class="{ on: times(o.id) > 0 }"
-      >
+      <div v-for="o in options" :key="o.id" class="steps__row" :class="{ on: times(o.id) > 0 }">
         <span class="steps__name">
           {{ o.name }}
           <span v-if="o.meta" class="small muted">{{ o.meta }}</span>
@@ -84,7 +86,7 @@ function step(optionId: string, by: 1 | -1) {
     <Pf2eOptionCards
       v-else-if="asCards"
       :model-value="values"
-      :options="pick.options"
+      :options="options"
       :label="pick.label"
       :multiple="pick.count > 1"
       :max="pick.count"
@@ -94,7 +96,7 @@ function step(optionId: string, by: 1 | -1) {
 
     <div v-else class="chips" role="group" :aria-label="pick.label">
       <button
-        v-for="o in pick.options"
+        v-for="o in options"
         :key="o.id"
         type="button"
         class="chip"
