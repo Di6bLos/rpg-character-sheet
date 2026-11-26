@@ -52,6 +52,13 @@ const tip = computed(() => props.breakdown?.join('\n') ?? '')
   padding: 2px 10px;
 }
 
+// A full-size target to tap on touch screens, on both sheets.
+@media (pointer: coarse) {
+  .skill__roll {
+    min-height: 44px;
+  }
+}
+
 .skill {
   display: flex;
   align-items: center;

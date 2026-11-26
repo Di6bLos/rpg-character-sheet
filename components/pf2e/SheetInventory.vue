@@ -877,4 +877,10 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
     height: 44px;
   }
 }
+
+@media (pointer: coarse) {
+  .coin input {
+    min-height: 44px;
+  }
+}
 </style>

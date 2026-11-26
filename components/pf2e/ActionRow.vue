@@ -233,6 +233,14 @@ const checkLabel = computed(() => {
   color: var(--page-muted);
 }
 
+@media (pointer: coarse) {
+  .arow__more summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
 .arow__full {
   white-space: pre-line;
   margin: 6px 0 0;
