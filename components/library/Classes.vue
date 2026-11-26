@@ -5,6 +5,13 @@
 // level, subclasses and options, and spell slots, under a sticky section nav. The open class
 // is in the URL (?tab=classes&system=pf2e&class=rogue&q=sneak), so a link opens it, with what
 // the search matched opened and scrolled to.
+import { loadDnd5e } from '~/data/dnd5e'
+import type {
+  Dnd5eClassDef,
+  Dnd5eOptionGroup,
+  Dnd5eSpellDef,
+  Dnd5eSubclassDef,
+} from '~/data/dnd5e/types'
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eClassDef } from '~/data/pf2e/types'
 import { NIMBLE_CLASSES } from '~/data/nimble/classes'
@@ -15,13 +22,16 @@ import {
   COMPENDIUM_SYSTEMS,
   NIMBLE_CLASS_SOURCES,
   classSummary,
+  dnd5eClassMatch,
   nimbleClassMatch,
   pf2eClassMatch,
   searchTerms,
   sourceLabel,
+  type Dnd5eClassMatch,
   type NimbleClassMatch,
   type Pf2eClassMatch,
 } from '~/utils/libraryCompendium'
+import { DND5E_ABILITY, DND5E_SOURCE_SHORT, dnd5eSource, slugName } from '~/utils/libraryDnd5e'
 import { PF2E_ATTR_NAME } from '~/utils/pf2eBuild'
 
 const route = useRoute()
@@ -30,6 +40,7 @@ const router = useRouter()
 const isReady = (s: RulesSystem) => COMPENDIUM_SYSTEMS.includes(s.id)
 const sys = useLibrarySystem(isReady)
 const pf2e = computed(() => sys.value?.id === 'pf2e')
+const dnd5e = computed(() => sys.value?.id === 'dnd5e')
 
 function pickSystem(id: GameSystem) {
   if (id === sys.value?.id) return
@@ -54,19 +65,44 @@ const searching = computed(() => terms.value.length > 0)
 
 // --- Data --------------------------------------------------------------------------
 const pf2eClasses = shallowRef<Pf2eClassDef[] | null>(null)
+interface Dnd5eSet {
+  classes: Dnd5eClassDef[]
+  subclasses: Dnd5eSubclassDef[]
+  options: Dnd5eOptionGroup[]
+  spells: Map<string, Dnd5eSpellDef>
+}
+const dnd5eData = shallowRef<Dnd5eSet | null>(null)
 const failed = ref('')
 async function load() {
-  if (!pf2e.value || pf2eClasses.value) return
+  const need = (pf2e.value && !pf2eClasses.value) || (dnd5e.value && !dnd5eData.value)
+  if (!need) return
   failed.value = ''
   try {
-    pf2eClasses.value = await loadPf2e('classes')
+    if (pf2e.value) pf2eClasses.value = await loadPf2e('classes')
+    else {
+      const [classes, subclasses, options, spells] = await Promise.all([
+        loadDnd5e('classes'),
+        loadDnd5e('subclasses'),
+        loadDnd5e('options'),
+        loadDnd5e('spells'),
+      ])
+      dnd5eData.value = {
+        classes,
+        subclasses,
+        options,
+        spells: new Map(spells.map((x) => [x.slug, x])),
+      }
+    }
   } catch (err) {
     console.error(err)
     failed.value = 'Could not load the classes.'
   }
 }
-watch(pf2e, load, { immediate: true })
-const loading = computed(() => pf2e.value && !pf2eClasses.value && !failed.value)
+watch(() => sys.value?.id, load, { immediate: true })
+const loading = computed(
+  () => ((pf2e.value && !pf2eClasses.value) || (dnd5e.value && !dnd5eData.value)) && !failed.value,
+)
+const spellName = (slug: string) => dnd5eData.value?.spells.get(slug)?.name ?? slugName(slug)
 
 interface ClassEntry {
   slug: string
@@ -78,6 +114,12 @@ interface ClassEntry {
   hits: string[]
   pf2e?: { cls: Pf2eClassDef; match: Pf2eClassMatch | null }
   nimble?: { cls: ClassDef; match: NimbleClassMatch | null }
+  dnd5e?: {
+    cls: Dnd5eClassDef
+    subclasses: Dnd5eSubclassDef[]
+    groups: Dnd5eOptionGroup[]
+    match: Dnd5eClassMatch | null
+  }
 }
 
 function pf2eEntry(cls: Pf2eClassDef, match: Pf2eClassMatch | null): ClassEntry {
@@ -112,17 +154,48 @@ function nimbleEntry(cls: ClassDef, match: NimbleClassMatch | null): ClassEntry 
   }
 }
 
+function dnd5eEntry(cls: Dnd5eClassDef, data: Dnd5eSet): ClassEntry {
+  const subclasses = data.subclasses.filter((s) => s.class === cls.slug)
+  const groups = data.options.filter((g) => g.class === cls.slug)
+  const match = searching.value ? dnd5eClassMatch(cls, subclasses, groups, terms.value) : null
+  const primary = cls.primaryAbility
+  return {
+    slug: cls.slug,
+    name: cls.name,
+    blurb:
+      cls.summary ?? `Level 1: ${cls.levels.find((l) => l.level === 1)?.features.join(', ') ?? ''}`,
+    facts: [
+      `Primary ${primary.abilities.map((a) => DND5E_ABILITY[a]).join(primary.all ? ' and ' : ' or ')}`,
+      `d${cls.hitDie} Hit Die`,
+      cls.srd ? dnd5eSource(cls) : DND5E_SOURCE_SHORT[cls.source],
+    ],
+    sigil: false,
+    hits: match?.hits ?? [],
+    dnd5e: { cls, subclasses, groups, match },
+  }
+}
+
+function dnd5eEntries(data: Dnd5eSet | null) {
+  if (!data) return []
+  return data.classes.map((cls) => {
+    const entry = dnd5eEntry(cls, data)
+    return { entry, matched: !searching.value || !!entry.dnd5e?.match }
+  })
+}
+
 /** Every class with what the search matched in it; null matches drop out of the index. */
 const all = computed<{ entry: ClassEntry; matched: boolean }[]>(() =>
-  pf2e.value
-    ? (pf2eClasses.value ?? []).map((cls) => {
-        const match = searching.value ? pf2eClassMatch(cls, terms.value) : null
-        return { entry: pf2eEntry(cls, match), matched: !searching.value || !!match }
-      })
-    : NIMBLE_CLASSES.map((cls) => {
-        const match = searching.value ? nimbleClassMatch(cls, terms.value) : null
-        return { entry: nimbleEntry(cls, match), matched: !searching.value || !!match }
-      }),
+  dnd5e.value
+    ? dnd5eEntries(dnd5eData.value)
+    : pf2e.value
+      ? (pf2eClasses.value ?? []).map((cls) => {
+          const match = searching.value ? pf2eClassMatch(cls, terms.value) : null
+          return { entry: pf2eEntry(cls, match), matched: !searching.value || !!match }
+        })
+      : NIMBLE_CLASSES.map((cls) => {
+          const match = searching.value ? nimbleClassMatch(cls, terms.value) : null
+          return { entry: nimbleEntry(cls, match), matched: !searching.value || !!match }
+        }),
 )
 const entries = computed(() => all.value.filter((x) => x.matched).map((x) => x.entry))
 const total = computed(() => all.value.length)
@@ -165,12 +238,18 @@ const sections = computed(() => {
   const id = (part: string) => `cls-${e.slug}-${part}`
   const c = e.pf2e?.cls
   const n = e.nimble?.cls
+  const d = e.dnd5e
   return [
     { id: id('overview'), label: 'Overview' },
-    { id: id('advancement'), label: 'Advancement' },
+    { id: id('advancement'), label: d ? 'Class table' : 'Advancement' },
     ...(!c || c.features.length ? [{ id: id('features'), label: 'Features' }] : []),
-    ...(c?.subclasses.length || n?.pools.length || n?.subclasses.length
-      ? [{ id: id('options'), label: 'Options' }]
+    ...(d?.cls.spellcasting ? [{ id: id('spells'), label: 'Spellcasting' }] : []),
+    ...(c?.subclasses.length ||
+    n?.pools.length ||
+    n?.subclasses.length ||
+    d?.subclasses.length ||
+    d?.groups.length
+      ? [{ id: id('options'), label: d ? 'Subclasses' : 'Options' }]
       : []),
     ...(c?.spellSlots?.length ? [{ id: id('spells'), label: 'Spells' }] : []),
   ]
@@ -318,6 +397,14 @@ const toolbarStuck = useStuck(toolbarEl)
           v-else-if="reading.nimble"
           :cls="reading.nimble.cls"
           :match="reading.nimble.match"
+        />
+        <LibraryClassDnd5e
+          v-else-if="reading.dnd5e"
+          :cls="reading.dnd5e.cls"
+          :subclasses="reading.dnd5e.subclasses"
+          :groups="reading.dnd5e.groups"
+          :match="reading.dnd5e.match"
+          :spell-name="spellName"
         />
       </div>
       <template #actions>

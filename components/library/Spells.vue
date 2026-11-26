@@ -4,6 +4,10 @@
 // spell's full text. The search, filters, sort and open spell are in the URL (?tab=spells&
 // system=pf2e&q=fire&rank=3&sort=actions&spell=spell-1530) so a link opens the same view. PF2e
 // has ~1,200 spells, so the list shows 100 rows at a time, filtered from text lower-cased once.
+// 5e SRD spells show the SRD's text and page; the others their summary, their mechanics as
+// fact lines and a source tag ("PHB 2024").
+import { loadDnd5e } from '~/data/dnd5e'
+import type { Dnd5eSpellDef } from '~/data/dnd5e/types'
 import { loadPf2e } from '~/data/pf2e'
 import type { Pf2eSpellDef } from '~/data/pf2e/types'
 import { SCHOOL_LABELS, SPELLS } from '~/data/nimble/spells'
@@ -13,9 +17,13 @@ import type { GameSystem } from '~/types'
 import {
   COMPENDIUM_SYSTEMS,
   DEFAULT_SPELL_SORT,
+  DND5E_SPELL_COLUMNS,
   NIMBLE_SPELL_COLUMNS,
   PF2E_SPELL_COLUMNS,
   compendiumList,
+  dnd5eLevelLabel,
+  dnd5eSpellKeep,
+  dnd5eTimeLabel,
   nimbleCast,
   nimbleCost,
   nimbleSpellKeep,
@@ -33,6 +41,13 @@ import {
   type SpellColumn,
   type SpellQuery,
 } from '~/utils/libraryCompendium'
+import {
+  DND5E_ABILITY,
+  DND5E_SOURCE_KEY,
+  DND5E_SOURCE_SHORT,
+  dnd5eSource,
+  slugName,
+} from '~/utils/libraryDnd5e'
 import { loreHtml } from '~/utils/loreText'
 import { actionGlyph, actionWords } from '~/utils/pf2eBuild'
 
@@ -42,6 +57,7 @@ const router = useRouter()
 const isReady = (s: RulesSystem) => COMPENDIUM_SYSTEMS.includes(s.id)
 const sys = useLibrarySystem(isReady)
 const pf2e = computed(() => sys.value?.id === 'pf2e')
+const dnd5e = computed(() => sys.value?.id === 'dnd5e')
 const state = computed(() => readSpellQuery(route.query))
 
 /**
@@ -97,18 +113,21 @@ const rare = computed({
 
 // --- Data --------------------------------------------------------------------------
 const pf2eSpells = shallowRef<Pf2eSpellDef[] | null>(null)
+const dnd5eSpells = shallowRef<Dnd5eSpellDef[] | null>(null)
 const failed = ref('')
 async function load() {
-  if (!pf2e.value || pf2eSpells.value) return
+  const need = (pf2e.value && !pf2eSpells.value) || (dnd5e.value && !dnd5eSpells.value)
+  if (!need) return
   failed.value = ''
   try {
-    pf2eSpells.value = await loadPf2e('spells')
+    if (pf2e.value) pf2eSpells.value = await loadPf2e('spells')
+    else dnd5eSpells.value = await loadDnd5e('spells')
   } catch (err) {
     console.error(err)
     failed.value = 'Could not load the spells.'
   }
 }
-watch(pf2e, load, { immediate: true })
+watch(() => sys.value?.id, load, { immediate: true })
 
 const pf2eIndex = computed(() =>
   (pf2eSpells.value ?? []).map((s) =>
@@ -116,6 +135,34 @@ const pf2eIndex = computed(() =>
   ),
 )
 const nimbleIndex = SPELLS.map((s) => searchable(s, s.name, `${s.cast} ${s.desc}`))
+const dnd5eIndex = computed(() =>
+  (dnd5eSpells.value ?? []).map((s) =>
+    searchable(
+      s,
+      s.name,
+      [s.school, s.castingTime, s.classes.join(' '), s.text, s.summary, s.higherLevel]
+        .filter(Boolean)
+        .join(' '),
+    ),
+  ),
+)
+const dnd5eSchools = computed(() =>
+  [...new Set((dnd5eSpells.value ?? []).map((s) => s.school))].sort(),
+)
+const dnd5eClasses = computed(() =>
+  [...new Set((dnd5eSpells.value ?? []).flatMap((s) => s.classes))].sort(),
+)
+const dnd5eLevels = Array.from({ length: 9 }, (_, i) => i + 1)
+const DND5E_TIMES = [
+  { id: 'action', label: 'Action' },
+  { id: 'bonus', label: 'Bonus Action' },
+  { id: 'reaction', label: 'Reaction' },
+  { id: 'time', label: '1 minute or more' },
+]
+const DND5E_SOURCES = Object.entries(DND5E_SOURCE_KEY).map(([book, id]) => ({
+  id,
+  label: DND5E_SOURCE_SHORT[book as Dnd5eSpellDef['source']],
+}))
 
 const pf2eTraits = computed(() => pf2eSpellTraits(pf2eSpells.value ?? []))
 const pf2eClasses = computed(() => pf2eSpellClasses(pf2eSpells.value ?? []))
@@ -149,6 +196,13 @@ interface SpellView {
   traits: string[]
   stats: { label: string; value: string }[]
   text: string
+  /** 5e non-SRD: the summary in Lantern's words and its mechanics as fact lines. */
+  summary?: string
+  facts?: string[]
+  /** 5e non-SRD: the source tag ("PHB 2024"). */
+  tag?: string
+  /** 5e: Concentration and Ritual, as "C" and "R" by the name. */
+  flags: { abbr: string; label: string }[]
   source: string
 }
 
@@ -194,6 +248,7 @@ function pf2eView(s: Pf2eSpellDef): SpellView {
       { label: 'Duration', value: s.duration ?? '' },
     ].filter((x) => x.value),
     text: s.text,
+    flags: [],
     source: sourceLabel(s.source),
   }
 }
@@ -227,15 +282,74 @@ function nimbleView(s: SpellDef): SpellView {
       { label: 'Class', value: s.classOnly ? capitalise(s.classOnly) : '' },
     ].filter((x) => x.value),
     text: s.desc,
+    flags: [],
     source: '',
+  }
+}
+
+function dnd5eComponents(c: Dnd5eSpellDef['components']): string {
+  return [c.v ? 'V' : '', c.s ? 'S' : '', c.m ? `M (${c.m})` : ''].filter(Boolean).join(', ')
+}
+
+function dnd5eView(s: Dnd5eSpellDef): SpellView {
+  const time = dnd5eTimeLabel(s)
+  const higher = s.level === 0 ? 'Cantrip Upgrade' : 'Using a Higher-Level Spell Slot'
+  const text = s.text
+    ? [s.text, s.higherLevel ? `***${higher}.*** ${s.higherLevel}` : '']
+        .filter(Boolean)
+        .join('\n\n')
+    : ''
+  const attack = s.attack ? `${capitalise(s.attack)} spell attack` : ''
+  const facts = s.text
+    ? []
+    : [
+        attack ? `Attack: ${attack}` : '',
+        s.save ? `Saving throw: ${DND5E_ABILITY[s.save]}` : '',
+        s.damage?.length ? `Damage: ${s.damage.map((d) => `${d.dice} ${d.type}`).join(', ')}` : '',
+        s.healing ? `Healing: ${s.healing}` : '',
+        s.higherLevel ? `${higher}: ${s.higherLevel}` : '',
+      ].filter(Boolean)
+  return {
+    id: s.slug,
+    name: s.name,
+    cells: {
+      level: s.level === 0 ? 'Cantrip' : String(s.level),
+      school: s.school,
+      time,
+      range: s.range,
+      duration: s.duration,
+      source: dnd5eSource(s),
+    },
+    glyph: '',
+    glyphWords: '',
+    level: s.level === 0 ? 'Cantrip' : `Level ${s.level}`,
+    meta: [s.school, time, s.range].filter(Boolean).join(' · '),
+    traits: [],
+    stats: [
+      { label: 'Casting time', value: s.castingTime },
+      { label: 'Range', value: s.range },
+      { label: 'Components', value: dnd5eComponents(s.components) },
+      { label: 'Duration', value: s.duration },
+      { label: 'Classes', value: s.classes.map(slugName).join(', ') },
+    ].filter((x) => x.value),
+    text,
+    ...(s.text ? {} : { summary: s.summary, facts }),
+    tag: s.srd ? undefined : DND5E_SOURCE_SHORT[s.source],
+    flags: [
+      ...(s.concentration ? [{ abbr: 'C', label: 'Concentration' }] : []),
+      ...(s.ritual ? [{ abbr: 'R', label: 'Ritual' }] : []),
+    ],
+    source: dnd5eSource(s),
   }
 }
 
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 // --- The list ----------------------------------------------------------------------
-const columns = computed<SpellColumn<Pf2eSpellDef>[] | SpellColumn<SpellDef>[]>(() =>
-  pf2e.value ? PF2E_SPELL_COLUMNS : NIMBLE_SPELL_COLUMNS,
+const columns = computed<
+  SpellColumn<Pf2eSpellDef>[] | SpellColumn<SpellDef>[] | SpellColumn<Dnd5eSpellDef>[]
+>(() =>
+  pf2e.value ? PF2E_SPELL_COLUMNS : dnd5e.value ? DND5E_SPELL_COLUMNS : NIMBLE_SPELL_COLUMNS,
 )
 const sortKey = computed(() => {
   const keys = columns.value.map((c) => c.key)
@@ -254,6 +368,14 @@ const all = computed<SpellView[]>(() => {
       keep: pf2eSpellKeep(s),
       value: col?.value ?? (() => undefined),
     }).map((x) => memo(x, pf2eView))
+  }
+  if (dnd5e.value) {
+    const col = DND5E_SPELL_COLUMNS.find((c) => c.key === sortKey.value) ?? DND5E_SPELL_COLUMNS[0]
+    return compendiumList(dnd5eIndex.value, {
+      ...opts,
+      keep: dnd5eSpellKeep(s),
+      value: col?.value ?? (() => undefined),
+    }).map((x) => memo(x, dnd5eView))
   }
   const col = NIMBLE_SPELL_COLUMNS.find((c) => c.key === sortKey.value) ?? NIMBLE_SPELL_COLUMNS[0]
   return compendiumList(nimbleIndex, {
@@ -274,9 +396,13 @@ watch(
 const total = computed(() =>
   pf2e.value
     ? (pf2eSpells.value ?? []).filter((s) => state.value.rare || s.rarity === 'common').length
-    : SPELLS.length,
+    : dnd5e.value
+      ? (dnd5eSpells.value ?? []).length
+      : SPELLS.length,
 )
-const loading = computed(() => pf2e.value && !pf2eSpells.value && !failed.value)
+const loading = computed(
+  () => ((pf2e.value && !pf2eSpells.value) || (dnd5e.value && !dnd5eSpells.value)) && !failed.value,
+)
 
 function sortBy(key: string) {
   const dir: SortDir = sortKey.value === key && state.value.dir === 'asc' ? 'desc' : 'asc'
@@ -309,6 +435,11 @@ const activeFilters = computed(() => {
     s.tier,
     s.school.length,
     s.rare,
+    s.level,
+    s.conc,
+    s.ritual,
+    s.time.length,
+    s.src.length,
   ].filter(Boolean).length
 })
 /** Phones fold the filters away behind a button, so the list starts near the top. */
@@ -322,13 +453,31 @@ const filtering = computed(() => {
     s.cls ||
     s.trait ||
     s.tier ||
-    s.school.length
+    s.school.length ||
+    s.level ||
+    s.conc ||
+    s.ritual ||
+    s.time.length ||
+    s.src.length
   )
 })
 function clearFilters() {
-  update({ rank: '', kind: [], trad: [], cls: '', trait: '', tier: '', school: [] })
+  update({
+    rank: '',
+    kind: [],
+    trad: [],
+    cls: '',
+    trait: '',
+    tier: '',
+    school: [],
+    level: '',
+    conc: '',
+    ritual: '',
+    time: [],
+    src: [],
+  })
 }
-const selectModel = (key: 'rank' | 'cls' | 'trait' | 'tier') =>
+const selectModel = (key: 'rank' | 'cls' | 'trait' | 'tier' | 'level' | 'conc' | 'ritual') =>
   computed({
     get: () => state.value[key],
     set: (value: string) => update({ [key]: value }),
@@ -337,6 +486,9 @@ const rank = selectModel('rank')
 const cls = selectModel('cls')
 const trait = selectModel('trait')
 const tier = selectModel('tier')
+const level = selectModel('level')
+const conc = selectModel('conc')
+const ritual = selectModel('ritual')
 
 // --- Phones get cards ------------------------------------------------------------------
 const phone = ref(false)
@@ -358,12 +510,22 @@ const reading = computed<SpellView | null>(() => {
     const s = pf2eSpells.value?.find((x) => x.id === id)
     return s ? memo(s, pf2eView) : null
   }
+  if (dnd5e.value) {
+    const s = dnd5eSpells.value?.find((x) => x.slug === id)
+    return s ? memo(s, dnd5eView) : null
+  }
   const s = SPELLS.find((x) => x.name === id)
   return s ? memo(s, nimbleView) : null
 })
 function readSpell(id?: string) {
   void router.replace({ query: { ...route.query, spell: id } })
 }
+/** The open 5e spell, for its "Level 3 Evocation" eyebrow. */
+const dnd5eReading = computed(() =>
+  dnd5e.value && reading.value
+    ? dnd5eSpells.value?.find((x) => x.slug === reading.value?.id)
+    : undefined,
+)
 const readingOpen = computed({
   get: () => reading.value !== null,
   set: (open) => {
@@ -463,6 +625,75 @@ const toolbarStuck = useStuck(toolbarEl)
           </button>
         </div>
       </template>
+      <template v-else-if="dnd5e">
+        <div class="field">
+          <label for="spells-level">Level</label>
+          <select id="spells-level" v-model="level" class="input">
+            <option value="">Any level</option>
+            <option value="0">Cantrip</option>
+            <option v-for="l in dnd5eLevels" :key="l" :value="String(l)">Level {{ l }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="spells-class">Class</label>
+          <select id="spells-class" v-model="cls" class="input">
+            <option value="">Any class</option>
+            <option v-for="c in dnd5eClasses" :key="c" :value="c">{{ capitalise(c) }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="spells-conc">Concentration</label>
+          <select id="spells-conc" v-model="conc" class="input">
+            <option value="">Either</option>
+            <option value="yes">Concentration</option>
+            <option value="no">No concentration</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="spells-ritual">Ritual</label>
+          <select id="spells-ritual" v-model="ritual" class="input">
+            <option value="">Either</option>
+            <option value="yes">Ritual</option>
+            <option value="no">Not a ritual</option>
+          </select>
+        </div>
+        <div class="chips" role="group" aria-label="School">
+          <button
+            v-for="sc in dnd5eSchools"
+            :key="sc"
+            type="button"
+            class="chip"
+            :aria-pressed="state.school.includes(sc.toLowerCase())"
+            @click="update({ school: toggle(state.school, sc.toLowerCase()) })"
+          >
+            {{ sc }}
+          </button>
+        </div>
+        <div class="chips" role="group" aria-label="Casting time">
+          <button
+            v-for="t in DND5E_TIMES"
+            :key="t.id"
+            type="button"
+            class="chip"
+            :aria-pressed="state.time.includes(t.id)"
+            @click="update({ time: toggle(state.time, t.id) })"
+          >
+            {{ t.label }}
+          </button>
+        </div>
+        <div class="chips" role="group" aria-label="Source">
+          <button
+            v-for="src in DND5E_SOURCES"
+            :key="src.id"
+            type="button"
+            class="chip"
+            :aria-pressed="state.src.includes(src.id)"
+            @click="update({ src: toggle(state.src, src.id) })"
+          >
+            {{ src.label }}
+          </button>
+        </div>
+      </template>
       <template v-else>
         <div class="field">
           <label for="spells-tier">Tier</label>
@@ -539,6 +770,15 @@ const toolbarStuck = useStuck(toolbarEl)
                 ><span class="sr-only">{{ v.glyphWords }}</span></span
               >
               <span v-if="v.rarity" class="rarity">{{ v.rarity }}</span>
+              <span
+                v-for="f in v.flags"
+                :key="f.abbr"
+                class="flag"
+                :title="f.label"
+                :aria-label="f.label"
+                >{{ f.abbr }}</span
+              >
+              <span v-if="v.tag" class="badge badge--outline">{{ v.tag }}</span>
               <span class="card__level">{{ v.level }}</span>
             </span>
             <span v-if="v.meta" class="card__meta">{{ v.meta }}</span>
@@ -580,6 +820,15 @@ const toolbarStuck = useStuck(toolbarEl)
                     <strong>{{ v.name }}</strong>
                   </button>
                   <span v-if="v.rarity" class="rarity">{{ v.rarity }}</span>
+                  <span
+                    v-for="f in v.flags"
+                    :key="f.abbr"
+                    class="flag"
+                    :title="f.label"
+                    :aria-label="f.label"
+                    >{{ f.abbr }}</span
+                  >
+                  <span v-if="v.tag" class="badge badge--outline tag">{{ v.tag }}</span>
                 </template>
                 <template v-else-if="c.key === 'actions' && v.glyph">
                   <span class="glyph" :title="v.glyphWords"
@@ -620,7 +869,10 @@ const toolbarStuck = useStuck(toolbarEl)
             ><span aria-hidden="true">{{ reading.glyph }}</span
             ><span class="sr-only">{{ reading.glyphWords }}</span></span
           >
-          {{ reading.level }}<template v-if="reading.rarity"> · {{ reading.rarity }}</template>
+          {{ dnd5eReading ? dnd5eLevelLabel(dnd5eReading) : reading.level
+          }}<template v-if="reading.rarity"> · {{ reading.rarity }}</template>
+          <template v-for="f in reading.flags" :key="f.abbr"> · {{ f.label }}</template>
+          <span v-if="reading.tag" class="badge badge--outline">{{ reading.tag }}</span>
         </p>
       </template>
       <template v-if="reading">
@@ -633,8 +885,16 @@ const toolbarStuck = useStuck(toolbarEl)
             <dd>{{ st.value }}</dd>
           </div>
         </dl>
+        <p v-if="reading.summary" class="read__summary">{{ reading.summary }}</p>
+        <ul v-if="reading.facts?.length" class="read__facts">
+          <li v-for="f in reading.facts" :key="f">{{ f }}</li>
+        </ul>
         <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
-        <div class="read__text" v-html="loreHtml(reading.text, { headingBase: 3 })" />
+        <div
+          v-if="reading.text"
+          class="read__text"
+          v-html="loreHtml(reading.text, { headingBase: 3 })"
+        />
         <p v-if="reading.source" class="read__source">{{ reading.source }}</p>
       </template>
       <template #actions>
@@ -749,6 +1009,8 @@ const toolbarStuck = useStuck(toolbarEl)
     white-space: nowrap;
   }
 
+  .col-time,
+  .col-duration,
   .col-source,
   .col-traditions,
   .col-defense,
@@ -817,6 +1079,28 @@ const toolbarStuck = useStuck(toolbarEl)
   font-weight: 700;
   text-transform: capitalize;
   white-space: nowrap;
+}
+
+.flag {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--page-soft);
+  vertical-align: middle;
+
+  .card__head & {
+    margin-left: 0;
+  }
+}
+
+.tag {
+  margin-left: 8px;
 }
 
 .glyph {
@@ -938,6 +1222,19 @@ const toolbarStuck = useStuck(toolbarEl)
     margin: 0;
     font-size: 14px;
   }
+}
+
+.read__summary {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.read__facts {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  font-size: 14px;
+  color: var(--page-soft);
 }
 
 .read__text {
