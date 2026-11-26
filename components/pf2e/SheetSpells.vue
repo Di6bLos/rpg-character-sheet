@@ -144,7 +144,7 @@ function run(message: string) {
  * The target's AC for spell attacks, shared with the Strikes table, and which attack this is
  * for MAP (p. 402): the turn tracker's count of attacks this turn, which the select can change.
  */
-const { targetAc, nextAttack } = usePf2eStrikes()
+const { targetAcNow, nextAttack } = usePf2eStrikes()
 const attackNumber = ref(nextAttack.value)
 watch(nextAttack, (n) => (attackNumber.value = n))
 
@@ -219,7 +219,7 @@ function castIn(key: string, message: string, def: Pf2eSpellDef | undefined, ran
     melee: !!meleeFor.value[def.id],
     targets: targetsFor.value[def.id],
     attackNumber: attackNumber.value,
-    targetAc: targetAc.value,
+    targetAc: targetAcNow.value,
   })
   payCast(sheet.value, def, {
     actions: actionsOf(def),

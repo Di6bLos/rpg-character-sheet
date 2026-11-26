@@ -116,26 +116,38 @@ function oddsWhy(w: (typeof strikes.value)[number]) {
 }
 
 const FORTUNE_CHIPS = [
-  { key: 'fortune', label: 'Fortune: roll twice, keep higher' },
-  { key: 'misfortune', label: 'Misfortune: roll twice, keep lower' },
+  { key: 'fortune', label: 'Fortune' },
+  { key: 'misfortune', label: 'Misfortune' },
 ] as const
 const chips = computed(() =>
   FORTUNE_CHIPS.map((c) => ({ ...c, on: situation.value.fortune === c.key })),
 )
+const circumstance = computed(() => situation.value.bonus - situation.value.penalty)
+/**
+ * Nimble's Disadvantage and Advantage steppers, in PF2e terms: which attack of the turn the
+ * next one is (the multiple attack penalty, p. 402) and the GM's circumstance bonus or
+ * penalty (p. 400).
+ */
 const steppers = computed(() => [
   {
-    key: 'bonus',
-    label: 'Circumstance bonus',
-    hint: 'bonus',
-    value: situation.value.bonus,
-    max: 4,
+    key: 'map',
+    label: 'Attack',
+    hint: 'of the turn',
+    value: nextAttack.value,
+    min: 0,
+    max: 2,
+    text: ORD[nextAttack.value],
+    title: 'Which attack of your turn the next Strike is: 2nd −5, 3rd −10 (agile −4, −8)',
   },
   {
-    key: 'penalty',
-    label: 'Circumstance penalty',
-    hint: 'penalty',
-    value: situation.value.penalty,
+    key: 'circumstance',
+    label: 'Circumstance',
+    hint: 'to the attack',
+    value: circumstance.value,
+    min: -4,
     max: 4,
+    text: circumstance.value ? sign(circumstance.value) : '0',
+    title: 'A circumstance bonus (Aid) or penalty the GM calls, until your turn starts or ends',
   },
 ])
 
@@ -145,16 +157,28 @@ function toggleChip(key: string) {
 }
 
 function step(key: string, by: number) {
-  const k = key as 'bonus' | 'penalty'
-  situation.value = { ...situation.value, [k]: Math.max(0, Math.min(4, situation.value[k] + by)) }
+  if (key === 'map') return strikesApi.setNextAttack(nextAttack.value + by)
+  const v = Math.max(-4, Math.min(4, circumstance.value + by))
+  situation.value = { ...situation.value, bonus: Math.max(0, v), penalty: Math.max(0, -v) }
 }
+
+/** A Strike's damage type and traits, each trait with its rules on hover (as Nimble's props). */
+const traitParts = (w: (typeof strikes.value)[number]) => [
+  ...(w.type ? [{ label: w.type.charAt(0).toUpperCase() + w.type.slice(1) }] : []),
+  ...w.traits.map((t) => ({
+    label: t.charAt(0).toUpperCase() + t.slice(1),
+    title: t,
+    text: traitText(t),
+  })),
+]
 
 const { traitText, runeText } = usePf2eRuleTexts()
 
-/** What makes up an attack button's number: the sheet's bonus, then what changes it now, MAP. */
+/** What makes up an attack's number: the sheet's bonus, then what changes it now, MAP. */
 function attackWhy(w: (typeof strikes.value)[number], penalty: number) {
+  const now = w.applied.reduce((n, m) => n + m.value, 0)
   return [
-    `Attack ${sign(w.bonus - (w.changed ? w.applied.reduce((n, m) => n + m.value, 0) : 0))} on the sheet`,
+    `Attack ${sign(w.bonus - now)} on the sheet`,
     ...w.applied.map((m) => `${m.source} ${sign(m.value)} ${m.type}`),
     ...(penalty ? [`Multiple attack penalty −${penalty}`] : []),
   ].join('\n')
@@ -188,11 +212,7 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
           <div class="attack__head">
             <div class="stack" style="gap: 2px">
               <strong style="font-size: 16px">{{ w.name }}</strong>
-              <span class="traits">
-                <SheetRuleTip v-for="t in w.traits" :key="t" chip :title="t" :text="traitText(t)">{{
-                  t
-                }}</SheetRuleTip>
-              </span>
+              <SheetRuleList class="muted" style="font-size: 12px" :parts="traitParts(w)" />
               <Pf2eCostPill :cost="STRIKE_COST" />
               <span
                 v-if="oddsText(w)"
@@ -238,34 +258,28 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
               {{ w.versatile }}
             </button>
           </div>
-          <button
-            v-if="strikeWhy && canEdit"
-            type="button"
-            class="btn"
-            disabled
-            :aria-label="`${w.name}: ${strikeWhy}`"
+          <UiTooltip
+            :title="`${w.name}, ${ORD[nextAttack]} attack ${w.atks[nextAttack]?.text ?? ''}`"
+            :text="attackWhy(w, w.atks[nextAttack]?.penalty ?? 0)"
           >
-            {{ strikeWhy }}
-          </button>
-          <div v-else class="maps" role="group" :aria-label="`${w.name} attacks`">
-            <UiTooltip
-              v-for="(a, n) in w.atks"
-              :key="n"
-              :title="`${w.name}, ${ORD[n]} attack ${a.text}`"
-              :text="attackWhy(w, a.penalty)"
+            <button
+              type="button"
+              class="btn"
+              :disabled="!canEdit || !!strikeWhy"
+              :aria-label="
+                strikeWhy
+                  ? `${w.name}: ${strikeWhy}`
+                  : `${w.atks[nextAttack]?.label}, ${w.atks[nextAttack]?.text}`
+              "
+              @click="strike(w.index, nextAttack)"
             >
-              <button
-                type="button"
-                class="btn"
-                :class="{ 'btn--ghost': n !== (turnActive ? nextAttack : 0) }"
-                :aria-label="`${a.label}, ${a.text}`"
-                :disabled="!canEdit"
-                @click="strike(w.index, n)"
+              <template v-if="strikeWhy">{{ strikeWhy }}</template>
+              <template v-else
+                >{{ ownDice ? 'Attack' : 'Roll' }} · {{ w.atks[nextAttack]?.text
+                }}<template v-if="nextAttack"> ({{ ORD[nextAttack] }})</template></template
               >
-                {{ a.text }}<small v-if="n > 0"> ({{ ORD[n] }})</small>
-              </button>
-            </UiTooltip>
-          </div>
+            </button>
+          </UiTooltip>
           <div class="maps">
             <button
               type="button"

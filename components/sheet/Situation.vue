@@ -6,7 +6,19 @@
 defineProps<{
   chipsLabel?: string
   chips: { key: string; label: string; on: boolean }[]
-  steppers: { key: string; label: string; hint: string; value: number; max: number }[]
+  steppers: {
+    key: string
+    label: string
+    hint: string
+    value: number
+    max: number
+    /** Lowest value (0 when absent). */
+    min?: number
+    /** What the value reads as when it isn't the number ("2nd", "+1"). */
+    text?: string
+    /** What it means, on hover. */
+    title?: string
+  }[]
 }>()
 const emit = defineEmits<{ toggle: [key: string]; step: [key: string, by: number] }>()
 const { canEdit } = useSheet()
@@ -33,21 +45,22 @@ const { canEdit } = useSheet()
       v-for="o in steppers"
       :key="o.key"
       class="odds-step"
-      :class="{ 'is-on': o.value > 0 }"
+      :class="{ 'is-on': o.value !== 0 }"
       role="group"
-      :aria-label="`${o.label}: ${o.value} ${o.hint}`"
+      :aria-label="`${o.label}: ${o.text ?? o.value} ${o.hint}`"
+      :title="o.title"
     >
       <span>{{ o.label }}</span>
       <button
         type="button"
         class="step step--xs"
         :aria-label="`Less ${o.label.toLowerCase()}`"
-        :disabled="!canEdit || o.value === 0"
+        :disabled="!canEdit || o.value <= (o.min ?? 0)"
         @click="emit('step', o.key, -1)"
       >
         −
       </button>
-      <strong aria-live="polite">{{ o.value }}</strong>
+      <strong aria-live="polite">{{ o.text ?? o.value }}</strong>
       <button
         type="button"
         class="step step--xs"

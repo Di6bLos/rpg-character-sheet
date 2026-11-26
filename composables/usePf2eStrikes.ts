@@ -183,8 +183,37 @@ function create() {
       stratagemStruck.value = undefined
     },
   )
-  /** The attack the next Strike is this turn (0–2), for the table's highlight. */
-  const nextAttack = computed(() => mapIndex(sheet.value))
+  /**
+   * The target as the attacks see it (Player Core pp. 431, 443–444): off-guard takes 2 off its
+   * AC (and lets sneak attack in); concealed and hidden ask for a DC 5 or DC 11 flat check
+   * before the attack roll counts.
+   */
+  const targetFlags = ref({ concealed: false, hidden: false })
+  const targetAcNow = computed(() =>
+    targetAc.value && targetAc.value > 0
+      ? targetAc.value - (damageFlags.value.offGuard ? 2 : 0)
+      : null,
+  )
+
+  /**
+   * The attack the next Strike is for the multiple attack penalty (0–2, p. 402): the turn's
+   * count of attacks on your turn, which the Attacks panel's stepper can change; off a turn
+   * the panel's own count, which each attack moves on and a turn starting or ending clears.
+   */
+  const loose = ref(0)
+  const nextAttack = computed(() =>
+    sheet.value.turn?.active ? mapIndex(sheet.value) : Math.min(2, loose.value),
+  )
+  function setNextAttack(n: number) {
+    const step = Math.max(0, Math.min(2, n))
+    const t = sheet.value.turn
+    if (t?.active) t.attacks = step
+    else loose.value = step
+  }
+  watch(
+    () => !!sheet.value.turn?.active,
+    () => (loose.value = 0),
+  )
 
   /**
    * What the table decides for the next attacks (Player Core p. 400): fortune or misfortune
@@ -320,8 +349,8 @@ function create() {
           label: `${w.name} attack ${i + 1}`,
           penalty,
           chances:
-            targetAc.value !== null && targetAc.value > 0
-              ? strikeChances(attack.value - penalty, targetAc.value, {
+            targetAcNow.value !== null
+              ? strikeChances(attack.value - penalty, targetAcNow.value, {
                   keen: (runes?.property ?? []).some((p) => p.keen),
                   fortune: situation.value.fortune,
                 })
@@ -358,13 +387,25 @@ function create() {
     const twice = 'rolls' in r ? ` (${fortune}: ${(r.rolls as number[]).join(' and ')})` : ''
     situation.value = { ...situation.value, fortune: 'normal' }
     attacked(sheet.value, o.countAs ?? 1)
+    if (!sheet.value.turn?.active) loose.value = Math.min(2, loose.value + (o.countAs ?? 1))
     const st = stratagemAttacked(stratagemState(), index, w.intAttack)
     damageFlags.value.stratagem = st.ready
     stratagemStruck.value = st.struck
-    const ac = targetAc.value
-    const degree = ac ? degreeOf(r.total, r.d20, ac, w.keen) : undefined
+    const ac = targetAcNow.value
+    let degree = ac ? degreeOf(r.total, r.d20, ac, w.keen) : undefined
     const keen = w.keen && r.d20 === 19 ? ' (keen: a critical hit if it hits)' : ''
-    const vs = ac && degree ? ` vs AC ${ac}: ${strikeResult(degree)}` : keen
+    // A concealed or hidden target: a flat check first, a failure and the attack misses.
+    const flatDc = targetFlags.value.hidden ? 11 : targetFlags.value.concealed ? 5 : 0
+    let flat = ''
+    if (flatDc && o.d20 !== undefined)
+      flat = ` Roll a DC ${flatDc} flat check: below it, the attack misses.`
+    else if (flatDc) {
+      const f = rollCheck(0)
+      const lost = f.d20 < flatDc
+      flat = ` Flat check ${f.d20} vs DC ${flatDc}: ${lost ? 'the attack misses' : 'it counts'}.`
+      if (lost && degree) degree = 'failure'
+    }
+    const vs = (ac && degree ? ` vs AC ${ac}: ${strikeResult(degree)}` : keen) + flat
     const by = o.by && !o.quiet ? `${o.by}: ` : ''
     const own = o.penalty ? `, −${o.penalty}` : ''
     const text = `${by}${w.name} (attack ${step + 1}${own}, ${sign(bonus)}): ${r.total}${natNote(r.natural)}${twice}${vs}`
@@ -502,6 +543,9 @@ function create() {
 
   return {
     targetAc,
+    targetAcNow,
+    targetFlags,
+    setNextAttack,
     damageFlags,
     conditionsOffered,
     strikes,

@@ -63,7 +63,7 @@ const hpState = computed(() => {
   const s = sheet.value
   if (dead.value) return 'Dead'
   if (s.hp === 0) return `Unconscious · dying ${s.dying}`
-  return `At 0 HP: dying ${1 + s.wounded} (crit ${2 + s.wounded})`
+  return `At 0 HP: dying ${1 + s.wounded}`
 })
 
 function hurt(amount: number, extra: { type?: string; spell?: boolean; tradition?: string } = {}) {
@@ -104,7 +104,7 @@ function adjustTemp(delta: number) {
 const ac = computed(() => acNow(sheet.value))
 const acTitle = computed(() =>
   [
-    `AC ${sheet.value.ac} on the sheet (10 + DEX up to the armor's cap + proficiency + armor)`,
+    `AC ${sheet.value.ac} on the sheet: 10 + DEX up to the armor's cap + proficiency (${PF2E_RANK_NAME[sheet.value.acRank]}) + armor`,
     ...(ac.value.changed ? ac.value.note.split(', ') : []),
   ].join('\n'),
 )
@@ -338,7 +338,11 @@ function confirmRest() {
           @change="changeHp"
         />
         <div class="vit-row">
-          <span class="hint">{{ hpState }}</span>
+          <span
+            class="hint"
+            :title="sheet.hp ? `On a crit: dying ${2 + sheet.wounded}` : undefined"
+            >{{ hpState }}</span
+          >
           <div class="row" style="gap: 6px">
             <span class="temp-label">Temp HP</span>
             <button
@@ -372,7 +376,7 @@ function confirmRest() {
             <span class="armor__value" :class="{ 'is-changed': ac.changed }">{{ ac.value }}</span>
           </span>
         </UiTooltip>
-        <span class="armor__label">AC · {{ PF2E_RANK_NAME[sheet.acRank] }}</span>
+        <span class="armor__label">AC</span>
         <template v-if="hasShield">
           <button
             type="button"
@@ -439,31 +443,48 @@ function confirmRest() {
             </svg>
           </button>
         </div>
-        <div class="tracks">
+        <template
+          v-for="t in [
+            { key: 'wounded' as const, label: 'Wounded' },
+            { key: 'doomed' as const, label: 'Doomed' },
+          ]"
+          :key="t.key"
+        >
+          <div class="vit-head">
+            <span class="caps">{{ t.label }}</span>
+            <span class="hint">{{ sheet[t.key] ?? 0 }}</span>
+          </div>
           <div
-            v-for="t in [
-              { key: 'wounded' as const, label: 'Wounded' },
-              { key: 'doomed' as const, label: 'Doomed' },
-            ]"
-            :key="t.key"
-            class="track"
+            class="row"
+            style="gap: 6px"
             role="group"
             :aria-label="`${t.label} ${sheet[t.key] ?? 0}`"
           >
-            <span class="track__label">{{ t.label }}</span>
             <button
               v-for="n in TRACK_MAX"
               :key="n"
               type="button"
-              class="hd track__pip"
-              :class="{ on: (sheet[t.key] ?? 0) >= n }"
+              class="wound"
               :aria-label="`${t.label} ${n}`"
               :aria-pressed="(sheet[t.key] ?? 0) >= n"
               :disabled="!canEdit"
               @click="setTrack(t.key, n)"
-            />
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
           </div>
-        </div>
+        </template>
       </div>
       <div class="vit-col">
         <div class="vit-head">
