@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tipText } from '~/utils/ruleTips'
 // One castable spell, folded to its name: its text, upgrades, upcast control and
 // cast buttons (with alternate costs). Used by the Spells and Summons panels;
 // `blocked` names why it can't be cast there right now (Not your turn, At the max).
@@ -21,7 +22,11 @@ const { maxTier, cast } = useNimbleSpells()
 <template>
   <details name="nimble-spell" class="tile spell">
     <summary class="spell__head">
-      <strong>{{ spell.name }}</strong>
+      <strong
+        ><SheetRuleTip :title="spell.name" :text="tipText(spell.desc)">{{
+          spell.name
+        }}</SheetRuleTip></strong
+      >
       <span class="school" :class="`school--${spell.school}`">{{
         SCHOOL_LABELS[spell.school]
       }}</span>

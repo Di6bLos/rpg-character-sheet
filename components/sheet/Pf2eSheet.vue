@@ -129,7 +129,13 @@ const turnActive = computed(() => !!sheet.value.turn?.active)
 
   <section class="panel stack" style="gap: 12px" aria-labelledby="ft-h">
     <UiFold name="All abilities" />
-    <h2 id="ft-h">Feats &amp; features</h2>
+    <div class="title-help">
+      <h2 id="ft-h">Feats &amp; features</h2>
+      <UiHelp
+        label="About feats"
+        text="Your ancestry, class, skill and general feats and class features, each with its text. Archetype feats gather under their archetype; after a dedication, take two more of its feats before another dedication (Player Core p. 215)."
+      />
+    </div>
     <Pf2eSheetFeats />
   </section>
 </template>

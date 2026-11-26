@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// "+3 disadvantage" on an attack card; what adds up to it shows on hover.
+// "+3 disadvantage" on an attack card; what adds up to it shows on hover, focus or a tap.
 import { oddsLabel } from '~/utils/nimbleConditions'
 
 const props = defineProps<{ rushed: number; advantage: number; why: string }>()
@@ -8,15 +8,15 @@ const text = computed(() => oddsLabel(props.rushed, props.advantage))
 </script>
 
 <template>
-  <span
-    v-if="text"
-    class="odds"
-    :class="{ 'odds--adv': !rushed }"
-    :title="why || undefined"
-    :aria-label="why ? `${text}: ${why}` : undefined"
-    tabindex="0"
-    >{{ text }}</span
-  >
+  <UiTooltip v-if="text" :title="text" :text="why || undefined">
+    <span
+      class="odds"
+      :class="{ 'odds--adv': !rushed }"
+      :aria-label="why ? `${text}: ${why}` : undefined"
+      tabindex="0"
+      >{{ text }}</span
+    >
+  </UiTooltip>
 </template>
 
 <style scoped lang="scss">

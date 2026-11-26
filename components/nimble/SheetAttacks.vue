@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { WEAPON_PROPERTIES } from '~/data/nimble/core'
+import { ruleKey, tipText } from '~/utils/ruleTips'
 import type { NimbleSheet } from '~/types/sheets'
 
 const { draft, canEdit } = useSheet<NimbleSheet>()
@@ -52,6 +54,14 @@ const hasAttacks = computed(
       attackAbilities.value.length >
     0,
 )
+
+/** A weapon's properties, each with its rules on hover (Core p. 34). */
+const propParts = (props: string) =>
+  props
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((label) => ({ label, title: label, text: WEAPON_PROPERTIES[ruleKey(label)] }))
 </script>
 
 <template>
@@ -97,7 +107,7 @@ const hasAttacks = computed(
             <div class="attack__head">
               <div class="stack" style="gap: 2px">
                 <strong style="font-size: 16px">{{ w.name }}</strong>
-                <span class="muted" style="font-size: 12px">{{ w.props }}</span>
+                <SheetRuleList class="muted" style="font-size: 12px" :parts="propParts(w.props)" />
                 <span v-if="w.boost" class="boost">{{ w.boost }}</span>
                 <NimbleOdds :rushed="w.rushed" :advantage="w.advantage" :why="w.oddsWhy" />
               </div>
@@ -277,7 +287,11 @@ const hasAttacks = computed(
             <div v-for="a in g.spells" :key="a.key" class="tile attack attack--spell">
               <div class="attack__head">
                 <div class="stack" style="gap: 2px">
-                  <strong style="font-size: 16px">{{ a.name }}</strong>
+                  <strong style="font-size: 16px"
+                    ><SheetRuleTip :title="a.name" :text="tipText(a.spell.desc)">{{
+                      a.name
+                    }}</SheetRuleTip></strong
+                  >
                   <span class="muted" style="font-size: 12px">{{ a.props }}</span>
                   <span class="boost">{{ a.cost }}</span>
                   <NimbleOdds

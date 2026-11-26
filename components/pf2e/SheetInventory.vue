@@ -287,7 +287,13 @@ const activationLine = (a: NonNullable<InventoryItem['pf2e']>['activations']) =>
   <section class="panel stack" style="gap: 10px" aria-labelledby="inv-h">
     <UiFold name="Inventory" />
     <div class="panel-title" style="margin: 0">
-      <h2 id="inv-h">Inventory</h2>
+      <div class="title-help">
+        <h2 id="inv-h">Inventory</h2>
+        <UiHelp
+          label="About Bulk"
+          text="You can carry up to 10 + STR Bulk and are encumbered over 5 + STR (clumsy 1, −10 feet Speed). 10 light items make 1 Bulk; negligible items don't count. Worn magic items need investing, up to 10 (Player Core p. 269, GM Core p. 219)."
+        />
+      </div>
       <span class="bulk" :class="{ over: bulk.encumbered }">
         Bulk {{ bulk.bulk }} / {{ bulk.limit }}
       </span>

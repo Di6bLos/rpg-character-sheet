@@ -421,3 +421,17 @@ export const CONDITIONS = [
   { name: 'Taunted', desc: 'Disadvantage on attacks except against the most recent taunter.' },
   { name: 'Wounded', desc: 'Has any Wounds.' },
 ]
+
+/**
+ * What each weapon property does (Core p. 34), for the hover text on a weapon's properties.
+ * Light has no definition of its own in the book.
+ */
+export const WEAPON_PROPERTIES: Record<string, string> = {
+  '2-handed': 'Can be held in a single hand, but must be wielded in 2 hands to attack with it.',
+  load: 'Some weapons require extra actions to load before each shot.',
+  reach: 'How close an enemy must be to be affected by this attack. If unspecified, Reach 1.',
+  range:
+    'Attacks can be made from afar. If any enemy is adjacent to you, your Ranged attacks are made with disadvantage. Add 1 die of disadvantage to gain +2 Range.',
+  thrown: 'Treat a melee weapon as if it had Range. Once thrown, you no longer have it!',
+  vicious: 'Roll 1 additional die whenever you roll crit damage.',
+}

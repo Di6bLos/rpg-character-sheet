@@ -41,6 +41,7 @@ import {
 import { attackCount, defaultActions, spellRules } from '~/utils/pf2eSpellRules'
 import { readCost } from '~/utils/pf2eAbilityRules'
 import { loreHtml } from '~/utils/loreText'
+import { tipText } from '~/utils/ruleTips'
 
 const props = defineProps<{ archetype?: string }>()
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
@@ -56,6 +57,11 @@ const panelId = props.archetype
 const offersFor = (key: string) => (lastCast.value?.key === key ? lastCast.value : null)
 /** A spell's action cost for screen readers ("Two actions"). */
 const costOf = (id: string) => readCost(byId.value.get(id)?.actions)
+/** A spell's description for the tooltip on its name. */
+const tipOf = (id: string) => {
+  const d = byId.value.get(id)
+  return d ? tipText(d.text) : undefined
+}
 /** A spell card's pill: its first trait that isn't its rarity ("Fire", "Mental"). */
 const traitOf = (id: string) =>
   byId.value
@@ -465,31 +471,42 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
   <section class="panel stack" style="gap: 14px" :aria-labelledby="`${panelId}-h`">
     <UiFold :name="title" />
     <div class="panel-title" style="margin: 0">
-      <h2 :id="`${panelId}-h`">{{ title }}</h2>
+      <div class="title-help">
+        <h2 :id="`${panelId}-h`">{{ title }}</h2>
+        <UiHelp
+          :label="`About ${title.toLowerCase()}`"
+          text="Prepared casters fill each slot at daily preparations and spend it when cast; spontaneous casters cast any spell they know from a slot of its rank, or higher heightened. Cantrips and focus spells heighten to half your level rounded up; focus spells spend a Focus Point (Player Core pp. 297–303)."
+        />
+      </div>
       <span v-if="sc" class="small muted">{{ sc.tradition }} · {{ sc.kind }}</span>
     </div>
 
     <div class="head">
-      <button
+      <UiTooltip
         v-if="headNumbers"
-        type="button"
-        class="tile head__tile"
-        :class="{ 'is-changed': headNumbers.attack.changed }"
-        :title="headNumbers.attack.changed ? headNumbers.attack.note : 'Roll a spell attack'"
-        @click="rollSpellAttack"
+        :title="`Spell attack ${sign(headNumbers.attack.value)}`"
+        :text="headNumbers.attack.changed ? headNumbers.attack.note : 'Roll a spell attack'"
       >
-        <span class="tile__label">Spell attack</span>
-        <span class="tile__value">{{ sign(headNumbers.attack.value) }}</span>
-      </button>
-      <div
+        <button
+          type="button"
+          class="tile head__tile"
+          :class="{ 'is-changed': headNumbers.attack.changed }"
+          @click="rollSpellAttack"
+        >
+          <span class="tile__label">Spell attack</span>
+          <span class="tile__value">{{ sign(headNumbers.attack.value) }}</span>
+        </button>
+      </UiTooltip>
+      <UiTooltip
         v-if="headNumbers"
-        class="tile head__tile"
-        :class="{ 'is-changed': headNumbers.dc.changed }"
-        :title="headNumbers.dc.changed ? headNumbers.dc.note : undefined"
+        :title="`Spell DC ${headNumbers.dc.value}`"
+        :text="headNumbers.dc.changed ? headNumbers.dc.note : '10 + your spell attack modifier'"
       >
-        <span class="tile__label">Spell DC</span>
-        <span class="tile__value">{{ headNumbers.dc.value }}</span>
-      </div>
+        <div class="tile head__tile" :class="{ 'is-changed': headNumbers.dc.changed }" tabindex="0">
+          <span class="tile__label">Spell DC</span>
+          <span class="tile__value">{{ headNumbers.dc.value }}</span>
+        </div>
+      </UiTooltip>
       <div class="head__tools">
         <button
           type="button"
@@ -533,7 +550,9 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
       <div class="spell-grid">
         <details v-for="s in sc.cantrips" :key="s.id" :name="`${panelId}-spell`" class="tile spell">
           <summary class="spell__head">
-            <strong>{{ s.name }}</strong>
+            <strong
+              ><SheetRuleTip :title="s.name" :text="tipOf(s.id)">{{ s.name }}</SheetRuleTip></strong
+            >
             <span v-if="traitOf(s.id)" class="trad">{{ traitOf(s.id) }}</span>
             <Pf2eCostPill :cost="costOf(s.id)" />
             <small>{{ metaOf(s.id) }}</small>
@@ -644,7 +663,9 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           class="tile spell"
         >
           <summary class="spell__head">
-            <strong>{{ s.name }}</strong>
+            <strong
+              ><SheetRuleTip :title="s.name" :text="tipOf(s.id)">{{ s.name }}</SheetRuleTip></strong
+            >
             <span v-if="traitOf(s.id)" class="trad">{{ traitOf(s.id) }}</span>
             <Pf2eCostPill :cost="costOf(s.id)" />
             <small v-if="s.signature && !edit" class="tag">signature</small>
@@ -738,7 +759,13 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           :class="{ 'is-cast': p.cast }"
         >
           <summary class="spell__head">
-            <strong>{{ p.id ? nameOf(p.id) : 'Empty slot' }}</strong>
+            <strong
+              ><SheetRuleTip
+                :title="nameOf(p.id) || undefined"
+                :text="p.id ? tipOf(p.id) : undefined"
+                >{{ p.id ? nameOf(p.id) : 'Empty slot' }}</SheetRuleTip
+              ></strong
+            >
             <template v-if="p.id">
               <span v-if="traitOf(p.id)" class="trad">{{ traitOf(p.id) }}</span>
               <Pf2eCostPill :cost="costOf(p.id)" />
@@ -925,7 +952,9 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           class="tile spell"
         >
           <summary class="spell__head">
-            <strong>{{ s.name }}</strong>
+            <strong
+              ><SheetRuleTip :title="s.name" :text="tipOf(s.id)">{{ s.name }}</SheetRuleTip></strong
+            >
             <span v-if="traitOf(s.id)" class="trad">{{ traitOf(s.id) }}</span>
             <Pf2eCostPill :cost="costOf(s.id)" />
             <small v-if="cantripIds.has(s.id)" class="tag">cantrip</small>

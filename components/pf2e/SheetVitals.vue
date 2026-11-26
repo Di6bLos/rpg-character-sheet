@@ -6,7 +6,7 @@
 // Speed, Initiative and Class DC; conditions; typed damage and persistent damage folded; rests.
 // Damage and healing go through utils/pf2ePlay.ts (Player Core pp. 406–412).
 import type { Pf2eSheet } from '~/types/sheets'
-import { rollCheck, showOutcome, sign } from '~/utils/dice'
+import { rollCheck, showOutcome, sign, typedCheck } from '~/utils/dice'
 import { PF2E_DAMAGE_TYPES, defensesOf } from '~/utils/pf2eDamage'
 import { baseDeathAt, speedNow } from '~/utils/pf2eEffects'
 import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
@@ -103,7 +103,10 @@ function adjustTemp(delta: number) {
 
 const ac = computed(() => acNow(sheet.value))
 const acTitle = computed(() =>
-  ac.value.changed ? `AC ${sheet.value.ac} ${ac.value.note}` : 'Armor Class',
+  [
+    `AC ${sheet.value.ac} on the sheet (10 + DEX up to the armor's cap + proficiency + armor)`,
+    ...(ac.value.changed ? ac.value.note.split(', ') : []),
+  ].join('\n'),
 )
 const hasShield = computed(() => sheet.value.shield.name.trim() !== '')
 const broken = computed(() => shieldBroken(sheet.value))
@@ -132,12 +135,22 @@ function setHero(n: number) {
   sheet.value.heroPoints = sheet.value.heroPoints === n ? n - 1 : n
 }
 
-/** The recovery check is a flat check (p. 411): the tray shows the die and its degree. */
-function recover() {
+/**
+ * The recovery check is a flat check (p. 411): the tray shows the die and its degree. With
+ * Manual dice it asks for the d20 first.
+ */
+const auth = useAuthStore()
+const typingRecovery = ref(false)
+function recover(values?: number[]) {
   if (!canEdit.value) return
+  if (auth.profile?.own_dice && !values?.length) {
+    typingRecovery.value = true
+    return
+  }
+  typingRecovery.value = false
   claim('vit:hp', () => {
     const dc = recoveryDc(sheet.value)
-    const r = rollCheck(0)
+    const r = values?.[0] !== undefined ? typedCheck(values[0], 0) : rollCheck(0)
     const line = recoveryCheck(sheet.value, r.d20)
     showOutcome({
       label: 'Recovery check',
@@ -171,18 +184,30 @@ const tiles = computed(() => [
     value: speed.value.text,
     sub: speed.value.note || 'feet',
     changed: speed.value.changed,
+    why: [
+      `${sheet.value.speed} on the sheet`,
+      ...(speed.value.note ? speed.value.note.split(', ') : []),
+    ].join('\n'),
   },
   {
     label: 'Initiative',
     value: sign(initiative.value.value),
     sub: initiative.value.note || 'Perception',
     changed: initiative.value.changed,
+    why: [
+      'Perception, rolled for initiative (Player Core p. 436)',
+      ...(initiative.value.note ? initiative.value.note.split(', ') : []),
+    ].join('\n'),
   },
   {
     label: 'Class DC',
     value: classDc.value ? String(classDc.value.value) : '—',
     sub: classDc.value?.note || '10 + key + prof.',
     changed: !!classDc.value?.changed,
+    why: [
+      '10 + your key attribute + proficiency (Player Core p. 27)',
+      ...(classDc.value?.note ? classDc.value.note.split(', ') : []),
+    ].join('\n'),
   },
 ])
 
@@ -338,13 +363,15 @@ function confirmRest() {
           </div>
         </div>
       </div>
-      <div class="tile armor" :title="acTitle">
-        <span class="armor__badge">
-          <svg class="armor__shield" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 2.5 4 5.5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10v-6Z" />
-          </svg>
-          <span class="armor__value" :class="{ 'is-changed': ac.changed }">{{ ac.value }}</span>
-        </span>
+      <div class="tile armor">
+        <UiTooltip :title="`AC ${ac.value}`" :text="acTitle">
+          <span class="armor__badge" tabindex="0">
+            <svg class="armor__shield" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2.5 4 5.5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10v-6Z" />
+            </svg>
+            <span class="armor__value" :class="{ 'is-changed': ac.changed }">{{ ac.value }}</span>
+          </span>
+        </UiTooltip>
         <span class="armor__label">AC · {{ PF2E_RANK_NAME[sheet.acRank] }}</span>
         <template v-if="hasShield">
           <button
@@ -462,10 +489,17 @@ function confirmRest() {
             class="btn btn--sm"
             :disabled="!canEdit"
             :title="`A flat check against DC ${recoveryDc(sheet)} (p. 411)`"
-            @click="recover"
+            @click="recover()"
           >
             Recovery check
           </button>
+          <NimbleDiceEntry
+            v-if="typingRecovery"
+            label="d20 you rolled"
+            action="Recovery check"
+            :disabled="!canEdit"
+            @submit="recover"
+          />
           <button
             type="button"
             class="btn btn--ghost btn--sm"
@@ -493,7 +527,11 @@ function confirmRest() {
     <div class="vitals">
       <div v-for="v in tiles" :key="v.label" class="tile">
         <div class="tile__label">{{ v.label }}</div>
-        <div class="tile__value" :class="{ 'is-changed': v.changed }">{{ v.value }}</div>
+        <UiTooltip :title="`${v.label} ${v.value}`" :text="v.why">
+          <div class="tile__value" :class="{ 'is-changed': v.changed }" tabindex="0">
+            {{ v.value }}
+          </div>
+        </UiTooltip>
         <div class="hint" style="font-size: 11px">{{ v.sub }}</div>
       </div>
     </div>

@@ -8,6 +8,8 @@
 // usePf2eStrikes; a Strike takes 1 action on your turn (p. 418).
 import type { Pf2eSheet } from '~/types/sheets'
 import { NOT_YOUR_TURN, cantAct, offTurn } from '~/utils/pf2eActions'
+import { sign } from '~/utils/dice'
+import { tipText } from '~/utils/ruleTips'
 
 const { draft, canEdit, say } = useSheet<Pf2eSheet>()
 const { claim, resultFor } = useResultOwner()
@@ -147,6 +149,17 @@ function step(key: string, by: number) {
   situation.value = { ...situation.value, [k]: Math.max(0, Math.min(4, situation.value[k] + by)) }
 }
 
+const { traitText, runeText } = usePf2eRuleTexts()
+
+/** What makes up an attack button's number: the sheet's bonus, then what changes it now, MAP. */
+function attackWhy(w: (typeof strikes.value)[number], penalty: number) {
+  return [
+    `Attack ${sign(w.bonus - (w.changed ? w.applied.reduce((n, m) => n + m.value, 0) : 0))} on the sheet`,
+    ...w.applied.map((m) => `${m.source} ${sign(m.value)} ${m.type}`),
+    ...(penalty ? [`Multiple attack penalty −${penalty}`] : []),
+  ].join('\n')
+}
+
 const critWanted = (index: number) => lastDegree.value[index] === 'critical success'
 const hitWanted = (index: number) => lastDegree.value[index] === 'success'
 </script>
@@ -176,7 +189,9 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
             <div class="stack" style="gap: 2px">
               <strong style="font-size: 16px">{{ w.name }}</strong>
               <span class="traits">
-                <span v-for="t in w.traits" :key="t" class="trait">{{ t }}</span>
+                <SheetRuleTip v-for="t in w.traits" :key="t" chip :title="t" :text="traitText(t)">{{
+                  t
+                }}</SheetRuleTip>
               </span>
               <Pf2eCostPill :cost="STRIKE_COST" />
               <span
@@ -194,7 +209,13 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
               style="font-size: 15px; white-space: nowrap"
             />
           </div>
-          <p v-if="w.runes.length" class="small muted runes">Runes: {{ w.runes.join(', ') }}</p>
+          <p v-if="w.runes.length" class="small muted runes">
+            Runes:
+            <template v-for="(r, k) in w.runes" :key="r"
+              >{{ k ? ', ' : ''
+              }}<SheetRuleTip :title="r" :text="runeText(r)">{{ r }}</SheetRuleTip></template
+            >
+          </p>
           <div v-if="w.twoHandDie || w.versatile" class="grips">
             <button
               v-if="w.twoHandDie"
@@ -227,19 +248,23 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
             {{ strikeWhy }}
           </button>
           <div v-else class="maps" role="group" :aria-label="`${w.name} attacks`">
-            <button
+            <UiTooltip
               v-for="(a, n) in w.atks"
               :key="n"
-              type="button"
-              class="btn"
-              :class="{ 'btn--ghost': n !== (turnActive ? nextAttack : 0) }"
-              :title="w.changed ? w.note : undefined"
-              :aria-label="`${a.label}, ${a.text}`"
-              :disabled="!canEdit"
-              @click="strike(w.index, n)"
+              :title="`${w.name}, ${ORD[n]} attack ${a.text}`"
+              :text="attackWhy(w, a.penalty)"
             >
-              {{ a.text }}<small v-if="n > 0"> ({{ ORD[n] }})</small>
-            </button>
+              <button
+                type="button"
+                class="btn"
+                :class="{ 'btn--ghost': n !== (turnActive ? nextAttack : 0) }"
+                :aria-label="`${a.label}, ${a.text}`"
+                :disabled="!canEdit"
+                @click="strike(w.index, n)"
+              >
+                {{ a.text }}<small v-if="n > 0"> ({{ ORD[n] }})</small>
+              </button>
+            </UiTooltip>
           </div>
           <div class="maps">
             <button
@@ -287,7 +312,11 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
         <div v-for="sp in spellAttacks" :key="sp.key" class="tile attack">
           <div class="attack__head">
             <div class="stack" style="gap: 2px">
-              <strong style="font-size: 16px">{{ sp.name }}</strong>
+              <strong style="font-size: 16px"
+                ><SheetRuleTip :title="sp.name" :text="tipText(sp.text)">{{
+                  sp.name
+                }}</SheetRuleTip></strong
+              >
               <span class="muted" style="font-size: 12px">{{ sp.group }} · {{ sp.line }}</span>
               <Pf2eCostPill :cost="sp.cost" />
             </div>
@@ -339,18 +368,6 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-}
-
-.trait {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--track);
-  border: 1px solid var(--line);
-  color: var(--page-soft);
 }
 
 .odds {

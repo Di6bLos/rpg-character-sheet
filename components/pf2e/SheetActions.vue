@@ -69,7 +69,13 @@ const sections = computed(() => [
   <section class="panel stack" style="gap: 14px" aria-labelledby="pf-act-h">
     <UiFold name="PF2e actions" />
     <div class="panel-title" style="margin: 0">
-      <h2 id="pf-act-h">Actions</h2>
+      <div class="title-help">
+        <h2 id="pf-act-h">Actions</h2>
+        <UiHelp
+          label="About actions"
+          text="Your abilities by what they cost: actions (◆, up to 3 a turn), free actions (◇) and activities that take longer; reactions have their own panel. Use pays the cost from the Turn panel, spends a limited use and rolls what the ability rolls (Player Core pp. 414–419)."
+        />
+      </div>
     </div>
     <div class="targets">
       <label class="target">

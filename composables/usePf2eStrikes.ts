@@ -312,6 +312,7 @@ function create() {
         critNotes,
         changed: attack.changed,
         note: attack.note,
+        applied: attack.applied,
         intAttack,
         bonus: attack.value,
         atks: penalties.map((penalty, i) => ({
