@@ -72,7 +72,9 @@ function levelTable(slug: string): LevelRow[] {
   const rows: LevelRow[] = [
     {
       level: 1,
-      features: sheet.features.filter((f) => f.from && f.from !== 'Summary').map((f) => `${f.from}: ${f.name}`),
+      features: sheet.features
+        .filter((f) => f.from && f.from !== 'Summary')
+        .map((f) => `${f.from}: ${f.name}`),
       picks: creationPicks(creation, choices, data).map(pickLine),
       after: after(sheet),
     },

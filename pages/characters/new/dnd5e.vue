@@ -319,8 +319,7 @@ const backgroundPick = computed({
     if (c.value.backgroundSlug === CUSTOM_BACKGROUND) {
       c.value.custom ??= { name: '', abilities: [], gear: [] }
       c.value.bonus = {}
-    }
-    else suggestBonus()
+    } else suggestBonus()
     dropClashes()
   },
 })
