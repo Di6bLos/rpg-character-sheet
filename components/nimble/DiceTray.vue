@@ -7,9 +7,21 @@
 // how fast the dice tumble). It stays until clicked or Esc. A modal dialog
 // opened last, so it sits above the board's drawer and any other open dialog and
 // still takes clicks (a popover outside a modal dialog would be inert).
+// Rolls from other players at the same campaign board (`useBattleDiceShare`, `onRemoteDice`)
+// throw here too, headed with who rolled; they close on their own a few seconds after
+// landing. A newer one replaces another player's roll at once; behind your own roll only
+// the latest waits, and closing the tray yourself drops it, so a GM rolling a string of
+// attacks can't keep the tray in a player's way.
 import type DiceBox from '@3d-dice/dice-box-threejs'
 import { isHex, onAccent } from '~/utils/contrast'
-import { onDiceShown, onRollOutcome, type RollOutcome, type ShownRoll } from '~/utils/dice'
+import {
+  onDiceShown,
+  onRemoteDice,
+  onRollOutcome,
+  type RollOutcome,
+  type SharedRoll,
+  type ShownRoll,
+} from '~/utils/dice'
 
 type Role = 'primary' | 'kept' | 'dropped' | 'crit' | 'extra'
 interface Die {
@@ -19,6 +31,8 @@ interface Die {
 }
 
 const SIDES = new Set([4, 6, 8, 10, 12, 20])
+/** How long another player's roll stays up after it lands. */
+const REMOTE_MS = 4000
 const TAGS: Partial<Record<Role, string>> = { primary: 'Primary', dropped: 'Dropped', crit: 'Crit' }
 
 const auth = useAuthStore()
@@ -30,6 +44,11 @@ const outcome = ref<RollOutcome | null>(null)
 const settled = ref(false)
 const tags = ref<{ x: number; y: number; text: string; role: Role }[]>([])
 const prefs = useDiceAnimation()
+/** Who threw the dice showing, for another player's roll; empty for your own. */
+const from = ref('')
+/** Another player's roll waiting behind your own. */
+let remoteNext: SharedRoll | null = null
+let remoteTimer: ReturnType<typeof setTimeout> | undefined
 
 let box: DiceBox | null = null
 let pending: ShownRoll[] = []
@@ -51,11 +70,33 @@ function merge(old: RollOutcome | null, next: RollOutcome): RollOutcome {
 let queued = false
 let throwId = 0
 let stop: (() => void) | undefined
+let stopRemote: (() => void) | undefined
+
+function canAnimate() {
+  return prefs.animate.value && !matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/**
+ * Throws another player's roll: at once when the tray is free or showing someone else's
+ * roll, else (your own dice are up) it waits, replacing any roll already waiting.
+ */
+function playRemote(roll: SharedRoll) {
+  const list = roll.rolls.filter((r) => SIDES.has(r.sides))
+  if (!list.length) return
+  const mine = pending.length > 0 || queued || (rolls.value.length > 0 && !from.value)
+  if (mine) {
+    remoteNext = roll
+    return
+  }
+  remoteNext = null
+  pending = list
+  pendingOutcome = roll.outcome
+  void throwPending(roll.from)
+}
 
 onMounted(() => {
   stop = onDiceShown((roll) => {
-    if (!prefs.animate.value || !SIDES.has(roll.sides)) return
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!SIDES.has(roll.sides) || !canAnimate()) return
     pending.push(roll)
     // One action can roll several times (a stack of summons): throw them together.
     if (!queued) {
@@ -66,13 +107,19 @@ onMounted(() => {
   // Outcomes only count with dice to show: one being thrown now, or the tray still open.
   stopOutcome = onRollOutcome((next) => {
     if (pending.length) pendingOutcome = merge(pendingOutcome, next)
-    else if (rolls.value.length) outcome.value = merge(outcome.value, next)
+    else if (rolls.value.length && !from.value) outcome.value = merge(outcome.value, next)
+  })
+  stopRemote = onRemoteDice((roll) => {
+    if (!canAnimate()) return
+    playRemote(roll)
   })
 })
 
 onBeforeUnmount(() => {
   stop?.()
   stopOutcome?.()
+  stopRemote?.()
+  clearTimeout(remoteTimer)
 })
 
 function setSkip(on: boolean) {
@@ -231,11 +278,13 @@ function mark(b: DiceBox, dice: Die[]) {
   b.renderer.render(b.scene, b.camera)
 }
 
-async function throwPending() {
+async function throwPending(who = '') {
   queued = false
   const list = compact(pending)
   pending = []
   if (!list.length) return
+  clearTimeout(remoteTimer)
+  from.value = who
   const id = ++throwId
   rolls.value = list
   outcome.value = pendingOutcome
@@ -267,16 +316,30 @@ async function throwPending() {
   } catch {
     // No WebGL: the strip below still shows the roll.
   }
+  if (id !== throwId) return
   settled.value = true
+  if (who) remoteTimer = setTimeout(() => id === throwId && close(), REMOTE_MS)
 }
 
 function close() {
   throwId += 1
+  clearTimeout(remoteTimer)
+  from.value = ''
   rolls.value = []
   outcome.value = null
   tags.value = []
   box?.clearDice()
   if (tray.value?.open) tray.value.close()
+  // Another player's roll that came in behind your own gets its turn.
+  const next = remoteNext
+  remoteNext = null
+  if (next) queueMicrotask(() => playRemote(next))
+}
+
+/** Closed by a click or Esc: nothing waiting shows after it. */
+function dismiss() {
+  remoteNext = null
+  close()
 }
 </script>
 
@@ -287,8 +350,8 @@ function close() {
     aria-label="Dice roll"
     tabindex="-1"
     :style="{ '--die': dieColor, '--on-die': onAccent(dieColor) }"
-    @click="close"
-    @cancel.prevent="close"
+    @click="dismiss"
+    @cancel.prevent="dismiss"
   >
     <div id="dice-tray-stage" ref="stage" class="tray__stage" />
     <span
@@ -301,6 +364,7 @@ function close() {
       >{{ t.text }}</span
     >
     <div class="tray__results" role="status" aria-live="polite" @click.stop>
+      <p v-if="from" class="tray__from">{{ from }} rolled</p>
       <template v-if="settled">
         <div v-for="(r, k) in rolls" :key="k" class="tray__roll">
           <strong v-if="r.miss" class="tray__call tray__call--miss">Miss</strong>
@@ -333,7 +397,9 @@ function close() {
           <p class="tray__detail">{{ outcome.detail }}</p>
         </div>
       </template>
-      <small v-if="settled" class="tray__hint">Click anywhere or press Esc to close</small>
+      <small v-if="settled" class="tray__hint">{{
+        from ? 'Closes by itself, or click anywhere' : 'Click anywhere or press Esc to close'
+      }}</small>
       <label class="tray__skip">
         <input
           type="checkbox"
@@ -488,6 +554,14 @@ function close() {
 .tray__total--dice {
   font-size: 15px;
   color: color-mix(in srgb, #f3ead6 65%, transparent);
+}
+
+.tray__from {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: #f3ead6;
 }
 
 .tray__outcome {

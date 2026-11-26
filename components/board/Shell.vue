@@ -3,6 +3,7 @@
 // campaign title, campaign switcher, preview / console links and the routed tabs.
 // On the battle board (Battle tab, every system) the header and tabs hide and
 // the battle bar shows them instead, reading the same state through `useBoardNav()`.
+// It also shares the dice tray with the table (`useBattleDiceShare`).
 import { plural } from '~/utils/format'
 import { systemLabel } from '~/utils/systems'
 
@@ -10,6 +11,8 @@ const { mode, campaign, isGm, base } = useCampaignBoard()
 const { meta, tabs, isCurrent, switchable, switchTo, myOptions, seat } = provideBoardNav()
 
 const battle = computed(() => isCurrent('battle'))
+// Dice rolled at this board show on everyone's screen, whichever tab they're on.
+useBattleDiceShare()
 </script>
 
 <template>
