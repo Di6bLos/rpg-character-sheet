@@ -1,5 +1,6 @@
 import type { NimbleSheet } from '~/types/sheets'
 import { sheetResource } from '~/utils/nimbleBuild'
+import type { HpTakes } from '~/utils/hpPreview'
 import { hpTone as toneFor } from '~/utils/roster'
 import { conditionMods, wardedDamage } from '~/utils/nimbleConditions'
 import {
@@ -72,6 +73,15 @@ export function useNimbleVitals() {
 
   /** Warding Bond: the HP bar previews and takes half of a hit. */
   const warded = computed(() => sheet.value.conditions.includes('Warded'))
+  /** The HP bar's rule for a hit (`SheetHpBar`'s `takes`): Warded takes half. */
+  const takes = computed<HpTakes | undefined>(() =>
+    warded.value
+      ? (d: number) => {
+          const taken = Math.floor(d / 2)
+          return { taken, note: `Warded: you take ${taken}` }
+        }
+      : undefined,
+  )
 
   /** The next damage is from a critical hit. */
   const crit = ref(false)
@@ -174,6 +184,7 @@ export function useNimbleVitals() {
     speed,
     armor,
     warded,
+    takes,
     crit,
     revive,
     damage,
