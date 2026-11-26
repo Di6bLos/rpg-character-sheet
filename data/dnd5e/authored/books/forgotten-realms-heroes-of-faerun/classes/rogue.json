@@ -1,0 +1,69 @@
+{
+  "subclasses": {
+    "scion-of-the-three": {
+      "summary": "A Rogue empowered, by devotion or by curse, by the Dead Three (Bane, Bhaal and Myrkul), who preys on the wounded and spreads terror.",
+      "features": {
+        "Bloodthirst": {
+          "summary": "Reaction when an enemy you see within 30 ft is left Bloodied but alive by damage: teleport next to it and make one melee attack. INT modifier uses (min 1) per Long Rest.",
+          "activation": "reaction",
+          "uses": { "count": "INT", "recharge": "long" },
+          "range": 30
+        },
+        "Dread Allegiance": {
+          "summary": "Pick one of the Dead Three for a damage Resistance and a cantrip (INT): Bane, Psychic and Minor Illusion; Bhaal, Poison and Blade Ward; Myrkul, Necrotic and Chill Touch. You can switch after a Long Rest.",
+          "options": [
+            {
+              "name": "Bane",
+              "summary": "Resistance to Psychic; Minor Illusion cantrip.",
+              "grants": [
+                { "kind": "resistance", "value": "Psychic" },
+                { "kind": "spell", "spell": "minor-illusion" }
+              ]
+            },
+            {
+              "name": "Bhaal",
+              "summary": "Resistance to Poison; Blade Ward cantrip.",
+              "grants": [
+                { "kind": "resistance", "value": "Poison" },
+                { "kind": "spell", "spell": "blade-ward" }
+              ]
+            },
+            {
+              "name": "Myrkul",
+              "summary": "Resistance to Necrotic; Chill Touch cantrip.",
+              "grants": [
+                { "kind": "resistance", "value": "Necrotic" },
+                { "kind": "spell", "spell": "chill-touch" }
+              ]
+            }
+          ]
+        },
+        "Strike Fear": {
+          "summary": "New Cunning Strike, Terrify (cost 1d6): the target makes a WIS save or is Frightened for 1 minute, giving you Advantage on attacks against it; it repeats the save at the end of each of its turns.",
+          "options": [
+            {
+              "name": "Terrify",
+              "summary": "Cost 1d6. WIS save or Frightened for 1 minute (repeat the save each turn end); you have Advantage on attacks against it meanwhile.",
+              "save": { "ability": "WIS", "dc": "8+PB+DEX" },
+              "duration": "1 minute"
+            }
+          ]
+        },
+        "Aura of Malevolence": {
+          "summary": "When Bloodthirst teleports you, chosen creatures within 10 ft of your start or end space take INT modifier damage of your Dread Allegiance type, ignoring Resistance.",
+          "range": 10
+        },
+        "Dread Incarnate": {
+          "summary": "A Short Rest restores one Bloodthirst use, and Sneak Attack dice that roll 1 or 2 count as 3.",
+          "options": [
+            { "name": "Cutthroat", "summary": "Regain one spent Bloodthirst use on a Short Rest." },
+            {
+              "name": "Murderous Intent",
+              "summary": "Treat 1s and 2s on Sneak Attack dice as 3s."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

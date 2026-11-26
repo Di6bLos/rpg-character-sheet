@@ -1,0 +1,264 @@
+{
+  "subclasses": {
+    "conjurer": {
+      "summary": "A wizard who treats distance as optional, teleporting at will and calling up creatures to fight for them.",
+      "features": {
+        "Benign Transposition": {
+          "summary": "Bonus Action: teleport up to 30 ft to an unoccupied space you see, or trade places with a willing Medium or smaller creature there. INT modifier uses (min 1) per Long Rest.",
+          "activation": "bonus",
+          "range": 30,
+          "uses": { "count": "INT", "recharge": "long" }
+        },
+        "Conjuration Savant": {
+          "summary": "Two Conjuration Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Conjuration spell you can cast, also free.",
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "list": "wizard",
+              "maxLevel": 2,
+              "school": ["Conjuration"],
+              "label": "Conjuration Savant (Conjuration)"
+            }
+          ]
+        },
+        "Distant Transposition": {
+          "summary": "Benign Transposition reaches 60 ft, and a level 3+ spell slot (no action) restores one of its uses.",
+          "range": 60
+        },
+        "Durable Summons": {
+          "summary": "A creature you summon or create with a slot-cast Conjuration spell arrives with Temporary HP of 2 × your Wizard level, and while those last it resists all damage but Force, Necrotic, Psychic and Radiant."
+        },
+        "Focused Conjuration": {
+          "summary": "Your Concentration on a Conjuration spell holds no matter how much damage you take."
+        },
+        "Splintered Summons": {
+          "summary": "A slot-cast Conjuration spell that calls a spirit with its own stat block (Summon Aberration and the like) can call two of them, each with half the HP; both vanish if Concentration ends. Once per Long Rest; a level 5+ slot restores it.",
+          "uses": { "count": 1, "recharge": "long", "restore": "a level 5+ spell slot" }
+        }
+      }
+    },
+    "enchanter": {
+      "summary": "A wizard who sways minds, charming, entrancing and rewriting the memories of others.",
+      "features": {
+        "Enchanting Conversationalist": {
+          "summary": "Gain Deception, Intimidation or Persuasion, and add your INT modifier (min +1) to checks with it.",
+          "choices": [
+            { "kind": "skill", "count": 1, "from": ["Deception", "Intimidation", "Persuasion"] }
+          ]
+        },
+        "Enchantment Savant": {
+          "summary": "Two Enchantment Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Enchantment spell you can cast, also free.",
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "list": "wizard",
+              "maxLevel": 2,
+              "school": ["Enchantment"],
+              "label": "Enchantment Savant (Enchantment)"
+            }
+          ]
+        },
+        "Hypnotic Presence": {
+          "summary": "Magic action: a creature within 10 ft that sees or hears you makes a WIS save or is Charmed, Incapacitated and at Speed 0 for 1 minute; it ends if it takes damage, moves over 10 ft off or loses sight and sound of you. INT modifier uses (min 1) per Long Rest.",
+          "activation": "magic",
+          "range": 10,
+          "duration": "1 minute",
+          "save": { "ability": "WIS", "dc": "spell" },
+          "uses": { "count": "INT", "recharge": "long" }
+        },
+        "Split Enchantment": {
+          "summary": "Cast a slot-cast Enchantment spell that gains targets when upcast (like Charm Person) as if one level higher. INT modifier uses per Long Rest.",
+          "uses": { "count": "INT", "recharge": "long" }
+        },
+        "Instinctive Charm": {
+          "summary": "Reaction when a creature you see within 30 ft hits you: it makes a WIS save or misses, turning the same roll on another creature in its range that you pick. Once per Long Rest; casting a slot-cast Enchantment spell restores it.",
+          "activation": "reaction",
+          "range": 30,
+          "save": { "ability": "WIS", "dc": "spell" },
+          "uses": { "count": 1, "recharge": "long", "restore": "a slot-cast Enchantment spell" }
+        },
+        "Alter Memories": {
+          "summary": "One creature you Charm with a slot-cast Enchantment spell doesn't know it's Charmed. Once during the spell, a Magic action forces an INT save: on a fail it forgets up to 1 + INT modifier hours (min 1), no longer than the spell's duration.",
+          "activation": "magic",
+          "save": { "ability": "INT", "dc": "spell" }
+        }
+      }
+    },
+    "necromancer": {
+      "summary": "A wizard who studies life, death and undeath, raising and empowering undead servants from a dread spellbook.",
+      "features": {
+        "Necromancy Savant": {
+          "summary": "Two Necromancy Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Necromancy spell you can cast, also free.",
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "list": "wizard",
+              "maxLevel": 2,
+              "school": ["Necromancy"],
+              "label": "Necromancy Savant (Necromancy)"
+            }
+          ]
+        },
+        "Necromancy Spellbook": {
+          "summary": "Resistance to Necrotic damage. Find Familiar enters your spellbook with Skeleton, Zombie or undead forms, and you can give up one attack of the Attack action so it attacks with its Reaction. Slot-cast Necromancy spells heal an Undead you see within 60 ft by slot level + Wizard level.",
+          "grants": [
+            { "kind": "resistance", "value": "Necrotic" },
+            { "kind": "spell", "spell": "find-familiar" }
+          ],
+          "options": [
+            { "name": "Necrotic Resistance", "summary": "You resist Necrotic damage." },
+            {
+              "name": "Undead Familiar",
+              "summary": "Your familiar can be a Skeleton or Zombie, or a normal form of Undead type; trade one of your attacks to let it attack with its Reaction."
+            },
+            {
+              "name": "Undead Vitality",
+              "summary": "When you cast a Necromancy spell with a slot, an Undead you see within 60 ft regains HP equal to the slot level + your Wizard level.",
+              "range": 60
+            }
+          ]
+        },
+        "Grave Power": {
+          "summary": "While holding your spellbook: Arcane Recovery also lowers your Exhaustion by 1, and your Wizard spells and features ignore Necrotic Resistance.",
+          "options": [
+            {
+              "name": "Grave Resilience",
+              "summary": "Arcane Recovery removes 1 Exhaustion level."
+            },
+            {
+              "name": "Overwhelming Necrosis",
+              "summary": "Necrotic damage from your Wizard spells and features ignores Resistance."
+            }
+          ]
+        },
+        "Undead Thralls": {
+          "summary": "Animate Dead is always prepared; cast it free once per Long Rest, and any casting can go one level higher. Holding your spellbook, undead your Necromancy creates gain INT + half Wizard level HP, and your undead within 60 ft add INT (min 1) Necrotic to hits.",
+          "grants": [
+            { "kind": "spell", "spell": "animate-dead", "free": { "count": 1, "recharge": "long" } }
+          ],
+          "options": [
+            {
+              "name": "Undead Fortitude",
+              "summary": "Undead you create or summon with Necromancy get max and current HP raised by INT modifier + half your Wizard level."
+            },
+            {
+              "name": "Withering Strike",
+              "summary": "Your controlled Undead within 60 ft deal extra Necrotic equal to your INT modifier (min 1) when they hit.",
+              "range": 60,
+              "damageType": "Necrotic"
+            }
+          ]
+        },
+        "Harvest Undead": {
+          "summary": "Reaction right after damage leaves you Bloodied but above 0 HP: drop an Undead you control and see to 0 HP and regain HP equal to your Wizard level.",
+          "activation": "reaction"
+        },
+        "Death’s Master": {
+          "summary": "Holding your spellbook: once per Long Rest, a Bonus Action grants your Necromancy-made Undead within 60 ft Temporary HP equal to your Wizard level. An Undead you see dropping to 0 HP can burst for d6s equal to half its unspent Hit Dice (min 1d6) of Necrotic in a 10-ft Emanation (DEX save for half; failures lose Reactions); one you don't control costs a Reaction and a level 5+ slot.",
+          "options": [
+            {
+              "name": "Bolster Undead",
+              "summary": "Bonus Action: chosen Undead you made or summoned with Necromancy within 60 ft each gain Temporary HP equal to your Wizard level. Once per Long Rest.",
+              "activation": "bonus",
+              "range": 60,
+              "uses": { "count": 1, "recharge": "long" }
+            },
+            {
+              "name": "Extinguish Undead",
+              "summary": "An Undead you see at 0 HP explodes: d6s equal to half its unspent Hit Dice (round up, min 1) of Necrotic to each creature in a 10-ft Emanation, DEX save for half; those failing can't take Reactions until their next turn starts.",
+              "damageType": "Necrotic",
+              "save": { "ability": "DEX", "dc": "spell" }
+            }
+          ]
+        }
+      }
+    },
+    "transmuter": {
+      "summary": "A wizard who reshapes matter and energy, crafting a stone of transmutation and changing their own form.",
+      "features": {
+        "Transmutation Savant": {
+          "summary": "Two Transmutation Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Transmutation spell you can cast, also free.",
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "list": "wizard",
+              "maxLevel": 2,
+              "school": ["Transmutation"],
+              "label": "Transmutation Savant (Transmutation)"
+            }
+          ]
+        },
+        "Transmuter’s Stone": {
+          "summary": "After a Long Rest, make a Tiny stone (usable as your Wizard focus) that gives its holder CON save proficiency plus one benefit: Darkvision 60 ft (or +60 ft), Resistance to one of Acid, Cold, Fire, Lightning, Poison or Thunder, or +10 ft Speed. A slot-cast Transmutation spell lets you switch the benefit.",
+          "options": [
+            {
+              "name": "Darkvision",
+              "summary": "Darkvision 60 ft, or +60 ft to existing Darkvision."
+            },
+            {
+              "name": "Resistance",
+              "summary": "Resistance to your pick of Acid, Cold, Fire, Lightning, Poison or Thunder."
+            },
+            { "name": "Speed", "summary": "Speed +10 ft." }
+          ]
+        },
+        "Wondrous Alteration": {
+          "summary": "Alter Self is always prepared; cast it free once per Long Rest. Under it, Aquatic Adaptation lets you Dash as a Bonus Action underwater, Change Appearance gives Advantage on Charisma (Deception), and Natural Weapons deal 2d6 and give Advantage on Concentration saves.",
+          "grants": [
+            { "kind": "spell", "spell": "alter-self", "free": { "count": 1, "recharge": "long" } }
+          ]
+        },
+        "Empowered Transmutation": {
+          "summary": "Cast a slot-cast Transmutation spell that makes no attack roll and forces no save (Fly, Magic Weapon…) as if one level higher. INT modifier uses (min 1) per Long Rest.",
+          "uses": { "count": "INT", "recharge": "long" }
+        },
+        "Potent Stone": {
+          "summary": "Your stone holds two benefits (Resistance can be taken twice for different types), both switchable on a slot-cast Transmutation spell. New benefits: Mighty Build (Advantage on STR saves, carry as one size larger) and Tremorsense 30 ft.",
+          "options": [
+            {
+              "name": "Mighty Build",
+              "summary": "Advantage on STR saves; carrying capacity as one size larger."
+            },
+            { "name": "Tremorsense", "summary": "Tremorsense 30 ft." }
+          ]
+        },
+        "Shape-Shifter": {
+          "summary": "Polymorph is always prepared; cast it free once per Long Rest. Once per Long Rest, when you Polymorph yourself, keep your mind, speech, INT/WIS/CHA, proficiencies, class features and feats, and cast Transmutation spells without costly or consumed Material components.",
+          "grants": [
+            { "kind": "spell", "spell": "polymorph", "free": { "count": 1, "recharge": "long" } }
+          ],
+          "uses": { "count": 1, "recharge": "long" }
+        },
+        "Master Transmuter": {
+          "summary": "Magic action, holding your stone: spend it for one effect, after which it turns to dust unless you also spend a level 7+ slot.",
+          "activation": "magic",
+          "options": [
+            {
+              "name": "Major Transformation",
+              "summary": "Over 10 minutes of handling, turn a nonmagical object up to a 10-ft Cube (or eight joined 5-ft Cubes) into a different mundane object of about the same size and mass, worth no more."
+            },
+            {
+              "name": "Panacea",
+              "summary": "A touched creature heals half its HP maximum and is freed of magical diseases, curses (cursed-item Attunement included), Poisoned and Petrified.",
+              "range": "Touch"
+            },
+            {
+              "name": "Restore Life",
+              "summary": "Cast Raise Dead with no slot, the stone standing in for its Material components."
+            },
+            {
+              "name": "Restore Youth",
+              "summary": "A willing creature you touch drops to 0 Exhaustion and permanently looks 3d10 years younger, never below young adulthood.",
+              "range": "Touch",
+              "dice": "3d10"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

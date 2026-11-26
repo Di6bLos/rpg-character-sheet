@@ -1,0 +1,29 @@
+{
+  "fey-tormentor": {
+    "summary": "Cruel fey magic: slow and weaken a group of foes, and curse with Hex.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Faerie Time Warp": {
+        "summary": "Bonus Action: up to three creatures you see within 60 ft make a WIS save (DC 8 + PB + the ability you raised); on a failure each loses 10 ft of Speed and takes −2 AC until your next turn ends. Once per Long Rest.",
+        "activation": "bonus",
+        "uses": { "count": 1, "recharge": "long" },
+        "range": 60,
+        "save": { "ability": "WIS", "dc": "8+PB+INT/WIS/CHA" }
+      },
+      "Hag’s Hex": {
+        "summary": "Hex is always prepared (Bestow Curse too from level 5), each castable once per Long Rest without a slot, or with your slots. The ability you raised casts them.",
+        "grants": [
+          { "kind": "spell", "spell": "hex", "free": { "count": 1, "recharge": "long" } },
+          {
+            "kind": "spell",
+            "spell": "bestow-curse",
+            "at": 5,
+            "free": { "count": 1, "recharge": "long" }
+          }
+        ]
+      }
+    }
+  }
+}

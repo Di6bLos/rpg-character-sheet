@@ -31,7 +31,8 @@
     "items": "50 GP",
     "gp": 50
    }
-  ]
+  ],
+  "summary": "Insight and Religion, Calligrapher’s Supplies, and the Magic Initiate (Cleric) feat; raises Intelligence, Wisdom or Charisma."
  },
  {
   "slug": "artisan",
@@ -136,7 +137,8 @@
     "items": "50 GP",
     "gp": 50
    }
-  ]
+  ],
+  "summary": "Sleight of Hand and Stealth, Thieves’ Tools, and the Alert feat; raises Dexterity, Constitution or Intelligence."
  },
  {
   "slug": "entertainer",
@@ -420,7 +422,8 @@
     "items": "50 GP",
     "gp": 50
    }
-  ]
+  ],
+  "summary": "Arcana and History, Calligrapher’s Supplies, and the Magic Initiate (Wizard) feat; raises Constitution, Intelligence or Wisdom."
  },
  {
   "slug": "sailor",
@@ -525,7 +528,8 @@
     "items": "50 GP",
     "gp": 50
    }
-  ]
+  ],
+  "summary": "Athletics and Intimidation, a tool of choice, and the Savage Attacker feat; raises Strength, Dexterity or Constitution."
  },
  {
   "slug": "wayfarer",
@@ -559,5 +563,2071 @@
    }
   ],
   "summary": "Grew up homeless on city streets, scraping by on odd jobs and the occasional theft, yet never giving up hope."
+ },
+ {
+  "slug": "aberrant-heir",
+  "name": "Aberrant Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:aberrant-heir",
+  "abilities": [
+   "STR",
+   "CON",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "aberrant-dragonmark"
+  },
+  "skills": [
+   "History",
+   "Intimidation"
+  ],
+  "tool": "Disguise Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Dagger, Disguise Kit, Costume, Traveler’s Clothes, 16 GP",
+    "gp": 16
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Bears an aberrant dragonmark that has brought suspicion or hostility from the houses, whether hidden, flaunted or tied to House Tarkanan's outlaws."
+ },
+ {
+  "slug": "archaeologist",
+  "name": "Archaeologist",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:archaeologist",
+  "abilities": [
+   "DEX",
+   "INT",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "skilled"
+  },
+  "skills": [
+   "History",
+   "Survival"
+  ],
+  "tool": "Cartographer’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Cartographer’s Tools, Bullseye Lantern, Map, Map or Scroll Case, Shovel, Tent, Traveler’s Clothes, 17 GP",
+    "gp": 17
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A scholar of vanished civilizations who splits time between libraries and remote ruins, part historian and part treasure hunter."
+ },
+ {
+  "slug": "house-agent",
+  "name": "House Agent",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-agent",
+  "abilities": [
+   "STR",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "lucky"
+  },
+  "skills": [
+   "Investigation",
+   "Persuasion"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Artisan’s Tools"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Artisan’s Tools (same as above), Fine Clothes, 20 GP",
+    "gp": 20
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Works for a dragonmarked house, by blood or by contract, without a mark of their own, carrying out the house's business far and wide."
+ },
+ {
+  "slug": "house-cannith-heir",
+  "name": "House Cannith Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-cannith-heir",
+  "abilities": [
+   "STR",
+   "DEX",
+   "INT"
+  ],
+  "feat": {
+   "slug": "mark-of-making"
+  },
+  "skills": [
+   "Investigation",
+   "Sleight of Hand"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Artisan’s Tools"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Artisan’s Tools (same as above), Crowbar, Fine Clothes, 2 Pouches, 17 GP",
+    "gp": 17
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A scion of the house of makers, expected to invent, study or deal on its behalf while its feuding barons fight over who leads it."
+ },
+ {
+  "slug": "house-deneith-heir",
+  "name": "House Deneith Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-deneith-heir",
+  "abilities": [
+   "STR",
+   "CON",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "mark-of-sentinel"
+  },
+  "skills": [
+   "Insight",
+   "Perception"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Gaming Set"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Fine Clothes, Healer’s Kit, Quiver, 1 GP",
+    "gp": 1
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Raised in the house of guards and mercenaries to value duty, honor and law, perhaps as a bodyguard, sellsword or bounty marshal."
+ },
+ {
+  "slug": "house-ghallanda-heir",
+  "name": "House Ghallanda Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-ghallanda-heir",
+  "abilities": [
+   "DEX",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "mark-of-hospitality"
+  },
+  "skills": [
+   "Insight",
+   "Persuasion"
+  ],
+  "tool": "Cook’s Utensils",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Cook’s Utensils, Fine Clothes, Iron Pot, Lamp, Oil (5 flasks), Perfume, 26 GP",
+    "gp": 26
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Grew up among the comforts of the hospitality house's inns, as a warm host or a schemer who trades on others' trust."
+ },
+ {
+  "slug": "house-jorasco-heir",
+  "name": "House Jorasco Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-jorasco-heir",
+  "abilities": [
+   "DEX",
+   "CON",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "mark-of-healing"
+  },
+  "skills": [
+   "Medicine",
+   "Stealth"
+  ],
+  "tool": "Herbalism Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Herbalism Kit, Fine Clothes, Healer’s Kit, 25 GP",
+    "gp": 25
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Trained by the healers' house to fight sickness and injury, for a fair fee, whether as a gentle physician or a precise killer."
+ },
+ {
+  "slug": "house-kundarak-heir",
+  "name": "House Kundarak Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-kundarak-heir",
+  "abilities": [
+   "STR",
+   "CON",
+   "INT"
+  ],
+  "feat": {
+   "slug": "mark-of-warding"
+  },
+  "skills": [
+   "Arcana",
+   "Investigation"
+  ],
+  "tool": "Thieves’ Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Thieves’ Tools, Fine Clothes, 10 GP",
+    "gp": 10
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A proud member of the dwarven house of vaults and wards, upholding, bending or defying its code of honor and order."
+ },
+ {
+  "slug": "house-lyrandar-heir",
+  "name": "House Lyrandar Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-lyrandar-heir",
+  "abilities": [
+   "STR",
+   "DEX",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "mark-of-storm"
+  },
+  "skills": [
+   "Acrobatics",
+   "Nature"
+  ],
+  "tool": "Navigator’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Navigator’s Tools, Fine Clothes, 10 GP",
+    "gp": 10
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Born into the house of wind and wave, now riding high on airships, with a past at sea, among weather-workers or on an airship crew."
+ },
+ {
+  "slug": "house-medani-heir",
+  "name": "House Medani Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-medani-heir",
+  "abilities": [
+   "DEX",
+   "INT",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "mark-of-detection"
+  },
+  "skills": [
+   "Insight",
+   "Investigation"
+  ],
+  "tool": "Disguise Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Disguise Kit, Fine Clothes, 10 GP",
+    "gp": 10
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Raised in the house of warning to spot plots and threats before they unfold, protecting clients through foresight rather than force."
+ },
+ {
+  "slug": "house-orien-heir",
+  "name": "House Orien Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-orien-heir",
+  "abilities": [
+   "DEX",
+   "CON",
+   "INT"
+  ],
+  "feat": {
+   "slug": "mark-of-passage"
+  },
+  "skills": [
+   "Acrobatics",
+   "Athletics"
+  ],
+  "tool": "Cartographer’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Cartographer’s Tools, Fine Clothes, Map, Map or Scroll Case, 18 GP",
+    "gp": 18
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Of the house of couriers and the lightning rail, working to keep trade moving and to reopen routes the war cut off."
+ },
+ {
+  "slug": "house-phiarlan-heir",
+  "name": "House Phiarlan Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-phiarlan-heir",
+  "abilities": [
+   "DEX",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "mark-of-shadow"
+  },
+  "skills": [
+   "Deception",
+   "Stealth"
+  ],
+  "tool": "Disguise Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Disguise Kit, Fine Clothes, 10 GP",
+    "gp": 10
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "An heir of the house of entertainers who prizes secrets above wealth, performing in public or serving its hidden spy network."
+ },
+ {
+  "slug": "house-sivis-heir",
+  "name": "House Sivis Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-sivis-heir",
+  "abilities": [
+   "INT",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "mark-of-scribing"
+  },
+  "skills": [
+   "History",
+   "Perception"
+  ],
+  "tool": "Calligrapher’s Supplies",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Calligrapher’s Supplies, Fine Clothes, Ink, 5 Ink Pens, Paper (30 sheets), Parchment (9 sheets), 8 GP",
+    "gp": 8
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "From the ancient house of scribes and messengers, which shapes events quietly through communication and mediation."
+ },
+ {
+  "slug": "house-tharashk-heir",
+  "name": "House Tharashk Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-tharashk-heir",
+  "abilities": [
+   "CON",
+   "INT",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "mark-of-finding"
+  },
+  "skills": [
+   "Perception",
+   "Survival"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Gaming Set"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Gaming Set (same as above), Climber’s Kit, Fine Clothes, Hunting Trap, Manacles, 2 GP",
+    "gp": 2
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Raised in a young, scrappy house of finders that taught self-reliance and the hunter's approach to every challenge."
+ },
+ {
+  "slug": "house-thuranni-heir",
+  "name": "House Thuranni Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-thuranni-heir",
+  "abilities": [
+   "DEX",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "mark-of-shadow"
+  },
+  "skills": [
+   "Performance",
+   "Stealth"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Musical Instrument"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Musical Instrument (same as above), Costume, Fine Clothes, 13 GP",
+    "gp": 13
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Of a young house split from the shadow-marked elves, expected to gather and pass on information for the family at every turn."
+ },
+ {
+  "slug": "house-vadalis-heir",
+  "name": "House Vadalis Heir",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:house-vadalis-heir",
+  "abilities": [
+   "CON",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "mark-of-handling"
+  },
+  "skills": [
+   "Animal Handling",
+   "Nature"
+  ],
+  "tool": "Herbalism Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Herbalism Kit, Fine Clothes, Net, 29 GP",
+    "gp": 29
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Brought up close to family and the natural world, wise to life's cycles and to the deceits of city dwellers."
+ },
+ {
+  "slug": "inquisitive",
+  "name": "Inquisitive",
+  "srd": false,
+  "source": "Eberron: Forge of the Artificer",
+  "wiki": "background:inquisitive",
+  "abilities": [
+   "CON",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "alert"
+  },
+  "skills": [
+   "Insight",
+   "Investigation"
+  ],
+  "tool": "Thieves’ Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Thieves’ Tools, Bullseye Lantern, Crowbar, Oil (10 flasks), Traveler’s Clothes, 10 GP",
+    "gp": 10
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A curious investigator who solves crimes, finds the missing and exposes conspiracies, freelance, for an agency, a broadsheet or the watch."
+ },
+ {
+  "slug": "chondathan-freebooter",
+  "name": "Chondathan Freebooter",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:chondathan-freebooter",
+  "abilities": [
+   "STR",
+   "DEX",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "skilled"
+  },
+  "skills": [
+   "Athletics",
+   "Sleight of Hand"
+  ],
+  "tool": "Weaver’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Dagger, Weaver’s Tools, Backpack, Ball Bearings, Basket, Bedroll, Bucket, Rations (3 days’ worth), Rope, Signal Whistle, Traveler’s Clothes, 38 GP",
+    "gp": 38
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Dodged Chondath’s mandatory soldiering by renouncing country and name and signing onto a ship, then spent years working the coasts of the Vilhon Reach, rich in local contacts."
+ },
+ {
+  "slug": "dead-magic-dweller",
+  "name": "Dead Magic Dweller",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:dead-magic-dweller",
+  "abilities": [
+   "STR",
+   "CON",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "healer"
+  },
+  "skills": [
+   "Medicine",
+   "Survival"
+  ],
+  "tool": "Leatherworker’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Greatclub, Leatherworker’s Tools, Bedroll, Blanket, Healer’s Kit, Pole, Rations (3 days’ worth), Tent, Tinderbox, 5 Torches, Traveler’s Clothes, Waterskin, 32 GP",
+    "gp": 32
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Fled to Anauroch’s dead magic zones, where spells and magical hunters falter, and came out tougher, wiser and skilled at desert healing and survival."
+ },
+ {
+  "slug": "dragon-cultist",
+  "name": "Dragon Cultist",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:dragon-cultist",
+  "abilities": [
+   "DEX",
+   "CON",
+   "INT"
+  ],
+  "feat": {
+   "slug": "cult-of-the-dragon-initiate"
+  },
+  "skills": [
+   "Deception",
+   "Stealth"
+  ],
+  "tool": "Calligrapher’s Supplies",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Calligrapher’s Supplies, Dagger, Glass Bottle, Lamp, Manacles, Oil (5 flasks), 2 Pouches, Robe, Rope, 30 GP",
+    "gp": 30
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Swore an oath to a hidden cell of the Cult of the Dragon, prizing deceit, secrecy and resolve in return for fellow worshipers and occult learning."
+ },
+ {
+  "slug": "emerald-enclave-caretaker",
+  "name": "Emerald Enclave Caretaker",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:emerald-enclave-caretaker",
+  "abilities": [
+   "CON",
+   "INT",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "emerald-enclave-fledgling"
+  },
+  "skills": [
+   "Nature",
+   "Survival"
+  ],
+  "tool": "Herbalism Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Shortbow, 20 Arrows, Herbalism Kit, Bedroll, Blanket, Pouch, Tent, Traveler’s Clothes, 13 GP",
+    "gp": 13
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Serves the Emerald Enclave by tracking, foraging and reading the weather, keeping nature and civilization in balance and hunting unnatural threats."
+ },
+ {
+  "slug": "flaming-fist-mercenary",
+  "name": "Flaming Fist Mercenary",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:flaming-fist-mercenary",
+  "abilities": [
+   "STR",
+   "CON",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "tough"
+  },
+  "skills": [
+   "Intimidation",
+   "Perception"
+  ],
+  "tool": "Smith’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Mace, Smith’s Tools, Fine Clothes, Manacles, Portable Ram, 4 GP",
+    "gp": 4
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Once enforced the law in Baldur’s Gate with the Flaming Fist mercenary guild, learning to stare down trouble and take a beating, and upholds the guild’s hard reputation."
+ },
+ {
+  "slug": "genie-touched",
+  "name": "Genie Touched",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:genie-touched",
+  "abilities": [
+   "DEX",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "magic-initiate",
+   "option": "Wizard"
+  },
+  "skills": [
+   "Perception",
+   "Persuasion"
+  ],
+  "tool": "Glassblower’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Light Hammer, Glassblower’s Tools, Fine Clothes, Lamp, Oil (3 flasks), Waterskin, 2 GP",
+    "gp": 2
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A Calishite whose path crossed a genie’s, through a lamp, an oasis, a rescue or a bargain, leaving sharp senses, smooth speech and a trace of magic."
+ },
+ {
+  "slug": "harper",
+  "name": "Harper",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:harper",
+  "abilities": [
+   "DEX",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "harper-agent"
+  },
+  "skills": [
+   "Performance",
+   "Sleight of Hand"
+  ],
+  "tool": "Disguise Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Disguise Kit, Bedroll, Costume, Grappling Hook, Rope, Traveler’s Clothes, 14 GP",
+    "gp": 14
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Took the Harpers’ oath to serve the common good, learning their melodies, passwords and sleight of hand to spy on and thwart evil."
+ },
+ {
+  "slug": "ice-fisher",
+  "name": "Ice Fisher",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:ice-fisher",
+  "abilities": [
+   "STR",
+   "DEX",
+   "CON"
+  ],
+  "feat": {
+   "slug": "alert"
+  },
+  "skills": [
+   "Animal Handling",
+   "Athletics"
+  ],
+  "tool": "Woodcarver’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Woodcarver’s Tools, Basket, Block and Tackle, Bucket, Chain, Hunting Trap, Net, Pole, Rations (3 days’ worth), Rope, Traveler’s Clothes, 32 GP",
+    "gp": 32
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Born to a long line of Ten-Towns ice fishers in Icewind Dale, hauling knucklehead trout from frozen lakes, a hard trade that hardened body and mind."
+ },
+ {
+  "slug": "knight-of-the-gauntlet",
+  "name": "Knight Of The Gauntlet",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:knight-of-the-gauntlet",
+  "abilities": [
+   "STR",
+   "INT",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "tyro-of-the-gauntlet"
+  },
+  "skills": [
+   "Athletics",
+   "Medicine"
+  ],
+  "tool": "Smith’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Spear, Smith’s Tools, Bullseye Lantern, Holy Symbol, Manacles, Oil (5 flasks), Tinderbox, Traveler’s Clothes, 9 GP",
+    "gp": 9
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A holy warrior of the Order of the Gauntlet, scornful of evil, loyal to fellow knights and kind to war’s survivors, vowed to fight darkness across Faerûn."
+ },
+ {
+  "slug": "lords-alliance-vassal",
+  "name": "Lords’ Alliance Vassal",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:lords-alliance-vassal",
+  "abilities": [
+   "STR",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "lords-alliance-agent"
+  },
+  "skills": [
+   "Insight",
+   "Persuasion"
+  ],
+  "tool": "Calligrapher’s Supplies",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "2 Javelins, Calligrapher’s Supplies, Fine Clothes, Ink, 5 Ink Pens, Parchment (9 sheets), 13 GP",
+    "gp": 13
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Sworn to a Lords’ Alliance city, serving its lord’s honor and the Sword Coast’s safety, and trained equally in the blade and in statecraft."
+ },
+ {
+  "slug": "moonwell-pilgrim",
+  "name": "Moonwell Pilgrim",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:moonwell-pilgrim",
+  "abilities": [
+   "CON",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "magic-initiate",
+   "option": "Druid"
+  },
+  "skills": [
+   "Nature",
+   "Performance"
+  ],
+  "tool": "Painter’s Supplies",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Quarterstaff, Painter’s Supplies, Bedroll, Bell, Pouch, Robe, String, Traveler’s Clothes, Waterskin, 34 GP",
+    "gp": 34
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A Moonshae Islander on a quest to visit every moonwell, gathering folk songs, painting landscapes and picking up some primal magic along the way."
+ },
+ {
+  "slug": "mulhorandi-tomb-raider",
+  "name": "Mulhorandi Tomb Raider",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:mulhorandi-tomb-raider",
+  "abilities": [
+   "DEX",
+   "CON",
+   "INT"
+  ],
+  "feat": {
+   "slug": "lucky"
+  },
+  "skills": [
+   "Investigation",
+   "Religion"
+  ],
+  "tool": "Mason’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Dagger, Light Hammer, Mason’s Tools, Backpack, Bedroll, Crowbar, Ladder, Pole, 2 Pouches, Rope, String, Tinderbox, 5 Torches, Traveler’s Clothes, Waterskin, 26 GP",
+    "gp": 26
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Raised on tales of Mulhorand’s buried riches under its god-kings, now delving into the land’s tombs and pyramids to recover its people’s relics."
+ },
+ {
+  "slug": "mythalkeeper",
+  "name": "Mythalkeeper",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:mythalkeeper",
+  "abilities": [
+   "INT",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "crafter"
+  },
+  "skills": [
+   "Arcana",
+   "History"
+  ],
+  "tool": "Jeweler’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Quarterstaff, Jeweler’s Tools, Perfume, Pouch, Robe, Shovel, String, Waterskin, 16 GP",
+    "gp": 16
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A Dalelands scholar, likely first drawn in by Myth Drannor’s ruins, who seeks out damaged or dormant mythals to study their lore and maybe mend one."
+ },
+ {
+  "slug": "purple-dragon-squire",
+  "name": "Purple Dragon Squire",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:purple-dragon-squire",
+  "abilities": [
+   "STR",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "purple-dragon-rook"
+  },
+  "skills": [
+   "Animal Handling",
+   "Insight"
+  ],
+  "tool": "Navigator’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Spear, Navigator’s Tools, Fine Clothes, 9 GP",
+    "gp": 9
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Serves a Purple Dragon Knight of Cormyr as squire, learning the order’s ways and hoping to prove worthy of knighthood."
+ },
+ {
+  "slug": "rashemi-wanderer",
+  "name": "Rashemi Wanderer",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:rashemi-wanderer",
+  "abilities": [
+   "STR",
+   "CON",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "tough"
+  },
+  "skills": [
+   "Intimidation",
+   "Perception"
+  ],
+  "tool": "Cartographer’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Cartographer’s Tools, Backpack, Bedroll, Hooded Lantern, Oil (3 flasks), Rope, Tinderbox, Traveler’s Clothes, Waterskin, 23 GP",
+    "gp": 23
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Roamed Rashemen’s perilous windswept highlands, among fiend-binding obelisks, dragons and gnolls, and learned to keep strangers at arm’s length."
+ },
+ {
+  "slug": "shadowmasters-exile",
+  "name": "Shadowmasters Exile",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:shadowmasters-exile",
+  "abilities": [
+   "DEX",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "savage-attacker"
+  },
+  "skills": [
+   "Acrobatics",
+   "Stealth"
+  ],
+  "tool": "Thieves’ Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "2 Daggers, Thieves’ Tools, Caltrops, Costume, Grappling Hook, Iron Spikes, Mirror, 2 Pouches, Rope, Traveler’s Clothes, 3 GP",
+    "gp": 3
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Trained from youth for the Shadowmasters, the thieves’ guild secretly ruling Thesk, in stealth, speed and ruthlessness, until one mistake got you cast out."
+ },
+ {
+  "slug": "spellfire-initiate",
+  "name": "Spellfire Initiate",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:spellfire-initiate",
+  "abilities": [
+   "CON",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "spellfire-spark"
+  },
+  "skills": [
+   "Arcana",
+   "Perception"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Gaming Set"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Gaming Set (same as above), Arcane Focus (Crystal or Wand), 2 Pouches, Traveler’s Clothes, 36 GP",
+    "gp": 36
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Born with spellfire, the rare raw power of the Weave, and drilled in body and mind to bear its heavy cost."
+ },
+ {
+  "slug": "zhentarim-mercenary",
+  "name": "Zhentarim Mercenary",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "background:zhentarim-mercenary",
+  "abilities": [
+   "STR",
+   "DEX",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "zhentarim-ruffian"
+  },
+  "skills": [
+   "Intimidation",
+   "Perception"
+  ],
+  "tool": "Forgery Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Club, Dagger, Forgery Kit, Fine Clothes, Hooded Lantern, Oil (3 flasks), 2 Pouches, String, Tinderbox, 11 GP",
+    "gp": 11
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Joined the Zhentarim mercenary network for money, belonging or results, and climbs its crooked, family-styled ranks with guile, quick reflexes and a blade."
+ },
+ {
+  "slug": "haunted-one",
+  "name": "Haunted One",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "background:haunted-one",
+  "abilities": [
+   "CON",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "survivor"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "dark-gift"
+   ]
+  },
+  "skills": [
+   "Arcana",
+   "Survival"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Gaming Set (same as above), Crowbar, Holy Water (1 flask), Mirror, Oil(2 flasks), Signal Whistle, Tinderbox, Traveler’s Clothes, 5 Torches, Waterskin, and 14 GP",
+    "gp": 14
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Something terrible in your past, one horror or many, follows you everywhere; no blade or spell can drive it off, yet you keep going."
+ },
+ {
+  "slug": "investigator",
+  "name": "Investigator",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "background:investigator",
+  "abilities": [
+   "INT",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "sharp-eye"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "dark-gift"
+   ]
+  },
+  "skills": [
+   "Insight",
+   "Investigation"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Disguise Kit, Manacles, Shovel, Traveler’s Clothes, 3 Vials, and 16 GP",
+    "gp": 16
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Driven by a mystery you witnessed or by a hunger for justice, you dig into crimes and conspiracies others want buried."
+ },
+ {
+  "slug": "mist-wanderer",
+  "name": "Mist Wanderer",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "background:mist-wanderer",
+  "abilities": [
+   "DEX",
+   "CON",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "mist-walker"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "dark-gift"
+   ]
+  },
+  "skills": [
+   "Survival",
+   "Stealth"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Artisan’s Tools (same as above), Lamp, Oil (5 flasks), Pouch, Rope, Tinderbox, Traveler’s Clothes, and 30 GP",
+    "gp": 30
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "The Mists swept you from your homeland into the Domains of Dread, and you now drift between them seeking a way back, finding kinship with other lost travelers."
+ },
+ {
+  "slug": "spirit-medium",
+  "name": "Spirit Medium",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "background:spirit-medium",
+  "abilities": [
+   "CON",
+   "INT",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "gathered-whispers"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "dark-gift"
+   ]
+  },
+  "skills": [
+   "Insight",
+   "Religion"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Dagger, Gaming Set (same as above), Basket, Bell, 8 Candles, Ink, Ink Pen, Paper (5 sheets), Tinderbox, Traveler’s Clothes, and 32 GP",
+    "gp": 32
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Rites or chance revealed you as a vessel for the dead, whose glimpses of what's to come carry a price and not always kind intent."
+ },
+ {
+  "slug": "agent-of-the-ninth-quill",
+  "name": "Agent of the Ninth Quill",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:agent-of-the-ninth-quill",
+  "abilities": [
+   "DEX",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "arcane-infiltrator"
+  },
+  "skills": [
+   "Arcana",
+   "Sleight of Hand"
+  ],
+  "tool": "Thieves’ Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Dagger, Light Hammer, Thieves’ Tools, Iron Spikes, Rope, Traveler’s Clothes, 17 GP",
+    "gp": 17
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A clever burglar recruited by the Ninth Quill, a ring of spies and saboteurs who rob wizards of their tomes and relics, picking up a few spy-craft spells along the way."
+ },
+ {
+  "slug": "bejeweled-conclave-spy",
+  "name": "Bejeweled Conclave Spy",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:bejeweled-conclave-spy",
+  "abilities": [
+   "DEX",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "arcane-eloquence"
+  },
+  "skills": [
+   "Deception",
+   "Perception"
+  ],
+  "tool": "Disguise Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Disguise Kit, Fine Clothes, Perfume, 5 GP",
+    "gp": 5
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Outwardly a courtier, go-between or performer, secretly an informant schooled by the Bejeweled Conclave's enchanters to charm, infiltrate and trade in secrets."
+ },
+ {
+  "slug": "cosmic-dawn-experiment",
+  "name": "Cosmic Dawn Experiment",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:cosmic-dawn-experiment",
+  "abilities": [
+   "STR",
+   "DEX",
+   "CON"
+  ],
+  "feat": {
+   "slug": "transmuted-anatomy"
+  },
+  "skills": [
+   "Athletics",
+   "Survival"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Artisan’s Tools"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Artisan’s Tools (same as above), Backpack, Robe, Traveler’s Clothes, 30 GP",
+    "gp": 30
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Reshaped by the Bringers of the Cosmic Dawn's transmutations, whether as an unlucky test subject or a willing member chasing a better body, and now turning that odd anatomy to advantage."
+ },
+ {
+  "slug": "covenant-of-the-grave-recruit",
+  "name": "Covenant of the Grave Recruit",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:covenant-of-the-grave-recruit",
+  "abilities": [
+   "STR",
+   "INT",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "arcane-undertaker"
+  },
+  "skills": [
+   "History",
+   "Medicine"
+  ],
+  "tool": "Herbalism Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Dagger, Herbalism Kit, Book (anatomy), Shovel, 16 GP",
+    "gp": 16
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Drawn to the mysteries of death, studied mortality with the Covenant of the Grave as a cold science, learning medicine, history and a little necromancy."
+ },
+ {
+  "slug": "crucible-storm-chaser",
+  "name": "Crucible Storm Chaser",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:crucible-storm-chaser",
+  "abilities": [
+   "STR",
+   "CON",
+   "INT"
+  ],
+  "feat": {
+   "slug": "arcane-overload"
+  },
+  "skills": [
+   "Athletics",
+   "Nature"
+  ],
+  "tool": "Glassblower’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Glassblower’s Tools, Backpack, Rope, Traveler’s Clothes, 15 GP",
+    "gp": 15
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "A thrill-seeker who joined the Crucible Keepers to study disasters both natural and magical, happiest working molten glass or running into the heart of a storm."
+ },
+ {
+  "slug": "familiar-trainer",
+  "name": "Familiar Trainer",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:familiar-trainer",
+  "abilities": [
+   "CON",
+   "INT",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "familiar-friend"
+  },
+  "skills": [
+   "Animal Handling",
+   "Arcana"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Gaming Set"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Quarterstaff, Gaming Set (same as above), Bedroll, Bell, String, Tinderbox, Traveler’s Clothes, Waterskin, 44 GP",
+    "gp": 44
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Bonded with a magical familiar in childhood and grew up alongside it; now the two work as a team, and the creature keeps finding small delights on the road."
+ },
+ {
+  "slug": "horizon-weaver-initiate",
+  "name": "Horizon Weaver Initiate",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:horizon-weaver-initiate",
+  "abilities": [
+   "DEX",
+   "CON",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "portal-jumper"
+  },
+  "skills": [
+   "Acrobatics",
+   "Survival"
+  ],
+  "tool": "Weaver’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Shortbow, 20 Arrows, Weaver’s Tools, Map, Quiver, Rope, Traveler’s Clothes, 18 GP",
+    "gp": 18
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Restless from youth, set out wandering early and met the Horizon Weavers, travelling conjurers who taught a little teleportation to speed the journey."
+ },
+ {
+  "slug": "phantasmic-circus-trouper",
+  "name": "Phantasmic Circus Trouper",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:phantasmic-circus-trouper",
+  "abilities": [
+   "DEX",
+   "CON",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "arcane-artist"
+  },
+  "skills": [
+   "Deception",
+   "Performance"
+  ],
+  "tool": "Disguise Kit",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Disguise Kit, Gaming Set (any), Costume, Mirror, Traveler’s Clothes, 12 GP",
+    "gp": 12
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Found a family in the touring Phantasmic Circus, on stage or behind it, and learned illusion magic, showmanship and sleight of attention."
+ },
+ {
+  "slug": "seer-apprentice",
+  "name": "Seer Apprentice",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:seer-apprentice",
+  "abilities": [
+   "INT",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "arcane-omens"
+  },
+  "skills": [
+   "History",
+   "Insight"
+  ],
+  "tool": "Navigator’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Navigator’s Tools, 8 Candles, Ink, Ink Pen, Parchment (9 sheets), Pouch, Tinderbox, Traveler’s Clothes, 11 GP",
+    "gp": 11
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Trained with the Seers of Sea and Sky to read small omens in clouds and deep water, studied in their libraries, and now wanders offering counsel and help."
+ },
+ {
+  "slug": "ward-of-the-sheltering-hands",
+  "name": "Ward of the Sheltering Hands",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "background:ward-of-the-sheltering-hands",
+  "abilities": [
+   "CON",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "arcane-safeguard"
+  },
+  "skills": [
+   "Insight",
+   "Medicine"
+  ],
+  "tool": "Cook’s Utensils",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Cook’s Utensils, Blanket, Healer’s Kit, Lamp, Oil (3 flasks), Tinderbox, Traveler’s Clothes, Waterskin, 40 GP",
+    "gp": 40
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Taken in by the Sheltering Hands after hard luck, a charity that guards the vulnerable, and taught its protective magic in the hope of one day sheltering others."
+ },
+ {
+  "slug": "carouser",
+  "name": "Carouser",
+  "srd": false,
+  "source": "Astarion’s Book of Hungers",
+  "wiki": "background:carouser",
+  "abilities": [
+   "DEX",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "tireless-reveler"
+  },
+  "skills": [
+   "Deception",
+   "Persuasion"
+  ],
+  "toolChoice": {
+   "kind": "tool",
+   "count": 1,
+   "from": [
+    "Gaming Set"
+   ]
+  },
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Dagger, Gaming Set (same as above), Fine Clothes, Glass Bottle, Mirror, Perfume, Pouch, Tinderbox, 19 GP",
+    "gp": 19
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Raised in a big city like Baldur's Gate, you spent your nights in taverns, theaters and gambling halls, coaxing secrets out of people at card tables and fancy parties."
+ },
+ {
+  "slug": "lorwyn-expert",
+  "name": "Lorwyn Expert",
+  "srd": false,
+  "source": "Lorwyn: First Light",
+  "wiki": "background:lorwyn-expert",
+  "abilities": [
+   "STR",
+   "CON",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "child-of-the-sun"
+  },
+  "skills": [
+   "Athletics",
+   "Nature"
+  ],
+  "tool": "Cartographer’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Quarterstaff, Cartographer’s Tools, Backpack, Basket, Parchment (4 sheets), Rope, Traveler’s Clothes, 29 GP",
+    "gp": 29
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Raised in, or devoted to studying, the sunlit land of Lorwyn: honours the great creature Eirdu as the sun made flesh, craves whimsical adventure and clings to loved ones, having watched others drift into Shadowmoor and come back diminished."
+ },
+ {
+  "slug": "pact-seeker",
+  "name": "Pact Seeker",
+  "srd": false,
+  "source": "D&D Beyond Drops: May 2026",
+  "wiki": "background:pact-seeker",
+  "abilities": [
+   "CON",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "fey-pact"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "planar-pact"
+   ]
+  },
+  "skills": [
+   "Arcana",
+   "Persuasion"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Book, Calligrapher’s Supplies, Ink, Ink Pen, Parchment (10 sheets), Traveler’s Clothes, 2 GP",
+    "gp": 2
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Went looking for power, knowledge or buried secrets and found an entity from another plane; the bargain you struck with it changed your life for good."
+ },
+ {
+  "slug": "shadowmoor-expert",
+  "name": "Shadowmoor Expert",
+  "srd": false,
+  "source": "Lorwyn: First Light",
+  "wiki": "background:shadowmoor-expert",
+  "abilities": [
+   "DEX",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "shadowmoor-hexer"
+  },
+  "skills": [
+   "Acrobatics",
+   "Deception"
+  ],
+  "tool": "Glassblower’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Dagger, Glassblower’s Tools, Backpack, Hunting Trap, Lamp, Oil (3 flasks), Traveler’s Clothes, Waterskin, 8 GP",
+    "gp": 8
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "Raised in, or long a scholar of, moonlit Shadowmoor, where wits or brawn keep you alive and trust is scarce: you know that choosing whom to rely on can decide whether you live."
+ },
+ {
+  "slug": "vampire-devotee",
+  "name": "Vampire Devotee",
+  "srd": false,
+  "source": "Astarion’s Book of Hungers",
+  "wiki": "background:vampire-devotee",
+  "abilities": [
+   "STR",
+   "CON",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "vampires-plaything"
+  },
+  "skills": [
+   "Persuasion",
+   "Stealth"
+  ],
+  "tool": "Cook’s Utensils",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Cook’s Utensils, Fine Clothes, 2 Glass Bottles, Healer’s Kit, Perfume, Lamp, Oil (3 flasks), Waterskin, 19 GP",
+    "gp": 19
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "You served a vampire or a small coven as a willing aspirant or a charmed thrall, fed on again and again, until your time in their lair came to an end."
+ },
+ {
+  "slug": "vampire-survivor",
+  "name": "Vampire Survivor",
+  "srd": false,
+  "source": "Astarion’s Book of Hungers",
+  "wiki": "background:vampire-survivor",
+  "abilities": [
+   "DEX",
+   "CON",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "vampire-hunter"
+  },
+  "skills": [
+   "Insight",
+   "Religion"
+  ],
+  "tool": "Woodcarver’s Tools",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Woodcarver’s Tools, Crowbar, Hooded Lantern, Holy Symbol (reliquary), Holy Water, Mirror, Oil (3 flasks), Tinderbox, Traveler’s Clothes, Waterskin, 4 GP",
+    "gp": 4
+   },
+   {
+    "option": "B",
+    "items": "50 GP",
+    "gp": 50
+   }
+  ],
+  "summary": "You lived through or watched a vampire attack, frozen or fighting, and now stay ever watchful so no monster catches you or your friends unready again."
+ },
+ {
+  "slug": "discredited-neural-tuner",
+  "name": "Discredited Neural Tuner",
+  "srd": false,
+  "source": "Project Lamordia",
+  "wiki": "background:discredited-neural-tuner",
+  "abilities": [
+   "STR",
+   "DEX",
+   "INT"
+  ],
+  "feat": {
+   "slug": "gathered-whispers"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "dark-gift"
+   ]
+  },
+  "skills": [
+   "Medicine",
+   "Nature"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Tinker’s Tools (as engineer’s toolkit)",
+    "gp": 0
+   },
+   {
+    "option": "B",
+    "items": "50 GP (as 50 dollars)",
+    "gp": 0
+   }
+  ],
+  "summary": "Once a technician doing shady work deep inside Mordenheim Kinetics, you were punished for reasons you may not even know, escaped the recycling vats, and now haunt the campus edges hunting for the truth about your old employer."
+ },
+ {
+  "slug": "fabricated-mind",
+  "name": "Fabricated Mind",
+  "srd": false,
+  "source": "Project Lamordia",
+  "wiki": "background:fabricated-mind",
+  "abilities": [
+   "DEX",
+   "INT",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "echoing-soul"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "dark-gift"
+   ]
+  },
+  "skills": [
+   "Deception",
+   "Insight"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Forgery Kit, Fine Clothes, Ink, 2 Ink Pens, 3 Iron Spikes, 7 GP (as 7 dollars)",
+    "gp": 0
+   },
+   {
+    "option": "B",
+    "items": "50 GP (as 50 dollars)",
+    "gp": 0
+   }
+  ],
+  "summary": "A brand-new consciousness born from Mordenheim Kinetics' neurotechnology, you woke with no idea who made you, and you seek a self of your own, kindred minds or revenge."
+ },
+ {
+  "slug": "mutated-commuter",
+  "name": "Mutated Commuter",
+  "srd": false,
+  "source": "Project Lamordia",
+  "wiki": "background:mutated-commuter",
+  "abilities": [
+   "CON",
+   "WIS",
+   "CHA"
+  ],
+  "feat": {
+   "slug": "aberrant-anatomy"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "dark-gift"
+   ]
+  },
+  "skills": [
+   "Arcana",
+   "Investigation"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Gaming Set, Book (horror novel), Flask, Lock, Signal Whistle, Traveler’s Clothes, and 11 GP (as 11 dollars)",
+    "gp": 0
+   },
+   {
+    "option": "B",
+    "items": "50 GP (as 50 dollars)",
+    "gp": 0
+   }
+  ],
+  "summary": "A train wreck on your daily commute left you alive but supernaturally changed, stranded at the isolated Mordenheim Kinetics campus searching for help and answers."
+ },
+ {
+  "slug": "reconstructed-runaway",
+  "name": "Reconstructed Runaway",
+  "srd": false,
+  "source": "Project Lamordia",
+  "wiki": "background:reconstructed-runaway",
+  "abilities": [
+   "STR",
+   "CON",
+   "WIS"
+  ],
+  "feat": {
+   "slug": "symbiotic-being"
+  },
+  "featChoice": {
+   "kind": "feat",
+   "count": 1,
+   "category": [
+    "dark-gift"
+   ]
+  },
+  "skills": [
+   "Athletics",
+   "Medicine"
+  ],
+  "tool": "",
+  "equipment": [
+   {
+    "option": "A",
+    "items": "Smith’s Tools (as welding tools), Bullseye Lantern (as flashlight), Caltrops, Chain, Crowbar, Grappling Hook, Oil (3 flasks",
+    "gp": 0
+   },
+   {
+    "option": "B",
+    "items": "50 GP (as 50 dollars)",
+    "gp": 0
+   }
+  ],
+  "summary": "After your death, your mind was put into an artificial body built in Mordenheim Kinetics' labs, and now you flee the company to avoid paying for the procedure."
  }
 ]

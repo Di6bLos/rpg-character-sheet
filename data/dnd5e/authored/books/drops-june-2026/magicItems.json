@@ -1,0 +1,11 @@
+{
+  "amulet-of-retributive-healing": {
+    "summary": "3 charges, 1d4 back each dawn. When you heal another creature, spend 1 charge to regain the same number of HP yourself."
+  },
+  "eternal-chalk": {
+    "summary": "Chalk that never snaps or wears down; you pick its colour and whether the marks glow faintly, and for 7 days nobody but you can erase them."
+  },
+  "salubrious-armor": {
+    "summary": "Plate Armor or Scale Mail granting +1 AC; whenever you regain HP it tints red and the bonus is +2 until the end of your next turn."
+  }
+}

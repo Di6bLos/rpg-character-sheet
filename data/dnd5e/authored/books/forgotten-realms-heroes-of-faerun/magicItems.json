@@ -1,0 +1,14 @@
+{
+  "adventurers-ring": {
+    "summary": "A ring with a hinged lid over a heatless, fuel-free flame: Bright Light 20 ft and Dim Light 20 ft more while open. Bonus Action: open or close the lid."
+  },
+  "mechanical-wonder": {
+    "summary": "A clockwork device woken by winding its own key for 1 minute (Utilize action each turn). Domestic (Uncommon) and Flying (Common) wonders are allied helpers with their own stat blocks that act right after you, follow spoken orders and Dodge otherwise; the Gyrocopter (Rare) is an 8-hour Huge flying vehicle (AC 14, HP 50, Speed 5 ft, Fly 20 ft, 2,000 lb cargo) with 8 glide cords; the Mobility wonder (Common) is a worn shell that sets your Speed to 30 ft for 24 hours."
+  },
+  "thayan-spell-tattoo": {
+    "summary": "Holds one level 1–3 spell, always prepared and castable with your slots (your spellcasting ability, or save DC 13 and +5 to hit if you have none). Cast it once with no slot or components and the tattoo fades; it also fades if Attunement ends."
+  },
+  "windskiff": {
+    "summary": "A jewelry piece with 3 charges (all back at dawn). Magic action, 1 charge: it becomes a door-sized hovering sail vehicle (Medium, AC 12, HP 30, Speed 40 ft) for 1 hour or until its command word. It glides 5 ft forward per 1 ft of descent, and neither it nor its riders take falling damage."
+  }
+}

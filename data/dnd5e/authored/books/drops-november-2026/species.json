@@ -1,0 +1,32 @@
+{
+  "bariaur": {
+    "summary": "Celestials of Ysgard, humanoid above the waist and sheep below, who love wandering, treasure, revelry and battles against evil: fast, sure-footed and able to ram foes.",
+    "traits": [
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [{ "kind": "sense", "value": "Darkvision", "range": 60 }]
+      },
+      {
+        "name": "Ram",
+        "summary": "Once per turn, an Unarmed Strike hit during the Attack action after moving 10+ ft straight at the target can both deal damage and Shove.",
+        "uses": { "count": 1, "recharge": "turn" }
+      },
+      {
+        "name": "Stable Stance",
+        "summary": "Advantage on saves to avoid Prone."
+      },
+      {
+        "name": "Wanderer’s Instincts",
+        "summary": "Proficiency in Animal Handling, Arcana, Nature or Survival.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1,
+            "from": ["Animal Handling", "Arcana", "Nature", "Survival"]
+          }
+        ]
+      }
+    ]
+  }
+}

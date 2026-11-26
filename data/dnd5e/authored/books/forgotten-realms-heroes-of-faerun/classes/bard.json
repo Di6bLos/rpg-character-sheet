@@ -1,0 +1,59 @@
+{
+  "subclasses": {
+    "college-of-the-moon": {
+      "summary": "A Bard of the Moonshae druid tradition who draws on moonwell magic to hide, heal and speed allies.",
+      "features": {
+        "Moon’s Inspiration": {
+          "summary": "Granting Bardic Inspiration can also turn you Invisible and teleport you up to 30 ft (until your next turn starts, or you attack, deal damage or cast). Once per turn, when a spell of yours heals a creature, spend an Inspiration die to add its roll to the healing and give the creature +10 ft Speed until its next turn ends.",
+          "options": [
+            {
+              "name": "Inspired Eclipse",
+              "summary": "With the Bonus Action that grants Bardic Inspiration, become Invisible and teleport up to 30 ft to a space you see; it lasts until your next turn starts and breaks when you attack, deal damage or cast.",
+              "activation": "bonus",
+              "range": 30
+            },
+            {
+              "name": "Lunar Vitality",
+              "summary": "Once per turn when a spell of yours heals a creature, spend a Bardic Inspiration die to add its roll; the creature also gets +10 ft Speed until the end of its next turn.",
+              "uses": { "count": 1, "recharge": "turn" }
+            }
+          ]
+        },
+        "Primal Lore": {
+          "summary": "Learn Druidic and a bonus Druid cantrip (counts as a Bard spell, swappable on each Bard level), plus one skill: Survival, Perception, Nature, Medicine, Insight or Animal Handling.",
+          "grants": [{ "kind": "language", "value": "Druidic" }],
+          "choices": [
+            { "kind": "cantrip", "count": 1, "list": "druid", "label": "Primal Lore" },
+            {
+              "kind": "skill",
+              "count": 1,
+              "from": ["Animal Handling", "Insight", "Medicine", "Nature", "Perception", "Survival"]
+            }
+          ]
+        },
+        "Blessing of Moonlight": {
+          "summary": "Moonbeam is always prepared. Once per Long Rest, cast it so you glow (Dim Light 5 ft); each time a creature fails its save against that Moonbeam, another creature you see within 60 ft heals 2d4.",
+          "grants": [{ "kind": "spell", "spell": "moonbeam", "at": 6 }],
+          "uses": { "count": 1, "recharge": "long" },
+          "dice": "2d4",
+          "range": 60
+        },
+        "Eventide’s Splendor": {
+          "summary": "Inspired Eclipse can also make the inspired creature Invisible until its next turn starts and let it use its Reaction to teleport up to 30 ft. Lunar Vitality may roll 1d6 instead of spending an Inspiration die.",
+          "options": [
+            {
+              "name": "Shadow of the New Moon",
+              "summary": "The creature you inspire with Inspired Eclipse may turn Invisible until its next turn starts and use its Reaction to teleport up to 30 ft.",
+              "range": 30
+            },
+            {
+              "name": "Vibrance of the Full Moon",
+              "summary": "Lunar Vitality can add a 1d6 roll in place of spending a Bardic Inspiration die.",
+              "dice": "1d6"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

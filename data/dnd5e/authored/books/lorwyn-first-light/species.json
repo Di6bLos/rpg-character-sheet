@@ -1,0 +1,274 @@
+{
+  "boggart": {
+    "summary": "Squat, beast-featured goblinoids of Lorwyn-Shadowmoor who love brewing potions (Humanoids that also count as goblinoids): darkvision, fey-tough minds, extra damage against bigger foes and a slippery escape.",
+    "sizes": ["Small"],
+    "sizeText": "Small (about 2–4 feet tall)",
+    "traits": [
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      {
+        "name": "Fey Ancestry",
+        "summary": "Advantage on saves to avoid or end Charmed."
+      },
+      {
+        "name": "Fury of the Small",
+        "summary": "When your attack or spell damages a creature larger than you, add PB to the damage. At most once per turn; PB uses per Long Rest.",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      },
+      {
+        "name": "Nimble Escape",
+        "summary": "Disengage or Hide as a Bonus Action on each of your turns.",
+        "activation": "bonus"
+      }
+    ]
+  },
+  "faerie": {
+    "summary": "Flower-born insectile fey of Lorwyn-Shadowmoor with wings, antennae and a taste for pranks: they fly and cast nature magic that grows with level.",
+    "creatureType": "Fey",
+    "sizes": ["Small"],
+    "sizeText": "Small (about 2–4 feet tall)",
+    "traits": [
+      {
+        "name": "Fairy Magic",
+        "summary": "Know Druidcraft; Faerie Fire at level 3 and Enlarge/Reduce at level 5, each castable once per Long Rest without a slot (or with slots). Cast with INT, WIS or CHA, picked with the species.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "druidcraft"
+          },
+          {
+            "kind": "spell",
+            "spell": "faerie-fire",
+            "at": 3,
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "enlarge-reduce",
+            "at": 5,
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      {
+        "name": "Flight",
+        "summary": "Fly Speed equal to your Speed, unusable in Medium or Heavy armor.",
+        "grants": [
+          {
+            "kind": "speed",
+            "value": "fly",
+            "amount": "walk"
+          }
+        ]
+      }
+    ],
+    "lineages": {
+      "label": "Homeland",
+      "options": [
+        {
+          "name": "Lorwyn",
+          "summary": "No further trait."
+        },
+        {
+          "name": "Shadowmoor",
+          "summary": "Darkvision out to 120 ft.",
+          "grants": [
+            {
+              "kind": "sense",
+              "value": "Darkvision",
+              "range": 120
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "flamekin": {
+    "summary": "People of living fire and stone who chase self-discovery along the Path of Flame: darkvision, fire resistance and fire spells that grow with level.",
+    "sizes": ["Small", "Medium"],
+    "sizeText": "Medium (about 4–7 feet tall) or Small (about 2–4 feet tall), chosen with the species",
+    "traits": [
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      {
+        "name": "Fire Resistance",
+        "summary": "Resistance to Fire damage.",
+        "grants": [
+          {
+            "kind": "resistance",
+            "value": "Fire"
+          }
+        ]
+      },
+      {
+        "name": "Reach to the Blaze",
+        "summary": "Know Produce Flame; Burning Hands at level 3 and Flame Blade (no material component) at level 5, each castable once per Long Rest without a slot (or with slots). Cast with INT, WIS or CHA, picked with the species.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "produce-flame"
+          },
+          {
+            "kind": "spell",
+            "spell": "burning-hands",
+            "at": 3,
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "flame-blade",
+            "at": 5,
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      }
+    ]
+  },
+  "lorwyn-changeling": {
+    "summary": "Blue-green, yellow-eyed fey shapeshifters whose crude copies of beasts and people fool no one but charm many: two body shapes, keen darkvision and a quick start in a fight.",
+    "traits": [
+      {
+        "name": "Shape Self",
+        "summary": "Action: take a two-legged Humanoid shape (which can wear Humanoid clothes and armor of your size) or a four-legged Beast shape.",
+        "activation": "action"
+      },
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 120 ft.",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 120
+          }
+        ]
+      },
+      {
+        "name": "Delightful Imitator",
+        "summary": "Proficiency in Deception or Performance.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1,
+            "from": ["Deception", "Performance"]
+          }
+        ]
+      },
+      {
+        "name": "Unpredictable Movement",
+        "summary": "On rolling Initiative without Disadvantage, move up to half your Speed at once."
+      }
+    ]
+  },
+  "rimekin": {
+    "summary": "Flamekin turned cold by choosing logic over impulse, their flames now icy blue: cold resistance, darkvision and frost spells that grow with level.",
+    "traits": [
+      {
+        "name": "Cold Fire Magic",
+        "summary": "Know Ray of Frost; Ice Knife at level 3 and Flame Blade at level 5, always prepared and each castable once per Long Rest without a slot (or with slots). This Flame Blade deals Cold instead of Fire. Cast with INT, WIS or CHA, picked with the species.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "ray-of-frost"
+          },
+          {
+            "kind": "spell",
+            "spell": "ice-knife",
+            "at": 3,
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "flame-blade",
+            "at": 5,
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      {
+        "name": "Cold Resistance",
+        "summary": "Resistance to Cold damage.",
+        "grants": [
+          {
+            "kind": "resistance",
+            "value": "Cold"
+          }
+        ]
+      },
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -2,19 +2,21 @@
 // `data/dnd5e/types.ts`) and the SRD allowlist (`data/dnd5e/srd-allowlist.json`).
 //
 // - SRD 5.2.1 entries (`.local/dnd5e/SRD_CC_v5.2.1.pdf`, CC-BY-4.0) keep the SRD's text and page.
-// - Player's Handbook (2024) and Eberron: Forge of the Artificer options not in the SRD take
-//   only facts from the dnd2024.wikidot.com cache (`npm run dnd5e:fetch`): names, levels, stat
-//   lines, table numbers, prerequisites. Their prose is a summary written for Lantern, kept
-//   with the hand-encoded mechanics in `data/dnd5e/authored/` (the user's decision of
-//   2026-11-25, see the rpg-rules skill's licensing.md). The wiki's wording is never written.
+// - Options not in the SRD, from the Player's Handbook (2024) and the later official books in
+//   `data/dnd5e/sources.ts`, take only facts from the dnd2024.wikidot.com cache (`npm run
+//   dnd5e:fetch`): names, levels, stat lines, table numbers, prerequisites. Their prose is a
+//   summary written for Lantern, kept with the hand-encoded mechanics in `data/dnd5e/authored/`
+//   (each later book's in `authored/books/<book>/`; the user's decisions of 2026-11-25 and
+//   2026-11-26, see the rpg-rules skill's licensing.md). The wiki's wording is never written.
+// - Every SRD entry gets a one-line `summary` drawn from its own text.
 //
 // Also writes local authoring packets (`.local/dnd5e/authoring/*.md`, gitignored) listing each
 // entry's facts and source text for whoever writes the summaries and mechanics.
 //
 //   npm run dnd5e:data -- [dryRunDir]
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import type {
   Dnd5eArmorDef,
   Dnd5eBackgroundDef,
@@ -31,6 +33,7 @@ import type {
   Dnd5eOptionEntry,
   Dnd5eOptionGroup,
   Dnd5eSize,
+  Dnd5eSourceBook,
   Dnd5eSpeciesDef,
   Dnd5eSpellDef,
   Dnd5eSpellcasting,
@@ -58,11 +61,13 @@ import {
   slug,
   spellFacts,
   spellHeader,
+  srdSummary,
 } from './lib/dnd5eRules'
 import {
   CLASSES,
   bookFor,
   bookOf,
+  sourceFields,
   wikiClass,
   wikiEntries,
   wikiFeat,
@@ -114,9 +119,24 @@ const srdSpells = srdBy(srd.spells)
 // --- Authored summaries and mechanics ------------------------------------------------------
 
 type Authored = Record<string, Record<string, unknown>>
+/** Each later book's summaries sit in their own folder (`authored/books/<book>/`), same layout. */
+const BOOK_DIRS = existsSync(join(AUTHORED, 'books'))
+  ? readdirSync(join(AUTHORED, 'books')).map((d) => join(AUTHORED, 'books', d))
+  : []
+/** An authored file, merged with the same file of every book folder (their maps one level deep). */
 function authored(file: string): Authored {
-  const f = join(AUTHORED, file)
-  return existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : {}
+  const out: Authored = {}
+  for (const f of [join(AUTHORED, file), ...BOOK_DIRS.map((d) => join(d, file))]) {
+    if (!existsSync(f)) continue
+    for (const [k, v] of Object.entries(JSON.parse(readFileSync(f, 'utf8')) as Authored)) {
+      const prev = out[k]
+      out[k] =
+        prev && typeof prev === 'object' && !Array.isArray(prev) && !Array.isArray(v)
+          ? { ...prev, ...v }
+          : v
+    }
+  }
+  return out
 }
 /** An authored block by its key, matching ' and ’ alike. */
 function pick<T>(a: Record<string, T> | undefined, name: string): T | undefined {
@@ -143,7 +163,16 @@ function withAuthored<T extends object>(entry: T, a: Record<string, unknown> | u
 
 /** Packets for the summary writers: one block per entry, with the source text (local only). */
 const packets = new Map<string, string[]>()
-function packet(file: string, title: string, facts: unknown, source: string | undefined) {
+/** A book's folder name (`arcana-unleashed`), for its packets and authored files. */
+const bookDir = (b: Dnd5eSourceBook) => slug(b.replace(/^D&D Beyond Drops: /, 'drops '))
+function packet(
+  file: string,
+  title: string,
+  facts: unknown,
+  source: string | undefined,
+  book?: Dnd5eSourceBook,
+) {
+  if (book && book !== 'PHB 2024') file = `${bookDir(book)}/${file}`
   const list = packets.get(file) ?? []
   list.push(
     `## ${title}\n\nFacts: \`${JSON.stringify(facts)}\`\n\n${source ?? '(SRD entry: text kept)'}\n`,
@@ -231,6 +260,14 @@ function splitList(s: string) {
     .filter(Boolean)
 }
 
+/**
+ * A slug not yet taken in `list`. Two books' different options with one name (Eberron's and
+ * Lorwyn's Changeling) keep both: the later one takes its book's folder name as a suffix.
+ */
+function uniqueSlug(list: { slug: string }[], base: string, book: Dnd5eSourceBook) {
+  return list.some((x) => x.slug === base) ? `${base}-${bookDir(book)}` : base
+}
+
 const classes: Dnd5eClassDef[] = []
 const subclasses: Dnd5eSubclassDef[] = []
 const optionGroups: Dnd5eOptionGroup[] = []
@@ -242,6 +279,7 @@ function features(
   a: Record<string, Record<string, unknown>> | undefined,
   packetFile: string,
   owner: string,
+  book?: Dnd5eSourceBook,
 ): Dnd5eFeature[] {
   // The SRD's own features when it prints the class or subclass; the wiki's otherwise.
   const list = srdFeatures?.length
@@ -263,6 +301,7 @@ function features(
       `${owner} — Level ${f.level}: ${f.name}`,
       { srd: !!s, key: f.name },
       s ? `SRD text (already committed):\n\n${s.text}` : f.text,
+      book,
     )
     return withAuthored(base, auth)
   })
@@ -420,8 +459,11 @@ for (const cls of CLASSES) {
     const subName = plainText(
       pageContent(page(`${cls}:main`)).match(new RegExp(`href="/${link}">([^<]+)<`))?.[1] ?? link,
     )
-    const ssub = s?.subclass && key(s.subclass.name) === key(subName) ? s.subclass : undefined
-    const sslug = slug(subName)
+    const ssub =
+      b === 'PHB 2024' && s?.subclass && key(s.subclass.name) === key(subName)
+        ? s.subclass
+        : undefined
+    const sslug = uniqueSlug(subclasses, slug(subName), b)
     const sa = pick(subAuth, sslug)
     const wf = wikiFeatures(sh)
     const subFeatures = features(
@@ -430,29 +472,39 @@ for (const cls of CLASSES) {
       sa?.['features'] as Record<string, Record<string, unknown>> | undefined,
       `class-${cls}`,
       `${name}: ${subName}`,
+      b,
     )
-    // Always-prepared spell tables ("Cleric Level | Spells"), grouped by the heading over each
-    // (a Circle of the Land's Arid Land, Polar Land…).
+    // Always-prepared spell tables ("Cleric Level | Spells", "Paladin | Spells"), grouped by the
+    // heading over each (a Circle of the Land's Arid Land, Polar Land…) or by their column
+    // ("Spells (Havoc)" beside "Spells (All)", a Demon Hunter's).
+    const levelHead = new RegExp(`Level|^(${Object.keys(classNames).join('|')})$`)
     const subSpells = wf.flatMap((f) =>
       wikiSections(`<div id="page-content">${f.html}<div class="page-tags">`).flatMap((sec) =>
         wikiTables(sec.html)
-          .filter((tb) => /Level/.test(tb[0]?.[0] ?? '') && /Spells?$/.test(tb[0]?.[1] ?? ''))
+          .filter((tb) => levelHead.test(tb[0]?.[0] ?? '') && /\bSpells?\b/.test(tb[0]?.[1] ?? ''))
           .flatMap((tb) =>
-            tb.slice(1).flatMap((r) => {
-              const names = (r[1] ?? '')
-                .split(/,\s*/)
-                .map((x) => x.trim())
-                .filter((x) => /[a-z]/i.test(x))
-              if (!names.length) return []
-              const group = sec.title.endsWith('Land') ? { group: sec.title } : {}
-              return [
-                {
-                  level: Number(r[0]?.match(/\d+/)?.[0]),
-                  spells: names.map((x) => slug(spellName(x))),
-                  ...group,
-                },
-              ]
-            }),
+            tb.slice(1).flatMap((r) =>
+              tb[0]!.slice(1).flatMap((head, ci) => {
+                const names = (r[ci + 1] ?? '')
+                  .split(/,\s*/)
+                  .map((x) => x.trim())
+                  .filter((x) => /[a-z]/i.test(x))
+                if (!names.length) return []
+                const col = head.match(/Spells? \((.+)\)$/)?.[1]
+                const group = sec.title.endsWith('Land')
+                  ? { group: sec.title }
+                  : col && col !== 'All'
+                    ? { group: col }
+                    : {}
+                return [
+                  {
+                    level: Number(r[0]?.match(/\d+/)?.[0]),
+                    spells: names.map((x) => slug(spellName(x))),
+                    ...group,
+                  },
+                ]
+              }),
+            ),
           ),
       ),
     )
@@ -500,7 +552,7 @@ for (const cls of CLASSES) {
           name: subName,
           class: cls,
           srd: !!ssub,
-          source: ssub ? SRD : b,
+          ...(ssub ? { source: SRD } : sourceFields(sh)),
           ...(ssub ? { page: ssub.page, text: ssub.lead } : { wiki: link }),
           features: subFeatures,
           ...(subSpells.length ? { spells: subSpells } : {}),
@@ -516,6 +568,7 @@ for (const cls of CLASSES) {
         `${name}: ${subName} (subclass)`,
         { slug: sslug },
         plainText(pageContent(sh)).split('\n').slice(0, 3).join('\n'),
+        b,
       )
   }
   // Class option lists: invocations, metamagic, artificer plans.
@@ -568,7 +621,7 @@ function optionGroup(
   cls: string,
   sub: string | undefined,
   entries: { name: string; text: string; book?: string }[],
-  book: 'PHB 2024' | 'Eberron: Forge of the Artificer',
+  book: Dnd5eSourceBook,
 ): Dnd5eOptionGroup {
   const srdList =
     gslug === 'eldritch-invocations' ? srd.invocations : gslug === 'metamagic' ? srd.metamagic : []
@@ -577,7 +630,8 @@ function optionGroup(
   const out: Dnd5eOptionEntry[] = []
   for (const e of entries) {
     if (e.book && !bookFor(e.book)) continue
-    const s = sm.get(key(e.name))
+    const eBook = bookFor(e.book) ?? book
+    const s = eBook === 'PHB 2024' ? sm.get(key(e.name)) : undefined
     const pre = e.text.match(/^Prerequisite:\s*(.+)$/m)?.[1]
     const cost = e.text.match(/\b(\d+) Sorcery Points?\b/)?.[0]
     const eslug = slug(e.name)
@@ -585,13 +639,13 @@ function optionGroup(
       slug: eslug,
       name: s?.name ?? e.name,
       srd: !!s,
-      source: s ? SRD : (bookFor(e.book) ?? book),
+      source: s ? SRD : eBook,
       ...(s ? { page: s.page, text: s.text } : { wiki: sub ? `${cls}:${sub}` : `${cls}:${gslug}` }),
       ...(pre ? { prerequisite: prerequisite(pre.replace(/\.$/, ''), classNames) } : {}),
       repeatable: /\bRepeatable\b/.test(e.text),
       ...(cost ? { cost } : {}),
     }
-    if (!s) packet(`options-${gslug}`, `${name}: ${e.name}`, { slug: eslug }, e.text)
+    if (!s) packet(`options-${gslug}`, `${name}: ${e.name}`, { slug: eslug }, e.text, eBook)
     out.push(withAuthored(base, a[eslug]))
   }
   return { slug: gslug, name, class: cls, ...(sub ? { subclass: sub } : {}), entries: out }
@@ -645,8 +699,9 @@ for (const link of new Set(wikiSpellLinks)) {
   const w = wikiSpell(html)
   if (!w.book || !w.header) continue
   const name = wikiTitle(html)
-  const s = srdSpells.get(key(name))
-  const sl = slug(s?.name ?? name)
+  // Only the Player's Handbook's spells are the SRD's; a later book's namesake is its own.
+  const s = w.book === 'PHB 2024' ? srdSpells.get(key(name)) : undefined
+  const sl = s ? slug(s.name) : uniqueSlug(spells, slug(name), w.book)
   if (s) {
     const blocks = s.section.blocks
     const headerLine = blocks.find((b) => b.kind === 'para' && spellHeader(b.text))
@@ -711,17 +766,19 @@ for (const link of new Set(wikiSpellLinks)) {
     const head = spellHeader(w.header)!
     const facts = spellFacts(w.stats, w.body, w.higher)
     const auth = spellAuth[sl]
+    const extra = extraLists(head.classes)
     spells.push(
       withAuthored(
         {
           slug: sl,
           name,
           srd: false,
-          source: w.book,
+          ...sourceFields(html),
           wiki: link,
           level: head.level,
           school: head.school,
           classes: classList(head.classes, []),
+          ...(extra.length ? { extraLists: extra } : {}),
           ...facts,
         },
         auth,
@@ -732,8 +789,16 @@ for (const link of new Set(wikiSpellLinks)) {
       name,
       { slug: sl, level: head.level, ...facts },
       [w.body, w.higher].filter(Boolean).join('\n'),
+      w.book,
     )
   }
+}
+/** Lists in a spell's header that aren't a class's: "Paladin [Death Knight]" → "Paladin (Death Knight)". */
+function extraLists(names: string[]) {
+  return names
+    .filter((c) => !classNames[c])
+    .map((c) => c.replace(/\s*\[([^\]]+)\]/, ' ($1)').trim())
+    .filter(Boolean)
 }
 /** Class slugs on a spell's list: the SRD's classes, plus the wiki's for books Lantern carries. */
 function classList(primary: string[], extra: string[]) {
@@ -748,67 +813,80 @@ spells.sort((a, b) => a.name.localeCompare(b.name))
 const featAuth = authored('feats.json')
 const srdFeats = srdBy(srd.feats)
 const feats: Dnd5eFeatDef[] = []
+/**
+ * A feat's category: its page's header line ("Dark Gift Feat (Prerequisite: …)") or, for the
+ * Player's Handbook pages that have none, the index section that lists it ("Origin Feats").
+ */
 const FEAT_CATS: Record<string, Dnd5eFeatDef['category']> = {
-  'Origin Feats': 'origin',
-  'General Feats': 'general',
-  'Fighting Style Feats': 'fighting-style',
-  'Epic Boon Feats': 'epic-boon',
+  Origin: 'origin',
+  General: 'general',
+  'Fighting Style': 'fighting-style',
+  'Epic Boon': 'epic-boon',
+  Dragonmark: 'dragonmark',
+  'Planar Pact': 'planar-pact',
+  'Dark Gift': 'dark-gift',
 }
+// Every tab of every section: the core feats and each later book's.
+const featLinks = new Map<string, { label: string; section?: Dnd5eFeatDef['category'] }>()
 for (const sec of wikiSections(page('feat:all'))) {
-  const category = FEAT_CATS[sec.title]
-  if (!category) continue
-  const firstTab = sec.html.split(/<div id="wiki-tab-0-1"/)[0]!
-  for (const m of firstTab.matchAll(/href="\/(feat:[a-z0-9-]+)">([^<]+)</g)) {
-    const html = optionalPage(m[1]!)
-    if (!html) {
-      console.warn(`feat page missing: ${m[1]}`)
-      continue
-    }
-    const w = wikiFeat(html)
-    if (!w.book) continue
-    const name = plainText(m[2]!)
-    const s = srdFeats.get(key(name))
-    const fslug = slug(s?.name ?? name)
-    const preText = (
-      w.text.match(/^Prerequisite:\s*(.+)$/m)?.[1] ??
-      w.header?.match(/\(Prerequisite: (.+)\)$/)?.[1]
-    )
-      ?.replace(/\)$/, (p, i, str: string) => (str.includes('(') ? p : ''))
-      .trim()
-    const entries = w.entries.filter((e) => !/^(Prerequisite|Source)$/.test(e.name))
-    const asiEntry = entries.find((e) => e.name === 'Ability Score Increase')
-    const asi = abilityIncrease(asiEntry?.text ?? (fslug === 'ability-score-improvement' ? '' : ''))
-    const a = featAuth[fslug] as Record<string, unknown> | undefined
-    const srdBenefits = s
-      ? [...s.text.matchAll(/\*\*\*([^*]+?)\.\*\*\*\s*([^\n]+)/g)].map((b) => ({
-          name: b[1]!,
-          text: b[2]!,
-        }))
-      : []
-    const authBenefits = (a?.['benefits'] ?? {}) as Record<string, Record<string, unknown>>
-    const benefits: Dnd5eOption[] = (
-      s
-        ? srdBenefits.map((b) => ({ name: b.name, text: b.text }))
-        : entries.map((e) => ({ name: e.name }))
-    ).map((b) => withAuthored(b, pick(authBenefits, b.name)))
-    const def: Dnd5eFeatDef = {
-      slug: fslug,
-      name: s?.name ?? name,
-      srd: !!s,
-      source: s ? SRD : w.book,
-      ...(s ? { page: s.page, text: s.text.replace(/^_[^_]+_\s*/, '') } : { wiki: m[1]! }),
-      category,
-      ...(preText ? { prerequisite: prerequisite(preText.replace(/\.$/, ''), classNames) } : {}),
-      repeatable: /\bRepeatable\b/.test(w.text),
-      ...(asi ? { asi } : {}),
-      ...(fslug === 'ability-score-improvement'
-        ? { asi: { abilities: Object.values(ABILITY), amount: 2, max: 20, choose: 1 } }
-        : {}),
-      benefits,
-    }
-    feats.push(withAuthored(def, a))
-    if (!s) packet('feats', name, { slug: fslug, category, prerequisite: preText }, w.text)
+  const section = FEAT_CATS[sec.title.replace(/ Feats$/, '')]
+  for (const m of sec.html.matchAll(/href="\/(feat:[a-z0-9-]+)">([^<]+)</g))
+    if (!featLinks.has(m[1]!)) featLinks.set(m[1]!, { label: m[2]!, section })
+}
+for (const [link, { label, section }] of featLinks) {
+  const html = optionalPage(link)
+  if (!html) {
+    console.warn(`feat page missing: ${link}`)
+    continue
   }
+  const w = wikiFeat(html)
+  if (!w.book) continue
+  const category = FEAT_CATS[w.header?.match(/^(.+?) Feat\b/)?.[1] ?? ''] ?? section
+  if (!category) {
+    console.warn(`feat without a category line: ${link}`)
+    continue
+  }
+  const name = plainText(label)
+  const s = w.book === 'PHB 2024' ? srdFeats.get(key(name)) : undefined
+  const fslug = s ? slug(s.name) : uniqueSlug(feats, slug(name), w.book)
+  const preText = (
+    w.text.match(/^Prerequisite:\s*(.+)$/m)?.[1] ?? w.header?.match(/\(Prerequisite: (.+)\)$/)?.[1]
+  )
+    ?.replace(/\)$/, (p, i, str: string) => (str.includes('(') ? p : ''))
+    .trim()
+  const entries = w.entries.filter((e) => !/^(Prerequisite|Source)$/.test(e.name))
+  const asiEntry = entries.find((e) => e.name === 'Ability Score Increase')
+  const asi = abilityIncrease(asiEntry?.text ?? (fslug === 'ability-score-improvement' ? '' : ''))
+  const a = featAuth[fslug] as Record<string, unknown> | undefined
+  const srdBenefits = s
+    ? [...s.text.matchAll(/\*\*\*([^*]+?)\.\*\*\*\s*([^\n]+)/g)].map((b) => ({
+        name: b[1]!,
+        text: b[2]!,
+      }))
+    : []
+  const authBenefits = (a?.['benefits'] ?? {}) as Record<string, Record<string, unknown>>
+  const benefits: Dnd5eOption[] = (
+    s
+      ? srdBenefits.map((b) => ({ name: b.name, text: b.text }))
+      : entries.map((e) => ({ name: e.name }))
+  ).map((b) => withAuthored(b, pick(authBenefits, b.name)))
+  const def: Dnd5eFeatDef = {
+    slug: fslug,
+    name: s?.name ?? name,
+    srd: !!s,
+    ...(s ? { source: SRD } : sourceFields(html)),
+    ...(s ? { page: s.page, text: s.text.replace(/^_[^_]+_\s*/, '') } : { wiki: link }),
+    category,
+    ...(preText ? { prerequisite: prerequisite(preText.replace(/\.$/, ''), classNames) } : {}),
+    repeatable: /\bRepeatable\b/.test(w.text),
+    ...(asi ? { asi } : {}),
+    ...(fslug === 'ability-score-improvement'
+      ? { asi: { abilities: Object.values(ABILITY), amount: 2, max: 20, choose: 1 } }
+      : {}),
+    benefits,
+  }
+  feats.push(withAuthored(def, a))
+  if (!s) packet('feats', name, { slug: fslug, category, prerequisite: preText }, w.text, w.book)
 }
 
 // --- Species and backgrounds ---------------------------------------------------------------
@@ -854,25 +932,25 @@ mendFiendishLegacies()
 const speciesAuth = authored('species.json')
 const srdSpecies = srdBy(srd.species)
 const species: Dnd5eSpeciesDef[] = []
-for (const m of wikiSections(page('species:all'))
-  .filter((x) => x.title === 'Quick Overview' || true)
-  .flatMap((x) => [
-    ...x.html
-      .split(/<div id="wiki-tab-0-1"/)[0]!
-      .matchAll(/href="\/(species:[a-z0-9-]+)">([^<]+)</g),
-  ])) {
+// Every tab of the index: the core species and each later book's.
+for (const m of pageContent(page('species:all')).matchAll(
+  /href="\/(species:[a-z0-9-]+)">([^<]+)</g,
+)) {
   const html = optionalPage(m[1]!)
-  if (!html || !bookOf(html)) continue
-  if (species.some((x) => x.wiki === m[1] || x.slug === slug(plainText(m[2]!)))) continue
+  const book = html && bookOf(html)
+  if (!html || !book) continue
+  if (species.some((x) => x.wiki === m[1] || (x.srd && x.slug === slug(plainText(m[2]!))))) continue
   const name = plainText(m[2]!)
-  const s = srdSpecies.get(key(name))
+  // "Elf (Warcraft)" is World of Warcraft's own species, not the SRD's Elf.
+  const s = book === 'PHB 2024' ? srdSpecies.get(key(name)) : undefined
+  const spSlug = s ? slug(name) : uniqueSlug(species, slug(name), book)
   const text = plainText(pageContent(html))
   const field = (k: string) => text.match(new RegExp(`^${k}:\\s*(.+)$`, 'm'))?.[1]?.trim() ?? ''
   const sizeText = field('Size')
   const sizes = (['Tiny', 'Small', 'Medium', 'Large'] as Dnd5eSize[]).filter((z) =>
     sizeText.includes(z),
   )
-  const a = speciesAuth[slug(name)] as Record<string, unknown> | undefined
+  const a = speciesAuth[spSlug] as Record<string, unknown> | undefined
   const traitAuth = (Array.isArray(a?.['traits']) ? {} : (a?.['traits'] ?? {})) as Record<
     string,
     Record<string, unknown>
@@ -908,10 +986,10 @@ for (const m of wikiSections(page('species:all'))
   species.push(
     withAuthored(
       {
-        slug: slug(name),
+        slug: spSlug,
         name,
         srd: !!s,
-        source: s ? SRD : bookOf(html)!,
+        ...(s ? { source: SRD } : sourceFields(html)),
         ...(s ? { page: s.page, text: s.text } : { wiki: m[1]! }),
         creatureType: field('Creature Type') || 'Humanoid',
         sizes,
@@ -923,40 +1001,63 @@ for (const m of wikiSections(page('species:all'))
       a,
     ),
   )
-  if (!s) packet('species', name, { slug: slug(name), sizeText }, text)
+  if (!s) packet('species', name, { slug: spSlug, sizeText }, text, book)
 }
 
 const bgAuth = authored('backgrounds.json')
 const srdBackgrounds = srdBy(srd.backgrounds)
 const backgrounds: Dnd5eBackgroundDef[] = []
-for (const m of pageContent(page('background:all'))
-  .split(/<div id="wiki-tab-0-1"/)[0]!
-  .matchAll(/href="\/(background:[a-z0-9-]+)">([^<]+)</g)) {
+// Every tab of the index: the core backgrounds and each later book's.
+for (const m of pageContent(page('background:all')).matchAll(
+  /href="\/(background:[a-z0-9-]+)">([^<]+)</g,
+)) {
   const html = optionalPage(m[1]!)
-  if (!html || !bookOf(html)) continue
+  const book = html && bookOf(html)
+  if (!html || !book) continue
   const name = plainText(m[2]!)
-  if (backgrounds.some((b) => b.name === name)) continue
-  const s = srdBackgrounds.get(key(name))
+  if (backgrounds.some((b) => b.wiki === m[1] || (b.srd && b.name === name))) continue
+  const s = book === 'PHB 2024' ? srdBackgrounds.get(key(name)) : undefined
+  const bgSlug = s ? slug(name) : uniqueSlug(backgrounds, slug(name), book)
   const text = plainText(pageContent(html))
   const field = (k: string) => text.match(new RegExp(`^${k}:\\s*(.+)$`, 'm'))?.[1]?.trim() ?? ''
   const featLine = field('Feat')
-  const featName = featLine.replace(/\s*\(see.*$/, '').trim()
+  // "Survivor or a Dark Gift feat of your choice", "A Dark Gift feat of your choice (…; Mist
+  // Walker is recommended)", "Choose one Planar Pact feat": `feat` is the named or recommended
+  // one (else the category's first), `featChoice` the category the player may pick from instead.
+  const anyOf =
+    featLine.match(/\bor an? ([A-Z][\w ]+?) feat of your choice/) ??
+    featLine.match(/^(?:an? |Choose one )?([A-Z][\w ]+?) feat\b/i)
+  const anyCat = anyOf && FEAT_CATS[anyOf[1]!.trim()]
+  const recommended = featLine.match(/;\s*([^;()]+?) is recommended/)?.[1]
+  const named = featLine
+    .replace(/\s*\(see.*$/, '')
+    .replace(/\s+or an? .*$/i, '')
+    .trim()
+  const featName = anyCat
+    ? (recommended ??
+      (anyOf!.index! > 0
+        ? named
+        : (feats
+            .filter((f) => f.category === anyCat)
+            .sort((x, y) => x.name.localeCompare(y.name))[0]?.name ?? '')))
+    : named
   const opt = featName.match(/\(([^)]+)\)$/)?.[1]
   const tool = field('Tool Proficiency')
-  const a = bgAuth[slug(name)] as Record<string, unknown> | undefined
+  const a = bgAuth[bgSlug] as Record<string, unknown> | undefined
   backgrounds.push(
     withAuthored(
       {
-        slug: slug(name),
+        slug: bgSlug,
         name,
         srd: !!s,
-        source: s ? SRD : bookOf(html)!,
+        ...(s ? { source: SRD } : sourceFields(html)),
         ...(s ? { page: s.page, text: s.text } : { wiki: m[1]! }),
-        abilities: abilitiesIn(field('Ability Scores')),
+        abilities: abilitiesIn(field('Ability Scores') || field('Ability Score')),
         feat: {
           slug: slug(featName.replace(/\s*\([^)]*\)$/, '')),
           ...(opt ? { option: opt } : {}),
         },
+        ...(anyCat ? { featChoice: { kind: 'feat' as const, count: 1, category: [anyCat] } } : {}),
         skills: field('Skill Proficiencies')
           .split(/ and |,\s*/)
           .map((x) => x.trim())
@@ -975,7 +1076,7 @@ for (const m of pageContent(page('background:all'))
       a,
     ),
   )
-  if (!s) packet('backgrounds', name, { slug: slug(name) }, text)
+  if (!s) packet('backgrounds', name, { slug: bgSlug }, text, book)
 }
 
 // --- Equipment, conditions, masteries, magic items (SRD) ------------------------------------
@@ -1215,6 +1316,99 @@ const magicItems: Dnd5eMagicItemDef[] = srd.magicItems.map((m) => {
   }
 })
 
+// Magic items from the books Lantern carries (the Dungeon Master's Guide's and the adventures'
+// stay out; an item the SRD prints, as a magic item or as gear like a Potion of Healing, keeps
+// its SRD entry). Facts from the type line ("Wondrous Item, Rare
+// (Requires Attunement by a Wizard)"); the summary is authored.
+const itemAuth = authored('magicItems.json')
+const srdItemKeys = new Set([...magicItems, ...gear].map((m) => key(m.name)))
+const itemLinks = new Set<string>()
+for (const idx of ['magic-item:all', 'magic-item:sources'])
+  for (const m of pageContent(optionalPage(idx) ?? '').matchAll(
+    /href="\/(magic-item:[a-z0-9-]+)"/g,
+  ))
+    itemLinks.add(m[1]!)
+for (const idx of itemLinks) {
+  const h = optionalPage(idx)
+  if (h && !bookOf(h))
+    for (const m of pageContent(h).matchAll(/href="\/(magic-item:[a-z0-9-]+)"/g))
+      itemLinks.add(m[1]!)
+}
+for (const link of [...itemLinks].sort()) {
+  const html = optionalPage(link)
+  const book = html && bookOf(html)
+  if (!html || !book) continue
+  const name = wikiTitle(html)
+  if (srdItemKeys.has(key(name))) continue
+  const lines = plainText(pageContent(html)).split('\n')
+  const typeLine = lines[lines.findIndex((l) => SOURCE_LINE.test(l)) + 1] ?? ''
+  const att = typeLine.match(/\(Requires Attunement(?: (by [^)]+))?\)/)
+  const [cat, ...rest] = typeLine
+    .replace(/\s*\(Requires Attunement[^)]*\)/, '')
+    .split(/,\s*(?![^()]*\))/)
+  const islug = uniqueSlug(magicItems, slug(name), book)
+  magicItems.push(
+    withAuthored(
+      {
+        slug: islug,
+        name,
+        srd: false,
+        ...sourceFields(html),
+        wiki: link,
+        category: (cat ?? '').trim(),
+        rarity: rest.join(', ').trim(),
+        attunement: !!att,
+        ...(att?.[1] ? { attunementBy: att[1] } : {}),
+      } satisfies Dnd5eMagicItemDef,
+      itemAuth[islug],
+    ),
+  )
+  packet('magic-items', name, { slug: islug, typeLine }, lines.slice(1).join('\n'), book)
+}
+magicItems.sort((a, b) => a.name.localeCompare(b.name))
+
+// --- One-liners for SRD entries -------------------------------------------------------------
+
+// A card or list shows `summary`; an SRD entry's is drawn from its own text (or, for a class,
+// species or background, its facts), so it is never a lead-in like "You gain the following
+// benefits". An authored summary wins.
+const fill = <T extends { srd: boolean; summary?: string; text?: string }>(
+  list: T[],
+  line: (r: T) => string,
+) => {
+  for (const r of list) if (r.srd && !r.summary?.trim()) r.summary = line(r) || undefined
+}
+const ABL_NAME = Object.fromEntries(Object.entries(ABILITY).map(([k, v]) => [v, k]))
+const orList = (xs: string[]) =>
+  xs.length < 3 ? xs.join(' or ') : `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}`
+const andList = (xs: string[]) =>
+  xs.length < 3 ? xs.join(' and ') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`
+fill(feats, (f) => srdSummary(f.text ?? '', f.benefits))
+fill(spells, (r) => srdSummary(r.text ?? ''))
+fill(subclasses, (r) => srdSummary(r.text ?? ''))
+fill(magicItems, (r) => srdSummary(r.text ?? ''))
+fill(masteries, (r) => srdSummary(r.text ?? ''))
+fill(conditions, (r) => srdSummary(r.text ?? ''))
+fill(gear, (r) => {
+  const use = r.text?.match(/\*\*Utilize:\*\*\s*([^\n]+)/)?.[1]
+  return use ? `Utilize: ${use.replace(/\.?$/, '.')}` : srdSummary(r.text ?? '')
+})
+for (const g of optionGroups) fill(g.entries, (r) => srdSummary(r.text ?? ''))
+fill(classes, (c) => {
+  const prim = c.primaryAbility.abilities.map((a) => ABL_NAME[a]!)
+  const arms = c.armor.length ? `${andList(c.armor)} training` : 'no armor training'
+  return `Hit Die d${c.hitDie}, primary ability ${c.primaryAbility.all ? andList(prim) : orList(prim)}, ${c.saves.join(' and ')} saves, ${arms}${c.spellcasting ? `, ${c.spellcasting.ability} spellcasting` : ''}.`
+})
+fill(species, (r) => {
+  const traits = r.traits.map((t) => t.name)
+  return `${orList(r.sizes)} ${r.creatureType}, Speed ${r.speed} ft; ${andList(traits)}.`
+})
+fill(backgrounds, (b) => {
+  const feat = feats.find((f) => f.slug === b.feat.slug)?.name ?? b.feat.slug
+  const tool = b.tool ?? 'a tool of choice'
+  return `${andList(b.skills)}, ${tool}, and the ${feat}${b.feat.option ? ` (${b.feat.option})` : ''} feat; raises ${orList(b.abilities.map((a) => ABL_NAME[a]!))}.`
+})
+
 // --- Write ---------------------------------------------------------------------------------
 
 const allowlist = {
@@ -1266,7 +1460,10 @@ writeFileSync(
 
 rmSync(PACKETS, { recursive: true, force: true })
 mkdirSync(PACKETS, { recursive: true })
-for (const [file, list] of packets) writeFileSync(join(PACKETS, `${file}.md`), list.join('\n'))
+for (const [file, list] of packets) {
+  mkdirSync(dirname(join(PACKETS, `${file}.md`)), { recursive: true })
+  writeFileSync(join(PACKETS, `${file}.md`), list.join('\n'))
+}
 
 const count = (l: { srd: boolean }[]) =>
   `${l.filter((x) => x.srd).length} SRD + ${l.filter((x) => !x.srd).length} other`
@@ -1279,6 +1476,7 @@ console.log(
     `species ${count(species)}`,
     `backgrounds ${count(backgrounds)}`,
     ...optionGroups.map((g) => `${g.slug} ${count(g.entries)}`),
-    `weapons ${weapons.length}, armor ${armor.length}, gear ${gear.length}, conditions ${conditions.length}, masteries ${masteries.length}, magic items ${magicItems.length}`,
+    `magic items ${count(magicItems)}`,
+    `weapons ${weapons.length}, armor ${armor.length}, gear ${gear.length}, conditions ${conditions.length}, masteries ${masteries.length}`,
   ].join('\n'),
 )

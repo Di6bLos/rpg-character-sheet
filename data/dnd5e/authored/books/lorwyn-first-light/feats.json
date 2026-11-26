@@ -1,0 +1,46 @@
+{
+  "child-of-the-sun": {
+    "summary": "Touched by Eirdu's light: you and nearby allies shrug off blindness, and you can outline foes in Faerie Fire.",
+    "benefits": {
+      "Eyes of Eirdu": {
+        "summary": "You and allies within 10 ft have Advantage on saves to avoid or end Blinded.",
+        "range": 10
+      },
+      "Faerie Fire": {
+        "summary": "Learn Faerie Fire, cast with INT, WIS or CHA (picked with the feat); once per Long Rest without a slot, or with your slots. Damage can't break Concentration on the free casting.",
+        "grants": [
+          { "kind": "spell", "spell": "faerie-fire", "free": { "count": 1, "recharge": "long" } }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      }
+    }
+  },
+  "shadowmoor-hexer": {
+    "summary": "A Shadowmoor curse-weaver whose Hex bites back at those who strike them.",
+    "benefits": {
+      "Hex": {
+        "summary": "Hex is always prepared, cast with INT, WIS or CHA (picked with the feat); once per Long Rest without a slot, or with your slots.",
+        "grants": [{ "kind": "spell", "spell": "hex", "free": { "count": 1, "recharge": "long" } }],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Curse Magic": {
+        "summary": "A creature under your Hex that hits you with an attack roll takes Psychic damage equal to your PB, at most once per turn.",
+        "damageType": "Psychic"
+      }
+    }
+  }
+}

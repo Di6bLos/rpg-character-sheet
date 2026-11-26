@@ -1,0 +1,147 @@
+{
+  "subclasses": {
+    "demon-hunter": {
+      "summary": "A ranger who takes the Burning Legion's fel magic into themselves to hunt demons, fuelled by harvested soul fragments.",
+      "features": {
+        "Spellcasting": {
+          "summary": "An Arcane Focus (not a Druidic one) works as your Ranger spellcasting focus."
+        },
+        "Deft Explorer": {
+          "summary": "Deft Explorer languages come from the book's chapter 2 tables; Eredun and Nathrezim are suggested."
+        },
+        "Fighting Style": {
+          "summary": "Pick a Fighting Style feat, Druidic Warrior, or Void Warrior: two Warlock cantrips (Chill Touch and Mind Sliver suggested) cast as Ranger spells with WIS, one swappable per Ranger level.",
+          "options": [
+            {
+              "name": "Void Warrior",
+              "summary": "Learn two Warlock cantrips as Ranger spells, WIS casting; swap one for another Warlock cantrip each Ranger level.",
+              "choices": [
+                { "kind": "cantrip", "count": 2, "list": "warlock", "label": "Void Warrior" }
+              ]
+            }
+          ]
+        },
+        "Demon Hunter Spells": {
+          "summary": "Always prepared: Throw Glaive (3), Sigil of Flame (5), Metamorphosis (9), Chaos Nova (13), Destructive Wave (17), plus one column of your choice: Devourer (Consume Soul, Misty Step, Soul Reap, Collapsing Star, Steel Wind Strike), Havoc (Fel Rush, Eye Beam, Blink, Fire Shield, Conjure Volley) or Vengeance (Infernal Strike, Fiery Brand, Demon Spikes, Banishment, Sigil of Chains).",
+          "grants": [
+            { "kind": "spell", "spell": "throw-glaive", "at": 3 },
+            { "kind": "spell", "spell": "sigil-of-flame", "at": 5 },
+            { "kind": "spell", "spell": "metamorphosis", "at": 9 },
+            { "kind": "spell", "spell": "chaos-nova", "at": 13 },
+            { "kind": "spell", "spell": "destructive-wave", "at": 17 }
+          ],
+          "options": [
+            {
+              "name": "Devourer",
+              "summary": "Consume Soul (3), Misty Step (5), Soul Reap (9), Collapsing Star (13), Steel Wind Strike (17).",
+              "grants": [
+                { "kind": "spell", "spell": "consume-soul", "at": 3 },
+                { "kind": "spell", "spell": "misty-step", "at": 5 },
+                { "kind": "spell", "spell": "soul-reap", "at": 9 },
+                { "kind": "spell", "spell": "collapsing-star", "at": 13 },
+                { "kind": "spell", "spell": "steel-wind-strike", "at": 17 }
+              ]
+            },
+            {
+              "name": "Havoc",
+              "summary": "Fel Rush (3), Eye Beam (5), Blink (9), Fire Shield (13), Conjure Volley (17).",
+              "grants": [
+                { "kind": "spell", "spell": "fel-rush", "at": 3 },
+                { "kind": "spell", "spell": "eye-beam", "at": 5 },
+                { "kind": "spell", "spell": "blink", "at": 9 },
+                { "kind": "spell", "spell": "fire-shield", "at": 13 },
+                { "kind": "spell", "spell": "conjure-volley", "at": 17 }
+              ]
+            },
+            {
+              "name": "Vengeance",
+              "summary": "Infernal Strike (3), Fiery Brand (5), Demon Spikes (9), Banishment (13), Sigil of Chains (17).",
+              "grants": [
+                { "kind": "spell", "spell": "infernal-strike", "at": 3 },
+                { "kind": "spell", "spell": "fiery-brand", "at": 5 },
+                { "kind": "spell", "spell": "demon-spikes", "at": 9 },
+                { "kind": "spell", "spell": "banishment", "at": 13 },
+                { "kind": "spell", "spell": "sigil-of-chains", "at": 17 }
+              ]
+            }
+          ]
+        },
+        "Soul Fragments": {
+          "summary": "Each Long Rest gives WIS-modifier soul fragments (min 1; +1 at Ranger 13, +2 at 17) that last until the next Long Rest and return to you past 30 ft; save DCs use your spell DC. Reaction when an enemy you see within 30 ft dies: regain one.",
+          "uses": { "count": "WIS", "recharge": "long" },
+          "save": { "ability": "DEX", "dc": "spell" },
+          "options": [
+            {
+              "name": "Double Jump",
+              "summary": "One fragment: cast Feather Fall or Jump with no slot.",
+              "grants": [
+                { "kind": "spell", "spell": "feather-fall", "at": 3 },
+                { "kind": "spell", "spell": "jump", "at": 3 }
+              ]
+            },
+            {
+              "name": "Soul Cleave",
+              "summary": "Once per turn in the Attack action, one fragment replaces an attack: creatures in a 10-ft Emanation make a DEX save or take 1d12 + WIS Psychic, and you heal WIS.",
+              "dice": "1d12",
+              "damageType": "Psychic",
+              "save": { "ability": "DEX", "dc": "spell" },
+              "range": 10
+            },
+            {
+              "name": "Regaining Soul Fragments",
+              "summary": "Reaction when an enemy you see within 30 ft dies: get back one spent fragment.",
+              "activation": "reaction",
+              "range": 30
+            }
+          ]
+        },
+        "Spectral Sight": {
+          "summary": "Blindsight 10 ft.",
+          "grants": [{ "kind": "sense", "value": "Blindsight", "range": 10 }]
+        },
+        "Torment": {
+          "summary": "Your Hunter's Mark target has Disadvantage attacking anyone but you; once per turn, hitting it with a weapon or Ranger spell adds Aura of Pain (-1d4 on its next save before your next turn ends) or Chaos Strike (+1d8 Fire).",
+          "uses": { "count": 1, "recharge": "turn" },
+          "options": [
+            {
+              "name": "Aura of Pain",
+              "summary": "Its next save before the end of your next turn takes -1d4.",
+              "dice": "1d4"
+            },
+            {
+              "name": "Chaos Strike",
+              "summary": "It takes an extra 1d8 Fire.",
+              "dice": "1d8",
+              "damageType": "Fire"
+            }
+          ]
+        },
+        "Illidari Knowledge": {
+          "summary": "New fragment uses: two fragments to cast Counterspell; one fragment and a Bonus Action to cast Throw Glaive with no slot.",
+          "options": [
+            {
+              "name": "Disrupt",
+              "summary": "Spend two fragments to cast Counterspell when its trigger occurs.",
+              "activation": "reaction",
+              "grants": [{ "kind": "spell", "spell": "counterspell", "at": 11 }]
+            },
+            {
+              "name": "Warglaive Mastery",
+              "summary": "Bonus Action, one fragment: cast Throw Glaive without a slot.",
+              "activation": "bonus"
+            }
+          ]
+        },
+        "Soul Shatter": {
+          "summary": "Soul Cleave deals 2d12 + WIS; rolling Initiative with no fragments left gives you one.",
+          "dice": "2d12",
+          "damageType": "Psychic"
+        },
+        "Improved Spectral Sight": {
+          "summary": "Replaces Feral Senses: Truesight 30 ft.",
+          "grants": [{ "kind": "sense", "value": "Truesight", "range": 30 }]
+        }
+      }
+    }
+  }
+}

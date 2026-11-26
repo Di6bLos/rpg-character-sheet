@@ -1,0 +1,64 @@
+{
+  "call-of-the-void": {
+    "summary": "Your Pact of the Legion familiar may be a Fel Imp or a Voidwalker; command it to Attack as a Bonus Action, it attacks with your spell attack bonus, and a Reaction gives a damaged Voidwalker Resistance to that damage.",
+    "activation": "bonus",
+    "options": [
+      {
+        "name": "Quick Attack",
+        "summary": "Bonus Action: the familiar takes the Attack action.",
+        "activation": "bonus"
+      },
+      {
+        "name": "Your Spell Attack",
+        "summary": "The familiar's attacks use your spell attack bonus."
+      },
+      {
+        "name": "Shadow Shield",
+        "summary": "Reaction when your Voidwalker takes damage: it resists that damage.",
+        "activation": "reaction"
+      }
+    ]
+  },
+  "curse-of-corruption": {
+    "summary": "An enemy starting its turn under a curse from one of your Warlock spells (like Hex) makes a CHA save or takes Necrotic damage equal to your CHA modifier.",
+    "damageType": "Necrotic"
+  },
+  "expendable-minions": {
+    "summary": "When your familiar or a summon you control dies, you or a creature within 60 ft heals Warlock level + CHA.",
+    "range": 60
+  },
+  "health-funnel": {
+    "summary": "Bonus Action: spend any number of Hit Dice, rolling each + CHA; your familiar or another Fiend you command gains the total as Temporary HP.",
+    "activation": "bonus"
+  },
+  "legion-summoning": {
+    "summary": "Once per Long Rest, cast Planar Binding with no slot, summoning a Felguard, Felhound, Incubus or Succubus as its target.",
+    "uses": {
+      "count": 1,
+      "recharge": "long"
+    },
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "planar-binding",
+        "free": {
+          "count": 1,
+          "recharge": "long"
+        }
+      }
+    ]
+  },
+  "master-demonologist": {
+    "summary": "Fiends you command add your Hex's extra damage against its target, just as you do."
+  },
+  "pact-of-the-legion": {
+    "summary": "Learn Find Familiar and cast it as a Magic action without a slot, calling a Fel Imp. When you take the Attack action, give up one attack so the familiar attacks once with its Reaction.",
+    "grants": [
+      {
+        "kind": "spell",
+        "spell": "find-familiar",
+        "atWill": true
+      }
+    ]
+  }
+}

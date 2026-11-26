@@ -1,0 +1,77 @@
+{
+  "ashbringer": {
+    "summary": "+3 greatsword (Paladin attunement), +1d10 Fire per hit or +3d10 against Undead. Sentient (INT 14, WIS 17, CHA 17; telepathic, Common and Dwarven, hearing and Darkvision 120 ft) and shifts with great deeds: in its True State a kill bursts into ash that Blinds chosen creatures within 10 ft (DC 18 CON) until their next turn ends; Corrupted, a kill gives 20 Temporary HP. Random properties: 1 minor and 1 major beneficial, 1 minor detrimental."
+  },
+  "avianas-feather": {
+    "summary": "Magic action: sprout golden wings for an 80 ft Fly Speed; Opportunity Attacks as you fly off have Disadvantage, and you fall only 60 ft per round. They last until you dismiss them (Magic action) or attunement ends."
+  },
+  "crown-of-the-ogre-king": {
+    "summary": "Magic action: a thunderous belch in a 20-ft Cone; each creature makes a DC 17 STR save or is pushed 20 ft and knocked Prone. Cursed: attuning leaves you ravenous (triple food, no manners) until Remove Curse, even if you take it off."
+  },
+  "defias-leather": {
+    "summary": "Leather armor. Advantage on Stealth checks to hide behind stone; cast Meld into Stone from it once per dawn."
+  },
+  "doomhammer": {
+    "summary": "+3 warhammer (Barbarian attunement), +1d8 Lightning per hit. While held: Rage doubles your Speed and adds an extra one-attack Attack action each turn; lava can't harm you and bears your weight; a Reaction zeroes Lightning damage to a creature you see within 60 ft; Wind Walk once per dawn. Random properties: 2 minor and 1 major beneficial, 1 minor detrimental."
+  },
+  "experimental-goblin-jetpack": {
+    "summary": "Magic action: 60 ft Fly Speed for up to 1 hour (end it as a Magic action). Once the jets stop they're dead for 1d12 hours, and you fall if aloft."
+  },
+  "flask-of-the-titans": {
+    "summary": "Drinking it raises your HP maximum and current HP by 30 for 1 hour."
+  },
+  "frostmourne": {
+    "summary": "+3 greatsword, +2d12 Cold per hit; anything it drops to 0 HP dies with its soul trapped, unraisable until the blade breaks. Attuning makes you Undead and Neutral Evil for good and opens your senses and mind to the Lich King; a Paladin's Aura of Protection also gives chosen Undead Advantage on attacks and saves and allies Cold Immunity. Random properties: 1 major beneficial, 1 minor and 1 major detrimental."
+  },
+  "goblin-jumper-cables": {
+    "summary": "Magic action, once per dawn: a DC 15 INT (Arcana) check with Tinker's Tools revives a creature dead no more than 1 minute (not of old age) at 1 HP; a failure shocks you for 2d6 Lightning."
+  },
+  "hearthstone": {
+    "summary": "1 minute and a Magic action: teleport to within 30 ft of your bound spot; at an inn (or similar), a Magic action rebinds it. One Hearthstone doesn't count against your attunement limit."
+  },
+  "helm-of-domination": {
+    "summary": "Attuning forces a DC 18 CHA save: success deals 10d6 Psychic, failure hands your body to the Lich King as an NPC; you can't take it off or end attunement, and you turn Neutral Evil. Truesight 120 ft, a once-per-dawn DC 20 spellcasting-ability check to command the Scourge, and 8 charges (1d4 + 4 back at dawn) for DC 18 spells, costing 1 for Animate Dead or Speak with Dead, 2 for Clairvoyance, 4 for Dream, and 5 for Telepathy or Word of Recall. Random properties: 1 major beneficial, 1 minor and 1 major detrimental."
+  },
+  "judgment-armor": {
+    "summary": "Plate armor that keeps you under Protection from Evil and Good plus Detect Evil and Good, no Concentration needed; a Paladin also extends the protection to chosen creatures in the Aura of Protection."
+  },
+  "life-staff-of-the-web-lair": {
+    "summary": "8 charges (1d6 + 2 back at dawn; spending the last risks loss on a d20 roll of 1). Spider climb with a Climb Speed equal to your Speed, free movement through webs and awareness of creatures touching your web. 1 charge: Web (DC 18); Bonus Action and 1 charge: a creature in your Web makes a DC 18 CON save (Disadvantage if Restrained by it), taking 4d10 Necrotic or half, and you heal half the damage."
+  },
+  "noggenfogger-elixir": {
+    "summary": "Roll 1d6 on drinking: 1-2, skeletal look and no need to breathe for 1d4 hours; 3-4, Reduce (Enlarge/Reduce) for 1d4 hours without Concentration; 5-6, fall at 60 ft per round with no falling damage for 10 minutes. Mixing several needs no miscibility roll."
+  },
+  "philosophers-stone": {
+    "summary": "Only its creator can attune. Works as a Spellcasting Focus; 1 hour with it turns crafting resources of one kind into another kind of equal value; roll potion effect dice twice and pick, and potion durations double."
+  },
+  "potion-of-mana": {
+    "summary": "Restores one spent spell slot: level 1 (Common), level 1-3 of your choice (greater, Uncommon) or level 1-5 (superior, Rare)."
+  },
+  "potion-of-rejuvenation": {
+    "summary": "Restores HP and one spent spell slot: 3d4 + 3 HP and a level 1 slot (Uncommon), 6d4 + 6 HP and a level 1-3 slot (greater, Rare), or 9d4 + 9 HP and a level 1-5 slot (superior, Very Rare)."
+  },
+  "rod-of-the-sleepwalker": {
+    "summary": "Once per dawn, cast Dominate Monster (DC 17) lasting up to 8 hours of Concentration; creatures that don't sleep or can't gain Exhaustion succeed automatically, and targets forget the whole duration afterward."
+  },
+  "shadowfang": {
+    "summary": "+1 longsword. Under the night sky it grows fur and fangs and deals +2d6 Necrotic per hit, until dawn or until carried indoors."
+  },
+  "shalamayne": {
+    "summary": "+3 greatsword, +2d12 Force per hit; with Greatsword mastery, apply both Graze and Sap. Magic action: end attunement and split it into Shalla'tor and Ellemayne, two +3 Finesse, Light longswords; holding both, a Magic action fuses and reattunes them. Random properties: 2 minor and 1 major beneficial."
+  },
+  "staff-of-light-and-shadow": {
+    "summary": "Cleric staff that can switch form at dawn. Anathema: Necrotic Resistance, and when a level 1-5 Necromancy spell would spend a slot, roll 1d6; beating the spell's level keeps the slot. Benediction: Radiant Resistance, and healing spells work as if cast one slot level higher."
+  },
+  "sulfuras-hand-of-ragnaros": {
+    "summary": "+3 maul; hits add 1d10 Fire and set the target burning for 1d10 Fire each turn. Magic action, each once per dawn: boil water within 1 mile for 1 minute (2d10 Fire to anyone in it), cast Incendiary Cloud (DC 18), or erupt a 10-ft-radius, 60-ft-high Cylinder within 120 ft (DC 18 DEX, 9d10 Fire plus 9d10 Bludgeoning, half on success). Random properties: 1 minor and 1 major beneficial, 1 minor and 1 major detrimental."
+  },
+  "trolls-blood-elixir": {
+    "summary": "Heals 2 (Uncommon), 4 (greater, Rare), 6 (superior, Very Rare) or 8 (supreme, Legendary) HP when drunk, then that much again as each of your turns starts, for 1 minute, while you have 1+ HP."
+  },
+  "twin-blades-of-azzinoth": {
+    "summary": "Pair of +3 scimitars; each adds 2d8 Psychic against Fiends, ignoring Resistance and Immunity. Hitting one creature with both in a turn forces a DC 18 WIS save or it is Stunned until its next turn ends. Magic action: throw a blade within 30 ft to become a Devil (Summon Fiend) for 1 minute, once per 7 days per blade. Random properties: 1 minor and 1 major beneficial, 1 minor detrimental."
+  },
+  "vithrak-gaze-of-the-deadman": {
+    "summary": "3 charges (1d3 back at dawn). Magic action, 1 charge: learn the Resistances, Vulnerabilities and Immunities of a creature you see within 120 ft."
+  }
+}

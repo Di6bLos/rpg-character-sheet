@@ -1,0 +1,50 @@
+{
+  "subclasses": {
+    "swashbuckler": {
+      "summary": "A rogue duellist who fights with flair, speed and charm, at their best one-on-one.",
+      "features": {
+        "Fancy Footwork": {
+          "summary": "After you roll a melee attack against a creature on your turn, it can't make Opportunity Attacks on you until that turn ends."
+        },
+        "Rakish Audacity": {
+          "summary": "Add CHA to Initiative rolls. Sneak Attack also works without Advantage when your target is within 5 ft, nobody else is within 5 ft of you, and you lack Disadvantage."
+        },
+        "Panache": {
+          "summary": "New Cunning Strike options: Goad (1d6) and Awe (3d6).",
+          "options": [
+            {
+              "name": "Goad",
+              "summary": "Cost 1d6. Target fails a WIS save: until its next turn ends it has Disadvantage attacking others and can make Opportunity Attacks only against you.",
+              "save": { "ability": "WIS", "dc": "8+PB+DEX" }
+            },
+            {
+              "name": "Awe",
+              "summary": "Cost 3d6. Creatures you choose within 30 ft make a WIS save or are Charmed until your next turn ends.",
+              "save": { "ability": "WIS", "dc": "8+PB+DEX" },
+              "range": 30
+            }
+          ]
+        },
+        "Dashing Strikes": {
+          "summary": "New Cunning Strike options: Invigorate (2d6) and Parrying Stance (2d6).",
+          "options": [
+            {
+              "name": "Invigorate",
+              "summary": "Cost 2d6. A creature you see within 30 ft adds 1d6 to its attack rolls and saves until its next turn ends.",
+              "dice": "1d6",
+              "range": 30
+            },
+            {
+              "name": "Parrying Stance",
+              "summary": "Cost 2d6. Roll 1d6 and add it to your AC until your next turn starts.",
+              "dice": "1d6"
+            }
+          ]
+        },
+        "Master Duelist": {
+          "summary": "Right after a Sneak Attack, make another attack on that target if it is within 5 ft and no one else is within 5 ft of you."
+        }
+      }
+    }
+  }
+}

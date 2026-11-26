@@ -1,0 +1,29 @@
+{
+  "boots-of-the-winding-path": {
+    "summary": "Bonus Action: teleport up to 15 ft to an unoccupied space you can see that you were in earlier this turn."
+  },
+  "dazzling-weapon": {
+    "summary": "+1 to attack and damage rolls; Bonus Action to light or douse a 30 ft Bright, 30 ft Dim glow. 4 charges (1d4 back at dawn): Reaction after you're hit by an attack roll, spend 1 so the attacker makes a DC 15 CON save or is Blinded until the end of its next turn."
+  },
+  "helm-of-awareness": {
+    "summary": "Advantage on Initiative rolls while you wear it."
+  },
+  "manifold-tool": {
+    "summary": "Magic action: touch it to turn it into any Artisan's Tools; you are proficient with whatever form it takes."
+  },
+  "mind-sharpener": {
+    "summary": "4 charges (1d4 back at dawn). Reaction on a failed CON save to keep Concentration: spend 1 to succeed instead."
+  },
+  "repeating-shot": {
+    "summary": "+1 to attack and damage on ranged attacks and no Loading; with no ammunition it makes a magic piece for each ranged attack, which vanishes once it hits or misses."
+  },
+  "repulsion-shield": {
+    "summary": "+1 AC on top of the shield. 4 charges (1d4 back at dawn): Reaction when a creature no bigger than Large hits you with a melee attack from 5 ft or closer, spend 1 to push it up to 15 ft away."
+  },
+  "returning-weapon": {
+    "summary": "+1 to attack and damage rolls; it flies back to your hand right after a ranged attack with it."
+  },
+  "spell-refueling-ring": {
+    "summary": "Bonus Action: regain one spent spell slot of level 3 or lower. Once per dawn."
+  }
+}

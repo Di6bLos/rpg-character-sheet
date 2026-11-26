@@ -1,0 +1,117 @@
+{
+  "subclasses": {
+    "reanimator": {
+      "summary": "A mad-science Artificer who stitches an undead servant from corpses and shocks the fallen back to life.",
+      "features": {
+        "Reanimator Spells": {
+          "summary": "Always prepared: False Life, Spare the Dying and Witch Bolt at Artificer 3; Blindness/Deafness and Enhance Ability at 5; Animate Dead and Lightning Bolt at 9; Blight and Death Ward at 13; Antilife Shell and Raise Dead at 17.",
+          "grants": [
+            { "kind": "spell", "spell": "false-life", "at": 3 },
+            { "kind": "spell", "spell": "spare-the-dying", "at": 3 },
+            { "kind": "spell", "spell": "witch-bolt", "at": 3 },
+            { "kind": "spell", "spell": "blindness-deafness", "at": 5 },
+            { "kind": "spell", "spell": "enhance-ability", "at": 5 },
+            { "kind": "spell", "spell": "animate-dead", "at": 9 },
+            { "kind": "spell", "spell": "lightning-bolt", "at": 9 },
+            { "kind": "spell", "spell": "blight", "at": 13 },
+            { "kind": "spell", "spell": "death-ward", "at": 13 },
+            { "kind": "spell", "spell": "antilife-shell", "at": 17 },
+            { "kind": "spell", "spell": "raise-dead", "at": 17 }
+          ]
+        },
+        "Reanimator’s Skill Set": {
+          "summary": "Spare the Dying can jolt its target back with HP equal to your Artificer level and zap chosen creatures within 10 ft (DEX save, 2d4 Lightning, half on success; 3d4 at 11, 4d4 at 17), INT-mod times per Long Rest. Proficiency with Alchemist’s Supplies, or another Artisan’s Tool if you have it.",
+          "grants": [{ "kind": "tool", "value": "Alchemist’s Supplies" }],
+          "options": [
+            {
+              "name": "Jolt to Life",
+              "summary": "When casting Spare the Dying: target heals your Artificer level in HP; chosen creatures in a 10-ft Emanation around it make a DEX save or take 2d4 Lightning (half on success), rising to 3d4 at 11 and 4d4 at 17. INT-mod uses per Long Rest.",
+              "uses": { "count": "INT", "recharge": "long" },
+              "dice": "2d4",
+              "damageType": "Lightning",
+              "save": { "ability": "DEX", "dc": "spell" },
+              "range": 10
+            },
+            {
+              "name": "Reanimator’s Tools",
+              "summary": "Trained in Alchemist’s Supplies, or a different Artisan’s Tool when already trained."
+            }
+          ]
+        },
+        "Reanimated Companion": {
+          "summary": "Magic action with Artisan’s Tools: build a Medium Undead companion (AC 10 + INT, HP 5 + 5× Artificer level, Dreadful Swipe 1d4 + INT Necrotic that stops Opportunity Attacks; explodes for 2d4 Necrotic on death, DEX save). It lasts until a Long Rest, dodges unless you spend a Bonus Action to command it; once per Long Rest or by spending a spell slot.",
+          "activation": "magic",
+          "uses": { "count": 1, "recharge": "long", "restore": "a spell slot" },
+          "dice": "1d4",
+          "damageType": "Necrotic"
+        },
+        "Strange Modifications": {
+          "summary": "Each companion you create gets one modification, chosen when you make it.",
+          "options": [
+            {
+              "name": "Arcane Conduit",
+              "summary": "Cast spells from the companion’s space (using your own senses); once per turn add INT to one damage roll of an Artificer Evocation or Necromancy spell while it is within 120 ft.",
+              "range": 120
+            },
+            {
+              "name": "Ferocity",
+              "summary": "Dreadful Swipe deals 1d6 instead of 1d4.",
+              "dice": "1d6"
+            }
+          ]
+        },
+        "Improved Reanimation": {
+          "summary": "The companion’s Death Burst deals 4d4, and its Necrotic damage ignores Resistance.",
+          "dice": "4d4",
+          "damageType": "Necrotic"
+        },
+        "Macabre Modifications": {
+          "summary": "Your companion now takes two modifications, and three new ones join the list.",
+          "options": [
+            {
+              "name": "Bloated",
+              "summary": "Companion becomes Large; Dreadful Swipe pushes a Large or smaller target up to 10 ft, and Death Burst adds your INT to its damage."
+            },
+            {
+              "name": "Gaunt",
+              "summary": "Speed 45 ft with an equal Climb Speed (ceilings too, no checks); chosen creatures starting their turn within 10 ft make a WIS save or are Frightened until their next turn starts.",
+              "save": { "ability": "WIS", "dc": "spell" },
+              "range": 10
+            },
+            {
+              "name": "Moist",
+              "summary": "Swim Speed equal to its Speed and squeezes through 1-inch gaps freely; attackers that hit it from within 10 ft take Acid damage equal to your INT.",
+              "damageType": "Acid"
+            }
+          ]
+        },
+        "Refined Reanimation": {
+          "summary": "Cast Raise Dead free once per Long Rest with tools as focus; Reaction to drain your companion for HP; companions now take three modifications.",
+          "options": [
+            {
+              "name": "Facilitated Revival",
+              "summary": "Cast Raise Dead without a slot or Material components, using Artisan’s Tools as the focus; once per Long Rest.",
+              "uses": { "count": 1, "recharge": "long" },
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "raise-dead",
+                  "free": { "count": 1, "recharge": "long" }
+                }
+              ]
+            },
+            {
+              "name": "Life Transfer",
+              "summary": "Reaction when you or the companion take damage: gain HP equal to its current HP, then it dies and triggers Death Burst.",
+              "activation": "reaction"
+            },
+            {
+              "name": "Superior Modifications",
+              "summary": "Each companion gets three Strange Modifications."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "shadow-pact": {
+    "summary": "A bargain with the Shadowfell: darker sight, steadier healing in shadow and a cloak of dim light.",
+    "benefits": {
+      "Darkvision": {
+        "summary": "Darkvision 60 ft, or +30 ft if you already have it.",
+        "grants": [{ "kind": "sense", "value": "Darkvision", "range": 60 }]
+      },
+      "Shadow Blood": {
+        "summary": "While wholly in Dim Light or Darkness, reroll any 1 on a healing die and keep the new roll."
+      },
+      "Shroud of Shadows": {
+        "summary": "Bonus Action: give off a 5-ft Emanation of Dim Light for 1 minute; dismiss it freely, and it ends if you're Incapacitated. Once per Short or Long Rest.",
+        "activation": "bonus",
+        "uses": { "count": 1, "recharge": "short" },
+        "duration": "1 minute",
+        "range": 5
+      }
+    }
+  },
+  "shadow-trapper": {
+    "summary": "A shadow-hunter who strikes true inside their Shroud and fills grappled foes with sorrow.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Wisdom, max 20."
+      },
+      "Dangerous Shroud": {
+        "summary": "Advantage on attack rolls against creatures inside your Shroud of Shadows."
+      },
+      "Sorrowful Embrace": {
+        "summary": "A creature you have Grappled makes a WIS save at the start of its turn (DC 8 + PB + the ability you raised) or takes 1d4 + that ability's modifier in Psychic damage.",
+        "dice": "1d4",
+        "damageType": "Psychic",
+        "save": { "ability": "WIS", "dc": "8+PB+STR/WIS" }
+      }
+    }
+  },
+  "shadow-weaver": {
+    "summary": "A shadow-shaper who conjures Darkness and reshapes or moves it at will.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Create Shadow": {
+        "summary": "Darkness is always prepared; once per Long Rest without a slot, or with your slots. The ability you raised casts it.",
+        "grants": [
+          { "kind": "spell", "spell": "darkness", "free": { "count": 1, "recharge": "long" } }
+        ]
+      },
+      "Manipulate Shadow": {
+        "summary": "Bonus Action: grow or shrink the radius of your Darkness by 5 ft (5–25 ft), or shift it to a spot within 60 ft.",
+        "activation": "bonus",
+        "range": 60
+      }
+    }
+  }
+}

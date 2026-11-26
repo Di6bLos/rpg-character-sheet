@@ -1,0 +1,60 @@
+{
+  "subclasses": {
+    "bladesinger": {
+      "summary": "A Wizard of an elven tradition that weaves swordplay and dance into spellcasting.",
+      "features": {
+        "Bladesong": {
+          "summary": "Bonus Action, with no armor or Shield: for 1 minute add INT to AC (min +1), gain +10 ft Speed and Advantage on Acrobatics, attack with INT, and add INT to Concentration saves. Ends if you're Incapacitated, don armor or a Shield, or attack two-handed. INT modifier uses (min 1) per Long Rest; Arcane Recovery restores one.",
+          "activation": "bonus",
+          "duration": "1 minute",
+          "uses": {
+            "count": "INT",
+            "recharge": "long",
+            "restore": "Arcane Recovery restores one use"
+          },
+          "options": [
+            {
+              "name": "Agility",
+              "summary": "+INT to AC (min +1), +10 ft Speed and Advantage on DEX (Acrobatics) checks."
+            },
+            {
+              "name": "Bladework",
+              "summary": "Use INT for attack and damage rolls with weapons you're proficient with."
+            },
+            {
+              "name": "Focus",
+              "summary": "Add INT to CON saves to keep Concentration."
+            }
+          ]
+        },
+        "Training in War and Song": {
+          "summary": "Proficiency with Martial Melee weapons lacking Two-Handed and Heavy, which can serve as your spellcasting focus. Gain one of Acrobatics, Athletics, Performance or Persuasion.",
+          "grants": [
+            {
+              "kind": "weapon",
+              "value": "Martial Melee weapons without the Two-Handed or Heavy property"
+            }
+          ],
+          "choices": [
+            {
+              "kind": "skill",
+              "count": 1,
+              "from": ["Acrobatics", "Athletics", "Performance", "Persuasion"]
+            }
+          ]
+        },
+        "Extra Attack": {
+          "summary": "Attack twice with the Attack action, and one of those attacks can be swapped for a Wizard cantrip that takes an action."
+        },
+        "Song of Defense": {
+          "summary": "Reaction when you take damage during Bladesong: spend a spell slot to cut the damage by five times its level.",
+          "activation": "reaction"
+        },
+        "Song of Victory": {
+          "summary": "After casting a spell with a casting time of an action, make one weapon attack as a Bonus Action.",
+          "activation": "bonus"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,215 @@
+{
+  "changeling": {
+    "summary": "Fey-touched shapeshifters who can wear any face and often keep several personas.",
+    "traits": [
+      {
+        "name": "Changeling Instincts",
+        "summary": "Proficiency in two of Deception, Insight, Intimidation, Performance and Persuasion.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 2,
+            "from": ["Deception", "Insight", "Intimidation", "Performance", "Persuasion"]
+          }
+        ]
+      },
+      {
+        "name": "Shape-Shifter",
+        "summary": "Action: reshape your looks and voice (coloration, hair, sex, height, weight, Medium or Small size, even another species) with no change to your statistics; you can't copy someone you've never seen or change your limb layout, and gear stays as is. Advantage on CHA checks while shifted; an action returns you to your true form.",
+        "activation": "action"
+      }
+    ]
+  },
+  "kalashtar": {
+    "summary": "Humans bound to renegade dream spirits, with steady minds and a touch of telepathy.",
+    "traits": [
+      {
+        "name": "Dual Mind",
+        "summary": "Advantage on WIS and CHA saving throws."
+      },
+      {
+        "name": "Mental Discipline",
+        "summary": "Resistance to Psychic damage.",
+        "grants": [
+          {
+            "kind": "resistance",
+            "value": "Psychic"
+          }
+        ]
+      },
+      {
+        "name": "Mind Link",
+        "summary": "Telepathy out to 10 ft per level. Magic action while speaking to a creature this way: it can answer you telepathically for 1 hour, or until another Magic action ends it.",
+        "activation": "magic",
+        "duration": "1 hour"
+      },
+      {
+        "name": "Severed from Dreams",
+        "summary": "The Dream spell can't target you. Each Long Rest, gain proficiency in a skill of your choice until your next Long Rest."
+      }
+    ]
+  },
+  "khoravar": {
+    "summary": "People of mixed human and elf descent who see themselves as a bridge between cultures.",
+    "traits": [
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      {
+        "name": "Fey Ancestry",
+        "summary": "Advantage on saves to avoid or end Charmed."
+      },
+      {
+        "name": "Fey Gift",
+        "summary": "Know Friends; after each Long Rest you may swap it for another Cleric, Druid or Wizard cantrip. Cast with INT, WIS or CHA (picked with the species).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "friends"
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      {
+        "name": "Lethargy Resilience",
+        "summary": "Turn a failed save against falling or staying Unconscious into a success; then unusable until you finish 1d4 Long Rests."
+      },
+      {
+        "name": "Skill Versatility",
+        "summary": "Proficiency in one skill or tool of your choice, which you may swap for another after each Long Rest.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1,
+            "label": "Skill or tool (swap after a Long Rest)",
+            "note": "a tool proficiency is also allowed"
+          }
+        ]
+      }
+    ]
+  },
+  "shifter": {
+    "summary": "Descendants of lycanthropes who can briefly let their bestial side surge forth.",
+    "traits": [
+      {
+        "name": "Bestial Instincts",
+        "summary": "Proficiency in one of Acrobatics, Athletics, Intimidation or Survival.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1,
+            "from": ["Acrobatics", "Athletics", "Intimidation", "Survival"]
+          }
+        ]
+      },
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Darkvision",
+            "range": 60
+          }
+        ]
+      },
+      {
+        "name": "Shifting",
+        "summary": "Bonus Action: turn more bestial for 1 minute (end it as a Bonus Action) and gain Temp HP equal to 2 × PB. PB times per Long Rest. Each shift also grants the benefit of the option picked with the species.",
+        "activation": "bonus",
+        "duration": "1 minute",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        },
+        "choices": [
+          {
+            "kind": "option",
+            "count": 1,
+            "label": "Shifting option"
+          }
+        ],
+        "options": [
+          {
+            "name": "Beasthide",
+            "summary": "+1d6 extra Temp HP when you shift, and +1 AC while shifted.",
+            "dice": "1d6"
+          },
+          {
+            "name": "Longtooth",
+            "summary": "On shifting, and by Bonus Action on later turns of the shift, bite with an Unarmed Strike that can deal 1d6 + STR Piercing damage.",
+            "activation": "bonus",
+            "dice": "1d6",
+            "damageType": "Piercing"
+          },
+          {
+            "name": "Swiftstride",
+            "summary": "+10 ft Speed while shifted; Reaction when a creature finishes its turn 5 ft or closer to you: move up to 10 ft without provoking Opportunity Attacks.",
+            "activation": "reaction"
+          },
+          {
+            "name": "Wildhunt",
+            "summary": "While shifted, Advantage on WIS checks, and no creature within 30 ft gains Advantage on attacks against you unless you are Incapacitated.",
+            "range": 30
+          }
+        ]
+      }
+    ]
+  },
+  "warforged": {
+    "summary": "Living constructs of wood and metal built for the Last War, who feel pain and emotion.",
+    "traits": [
+      {
+        "name": "Construct Resilience",
+        "summary": "Resistance to Poison damage, and Advantage on saves to avoid or end Poisoned.",
+        "grants": [
+          {
+            "kind": "resistance",
+            "value": "Poison"
+          }
+        ]
+      },
+      {
+        "name": "Integrated Protection",
+        "summary": "+1 AC, and armor you wear can't be taken off you against your will while you live."
+      },
+      {
+        "name": "Sentry’s Rest",
+        "summary": "No need to sleep, and magic can't make you sleep. A Long Rest takes 6 hours spent motionless but aware."
+      },
+      {
+        "name": "Specialized Design",
+        "summary": "Proficiency in one skill and one tool of your choice.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1
+          },
+          {
+            "kind": "tool",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "name": "Tireless",
+        "summary": "No Exhaustion from going without water, food or air."
+      }
+    ]
+  }
+}

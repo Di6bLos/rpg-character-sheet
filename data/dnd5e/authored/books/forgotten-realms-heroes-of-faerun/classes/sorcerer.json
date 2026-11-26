@@ -1,0 +1,65 @@
+{
+  "subclasses": {
+    "spellfire-sorcery": {
+      "summary": "A Sorcerer who channels spellfire, the raw radiance of the Weave, to heal friends, burn foes and drink in hostile magic.",
+      "features": {
+        "Spellfire Burst": {
+          "summary": "Once per turn, when you spend Sorcery Points in a Magic action or Bonus Action, a creature within 30 ft (or you) gains 1d4 + CHA Temporary HP, or a creature within 30 ft takes 1d4 Fire or Radiant.",
+          "uses": { "count": 1, "recharge": "turn" },
+          "range": 30,
+          "options": [
+            {
+              "name": "Bolstering Flames",
+              "summary": "You or a creature you see within 30 ft gains 1d4 + CHA Temporary HP.",
+              "dice": "1d4"
+            },
+            {
+              "name": "Radiant Fire",
+              "summary": "A creature you see within 30 ft takes 1d4 Fire or Radiant, your pick.",
+              "dice": "1d4"
+            }
+          ]
+        },
+        "Spellfire Spells": {
+          "summary": "Always prepared: Cure Wounds, Guiding Bolt, Lesser Restoration and Scorching Ray at Sorcerer 3; Aura of Vitality and Dispel Magic at 5; Fire Shield and Wall of Fire at 7; Greater Restoration and Flame Strike at 9.",
+          "grants": [
+            { "kind": "spell", "spell": "cure-wounds", "at": 3 },
+            { "kind": "spell", "spell": "guiding-bolt", "at": 3 },
+            { "kind": "spell", "spell": "lesser-restoration", "at": 3 },
+            { "kind": "spell", "spell": "scorching-ray", "at": 3 },
+            { "kind": "spell", "spell": "aura-of-vitality", "at": 5 },
+            { "kind": "spell", "spell": "dispel-magic", "at": 5 },
+            { "kind": "spell", "spell": "fire-shield", "at": 7 },
+            { "kind": "spell", "spell": "wall-of-fire", "at": 7 },
+            { "kind": "spell", "spell": "greater-restoration", "at": 9 },
+            { "kind": "spell", "spell": "flame-strike", "at": 9 }
+          ]
+        },
+        "Absorb Spells": {
+          "summary": "Counterspell is always prepared, and you regain 1d4 Sorcery Points whenever a target fails its save against your Counterspell.",
+          "grants": [{ "kind": "spell", "spell": "counterspell", "at": 6 }],
+          "dice": "1d4"
+        },
+        "Honed Spellfire": {
+          "summary": "Bolstering Flames adds your Sorcerer level to its Temporary HP, and Radiant Fire deals 1d8.",
+          "dice": "1d8"
+        },
+        "Crown of Spellfire": {
+          "summary": "Once per Long Rest (or by spending 5 Sorcery Points), Innate Sorcery also grants a 60-ft Fly Speed with hover, lets you burn up to CHA Hit Point Dice once per turn to cut a hit's damage, and turns half-damage saves into no damage on a success and half on a failure.",
+          "uses": { "count": 1, "recharge": "long", "restore": "5 Sorcery Points" },
+          "options": [
+            {
+              "name": "Burning Life Force",
+              "summary": "Once per turn when an attack roll hits you, spend up to CHA modifier Hit Point Dice (min 1) and subtract their roll from the damage."
+            },
+            { "name": "Flight", "summary": "Fly Speed 60 ft; you can hover." },
+            {
+              "name": "Spell Avoidance",
+              "summary": "Against a spell or magical effect whose save halves damage, take none on a success and half on a failure; not while Incapacitated."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

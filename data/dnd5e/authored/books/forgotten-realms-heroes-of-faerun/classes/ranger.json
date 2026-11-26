@@ -1,0 +1,79 @@
+{
+  "subclasses": {
+    "winter-walker": {
+      "summary": "A hunter of the frozen north, like Icewind Dale, who wears rime as armour and turns the cold on its quarry.",
+      "features": {
+        "Frigid Explorer": {
+          "summary": "Resist Cold; Cold you deal with weapon attacks, Ranger spells or Ranger features ignores Cold Resistance. Once per turn a weapon hit can add 1d4 Cold (1d6 from Ranger 11).",
+          "grants": [{ "kind": "resistance", "value": "Cold" }],
+          "options": [
+            {
+              "name": "Biting Cold",
+              "summary": "Cold you deal with weapon attacks, Ranger spells or Ranger features ignores Resistance."
+            },
+            { "name": "Frost Resistance", "summary": "Resistance to Cold damage." },
+            {
+              "name": "Polar Strikes",
+              "summary": "Once per turn, a weapon attack hit can deal an extra 1d4 Cold; 1d6 at Ranger 11.",
+              "dice": "1d4",
+              "damageType": "Cold",
+              "uses": { "count": 1, "recharge": "turn" }
+            }
+          ]
+        },
+        "Hunter’s Rime": {
+          "summary": "Casting Hunter's Mark grants 1d10 + Ranger level Temporary HP, and a creature you've marked can't take the Disengage action.",
+          "dice": "1d10"
+        },
+        "Winter Walker Spells": {
+          "summary": "Always prepared: Ice Knife at Ranger 3, Hold Person at 5, Remove Curse at 9, Ice Storm at 13, Cone of Cold at 17.",
+          "grants": [
+            { "kind": "spell", "spell": "ice-knife", "at": 3 },
+            { "kind": "spell", "spell": "hold-person", "at": 5 },
+            { "kind": "spell", "spell": "remove-curse", "at": 9 },
+            { "kind": "spell", "spell": "ice-storm", "at": 13 },
+            { "kind": "spell", "spell": "cone-of-cold", "at": 17 }
+          ]
+        },
+        "Fortifying Soul": {
+          "summary": "Magic action: up to WIS modifier creatures you see (min 1) each heal 1d10 + Ranger level and get Advantage on saves against Frightened for 1 hour. Once per Long Rest.",
+          "activation": "magic",
+          "uses": { "count": 1, "recharge": "long" },
+          "dice": "1d10",
+          "duration": "1 hour"
+        },
+        "Chilling Retribution": {
+          "summary": "Reaction when a creature's attack roll hits you: it makes a WIS save or is Stunned, with Speed 0, until the end of your next turn. WIS modifier uses (min 1) per Long Rest.",
+          "activation": "reaction",
+          "uses": { "count": "WIS", "recharge": "long" },
+          "save": { "ability": "WIS", "dc": "spell" }
+        },
+        "Frozen Haunt": {
+          "summary": "When you cast Hunter's Mark, take a ghostly snow form for the spell's duration: Cold immunity, 2d4 Cold to chosen creatures in a 15-ft Emanation as it starts and each turn, and you pass through creatures and objects. Once per Long Rest, or restore it with a level 4+ slot.",
+          "uses": { "count": 1, "recharge": "long", "restore": "a level 4+ spell slot" },
+          "options": [
+            {
+              "name": "Frozen Soul",
+              "summary": "Immune to Cold. On entering the form and at the start of each later turn, chosen creatures in a 15-ft Emanation take 2d4 Cold.",
+              "dice": "2d4",
+              "damageType": "Cold",
+              "range": 15,
+              "grants": [{ "kind": "immunity", "value": "Cold" }]
+            },
+            {
+              "name": "Partially Incorporeal",
+              "summary": "Immune to Grappled, Prone and Restrained. Move through creatures and objects as Difficult Terrain, taking 1d10 Force if you end a turn inside one; when the form ends you're pushed to the nearest free space.",
+              "dice": "1d10",
+              "damageType": "Force",
+              "grants": [
+                { "kind": "conditionImmunity", "value": "Grappled" },
+                { "kind": "conditionImmunity", "value": "Prone" },
+                { "kind": "conditionImmunity", "value": "Restrained" }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

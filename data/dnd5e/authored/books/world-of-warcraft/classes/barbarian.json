@@ -1,0 +1,114 @@
+{
+  "subclasses": {
+    "path-of-the-elements": {
+      "summary": "A barbarian whose Rage calls up fire, frost and lightning to hurl at foes.",
+      "features": {
+        "Raging Elements": {
+          "summary": "As you Rage (and later with a Bonus Action while raging), use one elemental option; each rolls a number of dice equal to your Rage Damage bonus, save DC 8 + PB + CON.",
+          "activation": "bonus",
+          "save": { "ability": "DEX", "dc": "8+PB+CON" },
+          "range": 30,
+          "options": [
+            {
+              "name": "Icefury",
+              "summary": "Melee or ranged spell attack (CON) at a creature within 30 ft for Rage-bonus d8s Cold; if hit, its next Fire damage before your next turn ends adds 1d10 Fire.",
+              "dice": "1d8",
+              "damageType": "Cold",
+              "range": 30
+            },
+            {
+              "name": "Lava Burst",
+              "summary": "A creature you see within 30 ft makes a DEX save: Rage-bonus d4s Fire, half on a success; on a fail its next Lightning damage before your next turn ends adds 1d8 Lightning.",
+              "dice": "1d4",
+              "damageType": "Fire",
+              "save": { "ability": "DEX", "dc": "8+PB+CON" },
+              "range": 30
+            },
+            {
+              "name": "Lightning Bolt",
+              "summary": "A creature you see within 30 ft makes a DEX save: Rage-bonus d6s Lightning, half on a success; on a fail its next Cold damage before your next turn ends adds 1d6 Cold.",
+              "dice": "1d6",
+              "damageType": "Lightning",
+              "save": { "ability": "DEX", "dc": "8+PB+CON" },
+              "range": 30
+            }
+          ]
+        },
+        "Echo of the Elements": {
+          "summary": "Learn Elementalism. Daylight, Water Walk and Wind Wall each cost one Rage use to cast instead of a slot; WIS is the casting ability.",
+          "grants": [
+            { "kind": "spell", "spell": "elementalism", "at": 6 },
+            { "kind": "spell", "spell": "daylight", "at": 6 },
+            { "kind": "spell", "spell": "water-walk", "at": 6 },
+            { "kind": "spell", "spell": "wind-wall", "at": 6 }
+          ]
+        },
+        "Primordial Bond": {
+          "summary": "Resistance to Cold, Fire and Lightning while raging."
+        },
+        "Elemental Overload": {
+          "summary": "Raging Elements gain riders, hit or miss: Icefury makes the target lower its next damage roll by half your roll; Lava Burst sets the target and enemies within 10 ft burning; Lightning Bolt arcs to a second target within 30 ft (DEX save, same damage, half on success).",
+          "options": [
+            {
+              "name": "Icefury",
+              "summary": "Hit or miss, the target takes half your roll (rounded down) off its next damage roll before your next turn starts."
+            },
+            {
+              "name": "Lava Burst",
+              "summary": "Pass or fail, the target and each enemy within 10 ft of it start burning.",
+              "range": 10
+            },
+            {
+              "name": "Lightning Bolt",
+              "summary": "Pass or fail, lightning jumps to another creature you see within 30 ft of the first, which makes a DEX save for the same total, half on a success.",
+              "damageType": "Lightning",
+              "save": { "ability": "DEX", "dc": "8+PB+CON" },
+              "range": 30
+            }
+          ]
+        }
+      }
+    },
+    "path-of-the-spiritual-guardian": {
+      "summary": "A barbarian whose Rage calls spirits of beasts, ancestors or the elements to fight and shield beside them.",
+      "features": {
+        "Spiritual Protectors": {
+          "summary": "While raging, a creature you hit with a weapon or Unarmed Strike suffers your choice of spirit effect: Distract, Hinder or Strike.",
+          "options": [
+            {
+              "name": "Distract",
+              "summary": "Until your next turn starts, it has Disadvantage on attacks against anyone but you or another barbarian with this feature."
+            },
+            {
+              "name": "Hinder",
+              "summary": "Apply the Slow mastery on top of the weapon's other mastery property."
+            },
+            {
+              "name": "Strike",
+              "summary": "It takes an extra 1d4 Cold, Fire or Lightning damage (your pick).",
+              "dice": "1d4"
+            }
+          ]
+        },
+        "Spirit Shield": {
+          "summary": "Reaction while raging: when a creature you see within 30 ft takes damage, cut it by a number of d6s equal to your Rage Damage bonus.",
+          "activation": "reaction",
+          "dice": "1d6",
+          "range": 30
+        },
+        "Consult the Spirits": {
+          "summary": "Cast Augury or Clairvoyance with no slot or Material components (Clairvoyance sends an invisible guardian spirit as its sensor); WIS casting; once per Short or Long Rest.",
+          "uses": { "count": 1, "recharge": "short" },
+          "grants": [
+            { "kind": "spell", "spell": "augury", "at": 10 },
+            { "kind": "spell", "spell": "clairvoyance", "at": 10 }
+          ]
+        },
+        "Spirits’ Fury": {
+          "summary": "Rolling 18-20 on a melee weapon attack during the Attack action grants one more attack roll with that weapon in the same action; once per turn.",
+          "uses": { "count": 1, "recharge": "turn" }
+        }
+      }
+    }
+  }
+}
