@@ -372,10 +372,11 @@ Plan: scrape Archives of Nethys, build a rules bible and library PDFs, then type
 - [x] Shared conditions block (`SheetConditions`) with PF2e condition ends and what they do to the numbers; ally effects folded in
 - [x] Dead overlay and "(dead)" (`SheetDeadOverlay`); PF2e Resurrect (the ritual's success)
 - [x] PF2e Resources panel: Focus Points and the class toggles (Rage, Hunt Prey, Panache…)
-- [ ] Skills, saves and Perception rows with breakdown and "what it's for" tooltips, Fortune / Misfortune, a DC on every check, the Hero Point reroll
-- [ ] Attack cards (MAP buttons, degree odds vs Target AC, shared Dmg and Situation, per-card results), no sideways table on phones
-- [ ] Tooltips and help sweep (`UiTooltip` for every changed number)
-- [ ] Spell cards with folding ranks; Spells and Abilities groups in Attacks
-- [ ] Feats as an ability card grid; inventory alignment
-- [ ] Manual dice for PF2e attacks, checks, saves and damage
-- [ ] Accessibility and touch sweep
+- [x] Skills, saves and Perception rows with breakdown and "what it's for" tooltips, Fortune / Misfortune, a DC on every check, the Hero Point reroll
+- [x] Attack cards (MAP step, degree odds vs Target AC, off-guard / concealed / hidden, shared Dmg and Situation, per-card results), no sideways table on phones
+- [x] Tooltips and help sweep (`UiTooltip` for derived numbers; rules on hover for weapon traits and properties, runes and spell names on both sheets)
+- [x] Spell cards with folding ranks; Spells and Abilities groups in Attacks
+- [x] Feats as an ability card grid; inventory alignment
+- [x] Manual dice for PF2e Strikes and their damage, checks, saves, Perception, initiative and the recovery check
+- [ ] Manual dice for PF2e ability uses (Actions, Reactions) and spell casts
+- [x] Accessibility and touch sweep (44px skill rolls, group folds, full-text folds, coins)
