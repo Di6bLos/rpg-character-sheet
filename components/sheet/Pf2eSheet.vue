@@ -1,12 +1,15 @@
 <script setup lang="ts">
+// PF2e sheet, laid out like the Nimble sheet: identity (portrait, name, the identity and
+// details lines, the six attribute tiles), then the play panels in Nimble's two columns
+// (components/pf2e/Sheet*.vue), then Feats & features.
 import type { Pf2eAttr, Pf2eSheet } from '~/types/sheets'
 import { rollCheck, showOutcome, sign } from '~/utils/dice'
-import { type Pf2eStatContext, SAVE_ATTR, adjusted, degreeOf } from '~/utils/pf2ePlay'
+import { type Pf2eStatContext, SAVE_ATTR, adjusted, degreeOf, isDead } from '~/utils/pf2ePlay'
 import { shiftedDegree } from '~/utils/pf2eEffects'
 import { NOT_YOUR_TURN, cantAct, offTurn } from '~/utils/pf2eActions'
 import { PF2E_RANK_NAME } from '~/utils/heroCardStats'
 
-const { draft, canEdit, xpPct, xpLabel, say } = useSheet<Pf2eSheet>()
+const { draft, canEdit, say } = useSheet<Pf2eSheet>()
 // The GM's HP and condition changes from the battle board.
 useHeroHpChanges()
 useHeroConditionChanges()
@@ -23,14 +26,26 @@ const ATTR_NAME: Record<Pf2eAttr, string> = {
   CHA: 'Charisma',
 }
 
-const fields = [
-  { key: 'lineage', label: 'Ancestry' },
-  { key: 'heritage', label: 'Heritage' },
-  { key: 'background', label: 'Background' },
-  { key: 'class', label: 'Class' },
-  { key: 'subclass', label: 'Subclass' },
-  { key: 'deity', label: 'Deity' },
-] as const
+const dead = computed(() => isDead(sheet.value))
+
+const identityBits = computed(() =>
+  [
+    sheet.value.lineage,
+    sheet.value.heritage,
+    sheet.value.background,
+    sheet.value.class,
+    sheet.value.subclass,
+    sheet.value.deity,
+  ].filter((b) => b?.trim()),
+)
+
+const details = computed(() => [
+  { label: 'Key attribute', value: ATTR_NAME[sheet.value.keyAttr] },
+  {
+    label: 'XP',
+    value: `${sheet.value.xp.toLocaleString()} / ${sheet.value.xpNext.toLocaleString()}`,
+  },
+])
 
 const attrs = computed(() =>
   (Object.keys(ATTR_NAME) as Pf2eAttr[]).map((k) => ({
@@ -106,6 +121,7 @@ watch(
 )
 
 const strikesApi = providePf2eStrikes()
+providePf2eActions(strikesApi)
 const { targetAc, damageFlags, conditionsOffered, strikes, nextAttack } = strikesApi
 const turnActive = computed(() => !!sheet.value.turn?.active)
 
@@ -134,473 +150,288 @@ function strikeFromTable(index: number, step: number) {
   if (t?.active) t.actions -= 1
   strikesApi.attack(index, { map: step })
 }
-
-function setHero(n: number) {
-  if (!canEdit.value) return
-  sheet.value.heroPoints = sheet.value.heroPoints === n ? n - 1 : n
-}
-
-function setFocus(n: number) {
-  if (!canEdit.value) return
-  sheet.value.focus.current = sheet.value.focus.current === n ? n - 1 : n
-}
 </script>
 
 <template>
-  <section class="panel identity" aria-label="Identity">
-    <SheetPortrait placeholder="Portrait" class="pf-portrait" />
+  <section class="identity" aria-label="Identity">
+    <SheetPortrait placeholder="Portrait" class="id-portrait">
+      <template v-if="dead" #overlay>
+        <SheetDeadOverlay :name="draft.name" />
+      </template>
+    </SheetPortrait>
     <div class="identity__body">
-      <div class="identity__top">
-        <div class="stack" style="gap: 6px">
-          <div class="row" style="gap: 10px">
-            <span class="badge badge--pf2e">Pathfinder 2e</span>
-            <span class="small muted"><SheetCampaignLink /></span>
-          </div>
-          <h1>{{ draft.name }}</h1>
+      <div class="stack" style="gap: 8px">
+        <div class="row" style="gap: 10px">
+          <span class="badge badge--pf2e">Pathfinder 2e</span>
+          <span class="small muted"><SheetCampaignLink /></span>
         </div>
-        <div class="row" style="gap: 18px">
-          <div class="stack" style="gap: 6px">
-            <div class="caps" style="font-size: 11px">Hero points</div>
-            <div class="row" style="gap: 6px">
-              <button
-                v-for="n in 3"
-                :key="n"
-                type="button"
-                class="pip"
-                :aria-label="`Hero point ${n}`"
-                :aria-pressed="sheet.heroPoints >= n"
-                :disabled="!canEdit"
-                @click="setHero(n)"
-              />
-            </div>
-          </div>
-          <div class="level-ring">
-            <strong>{{ draft.level }}</strong>
-            <span>Level</span>
-          </div>
-          <div class="xp">
-            <div>{{ xpLabel }}</div>
-            <div class="meter meter--thin"><span :style="{ width: xpPct + '%' }" /></div>
-          </div>
-        </div>
-      </div>
-      <div class="identity__fields">
-        <div class="field">
-          <label for="pf-name">Character name</label>
-          <input
-            id="pf-name"
-            v-model="draft.name"
-            class="input"
-            maxlength="80"
-            :readonly="!canEdit"
-          />
-        </div>
-        <div v-for="f in fields" :key="f.key" class="field">
-          <label :for="`pf-${f.key}`">{{ f.label }}</label>
-          <input :id="`pf-${f.key}`" v-model="sheet[f.key]" class="input" :readonly="!canEdit" />
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="stack" style="gap: 12px" aria-labelledby="attr-h">
-    <div class="section-head">
-      <h2 id="attr-h" style="font-size: 20px">Attribute modifiers</h2>
-      <span class="small muted">Key attribute: {{ ATTR_NAME[sheet.keyAttr] }}</span>
-    </div>
-    <div class="attrs">
-      <div v-for="a in attrs" :key="a.k" class="attr" :class="{ 'is-key': a.key }">
-        <div class="caps">{{ a.k }}</div>
-        <div class="attr__v">{{ a.v }}</div>
-        <div class="attr__name">{{ a.name }}</div>
-      </div>
-    </div>
-  </section>
-
-  <div class="two-col">
-    <Pf2eSheetVitals />
-
-    <section class="panel stack" style="gap: 12px" aria-labelledby="sk-h">
-      <div class="panel-title" style="margin: 0">
-        <h2 id="sk-h">Skills</h2>
-        <div class="rank-legend">
-          <span>U untrained</span><span>T trained</span><span>E expert</span><span>M master</span
-          ><span>L legendary</span>
-        </div>
-      </div>
-      <label class="target">
-        Save DC
-        <input
-          v-model.number="saveDc"
-          class="input"
-          type="number"
-          inputmode="numeric"
-          min="0"
-          placeholder="—"
-          aria-describedby="save-dc-help"
-        />
-        <span id="save-dc-help" class="small muted">for the degree of success</span>
-      </label>
-      <div class="skills">
-        <button
-          v-for="x in saves.filter((v) => v.label !== 'Class DC')"
-          :key="x.label"
-          type="button"
-          class="skill is-trained"
-          :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.label}`"
-          :aria-label="`Roll ${x.label} ${sign(x.now.value)}`"
-          @click="claim('skills:save', () => rollSave(x.label, x.now.value))"
-        >
-          <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
-            x.rank
-          }}</span>
-          <span class="skill__name">{{ x.label }}</span>
-          <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
-        </button>
-      </div>
-      <div class="skills">
-        <button
-          v-for="x in skills"
-          :key="x.name"
-          type="button"
-          class="skill"
-          :class="{ 'is-trained': x.rank !== 'U' }"
-          :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.name}`"
-          :aria-label="`Roll ${x.name} ${sign(x.now.value)}`"
-          @click="claim('skills:check', () => check(x.name, x.now.value))"
-        >
-          <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
-            x.rank
-          }}</span>
-          <span class="skill__name"
-            >{{ x.name }} <small>{{ x.attr }}</small></span
+        <h1>{{ draft.name }}<span v-if="dead" class="dead-tag"> (dead)</span></h1>
+        <div class="identity__line">
+          <span
+            >Level <strong>{{ draft.level }}</strong></span
           >
-          <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
-        </button>
+          <template v-for="bit in identityBits" :key="bit">
+            <span aria-hidden="true">·</span><span>{{ bit }}</span>
+          </template>
+        </div>
+        <div class="identity__details">
+          <span v-for="d in details" :key="d.label"
+            >{{ d.label }} <strong>{{ d.value }}</strong></span
+          >
+        </div>
       </div>
-      <p v-if="resultIn('skills:')" class="roll-status" role="status" aria-live="polite">
-        {{ resultIn('skills:') }}
-      </p>
-    </section>
-  </div>
-
-  <Pf2eSheetEffects />
-
-  <Pf2eSheetTurn />
-
-  <section class="panel stack" style="gap: 14px" aria-labelledby="st-h">
-    <div class="panel-title" style="margin: 0">
-      <h2 id="st-h">Strikes</h2>
-      <span class="small muted">
-        Each button rolls that attack · 1st / 2nd / 3rd with multiple attack penalty
-      </span>
-      <label class="target">
-        Target AC
-        <input
-          v-model.number="targetAc"
-          class="input"
-          type="number"
-          inputmode="numeric"
-          min="0"
-          placeholder="—"
-        />
-      </label>
-      <label v-if="conditionsOffered.includes('offGuard')" class="target">
-        <input v-model="damageFlags.offGuard" type="checkbox" />
-        Target off-guard
-      </label>
-      <label v-if="conditionsOffered.includes('huntedPrey')" class="target">
-        <input v-model="damageFlags.huntedPrey" type="checkbox" />
-        First hit on your prey this round
-      </label>
-      <label v-if="conditionsOffered.includes('stratagem')" class="target">
-        <input v-model="damageFlags.stratagem" type="checkbox" />
-        Devise a Stratagem (next Strike: INT to the attack)
-      </label>
+      <div class="stats">
+        <div v-for="a in attrs" :key="a.k" class="stat" :class="{ 'stat--key': a.key }">
+          <div class="stat__k">
+            {{ a.k }}<template v-if="a.key"> · <abbr title="Key attribute">KEY</abbr></template>
+          </div>
+          <div class="stat__v">{{ a.v }}</div>
+          <div class="stat__save">{{ a.name }}</div>
+        </div>
+      </div>
     </div>
-    <div
-      v-if="strikes.length"
-      class="table-wrap"
-      tabindex="0"
-      role="region"
-      aria-label="Table, scroll sideways for more"
-    >
-      <table class="table" style="min-width: 760px">
-        <thead>
-          <tr>
-            <th scope="col">Strike</th>
-            <th scope="col">Attack (MAP)</th>
-            <th scope="col">Damage</th>
-            <th scope="col">Traits</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(w, i) in strikes" :key="i">
-            <td>
-              <div class="row" style="gap: 8px; flex-wrap: nowrap">
-                <strong>{{ w.name }}</strong>
-                <Pf2eCostPill :cost="STRIKE_COST" />
-              </div>
-            </td>
-            <td>
-              <button
-                v-if="strikeWhy && canEdit"
-                type="button"
-                class="atk atk--why"
-                disabled
-                :aria-label="`${w.name}: ${strikeWhy}`"
-              >
-                {{ strikeWhy }}
-              </button>
-              <div v-else class="row" style="gap: 6px; flex-wrap: nowrap">
-                <button
-                  v-for="(a, n) in w.atks"
-                  :key="n"
-                  type="button"
-                  class="atk"
-                  :class="{
-                    'atk--first': n === (turnActive ? nextAttack : 0),
-                    'is-changed': w.changed,
-                  }"
-                  :title="w.changed ? w.note : undefined"
-                  :aria-label="a.label"
-                  :disabled="!canEdit"
-                  @click="claim(`strike:${w.index}`, () => strikeFromTable(w.index, n))"
-                >
-                  {{ a.text }}
-                </button>
-              </div>
-            </td>
-            <td>
-              <div class="row" style="gap: 6px; flex-wrap: nowrap">
-                <button
-                  type="button"
-                  class="dmg dmg-btn"
-                  :class="{ 'is-changed': w.dmgChanged }"
-                  :title="w.dmgChanged ? w.dmgNote : undefined"
-                  :aria-label="`Roll damage for ${w.name}`"
-                  @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, false))"
-                >
-                  {{ w.dmg }}
-                </button>
-                <button
-                  type="button"
-                  class="atk crit-btn"
-                  :aria-label="`Roll critical damage for ${w.name}`"
-                  :title="`Critical hit: double damage${w.critNote ? `, then ${w.critNote}` : ''}`"
-                  @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, true))"
-                >
-                  ×2
-                </button>
-              </div>
-            </td>
-            <td>
-              <div class="row" style="gap: 6px">
-                <span v-for="t in w.traits" :key="t" class="trait">{{ t }}</span>
-                <button
-                  v-if="w.twoHandDie"
-                  type="button"
-                  class="chip grip"
-                  :aria-pressed="w.twoHands"
-                  :title="`Two-hand: d${w.twoHandDie} damage dice while held in two hands`"
-                  @click="strikesApi.toggleTwoHands(w.index)"
-                >
-                  Two hands
-                </button>
-                <button
-                  v-if="w.versatile"
-                  type="button"
-                  class="chip grip"
-                  :aria-pressed="w.versatileOn"
-                  :title="`Versatile: deal ${w.versatile.toLowerCase()} damage instead`"
-                  @click="strikesApi.toggleVersatile(w.index)"
-                >
-                  {{ w.versatile }}
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p v-else class="empty">No strikes yet. Use “Edit sheet” to add one.</p>
-    <p v-if="resultIn('strike:')" class="roll-status" role="status" aria-live="polite">
-      {{ resultIn('strike:') }}
-    </p>
   </section>
 
-  <Pf2eSheetActions />
-
-  <Pf2eSheetSpells v-if="sheet.spellcasting || sheet.focusSpells?.length" />
-  <Pf2eSheetSpells
-    v-for="c in sheet.archetypeCasting ?? []"
-    :key="c.archetype"
-    :archetype="c.archetype"
-  />
-
-  <div class="two-col">
-    <section class="panel stack" style="gap: 12px" aria-labelledby="ft-h">
-      <h2 id="ft-h">Feats &amp; features</h2>
-      <div v-if="sheet.focus.max > 0 && !sheet.focusSpells?.length" class="tile focus">
-        <div class="stack" style="gap: 2px">
-          <strong style="font-size: 14px">Focus points</strong>
-          <span class="small muted" style="font-size: 12px">{{ sheet.focus.note }}</span>
+  <div class="play">
+    <div class="play__col">
+      <Pf2eSheetVitals style="order: 1" />
+      <Pf2eSheetSpells v-if="sheet.spellcasting || sheet.focusSpells?.length" style="order: 8" />
+      <Pf2eSheetSpells
+        v-for="c in sheet.archetypeCasting ?? []"
+        :key="c.archetype"
+        :archetype="c.archetype"
+        style="order: 8"
+      />
+      <Pf2eSheetInventory style="order: 12" />
+    </div>
+    <div class="play__col">
+      <Pf2eSheetTurn style="order: 2" />
+      <section
+        class="panel stack"
+        :style="{ gap: '14px', order: turnActive ? 3 : 4 }"
+        aria-labelledby="atk-h"
+      >
+        <UiFold name="Attacks" :open="turnActive" />
+        <div class="panel-title" style="margin: 0">
+          <div class="title-help">
+            <h2 id="atk-h">Attacks</h2>
+            <UiHelp
+              label="About attacks"
+              text="Each Strike takes 1 action. Its three buttons are the 1st, 2nd and 3rd attack of your turn: the multiple attack penalty is −5 and −10 (agile −4 and −8). With the target's AC the result says the degree: 10 or more over is a critical hit, a natural 20 or 1 moves it one step (Player Core pp. 401–402)."
+            />
+          </div>
+          <label class="target">
+            Target AC
+            <input
+              v-model.number="targetAc"
+              class="input"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              placeholder="—"
+            />
+          </label>
+          <label v-if="conditionsOffered.includes('offGuard')" class="target">
+            <input v-model="damageFlags.offGuard" type="checkbox" />
+            Target off-guard
+          </label>
+          <label v-if="conditionsOffered.includes('huntedPrey')" class="target">
+            <input v-model="damageFlags.huntedPrey" type="checkbox" />
+            First hit on your prey this round
+          </label>
+          <label v-if="conditionsOffered.includes('stratagem')" class="target">
+            <input v-model="damageFlags.stratagem" type="checkbox" />
+            Devise a Stratagem (next Strike: INT to the attack)
+          </label>
         </div>
-        <div class="row" style="gap: 6px">
-          <button
-            v-for="n in sheet.focus.max"
-            :key="n"
-            type="button"
-            class="pip pip--secondary"
-            :aria-label="`Focus point ${n}`"
-            :aria-pressed="sheet.focus.current >= n"
-            :disabled="!canEdit"
-            @click="setFocus(n)"
+        <div
+          v-if="strikes.length"
+          class="table-wrap"
+          tabindex="0"
+          role="region"
+          aria-label="Table, scroll sideways for more"
+        >
+          <table class="table" style="min-width: 480px">
+            <thead>
+              <tr>
+                <th scope="col">Strike</th>
+                <th scope="col">Attack (MAP)</th>
+                <th scope="col">Damage</th>
+                <th scope="col">Traits</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(w, i) in strikes" :key="i">
+                <td>
+                  <div class="row" style="gap: 8px; flex-wrap: nowrap">
+                    <strong>{{ w.name }}</strong>
+                    <Pf2eCostPill :cost="STRIKE_COST" />
+                  </div>
+                </td>
+                <td>
+                  <button
+                    v-if="strikeWhy && canEdit"
+                    type="button"
+                    class="atk atk--why"
+                    disabled
+                    :aria-label="`${w.name}: ${strikeWhy}`"
+                  >
+                    {{ strikeWhy }}
+                  </button>
+                  <div v-else class="row" style="gap: 6px; flex-wrap: nowrap">
+                    <button
+                      v-for="(a, n) in w.atks"
+                      :key="n"
+                      type="button"
+                      class="atk"
+                      :class="{
+                        'atk--first': n === (turnActive ? nextAttack : 0),
+                        'is-changed': w.changed,
+                      }"
+                      :title="w.changed ? w.note : undefined"
+                      :aria-label="a.label"
+                      :disabled="!canEdit"
+                      @click="claim(`strike:${w.index}`, () => strikeFromTable(w.index, n))"
+                    >
+                      {{ a.text }}
+                    </button>
+                  </div>
+                </td>
+                <td>
+                  <div class="row" style="gap: 6px; flex-wrap: nowrap">
+                    <button
+                      type="button"
+                      class="dmg dmg-btn"
+                      :class="{ 'is-changed': w.dmgChanged }"
+                      :title="w.dmgChanged ? w.dmgNote : undefined"
+                      :aria-label="`Roll damage for ${w.name}`"
+                      @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, false))"
+                    >
+                      {{ w.dmg }}
+                    </button>
+                    <button
+                      type="button"
+                      class="atk crit-btn"
+                      :aria-label="`Roll critical damage for ${w.name}`"
+                      :title="`Critical hit: double damage${w.critNote ? `, then ${w.critNote}` : ''}`"
+                      @click="claim(`strike:${w.index}`, () => strikesApi.damage(w.index, true))"
+                    >
+                      ×2
+                    </button>
+                  </div>
+                </td>
+                <td>
+                  <div class="row" style="gap: 6px">
+                    <span v-for="t in w.traits" :key="t" class="trait">{{ t }}</span>
+                    <button
+                      v-if="w.twoHandDie"
+                      type="button"
+                      class="chip grip"
+                      :aria-pressed="w.twoHands"
+                      :title="`Two-hand: d${w.twoHandDie} damage dice while held in two hands`"
+                      @click="strikesApi.toggleTwoHands(w.index)"
+                    >
+                      Two hands
+                    </button>
+                    <button
+                      v-if="w.versatile"
+                      type="button"
+                      class="chip grip"
+                      :aria-pressed="w.versatileOn"
+                      :title="`Versatile: deal ${w.versatile.toLowerCase()} damage instead`"
+                      @click="strikesApi.toggleVersatile(w.index)"
+                    >
+                      {{ w.versatile }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-else class="empty">No strikes yet. Use “Edit sheet” to add one.</p>
+        <p v-if="resultIn('strike:')" class="roll-status" role="status" aria-live="polite">
+          {{ resultIn('strike:') }}
+        </p>
+      </section>
+      <Pf2eSheetReactions :style="{ order: turnActive ? 4 : 3 }" />
+      <Pf2eSheetResources style="order: 5" />
+      <Pf2eSheetActions style="order: 6" />
+      <section class="panel stack" style="gap: 12px; order: 11" aria-labelledby="sk-h">
+        <UiFold name="Skills" />
+        <div class="title-help" style="margin: 0">
+          <h2 id="sk-h">Skills</h2>
+          <UiHelp
+            label="About skills and saves"
+            text="A check is d20 + the modifier. Proficiency adds your level + 2 trained (T), 4 expert (E), 6 master (M), 8 legendary (L); untrained (U) adds nothing (Player Core p. 11). Saves and Perception come first; give a Save DC for the degree of success."
           />
         </div>
-      </div>
-      <Pf2eSheetFeats />
-    </section>
-
-    <Pf2eSheetInventory />
+        <label class="target">
+          Save DC
+          <input
+            v-model.number="saveDc"
+            class="input"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            placeholder="—"
+            aria-describedby="save-dc-help"
+          />
+          <span id="save-dc-help" class="small muted">for the degree of success</span>
+        </label>
+        <div class="skills">
+          <button
+            v-for="x in saves.filter((v) => v.label !== 'Class DC')"
+            :key="x.label"
+            type="button"
+            class="skill is-trained"
+            :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.label}`"
+            :aria-label="`Roll ${x.label} ${sign(x.now.value)}`"
+            @click="claim('skills:save', () => rollSave(x.label, x.now.value))"
+          >
+            <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
+              x.rank
+            }}</span>
+            <span class="skill__name">{{ x.label }}</span>
+            <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
+          </button>
+        </div>
+        <div class="skills">
+          <button
+            v-for="x in skills"
+            :key="x.name"
+            type="button"
+            class="skill"
+            :class="{ 'is-trained': x.rank !== 'U' }"
+            :title="x.now.changed ? `${sign(x.value)} ${x.now.note}` : `Roll ${x.name}`"
+            :aria-label="`Roll ${x.name} ${sign(x.now.value)}`"
+            @click="claim('skills:check', () => check(x.name, x.now.value))"
+          >
+            <span class="rank" :class="`rank--${x.rank}`" :title="PF2E_RANK_NAME[x.rank]">{{
+              x.rank
+            }}</span>
+            <span class="skill__name"
+              >{{ x.name }} <small>{{ x.attr }}</small></span
+            >
+            <strong :class="{ 'is-changed': x.now.changed }">{{ sign(x.now.value) }}</strong>
+          </button>
+        </div>
+        <p v-if="resultIn('skills:')" class="roll-status" role="status" aria-live="polite">
+          {{ resultIn('skills:') }}
+        </p>
+      </section>
+    </div>
   </div>
+
+  <section class="panel stack" style="gap: 12px" aria-labelledby="ft-h">
+    <UiFold name="All abilities" />
+    <h2 id="ft-h">Feats &amp; features</h2>
+    <Pf2eSheetFeats />
+  </section>
 </template>
 
 <style scoped lang="scss">
-.identity {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-}
-
-.pf-portrait {
-  flex: 0 0 168px;
-  --portrait-w: 168px;
-  --portrait-h: 200px;
-}
-
-.identity__body {
-  flex: 999 1 420px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-
-  h1 {
-    font-size: clamp(28px, 3.4vw, 40px);
-  }
-}
-
-.identity__top {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.identity__fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
-  gap: 12px;
-
-  label {
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-  }
-}
-
-.level-ring {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: 2px solid var(--secondary);
-  background: var(--field);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  strong {
-    font-family: var(--font-heading);
-    font-size: 28px;
-    line-height: 1;
-  }
-
-  span {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--page-muted);
-  }
-}
-
-.xp {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 130px;
-  font-size: 12px;
-  color: var(--page-soft);
-}
-
-.attrs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-}
-
-.attr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 14px 8px;
-  border-radius: min(var(--radius-panel), 12px);
-  background: var(--panel-bg);
-  color: var(--panel-text);
-  border: 1px solid var(--panel-line);
-  box-shadow: var(--panel-shadow);
-  --page-muted: var(--panel-muted);
-
-  &.is-key {
-    border: 1.5px solid var(--accent);
-  }
-}
-
-.attr__v {
-  font-family: var(--font-heading);
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.15;
-}
-
-.attr__name {
-  font-size: 11px;
-  color: var(--page-muted);
-}
-
-.two-col {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
-  gap: 24px;
-  align-items: start;
-}
-
-.ac {
-  flex: 0 0 120px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 14px 8px;
-  border-radius: min(var(--radius-panel), 12px);
-  background: var(--field);
-  border: 1.5px solid var(--secondary);
-}
+@use '../../assets/styles/sheet-layout';
 
 .is-changed {
   color: var(--warn-text);
@@ -630,65 +461,6 @@ function setFocus(n: number) {
   .input {
     width: 80px;
   }
-}
-
-.ac__v {
-  font-family: var(--font-heading);
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.shield {
-  flex: 1 1 200px;
-  gap: 10px;
-  padding: 14px;
-}
-
-.shield__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.shield__btn {
-  border-radius: min(var(--radius-control), 8px);
-  font-size: 12px;
-  font-weight: 600;
-  border-color: var(--line-strong);
-  color: var(--page-text);
-
-  &[aria-pressed='true'] {
-    background: var(--secondary);
-    border-color: var(--secondary);
-    color: var(--on-secondary);
-  }
-}
-
-.facts {
-  display: flex;
-  gap: 8px 20px;
-  flex-wrap: wrap;
-  font-size: 13px;
-  color: var(--page-soft);
-
-  strong {
-    color: var(--page-text);
-  }
-}
-
-.saves {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 10px;
-}
-
-.save__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
 }
 
 .rank {
@@ -721,41 +493,6 @@ function setFocus(n: number) {
     background: var(--accent);
     color: var(--on-accent);
   }
-}
-
-.rank-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  font-size: 11px;
-  color: var(--page-muted);
-}
-
-.hp {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.hp__value {
-  font-family: var(--font-heading);
-  font-size: 26px;
-  font-weight: 700;
-  min-width: 90px;
-  text-align: center;
-
-  span {
-    font-size: 16px;
-    color: var(--page-muted);
-  }
-}
-
-.cond {
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--field);
 }
 
 .skills {
@@ -809,11 +546,6 @@ function setFocus(n: number) {
   }
 }
 
-.action-glyph {
-  color: var(--secondary);
-  font-size: 13px;
-}
-
 .atk {
   min-height: 40px;
   min-width: 52px;
@@ -861,12 +593,5 @@ function setFocus(n: number) {
   background: var(--track);
   border: 1px solid var(--line);
   color: var(--page-soft);
-}
-
-.focus {
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
 }
 </style>
