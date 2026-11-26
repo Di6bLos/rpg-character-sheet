@@ -1,8 +1,9 @@
-// Library: how a 5e record reads. SRD entries show the SRD's own text with its page; the
-// Player's Handbook (2024) and Forge of the Artificer entries carry no book text, only a
-// `summary` in Lantern's words and their mechanics as fields, so the Library shows those
-// fields as short fact lines ("Bonus Action", "Uses: Proficiency Bonus per Long Rest") and a
-// source tag ("PHB 2024"). Nothing here writes rules text of its own: every line is a field.
+// Library: how a 5e record reads. SRD entries show the SRD's own text with its page; entries
+// from the other official books (`DND5E_SOURCES`) carry no book text, only a `summary` in
+// Lantern's words and their mechanics as fields, so the Library shows those fields as short
+// fact lines ("Bonus Action", "Uses: Proficiency Bonus per Long Rest") and a source tag
+// ("PHB"). Nothing here writes rules text of its own: every line is a field.
+import { DND5E_SOURCES, type Dnd5eSourceKind } from '~/data/dnd5e/sources'
 import type {
   Dnd5eAbility,
   Dnd5eActivation,
@@ -26,21 +27,43 @@ export const DND5E_ABILITY: Record<Dnd5eAbility, string> = {
   CHA: 'Charisma',
 }
 
-/** Short names for the source tag; the SRD tag carries its page. */
-export const DND5E_SOURCE_SHORT: Record<Dnd5eSourceBook, string> = {
-  'SRD 5.2.1': 'SRD 5.2.1',
-  'PHB 2024': 'PHB 2024',
-  'Eberron: Forge of the Artificer': 'Forge of the Artificer',
-}
+const KIND_ORDER: Dnd5eSourceKind[] = ['core', 'supplement', 'setting', 'drop']
 
-/** URL and filter keys for each source. */
-export const DND5E_SOURCE_KEY: Record<Dnd5eSourceBook, string> = {
-  'SRD 5.2.1': 'srd',
-  'PHB 2024': 'phb',
-  'Eberron: Forge of the Artificer': 'efa',
-}
+/** Every book as the source filters list it: core, supplements, settings, then drops, each by release. */
+export const DND5E_BOOKS: readonly Dnd5eSourceBook[] = DND5E_SOURCES.map((s, i) => ({ s, i }))
+  .sort((a, b) => KIND_ORDER.indexOf(a.s.kind) - KIND_ORDER.indexOf(b.s.kind) || a.i - b.i)
+  .map(({ s }) => s.name)
 
-/** "SRD 5.2.1 p. 87", "PHB 2024". */
+const keyOf = (short: string) =>
+  short
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+/** The source tag's short name ("PHB", "Arcana Unleashed"); the SRD tag carries its page. */
+export const DND5E_SOURCE_SHORT = Object.fromEntries(
+  DND5E_SOURCES.map((s) => [s.name, s.short]),
+) as Record<Dnd5eSourceBook, string>
+
+/** URL and filter keys for each source, from its short name (`phb`, `drop-may-2026`). */
+export const DND5E_SOURCE_KEY = Object.fromEntries(
+  DND5E_SOURCES.map((s) => [s.name, keyOf(s.short)]),
+) as Record<Dnd5eSourceBook, string>
+
+/** The filter keys in `DND5E_BOOKS` order. */
+export const DND5E_SOURCE_KEYS = DND5E_BOOKS.map((b) => DND5E_SOURCE_KEY[b])
+
+/** A record's filter keys: every book that prints it, so a reprint is found under each. */
+export const dnd5eSourceKeys = (r: Pick<Dnd5eRecord, 'source' | 'sources'>) =>
+  (r.sources ?? [r.source]).map((b) => DND5E_SOURCE_KEY[b])
+
+/** Sort value for a Source column: book order, then page. */
+export const dnd5eSourceSort = (r: Pick<Dnd5eRecord, 'source' | 'page'>) =>
+  `${String(DND5E_BOOKS.indexOf(r.source)).padStart(2, '0')} ${String(r.page ?? 0).padStart(4, '0')}`
+
+/** "SRD p. 87", "PHB". */
 export function dnd5eSource(r: Pick<Dnd5eRecord, 'source' | 'page'>): string {
   const short = DND5E_SOURCE_SHORT[r.source]
   return r.page ? `${short} p. ${r.page}` : short
@@ -51,7 +74,13 @@ export const DND5E_FEAT_CATEGORY: Record<Dnd5eFeatCategory, string> = {
   general: 'General',
   'fighting-style': 'Fighting Style',
   'epic-boon': 'Epic Boon',
+  dragonmark: 'Dragonmark',
+  'planar-pact': 'Planar Pact',
+  'dark-gift': 'Dark Gift',
 }
+
+/** The feat categories in the order the Library lists them: the PHB's four, then the later books'. */
+export const DND5E_FEAT_CATEGORIES = Object.keys(DND5E_FEAT_CATEGORY) as Dnd5eFeatCategory[]
 
 export const DND5E_ACTIVATION: Record<Dnd5eActivation, string> = {
   action: 'Action',

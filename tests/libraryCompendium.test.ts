@@ -384,6 +384,9 @@ describe('5e spells', () => {
     expect(keep({ time: ['reaction'] }).map((s) => s.name)).toContain('Shield')
     expect(keep({ src: ['phb'] }).every((s) => s.source === 'PHB 2024' && !s.srd)).toBe(true)
     expect(keep({ src: ['srd'] }).every((s) => s.srd)).toBe(true)
+    const arcana = keep({ src: ['arcana-unleashed'] })
+    expect(arcana.length).toBeGreaterThan(0)
+    expect(arcana.every((s) => s.source === 'Arcana Unleashed')).toBe(true)
   })
 
   it('combines filters', () => {

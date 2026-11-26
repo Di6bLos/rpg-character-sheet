@@ -9,7 +9,11 @@ import type { Dnd5eData } from '../data/dnd5e'
 import { ANCESTRIES } from '../data/nimble/ancestries'
 import { BACKGROUNDS } from '../data/nimble/backgrounds'
 import type { Pf2eData } from '../data/pf2e'
+import { DND5E_SOURCES } from '../data/dnd5e/sources'
 import {
+  DND5E_BOOKS,
+  DND5E_SOURCE_KEY,
+  DND5E_SOURCE_SHORT,
   choiceLine,
   entryItem,
   grantLines,
@@ -197,7 +201,7 @@ describe('5e entries', () => {
     expect(srd.length).toBeGreaterThan(20)
     for (const e of srd) {
       expect(e.text, e.name).toBeTruthy()
-      expect(e.source, e.name).toMatch(/^SRD 5\.2\.1 p\. \d+$/)
+      expect(e.source, e.name).toMatch(/^SRD p\. \d+$/)
       expect(e.tag, e.name).toBeUndefined()
       expect(e.summary, e.name).toBeUndefined()
     }
@@ -209,7 +213,7 @@ describe('5e entries', () => {
     for (const e of other) {
       expect(e.text, e.name).toBeUndefined()
       expect(e.summary, e.name).toBeTruthy()
-      expect(['PHB 2024', 'Forge of the Artificer'], e.name).toContain(e.tag)
+      expect(Object.values(DND5E_SOURCE_SHORT), e.name).toContain(e.tag)
       for (const item of e.parts.flatMap((p) => p.items)) expect(item.text, item.name).toBeFalsy()
     }
     const actor = list('feats:dnd5e').entries.find((e) => e.id === 'actor')
@@ -223,6 +227,51 @@ describe('5e entries', () => {
   it('names a background’s origin feat and the option it fixes', () => {
     const acolyte = list('backgrounds:dnd5e').entries.find((e) => e.id === 'acolyte')
     expect(acolyte?.cells.feat).toBe('Magic Initiate (Cleric)')
+  })
+
+  it('names the feat category a background lets you take instead', () => {
+    const haunted = list('backgrounds:dnd5e').entries.find((e) => e.id === 'haunted-one')
+    expect(haunted?.cells.feat).toBe('Survivor or any Dark Gift')
+    expect(haunted?.stats).toContainEqual({
+      label: 'Feat',
+      value: 'Survivor, or a Dark Gift feat of your choice',
+    })
+  })
+
+  it('gives every entry its one-line summary for lists and cards', () => {
+    for (const e of all) expect(e.blurb, e.name).toBeTruthy()
+  })
+
+  it('lists every book its entries come from, core, supplements, settings, then drops', () => {
+    const kinds = ['core', 'supplement', 'setting', 'drop']
+    const kindOf = (key: string) =>
+      kinds.indexOf(DND5E_SOURCES.find((b) => DND5E_SOURCE_KEY[b.name] === key)?.kind ?? '')
+    for (const key of ['feats:dnd5e', 'backgrounds:dnd5e', 'species:dnd5e']) {
+      const l = list(key)
+      const used = new Set(l.entries.flatMap((e) => e.facets.source ?? []))
+      const options = l.filters.find((f) => f.key === 'source')?.options ?? []
+      expect(options.map((o) => o.value).sort(), key).toEqual([...used].sort())
+      const order = options.map((o) => kindOf(o.value))
+      expect(order, key).toEqual([...order].sort((a, b) => a - b))
+    }
+    const feats = list('feats:dnd5e').filters.find((f) => f.key === 'source')?.options ?? []
+    expect(feats.map((o) => o.label)).toEqual(
+      expect.arrayContaining(['SRD', 'PHB', 'Arcana Unleashed', 'Ravenloft', 'Warcraft']),
+    )
+  })
+
+  it('finds a reprint under every book that prints it', () => {
+    const dhampir = list('species:dnd5e').entries.find((e) => e.id === 'dhampir')
+    expect(dhampir?.facets.source).toEqual([
+      DND5E_SOURCE_KEY['Astarion’s Book of Hungers'],
+      DND5E_SOURCE_KEY['Ravenloft: The Horrors Within'],
+    ])
+  })
+
+  it('keys every book uniquely, in lower case', () => {
+    const keys = DND5E_BOOKS.map((b) => DND5E_SOURCE_KEY[b])
+    expect(new Set(keys).size).toBe(DND5E_SOURCES.length)
+    for (const k of keys) expect(k).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
   })
 })
 

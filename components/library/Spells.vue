@@ -51,6 +51,7 @@ import {
 } from '~/utils/libraryCompendium'
 import {
   DND5E_ABILITY,
+  DND5E_BOOKS,
   DND5E_SOURCE_KEY,
   DND5E_SOURCE_SHORT,
   dnd5eSource,
@@ -149,7 +150,15 @@ const dnd5eIndex = computed(() =>
     searchable(
       s,
       s.name,
-      [s.school, s.castingTime, s.classes.join(' '), s.text, s.summary, s.higherLevel]
+      [
+        s.school,
+        s.castingTime,
+        s.classes.join(' '),
+        s.extraLists?.join(' '),
+        s.text,
+        s.summary,
+        s.higherLevel,
+      ]
         .filter(Boolean)
         .join(' '),
     ),
@@ -168,10 +177,13 @@ const DND5E_TIMES = [
   { id: 'reaction', label: 'Reaction' },
   { id: 'time', label: '1 minute or more' },
 ]
-const DND5E_SOURCES = Object.entries(DND5E_SOURCE_KEY).map(([book, id]) => ({
-  id,
-  label: DND5E_SOURCE_SHORT[book as Dnd5eSpellDef['source']],
-}))
+const dnd5eSources = computed(() => {
+  const used = new Set((dnd5eSpells.value ?? []).flatMap((s) => s.sources ?? [s.source]))
+  return DND5E_BOOKS.filter((b) => used.has(b)).map((b) => ({
+    id: DND5E_SOURCE_KEY[b],
+    label: DND5E_SOURCE_SHORT[b],
+  }))
+})
 
 const pf2eTraits = computed(() => pf2eSpellTraits(pf2eSpells.value ?? []))
 const pf2eClasses = computed(() => pf2eSpellClasses(pf2eSpells.value ?? []))
@@ -210,8 +222,10 @@ interface SpellView {
   /** 5e non-SRD: the summary in Lantern's words and its mechanics as fact lines. */
   summary?: string
   facts?: string[]
-  /** 5e non-SRD: the source tag ("PHB 2024"). */
+  /** 5e non-SRD: the source tag ("PHB"). */
   tag?: string
+  /** 5e: the one-line summary, under the name in lists and on cards. */
+  blurb?: string
   /** 5e: Concentration and Ritual, as "C" and "R" by the name. */
   flags: { abbr: string; label: string }[]
   source: string
@@ -342,10 +356,12 @@ function dnd5eView(s: Dnd5eSpellDef): SpellView {
       { label: 'Components', value: dnd5eComponents(s.components) },
       { label: 'Duration', value: s.duration },
       { label: 'Classes', value: s.classes.map(slugName).join(', ') },
+      { label: 'Also on', value: (s.extraLists ?? []).join(', ') },
     ].filter((x) => x.value),
     text,
     ...(s.text ? {} : { summary: s.summary, facts }),
     tag: s.srd ? undefined : DND5E_SOURCE_SHORT[s.source],
+    blurb: s.summary,
     flags: [
       ...(s.concentration ? [{ abbr: 'C', label: 'Concentration' }] : []),
       ...(s.ritual ? [{ abbr: 'R', label: 'Ritual' }] : []),
@@ -698,7 +714,7 @@ const toolbarStuck = useStuck(toolbarEl)
         </div>
         <div class="chips" role="group" aria-label="Source">
           <button
-            v-for="src in DND5E_SOURCES"
+            v-for="src in dnd5eSources"
             :key="src.id"
             type="button"
             class="chip"
@@ -809,6 +825,7 @@ const toolbarStuck = useStuck(toolbarEl)
                   <span v-if="sec.mixed" class="card__level">{{ v.level }}</span>
                 </span>
                 <span v-if="v.meta" class="card__meta">{{ v.meta }}</span>
+                <span v-if="v.blurb" class="card__blurb">{{ v.blurb }}</span>
               </button>
             </li>
           </ul>
@@ -884,6 +901,7 @@ const toolbarStuck = useStuck(toolbarEl)
                     >{{ f.abbr }}</span
                   >
                   <span v-if="v.tag" class="badge badge--outline tag">{{ v.tag }}</span>
+                  <span v-if="v.blurb" class="blurb" :title="v.blurb">{{ v.blurb }}</span>
                 </template>
                 <template v-else-if="c.key === 'actions' && v.glyph">
                   <span class="glyph" :title="v.glyphWords"
@@ -1243,6 +1261,28 @@ const toolbarStuck = useStuck(toolbarEl)
 }
 
 .card__meta {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--page-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card__blurb {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--page-soft);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.blurb {
+  display: block;
+  max-width: 52ch;
+  margin-top: -6px;
+  padding-bottom: 6px;
   overflow: hidden;
   font-size: 13px;
   color: var(--page-muted);

@@ -156,7 +156,7 @@ describe('spell sections', () => {
 })
 
 describe('feat sections', () => {
-  it('5e: Origin, General, Fighting Style, Epic Boon, each feat in its own', () => {
+  it('5e: the PHB’s four categories, then Dragonmark, Planar Pact and Dark Gift, each feat in its own', () => {
     const list = dnd5eFeatList(load5e('feats'))
     expect(list.sections?.defs).toBe(DND5E_FEAT_SECTIONS)
     const out = groupSections(list.entries, DND5E_FEAT_SECTIONS, (e) => e.facets.category ?? [])
@@ -165,7 +165,12 @@ describe('feat sections', () => {
       'General feats',
       'Fighting Style feats',
       'Epic Boon feats',
+      'Dragonmark feats',
+      'Planar Pact feats',
+      'Dark Gift feats',
     ])
+    const origin = out.find((s) => s.key === 'origin')?.rows.map((e) => e.name)
+    expect(origin).toContain('Portal Jumper')
     expect(out.reduce((n, s) => n + s.rows.length, 0)).toBe(list.entries.length)
   })
 

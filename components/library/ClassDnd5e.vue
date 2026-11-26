@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // One 5e class in the Library → Classes modal: its core traits, the level 1–20 class table with
 // every column, features by level, spellcasting, its subclasses with their features and
-// always-prepared spells, then the option lists it picks from (invocations, metamagic, plans). SRD
+// always-prepared spells and own option lists (Battle Master's maneuvers, Arcane Archer's Arcane
+// Shots), then the option lists the class picks from (invocations, metamagic, plans). SRD
 // features show the SRD's text and page; the others their summary, mechanics and source tag.
 // The features and subclasses a search matched start open.
 import type {

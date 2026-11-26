@@ -335,6 +335,7 @@ const toolbarStuck = useStuck(toolbarEl)
                   <span v-if="v.badge" class="card__level">{{ v.badge }}</span>
                 </span>
                 <span v-if="v.meta" class="card__meta">{{ v.meta }}</span>
+                <span v-if="v.blurb" class="card__blurb">{{ v.blurb }}</span>
               </button>
             </li>
           </ul>
@@ -401,6 +402,7 @@ const toolbarStuck = useStuck(toolbarEl)
                   </button>
                   <span v-if="v.rarity" class="rarity">{{ v.rarity }}</span>
                   <span v-if="v.tag" class="badge badge--outline tag">{{ v.tag }}</span>
+                  <span v-if="v.blurb" class="blurb" :title="v.blurb">{{ v.blurb }}</span>
                 </template>
                 <template v-else-if="c.key === 'actions' && v.glyph">
                   <span class="glyph" :title="v.glyphWords"
@@ -741,6 +743,28 @@ const toolbarStuck = useStuck(toolbarEl)
 }
 
 .card__meta {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--page-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card__blurb {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--page-soft);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.blurb {
+  display: block;
+  max-width: 52ch;
+  margin-top: -6px;
+  padding-bottom: 6px;
   overflow: hidden;
   font-size: 13px;
   color: var(--page-muted);

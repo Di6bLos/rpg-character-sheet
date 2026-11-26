@@ -21,11 +21,15 @@ import type {
 import { actionSortValue, sourceLabel } from '~/utils/libraryCompendium'
 import {
   DND5E_ABILITY,
+  DND5E_FEAT_CATEGORIES,
   DND5E_FEAT_CATEGORY,
   DND5E_SOURCE_KEY,
+  DND5E_SOURCE_KEYS,
   DND5E_SOURCE_SHORT,
   choiceLine,
   dnd5eSource,
+  dnd5eSourceKeys,
+  dnd5eSourceSort,
   entryItem,
   listWords,
   mechanicsFacts,
@@ -71,26 +75,27 @@ const stat = (label: string, value: string | undefined) => (value ? [{ label, va
 const dnd5eTag = (r: { srd: boolean; source: Dnd5eSourceBook }) =>
   r.srd ? undefined : DND5E_SOURCE_SHORT[r.source]
 
+const SOURCE_LABEL = Object.fromEntries(
+  (Object.keys(DND5E_SOURCE_KEY) as Dnd5eSourceBook[]).map((b) => [
+    DND5E_SOURCE_KEY[b],
+    DND5E_SOURCE_SHORT[b],
+  ]),
+)
+
+/** The books this tab's entries come from, core first, then supplements, settings and drops. */
 function dnd5eSourceFilter(entries: EntryView[]): EntryFilter {
-  const books = Object.keys(DND5E_SOURCE_KEY) as Dnd5eSourceBook[]
-  const label = Object.fromEntries(books.map((b) => [DND5E_SOURCE_KEY[b], DND5E_SOURCE_SHORT[b]]))
   return {
     key: 'source',
     label: 'Source',
     kind: 'chips',
-    options: facetOptions(entries, 'source', (v) => label[v] ?? v, Object.values(DND5E_SOURCE_KEY)),
+    options: facetOptions(entries, 'source', (v) => SOURCE_LABEL[v] ?? v, DND5E_SOURCE_KEYS),
   }
 }
 
-const dnd5eSourceSort = (r: { source: Dnd5eSourceBook; page?: number }) =>
-  `${Object.values(DND5E_SOURCE_KEY).indexOf(DND5E_SOURCE_KEY[r.source])} ${String(r.page ?? 0).padStart(4, '0')}`
-
 // --- Feats ---------------------------------------------------------------------------
 
-const DND5E_CATEGORIES: Dnd5eFeatCategory[] = ['origin', 'general', 'fighting-style', 'epic-boon']
-
-/** One section per category, as the 2024 PHB orders its feats chapter. */
-export const DND5E_FEAT_SECTIONS: SectionDef[] = DND5E_CATEGORIES.map((c) => ({
+/** One section per category: the 2024 PHB's feats chapter, then the later books' kinds. */
+export const DND5E_FEAT_SECTIONS: SectionDef[] = DND5E_FEAT_CATEGORIES.map((c) => ({
   key: c,
   label: `${DND5E_FEAT_CATEGORY[c]} feats`,
 }))
@@ -134,9 +139,10 @@ export function dnd5eFeatList(feats: readonly Dnd5eFeatDef[]): EntryList {
         category: [f.category],
         prereq: dnd5ePrereqKinds(f),
         level: [String(level)],
-        source: [DND5E_SOURCE_KEY[f.source]],
+        source: dnd5eSourceKeys(f),
       },
       meta: prereq,
+      blurb: f.summary,
       tag: dnd5eTag(f),
       eyebrow: `${category} feat${f.repeatable ? ' · Repeatable' : ''}`,
       stats: [
@@ -172,7 +178,7 @@ export function dnd5eFeatList(feats: readonly Dnd5eFeatDef[]): EntryList {
           entries,
           'category',
           (v) => DND5E_FEAT_CATEGORY[v as Dnd5eFeatCategory],
-          DND5E_CATEGORIES,
+          DND5E_FEAT_CATEGORIES,
         ),
       },
       {
@@ -375,7 +381,9 @@ export function dnd5eBackgroundList(
 ): EntryList {
   const featName = (slug: string) => feats.find((f) => f.slug === slug)?.name ?? slugName(slug)
   const entries = backgrounds.map((b) => {
-    const feat = `${featName(b.feat.slug)}${b.feat.option ? ` (${b.feat.option})` : ''}`
+    const named = `${featName(b.feat.slug)}${b.feat.option ? ` (${b.feat.option})` : ''}`
+    const anyOf = b.featChoice?.category?.map((c) => DND5E_FEAT_CATEGORY[c]).join(' or ')
+    const feat = anyOf ? `${named} or any ${anyOf}` : named
     const abilities = b.abilities.map((a) => DND5E_ABILITY[a])
     const tool = b.tool ?? (b.toolChoice ? choiceLine(b.toolChoice) : '')
     return view(b.slug, b.name, {
@@ -386,9 +394,10 @@ export function dnd5eBackgroundList(
         source: dnd5eSource(b),
       },
       sort: { source: dnd5eSourceSort(b) },
-      facets: { ability: b.abilities, source: [DND5E_SOURCE_KEY[b.source]] },
+      facets: { ability: b.abilities, source: dnd5eSourceKeys(b) },
       badge: b.abilities.join(' '),
       meta: [feat, b.skills.join(', ')].join(' · '),
+      blurb: b.summary,
       tag: dnd5eTag(b),
       eyebrow: 'Background',
       // The SRD text is these same lines, so only non-SRD backgrounds list them as fields.
@@ -396,7 +405,10 @@ export function dnd5eBackgroundList(
         ? []
         : [
             { label: 'Ability scores', value: listWords(abilities) },
-            { label: 'Feat', value: feat },
+            {
+              label: 'Feat',
+              value: anyOf ? `${named}, or a ${anyOf} feat of your choice` : named,
+            },
             { label: 'Skill proficiencies', value: listWords(b.skills) },
             ...stat('Tool proficiency', tool),
             ...stat('Equipment', b.equipment.map((e) => `(${e.option}) ${e.items}`).join('; or ')),
@@ -595,9 +607,10 @@ export function dnd5eSpeciesList(species: readonly Dnd5eSpeciesDef[]): EntryList
         speed: s.speed,
         source: dnd5eSourceSort(s),
       },
-      facets: { size: s.sizes, source: [DND5E_SOURCE_KEY[s.source]] },
+      facets: { size: s.sizes, source: dnd5eSourceKeys(s) },
       badge: size,
       meta: [s.creatureType, `${s.speed} ft`, s.traits.map((t) => t.name).join(', ')].join(' · '),
+      blurb: s.summary,
       tag: dnd5eTag(s),
       eyebrow: `${s.creatureType} species`,
       stats: s.text

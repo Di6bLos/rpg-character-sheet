@@ -78,8 +78,10 @@ export interface EntryView {
   /** Phones: the badge on the right and the line under the name. */
   badge: string
   meta: string
+  /** 5e: the one-line summary, under the name in lists and on cards. */
+  blurb?: string
   rarity?: string
-  /** A non-SRD 5e entry's source ("PHB 2024"), tagged beside its name. */
+  /** A non-SRD 5e entry's source ("PHB"), tagged beside its name. */
   tag?: string
   /** The modal: its eyebrow, trait badges, facts, text and parts. */
   eyebrow: string

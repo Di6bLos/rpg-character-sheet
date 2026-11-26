@@ -25,7 +25,7 @@ import type {
   SubclassDef,
 } from '~/data/nimble/types'
 import type { GameSystem } from '~/types'
-import { DND5E_ACTIVATION, DND5E_SOURCE_KEY } from '~/utils/libraryDnd5e'
+import { DND5E_ACTIVATION, dnd5eSourceKeys, dnd5eSourceSort } from '~/utils/libraryDnd5e'
 import type { SectionDef } from '~/utils/librarySections'
 
 /** Systems with spell and class data to show; the rest are "coming soon". */
@@ -62,7 +62,7 @@ export interface SpellQuery {
   ritual: string
   /** 5e casting times: `action`, `bonus`, `reaction`, `time` (a minute or more). */
   time: string[]
-  /** 5e sources: `srd`, `phb`, `efa`. */
+  /** 5e sources: `DND5E_SOURCE_KEY`'s keys (`srd`, `phb`, `arcana-unleashed`…). */
   src: string[]
 }
 
@@ -416,16 +416,13 @@ export function dnd5eRangeValue(range: string): number | undefined {
 export const dnd5eLevelLabel = (s: Dnd5eSpellDef) =>
   s.level === 0 ? `${s.school} cantrip` : `Level ${s.level} ${s.school}`
 
-const dnd5eSourceValue = (s: { source: Dnd5eSpellDef['source']; page?: number }) =>
-  `${Object.values(DND5E_SOURCE_KEY).indexOf(DND5E_SOURCE_KEY[s.source])} ${String(s.page ?? 0).padStart(4, '0')}`
-
 export const DND5E_SPELL_COLUMNS: SpellColumn<Dnd5eSpellDef>[] = [
   { key: 'name', label: 'Name', value: (s) => s.name.toLowerCase() },
   { key: 'school', label: 'School', value: (s) => s.school.toLowerCase() },
   { key: 'time', label: 'Casting time', value: dnd5eTimeValue },
   { key: 'range', label: 'Range', value: (s) => dnd5eRangeValue(s.range) },
   { key: 'duration', label: 'Duration', value: (s) => s.duration.toLowerCase() },
-  { key: 'source', label: 'Source', value: dnd5eSourceValue },
+  { key: 'source', label: 'Source', value: dnd5eSourceSort },
 ]
 
 export function dnd5eSpellKeep(q: SpellQuery): (s: Dnd5eSpellDef) => boolean {
@@ -436,7 +433,7 @@ export function dnd5eSpellKeep(q: SpellQuery): (s: Dnd5eSpellDef) => boolean {
     (!q.conc || s.concentration === (q.conc === 'yes')) &&
     (!q.ritual || s.ritual === (q.ritual === 'yes')) &&
     (!q.time.length || q.time.includes(s.activation)) &&
-    (!q.src.length || q.src.includes(DND5E_SOURCE_KEY[s.source]))
+    (!q.src.length || dnd5eSourceKeys(s).some((k) => q.src.includes(k)))
 }
 
 /** Each section is one level, so the list sorts by name within it unless asked otherwise. */

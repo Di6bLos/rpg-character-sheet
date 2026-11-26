@@ -31,7 +31,13 @@ import {
   type NimbleClassMatch,
   type Pf2eClassMatch,
 } from '~/utils/libraryCompendium'
-import { DND5E_ABILITY, DND5E_SOURCE_SHORT, dnd5eSource, slugName } from '~/utils/libraryDnd5e'
+import {
+  DND5E_ABILITY,
+  DND5E_BOOKS,
+  DND5E_SOURCE_SHORT,
+  dnd5eSource,
+  slugName,
+} from '~/utils/libraryDnd5e'
 import { PF2E_ATTR_NAME } from '~/utils/pf2eBuild'
 
 const route = useRoute()
@@ -155,7 +161,9 @@ function nimbleEntry(cls: ClassDef, match: NimbleClassMatch | null): ClassEntry 
 }
 
 function dnd5eEntry(cls: Dnd5eClassDef, data: Dnd5eSet): ClassEntry {
-  const subclasses = data.subclasses.filter((s) => s.class === cls.slug)
+  const subclasses = data.subclasses
+    .filter((s) => s.class === cls.slug)
+    .sort((a, b) => DND5E_BOOKS.indexOf(a.source) - DND5E_BOOKS.indexOf(b.source))
   const groups = data.options.filter((g) => g.class === cls.slug)
   const match = searching.value ? dnd5eClassMatch(cls, subclasses, groups, terms.value) : null
   const primary = cls.primaryAbility
