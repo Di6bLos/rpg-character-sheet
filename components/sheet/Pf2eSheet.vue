@@ -61,6 +61,7 @@ watch(
 
 const strikesApi = providePf2eStrikes()
 providePf2eActions(strikesApi)
+providePf2eSpellAttacks()
 const turnActive = computed(() => !!sheet.value.turn?.active)
 </script>
 

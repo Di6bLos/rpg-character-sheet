@@ -115,50 +115,7 @@ const { maxTier, cast } = useNimbleSpells()
 </template>
 
 <style scoped lang="scss">
-.spell {
-  padding: 0;
-  gap: 0;
-
-  summary {
-    min-height: 44px;
-    padding: 10px 14px;
-    cursor: pointer;
-  }
-
-  p {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--page-soft);
-  }
-
-  &[open] {
-    border-color: var(--accent);
-  }
-}
-
-.spell__body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 14px 12px;
-}
-
-.spell__head {
-  display: flex;
-  align-items: center;
-  gap: 4px 8px;
-  flex-wrap: wrap;
-
-  strong {
-    font-size: 14px;
-  }
-
-  small {
-    margin-left: auto;
-    font-size: 12px;
-    color: var(--page-muted);
-  }
-}
+@use '../../assets/styles/spells';
 
 .spell__tier {
   min-width: 52px;

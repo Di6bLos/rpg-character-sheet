@@ -56,6 +56,19 @@ const panelId = props.archetype
 const offersFor = (key: string) => (lastCast.value?.key === key ? lastCast.value : null)
 /** A spell's action cost for screen readers ("Two actions"). */
 const costOf = (id: string) => readCost(byId.value.get(id)?.actions)
+/** A spell card's pill: its first trait that isn't its rarity ("Fire", "Mental"). */
+const traitOf = (id: string) =>
+  byId.value
+    .get(id)
+    ?.traits.find(
+      (t) =>
+        !/^(common|uncommon|rare|unique|cantrip|focus|concentrate|manipulate|attack)$/i.test(t),
+    ) ?? ''
+/** A spell card's summary line: range or area, and the defense. */
+const metaOf = (id: string) => {
+  const d = byId.value.get(id)
+  return d ? [d.range ?? d.area, d.defense].filter(Boolean).join(' · ') : ''
+}
 const sheet = computed(() => draft.value.sheet)
 const sc = computed(() =>
   props.archetype
@@ -99,7 +112,6 @@ const ranks = computed(() =>
     .filter((r) => r.max > 0 || edit.value),
 )
 const edit = ref(false)
-const open = ref<string | null>(null)
 
 function rollSpellAttack() {
   const n = headNumbers.value
@@ -273,6 +285,86 @@ function castFocusSpell(s: Pf2eSpellRef) {
   )
 }
 
+/**
+ * This panel's attack and damage spells for the Attacks panel's Spells group (Nimble shows its
+ * damage spells there too): a spell attack (p. 303) or a save against damage, cast from here.
+ */
+const attackRegistry = usePf2eSpellAttacks()
+const spellAttacks = computed<Pf2eSpellAttack[]>(() => {
+  const out: Pf2eSpellAttack[] = []
+  const add = (
+    ref: { id: string; name: string },
+    group: string,
+    key: string,
+    castIt: () => void,
+    blockedExtra = '',
+  ) => {
+    const def = byId.value.get(ref.id)
+    if (!def) return
+    const r = spellRules(def)
+    const damaging = r.parts.some((x) => x.role === 'damage')
+    if (!r.attack && !(r.saves.length && damaging)) return
+    const save = r.saves[0]
+    out.push({
+      key,
+      id: def.id,
+      name: def.name,
+      group,
+      cost: readCost(def.actions),
+      line: [
+        r.attack ? 'Spell attack' : save ? `${save.basic ? 'basic ' : ''}${save.save}` : '',
+        metaOf(def.id),
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      text: def.text,
+      why: blockedExtra || castWhy(def),
+      cast: castIt,
+    })
+  }
+  for (const c of sc.value?.cantrips ?? [])
+    add(c, 'Cantrip', `spell:${c.id}`, () => castOwnCantrip(c))
+  if (sc.value?.kind === 'spontaneous')
+    for (const x of sc.value.spells)
+      add(
+        x,
+        `Rank ${x.rank}`,
+        `spell:${x.id}`,
+        () => castFromSlot(x),
+        castRanks(x).length ? '' : 'No slots left',
+      )
+  else
+    for (const r of ranks.value)
+      (r.prepared ?? []).forEach((p, i) => {
+        if (p.id && !p.cast)
+          add({ id: p.id, name: nameOf(p.id) ?? '' }, `Rank ${r.rank}`, `slot:${r.rank}:${i}`, () =>
+            castFromPrepared(r.rank, i, p.id),
+          )
+      })
+  if (!props.archetype)
+    for (const f of sheet.value.focusSpells ?? [])
+      add(
+        f,
+        'Focus',
+        `spell:${f.id}`,
+        () => castFocusSpell(f),
+        !cantripIds.value.has(f.id) && sheet.value.focus.current < 1 ? 'No Focus Points' : '',
+      )
+  return out
+})
+watch(
+  spellAttacks,
+  (list) => (attackRegistry.value = { ...attackRegistry.value, [panelId]: list }),
+  {
+    immediate: true,
+  },
+)
+onBeforeUnmount(() => {
+  const rest = { ...attackRegistry.value }
+  delete rest[panelId]
+  attackRegistry.value = rest
+})
+
 const fontDef = computed(() =>
   sc.value?.font
     ? spells.value.find(
@@ -419,18 +511,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
     </p>
 
     <div v-if="hasAttackSpell" class="target">
-      <label class="small">
-        AC
-        <input
-          v-model.number="targetAc"
-          class="input input--sm ac"
-          type="number"
-          min="0"
-          max="60"
-          placeholder="?"
-          aria-label="Target AC"
-        />
-      </label>
+      <Pf2eTargetAc />
       <select
         v-model.number="attackNumber"
         class="input input--sm"
@@ -442,72 +523,72 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
       </select>
       <UiHelp
         label="About spell attacks"
-        text="AC: the target's Armor Class, shared with the Strikes table, so a spell attack says hit or miss. The attack this is follows the turn tracker's count of attacks this turn (the multiple attack penalty); change it if you need to."
+        text="The target's AC is the one the Attacks panel uses, so a spell attack says hit or miss. The attack this is follows the turn tracker's count of attacks this turn (the multiple attack penalty); change it if you need to."
       />
     </div>
 
     <!-- Cantrips -->
-    <div v-if="sc" class="group">
-      <h3 class="caps">Cantrips · rank {{ heightenedRank(level) }}</h3>
-      <div v-for="s in sc.cantrips" :key="s.id" class="spell">
-        <button
-          type="button"
-          class="spell__name"
-          :aria-expanded="open === s.id"
-          @click="open = open === s.id ? null : s.id"
-        >
-          {{ s.name }}
-          <Pf2eCostPill :cost="costOf(s.id)" />
-        </button>
-        <div class="spell__meta">
-          <Pf2eSpellCastOptions
-            v-if="byId.get(s.id)"
-            v-model:actions="actionsFor[s.id]"
-            v-model:melee="meleeFor[s.id]"
-            v-model:targets="targetsFor[s.id]"
-            :spell="byId.get(s.id)!"
-            :rank="heightenedRank(level)"
-          />
-        </div>
-        <div class="spell__act">
-          <button
-            type="button"
-            class="btn btn--ghost btn--sm"
-            :disabled="!canEdit || !!stopped || !!whyFor(s.id)"
-            :title="whyFor(s.id) || undefined"
-            :aria-label="`Cast ${s.name}`"
-            @click="castOwnCantrip(s)"
-          >
-            Cast
-          </button>
-          <small v-if="whyFor(s.id)" class="spell__why">{{ whyFor(s.id) }}</small>
-          <button
-            v-if="edit"
-            type="button"
-            class="x"
-            :aria-label="`Remove ${s.name}`"
-            @click="remove('cantrips', s.id)"
-          >
-            ×
-          </button>
-        </div>
-        <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
-        <div
-          v-if="open === s.id && byId.get(s.id)"
-          class="spell__text"
-          v-html="loreHtml(byId.get(s.id)!.text)"
-        />
-        <Pf2eSpellResult
-          :result="resultFor(`spell:${s.id}`)"
-          :offers="offersFor(`spell:${s.id}`)"
-          :disabled="!canEdit"
-          @heal="healSelf"
-          @heal-target="healTarget"
-          @temp="tempSelf"
-          @buff="buffSelf"
-          @blood="bloodSelf"
-          @dismiss="lastCast = null"
-        />
+    <details v-if="sc" class="tier" open>
+      <summary class="caps">Cantrips · rank {{ heightenedRank(level) }}</summary>
+      <div class="spell-grid">
+        <details v-for="s in sc.cantrips" :key="s.id" :name="`${panelId}-spell`" class="tile spell">
+          <summary class="spell__head">
+            <strong>{{ s.name }}</strong>
+            <span v-if="traitOf(s.id)" class="trad">{{ traitOf(s.id) }}</span>
+            <Pf2eCostPill :cost="costOf(s.id)" />
+            <small>{{ metaOf(s.id) }}</small>
+          </summary>
+          <div class="spell__body">
+            <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+            <div
+              v-if="byId.get(s.id)"
+              class="spell__text"
+              v-html="loreHtml(byId.get(s.id)!.text)"
+            />
+            <div class="spell__meta">
+              <Pf2eSpellCastOptions
+                v-if="byId.get(s.id)"
+                v-model:actions="actionsFor[s.id]"
+                v-model:melee="meleeFor[s.id]"
+                v-model:targets="targetsFor[s.id]"
+                :spell="byId.get(s.id)!"
+                :rank="heightenedRank(level)"
+              />
+            </div>
+            <div class="spell__act">
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm"
+                :disabled="!canEdit || !!stopped || !!whyFor(s.id)"
+                :title="whyFor(s.id) || undefined"
+                :aria-label="`Cast ${s.name}`"
+                @click="castOwnCantrip(s)"
+              >
+                {{ whyFor(s.id) || 'Cast' }}
+              </button>
+              <button
+                v-if="edit"
+                type="button"
+                class="x"
+                :aria-label="`Remove ${s.name}`"
+                @click="remove('cantrips', s.id)"
+              >
+                ×
+              </button>
+            </div>
+            <Pf2eSpellResult
+              :result="resultFor(`spell:${s.id}`)"
+              :offers="offersFor(`spell:${s.id}`)"
+              :disabled="!canEdit"
+              @heal="healSelf"
+              @heal-target="healTarget"
+              @temp="tempSelf"
+              @buff="buffSelf"
+              @blood="bloodSelf"
+              @dismiss="lastCast = null"
+            />
+          </div>
+        </details>
       </div>
       <button
         v-if="edit"
@@ -517,12 +598,12 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
       >
         + Cantrip
       </button>
-    </div>
+    </details>
 
     <!-- Slots by rank -->
-    <div v-for="r in ranks" :key="r.rank" class="group">
-      <div class="rank-head">
-        <h3 class="caps">Rank {{ r.rank }}</h3>
+    <details v-for="r in ranks" :key="r.rank" class="tier" open>
+      <summary class="rank-head">
+        <span class="caps">Rank {{ r.rank }}</span>
         <span
           v-if="sc?.kind === 'spontaneous'"
           class="pips"
@@ -531,125 +612,140 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
         >
           <i v-for="n in r.max" :key="n" class="pip-dot" :class="{ on: n > r.used }" />
         </span>
-        <span v-if="edit && sc" class="row" style="gap: 4px">
-          <button
-            type="button"
-            class="step step--xs"
-            :aria-label="`One fewer rank ${r.rank} slot`"
-            @click="setSlotMax(sc, r.rank, r.max - 1)"
-          >
-            −
-          </button>
-          <span class="small">{{ r.max }} slots</span>
-          <button
-            type="button"
-            class="step step--xs"
-            :aria-label="`One more rank ${r.rank} slot`"
-            @click="setSlotMax(sc, r.rank, r.max + 1)"
-          >
-            +
-          </button>
-        </span>
-      </div>
+        <small v-else-if="sc"
+          >{{ (r.prepared ?? []).filter((x) => x.id && !x.cast).length }} / {{ r.max }} ready</small
+        >
+      </summary>
+      <span v-if="edit && sc" class="row" style="gap: 4px">
+        <button
+          type="button"
+          class="step step--xs"
+          :aria-label="`One fewer rank ${r.rank} slot`"
+          @click="setSlotMax(sc, r.rank, r.max - 1)"
+        >
+          −
+        </button>
+        <span class="small">{{ r.max }} slots</span>
+        <button
+          type="button"
+          class="step step--xs"
+          :aria-label="`One more rank ${r.rank} slot`"
+          @click="setSlotMax(sc, r.rank, r.max + 1)"
+        >
+          +
+        </button>
+      </span>
 
-      <template v-if="sc?.kind === 'spontaneous'">
-        <div v-for="s in sc.spells.filter((x) => x.rank === r.rank)" :key="s.id" class="spell">
-          <button
-            type="button"
-            class="spell__name"
-            :aria-expanded="open === s.id"
-            @click="open = open === s.id ? null : s.id"
-          >
-            {{ s.name }}
+      <div v-if="sc?.kind === 'spontaneous'" class="spell-grid">
+        <details
+          v-for="s in sc.spells.filter((x) => x.rank === r.rank)"
+          :key="s.id"
+          :name="`${panelId}-spell`"
+          class="tile spell"
+        >
+          <summary class="spell__head">
+            <strong>{{ s.name }}</strong>
+            <span v-if="traitOf(s.id)" class="trad">{{ traitOf(s.id) }}</span>
             <Pf2eCostPill :cost="costOf(s.id)" />
             <small v-if="s.signature && !edit" class="tag">signature</small>
-          </button>
-          <div class="spell__meta">
-            <label
-              v-if="edit"
-              class="check"
-              title="A signature spell heightens to any rank you have slots for (Player Core p. 297)"
-            >
-              <input
-                type="checkbox"
-                :checked="!!s.signature"
-                :disabled="!canEdit"
-                @change="s.signature = ($event.target as HTMLInputElement).checked"
-              />
-              Signature
-            </label>
-            <select
-              v-if="castRanks(s).length > 1"
-              class="input input--sm"
-              :aria-label="`Rank to cast ${s.name} at`"
-              :value="castRank(s)"
-              @change="castAt[s.id] = Number(($event.target as HTMLSelectElement).value)"
-            >
-              <option v-for="o in castRanks(s)" :key="o.rank" :value="o.rank">
-                Rank {{ o.rank }} ({{ o.left }}){{
-                  spontaneousRank(s, o.rank) < o.rank ? ', not heightened' : ''
-                }}
-              </option>
-            </select>
-            <Pf2eSpellCastOptions
+            <small>{{ metaOf(s.id) }}</small>
+          </summary>
+          <div class="spell__body">
+            <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+            <div
               v-if="byId.get(s.id)"
-              v-model:actions="actionsFor[s.id]"
-              v-model:melee="meleeFor[s.id]"
-              v-model:targets="targetsFor[s.id]"
-              :spell="byId.get(s.id)!"
-              :rank="spontaneousRank(s, castRank(s))"
+              class="spell__text"
+              v-html="loreHtml(byId.get(s.id)!.text)"
+            />
+            <div class="spell__meta">
+              <label
+                v-if="edit"
+                class="check"
+                title="A signature spell heightens to any rank you have slots for (Player Core p. 297)"
+              >
+                <input
+                  type="checkbox"
+                  :checked="!!s.signature"
+                  :disabled="!canEdit"
+                  @change="s.signature = ($event.target as HTMLInputElement).checked"
+                />
+                Signature
+              </label>
+              <select
+                v-if="castRanks(s).length > 1"
+                class="input input--sm"
+                :aria-label="`Rank to cast ${s.name} at`"
+                :value="castRank(s)"
+                @change="castAt[s.id] = Number(($event.target as HTMLSelectElement).value)"
+              >
+                <option v-for="o in castRanks(s)" :key="o.rank" :value="o.rank">
+                  Rank {{ o.rank }} ({{ o.left }}){{
+                    spontaneousRank(s, o.rank) < o.rank ? ', not heightened' : ''
+                  }}
+                </option>
+              </select>
+              <Pf2eSpellCastOptions
+                v-if="byId.get(s.id)"
+                v-model:actions="actionsFor[s.id]"
+                v-model:melee="meleeFor[s.id]"
+                v-model:targets="targetsFor[s.id]"
+                :spell="byId.get(s.id)!"
+                :rank="spontaneousRank(s, castRank(s))"
+              />
+            </div>
+            <div class="spell__act">
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm"
+                :disabled="!canEdit || !castRanks(s).length || !!stopped || !!whyFor(s.id)"
+                :title="whyFor(s.id) || undefined"
+                :aria-label="`Cast ${s.name}`"
+                @click="castFromSlot(s)"
+              >
+                {{ whyFor(s.id) || 'Cast' }}
+              </button>
+              <button
+                v-if="edit"
+                type="button"
+                class="x"
+                :aria-label="`Remove ${s.name}`"
+                @click="remove('spells', s.id)"
+              >
+                ×
+              </button>
+            </div>
+            <Pf2eSpellResult
+              :result="resultFor(`spell:${s.id}`)"
+              :offers="offersFor(`spell:${s.id}`)"
+              :disabled="!canEdit"
+              @heal="healSelf"
+              @heal-target="healTarget"
+              @temp="tempSelf"
+              @buff="buffSelf"
+              @blood="bloodSelf"
+              @dismiss="lastCast = null"
             />
           </div>
-          <div class="spell__act">
-            <button
-              type="button"
-              class="btn btn--ghost btn--sm"
-              :disabled="!canEdit || !castRanks(s).length || !!stopped || !!whyFor(s.id)"
-              :title="whyFor(s.id) || undefined"
-              :aria-label="`Cast ${s.name}`"
-              @click="castFromSlot(s)"
-            >
-              Cast
-            </button>
-            <small v-if="whyFor(s.id)" class="spell__why">{{ whyFor(s.id) }}</small>
-            <button
-              v-if="edit"
-              type="button"
-              class="x"
-              :aria-label="`Remove ${s.name}`"
-              @click="remove('spells', s.id)"
-            >
-              ×
-            </button>
-          </div>
-          <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
-          <div
-            v-if="open === s.id && byId.get(s.id)"
-            class="spell__text"
-            v-html="loreHtml(byId.get(s.id)!.text)"
-          />
-          <Pf2eSpellResult
-            :result="resultFor(`spell:${s.id}`)"
-            :offers="offersFor(`spell:${s.id}`)"
-            :disabled="!canEdit"
-            @heal="healSelf"
-            @heal-target="healTarget"
-            @temp="tempSelf"
-            @buff="buffSelf"
-            @blood="bloodSelf"
-            @dismiss="lastCast = null"
-          />
-        </div>
-      </template>
+        </details>
+      </div>
 
-      <template v-else-if="sc">
-        <div
+      <div v-else-if="sc" class="spell-grid">
+        <details
           v-for="(p, i) in r.prepared ?? []"
           :key="i"
-          class="spell"
+          :name="`${panelId}-spell`"
+          class="tile spell"
           :class="{ 'is-cast': p.cast }"
         >
-          <div class="spell__name spell__name--slot">
+          <summary class="spell__head">
+            <strong>{{ p.id ? nameOf(p.id) : 'Empty slot' }}</strong>
+            <template v-if="p.id">
+              <span v-if="traitOf(p.id)" class="trad">{{ traitOf(p.id) }}</span>
+              <Pf2eCostPill :cost="costOf(p.id)" />
+            </template>
+            <small>{{ p.cast ? 'spent' : p.id ? metaOf(p.id) : `rank ${r.rank}` }}</small>
+          </summary>
+          <div class="spell__body">
             <select
               class="input input--sm spell__slot"
               :aria-label="`Rank ${r.rank} slot ${i + 1}`"
@@ -662,51 +758,53 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
                 {{ o.name }}{{ o.rank < r.rank ? ` (heightened)` : '' }}
               </option>
             </select>
-          </div>
-          <div class="spell__meta">
-            <Pf2eSpellCastOptions
-              v-if="p.id && byId.get(p.id)"
-              v-model:actions="actionsFor[p.id]"
-              v-model:melee="meleeFor[p.id]"
-              v-model:targets="targetsFor[p.id]"
-              :spell="byId.get(p.id)!"
-              :rank="r.rank"
+            <template v-if="p.id"
+              ><!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+              <div
+                v-if="byId.get(p.id)"
+                class="spell__text"
+                v-html="loreHtml(byId.get(p.id)!.text)"
+            /></template>
+            <div class="spell__meta">
+              <Pf2eSpellCastOptions
+                v-if="p.id && byId.get(p.id)"
+                v-model:actions="actionsFor[p.id]"
+                v-model:melee="meleeFor[p.id]"
+                v-model:targets="targetsFor[p.id]"
+                :spell="byId.get(p.id)!"
+                :rank="r.rank"
+              />
+            </div>
+            <div class="spell__act">
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm"
+                :disabled="!canEdit || !p.id || p.cast || !!stopped || !!whyFor(p.id)"
+                :title="whyFor(p.id) || undefined"
+                :aria-label="`Cast rank ${r.rank} slot ${i + 1}`"
+                @click="castFromPrepared(r.rank, i, p.id)"
+              >
+                {{ p.cast ? 'Spent' : (p.id && whyFor(p.id)) || 'Cast' }}
+              </button>
+            </div>
+            <Pf2eSpellResult
+              :result="resultFor(`slot:${r.rank}:${i}`)"
+              :offers="offersFor(`slot:${r.rank}:${i}`)"
+              :disabled="!canEdit"
+              @heal="healSelf"
+              @heal-target="healTarget"
+              @temp="tempSelf"
+              @buff="buffSelf"
+              @blood="bloodSelf"
+              @dismiss="lastCast = null"
             />
-            <span v-if="p.cast" class="small muted">spent</span>
-            <span v-else-if="p.id" class="sr-only">{{ nameOf(p.id) }} ready</span>
           </div>
-          <div class="spell__act">
-            <button
-              type="button"
-              class="btn btn--ghost btn--sm"
-              :disabled="!canEdit || !p.id || p.cast || !!stopped || !!whyFor(p.id)"
-              :title="whyFor(p.id) || undefined"
-              :aria-label="`Cast rank ${r.rank} slot ${i + 1}`"
-              @click="castFromPrepared(r.rank, i, p.id)"
-            >
-              Cast
-            </button>
-            <small v-if="p.id && !p.cast && whyFor(p.id)" class="spell__why">{{
-              whyFor(p.id)
-            }}</small>
-          </div>
-          <Pf2eSpellResult
-            :result="resultFor(`slot:${r.rank}:${i}`)"
-            :offers="offersFor(`slot:${r.rank}:${i}`)"
-            :disabled="!canEdit"
-            @heal="healSelf"
-            @heal-target="healTarget"
-            @temp="tempSelf"
-            @buff="buffSelf"
-            @blood="bloodSelf"
-            @dismiss="lastCast = null"
-          />
-        </div>
-      </template>
-    </div>
+        </details>
+      </div>
+    </details>
 
-    <div v-if="sc && sc.kind === 'prepared'" class="group">
-      <h3 class="caps">Spells to prepare from</h3>
+    <details v-if="sc && sc.kind === 'prepared'" class="tier">
+      <summary class="caps">Spells to prepare from</summary>
       <p class="small">
         <template v-for="(s, i) in sc.spells" :key="s.id">
           {{ i ? ', ' : '' }}{{ s.name }} <small class="muted">{{ s.rank }}</small>
@@ -721,7 +819,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           </button>
         </template>
       </p>
-    </div>
+    </details>
     <button
       v-if="sc && edit"
       type="button"
@@ -732,9 +830,9 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
     </button>
 
     <!-- Divine font -->
-    <div v-if="sc?.font" class="group">
-      <div class="rank-head">
-        <h3 class="caps">Divine font · {{ sc.font.spell }}</h3>
+    <details v-if="sc?.font" class="tier" open>
+      <summary class="rank-head">
+        <span class="caps">Divine font · {{ sc.font.spell }}</span>
         <span
           class="pips"
           role="img"
@@ -742,58 +840,62 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
         >
           <i v-for="n in sc.font.max" :key="n" class="pip-dot" :class="{ on: n > sc.font.used }" />
         </span>
-      </div>
-      <div class="spell">
-        <div class="spell__meta">
-          <Pf2eSpellCastOptions
-            v-if="fontDef && fontRank"
-            v-model:actions="actionsFor[fontDef.id]"
-            v-model:melee="meleeFor[fontDef.id]"
-            v-model:targets="targetsFor[fontDef.id]"
-            :spell="fontDef"
-            :rank="fontRank"
+      </summary>
+      <div class="tile spell spell--open">
+        <div class="spell__body">
+          <div class="spell__meta">
+            <Pf2eSpellCastOptions
+              v-if="fontDef && fontRank"
+              v-model:actions="actionsFor[fontDef.id]"
+              v-model:melee="meleeFor[fontDef.id]"
+              v-model:targets="targetsFor[fontDef.id]"
+              :spell="fontDef"
+              :rank="fontRank"
+            />
+          </div>
+          <div class="spell__act">
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm"
+              :disabled="
+                !canEdit ||
+                sc.font.used >= sc.font.max ||
+                !fontRank ||
+                !!stopped ||
+                !!whyFor(fontDef?.id)
+              "
+              :title="
+                !fontRank
+                  ? 'Your divine font casts at your highest slot rank: add slots first'
+                  : whyFor(fontDef?.id) || undefined
+              "
+              @click="castFromFont"
+            >
+              {{
+                whyFor(fontDef?.id) ||
+                `Cast ${sc.font.spell}${fontRank ? ` · rank ${fontRank}` : ''}`
+              }}
+            </button>
+          </div>
+          <Pf2eSpellResult
+            :result="resultFor('spell:font')"
+            :offers="offersFor('spell:font')"
+            :disabled="!canEdit"
+            @heal="healSelf"
+            @heal-target="healTarget"
+            @temp="tempSelf"
+            @buff="buffSelf"
+            @blood="bloodSelf"
+            @dismiss="lastCast = null"
           />
         </div>
-        <div class="spell__act">
-          <button
-            type="button"
-            class="btn btn--ghost btn--sm"
-            :disabled="
-              !canEdit ||
-              sc.font.used >= sc.font.max ||
-              !fontRank ||
-              !!stopped ||
-              !!whyFor(fontDef?.id)
-            "
-            :title="
-              !fontRank
-                ? 'Your divine font casts at your highest slot rank: add slots first'
-                : whyFor(fontDef?.id) || undefined
-            "
-            @click="castFromFont"
-          >
-            Cast {{ sc.font.spell }}{{ fontRank ? ` · rank ${fontRank}` : '' }}
-          </button>
-          <small v-if="whyFor(fontDef?.id)" class="spell__why">{{ whyFor(fontDef?.id) }}</small>
-        </div>
-        <Pf2eSpellResult
-          :result="resultFor('spell:font')"
-          :offers="offersFor('spell:font')"
-          :disabled="!canEdit"
-          @heal="healSelf"
-          @heal-target="healTarget"
-          @temp="tempSelf"
-          @buff="buffSelf"
-          @blood="bloodSelf"
-          @dismiss="lastCast = null"
-        />
       </div>
-    </div>
+    </details>
 
     <!-- Focus spells -->
-    <div v-if="!archetype && (sheet.focusSpells?.length || edit)" class="group">
-      <div class="rank-head">
-        <h3 class="caps">Focus spells · rank {{ heightenedRank(level) }}</h3>
+    <details v-if="!archetype && (sheet.focusSpells?.length || edit)" class="tier" open>
+      <summary class="rank-head">
+        <span class="caps">Focus spells · rank {{ heightenedRank(level) }}</span>
         <span
           class="pips"
           role="img"
@@ -806,80 +908,85 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
             :class="{ on: n <= sheet.focus.current }"
           />
         </span>
-        <button
-          type="button"
-          class="btn btn--ghost btn--sm"
-          :disabled="!canEdit"
-          @click="run(refocus(sheet))"
+      </summary>
+      <button
+        type="button"
+        class="btn btn--ghost btn--sm add"
+        :disabled="!canEdit"
+        @click="run(refocus(sheet))"
+      >
+        Refocus
+      </button>
+      <div class="spell-grid">
+        <details
+          v-for="s in sheet.focusSpells ?? []"
+          :key="s.id"
+          :name="`${panelId}-spell`"
+          class="tile spell"
         >
-          Refocus
-        </button>
-      </div>
-      <div v-for="s in sheet.focusSpells ?? []" :key="s.id" class="spell">
-        <button
-          type="button"
-          class="spell__name"
-          :aria-expanded="open === s.id"
-          @click="open = open === s.id ? null : s.id"
-        >
-          {{ s.name }}
-          <Pf2eCostPill :cost="costOf(s.id)" />
-          <small v-if="cantripIds.has(s.id)"> · cantrip</small>
-        </button>
-        <div class="spell__meta">
-          <Pf2eSpellCastOptions
-            v-if="byId.get(s.id)"
-            v-model:actions="actionsFor[s.id]"
-            v-model:melee="meleeFor[s.id]"
-            v-model:targets="targetsFor[s.id]"
-            :spell="byId.get(s.id)!"
-            :rank="heightenedRank(level)"
-          />
-        </div>
-        <div class="spell__act">
-          <button
-            type="button"
-            class="btn btn--ghost btn--sm"
-            :disabled="
-              !canEdit ||
-              (!cantripIds.has(s.id) && sheet.focus.current < 1) ||
-              !!stopped ||
-              !!whyFor(s.id)
-            "
-            :title="whyFor(s.id) || undefined"
-            :aria-label="`Cast ${s.name}`"
-            @click="castFocusSpell(s)"
-          >
-            Cast
-          </button>
-          <small v-if="whyFor(s.id)" class="spell__why">{{ whyFor(s.id) }}</small>
-          <button
-            v-if="edit"
-            type="button"
-            class="x"
-            :aria-label="`Remove ${s.name}`"
-            @click="remove('focus', s.id)"
-          >
-            ×
-          </button>
-        </div>
-        <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
-        <div
-          v-if="open === s.id && byId.get(s.id)"
-          class="spell__text"
-          v-html="loreHtml(byId.get(s.id)!.text)"
-        />
-        <Pf2eSpellResult
-          :result="resultFor(`spell:${s.id}`)"
-          :offers="offersFor(`spell:${s.id}`)"
-          :disabled="!canEdit"
-          @heal="healSelf"
-          @heal-target="healTarget"
-          @temp="tempSelf"
-          @buff="buffSelf"
-          @blood="bloodSelf"
-          @dismiss="lastCast = null"
-        />
+          <summary class="spell__head">
+            <strong>{{ s.name }}</strong>
+            <span v-if="traitOf(s.id)" class="trad">{{ traitOf(s.id) }}</span>
+            <Pf2eCostPill :cost="costOf(s.id)" />
+            <small v-if="cantripIds.has(s.id)" class="tag">cantrip</small>
+            <small>{{ metaOf(s.id) }}</small>
+          </summary>
+          <div class="spell__body">
+            <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+            <div
+              v-if="byId.get(s.id)"
+              class="spell__text"
+              v-html="loreHtml(byId.get(s.id)!.text)"
+            />
+            <div class="spell__meta">
+              <Pf2eSpellCastOptions
+                v-if="byId.get(s.id)"
+                v-model:actions="actionsFor[s.id]"
+                v-model:melee="meleeFor[s.id]"
+                v-model:targets="targetsFor[s.id]"
+                :spell="byId.get(s.id)!"
+                :rank="heightenedRank(level)"
+              />
+            </div>
+            <div class="spell__act">
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm"
+                :disabled="
+                  !canEdit ||
+                  (!cantripIds.has(s.id) && sheet.focus.current < 1) ||
+                  !!stopped ||
+                  !!whyFor(s.id)
+                "
+                :title="whyFor(s.id) || undefined"
+                :aria-label="`Cast ${s.name}`"
+                @click="castFocusSpell(s)"
+              >
+                {{ whyFor(s.id) || 'Cast' }}
+              </button>
+              <button
+                v-if="edit"
+                type="button"
+                class="x"
+                :aria-label="`Remove ${s.name}`"
+                @click="remove('focus', s.id)"
+              >
+                ×
+              </button>
+            </div>
+            <Pf2eSpellResult
+              :result="resultFor(`spell:${s.id}`)"
+              :offers="offersFor(`spell:${s.id}`)"
+              :disabled="!canEdit"
+              @heal="healSelf"
+              @heal-target="healTarget"
+              @temp="tempSelf"
+              @buff="buffSelf"
+              @blood="bloodSelf"
+              @dismiss="lastCast = null"
+            />
+          </div>
+        </details>
       </div>
       <div v-if="edit" class="row" style="gap: 8px">
         <button type="button" class="btn btn--ghost btn--sm add" @click="adding = 'focus'">
@@ -896,7 +1003,7 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
           />
         </label>
       </div>
-    </div>
+    </details>
 
     <div v-if="adding" class="adder panel">
       <label class="small" :for="`${panelId}-search`">
@@ -927,6 +1034,65 @@ const nameOf = (id: string | null) => (id ? sc.value?.spells.find((s) => s.id ==
 </template>
 
 <style scoped lang="scss">
+@use '../../assets/styles/spells';
+@use '../../assets/styles/spells-list';
+
+.rank-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.spell.is-cast .spell__head strong {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.spell--open {
+  padding-top: 12px;
+}
+
+.trad {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--secondary) 22%, var(--field));
+  color: color-mix(in srgb, var(--secondary) 45%, var(--page-text));
+}
+
+.spell__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 12px;
+  color: var(--page-soft);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.spell__act {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+
+.spell__text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--page-soft);
+
+  :deep(p) {
+    margin: 0.3em 0;
+  }
+}
+
 .head {
   display: flex;
   flex-wrap: wrap;
@@ -957,89 +1123,6 @@ button.head__tile {
   color: var(--warn-text);
 }
 
-.group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rank-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-.spell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    'name act'
-    'meta act';
-  align-items: center;
-  column-gap: 12px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--track);
-
-  &.is-cast .spell__slot {
-    text-decoration: line-through;
-    opacity: 0.7;
-  }
-}
-
-.spell__name {
-  grid-area: name;
-  min-height: 36px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-
-  small {
-    font-weight: 400;
-    color: var(--page-muted);
-  }
-}
-
-.spell__name--slot {
-  display: flex;
-  align-items: center;
-}
-
-.spell__meta {
-  grid-area: meta;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-  font-size: 12px;
-  color: var(--page-soft);
-
-  &:empty {
-    display: none;
-  }
-}
-
-.spell__act {
-  grid-area: act;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 4px;
-}
-
-.spell__why {
-  flex-basis: 100%;
-  text-align: right;
-  font-size: 12px;
-  color: var(--page-muted);
-}
-
 .spell__stopped {
   margin: 0;
   font-weight: 600;
@@ -1049,17 +1132,6 @@ button.head__tile {
 .spell__slot {
   width: 100%;
   max-width: 320px;
-}
-
-.spell__text {
-  grid-column: 1 / -1;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--page-soft);
-
-  :deep(p) {
-    margin: 0.3em 0;
-  }
 }
 
 .pips {
@@ -1163,13 +1235,7 @@ select.input--sm {
   }
 }
 
-.group > .caps,
-.rank-head .caps {
-  color: var(--page-soft);
-}
-
 @media (pointer: coarse) {
-  .spell__name,
   .input--sm {
     min-height: 44px;
   }

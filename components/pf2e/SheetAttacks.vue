@@ -18,6 +18,18 @@ const strikesApi = usePf2eStrikes()
 const { strikes, nextAttack, situation, lastDegree, targetAc } = strikesApi
 const turnActive = computed(() => !!sheet.value.turn?.active)
 
+/** Attack and damage spells from the Spells panels, as Nimble's Attacks has a Spells group. */
+const spellRegistry = usePf2eSpellAttacks()
+const spellAttacks = computed(() => Object.values(spellRegistry.value).flat())
+/** The hero's abilities that make a Strike (Sudden Charge, Double Slice), with their Use. */
+const actions = usePf2eActions()
+const strikeAbilities = computed(() =>
+  actions.grouped.value
+    .filter((g) => g.id !== 'reactions')
+    .flatMap((g) => g.entries)
+    .filter((e) => !!e.rules.strike),
+)
+
 const STRIKE_COST = { kind: 'actions', min: 1, max: 1 } as const
 const ORD = ['1st', '2nd', '3rd']
 
@@ -266,6 +278,57 @@ const hitWanted = (index: number) => lastDegree.value[index] === 'success'
       </div>
     </details>
     <p v-else class="empty">No strikes yet. Use “Edit sheet” to add one.</p>
+    <details v-if="spellAttacks.length" class="atk-group" open>
+      <summary>
+        <span class="caps">Spells</span>
+        <span class="badge badge--outline">Cast from your Spells</span>
+      </summary>
+      <div class="attacks">
+        <div v-for="sp in spellAttacks" :key="sp.key" class="tile attack">
+          <div class="attack__head">
+            <div class="stack" style="gap: 2px">
+              <strong style="font-size: 16px">{{ sp.name }}</strong>
+              <span class="muted" style="font-size: 12px">{{ sp.group }} · {{ sp.line }}</span>
+              <Pf2eCostPill :cost="sp.cost" />
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn"
+            :disabled="!canEdit || !!sp.why"
+            :title="sp.why || undefined"
+            @click="sp.cast()"
+          >
+            {{ sp.why || 'Cast' }}
+          </button>
+          <p v-if="resultFor(sp.key)" class="roll-status attack__result" role="status">
+            {{ resultFor(sp.key) }}
+          </p>
+        </div>
+      </div>
+    </details>
+    <details v-if="strikeAbilities.length" class="atk-group" open>
+      <summary>
+        <span class="caps">Abilities</span>
+        <span class="badge badge--outline">Make a Strike</span>
+      </summary>
+      <div class="attacks">
+        <Pf2eActionRow
+          v-for="e in strikeAbilities"
+          :key="e.key"
+          :entry="e"
+          :why="actions.why(e)"
+          :left="actions.left(e)"
+          :choices="actions.choicesFor(e)"
+          :weapons="actions.weaponsFor(e)"
+          :tiers="actions.tiersFor(e)"
+          :dmg="actions.dmgPreview(e)"
+          :result="resultFor(`act:${e.key}`)"
+          @use="(st) => claim(`act:${e.key}`, () => actions.use(e, st))"
+          @damage="(crit, st) => claim(`act:${e.key}`, () => actions.strikeDamage(e, crit, st))"
+        />
+      </div>
+    </details>
   </section>
 </template>
 
