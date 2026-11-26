@@ -67,10 +67,12 @@ function meta(r: Dnd5eSpellRef) {
 function tags(r: Dnd5eSpellRef) {
   const d = casting.defOf(r.slug)
   return [
-    ...(d?.concentration ? [{ t: 'C', title: 'Concentration' }] : []),
-    ...(d?.ritual ? [{ t: 'R', title: 'Ritual: cast it without a slot, 10 minutes longer' }] : []),
-    ...(r.always ? [{ t: 'always', title: `Always prepared (${r.from})` }] : []),
-    ...(r.free ? [{ t: 'free', title: `Free cast from ${r.from}` }] : []),
+    ...(d?.concentration ? [{ t: 'Conc.', title: 'Concentration: one such spell at a time' }] : []),
+    ...(d?.ritual
+      ? [{ t: 'Ritual', title: 'Ritual: cast it without a slot, 10 minutes longer' }]
+      : []),
+    ...(r.always ? [{ t: 'Always prepared', title: `Always prepared (${r.from})` }] : []),
+    ...(r.free ? [{ t: 'Free cast', title: `Free cast from ${r.from}` }] : []),
   ]
 }
 
@@ -192,7 +194,7 @@ const components = (r: Dnd5eSpellRef) => {
                 type="button"
                 class="btn btn--sm"
                 :disabled="!canEdit || !!casting.why(r)"
-                :aria-label="casting.why(r) ? `${r.name}: ${casting.why(r)}` : `Cast ${r.name}`"
+                :aria-label="`${casting.why(r) || 'Cast'}, ${r.name}`"
                 @click="casting.cast(r)"
               >
                 {{ casting.why(r) || 'Cast' }}

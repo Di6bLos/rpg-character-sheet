@@ -40,7 +40,7 @@ function flip(key: (typeof FLAGS)[number]['key']) {
           type="number"
           inputmode="numeric"
           min="0"
-          placeholder="—"
+          placeholder="e.g. 13"
           aria-label="Target AC"
         />
       </label>

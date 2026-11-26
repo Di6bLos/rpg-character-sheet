@@ -298,7 +298,7 @@ const riders = computed(() =>
             type="button"
             class="btn"
             :disabled="!canEdit || !!costWhy(sheet, c.plan.cost)"
-            :aria-label="`${c.plan.name}: ${costWhy(sheet, c.plan.cost) || `attack ${sign(c.plan.test.bonus)}`}`"
+            :aria-label="`${costWhy(sheet, c.plan.cost) || `${sheet.ownDice ? 'Attack' : 'Roll'} · ${sign(c.plan.test.bonus)}`}, ${c.plan.name}`"
             @click="attack(c)"
           >
             {{

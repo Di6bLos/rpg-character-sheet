@@ -38,7 +38,7 @@ const tip = computed(() => props.breakdown?.join('\n') ?? '')
       type="button"
       class="btn btn--ghost btn--sm skill__roll"
       :disabled="disabled"
-      :aria-label="rollLabel ?? `Roll a ${name} check`"
+      :aria-label="rollLabel ?? `Roll ${name}`"
       @click="emit('roll')"
     >
       Roll
