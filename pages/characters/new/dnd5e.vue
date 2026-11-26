@@ -30,12 +30,14 @@ import {
   customGearOptions,
   customProblem,
   buildDnd5eSheet,
+  clashPicks,
   creationPicks,
   earlySubclasses,
   emptyCreation,
   parseEquipment,
   pickElementId,
   pickProblem,
+  pickStep,
   pointsSpent,
   scoresProblem,
   startingAbilities,
@@ -86,24 +88,11 @@ const background = computed(() =>
 const picks = computed<Dnd5ePick[]>(() =>
   data.value && cls.value && species.value ? creationPicks(c.value, choices.value, data.value) : [],
 )
-const isSpell = (p: Dnd5ePick) => p.kind === 'cantrip' || p.kind === 'spell'
-const subclassPicks = computed(() => picks.value.filter((p) => p.kind === 'subclass'))
-const speciesPicks = computed(() =>
-  picks.value.filter((p) => p.key.startsWith('L1:species') && !isSpell(p)),
-)
-const backgroundPicks = computed(() =>
-  picks.value.filter((p) => p.key.startsWith('L1:background') && !isSpell(p)),
-)
-const spellPicks = computed(() => picks.value.filter(isSpell))
-const otherPicks = computed(() =>
-  picks.value.filter(
-    (p) =>
-      !isSpell(p) &&
-      p.kind !== 'subclass' &&
-      !p.key.startsWith('L1:species') &&
-      !p.key.startsWith('L1:background'),
-  ),
-)
+const subclassPicks = computed(() => picks.value.filter((p) => pickStep(p) === 'subclass'))
+const speciesPicks = computed(() => picks.value.filter((p) => pickStep(p) === 'species'))
+const backgroundPicks = computed(() => picks.value.filter((p) => pickStep(p) === 'background'))
+const spellPicks = computed(() => picks.value.filter((p) => pickStep(p) === 'spells'))
+const otherPicks = computed(() => picks.value.filter((p) => pickStep(p) === 'choices'))
 const firstProblem = (list: Dnd5ePick[]) => {
   for (const p of list) {
     const e = pickProblem(p, choices.value[p.key])
@@ -155,21 +144,44 @@ const steps = computed<StepId[]>(() => [
   'review',
 ])
 const stepId = computed<StepId>(() => steps.value[step.value] ?? 'class')
+/** Earlier steps' picks this step's choices broke: asked here, so no step sends the player back. */
+const clashes = computed(() =>
+  clashPicks(picks.value, choices.value, (s) => steps.value.indexOf(s), step.value),
+)
+const clashKeys = computed(() => new Set(clashes.value.map((p) => p.key)))
+const settled = (list: Dnd5ePick[]) => list.filter((p) => !clashKeys.value.has(p.key))
+/** The clashes shown on this step, kept once answered so the pick doesn't vanish under the click. */
+const clashSeen = ref<{ at: number; keys: string[] }>({ at: -1, keys: [] })
+watch(
+  [step, clashes],
+  ([at, list]) => {
+    const kept = clashSeen.value.at === at ? clashSeen.value.keys : []
+    clashSeen.value = { at, keys: [...new Set([...kept, ...list.map((p) => p.key)])] }
+  },
+  { immediate: true },
+)
+const clashShown = computed(() =>
+  clashSeen.value.at === step.value
+    ? picks.value.filter((p) => clashSeen.value.keys.includes(p.key))
+    : [],
+)
 
 const stepErrors = computed<Record<StepId, string>>(() => ({
   class: cls.value ? '' : 'Choose a class',
-  subclass: firstProblem(subclassPicks.value),
-  species: species.value ? firstProblem(speciesPicks.value) : 'Choose a species',
+  subclass: firstProblem(settled(subclassPicks.value)),
+  species: species.value ? firstProblem(settled(speciesPicks.value)) : 'Choose a species',
   background: background.value
-    ? ((data.value && customProblem(c.value, data.value)) ?? firstProblem(backgroundPicks.value))
+    ? ((data.value && customProblem(c.value, data.value)) ??
+      firstProblem(settled(backgroundPicks.value)))
     : 'Choose a background',
   abilities: scoresProblem(c.value) ?? bonusProblem(c.value, background.value) ?? '',
-  choices: firstProblem(otherPicks.value),
+  choices: firstProblem(settled(otherPicks.value)),
   equipment: '',
-  spells: firstProblem(spellPicks.value),
+  spells: firstProblem(settled(spellPicks.value)),
   review: name.value.trim() ? '' : 'Give your hero a name',
 }))
-const errorAt = (i: number) => stepErrors.value[steps.value[i]!] ?? ''
+const errorAt = (i: number) =>
+  (i === step.value ? firstProblem(clashes.value) : '') || (stepErrors.value[steps.value[i]!] ?? '')
 const actionError = computed(() => (showErrors.value ? errorAt(step.value) : ''))
 
 const motion = (): ScrollBehavior =>
@@ -366,7 +378,8 @@ const backgroundPick = computed({
 
 /**
  * Earlier picks a new background makes impossible (a species skill the background now gives)
- * are taken off, so their step asks again instead of carrying a pick that can't stand.
+ * are taken off, so the Background step asks them again instead of carrying a pick that can't
+ * stand.
  */
 function dropClashes() {
   if (!data.value || !cls.value || !species.value) return
@@ -460,7 +473,8 @@ const backgroundGear = computed(() =>
 
 // --- Review and create ---------------------------------------------------------------
 const built = computed(() => {
-  if (!data.value || steps.value.slice(0, -1).some((_, i) => errorAt(i))) return null
+  if (!data.value || clashes.value.length || steps.value.slice(0, -1).some((_, i) => errorAt(i)))
+    return null
   try {
     return buildDnd5eSheet(c.value, choices.value, data.value)
   } catch {
@@ -499,7 +513,7 @@ function jumpToProblem() {
           : stepId.value === 'choices'
             ? otherPicks.value
             : []
-  const p = list.find((x) => pickProblem(x, choices.value[x.key]))
+  const p = [...clashes.value, ...list].find((x) => pickProblem(x, choices.value[x.key]))
   if (!p) return
   const id = pickElementId(p.key)
   document.getElementById(id)?.scrollIntoView({ behavior: motion(), block: 'start' })
@@ -1039,6 +1053,20 @@ function jumpToProblem() {
             </div>
           </div>
         </article>
+      </section>
+
+      <section v-if="clashShown.length" class="panel stack" aria-labelledby="clash-h">
+        <h3 id="clash-h">Choose again</h3>
+        <p class="small muted">
+          Your choices here give something an earlier pick already took, so that pick asks again.
+        </p>
+        <Dnd5ePickField
+          v-for="p in clashShown"
+          :key="p.key"
+          v-model="choices[p.key]"
+          :pick="p"
+          :show-errors="showErrors"
+        />
       </section>
 
       <div class="actions">
