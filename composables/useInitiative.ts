@@ -288,6 +288,14 @@ export function useInitiative(
     const saved = await saveEncounter({ active_combatant: next.active, round: next.round })
     if (!saved) return null
     const refilled = next.ended ? await refillActions(next.ended) : []
+    return undoTurn(prev, refilled)
+  }
+
+  /** An undo that puts the turn and round back, and the actions a turn's end refilled. */
+  function undoTurn(
+    prev: Pick<Encounter, 'active_combatant' | 'round'>,
+    refilled: { id: string; used: number }[],
+  ): () => Promise<void> {
     return async () => {
       if (!(await saveEncounter(prev))) return
       if (!refilled.length) return
@@ -305,12 +313,45 @@ export function useInitiative(
     }
   }
 
-  async function nextTurn() {
+  /** Next turn. Resolves to an undo (the toast's Undo), or null when the turn didn't move. */
+  async function nextTurn(): Promise<(() => Promise<void>) | null> {
     const next = turnAfter(order.value, turnId.value, round.value)
-    if (!next) return
+    if (!next || !encounter.value) return null
+    const prev = { active_combatant: encounter.value.active_combatant, round: round.value }
     const saved = await saveEncounter({ active_combatant: next.active, round: next.round })
     // The turn didn't move on the server, so no turn ended: keep the actions as they are.
-    if (saved && next.ended && isGm.value) await refillActions(next.ended)
+    if (!saved) return null
+    const refilled = next.ended && isGm.value ? await refillActions(next.ended) : []
+    return undoTurn(prev, refilled)
+  }
+
+  /**
+   * Next turn, but only if `expected` is still the acting combatant on the server: a
+   * player out of actions asks every GM screen to pass their turn, and the update only
+   * lands once (the `active_combatant` check), so two GM tabs can't skip a turn. Resolves
+   * to an undo when this call moved the turn, else null.
+   */
+  async function advanceFrom(expected: string): Promise<(() => Promise<void>) | null> {
+    if (!isGm.value || !encounter.value || turnId.value !== expected) return null
+    const next = turnAfter(order.value, turnId.value, round.value)
+    if (!next) return null
+    const stored = encounter.value.active_combatant
+    if (!stored) return null
+    const prev = { active_combatant: stored, round: round.value }
+    const { data, error } = await supabase
+      .from('encounters')
+      .update({ active_combatant: next.active, round: next.round })
+      .eq('campaign_id', campaignId.value)
+      .eq('active_combatant', stored)
+      .select('campaign_id')
+    if (error) {
+      snackbar.error(error, 'Could not pass the turn')
+      return null
+    }
+    if (!data?.length) return null
+    Object.assign(encounter.value, { active_combatant: next.active, round: next.round })
+    const refilled = next.ended ? await refillActions(next.ended) : []
+    return undoTurn(prev, refilled)
   }
 
   /**
@@ -511,6 +552,12 @@ export function useInitiative(
 
   async function syncSummons(roster: RosterEntry[]) {
     const { add, remove: gone } = syncSummonRows(roster, rows.value)
+    // A summon that was acting hands the turn on before it goes (as pruneSummons does).
+    const active = encounter.value?.active_combatant
+    if (active && gone.includes(active)) {
+      const next = livingAfter(active)
+      if (next) await saveEncounter({ active_combatant: next })
+    }
     if (gone.length) {
       const { error } = await supabase.from('combatants').delete().in('id', gone)
       if (error) {
@@ -568,6 +615,7 @@ export function useInitiative(
     reload: loadRows,
     insert,
     nextTurn,
+    advanceFrom,
     prevTurn,
     jumpTo,
     newRound,

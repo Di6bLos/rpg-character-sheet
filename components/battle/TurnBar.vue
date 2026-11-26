@@ -16,6 +16,8 @@ const props = defineProps<{ init: ReturnType<typeof useInitiative>; compact?: bo
 const { draft, canEdit } = useSheet<NimbleSheet>()
 const { touch } = useBoardLayout()
 const announce = useAnnounce()
+const result = useBattleResult()
+const undo = useActionUndo()
 const {
   sheet,
   gmEncounter,
@@ -31,13 +33,39 @@ const {
   toggleAction,
   extraAction,
   cancelCasting,
-  beginTurn,
-  finishTurn,
-  nextRound,
-  startEncounter,
-  finishEncounter,
+  beginTurn: startTurnStep,
+  finishTurn: endTurnStep,
+  nextRound: newRoundStep,
+  startEncounter: beginEncounter,
+  finishEncounter: endEncounterStep,
   initiative,
-} = useTurnSteps({ onResult: announce })
+} = useTurnSteps({
+  // Each step's line shows under the actions too, where its Undo is.
+  onResult: (message: string) => {
+    announce(message)
+    result.set(message)
+  },
+})
+
+/**
+ * A turn step that Undo can take back (an End turn tapped too soon). Roll Initiative isn't
+ * one: its total has already gone to the GM's tracker.
+ */
+function step<A extends unknown[]>(label: string, fn: (...args: A) => unknown) {
+  return (...args: A) => {
+    if (!undo) return void fn(...args)
+    const seq = result.seq.value
+    undo.run(label, () => fn(...args))
+    // A step that posts no line of its own (End turn in the GM's encounter) still names
+    // itself beside its Undo, so the line never shows an older action's text.
+    if (result.seq.value === seq && undo.label.value === label) result.set(label)
+  }
+}
+const startEncounter = step('New encounter', beginEncounter)
+const beginTurn = step('Start turn', startTurnStep)
+const finishTurn = step('End turn', endTurnStep)
+const nextRound = step('New round', newRoundStep)
+const finishEncounter = step('End encounter', endEncounterStep)
 
 const headline = computed(() =>
   turnHeadline({

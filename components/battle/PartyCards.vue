@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // The battle board's party: one compact card per hero (the other heroes for a player,
 // all of them for the GM) with portrait, name, Acting tag, class and level, one status
-// line, the HP bar and Armor. The GM's cards add action pips and mana (PF2e: hero and
-// focus points, `gmPoints`). A card opens
+// line, the HP bar and Armor, and (Nimble) each hero's actions left as pips and a count,
+// for players and the GM alike; the roster reloads as heroes are saved (`provideBattleLive`).
+// The GM's cards add mana (PF2e: hero and focus points, `gmPoints`). A card opens
 // the hero's stats modal. Compact (phone): full-width touch-sized cards in the tab's
 // own scroll, free of the right column's Party / Chat split. Off Nimble
-// (`useBattleFeatures`) the GM's cards have no pips or mana; a hero at 0 HP gets a
+// (`useBattleFeatures`) the cards have no pips and the GM's no mana; a hero at 0 HP gets a
 // DownStatus row ("Down · 1 saved · 2 failed" for 5e, "Down · Dying 2" for PF2e),
 // concentration is a chip, and the GM's cards show Passive Perception.
 import type { RosterEntry } from '~/types'
@@ -113,10 +114,16 @@ function hpText(r: RosterEntry): string {
 
 function pips(r: RosterEntry): { total: number; used: number } | null {
   const s = r.summary
-  if (!props.gm || !s || !features.value.pips) return null
+  if (!s || !features.value.pips) return null
   const max = heroTurnActions(s.abilityNames ?? [], !!s.dying, s.conditions)
   const spent = s.actionsSpent ?? 0
   return { total: Math.max(max, max - spent), used: Math.min(Math.max(0, spent), max) }
+}
+
+/** Actions the hero has left this turn, for the card's count. */
+function actionsLeft(r: RosterEntry): number {
+  const p = pips(r)
+  return p ? p.total - p.used : 0
 }
 
 /** The GM's resource line: Nimble mana, PF2e hero and focus points. */
@@ -140,7 +147,7 @@ function label(r: RosterEntry): string {
   const tempHp = r.summary?.tempHp
   const guard = tempHp ? `${tempHp} temp HP` : `${armorWord.value} ${armorOf(r) ?? 'unknown'}`
   const p = pips(r)
-  const actions = p ? `${p.total - p.used} of ${p.total} actions left` : ''
+  const actions = p ? `${actionsLeft(r)} of ${p.total} actions left` : ''
   const hp = r.summary?.hp === undefined ? 'HP unknown' : `${hpText(r)} HP`
   const conds = conditions(r).join(', ')
   const pp = passive(r)
@@ -219,12 +226,18 @@ function label(r: RosterEntry): string {
             <span class="pc__sub">
               <span class="pc__text">{{ sub(r) }}</span>
               <span v-if="mana(r)" class="pc__text">· {{ mana(r) }}</span>
-              <span v-if="pips(r)" class="pc__pips" aria-hidden="true">
+              <span
+                v-if="pips(r)"
+                class="pc__pips"
+                aria-hidden="true"
+                :title="`${actionsLeft(r)} of ${pips(r)?.total} actions left`"
+              >
                 <i
                   v-for="n in pips(r)?.total ?? 0"
                   :key="n"
                   :class="{ 'is-used': n <= (pips(r)?.used ?? 0) }"
                 />
+                <b class="pc__acts">{{ actionsLeft(r) }}/{{ pips(r)?.total }}</b>
               </span>
             </span>
             <BattleDownStatus v-if="basicDown(r)" class="pc__down" :summary="r.summary" />
@@ -429,6 +442,7 @@ function label(r: RosterEntry): string {
 
 .pc__pips {
   display: inline-flex;
+  align-items: center;
   gap: 3px;
   flex: none;
   margin-left: 2px;
@@ -444,6 +458,14 @@ function label(r: RosterEntry): string {
       box-shadow: inset 0 0 0 1px var(--page-muted);
     }
   }
+}
+
+.pc__acts {
+  margin-left: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--page-soft);
+  font-variant-numeric: tabular-nums;
 }
 
 .pc__down {

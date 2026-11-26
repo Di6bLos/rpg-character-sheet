@@ -2,8 +2,8 @@
 // The GM's turn bar on the battle board (top of the centre column): who is acting and
 // who is next, "+ Add creatures" (the add dialog), a menu with Add the party, Sync
 // summons and Reroll NPC initiative, and Add party while out of an encounter with
-// heroes not seated (Next turn is in the board's top bar). It also drops summons that left
-// their hero's sheet as the roster refreshes.
+// heroes not seated (Next turn is in the board's top bar). Summons also sync on their own
+// as the roster changes (`provideBattleLive`); the menu item stays for a manual resync.
 // The menu's tools are useGmEncounterTools, shared with the phone bar's ⋯ menu. Compact
 // (phone, the bottom of the frame): one row with who is acting, up next, New round and
 // Next ▶, the same handlers as the desktop top bar's buttons; "+ Add" is on the
@@ -41,11 +41,6 @@ const upNext = computed(() => {
   return `Round ${props.init.round.value}${next.length ? ` · Up next: ${next.join(', then ')}` : ''}`
 })
 
-watch(
-  () => props.roster,
-  (roster) => void props.init.pruneSummons(roster),
-)
-
 // --- Add, and the menu ------------------------------------------------------------------
 const addOpen = ref(false)
 const menuOpen = ref(false)
@@ -67,6 +62,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 const { busy, partyMissing, offerParty, addParty, syncSummons, reroll, setMode } =
   useGmEncounterTools(props.init, toRef(props, 'roster'), () => closeMenu())
 const newRound = useNewRound(props.init)
+const nextTurn = useNextTurn(props.init)
 const features = useBattleFeatures()
 
 // --- Compact (phone): one row with Next turn and New round, the same handlers as the
@@ -102,12 +98,7 @@ const hasOrder = computed(() => order.value.length > 0)
       >
         New round
       </button>
-      <button
-        type="button"
-        class="btn btn--sm gtb__step"
-        :disabled="!hasOrder"
-        @click="init.nextTurn"
-      >
+      <button type="button" class="btn btn--sm gtb__step" :disabled="!hasOrder" @click="nextTurn">
         Next ▶
       </button>
     </div>

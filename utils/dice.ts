@@ -183,6 +183,29 @@ export function showOutcome(outcome: RollOutcome): void {
   for (const watch of outcomeWatchers) watch(outcome)
 }
 
+/** One click's dice as shared with the rest of the table: who threw them and what it came to. */
+export interface SharedRoll {
+  /** "Iriel", "GM". */
+  from: string
+  rolls: ShownRoll[]
+  outcome: RollOutcome | null
+}
+
+const remoteWatchers = new Set<(roll: SharedRoll) => void>()
+
+/**
+ * The dice tray watches rolls made on other players' screens (`useBattleDiceShare`). They
+ * never reach `onDiceShown`, so they aren't shared again.
+ */
+export function onRemoteDice(watch: (roll: SharedRoll) => void): () => void {
+  remoteWatchers.add(watch)
+  return () => remoteWatchers.delete(watch)
+}
+
+export function showRemoteDice(roll: SharedRoll): void {
+  for (const watch of remoteWatchers) watch(roll)
+}
+
 export interface NimbleRoll {
   miss: boolean
   crit: boolean
@@ -217,6 +240,8 @@ export interface NimbleRollRules {
    * `critOnAnyMax` they first lift one die to its max for the crit; the rest add damage.
    */
   bump?: number
+  /** Minions and flunkies never crit (GM's Guide p. 24): the max is just its value. */
+  noCrit?: boolean
 }
 
 function nimbleRoll(
@@ -268,7 +293,7 @@ function nimbleRoll(
   // "When you crit, roll the Primary Die again" (Core p. 13), however the crit came.
   const anyMax = !!rules.critOnAnyMax && kept.some((v) => v === expr.sides)
   let last = anyMax ? expr.sides : first
-  while (last === expr.sides) {
+  while (last === expr.sides && !rules.noCrit) {
     last = rollDie(expr.sides, rng)
     explosions.push(last)
     total += last

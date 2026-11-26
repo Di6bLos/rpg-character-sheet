@@ -31,6 +31,13 @@ const current = provideBoardHero()
 if (props.enabled) {
   const result = provideBattleResult()
   watch(current, () => result.set(''))
+  // Undo for the last tile or turn step; it posts what it took back to party chat.
+  const chat = useBoardChat()
+  provideActionUndo(current, (label) => {
+    const name = current.value?.draft.value.name ?? ''
+    result.set(`Undid ${label}`)
+    void chat.send(`${name} · undid ${label}`, 'party', 'action')
+  })
 }
 
 const ready = computed(
