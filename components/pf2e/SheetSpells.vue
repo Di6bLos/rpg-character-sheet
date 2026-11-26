@@ -211,7 +211,7 @@ function cast(
 }
 
 /** Manual dice for a cast's attack, damage and healing, asked for in the card that cast it. */
-const typedRoll = usePf2eTypedRoll()
+const typedRoll = useTypedRoll()
 
 function castIn(key: string, message: string, def: Pf2eSpellDef | undefined, rank: number) {
   lastCast.value = null

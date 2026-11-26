@@ -505,6 +505,23 @@ export function initiativeTest(s: Dnd5eSheet, level: number): Dnd5eD20 {
 
 // --- Damage, healing, dying --------------------------------------------------------------
 
+/** The damage types (SRD 5.2.1 p. 16). */
+export const DND5E_DAMAGE_TYPES = [
+  'Acid',
+  'Bludgeoning',
+  'Cold',
+  'Fire',
+  'Force',
+  'Lightning',
+  'Necrotic',
+  'Piercing',
+  'Poison',
+  'Psychic',
+  'Radiant',
+  'Slashing',
+  'Thunder',
+]
+
 export const isDead = (s: Dnd5eSheet) => (s.deathSaves?.failures ?? 0) >= 3 || exhaustionOf(s) >= 6
 export const isStable = (s: Dnd5eSheet) => s.hp <= 0 && (s.deathSaves?.successes ?? 0) >= 3
 export const isDying = (s: Dnd5eSheet) => s.hp <= 0 && !isDead(s) && !isStable(s)

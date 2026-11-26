@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// The Turn panel of the Nimble and PF2e sheets: whose turn it is, the action circles (tap to
-// spend or restore; PF2e adds its reaction and strikes out actions stunned or slowed took), the
-// actions left and the attack note, and one step button at a time (Initiative, Start turn,
-// End turn…) with a typed Initiative for Manual dice. Each system fills a `TurnModel`:
-// nimble/SheetTurn from useTurnSteps, pf2e/SheetTurn from usePf2eTurnSteps.
+// The Turn panel of the Nimble, PF2e and 5e sheets: whose turn it is, the action circles (tap to
+// spend or restore; PF2e adds its reaction and strikes out actions stunned or slowed took; 5e
+// its reaction, Bonus Action, object interaction and movement), the actions left and the
+// attack note, and one step button at a time (Initiative, Start turn, End turn…) with a typed
+// Initiative for Manual dice. Each system fills a `TurnModel`: nimble/SheetTurn from
+// useTurnSteps, pf2e/SheetTurn from usePf2eTurnSteps, dnd5e/SheetTurn from useDnd5eTurnSteps.
 import type { TurnModel } from '~/utils/turnSteps'
 
 defineProps<{ turn: TurnModel }>()
@@ -83,10 +84,47 @@ const { draft, canEdit, campaignId } = useSheet()
         >
           <span aria-hidden="true">↺</span>
         </button>
+        <button
+          v-for="e in turn.economy ?? []"
+          :key="e.key"
+          type="button"
+          class="action action--economy"
+          :class="[`action--${e.key}`, { on: e.ready }]"
+          :aria-label="e.ready ? `Spend your ${e.label}` : `Restore your ${e.label}`"
+          :aria-pressed="!e.ready"
+          :title="e.title"
+          :disabled="!canEdit || turn.pipsLocked"
+          @click="turn.toggleEconomy?.(e.key)"
+        >
+          <span aria-hidden="true">{{ e.glyph }}</span>
+        </button>
       </div>
       <div class="stack" style="gap: 2px; min-width: 140px">
         <strong role="status" style="font-size: 15px">{{ turn.leftText }}</strong>
         <span class="muted" style="font-size: 12px">{{ turn.note }}</span>
+        <div v-if="turn.movement" class="row move" role="group" aria-label="Movement this turn">
+          <button
+            type="button"
+            class="step step--xs"
+            aria-label="5 feet less moved"
+            :disabled="!canEdit || turn.pipsLocked || turn.movement.used <= 0"
+            @click="turn.move?.(-5)"
+          >
+            −
+          </button>
+          <span class="move__v" aria-live="polite"
+            >Moved {{ turn.movement.used }} / {{ turn.movement.max }} ft</span
+          >
+          <button
+            type="button"
+            class="step step--xs"
+            aria-label="5 feet more moved"
+            :disabled="!canEdit || turn.pipsLocked || turn.movement.used >= turn.movement.max"
+            @click="turn.move?.(5)"
+          >
+            +
+          </button>
+        </div>
         <div v-if="turn.casting?.actions" class="row" style="gap: 6px">
           <span class="muted" style="font-size: 12px">
             Casting {{ turn.casting.spell }}: {{ turn.casting.actions }} more
@@ -212,6 +250,18 @@ const { draft, canEdit, campaignId } = useSheet()
   color: var(--page-soft);
 }
 
+.move {
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.move__v {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--page-soft);
+}
+
 .turn-who {
   font-size: 13px;
   color: var(--page-muted);
@@ -264,6 +314,25 @@ const { draft, canEdit, campaignId } = useSheet()
       transparent 0 5px,
       color-mix(in srgb, var(--danger) 25%, transparent) 5px 7px
     );
+  }
+
+  // 5e's Bonus Action and object interaction: filled in their own colours while unused.
+  &--economy {
+    font-size: 15px;
+
+    &.on {
+      color: #fff;
+      border: 2px solid var(--economy);
+      background: var(--economy);
+    }
+  }
+
+  &--bonus {
+    --economy: #c07a1e;
+  }
+
+  &--object {
+    --economy: #4b8a6a;
   }
 
   // PF2e's reaction: a filled circle in its own colour while ready, apart from the

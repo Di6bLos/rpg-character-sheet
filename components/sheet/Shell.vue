@@ -30,7 +30,7 @@ const { draft, dirty, saving, save } = editor
 const editable = editor.canEdit
 
 // Seated in the GM's encounter, the full sheet follows the tracker as the board does:
-// End turn, Start turn and New round (Nimble) as initiative moves.
+// End turn, Start turn and New round (Nimble, 5e) as initiative moves.
 const tracker = {
   characterId: props.character.id,
   turnCharacterId: computed(() => (editor.gmEncounter.value ? editor.trackerTurnId.value : null)),
@@ -38,6 +38,7 @@ const tracker = {
 }
 if (props.character.system === 'nimble') useTrackerTurnSteps(editor, tracker)
 else if (props.character.system === 'pf2e') usePf2eTrackerTurnSteps(editor, tracker)
+else if (props.character.system === 'dnd5e') useDnd5eTrackerTurnSteps(editor, tracker)
 
 const editing = ref(false)
 const levelUpOpen = ref(false)

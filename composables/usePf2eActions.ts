@@ -441,7 +441,7 @@ function create(strikesApi: Pf2eStrikes) {
    * Manual dice played with the player's dice, the row asking for them (`typedRoll`).
    */
   const { claim } = useResultOwner()
-  const typedRoll = usePf2eTypedRoll({
+  const typedRoll = useTypedRoll({
     save: strikesApi.saveState,
     load: strikesApi.loadState as (s: never) => void,
   })
