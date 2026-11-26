@@ -1,0 +1,37 @@
+{
+  "duskling": {
+    "summary": "Fey who left the Feywild for forests across the planes, often in herding communities that roam with their flocks: they leap far and channel inner magic into a chosen boost.",
+    "traits": [
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [{ "kind": "sense", "value": "Darkvision", "range": 60 }]
+      },
+      {
+        "name": "Enhanced Jump",
+        "summary": "Running High Jumps go 2 ft higher and running Long Jumps 10 ft farther."
+      },
+      {
+        "name": "Inner Magic",
+        "summary": "After each Long Rest pick one benefit, kept until you change it. Bonus Action: switch to another, PB times per Long Rest.",
+        "activation": "bonus",
+        "uses": { "count": "PB", "recharge": "long" },
+        "options": [
+          {
+            "name": "Ardor",
+            "summary": "Advantage on CHA checks and on saves to avoid or end Frightened."
+          },
+          {
+            "name": "Mobility",
+            "summary": "+10 ft Speed; climbing and swimming cost no extra movement.",
+            "grants": [{ "kind": "speed", "value": "walk", "bonus": 10 }]
+          },
+          {
+            "name": "Vigor",
+            "summary": "Temporary HP equal to PB, and Advantage on STR (Athletics) and DEX (Acrobatics) checks."
+          }
+        ]
+      }
+    ]
+  }
+}

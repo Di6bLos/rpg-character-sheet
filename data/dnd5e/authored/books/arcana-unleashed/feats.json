@@ -1,0 +1,580 @@
+{
+  "arcane-artist": {
+    "summary": "Illusion magic that lifts an ally's spirits.",
+    "benefits": {
+      "Cantrip": {
+        "summary": "Learn Minor Illusion, cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [{ "kind": "spell", "spell": "minor-illusion" }],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Inspiring Magic": {
+        "summary": "On casting an Illusion spell, give Heroic Inspiration to an ally within 30 ft who sees you. Once per Long Rest.",
+        "range": 30,
+        "uses": { "count": 1, "recharge": "long" }
+      }
+    }
+  },
+  "arcane-eloquence": {
+    "summary": "A cutting tongue backed by magic.",
+    "benefits": {
+      "Cantrip": {
+        "summary": "Learn Vicious Mockery, cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [{ "kind": "spell", "spell": "vicious-mockery" }],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Smooth Talker": {
+        "summary": "Add 1d4 to CHA (Deception, Intimidation or Persuasion) checks.",
+        "dice": "1d4"
+      }
+    }
+  },
+  "arcane-infiltrator": {
+    "summary": "Charm your way in and duck out of harm.",
+    "benefits": {
+      "Cantrip": {
+        "summary": "Learn Friends, cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [{ "kind": "spell", "spell": "friends" }],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Cunning Diversion": {
+        "summary": "Bonus Action: Dodge. PB times per Long Rest.",
+        "activation": "bonus",
+        "uses": { "count": "PB", "recharge": "long" }
+      }
+    }
+  },
+  "arcane-omens": {
+    "summary": "Glimpses of what's coming help you and allies resist harm.",
+    "benefits": {
+      "Cantrip": {
+        "summary": "Learn Guidance, cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [{ "kind": "spell", "spell": "guidance" }],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Helpful Premonition": {
+        "summary": "Reaction when you or a creature you see within 30 ft fails a save: add 1d4 to it, which may make it succeed. PB times per Long Rest.",
+        "activation": "reaction",
+        "dice": "1d4",
+        "range": 30,
+        "uses": { "count": "PB", "recharge": "long" }
+      }
+    }
+  },
+  "arcane-overload": {
+    "summary": "Fire Bolt and a once-a-day jolt to evocation damage.",
+    "benefits": {
+      "Cantrip": {
+        "summary": "Learn Fire Bolt, cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [{ "kind": "spell", "spell": "fire-bolt" }],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Power Surge": {
+        "summary": "When an Evocation spell deals damage, add PB to one of its damage rolls. Once per Long Rest.",
+        "uses": { "count": 1, "recharge": "long" }
+      }
+    }
+  },
+  "arcane-safeguard": {
+    "summary": "Protective magic you can spread quickly.",
+    "benefits": {
+      "Cantrip": {
+        "summary": "Learn Resistance, cast with INT, WIS or CHA (picked with the feat); PB times per Long Rest you may cast it as a Bonus Action.",
+        "grants": [{ "kind": "spell", "spell": "resistance" }],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ],
+        "activation": "bonus",
+        "uses": { "count": "PB", "recharge": "long" }
+      },
+      "Sheltering Aid": {
+        "summary": "Helping an ally with an ability check also gives them Temporary HP equal to your PB."
+      }
+    }
+  },
+  "arcane-undertaker": {
+    "summary": "Death magic and lore about the dead.",
+    "benefits": {
+      "Cantrip": {
+        "summary": "Learn a Necromancy cantrip from the Cleric or Wizard list, cast with INT, WIS or CHA (picked with the feat).",
+        "choices": [
+          {
+            "kind": "cantrip",
+            "count": 1,
+            "from": ["chill-touch", "poison-spray", "spare-the-dying", "toll-the-dead"],
+            "label": "Cleric or Wizard Necromancy cantrip"
+          },
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Knowledge from the Dead": {
+        "summary": "Add 1d4 to INT (History) and WIS (Medicine) checks.",
+        "dice": "1d4"
+      },
+      "Understanding of Death": {
+        "summary": "Gain Heroic Inspiration when you Help to stabilize a creature at 0 HP. Once per Long Rest.",
+        "uses": { "count": 1, "recharge": "long" }
+      }
+    }
+  },
+  "familiar-friend": {
+    "summary": "A sturdier familiar that helps with your skills.",
+    "benefits": {
+      "Faithful Companion": {
+        "summary": "Find Familiar always prepared, cast with INT, WIS or CHA (picked with the feat). Once per Long Rest cast it with no slot or Material components; your slots work too.",
+        "grants": [
+          { "kind": "spell", "spell": "find-familiar", "free": { "count": 1, "recharge": "long" } }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Fortified Familiar": {
+        "summary": "Your familiar gets extra max and current HP equal to twice your character level when summoned."
+      },
+      "Helpful Friend": {
+        "summary": "Advantage on a check with a skill you're proficient in while your familiar is within 5 ft. PB times per Long Rest.",
+        "uses": { "count": "PB", "recharge": "long" }
+      }
+    }
+  },
+  "portal-jumper": {
+    "summary": "Touched by planar travel: resist otherworldly energy and blink short distances.",
+    "benefits": {
+      "Otherworldly Resilience": {
+        "summary": "Resistance to Necrotic, Psychic or Radiant damage (your pick).",
+        "choices": [
+          {
+            "kind": "damageType",
+            "count": 1,
+            "from": ["Necrotic", "Psychic", "Radiant"],
+            "label": "Otherworldly Resilience"
+          }
+        ]
+      },
+      "Portal Step": {
+        "summary": "Spend 15 ft of movement to teleport up to 15 ft to an unoccupied space you see. Once per turn, PB times per Long Rest.",
+        "range": 15,
+        "uses": { "count": "PB", "recharge": "long" }
+      }
+    }
+  },
+  "transmuted-anatomy": {
+    "summary": "A body reshaped by magic: faster and hard to alter.",
+    "benefits": {
+      "Lengthened Stride": {
+        "summary": "+5 ft Speed.",
+        "grants": [{ "kind": "speed", "value": "walk", "bonus": 5 }]
+      },
+      "Resilient Anatomy": {
+        "summary": "Advantage on saves against forced shape-changes. Reaction on a failed CON save: add 1d4, which may make it succeed; PB times per Long Rest.",
+        "activation": "reaction",
+        "dice": "1d4",
+        "uses": { "count": "PB", "recharge": "long" }
+      }
+    }
+  },
+  "abjuration-adept": {
+    "summary": "Abjuration specialist: extra warding spells and Temporary HP when you cast them.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Always prepared once you have slots of their level: Shield (1), Lesser Restoration (2), Protection from Energy (3), Banishment (4), Mass Cure Wounds (5)."
+      },
+      "Protective Ward": {
+        "summary": "Casting an Abjuration spell with a slot gives you or a creature you see within 30 ft Temporary HP equal to twice the slot level.",
+        "range": 30
+      }
+    }
+  },
+  "conjuration-adept": {
+    "summary": "Conjuration specialist: extra summoning and travel spells, and steadier Concentration on them.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Always prepared once you have slots of their level: Entangle (1), Misty Step (2), Conjure Animals (3), Dimension Door (4), Conjure Elemental (5)."
+      },
+      "Persistent Conjuration": {
+        "summary": "Add the modifier of the ability you raised to CON saves for keeping Concentration on a Conjuration spell."
+      }
+    }
+  },
+  "divination-adept": {
+    "summary": "Divination specialist: extra foresight spells and a reaction that tilts a roll.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Always prepared once you have slots of their level: Detect Evil and Good (1), Mind Spike (2), Clairvoyance (3), Divination (4), Scrying (5)."
+      },
+      "Prescient Intervention": {
+        "summary": "Reaction when a creature you see within 60 ft makes a D20 Test: give it Advantage or Disadvantage. Once per Long Rest, or regained by casting a Divination spell with a slot.",
+        "activation": "reaction",
+        "range": 60,
+        "uses": {
+          "count": 1,
+          "recharge": "long",
+          "restore": "casting a Divination spell with a spell slot"
+        }
+      }
+    }
+  },
+  "elemental-familiar": {
+    "summary": "Charge your familiar with elemental energy it can release in a burst.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Elemental Energy": {
+        "summary": "Each casting of Find Familiar, pick Acid, Cold, Fire, Lightning or Thunder; the familiar holds that energy until your next casting."
+      },
+      "Elemental Resistance": {
+        "summary": "Your familiar resists the picked damage type."
+      },
+      "Energy Pulse": {
+        "summary": "Bonus Action: your familiar within 120 ft uses its Reaction to burst; each creature in a 5-ft Emanation around it makes a DEX save or takes 2d4 of the picked type and, if Medium or smaller, falls Prone.",
+        "activation": "bonus",
+        "range": 120,
+        "dice": "2d4",
+        "save": { "ability": "DEX", "dc": "spell" }
+      }
+    }
+  },
+  "enchantment-adept": {
+    "summary": "Enchantment specialist: extra charm spells, cast without telltale components.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Always prepared once you have slots of their level: Dissonant Whispers (1), Enthrall (2), Hold Person (3), Dominate Beast (4), Modify Memory (5)."
+      },
+      "Subtle Enchantments": {
+        "summary": "Enchantment spells cast with a slot need no V, S or M components, except costly or consumed materials."
+      }
+    }
+  },
+  "evocation-adept": {
+    "summary": "Evocation specialist: extra blasting spells, boosted by your own Hit Point Dice.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Always prepared once you have slots of their level: Chromatic Orb (1), Shatter (2), Fireball (3), Vitriolic Sphere (4), Wall of Force (5)."
+      },
+      "Fueled Evocation": {
+        "summary": "Once per turn when an Evocation spell deals damage, spend up to two Hit Point Dice and add their roll to one damage roll.",
+        "uses": { "count": 1, "recharge": "turn" }
+      }
+    }
+  },
+  "illusion-adept": {
+    "summary": "Illusion specialist: extra illusion spells that are silent and hard to see through.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Always prepared once you have slots of their level: Silent Image (1), Phantasmal Force (2), Major Image (3), Hallucinatory Terrain (4), Seeming (5)."
+      },
+      "Masterful Illusions": {
+        "summary": "Illusion spells cast with a slot need no V, S or M components, except costly or consumed materials. Investigation checks to see through your illusions have Disadvantage."
+      }
+    }
+  },
+  "magic-connoisseur": {
+    "summary": "Builds on Magic Initiate with a level 1 and a level 2 spell.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Pick one level 1 and one level 2 spell off your Magic Initiate list; both are always prepared, and each is free once per Long Rest, or cast with your slots. Uses your Magic Initiate ability.",
+        "choices": [
+          {
+            "kind": "spell",
+            "count": 1,
+            "maxLevel": 1,
+            "note": "level 1, from your Magic Initiate spell list",
+            "label": "Level 1 spell (free once per Long Rest)"
+          },
+          {
+            "kind": "spell",
+            "count": 1,
+            "maxLevel": 2,
+            "note": "level 2, from your Magic Initiate spell list",
+            "label": "Level 2 spell (free once per Long Rest)"
+          }
+        ],
+        "uses": { "count": 1, "recharge": "long" }
+      },
+      "Spell Change": {
+        "summary": "On gaining a level, you may swap one of these spells for another of the same level from that list."
+      }
+    }
+  },
+  "necromancy-adept": {
+    "summary": "Necromancy specialist: extra death spells that also mend you.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Always prepared once you have slots of their level: Inflict Wounds (1), Ray of Enfeeblement (2), Vampiric Touch (3), Blight (4), Raise Dead (5)."
+      },
+      "Life Manipulation": {
+        "summary": "Casting a Necromancy spell with a slot lets you spend up to two Hit Point Dice to heal their roll plus the slot level."
+      }
+    }
+  },
+  "otherworldly-familiar": {
+    "summary": "Infuse your familiar with planar power so it resists harm and drifts through matter.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Otherworldly Power": {
+        "summary": "On casting Find Familiar you may empower the familiar until your next casting."
+      },
+      "Energy Resistance": {
+        "summary": "The empowered familiar resists Necrotic, Poison, Psychic, Radiant or Thunder (your pick)."
+      },
+      "Phase Walk": {
+        "summary": "The empowered familiar moves through creatures and objects as Difficult Terrain; ending its turn in an object pushes it back to its last free space."
+      }
+    }
+  },
+  "soothing-familiar": {
+    "summary": "Your familiar radiates healing that steadies allies' cures.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Healing Beacon": {
+        "summary": "While your familiar is within 120 ft, allies in a 5-ft Emanation around it count 1s and 2s on healing dice as 3s.",
+        "range": 120
+      }
+    }
+  },
+  "spell-resistant": {
+    "summary": "Hardened against magic and the energy it carries.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Constitution, max 20."
+      },
+      "Magical Resilience": {
+        "summary": "Resistance to Necrotic, Psychic, Radiant or Thunder damage (your pick).",
+        "choices": [
+          {
+            "kind": "damageType",
+            "count": 1,
+            "from": ["Necrotic", "Psychic", "Radiant", "Thunder"],
+            "label": "Magical Resilience"
+          }
+        ]
+      },
+      "Magic Resistant": {
+        "summary": "When about to fail a save against a spell or magic effect, add 1d6, which may make it succeed. PB times per Long Rest.",
+        "dice": "1d6",
+        "uses": { "count": "PB", "recharge": "long" }
+      }
+    }
+  },
+  "spell-subterfuge": {
+    "summary": "Cast, then vanish from sight.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Shrouding Spells": {
+        "summary": "After casting a 1-action spell with a slot, Bonus Action: Dash and Hide. Uses equal to the raised ability's modifier per Long Rest.",
+        "activation": "bonus"
+      },
+      "Sneaky Casting": {
+        "summary": "While Invisible from Hide, Verbal components and spell attacks don't end it if you finish the turn behind Three-Quarters or Total Cover."
+      }
+    }
+  },
+  "transmutation-adept": {
+    "summary": "Transmutation specialist: extra shaping spells and a burst of speed when you cast them.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Additional Spells": {
+        "summary": "Always prepared once you have slots of their level: Jump (1), Spider Climb (2), Slow (3), Polymorph (4), Animate Objects (5)."
+      },
+      "Magical Augmentation": {
+        "summary": "Casting a Transmutation spell with a slot on your turn adds 5 ft × the slot level to your Speed until the turn ends."
+      }
+    }
+  },
+  "warlike-familiar": {
+    "summary": "Turn your familiar into a fighter that guards those beside it.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Battle Familiar": {
+        "summary": "Battle Familiar always prepared; free once per Long Rest, or cast with your slots. Uses your Familiar Friend ability.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "battle-familiar",
+            "free": { "count": 1, "recharge": "long" }
+          }
+        ]
+      },
+      "Intercept Attack": {
+        "summary": "When an attack roll hits a creature within 5 ft of your familiar, the familiar's Reaction adds your PB to that creature's AC against it, which may turn it into a miss.",
+        "activation": "reaction"
+      }
+    }
+  },
+  "arcane-warrior": {
+    "summary": "Fighting style: learn two Wizard cantrips (Mage Hand and Ray of Frost suggested), cast with INT, WIS or CHA; swap one for another Wizard cantrip on each level gained.",
+    "choices": [
+      { "kind": "cantrip", "count": 2, "list": "wizard", "label": "Wizard cantrips" },
+      {
+        "kind": "ability",
+        "count": 1,
+        "from": ["INT", "WIS", "CHA"],
+        "label": "Spellcasting ability"
+      }
+    ]
+  },
+  "boon-of-erupting-spellpower": {
+    "summary": "Overcharge a damaging spell to hit harder and knock foes down.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 30."
+      },
+      "Spell Overload": {
+        "summary": "On a damaging spell cast with a slot, count 1s and 2s on its damage dice as 3s, and everything it damaged is knocked Prone. Recharges on Initiative or a Short or Long Rest.",
+        "uses": { "count": 1, "recharge": "short", "restore": "rolling Initiative" }
+      }
+    }
+  },
+  "boon-of-magic-school-mastery": {
+    "summary": "Master one school of magic: a free level 1 spell at will and a signature spell up to level 7.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 30."
+      },
+      "Mastered School": {
+        "summary": "Pick one of the eight schools; the next two benefits draw on it.",
+        "choices": [
+          {
+            "kind": "option",
+            "count": 1,
+            "from": [
+              "Abjuration",
+              "Conjuration",
+              "Divination",
+              "Enchantment",
+              "Evocation",
+              "Illusion",
+              "Necromancy",
+              "Transmutation"
+            ],
+            "label": "Mastered School"
+          }
+        ]
+      },
+      "Rote Casting": {
+        "summary": "A level 1 spell of that school from your class list is always prepared and can be cast with no slot or components.",
+        "choices": [
+          {
+            "kind": "spell",
+            "count": 1,
+            "maxLevel": 1,
+            "note": "level 1, of the mastered school, on your class's spell list",
+            "label": "Rote spell (at will)"
+          }
+        ]
+      },
+      "Signature Arcanum": {
+        "summary": "A spell of that school of level 7 or lower is always prepared; free once per Long Rest, or cast with your slots.",
+        "choices": [
+          {
+            "kind": "spell",
+            "count": 1,
+            "maxLevel": 7,
+            "note": "of the mastered school",
+            "label": "Signature spell (free once per Long Rest)"
+          }
+        ],
+        "uses": { "count": 1, "recharge": "long" }
+      },
+      "Repeatable": {
+        "summary": "Can be taken again for a different school."
+      }
+    }
+  },
+  "boon-of-the-iron-mind": {
+    "summary": "Concentration that nothing short of collapse can break.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Unshakable Focus": {
+        "summary": "Damage and the like no longer break your Concentration; it ends only when you start another Concentration effect, are Petrified or Unconscious, or die."
+      }
+    }
+  }
+}

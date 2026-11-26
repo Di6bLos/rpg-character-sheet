@@ -1,0 +1,54 @@
+{
+  "banishing-shot": {
+    "summary": "On a hit, +1 Arcane Shot Die Psychic; the target makes a CHA save or is shunted to a harmless demiplane, Incapacitated with Speed 0, returning to its space (or the closest free one) when its next turn ends.",
+    "cost": "1 Arcane Shot use",
+    "damageType": "Psychic",
+    "save": { "ability": "CHA", "dc": "8+PB+INT" }
+  },
+  "beguiling-shot": {
+    "summary": "On a hit, +2 Arcane Shot Dice Psychic; the target makes a WIS save or is Charmed by you or an ally within 30 ft of it (your pick) until your next turn starts, ending early if the charmer harms it or forces a save on it.",
+    "cost": "1 Arcane Shot use",
+    "damageType": "Psychic",
+    "range": 30,
+    "save": { "ability": "WIS", "dc": "8+PB+INT" },
+    "duration": "until the start of your next turn"
+  },
+  "bursting-shot": {
+    "summary": "After the hit's damage, the target and every creature in a 10-ft Emanation around it take 2 Arcane Shot Dice of Force.",
+    "cost": "1 Arcane Shot use",
+    "damageType": "Force"
+  },
+  "enfeebling-shot": {
+    "summary": "On a hit, +2 Arcane Shot Dice Necrotic; the target makes a CON save or is Poisoned until its next turn ends, cutting each of its hits' damage by one Arcane Shot Die roll.",
+    "cost": "1 Arcane Shot use",
+    "damageType": "Necrotic",
+    "save": { "ability": "CON", "dc": "8+PB+INT" },
+    "duration": "until the end of its next turn"
+  },
+  "grasping-shot": {
+    "summary": "On a hit, +1 Arcane Shot Die Slashing; the target makes a STR save or is Restrained by brambles for 1 minute, or until your next Grasping Shot. An action and a Strength (Athletics) check against your DC, by it or someone in reach, frees it.",
+    "cost": "1 Arcane Shot use",
+    "damageType": "Slashing",
+    "save": { "ability": "STR", "dc": "8+PB+INT" },
+    "duration": "1 minute"
+  },
+  "piercing-shot": {
+    "summary": "No attack roll: the shot passes through cover in a 30-ft × 1-ft Line from you. Each creature in it makes a DEX save, taking the weapon's hit damage + 2 Arcane Shot Dice Piercing on a fail, half on a success.",
+    "cost": "1 Arcane Shot use",
+    "damageType": "Piercing",
+    "save": { "ability": "DEX", "dc": "8+PB+INT" }
+  },
+  "seeking-shot": {
+    "summary": "No attack roll: the shot rounds corners toward a creature you've seen in the last minute, ignoring Half and Three-Quarters Cover. Within long range it makes a DEX save: hit damage + 2 Arcane Shot Dice Force and you learn where it is on a fail, half damage on a success.",
+    "cost": "1 Arcane Shot use",
+    "damageType": "Force",
+    "save": { "ability": "DEX", "dc": "8+PB+INT" }
+  },
+  "shadow-shot": {
+    "summary": "On a hit, +1 Arcane Shot Die Psychic; the target makes a WIS save or is Blinded until its next turn ends.",
+    "cost": "1 Arcane Shot use",
+    "damageType": "Psychic",
+    "save": { "ability": "WIS", "dc": "8+PB+INT" },
+    "duration": "until the end of its next turn"
+  }
+}

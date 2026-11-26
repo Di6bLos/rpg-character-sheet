@@ -1,0 +1,132 @@
+{
+  "fey-pact": {
+    "summary": "A bargain with the Feywild: Sylvan, nature lore, fey cantrips and a silver tongue.",
+    "benefits": {
+      "Fey Bond": {
+        "summary": "Learn Sylvan (another language of your choice if you know it) and gain Nature proficiency.",
+        "grants": [
+          { "kind": "language", "value": "Sylvan" },
+          { "kind": "skill", "value": "Nature" }
+        ]
+      },
+      "Fey Cantrips": {
+        "summary": "Know Druidcraft plus one Divination or Enchantment cantrip of your choice, cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [{ "kind": "spell", "spell": "druidcraft" }],
+        "choices": [
+          { "kind": "cantrip", "count": 1, "school": ["Divination", "Enchantment"] },
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Honeyed Words": {
+        "summary": "Reroll a failed CHA (Deception or Persuasion) check and keep the new roll. Once it turns a failure into a success, it's gone until a Long Rest.",
+        "uses": { "count": 1, "recharge": "long" }
+      }
+    }
+  },
+  "infernal-pact": {
+    "summary": "A bargain with the Nine Hells: fire or poison resistance, sight through magical darkness and a liar's tongue.",
+    "benefits": {
+      "Infernal Resistance": {
+        "summary": "Resistance to Fire or Poison damage, your pick.",
+        "choices": [
+          { "kind": "damageType", "count": 1, "from": ["Fire", "Poison"], "label": "Resistance" }
+        ]
+      },
+      "Infernal Sight": {
+        "summary": "Darkvision out to 30 ft that magical Darkness doesn't block.",
+        "grants": [{ "kind": "sense", "value": "Darkvision", "range": 30 }]
+      },
+      "Silver-Tongued": {
+        "summary": "Proficiency in Deception.",
+        "grants": [{ "kind": "skill", "value": "Deception" }]
+      }
+    }
+  },
+  "fey-sentinel": {
+    "summary": "Deeper fey magic: vanish when attacks miss, blink across the field and call up grasping plants.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Fading Target": {
+        "summary": "Reaction when an enemy's attack roll misses you: turn Invisible until your next turn starts, or until right after you attack, deal damage or cast a spell. Once per Long Rest.",
+        "activation": "reaction",
+        "uses": { "count": 1, "recharge": "long" }
+      },
+      "Fey Shift": {
+        "summary": "On a Dash, swap the extra movement for a teleport to an unoccupied space you see up to half your Speed away."
+      },
+      "Nature’s Roots": {
+        "summary": "Entangle is always prepared (Plant Growth too from level 5), each castable once per Long Rest without a slot, or with your slots. The ability you raised casts them.",
+        "grants": [
+          { "kind": "spell", "spell": "entangle", "free": { "count": 1, "recharge": "long" } },
+          {
+            "kind": "spell",
+            "spell": "plant-growth",
+            "at": 5,
+            "free": { "count": 1, "recharge": "long" }
+          }
+        ]
+      }
+    }
+  },
+  "infernal-bulwark": {
+    "summary": "Devilish defenses: scaled skin, fiery Armor of Agathys and fire that punishes those whose effects you resist.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution or Charisma, max 20."
+      },
+      "Devil’s Flesh": {
+        "summary": "Without armor or a Shield, your base AC is 10 + DEX + the ability you raised.",
+        "grants": [{ "kind": "ac", "formula": "10 + DEX + CON/CHA" }]
+      },
+      "Infernal Protection": {
+        "summary": "Armor of Agathys is always prepared, cast with CHA. Once per Long Rest cast it without a slot as a level 2 spell dealing Fire instead of Cold; you can also cast it with your slots.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "armor-of-agathys",
+            "free": { "count": 1, "recharge": "long" }
+          }
+        ]
+      },
+      "Vengeful Surge": {
+        "summary": "Reaction when you pass a save forced by a creature you see within 60 ft: it takes 1d10 Fire. PB uses per Long Rest.",
+        "activation": "reaction",
+        "uses": { "count": "PB", "recharge": "long" },
+        "dice": "1d10",
+        "damageType": "Fire",
+        "range": 60
+      }
+    }
+  },
+  "infernal-dragoon": {
+    "summary": "A warrior of the Hells: a frightening aura, a patron's nudge on a roll and a long-lasting Magic Weapon.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution or Charisma, max 20."
+      },
+      "Devilish Aura": {
+        "summary": "Magic action: creatures you choose in a 30-ft Emanation make a CHA save (DC 8 + PB + the ability you raised) or are Frightened until their next turn ends. A creature that saves is immune for 24 hours.",
+        "activation": "magic",
+        "range": 30,
+        "save": { "ability": "CHA", "dc": "8+PB+CON/CHA" }
+      },
+      "Devil’s Favor": {
+        "summary": "Add +2 to a D20 Test. Once per Long Rest.",
+        "uses": { "count": 1, "recharge": "long" }
+      },
+      "Diabolic Empowerment": {
+        "summary": "Magic Weapon is always prepared, cast with CHA; once per Long Rest without a slot, and that casting lasts 8 hours. You can also cast it with your slots.",
+        "grants": [
+          { "kind": "spell", "spell": "magic-weapon", "free": { "count": 1, "recharge": "long" } }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,305 @@
+{
+  "sharp-eye": {
+    "summary": "Advantage on a check made during the Search or Study action; PB times per Long Rest, and a failed check keeps the use.",
+    "uses": {
+      "count": "PB",
+      "recharge": "long"
+    }
+  },
+  "survivor": {
+    "summary": "Reroll an Initiative d20 of 9 or less and keep the new roll. Reaction after failing a save against Charmed or Frightened: add PB to it; once per Long Rest.",
+    "activation": "reaction",
+    "uses": {
+      "count": 1,
+      "recharge": "long"
+    }
+  },
+  "aberrant-anatomy": {
+    "summary": "Far Realm warping: no need to breathe for long, keen extra senses, but a rolled 1 can lock up your body.",
+    "benefits": {
+      "Breathless": {
+        "summary": "Hold your breath up to 1 hour."
+      },
+      "Extrasensory Perception": {
+        "summary": "Perception proficiency (if missing) and Expertise in it, plus Blindsight 15 ft.",
+        "grants": [
+          {
+            "kind": "skill",
+            "value": "Perception"
+          },
+          {
+            "kind": "expertise",
+            "value": "Perception"
+          },
+          {
+            "kind": "sense",
+            "value": "Blindsight",
+            "range": 15
+          }
+        ]
+      },
+      "Warping Flesh": {
+        "summary": "Right after a natural 1 on a D20 Test, CON save (DC 13 + PB) or be Stunned until the end of your next turn."
+      }
+    }
+  },
+  "echoing-soul": {
+    "summary": "Memories of another life lend skills and a tongue, but can swamp you on a rolled 1.",
+    "benefits": {
+      "Channelled Prowess": {
+        "summary": "Proficiency in two skills, plus Expertise in one proficient skill that you may swap after each Long Rest.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 2
+          },
+          {
+            "kind": "expertise",
+            "count": 1,
+            "note": "Can be changed after a Long Rest"
+          }
+        ]
+      },
+      "Inherent Tongues": {
+        "summary": "One extra language from the Player's Handbook tables.",
+        "choices": [
+          {
+            "kind": "language",
+            "count": 1
+          }
+        ]
+      },
+      "Intrusive Echoes": {
+        "summary": "Right after a natural 1 on a D20 Test, CON save (DC 13 + PB) or be Incapacitated with half Speed until the end of your next turn."
+      }
+    }
+  },
+  "gathered-whispers": {
+    "summary": "Spirits murmur to you, warn you of blows and sometimes drown out the world.",
+    "benefits": {
+      "Spirit Whispers": {
+        "summary": "Learn Message (no Material components) and always have Augury prepared, castable once per Long Rest with no slot or components, or with slots. Cast with INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "message"
+          },
+          {
+            "kind": "spell",
+            "spell": "augury",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Unearthly Scream": {
+        "summary": "Reaction when an attack roll hits you: +PB to AC against it, maybe turning it into a miss. PB times per Long Rest.",
+        "activation": "reaction",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      },
+      "Voices from Beyond": {
+        "summary": "Right after a natural 1 on a D20 Test, WIS save (DC 13 + PB) or be Deafened, with Disadvantage on ability checks and attack rolls, until the end of your next turn."
+      }
+    }
+  },
+  "living-shadow": {
+    "summary": "Your shadow moves things, stretches your strikes and sometimes acts on its own.",
+    "benefits": {
+      "Grasping Shadow": {
+        "summary": "Learn Mage Hand, cast with no components using INT, WIS or CHA (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "mage-hand"
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Lengthened Strike": {
+        "summary": "On your turn, give a melee attack roll from the Attack or Magic action +10 ft reach. PB times per Long Rest.",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      },
+      "Ominous Will": {
+        "summary": "Right after a natural 1 on a D20 Test, WIS save (DC 13 + PB) or be Incapacitated until your next turn starts; that turn, roll 1d8 on the Shadow's Will table: 1 wander in a random direction, 2-6 attack a random creature in reach, 7-8 fall Prone and end the turn.",
+        "dice": "1d8"
+      }
+    }
+  },
+  "mist-walker": {
+    "summary": "The Mists let you pass and step you out of danger, but staying put drains you.",
+    "benefits": {
+      "Domain Traveler": {
+        "summary": "Entering the Mists bound for a domain you can name works like holding its Mist talisman, even if you've never been there; borders a Darklord has sealed stay shut."
+      },
+      "Mist Walk": {
+        "summary": "Reaction when you take damage or fail a save against Grappled or Restrained: teleport up to 15 ft to an unoccupied space you can see. PB times per Long Rest.",
+        "activation": "reaction",
+        "range": 15,
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      },
+      "Poisoned Roots": {
+        "summary": "After a Long Rest, the 10-mile area around you turns against you: each Short Rest there needs a CON save (DC 13 + PB), or that rest gives nothing."
+      }
+    }
+  },
+  "second-skin": {
+    "summary": "A hidden second self you can let out, and that sometimes breaks loose on its own.",
+    "benefits": {
+      "Alternate Form": {
+        "summary": "Alter Self is always prepared; once per Long Rest cast it with no slot, components or Concentration, or cast it with slots. INT, WIS or CHA casts it (picked with the feat).",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "alter-self",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Involuntary Change": {
+        "summary": "Roll 1d6 for a catalyst (a moon phase, a flower's scent, temple bells, a melody, silver on bare skin, a familiar face). After meeting it, CHA save (DC 13 + PB) at your next turn's start or you transform with Alternate Form; if that use is spent, you're Stunned until your next turn starts instead.",
+        "dice": "1d6"
+      }
+    }
+  },
+  "symbiotic-being": {
+    "summary": "A second creature shares your body, lending knowledge and grit while pursuing its own ends.",
+    "benefits": {
+      "Entwined Existence": {
+        "summary": "The symbiote can't be targeted; it dies and returns to life along with you."
+      },
+      "Second Mind": {
+        "summary": "Proficiency in one of Arcana, Deception, History, Insight, Intimidation, Investigation, Nature, Perception, Persuasion or Religion, plus one extra language.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1,
+            "from": [
+              "Arcana",
+              "Deception",
+              "History",
+              "Insight",
+              "Intimidation",
+              "Investigation",
+              "Nature",
+              "Perception",
+              "Persuasion",
+              "Religion"
+            ]
+          },
+          {
+            "kind": "language",
+            "count": 1
+          }
+        ]
+      },
+      "Sustained Symbiosis": {
+        "summary": "Reaction on a failed save: spend a Hit Die, roll it and add the result to the save. PB times per Long Rest.",
+        "activation": "reaction",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      },
+      "Symbiotic Agenda": {
+        "summary": "Right after a natural 1 on a D20 Test (or when defying the symbiote, if the DM says so), CHA save (DC 13 + PB) or be Charmed for 1d12 hours, obeying the symbiote; retry the save each time you take damage.",
+        "dice": "1d12"
+      }
+    }
+  },
+  "touch-of-death": {
+    "summary": "Grave power in your hands, at the cost of a weaker hold on life.",
+    "benefits": {
+      "Death Touch": {
+        "summary": "Learn Chill Touch, cast with no components using INT, WIS or CHA (picked with the feat); its Necrotic damage ignores Resistance.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "chill-touch"
+          }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Spellcasting ability"
+          }
+        ]
+      },
+      "Pull of the Grave": {
+        "summary": "Disadvantage on Death Saving Throws."
+      }
+    }
+  },
+  "watchers": {
+    "summary": "Vermin and eerie creatures keep watch for you, and the feeling of being watched never leaves.",
+    "benefits": {
+      "Borrowed Eyes": {
+        "summary": "Beast Sense and Speak with Animals are always prepared; each is castable once per Long Rest without a slot, or with slots.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "beast-sense",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          },
+          {
+            "kind": "spell",
+            "spell": "speak-with-animals",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ]
+      },
+      "Heightened Suspicion": {
+        "summary": "Add 1d4 to checks made with the Search action.",
+        "dice": "1d4"
+      },
+      "Incessant Watchers": {
+        "summary": "Disadvantage on saves against Scrying. Right after a natural 1 on a D20 Test, WIS save (DC 13 + PB) or suffer Disadvantage on all D20 Tests for up to 1 minute (save again after each turn you take to end it).",
+        "duration": "1 minute"
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "spellfire-flare": {
+    "summary": "Ranged spell attack against one target within 60 ft that ignores Half and Three-Quarters Cover; a hit deals 2d10 Radiant.",
+    "higherLevel": "One more blast per slot level above 1, each with its own attack roll, at the same or different targets."
+  },
+  "wardaway": {
+    "summary": "One creature makes a CON save (Constructs and Undead pass automatically). On a failure it takes 2d4 Force, its Speed is halved until your next turn starts, and on its next turn it gets an action or a Bonus Action, not both; on a success, half damage only.",
+    "higherLevel": "+2d4 damage per slot level above 1."
+  },
+  "death-armor": {
+    "summary": "The touched creature gains Advantage on Death Saving Throws; also, once per turn a creature within 5 ft that lands a melee hit on it takes 2d4 Necrotic."
+  },
+  "deryans-helpful-homunculi": {
+    "summary": "Call up intangible, invulnerable Construct spirits proficient in Arcana and the Artisan's Tools used in the casting. They count as one crafting assistant, cutting your crafting time in half."
+  },
+  "elminsters-elusion": {
+    "summary": "Gain Advantage on saves against spells and magical effects, and when such a save would halve the damage, a success means you take none."
+  },
+  "cacophonic-shield": {
+    "summary": "A 10-ft Emanation of thunder: a creature it reaches, that enters it or ends its turn there makes a CON save (once per turn), taking 3d6 Thunder and becoming Deafened until your next turn on a failure, half damage on a success; you can exempt creatures. You resist Thunder and ranged attacks against you have Disadvantage.",
+    "higherLevel": "+1d6 damage per slot level above 3."
+  },
+  "conjure-constructs": {
+    "summary": "Conjure a Medium mass of intangible Construct spirits within 60 ft. On casting and as a Magic action later, they target one creature or object within 5 ft of them: a DEX save against 3d6 Force (half on a success), or 1d6 + your spellcasting modifier Temporary HP. They move up to 30 ft when you move.",
+    "higherLevel": "+1d6 to both the damage and the Temporary HP per slot level above 3."
+  },
+  "laerals-silver-lance": {
+    "summary": "A 120-ft-long, 5-ft-wide Line of silver force: chosen creatures in it make a STR save, taking 3d10 Force and falling Prone on a failure, or half damage on a success.",
+    "higherLevel": "+1d10 damage per slot level above 3."
+  },
+  "sylunes-viper": {
+    "summary": "A spectral snake coils around you: gain 15 Temporary HP (the spell ends when they're gone) and a Climb Speed equal to your Speed. As a Magic action it bites a creature within 50 ft with a ranged spell attack for 1d6 Force, leaving it Poisoned and Incapacitated until your next turn starts.",
+    "higherLevel": "+5 Temporary HP and +1d6 bite damage per slot level above 3."
+  },
+  "backlash": {
+    "summary": "Cut the damage you're taking by 4d6 + your spellcasting modifier. If the source is a creature within 60 ft, it makes a CON save, taking 4d6 Force on a failure or half on a success.",
+    "higherLevel": "+1d6 to both the reduction and the Force damage per slot level above 4."
+  },
+  "doomtide": {
+    "summary": "A 20-ft-radius Sphere of magical Darkness fog within 120 ft that drifts 10 ft away from you each turn; a strong wind ends it. Creatures caught in it, entering it or ending a turn there make a WIS save (once per turn): 5d6 Psychic and -1d6 on saves until their next turn ends on a failure, half damage on a success. As a Circle spell (5+ helpers, level 3+ slots, three black pearls), it reaches 1 mile and lasts until dispelled."
+  },
+  "spellfire-storm": {
+    "summary": "A 20-ft-radius, 20-ft-high Cylinder of Bright spellfire within 60 ft: creatures in it, entering or ending a turn there make a CON save (once per turn) for 4d10 Radiant, half on a success; a creature that casts a spell inside makes a CON save or the spell fizzles, refunding any slot. You can exempt creatures. As a Circle spell (25,000 GP sapphire, level 3+ slots) it reaches 1 mile, drops Concentration and grows with more helpers, up to a 100-ft Cylinder for 24 hours.",
+    "higherLevel": "+1d10 damage per slot level above 4."
+  },
+  "alustriels-mooncloak": {
+    "summary": "Moonlit Dim Light fills a 20-ft Emanation; you and allies inside have Half Cover and resist Cold, Lightning and Radiant. End the spell early to either succeed on a failed save against Frightened, Grappled or Restrained (Reaction) or heal yourself or an ally inside for 4d10 + your spellcasting modifier (Magic action)."
+  },
+  "songals-elemental-suffusion": {
+    "summary": "Resist one of Acid, Cold, Fire, Lightning or Thunder and gain a 30-ft Fly Speed with hover. On casting and at each of your turns' start, chosen creatures in a 15-ft Emanation make a DEX save: 2d6 damage of one of those types and Prone on a failure, half damage on a success. As a Circle spell (level 2+ slots), it takes 1 minute, lasts up to 10 minutes, and each helper adds one more creature (max nine) who shares the benefits."
+  },
+  "dirge": {
+    "summary": "A 60-ft Emanation of death: creatures you don't exempt can't heal inside it, and when it reaches them, they enter it or end a turn there they make a CON save (once per turn), taking 3d10 Necrotic and falling Prone on a failure, or half damage and halved Speed on a success. As a Circle spell (2+ helpers, level 4+ slots), it lasts up to 10 minutes and a failure also adds 1 Exhaustion level that Long Rests won't clear or heal while it remains."
+  },
+  "elminsters-effulgent-spheres": {
+    "summary": "Six chromatic spheres orbit you; the spell ends when they run out. Reaction on taking Acid, Cold, Fire, Lightning or Thunder damage: spend one to resist that type until your next turn starts. Bonus Action: hurl one at a target within 120 ft with a ranged spell attack for 3d6 damage of one of those types, spent hit or miss.",
+    "higherLevel": "One more sphere per slot level above 6."
+  },
+  "simbuls-synostodweomer": {
+    "summary": "Each time the touched creature casts with a spell slot, it may spend Hit Point Dice up to the slot's level and heal their total plus your spellcasting modifier."
+  },
+  "holy-star-of-mystra": {
+    "summary": "A glowing mote above you (Bright Light 5 ft, Dim 5 ft more) gives you Three-Quarters Cover. On casting and as a Bonus Action later, it fires a ranged spell attack at a creature within 120 ft for 4d10 + your spellcasting modifier Force or Radiant. When you pass a save against a single-target, non-area spell of level 7 or lower, a Reaction turns it back on its caster, who saves against its own DC."
+  },
+  "blade-of-disaster": {
+    "summary": "A 3-ft planar rift appears within 60 ft and makes two melee spell attacks against targets within 5 ft of it, each dealing 10d6 Force and critting on 18-20. On later turns, a Bonus Action moves it up to 60 ft and repeats both attacks; it passes harmlessly through any barrier, Wall of Force included."
+  }
+}

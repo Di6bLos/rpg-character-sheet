@@ -1,0 +1,158 @@
+{
+  "arcane-chantelaine": {
+    "summary": "Six ghostly keys on a clasp. Magic action: touch a key to a closed door, window, gate, hatch or container to cast Arcane Lock on it; the key vanishes, and the clasp goes once all six are spent."
+  },
+  "arcanists-bestiary": {
+    "summary": "Monster tome. Cast Charm Monster (DC 15) once per dawn, non-Humanoids save at Disadvantage; on attuning pick proficiency in Arcana, History, Nature or Religion (changeable each Long Rest); a successful Study (Arcana) check on a visible Aberration, Construct, Elemental, Fey or Monstrosity reveals its Immunities, Resistances and Vulnerabilities."
+  },
+  "bellows-of-strangulation": {
+    "summary": "6 charges, Magic action. 1 charge: a creature within 60 ft makes a DC 15 CON save or is Incapacitated for 1 minute (save ends each turn); 3 charges: the same in a 30-ft Cone; 5 charges: Cloudkill (DC 17). Regains 1d6+1 at dawn; spending the last charge risks loss on a d20 roll of 1."
+  },
+  "blood-amulet": {
+    "summary": "3 charges, 1d3 back at dawn. When you damage a creature, spend 1 charge for +2d10 Necrotic and a DC 15 CON save; on a failure it gains 1 Exhaustion level."
+  },
+  "blossom-rod": {
+    "summary": "Living rod in three grades. Budding (Uncommon): Druidcraft at will, Plant Growth (Overgrowth) once per dawn, and a Magic action to revive plants in a 5-ft Cube within 15 ft for 1d4 days. Flowering (Rare): also Insect Plague once per dawn with your DC. Somniferous (Very Rare): once per dawn, chosen creatures in a 30-ft Emanation make a DC 17 CON save or fall Unconscious for 1 hour, woken by damage or being shaken."
+  },
+  "boon-companions-bands": {
+    "summary": "Paired rings. When your spell or feature forces saves in an area, the wearer of the twin band can be spared: they succeed and take no damage instead of half. Once per dawn between the pair; destroying one turns the other to dust."
+  },
+  "conjurers-canopy": {
+    "summary": "Walking stick. Magic action: plant it to raise a see-through force canopy in a 20-ft Cube for 1 hour that keeps out rain, snow and weather and stays comfortable inside, without blocking anything else. Unusable for 1d12 hours after it ends."
+  },
+  "diamond-staff": {
+    "summary": "+3 crystal Quarterstaff with 20 charges (1d6+4 back at dawn; the last one risks destruction on a d20 roll of 1). Advantage on Arcana checks; 1 charge for a 1-minute light (40 ft bright, 40 ft dim); spells with your DC: Detect Magic, Light, Tongues (0), Identify (1), Knock (2), True Seeing (3), Legend Lore (5), Maze (8). On a melee hit, 2 charges: DC 17 CON save or Stunned until the end of your next turn."
+  },
+  "dictation-quill": {
+    "summary": "Magic action with paper and ink: the quill writes down what you say or sign at 25 words a minute, for up to 1 hour, until supplies run out, or until you stop it."
+  },
+  "dispelling-ammunition": {
+    "summary": "On damaging a target, ends every spell of level 3 or lower affecting it; the ammunition then turns mundane."
+  },
+  "dissuader": {
+    "summary": "+1 Quarterstaff with three powers, each once per dawn: cast Calm Emotions (DC 15); Magic action for a 1-minute 30-ft Emanation where creatures you see make a DC 15 WIS save or are Frightened until their next turn starts; Reaction when a creature comes within 5 ft, chosen creatures in a 30-ft Emanation make a DC 15 STR save or are pushed 30 ft away."
+  },
+  "dream-weaver": {
+    "summary": "Tapestry showing your dreams; works within 30 ft. Study it for an hour of a Long Rest to record a d20 roll you can swap in for one later D20 Test before your next Long Rest; it pictures whoever targets you with Dream; while Unconscious you have Advantage on INT, WIS and CHA saves."
+  },
+  "elocutionists-lexicon": {
+    "summary": "Dictionary. Magic action: it opens straight to the word you're trying to recall."
+  },
+  "ensorcelled-missive": {
+    "summary": "Parchment. Magic action: seal what you wrote with a word or phrase; opened without it, the text reads as gibberish."
+  },
+  "evergreen-fertilizer": {
+    "summary": "Powder that keeps a mundane plant healthy for 365 days."
+  },
+  "goading-ammunition": {
+    "summary": "On a damaging hit, the target makes a DC 13 CHA save or can't take Reactions until its next turn starts. Mundane after it hits."
+  },
+  "grave-reaper": {
+    "summary": "+2 Sickle dealing an extra 2d8 Necrotic on a hit. Once per dawn cast Spirit Lantern through it with DC 17, its lantern holding up to five soul fragments."
+  },
+  "homeward-compass": {
+    "summary": "Magic action: fix it on where you stand and the needle keeps pointing there (one place at a time, clearable by another Magic action); it spins when unset or on another plane."
+  },
+  "idol-of-good-fortunes": {
+    "summary": "Elephant idol in three grades. Blemished (Uncommon): cast Augury once per dawn. Tarnished (Rare): +1 AC while attuned, and a Magic action turns a mundane trade bar or gem into coins of equal worth. Golden (Very Rare): cast Globe of Invulnerability once per dawn."
+  },
+  "keyholes-dagger": {
+    "summary": "Shape-shifting Dagger. Three (Uncommon): +1; when you Attack it can become a Handaxe or Mace until your next turn, using STR or DEX. Ten (Rare): +2, any Simple Melee weapon. Many (Very Rare): +3, also Battleaxe, Longsword, Rapier, Scimitar or Warhammer, and reroll one missed attack per dawn."
+  },
+  "lucky-foot": {
+    "summary": "When a save or ability check comes up 1, reroll it and keep the new roll; the charm then crumbles."
+  },
+  "mage-breaker": {
+    "summary": "+1 Dagger; a creature it hurts while Concentrating makes that Concentration save at Disadvantage."
+  },
+  "mages-manacle": {
+    "summary": "Bracelet. Magic action: a Grappled or Incapacitated Large or smaller creature within 5 ft makes a DC 15 DEX save or is chained to you, Restrained and dragged along as you move, for 8 hours or until you let go. Only Disintegrate harms the chain. Once per dawn."
+  },
+  "magewrights-gloves": {
+    "summary": "Craft mundane items twice as fast with Alchemist's, Brewer's or Calligrapher's Supplies, or Cartographer's, Glassblower's or Jeweler's Tools."
+  },
+  "martialists-quarterstaff": {
+    "summary": "Quarterstaff with 4 charges (1d4 back at dawn). 2 charges: Searing Smite (DC 13). 1 charge on the Attack action: Thrown 20/60 and returns to your hand, until your next turn ends. 1 charge on a melee attack: Advantage, and a hit makes the target save DC 13 STR or fall Prone."
+  },
+  "namers-needle": {
+    "summary": "+1 Dagger. On a hit the target may be made to make a DC 15 WIS save or speak its name (a success makes it immune for 24 hours). Once per dawn, name a target you hit to make it a Critical Hit."
+  },
+  "necklace-of-the-beastly-familiar": {
+    "summary": "Cast Find Familiar once per dawn. Magic action with the familiar within 60 ft: it becomes a Beast for 10 minutes, gaining that form's HP as Temporary HP; the form ends when they run out. Gem sets the Beast: Azurite Giant Octopus (Uncommon), Chrysoprase Giant Scorpion or Zircon Hippopotamus (Rare), Topaz Mammoth (Very Rare), Fire Opal Tyrannosaurus Rex (Legendary)."
+  },
+  "orb-of-divination-detection": {
+    "summary": "Arcane Focus that glows green for as long as a Divination spell targeting you lasts."
+  },
+  "orb-of-sorcery": {
+    "summary": "Sorcerer focus. Magic action: regain up to 2 spent Sorcery Points, once per dawn."
+  },
+  "potion-of-dragons-breath": {
+    "summary": "Grants Dragon's Breath for 1 minute (DC 13, no Concentration); its colour sets the damage type (Acid if black, Lightning if blue, Poison if green, Fire if red, Cold if white)."
+  },
+  "potion-of-tirelessness": {
+    "summary": "For 24 hours you need no sleep, can't be magically slept, and finish a Long Rest in 4 hours of quiet, conscious focus."
+  },
+  "prismatic-rune": {
+    "summary": "After each Long Rest attune it to Acid, Cold, Fire, Lightning or Thunder. 6 charges (1d6 back at dawn): spend 1 to switch a damaging spell's damage type to that one."
+  },
+  "queen-ehlissas-marvelous-nightingale": {
+    "summary": "Clockwork songbird artifact. Magic action: it sings for 10 minutes (300 ft), then rests 1 hour. While singing within 60 ft, 6 charges (1d6+1 at dawn) cast spells at DC 18 as a Bonus Action: Detect Evil and Good and Speak with Animals (0), Calm Emotions (1), Slow (2), Compulsion (3), Greater Restoration (4), Delayed Blast Fireball or Prismatic Spray (6); its song also holds a 15-ft Zone of Truth (DC 18) and allows one Counterspell (DC 18) per dawn."
+  },
+  "ring-of-dedicated-focus": {
+    "summary": "On a failed CON save to keep Concentration, spend up to two Hit Point Dice and add their roll to the save."
+  },
+  "scholars-anchoring-bangle": {
+    "summary": "Study with a proficient INT check: d20 rolls of 9 or lower count as 10. Once per dawn, Reaction to turn a failed Concentration save into a success."
+  },
+  "secret-keepers-circlet": {
+    "summary": "Magic action: name a trigger; if it happens within 24 hours, you forget everything from then until the trigger, and only Wish brings it back. Once per dawn."
+  },
+  "spell-component-ring": {
+    "summary": "Magic action: store the free, unconsumed Material component of one prepared spell; while worn, that spell needs no free hand for it. One spell at a time."
+  },
+  "spell-duelists-trophy": {
+    "summary": "Once per dawn, a melee spell attack hit also casts Dispel Magic on the target. Spells cast with slots need no Somatic components, and you can cast Mage Hand from it."
+  },
+  "spell-slingers-puppet": {
+    "summary": "Bonus Action: the doll floats to a space within 30 ft and hovers for 1 minute, movable 30 ft per Bonus Action. Within 30 ft you can talk through it, even to give Verbal components when you can't speak."
+  },
+  "staff-of-skulls": {
+    "summary": "Bone staff in three grades. Ominous (Uncommon): Chill Touch, Advantage on Intimidation, 5-ft dim glow. Chattering (Rare): Reaction to give Disadvantage to an attack roll by a creature you see within 30 ft. Pulverizing (Very Rare): once per dawn, Magic action, a Humanoid makes a DC 17 CON save or takes 10d8 Necrotic and falls Prone (half damage on a success)."
+  },
+  "staff-of-the-lost": {
+    "summary": "Cursed +1 Quarterstaff with 3 charges: 1 casts Maze (DC 18) or Teleport; mundane once empty. While attuned you won't give it up, never know north, have Disadvantage on Survival to navigate, and each charge risks 1d4 Minotaurs of Baphomet appearing on a d20 roll of 1."
+  },
+  "sweeping-broom": {
+    "summary": "Magic action: the broom sweeps a 20-ft square around a point within 60 ft until another Magic action stops it."
+  },
+  "thespians-playbill": {
+    "summary": "Add your CHA modifier (at least +1) to INT checks made with the Study action."
+  },
+  "thiefs-thimble": {
+    "summary": "Takes damage from traps you trigger instead of you; it has 30 HP and passes on any excess when it breaks."
+  },
+  "tramontane-armor": {
+    "summary": "+1 Light or Medium armor disguised as a robe; snow, ice, rubble and undergrowth cost no extra movement. Once per dawn, activate for 1 minute: Bonus Action, chosen creatures in a 20-ft Emanation make a DC 15 STR save or are Grappled (escape DC 15) and pulled 20 ft toward you."
+  },
+  "travelers-pearl": {
+    "summary": "Command word: cast Teleport, once per dawn."
+  },
+  "universal-pantograph": {
+    "summary": "Artifact box that copies any mundane item shut inside it. Grown to fit a Medium creature, with 100 GP of diamond dust it casts Clone on the creature inside; the clone grows sealed in the box for 120 days and lasts indefinitely without a vessel."
+  },
+  "wand-of-freshness": {
+    "summary": "4 charges (1d4+1 back at dawn): 1 casts Purify Food and Drink."
+  },
+  "wand-of-slumber": {
+    "summary": "7 charges (1d6+1 back at dawn; the last one risks destruction on a d20 roll of 1): Sleep (DC 15) for 1, Catnap for 3."
+  },
+  "wand-of-teeth": {
+    "summary": "10 charges (1d10 back at dawn; the last one risks destruction on a d20 roll of 1). Magic action, 1–3 charges: a 30-ft Cone makes a DC 15 DEX save, taking 1d8 Piercing per charge and Poisoned until your next turn on a failure, half and no Poisoned on a success."
+  },
+  "wave-swept-weapon": {
+    "summary": "Sea-themed blade in three grades. Barnacled (Uncommon): +1, and a Magic action turns up to a gallon of liquid briny. Aquatic (Rare): +2, glows 5 ft, water breathing and Swim Speed 30 ft while held. Ascendant (Very Rare): +3 and Fly Speed 30 ft while held."
+  },
+  "workshop-wrecker": {
+    "summary": "Bouncing metal ball, once per dawn for 1 minute. On activation and at the start of each of your turns, creatures in the enclosed space make a DEX save or take Bludgeoning damage: 15-ft Cube DC 18, 6d6+5; 30-ft DC 17, 4d6+4; 50-ft DC 15, 2d6+2; 100-ft DC 14, 1d6+1. In open air it flies off at 300 ft a round."
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "subclasses": {
+    "warrior-of-mystic-brews": {
+      "summary": "A monk who fights with a drunkard's lurching sway and brews magic drinks to boost their martial arts.",
+      "features": {
+        "Bonus Proficiencies": {
+          "summary": "Gain Performance (or another Monk level 1 skill if you have it) and Brewer's Supplies.",
+          "grants": [
+            { "kind": "skill", "value": "Performance" },
+            { "kind": "tool", "value": "Brewer's Supplies" }
+          ]
+        },
+        "Drunken Technique": {
+          "summary": "Spending a Focus Point on Patient Defense gives +10 ft Speed this turn and one Unarmed Strike right after the Bonus Action."
+        },
+        "Tipsy Sway": {
+          "summary": "Stand from Prone for 5 ft of movement; and when a foe's melee attack misses you, Reaction and 1 Focus Point to land it on another creature you see within 5 ft.",
+          "options": [
+            {
+              "name": "Leap to Your Feet",
+              "summary": "Getting up from Prone costs only 5 ft of movement."
+            },
+            {
+              "name": "Redirect Attack",
+              "summary": "Reaction and 1 Focus Point when a melee attack misses you: it hits a creature you pick (not the attacker) that you see within 5 ft.",
+              "activation": "reaction",
+              "range": 5
+            }
+          ]
+        },
+        "Mystic Brew": {
+          "summary": "Finishing a Short or Long Rest holding Brewer's Supplies, make one pint of a magic drink only you benefit from; drinking takes 1 minute and lasts 1 hour (8 hours for 1 Focus Point) or until another drink. Unused brew vanishes at your next rest.",
+          "duration": "1 hour",
+          "options": [
+            {
+              "name": "Cinnamon Dragon",
+              "summary": "Magic action: 30-ft Cone, DEX save (8 + PB + WIS) for four Martial Arts dice of Fire and Poisoned until its next turn ends; half and no Poisoned on a success.",
+              "activation": "magic",
+              "dice": "column:Martial Arts",
+              "damageType": "Fire",
+              "save": { "ability": "DEX", "dc": "8+PB+WIS" },
+              "range": 30
+            },
+            {
+              "name": "Heavenly Spirit",
+              "summary": "Resistance to two of Cold, Necrotic, Psychic or Radiant (your pick).",
+              "choices": [
+                {
+                  "kind": "damageType",
+                  "count": 2,
+                  "from": ["Cold", "Necrotic", "Psychic", "Radiant"],
+                  "label": "Heavenly Spirit"
+                }
+              ]
+            },
+            {
+              "name": "Refreshing Dip",
+              "summary": "A pool of Martial Arts dice (WIS + half Monk level); when you regain HP, roll one to heal that much more.",
+              "dice": "column:Martial Arts"
+            }
+          ]
+        },
+        "Wizened Brewer": {
+          "summary": "New Mystic Brew drinks: Blue Lightning, Drunkard's Luck and Stumbling Monk.",
+          "options": [
+            {
+              "name": "Blue Lightning",
+              "summary": "Any Reaction other than an Opportunity Attack or a spell can include one Unarmed Strike."
+            },
+            {
+              "name": "Drunkard’s Luck",
+              "summary": "Gain Heroic Inspiration if you lack it, and grant it to yourself when making an ability check or save without it."
+            },
+            {
+              "name": "Stumbling Monk",
+              "summary": "After any Bonus Action besides Patient Defense, you may also use Patient Defense at once."
+            }
+          ]
+        },
+        "Master Brewer": {
+          "summary": "One Mystic Brew can mix two different drinks, giving both effects for its duration."
+        },
+        "Intoxicated Frenzy": {
+          "summary": "After Patient Defense, move up to your Speed; entering a space within 5 ft of a creature lets you Unarmed Strike it (once per creature per turn), and a hit forces a DEX save or Prone.",
+          "save": { "ability": "DEX", "dc": "8+PB+WIS" }
+        }
+      }
+    }
+  }
+}

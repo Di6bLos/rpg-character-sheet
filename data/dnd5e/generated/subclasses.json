@@ -883,6 +883,253 @@
   "summary": "A navigator and scout who links allies with magic maps, marks foes with light, and steps through short portals."
  },
  {
+  "slug": "reanimator",
+  "name": "Reanimator",
+  "class": "artificer",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "artificer:reanimator",
+  "features": [
+   {
+    "name": "Reanimator Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: False Life, Spare the Dying and Witch Bolt at Artificer 3; Blindness/Deafness and Enhance Ability at 5; Animate Dead and Lightning Bolt at 9; Blight and Death Ward at 13; Antilife Shell and Raise Dead at 17.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "false-life",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "spare-the-dying",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "witch-bolt",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "blindness-deafness",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "enhance-ability",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "animate-dead",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "lightning-bolt",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "blight",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "death-ward",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "antilife-shell",
+      "at": 17
+     },
+     {
+      "kind": "spell",
+      "spell": "raise-dead",
+      "at": 17
+     }
+    ]
+   },
+   {
+    "name": "Reanimator’s Skill Set",
+    "level": 3,
+    "srd": false,
+    "summary": "Spare the Dying can jolt its target back with HP equal to your Artificer level and zap chosen creatures within 10 ft (DEX save, 2d4 Lightning, half on success; 3d4 at 11, 4d4 at 17), INT-mod times per Long Rest. Proficiency with Alchemist’s Supplies, or another Artisan’s Tool if you have it.",
+    "grants": [
+     {
+      "kind": "tool",
+      "value": "Alchemist’s Supplies"
+     }
+    ],
+    "options": [
+     {
+      "name": "Jolt to Life",
+      "summary": "When casting Spare the Dying: target heals your Artificer level in HP; chosen creatures in a 10-ft Emanation around it make a DEX save or take 2d4 Lightning (half on success), rising to 3d4 at 11 and 4d4 at 17. INT-mod uses per Long Rest.",
+      "uses": {
+       "count": "INT",
+       "recharge": "long"
+      },
+      "dice": "2d4",
+      "damageType": "Lightning",
+      "save": {
+       "ability": "DEX",
+       "dc": "spell"
+      },
+      "range": 10
+     },
+     {
+      "name": "Reanimator’s Tools",
+      "summary": "Trained in Alchemist’s Supplies, or a different Artisan’s Tool when already trained."
+     }
+    ]
+   },
+   {
+    "name": "Reanimated Companion",
+    "level": 3,
+    "srd": false,
+    "summary": "Magic action with Artisan’s Tools: build a Medium Undead companion (AC 10 + INT, HP 5 + 5× Artificer level, Dreadful Swipe 1d4 + INT Necrotic that stops Opportunity Attacks; explodes for 2d4 Necrotic on death, DEX save). It lasts until a Long Rest, dodges unless you spend a Bonus Action to command it; once per Long Rest or by spending a spell slot.",
+    "activation": "magic",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "a spell slot"
+    },
+    "dice": "1d4",
+    "damageType": "Necrotic"
+   },
+   {
+    "name": "Strange Modifications",
+    "level": 5,
+    "srd": false,
+    "summary": "Each companion you create gets one modification, chosen when you make it.",
+    "options": [
+     {
+      "name": "Arcane Conduit",
+      "summary": "Cast spells from the companion’s space (using your own senses); once per turn add INT to one damage roll of an Artificer Evocation or Necromancy spell while it is within 120 ft.",
+      "range": 120
+     },
+     {
+      "name": "Ferocity",
+      "summary": "Dreadful Swipe deals 1d6 instead of 1d4.",
+      "dice": "1d6"
+     }
+    ]
+   },
+   {
+    "name": "Improved Reanimation",
+    "level": 9,
+    "srd": false,
+    "summary": "The companion’s Death Burst deals 4d4, and its Necrotic damage ignores Resistance.",
+    "dice": "4d4",
+    "damageType": "Necrotic"
+   },
+   {
+    "name": "Macabre Modifications",
+    "level": 9,
+    "srd": false,
+    "summary": "Your companion now takes two modifications, and three new ones join the list.",
+    "options": [
+     {
+      "name": "Bloated",
+      "summary": "Companion becomes Large; Dreadful Swipe pushes a Large or smaller target up to 10 ft, and Death Burst adds your INT to its damage."
+     },
+     {
+      "name": "Gaunt",
+      "summary": "Speed 45 ft with an equal Climb Speed (ceilings too, no checks); chosen creatures starting their turn within 10 ft make a WIS save or are Frightened until their next turn starts.",
+      "save": {
+       "ability": "WIS",
+       "dc": "spell"
+      },
+      "range": 10
+     },
+     {
+      "name": "Moist",
+      "summary": "Swim Speed equal to its Speed and squeezes through 1-inch gaps freely; attackers that hit it from within 10 ft take Acid damage equal to your INT.",
+      "damageType": "Acid"
+     }
+    ]
+   },
+   {
+    "name": "Refined Reanimation",
+    "level": 15,
+    "srd": false,
+    "summary": "Cast Raise Dead free once per Long Rest with tools as focus; Reaction to drain your companion for HP; companions now take three modifications.",
+    "options": [
+     {
+      "name": "Facilitated Revival",
+      "summary": "Cast Raise Dead without a slot or Material components, using Artisan’s Tools as the focus; once per Long Rest.",
+      "uses": {
+       "count": 1,
+       "recharge": "long"
+      },
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "raise-dead",
+        "free": {
+         "count": 1,
+         "recharge": "long"
+        }
+       }
+      ]
+     },
+     {
+      "name": "Life Transfer",
+      "summary": "Reaction when you or the companion take damage: gain HP equal to its current HP, then it dies and triggers Death Burst.",
+      "activation": "reaction"
+     },
+     {
+      "name": "Superior Modifications",
+      "summary": "Each companion gets three Strange Modifications."
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "false-life",
+     "spare-the-dying",
+     "witch-bolt"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "blindness-deafness",
+     "enhance-ability"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "animate-dead",
+     "lightning-bolt"
+    ]
+   },
+   {
+    "level": 13,
+    "spells": [
+     "blight",
+     "death-ward"
+    ]
+   },
+   {
+    "level": 17,
+    "spells": [
+     "antilife-shell",
+     "raise-dead"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A mad-science Artificer who stitches an undead servant from corpses and shocks the fallen back to life."
+ },
+ {
   "slug": "path-of-the-berserker",
   "name": "Path of the Berserker",
   "class": "barbarian",
@@ -938,7 +1185,198 @@
     "duration": "1 minute"
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Barbarians who walk the Path of the Berserker direct their Rage primarily toward violence."
+ },
+ {
+  "slug": "path-of-the-elements",
+  "name": "Path of the Elements",
+  "class": "barbarian",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "barbarian:path-of-the-elements",
+  "features": [
+   {
+    "name": "Raging Elements",
+    "level": 3,
+    "srd": false,
+    "summary": "As you Rage (and later with a Bonus Action while raging), use one elemental option; each rolls a number of dice equal to your Rage Damage bonus, save DC 8 + PB + CON.",
+    "activation": "bonus",
+    "save": {
+     "ability": "DEX",
+     "dc": "8+PB+CON"
+    },
+    "range": 30,
+    "options": [
+     {
+      "name": "Icefury",
+      "summary": "Melee or ranged spell attack (CON) at a creature within 30 ft for Rage-bonus d8s Cold; if hit, its next Fire damage before your next turn ends adds 1d10 Fire.",
+      "dice": "1d8",
+      "damageType": "Cold",
+      "range": 30
+     },
+     {
+      "name": "Lava Burst",
+      "summary": "A creature you see within 30 ft makes a DEX save: Rage-bonus d4s Fire, half on a success; on a fail its next Lightning damage before your next turn ends adds 1d8 Lightning.",
+      "dice": "1d4",
+      "damageType": "Fire",
+      "save": {
+       "ability": "DEX",
+       "dc": "8+PB+CON"
+      },
+      "range": 30
+     },
+     {
+      "name": "Lightning Bolt",
+      "summary": "A creature you see within 30 ft makes a DEX save: Rage-bonus d6s Lightning, half on a success; on a fail its next Cold damage before your next turn ends adds 1d6 Cold.",
+      "dice": "1d6",
+      "damageType": "Lightning",
+      "save": {
+       "ability": "DEX",
+       "dc": "8+PB+CON"
+      },
+      "range": 30
+     }
+    ]
+   },
+   {
+    "name": "Echo of the Elements",
+    "level": 6,
+    "srd": false,
+    "summary": "Learn Elementalism. Daylight, Water Walk and Wind Wall each cost one Rage use to cast instead of a slot; WIS is the casting ability.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "elementalism",
+      "at": 6
+     },
+     {
+      "kind": "spell",
+      "spell": "daylight",
+      "at": 6
+     },
+     {
+      "kind": "spell",
+      "spell": "water-walk",
+      "at": 6
+     },
+     {
+      "kind": "spell",
+      "spell": "wind-wall",
+      "at": 6
+     }
+    ]
+   },
+   {
+    "name": "Primordial Bond",
+    "level": 10,
+    "srd": false,
+    "summary": "Resistance to Cold, Fire and Lightning while raging."
+   },
+   {
+    "name": "Elemental Overload",
+    "level": 14,
+    "srd": false,
+    "summary": "Raging Elements gain riders, hit or miss: Icefury makes the target lower its next damage roll by half your roll; Lava Burst sets the target and enemies within 10 ft burning; Lightning Bolt arcs to a second target within 30 ft (DEX save, same damage, half on success).",
+    "options": [
+     {
+      "name": "Icefury",
+      "summary": "Hit or miss, the target takes half your roll (rounded down) off its next damage roll before your next turn starts."
+     },
+     {
+      "name": "Lava Burst",
+      "summary": "Pass or fail, the target and each enemy within 10 ft of it start burning.",
+      "range": 10
+     },
+     {
+      "name": "Lightning Bolt",
+      "summary": "Pass or fail, lightning jumps to another creature you see within 30 ft of the first, which makes a DEX save for the same total, half on a success.",
+      "damageType": "Lightning",
+      "save": {
+       "ability": "DEX",
+       "dc": "8+PB+CON"
+      },
+      "range": 30
+     }
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A barbarian whose Rage calls up fire, frost and lightning to hurl at foes."
+ },
+ {
+  "slug": "path-of-the-spiritual-guardian",
+  "name": "Path of the Spiritual Guardian",
+  "class": "barbarian",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "barbarian:path-of-the-spiritual-guardian",
+  "features": [
+   {
+    "name": "Spiritual Protectors",
+    "level": 3,
+    "srd": false,
+    "summary": "While raging, a creature you hit with a weapon or Unarmed Strike suffers your choice of spirit effect: Distract, Hinder or Strike.",
+    "options": [
+     {
+      "name": "Distract",
+      "summary": "Until your next turn starts, it has Disadvantage on attacks against anyone but you or another barbarian with this feature."
+     },
+     {
+      "name": "Hinder",
+      "summary": "Apply the Slow mastery on top of the weapon's other mastery property."
+     },
+     {
+      "name": "Strike",
+      "summary": "It takes an extra 1d4 Cold, Fire or Lightning damage (your pick).",
+      "dice": "1d4"
+     }
+    ]
+   },
+   {
+    "name": "Spirit Shield",
+    "level": 6,
+    "srd": false,
+    "summary": "Reaction while raging: when a creature you see within 30 ft takes damage, cut it by a number of d6s equal to your Rage Damage bonus.",
+    "activation": "reaction",
+    "dice": "1d6",
+    "range": 30
+   },
+   {
+    "name": "Consult the Spirits",
+    "level": 10,
+    "srd": false,
+    "summary": "Cast Augury or Clairvoyance with no slot or Material components (Clairvoyance sends an invisible guardian spirit as its sensor); WIS casting; once per Short or Long Rest.",
+    "uses": {
+     "count": 1,
+     "recharge": "short"
+    },
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "augury",
+      "at": 10
+     },
+     {
+      "kind": "spell",
+      "spell": "clairvoyance",
+      "at": 10
+     }
+    ]
+   },
+   {
+    "name": "Spirits’ Fury",
+    "level": 14,
+    "srd": false,
+    "summary": "Rolling 18-20 on a melee weapon attack during the Attack action grants one more attack roll with that weapon in the same action; once per turn.",
+    "uses": {
+     "count": 1,
+     "recharge": "turn"
+    }
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A barbarian whose Rage calls spirits of beasts, ancestors or the elements to fight and shield beside them."
  },
  {
   "slug": "path-of-the-wild-heart",
@@ -1419,7 +1857,277 @@
     "dice": "column:Bardic Die"
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Bards of the College of Lore collect spells and secrets from diverse sources, such as scholarly tomes, mystical rites, and peasant tales."
+ },
+ {
+  "slug": "college-of-spirits",
+  "name": "College of Spirits",
+  "class": "bard",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "bard:college-of-spirits",
+  "features": [
+   {
+    "name": "Channeler",
+    "level": 3,
+    "srd": false,
+    "summary": "Know Guidance, cast at 60 ft range. Gain playing cards with proficiency; they, a crystal or orb, a candle or an ink pen can serve as your Bard focus.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "guidance"
+     },
+     {
+      "kind": "tool",
+      "value": "Playing Cards"
+     }
+    ],
+    "options": [
+     {
+      "name": "Guiding Whispers",
+      "summary": "You know Guidance; its range is 60 ft for you.",
+      "range": 60
+     },
+     {
+      "name": "Spiritual Focus",
+      "summary": "Gain a deck of playing cards and proficiency with it; use it, a crystal or orb Arcane Focus, a candle or an ink pen as your Bard focus."
+     }
+    ]
+   },
+   {
+    "name": "Spirits from Beyond",
+    "level": 3,
+    "srd": false,
+    "summary": "When you hand out Bardic Inspiration, roll that die on the 12-spirit table to channel a spirit until you unleash it or rest. Bonus Action: spend an Inspiration use to pick a spirit numbered up to your die’s maximum. Magic action: unleash a spirit on a creature you see within 30 ft (saves use your spell DC).",
+    "activation": "magic",
+    "range": 30,
+    "options": [
+     {
+      "name": "1 Beloved",
+      "summary": "Target heals one Inspiration die + CHA."
+     },
+     {
+      "name": "2 Sharpshooter",
+      "summary": "Target takes Force damage of one Inspiration die + CHA.",
+      "damageType": "Force"
+     },
+     {
+      "name": "3 Avenger",
+      "summary": "Until your next turn ends, anyone hitting the target in melee takes one Inspiration die of Force damage.",
+      "damageType": "Force"
+     },
+     {
+      "name": "4 Renegade",
+      "summary": "Target may use its Reaction to teleport up to 30 ft to a space it sees.",
+      "range": 30
+     },
+     {
+      "name": "5 Fortune Teller",
+      "summary": "Target has Advantage on D20 Tests until your next turn starts."
+     },
+     {
+      "name": "6 Wayfarer",
+      "summary": "Target gains Temp HP of one Inspiration die + your Bard level and +10 ft Speed while they last."
+     },
+     {
+      "name": "7 Trickster",
+      "summary": "WIS save: on a fail, two Inspiration dice of Psychic and Charmed until your next turn starts; half damage only on a success.",
+      "damageType": "Psychic",
+      "save": {
+       "ability": "WIS",
+       "dc": "spell"
+      }
+     },
+     {
+      "name": "8 Shade",
+      "summary": "Target turns Invisible until its next turn ends or it attacks, deals damage or casts; when that ends, creatures within 5 ft make a CON save or take two Inspiration dice of Necrotic.",
+      "damageType": "Necrotic",
+      "save": {
+       "ability": "CON",
+       "dc": "spell"
+      }
+     },
+     {
+      "name": "9 Arsonist",
+      "summary": "DEX save: four Inspiration dice of Fire, half on a success.",
+      "damageType": "Fire",
+      "save": {
+       "ability": "DEX",
+       "dc": "spell"
+      }
+     },
+     {
+      "name": "10 Coward",
+      "summary": "Target and chosen creatures within 30 ft make a WIS save or are Frightened until your next turn starts, at half Speed and only an action or a Bonus Action.",
+      "save": {
+       "ability": "WIS",
+       "dc": "spell"
+      }
+     },
+     {
+      "name": "11 Brute",
+      "summary": "Chosen creatures within 30 ft of the target make a STR save: three Inspiration dice of Thunder and Prone, half damage only on a success.",
+      "damageType": "Thunder",
+      "save": {
+       "ability": "STR",
+       "dc": "spell"
+      }
+     },
+     {
+      "name": "12 Priest",
+      "summary": "Target heals two Inspiration dice and ends one of Blinded, Charmed, Deafened, Paralyzed, Poisoned or Stunned."
+     }
+    ]
+   },
+   {
+    "name": "Empowered Channeling",
+    "level": 6,
+    "srd": false,
+    "summary": "Once per turn add 1d6 to a damaging or healing Bard spell cast with a slot. Spirit Guardians is always prepared and castable free once per Long Rest; once per Short or Long Rest a casting also gives you and allies inside it Half Cover.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "spirit-guardians",
+      "at": 6,
+      "free": {
+       "count": 1,
+       "recharge": "long"
+      }
+     }
+    ],
+    "options": [
+     {
+      "name": "Power from Beyond",
+      "summary": "Once per turn, a Bard spell cast with a slot that damages or heals adds 1d6 to one damage roll or to the healing.",
+      "dice": "1d6",
+      "uses": {
+       "count": 1,
+       "recharge": "turn"
+      }
+     },
+     {
+      "name": "Spiritual Manifestation",
+      "summary": "Spirit Guardians always prepared, one free cast per Long Rest; once per Short or Long Rest, a casting grants Half Cover to you and allies in its Emanation.",
+      "uses": {
+       "count": 1,
+       "recharge": "short"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Mystical Connection",
+    "level": 14,
+    "srd": false,
+    "summary": "Roll twice on the Spirits from Beyond table and take either result; doubles let you pick any spirit."
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A medium Bard who channels unpredictable ghosts of legend through cards, candles and crystal balls."
+ },
+ {
+  "slug": "college-of-the-moon",
+  "name": "College of the Moon",
+  "class": "bard",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "bard:college-of-the-moon",
+  "features": [
+   {
+    "name": "Moon’s Inspiration",
+    "level": 3,
+    "srd": false,
+    "summary": "Granting Bardic Inspiration can also turn you Invisible and teleport you up to 30 ft (until your next turn starts, or you attack, deal damage or cast). Once per turn, when a spell of yours heals a creature, spend an Inspiration die to add its roll to the healing and give the creature +10 ft Speed until its next turn ends.",
+    "options": [
+     {
+      "name": "Inspired Eclipse",
+      "summary": "With the Bonus Action that grants Bardic Inspiration, become Invisible and teleport up to 30 ft to a space you see; it lasts until your next turn starts and breaks when you attack, deal damage or cast.",
+      "activation": "bonus",
+      "range": 30
+     },
+     {
+      "name": "Lunar Vitality",
+      "summary": "Once per turn when a spell of yours heals a creature, spend a Bardic Inspiration die to add its roll; the creature also gets +10 ft Speed until the end of its next turn.",
+      "uses": {
+       "count": 1,
+       "recharge": "turn"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Primal Lore",
+    "level": 3,
+    "srd": false,
+    "summary": "Learn Druidic and a bonus Druid cantrip (counts as a Bard spell, swappable on each Bard level), plus one skill: Survival, Perception, Nature, Medicine, Insight or Animal Handling.",
+    "grants": [
+     {
+      "kind": "language",
+      "value": "Druidic"
+     }
+    ],
+    "choices": [
+     {
+      "kind": "cantrip",
+      "count": 1,
+      "list": "druid",
+      "label": "Primal Lore"
+     },
+     {
+      "kind": "skill",
+      "count": 1,
+      "from": [
+       "Animal Handling",
+       "Insight",
+       "Medicine",
+       "Nature",
+       "Perception",
+       "Survival"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Blessing of Moonlight",
+    "level": 6,
+    "srd": false,
+    "summary": "Moonbeam is always prepared. Once per Long Rest, cast it so you glow (Dim Light 5 ft); each time a creature fails its save against that Moonbeam, another creature you see within 60 ft heals 2d4.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "moonbeam",
+      "at": 6
+     }
+    ],
+    "uses": {
+     "count": 1,
+     "recharge": "long"
+    },
+    "dice": "2d4",
+    "range": 60
+   },
+   {
+    "name": "Eventide’s Splendor",
+    "level": 14,
+    "srd": false,
+    "summary": "Inspired Eclipse can also make the inspired creature Invisible until its next turn starts and let it use its Reaction to teleport up to 30 ft. Lunar Vitality may roll 1d6 instead of spending an Inspiration die.",
+    "options": [
+     {
+      "name": "Shadow of the New Moon",
+      "summary": "The creature you inspire with Inspired Eclipse may turn Invisible until its next turn starts and use its Reaction to teleport up to 30 ft.",
+      "range": 30
+     },
+     {
+      "name": "Vibrance of the Full Moon",
+      "summary": "Lunar Vitality can add a 1d6 roll in place of spending a Bardic Inspiration die.",
+      "dice": "1d6"
+     }
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Bard of the Moonshae druid tradition who draws on moonwell magic to hide, heal and speed allies."
  },
  {
   "slug": "college-of-valor",
@@ -1482,6 +2190,710 @@
   ],
   "optionGroups": [],
   "summary": "A battle-ready bard who fights in the front line and lets allies spend inspiration on armor or damage."
+ },
+ {
+  "slug": "arcana-domain",
+  "name": "Arcana Domain",
+  "class": "cleric",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "cleric:arcana-domain",
+  "features": [
+   {
+    "name": "Arcana Domain Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Detect Magic, Magic Missile, Magic Weapon and Nystul's Magic Aura at Cleric 3; Counterspell and Dispel Magic at 5; Arcane Eye and Leomund's Secret Chest at 7; Bigby's Hand and Teleportation Circle at 9.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "detect-magic",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "magic-missile",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "magic-weapon",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "arcanists-magic-aura",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "counterspell",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "dispel-magic",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "arcane-eye",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "secret-chest",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "arcane-hand",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "teleportation-circle",
+      "at": 9
+     }
+    ]
+   },
+   {
+    "name": "Modify Magic",
+    "level": 3,
+    "srd": false,
+    "summary": "As you cast a spell, spend a Channel Divinity use (no action) to alter it: one target gains 2d8 + Cleric level Temporary HP, or a creature that passes its save against the spell takes -1d6 on its next save against the spell's effect.",
+    "activation": "free",
+    "options": [
+     {
+      "name": "Fortifying Spell",
+      "summary": "One of the spell's targets gets Temporary HP of 2d8 + your Cleric level.",
+      "dice": "2d8"
+     },
+     {
+      "name": "Tenacious Spell",
+      "summary": "When a creature you see passes a save against the spell, subtract 1d6 from its first save against the spell's effect.",
+      "dice": "1d6"
+     }
+    ]
+   },
+   {
+    "name": "Student of Arcana",
+    "level": 3,
+    "srd": false,
+    "summary": "Gain Arcana (or another Cleric level 1 skill) and two Wizard cantrips; swap one of those cantrips for another Wizard cantrip each time you gain a Cleric level.",
+    "choices": [
+     {
+      "kind": "skill",
+      "count": 1,
+      "from": [
+       "Arcana",
+       "History",
+       "Insight",
+       "Medicine",
+       "Persuasion",
+       "Religion"
+      ]
+     },
+     {
+      "kind": "cantrip",
+      "count": 2,
+      "list": "wizard",
+      "label": "Student of Arcana"
+     }
+    ]
+   },
+   {
+    "name": "Dispelling Recovery",
+    "level": 6,
+    "srd": false,
+    "summary": "Right after a slot-cast spell heals a creature or ends a condition on it, cast Dispel Magic without a slot as part of the same action, Bonus Action or Reaction. Once per Short or Long Rest; a Channel Divinity use restores it.",
+    "uses": {
+     "count": 1,
+     "recharge": "short",
+     "restore": "1 Channel Divinity use"
+    }
+   },
+   {
+    "name": "Magical Mastery",
+    "level": 17,
+    "srd": false,
+    "summary": "Learn four Wizard spells, one per spell level from 6 to 9; they're always prepared. Each Cleric level, you may trade one for another Wizard spell of its level.",
+    "choices": [
+     {
+      "kind": "spell",
+      "count": 1,
+      "list": "wizard",
+      "maxLevel": 6,
+      "note": "a level 6 Wizard spell"
+     },
+     {
+      "kind": "spell",
+      "count": 1,
+      "list": "wizard",
+      "maxLevel": 7,
+      "note": "a level 7 Wizard spell"
+     },
+     {
+      "kind": "spell",
+      "count": 1,
+      "list": "wizard",
+      "maxLevel": 8,
+      "note": "a level 8 Wizard spell"
+     },
+     {
+      "kind": "spell",
+      "count": 1,
+      "list": "wizard",
+      "maxLevel": 9,
+      "note": "a level 9 Wizard spell"
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "detect-magic",
+     "magic-missile",
+     "magic-weapon",
+     "arcanists-magic-aura"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "counterspell",
+     "dispel-magic"
+    ]
+   },
+   {
+    "level": 7,
+    "spells": [
+     "arcane-eye",
+     "secret-chest"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "arcane-hand",
+     "teleportation-circle"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A cleric of the god of magic who bends Channel Divinity into their spells and borrows from the wizard's repertoire."
+ },
+ {
+  "slug": "discipline-domain",
+  "name": "Discipline Domain",
+  "class": "cleric",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "cleric:discipline-domain",
+  "features": [
+   {
+    "name": "Discipline Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Arcane Vigor, Guiding Bolt, Magic Weapon and Shield of Faith at Cleric 3; Prayer of Mending and Protection from Energy at 5; Guardian of Faith and Stoneskin at 7; Circle of Power and Destructive Wave at 9.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "arcane-vigor",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "guiding-bolt",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "magic-weapon",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "shield-of-faith",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "prayer-of-mending",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "protection-from-energy",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "guardian-of-faith",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "stoneskin",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "circle-of-power",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "destructive-wave",
+      "at": 9
+     }
+    ]
+   },
+   {
+    "name": "Holy Bolt",
+    "level": 3,
+    "srd": false,
+    "summary": "Bonus Action, spend a Channel Divinity use: ranged spell attack at a creature within 60 ft for 2d10 + WIS Radiant; on a hit, a creature you see within 60 ft heals 1d10 + WIS.",
+    "activation": "bonus",
+    "dice": "2d10",
+    "damageType": "Radiant",
+    "range": 60
+   },
+   {
+    "name": "Atonement",
+    "level": 3,
+    "srd": false,
+    "summary": "Creatures healed by your level 1+ spells are blessed until your next turn ends; each damaging spell you cast with a slot heals every blessed creature by the slot's level."
+   },
+   {
+    "name": "Luminous Barrier",
+    "level": 6,
+    "srd": false,
+    "summary": "Bonus Action, spend a Channel Divinity use: each creature blessed by Atonement gains Cleric level + WIS Temporary HP and has Resistance to all damage while those last.",
+    "activation": "bonus"
+   },
+   {
+    "name": "Ultimate Penitence",
+    "level": 17,
+    "srd": false,
+    "summary": "Holy Bolt upgrades: teleport up to 30 ft before the attack, and spend a spell slot to throw extra bolts equal to its level, each its own attack.",
+    "options": [
+     {
+      "name": "Ascending Step",
+      "summary": "Before the Holy Bolt attack, teleport to an unoccupied space you see within 30 ft.",
+      "range": 30
+     },
+     {
+      "name": "Ascending Volley",
+      "summary": "Spend a spell slot with the Bonus Action for extra bolts equal to its level, split among targets as you like; roll each attack separately."
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "arcane-vigor",
+     "guiding-bolt",
+     "magic-weapon",
+     "shield-of-faith"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "prayer-of-mending",
+     "protection-from-energy"
+    ]
+   },
+   {
+    "level": 7,
+    "spells": [
+     "guardian-of-faith",
+     "stoneskin"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "circle-of-power",
+     "destructive-wave"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A cleric balancing the Light and the Void, mending allies with the same spells that wound enemies."
+ },
+ {
+  "slug": "grave-domain",
+  "name": "Grave Domain",
+  "class": "cleric",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "cleric:grave-domain",
+  "features": [
+   {
+    "name": "Grave Domain Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared at Cleric 3: Spare the Dying, False Life, Ray of Enfeeblement, Gentle Repose, Detect Evil and Good; Revivify and Vampiric Touch at 5; Blight and Death Ward at 7; Dispel Evil and Good and Raise Dead at 9.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "detect-evil-and-good",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "false-life",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "gentle-repose",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "ray-of-enfeeblement",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "spare-the-dying",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "revivify",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "vampiric-touch",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "blight",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "death-ward",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "dispel-evil-and-good",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "raise-dead",
+      "at": 9
+     }
+    ]
+   },
+   {
+    "name": "Circle of Mortality",
+    "level": 3,
+    "srd": false,
+    "summary": "Once per turn, a spell or attack hit on an already-wounded creature adds 1d4 Necrotic (1d6 at Cleric 11). Spare the Dying is a Bonus Action, and healing dice from spells or Channel Divinity on a creature at 0 HP count as their maximum.",
+    "options": [
+     {
+      "name": "Pull of Death",
+      "summary": "Once per turn, +1d4 Necrotic when your spell or attack hit damages a creature below its HP maximum; 1d6 from Cleric 11.",
+      "dice": "1d4",
+      "damageType": "Necrotic",
+      "uses": {
+       "count": 1,
+       "recharge": "turn"
+      }
+     },
+     {
+      "name": "Return to Life",
+      "summary": "Spare the Dying takes only a Bonus Action to cast; healing dice on a target at 0 HP give their maximum instead of being rolled.",
+      "activation": "bonus"
+     }
+    ]
+   },
+   {
+    "name": "Path to the Grave",
+    "level": 3,
+    "srd": false,
+    "summary": "Bonus Action, 1 Channel Divinity: curse a creature you see within 30 ft until your next turn starts; it has Disadvantage on attacks and saves. When you or a visible ally hits it, end the curse to add Necrotic or Radiant damage equal to your Cleric level.",
+    "activation": "bonus",
+    "range": 30,
+    "duration": "until the start of your next turn"
+   },
+   {
+    "name": "Sentinel at Death’s Door",
+    "level": 6,
+    "srd": false,
+    "summary": "Reaction when you or a Bloodied creature you see within 60 ft is hit: halve the damage (round down) and cancel any Critical Hit effects. WIS-mod uses (min 1) per Long Rest.",
+    "activation": "reaction",
+    "range": 60,
+    "uses": {
+     "count": "WIS",
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Divine Reaper",
+    "level": 17,
+    "srd": false,
+    "summary": "Spend Channel Divinity to aim a single-target Necromancy spell (level 5 or lower) or a Grave Domain spell at a second creature. When an enemy dies within 60 ft, you or a creature you see there heals twice your Cleric level; once per Short or Long Rest, or restore it with a level 6+ slot.",
+    "options": [
+     {
+      "name": "Enhanced Necromancy",
+      "summary": "1 Channel Divinity: a one-target Necromancy spell of level 5 or lower, or a Grave Domain spell, gains a second target in range (pay costly components for each)."
+     },
+     {
+      "name": "Keeper of Souls",
+      "summary": "When an enemy dies within 60 ft, you or a creature you see within 60 ft heals 2× your Cleric level. Not while Incapacitated; once per Short or Long Rest, or restore with a level 6+ slot.",
+      "range": 60,
+      "uses": {
+       "count": 1,
+       "recharge": "short",
+       "restore": "a level 6+ spell slot"
+      }
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "detect-evil-and-good",
+     "false-life",
+     "gentle-repose",
+     "ray-of-enfeeblement",
+     "spare-the-dying"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "revivify",
+     "vampiric-touch"
+    ]
+   },
+   {
+    "level": 7,
+    "spells": [
+     "blight",
+     "death-ward"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "dispel-evil-and-good",
+     "raise-dead"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Cleric who tends the line between life and death, punishing the dying foe and pulling the fallen ally back."
+ },
+ {
+  "slug": "knowledge-domain",
+  "name": "Knowledge Domain",
+  "class": "cleric",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "cleric:knowledge-domain",
+  "features": [
+   {
+    "name": "Blessings of Knowledge",
+    "level": 3,
+    "srd": false,
+    "summary": "Proficiency with one set of Artisan's Tools, and proficiency plus Expertise in two of Arcana, History, Nature and Religion.",
+    "choices": [
+     {
+      "kind": "tool",
+      "count": 1,
+      "note": "one type of Artisan's Tools",
+      "label": "Artisan's Tools"
+     },
+     {
+      "kind": "skill",
+      "count": 2,
+      "from": [
+       "Arcana",
+       "History",
+       "Nature",
+       "Religion"
+      ],
+      "note": "you also gain Expertise in both"
+     }
+    ]
+   },
+   {
+    "name": "Knowledge Domain Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Detect Magic, Command, Identify, Comprehend Languages, Mind Spike and Detect Thoughts at Cleric 3; Dispel Magic, Nondetection and Tongues at 5; Arcane Eye, Banishment and Confusion at 7; Legend Lore, Scrying and Synaptic Static at 9.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "command",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "comprehend-languages",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "detect-magic",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "detect-thoughts",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "identify",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "mind-spike",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "dispel-magic",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "nondetection",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "tongues",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "arcane-eye",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "banishment",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "confusion",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "legend-lore",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "scrying",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "synaptic-static",
+      "at": 9
+     }
+    ]
+   },
+   {
+    "name": "Mind Magic",
+    "level": 3,
+    "srd": false,
+    "summary": "Magic action: spend a Channel Divinity use to cast a prepared Divination spell from your domain list with no slot and no Material components.",
+    "activation": "magic"
+   },
+   {
+    "name": "Unfettered Mind",
+    "level": 6,
+    "srd": false,
+    "summary": "Telepathy 60 ft, reaching up to WIS modifier creatures at once (min 1). Gain INT save proficiency, or another save you lack if you already have it.",
+    "grants": [
+     {
+      "kind": "sense",
+      "value": "Telepathy",
+      "range": 60
+     },
+     {
+      "kind": "save",
+      "value": "INT"
+     }
+    ]
+   },
+   {
+    "name": "Divine Foreknowledge",
+    "level": 17,
+    "srd": false,
+    "summary": "Bonus Action: Advantage on D20 Tests for 1 hour. Once per Long Rest, or restore it by spending a level 6+ slot.",
+    "activation": "bonus",
+    "duration": "1 hour",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "a level 6+ spell slot"
+    }
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "command",
+     "comprehend-languages",
+     "detect-magic",
+     "detect-thoughts",
+     "identify",
+     "mind-spike"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "dispel-magic",
+     "nondetection",
+     "tongues"
+    ]
+   },
+   {
+    "level": 7,
+    "spells": [
+     "arcane-eye",
+     "banishment",
+     "confusion"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "legend-lore",
+     "scrying",
+     "synaptic-static"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Cleric for whom learning is worship: a scholar of lore, secrets and the workings of the mind."
  },
  {
   "slug": "life-domain",
@@ -1562,7 +2974,8 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "The Life Domain focuses on the positive energy that helps sustain all life in the multiverse."
  },
  {
   "slug": "light-domain",
@@ -1663,6 +3076,158 @@
   ],
   "optionGroups": [],
   "summary": "A cleric of radiance and revelation who scorches foes with fire and light and shields allies with flashes of glare."
+ },
+ {
+  "slug": "shadow-domain",
+  "name": "Shadow Domain",
+  "class": "cleric",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "cleric:shadow-domain",
+  "features": [
+   {
+    "name": "Shadow Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Crown of Madness, Dissonant Whispers, Mind Spike and Shadow Word: Pain at Cleric 3; Summon Undead and Vampiric Touch at 5; Evard's Black Tentacles and Psychic Horror at 7; Dominate Person and Void Eruption at 9.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "crown-of-madness",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "dissonant-whispers",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "mind-spike",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "shadow-word-pain",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "summon-undead",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "vampiric-touch",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "black-tentacles",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "psychic-horror",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "dominate-person",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "void-eruption",
+      "at": 9
+     }
+    ]
+   },
+   {
+    "name": "Shadowform",
+    "level": 3,
+    "srd": false,
+    "summary": "Bonus Action, spend a Channel Divinity use: for 1 minute you can Hide as a Bonus Action in Dim Light or Darkness, and slot spells dealing Psychic or Necrotic damage add 1d6 to one damage roll. Ends if Incapacitated, dismissed, or you deal Radiant damage with a spell.",
+    "activation": "bonus",
+    "duration": "1 minute",
+    "options": [
+     {
+      "name": "Shadow Stealth",
+      "summary": "Hide as a Bonus Action while in Dim Light or Darkness."
+     },
+     {
+      "name": "Void Empowerment",
+      "summary": "A slot spell that deals Psychic or Necrotic damage adds 1d6 to one of its damage rolls.",
+      "dice": "1d6"
+     }
+    ]
+   },
+   {
+    "name": "Devouring Plague",
+    "level": 3,
+    "srd": false,
+    "summary": "When a creature you see within 30 ft fails a save, deal it 1d10 Necrotic and heal that much; WIS-modifier uses per Long Rest.",
+    "dice": "1d10",
+    "damageType": "Necrotic",
+    "range": 30,
+    "uses": {
+     "count": "WIS",
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Dispersion",
+    "level": 6,
+    "srd": false,
+    "summary": "Reaction when an attack hits you: until your next turn ends, Resistance to all damage (that hit too), no actions, Bonus Actions or Reactions, and 40 ft fly Speed; afterwards spend up to half your Hit Dice to heal. Once per Short or Long Rest.",
+    "activation": "reaction",
+    "uses": {
+     "count": 1,
+     "recharge": "short"
+    }
+   },
+   {
+    "name": "Vampiric Embrace",
+    "level": 17,
+    "srd": false,
+    "summary": "In Shadowform, each extra 1d6 you roll for spell damage also heals a creature you pick within 30 ft by that amount.",
+    "range": 30
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "crown-of-madness",
+     "dissonant-whispers",
+     "mind-spike",
+     "shadow-word-pain"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "summon-undead",
+     "vampiric-touch"
+    ]
+   },
+   {
+    "level": 7,
+    "spells": [
+     "black-tentacles",
+     "psychic-horror"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "dominate-person",
+     "void-eruption"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A cleric of the Void who withers bodies and frays minds with shadow magic."
  },
  {
   "slug": "trickery-domain",
@@ -2254,7 +3819,8 @@
     "group": "Tropical Land"
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "The Circle of the Land comprises mystics and sages who safeguard ancient knowledge and rites."
  },
  {
   "slug": "circle-of-the-moon",
@@ -2612,6 +4178,247 @@
   "summary": "A stargazer who carries a star chart, reads daily omens and takes on a glowing constellation form."
  },
  {
+  "slug": "arcane-archer",
+  "name": "Arcane Archer",
+  "class": "fighter",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "fighter:arcane-archer",
+  "features": [
+   {
+    "name": "Arcane Archer Lore",
+    "level": 3,
+    "srd": false,
+    "summary": "Learn Druidcraft or Prestidigitation (INT casting) and gain Arcana and Nature; for each you already have, pick another Fighter level 1 skill instead.",
+    "grants": [
+     {
+      "kind": "skill",
+      "value": "Arcana"
+     },
+     {
+      "kind": "skill",
+      "value": "Nature"
+     }
+    ],
+    "choices": [
+     {
+      "kind": "cantrip",
+      "count": 1,
+      "from": [
+       "druidcraft",
+       "prestidigitation"
+      ],
+      "label": "Arcane Archer Lore"
+     }
+    ]
+   },
+   {
+    "name": "Arcane Shot",
+    "level": 3,
+    "srd": false,
+    "summary": "Know 2 Arcane Shot options (one more at Fighter 7, 10, 15 and 18, each time swapping one if you like). Once per turn, add one to a hit with an Ammunition weapon; INT modifier uses (min 1) per Short or Long Rest. Die d6 (d8 at 10, d10 at 15, d12 at 18); save DC 8 + PB + INT.",
+    "uses": {
+     "count": "INT",
+     "recharge": "short"
+    },
+    "dice": "1d6",
+    "choices": [
+     {
+      "kind": "option",
+      "count": 2,
+      "group": "arcane-shot"
+     }
+    ]
+   },
+   {
+    "name": "Curving Shot",
+    "level": 7,
+    "srd": false,
+    "summary": "Bonus Action after an Ammunition weapon attack misses: make a new attack roll against another creature you see in range and within 60 ft of the first target.",
+    "activation": "bonus",
+    "range": 60
+   },
+   {
+    "name": "Magical Ammunition",
+    "level": 7,
+    "srd": false,
+    "summary": "Magic action: shoot enchanted nonmagical ammunition at a surface you see for one effect (Darkening, Unlocking or Vine); a Magic action pulls it free early. Once per Short or Long Rest; a Second Wind use restores it.",
+    "activation": "magic",
+    "uses": {
+     "count": 1,
+     "recharge": "short",
+     "restore": "1 Second Wind use"
+    },
+    "options": [
+     {
+      "name": "Darkening Ammunition",
+      "summary": "For 1 minute, shadows fill a 15-ft Emanation: mundane fires go out and creatures inside take -5 to Wisdom (Perception) and Passive Perception.",
+      "duration": "1 minute"
+     },
+     {
+      "name": "Unlocking Ammunition",
+      "summary": "Each object in a 15-ft Emanation that's mundanely locked, stuck or barred opens (one lock per object); the knock is heard 300 ft away."
+     },
+     {
+      "name": "Vine Ammunition",
+      "summary": "A climbable 120-ft vine sprouts and lasts 10 minutes.",
+      "duration": "10 minutes"
+     }
+    ]
+   },
+   {
+    "name": "Ever-Ready Shot",
+    "level": 10,
+    "srd": false,
+    "summary": "Rolling Initiative gives back one spent Arcane Shot use."
+   },
+   {
+    "name": "Indomitable Teleport",
+    "level": 15,
+    "srd": false,
+    "summary": "When a save you reroll with Indomitable succeeds, teleport up to 60 ft to an unoccupied space you see.",
+    "range": 60
+   },
+   {
+    "name": "Masterful Shots",
+    "level": 18,
+    "srd": false,
+    "summary": "Reaction when a creature you see misses you with an attack: back off from it by up to half your Speed without provoking, then make a ranged attack at it if it's in range.",
+    "activation": "reaction"
+   }
+  ],
+  "optionGroups": [
+   "arcane-shot"
+  ],
+  "summary": "An archer trained in an old elven art of weaving spells into ammunition for magical shots, in and out of battle."
+ },
+ {
+  "slug": "banneret",
+  "name": "Banneret",
+  "class": "fighter",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "fighter:banneret",
+  "features": [
+   {
+    "name": "Knightly Envoy",
+    "level": 3,
+    "srd": false,
+    "summary": "Cast Comprehend Languages as a Ritual only (CHA). Learn one language, swappable after a Long Rest for one you met in the last 24 hours. Gain one of Insight, Intimidation, Performance or Persuasion.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "comprehend-languages",
+      "at": 3
+     }
+    ],
+    "choices": [
+     {
+      "kind": "language",
+      "count": 1,
+      "label": "Polyglot"
+     },
+     {
+      "kind": "skill",
+      "count": 1,
+      "from": [
+       "Insight",
+       "Intimidation",
+       "Performance",
+       "Persuasion"
+      ]
+     }
+    ],
+    "options": [
+     {
+      "name": "Comprehension",
+      "summary": "Comprehend Languages as a Ritual only, with CHA as the spellcasting ability."
+     },
+     {
+      "name": "Polyglot",
+      "summary": "One extra language; after a Long Rest you may trade it for a language you heard, read or saw signed in the past 24 hours."
+     },
+     {
+      "name": "Well Spoken",
+      "summary": "Proficiency in Insight, Intimidation, Performance or Persuasion."
+     }
+    ]
+   },
+   {
+    "name": "Group Recovery",
+    "level": 3,
+    "srd": false,
+    "summary": "When Second Wind heals you, up to CHA modifier allies (min 1) in a 30-ft Emanation each regain 1d4 + Fighter level HP. Once per Short or Long Rest.",
+    "uses": {
+     "count": 1,
+     "recharge": "short"
+    },
+    "dice": "1d4",
+    "range": 30
+   },
+   {
+    "name": "Team Tactics",
+    "level": 7,
+    "srd": false,
+    "summary": "Allies you pick for Group Recovery gain Advantage on D20 Tests until your next turn starts."
+   },
+   {
+    "name": "Rallying Surge",
+    "level": 10,
+    "srd": false,
+    "summary": "On Action Surge, up to CHA modifier allies (min 1) in a 30-ft Emanation may each use a Reaction to make one weapon attack or Unarmed Strike, or move half their Speed without provoking Opportunity Attacks.",
+    "range": 30,
+    "options": [
+     {
+      "name": "Attack",
+      "summary": "Make a single weapon attack or Unarmed Strike."
+     },
+     {
+      "name": "Move",
+      "summary": "Move up to half Speed without provoking Opportunity Attacks."
+     }
+    ]
+   },
+   {
+    "name": "Shared Resilience",
+    "level": 15,
+    "srd": false,
+    "summary": "Reaction when an ally you see within 60 ft fails a save: spend an Indomitable use so it rerolls with a bonus equal to your Fighter level, keeping the new roll.",
+    "activation": "reaction",
+    "range": 60
+   },
+   {
+    "name": "Inspiring Commander",
+    "level": 18,
+    "srd": false,
+    "summary": "Group Recovery and Rallying Surge reach a 60-ft Emanation, and you're immune to Charmed and Frightened.",
+    "grants": [
+     {
+      "kind": "conditionImmunity",
+      "value": "Charmed"
+     },
+     {
+      "kind": "conditionImmunity",
+      "value": "Frightened"
+     }
+    ],
+    "options": [
+     {
+      "name": "Bolstered Rally",
+      "summary": "Group Recovery and Rallying Surge use a 60-ft Emanation.",
+      "range": 60
+     },
+     {
+      "name": "Unshakable Bravery",
+      "summary": "Immune to the Charmed and Frightened conditions."
+     }
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A knight-errant Fighter who leads from the front, healing, steadying and rallying allies around the banner."
+ },
+ {
   "slug": "battle-master",
   "name": "Battle Master",
   "class": "fighter",
@@ -2785,7 +4592,8 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "A Champion focuses on the development of martial prowess in a relentless pursuit of victory."
  },
  {
   "slug": "eldritch-knight",
@@ -3236,6 +5044,163 @@
   "summary": "A fighter who channels psionic energy dice into force-charged strikes, shields and telekinesis."
  },
  {
+  "slug": "sorrow-knight",
+  "name": "Sorrow Knight",
+  "class": "fighter",
+  "srd": false,
+  "source": "D&D Beyond Drops: October 2026",
+  "wiki": "fighter:sorrow-knight",
+  "features": [
+   {
+    "name": "Despairing Strikes",
+    "level": 3,
+    "srd": false,
+    "summary": "Three d8 Despairing Strike Dice (four d10s at Fighter 10, five d12s at 15), all back on a Short or Long Rest. On a weapon hit, spend one (max one per attack) for that much extra Psychic damage plus, if you like, one effect (Abandoned or Dread); save DC 8 + PB + WIS.",
+    "uses": {
+     "count": 3,
+     "recharge": "short"
+    },
+    "dice": "1d8",
+    "damageType": "Psychic",
+    "options": [
+     {
+      "name": "Abandoned",
+      "summary": "INT save or Deafened until the end of your next turn, treating every creature it sees as an enemy meanwhile.",
+      "save": {
+       "ability": "INT",
+       "dc": "8+PB+WIS"
+      }
+     },
+     {
+      "name": "Dread",
+      "summary": "Disadvantage on its next saving throw before your next turn starts."
+     }
+    ]
+   },
+   {
+    "name": "Solemn Gaze",
+    "level": 3,
+    "srd": false,
+    "summary": "Darkvision 60 ft (or +60 ft if you have it). Magic action, WIS modifier uses (min 1) per Long Rest: a creature you see within 30 ft makes a WIS save (DC 8 + PB + WIS) or you learn one strong emotion it holds; if it can see you, it knows.",
+    "activation": "magic",
+    "uses": {
+     "count": "WIS",
+     "recharge": "long"
+    },
+    "range": 30,
+    "save": {
+     "ability": "WIS",
+     "dc": "8+PB+WIS"
+    },
+    "grants": [
+     {
+      "kind": "sense",
+      "value": "Darkvision",
+      "range": 60
+     }
+    ]
+   },
+   {
+    "name": "Dreaded Appearance",
+    "level": 7,
+    "srd": false,
+    "summary": "Tactical Shift can teleport you up to 30 ft to an unoccupied space you see. Once per Short or Long Rest, on arriving, creatures you choose in a 10-ft Emanation make a WIS save (DC 8 + PB + WIS): a failure means Psychic damage of one Despairing Strike Die roll and Frightened until your next turn ends; a success, half damage.",
+    "uses": {
+     "count": 1,
+     "recharge": "short"
+    },
+    "damageType": "Psychic",
+    "range": 30,
+    "save": {
+     "ability": "WIS",
+     "dc": "8+PB+WIS"
+    }
+   },
+   {
+    "name": "Unsettled Strikes",
+    "level": 10,
+    "srd": false,
+    "summary": "Three more Despairing Strike effects: Apathetic, Lost and Weary.",
+    "options": [
+     {
+      "name": "Apathetic",
+      "summary": "WIS save or Incapacitated until your next turn starts, answering only in single words.",
+      "save": {
+       "ability": "WIS",
+       "dc": "8+PB+WIS"
+      }
+     },
+     {
+      "name": "Lost",
+      "summary": "CHA save: a failure leaves it Blinded with Speed 0 through its next turn; a success halves its Speed for that long.",
+      "save": {
+       "ability": "CHA",
+       "dc": "8+PB+WIS"
+      }
+     },
+     {
+      "name": "Weary",
+      "summary": "CON save or 1 Exhaustion level (this can't push it past 2), removed when your next turn ends.",
+      "save": {
+       "ability": "CON",
+       "dc": "8+PB+WIS"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Grim Constitution",
+    "level": 15,
+    "srd": false,
+    "summary": "Resistance to Necrotic and Psychic. When something would lower your HP maximum, a DC 15 CON save stops it; the DC rises by 5 per later save and resets to 15 after a Short or Long Rest.",
+    "grants": [
+     {
+      "kind": "resistance",
+      "value": "Necrotic"
+     },
+     {
+      "kind": "resistance",
+      "value": "Psychic"
+     }
+    ],
+    "save": {
+     "ability": "CON",
+     "dc": 15
+    }
+   },
+   {
+    "name": "Grieving Mantle",
+    "level": 18,
+    "srd": false,
+    "summary": "Action Surge also attunes you to the Shadowfell for 1 minute (ends if you're Incapacitated): immune to Charmed and Frightened (ending them if present), and as a Reaction when an attack roll hits you, turn insubstantial and take 0 damage from it.",
+    "duration": "1 minute",
+    "grants": [
+     {
+      "kind": "conditionImmunity",
+      "value": "Charmed"
+     },
+     {
+      "kind": "conditionImmunity",
+      "value": "Frightened"
+     }
+    ],
+    "options": [
+     {
+      "name": "Shade Form",
+      "summary": "Reaction when an attack roll hits you: its damage to you drops to 0.",
+      "activation": "reaction"
+     },
+     {
+      "name": "Unwavering Resolve",
+      "summary": "Immune to Charmed and Frightened; either ends on you when the mantle starts."
+     }
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A fighter who turns a deep personal loss into Shadowfell despair, burdening foes with grief while guarding others from the same pain."
+ },
+ {
   "slug": "warrior-of-mercy",
   "name": "Warrior of Mercy",
   "class": "monk",
@@ -3317,6 +5282,137 @@
   ],
   "optionGroups": [],
   "summary": "A monk who heals allies and withers foes with a touch, spending Focus on both."
+ },
+ {
+  "slug": "warrior-of-mystic-brews",
+  "name": "Warrior of Mystic Brews",
+  "class": "monk",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "monk:warrior-of-mystic-brews",
+  "features": [
+   {
+    "name": "Bonus Proficiencies",
+    "level": 3,
+    "srd": false,
+    "summary": "Gain Performance (or another Monk level 1 skill if you have it) and Brewer's Supplies.",
+    "grants": [
+     {
+      "kind": "skill",
+      "value": "Performance"
+     },
+     {
+      "kind": "tool",
+      "value": "Brewer's Supplies"
+     }
+    ]
+   },
+   {
+    "name": "Drunken Technique",
+    "level": 3,
+    "srd": false,
+    "summary": "Spending a Focus Point on Patient Defense gives +10 ft Speed this turn and one Unarmed Strike right after the Bonus Action."
+   },
+   {
+    "name": "Tipsy Sway",
+    "level": 6,
+    "srd": false,
+    "summary": "Stand from Prone for 5 ft of movement; and when a foe's melee attack misses you, Reaction and 1 Focus Point to land it on another creature you see within 5 ft.",
+    "options": [
+     {
+      "name": "Leap to Your Feet",
+      "summary": "Getting up from Prone costs only 5 ft of movement."
+     },
+     {
+      "name": "Redirect Attack",
+      "summary": "Reaction and 1 Focus Point when a melee attack misses you: it hits a creature you pick (not the attacker) that you see within 5 ft.",
+      "activation": "reaction",
+      "range": 5
+     }
+    ]
+   },
+   {
+    "name": "Mystic Brew",
+    "level": 6,
+    "srd": false,
+    "summary": "Finishing a Short or Long Rest holding Brewer's Supplies, make one pint of a magic drink only you benefit from; drinking takes 1 minute and lasts 1 hour (8 hours for 1 Focus Point) or until another drink. Unused brew vanishes at your next rest.",
+    "duration": "1 hour",
+    "options": [
+     {
+      "name": "Cinnamon Dragon",
+      "summary": "Magic action: 30-ft Cone, DEX save (8 + PB + WIS) for four Martial Arts dice of Fire and Poisoned until its next turn ends; half and no Poisoned on a success.",
+      "activation": "magic",
+      "dice": "column:Martial Arts",
+      "damageType": "Fire",
+      "save": {
+       "ability": "DEX",
+       "dc": "8+PB+WIS"
+      },
+      "range": 30
+     },
+     {
+      "name": "Heavenly Spirit",
+      "summary": "Resistance to two of Cold, Necrotic, Psychic or Radiant (your pick).",
+      "choices": [
+       {
+        "kind": "damageType",
+        "count": 2,
+        "from": [
+         "Cold",
+         "Necrotic",
+         "Psychic",
+         "Radiant"
+        ],
+        "label": "Heavenly Spirit"
+       }
+      ]
+     },
+     {
+      "name": "Refreshing Dip",
+      "summary": "A pool of Martial Arts dice (WIS + half Monk level); when you regain HP, roll one to heal that much more.",
+      "dice": "column:Martial Arts"
+     }
+    ]
+   },
+   {
+    "name": "Wizened Brewer",
+    "level": 11,
+    "srd": false,
+    "summary": "New Mystic Brew drinks: Blue Lightning, Drunkard's Luck and Stumbling Monk.",
+    "options": [
+     {
+      "name": "Blue Lightning",
+      "summary": "Any Reaction other than an Opportunity Attack or a spell can include one Unarmed Strike."
+     },
+     {
+      "name": "Drunkard’s Luck",
+      "summary": "Gain Heroic Inspiration if you lack it, and grant it to yourself when making an ability check or save without it."
+     },
+     {
+      "name": "Stumbling Monk",
+      "summary": "After any Bonus Action besides Patient Defense, you may also use Patient Defense at once."
+     }
+    ]
+   },
+   {
+    "name": "Master Brewer",
+    "level": 17,
+    "srd": false,
+    "summary": "One Mystic Brew can mix two different drinks, giving both effects for its duration."
+   },
+   {
+    "name": "Intoxicated Frenzy",
+    "level": 17,
+    "srd": false,
+    "summary": "After Patient Defense, move up to your Speed; entering a space within 5 ft of a creature lets you Unarmed Strike it (once per creature per turn), and a hit forces a DEX save or Prone.",
+    "save": {
+     "ability": "DEX",
+     "dc": "8+PB+WIS"
+    }
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A monk who fights with a drunkard's lurching sway and brews magic drinks to boost their martial arts."
  },
  {
   "slug": "warrior-of-shadow",
@@ -3436,6 +5532,338 @@
   "summary": "A monk who channels elemental energy into long-reaching strikes and bursts."
  },
  {
+  "slug": "warrior-of-the-mystic-arts",
+  "name": "Warrior of the Mystic Arts",
+  "class": "monk",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "monk:warrior-of-the-mystic-arts",
+  "features": [
+   {
+    "name": "Spellcasting",
+    "level": 3,
+    "srd": false,
+    "summary": "Third-caster on the Sorcerer list with WIS: 2 cantrips (3 at Monk 10) and 3 prepared level 1+ spells at Monk 3, rising to 13 by Monk 20 with slots up to level 4. An Arcane Focus works as your focus; swap one cantrip and one spell each Monk level.",
+    "choices": [
+     {
+      "kind": "cantrip",
+      "count": 2,
+      "list": "sorcerer",
+      "label": "Warrior of the Mystic Arts"
+     },
+     {
+      "kind": "spell",
+      "count": 3,
+      "list": "sorcerer",
+      "maxLevel": 1,
+      "label": "Warrior of the Mystic Arts"
+     }
+    ]
+   },
+   {
+    "name": "Mystic Fighting Style",
+    "level": 6,
+    "srd": false,
+    "summary": "When you take the Attack action, one Unarmed Strike can become a casting of a 1-action Sorcerer cantrip."
+   },
+   {
+    "name": "Mystic Focus",
+    "level": 6,
+    "srd": false,
+    "summary": "Spend a spell slot (no action) to regain Focus Points equal to its level. On a Short Rest or Uncanny Metabolism, pay Focus Points for one spent slot: level 1 for 2 (Monk 6), 2 for 3 (Monk 7), 3 for 5 (Monk 13), 4 for 6 (Monk 19).",
+    "activation": "free"
+   },
+   {
+    "name": "Focused Strike",
+    "level": 11,
+    "srd": false,
+    "summary": "Whatever the result of your Stunning Strike's save, that target has Disadvantage on saves against your spells until your next turn starts.",
+    "duration": "until the start of your next turn"
+   },
+   {
+    "name": "Improved Mystic Fighting Style",
+    "level": 17,
+    "srd": false,
+    "summary": "With Flurry of Blows, swap two of its Unarmed Strikes for a 1-action level 1 or 2 Sorcerer spell, cast within that same Bonus Action."
+   }
+  ],
+  "spellcasting": {
+   "ability": "WIS",
+   "list": "sorcerer",
+   "cantrips": [
+    0,
+    0,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3
+   ],
+   "prepared": [
+    0,
+    0,
+    3,
+    4,
+    4,
+    4,
+    5,
+    6,
+    6,
+    7,
+    8,
+    8,
+    9,
+    10,
+    10,
+    11,
+    11,
+    11,
+    12,
+    13
+   ],
+   "focus": "Arcane Focus",
+   "kind": "third",
+   "ritual": false,
+   "slots": [
+    [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     3,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     4,
+     3,
+     3,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   ]
+  },
+  "optionGroups": [],
+  "summary": "A monk who blends martial discipline with sorcery, trading Focus Points and spell slots back and forth."
+ },
+ {
   "slug": "warrior-of-the-open-hand",
   "name": "Warrior of the Open Hand",
   "class": "monk",
@@ -3505,7 +5933,8 @@
     "summary": "Starting the vibrations costs 4 Focus Points."
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Warriors of the Open Hand are masters of unarmed combat."
  },
  {
   "slug": "oath-of-devotion",
@@ -3600,7 +6029,8 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "The Oath of Devotion binds Paladins to the ideals of justice and order."
  },
  {
   "slug": "oath-of-glory",
@@ -3809,6 +6239,843 @@
   "summary": "A paladin who defends life, light and the natural world with primal magic."
  },
  {
+  "slug": "oath-of-the-ebon-blade",
+  "name": "Oath of the Ebon Blade",
+  "class": "paladin",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "paladin:oath-of-the-ebon-blade",
+  "features": [
+   {
+    "name": "Death Coil",
+    "level": 1,
+    "srd": false,
+    "summary": "Replaces Lay On Hands; you become Undead. A pool of d8s (1 + CHA, min 1) refills on a Long Rest. Bonus Action: spend up to CHA dice (min 1) on a creature you see within 60 ft, CON save for the total as Necrotic (half on success), or heal an Undead target by the total instead.",
+    "activation": "bonus",
+    "dice": "1d8",
+    "damageType": "Necrotic",
+    "range": 60
+   },
+   {
+    "name": "Runic Smite",
+    "level": 2,
+    "srd": false,
+    "summary": "Replaces Paladin's Smite: Rune Strike is always prepared and castable once per Long Rest without a slot.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "rune-strike",
+      "at": 2,
+      "free": {
+       "count": 1,
+       "recharge": "long"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Oath of the Ebon Blade Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Death Grip (3), Death and Decay (5), Summon Undead (9), Freedom of Movement (13), Circle of Power (17), plus the spells of your inscribed rune: Blood (Vampiric Blood, Spiritual Weapon, Leeching Strike, Evard's Black Tentacles, Bonestorm), Frost (Chains of Ice, Frostscythe, Remorseless Winter, Ice Storm, Cone of Cold) or Unholy (Scourge Strike, Ray of Enfeeblement, Bestow Curse, Blight, Contagion).",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "death-grip",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "death-and-decay",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "summon-undead",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "freedom-of-movement",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "circle-of-power",
+      "at": 17
+     }
+    ],
+    "options": [
+     {
+      "name": "Blood",
+      "summary": "With the Blood rune: Vampiric Blood (3), Spiritual Weapon (5), Leeching Strike (9), Evard's Black Tentacles (13), Bonestorm (17).",
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "vampiric-blood",
+        "at": 3
+       },
+       {
+        "kind": "spell",
+        "spell": "spiritual-weapon",
+        "at": 5
+       },
+       {
+        "kind": "spell",
+        "spell": "leeching-strike",
+        "at": 9
+       },
+       {
+        "kind": "spell",
+        "spell": "black-tentacles",
+        "at": 13
+       },
+       {
+        "kind": "spell",
+        "spell": "bonestorm",
+        "at": 17
+       }
+      ]
+     },
+     {
+      "name": "Frost",
+      "summary": "With the Frost rune: Chains of Ice (3), Frostscythe (5), Remorseless Winter (9), Ice Storm (13), Cone of Cold (17).",
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "chains-of-ice",
+        "at": 3
+       },
+       {
+        "kind": "spell",
+        "spell": "frostscythe",
+        "at": 5
+       },
+       {
+        "kind": "spell",
+        "spell": "remorseless-winter",
+        "at": 9
+       },
+       {
+        "kind": "spell",
+        "spell": "ice-storm",
+        "at": 13
+       },
+       {
+        "kind": "spell",
+        "spell": "cone-of-cold",
+        "at": 17
+       }
+      ]
+     },
+     {
+      "name": "Unholy",
+      "summary": "With the Unholy rune: Scourge Strike (3), Ray of Enfeeblement (5), Bestow Curse (9), Blight (13), Contagion (17).",
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "scourge-strike",
+        "at": 3
+       },
+       {
+        "kind": "spell",
+        "spell": "ray-of-enfeeblement",
+        "at": 5
+       },
+       {
+        "kind": "spell",
+        "spell": "bestow-curse",
+        "at": 9
+       },
+       {
+        "kind": "spell",
+        "spell": "blight",
+        "at": 13
+       },
+       {
+        "kind": "spell",
+        "spell": "contagion",
+        "at": 17
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Runeforging",
+    "level": 3,
+    "srd": false,
+    "summary": "On a Long Rest, inscribe (or move) one rune on a melee weapon you hold; swap it for another when you gain a level.",
+    "options": [
+     {
+      "name": "Blood",
+      "summary": "Gain CHA + Paladin level Temporary HP when inscribing it and on each Long Rest, and again whenever you drop an enemy to 0 HP while wielding the weapon."
+     },
+     {
+      "name": "Frost",
+      "summary": "Your weapon attacks, Paladin spells and features ignore Cold Resistance; a Light-property extra attack that hits adds 1d4 Cold.",
+      "dice": "1d4",
+      "damageType": "Cold"
+     },
+     {
+      "name": "Unholy",
+      "summary": "Your weapon attacks, Paladin spells and features ignore Necrotic Resistance; with a Heavy weapon, the first creature you hit each turn takes extra Necrotic equal to CHA (min 1).",
+      "damageType": "Necrotic"
+     }
+    ]
+   },
+   {
+    "name": "Runic Power",
+    "level": 3,
+    "srd": false,
+    "summary": "Right after casting Rune Strike, spend a Channel Divinity use for your rune's effect.",
+    "options": [
+     {
+      "name": "Blood",
+      "summary": "Heal as much as the Rune Strike's Necrotic damage."
+     },
+     {
+      "name": "Frost",
+      "summary": "The target and each enemy in a 10-ft Emanation from it take 2d6 Cold.",
+      "dice": "2d6",
+      "damageType": "Cold",
+      "range": 10
+     },
+     {
+      "name": "Unholy",
+      "summary": "Curse the target until your next turn ends: its next save takes -1d6, then the curse ends.",
+      "dice": "1d6"
+     }
+    ]
+   },
+   {
+    "name": "Faithful Steed",
+    "level": 5,
+    "srd": false,
+    "summary": "Your Find Steed mount may be Undead: its Otherworldly Slam deals Necrotic and it gains Ghostly Stride, a once-per-Long-Rest Bonus Action letting it and its rider pass through creatures and objects as Difficult Terrain (1d10 Force if a turn ends inside one).",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "find-steed",
+      "at": 5
+     }
+    ]
+   },
+   {
+    "name": "Aura of Deathly Endurance",
+    "level": 7,
+    "srd": false,
+    "summary": "Inside your Aura of Protection, you and your allies resist Cold, Necrotic and Psychic damage."
+   },
+   {
+    "name": "Runic Strikes",
+    "level": 11,
+    "srd": false,
+    "summary": "Replaces Radiant Strikes: melee weapon and Unarmed Strike hits deal an extra 1d8 Necrotic.",
+    "dice": "1d8",
+    "damageType": "Necrotic"
+   },
+   {
+    "name": "Improved Death Coil",
+    "level": 14,
+    "srd": false,
+    "summary": "Replaces Restoring Touch: Death Coil damage adds CHA (min 1) Necrotic, pass or fail; healing an Undead with it adds your Paladin level."
+   },
+   {
+    "name": "Runic Mastery",
+    "level": 15,
+    "srd": false,
+    "summary": "Once per Long Rest, unleash your rune: Blood shields an ally, Frost breathes a cone of cold, Unholy empowers Summon Undead.",
+    "uses": {
+     "count": 1,
+     "recharge": "long"
+    },
+    "options": [
+     {
+      "name": "Blood",
+      "summary": "Reaction when a creature you see within 10 ft is hit: reduce its damage by your Paladin level and lose that many HP yourself.",
+      "activation": "reaction",
+      "range": 10
+     },
+     {
+      "name": "Frost",
+      "summary": "Swap one attack of your Attack action for a 30-ft Cone: DEX save vs spell DC, 8d6 Cold, half on success.",
+      "dice": "8d6",
+      "damageType": "Cold",
+      "save": {
+       "ability": "DEX",
+       "dc": "spell"
+      },
+      "range": 30
+     },
+     {
+      "name": "Unholy",
+      "summary": "Cast Summon Undead without Concentration for 1 minute; the spirit gets Paladin level + CHA Temporary HP and its first hit each turn adds half your Paladin level (round up) Necrotic.",
+      "duration": "1 minute"
+     }
+    ]
+   },
+   {
+    "name": "Aspect of the Horsemen",
+    "level": 20,
+    "srd": false,
+    "summary": "Bonus Action for 10 minutes: restore Runic Mastery with a level 4 slot, and pick any rune's effect for Runic Power and Runic Mastery. Once per Long Rest, or restore it with a level 5 slot.",
+    "activation": "bonus",
+    "duration": "10 minutes",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "a level 5 spell slot"
+    },
+    "options": [
+     {
+      "name": "Generate Runic Power",
+      "summary": "Spend a level 4 spell slot (no action) to get back a Runic Mastery use."
+     },
+     {
+      "name": "Runeforging",
+      "summary": "Runic Power and Runic Mastery can use any rune's effect, not only your inscribed one."
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "death-grip"
+    ]
+   },
+   {
+    "level": 3,
+    "spells": [
+     "vampiric-blood"
+    ],
+    "group": "Blood"
+   },
+   {
+    "level": 3,
+    "spells": [
+     "chains-of-ice"
+    ],
+    "group": "Frost"
+   },
+   {
+    "level": 3,
+    "spells": [
+     "scourge-strike"
+    ],
+    "group": "Unholy"
+   },
+   {
+    "level": 5,
+    "spells": [
+     "death-and-decay"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "spiritual-weapon"
+    ],
+    "group": "Blood"
+   },
+   {
+    "level": 5,
+    "spells": [
+     "frostscythe"
+    ],
+    "group": "Frost"
+   },
+   {
+    "level": 5,
+    "spells": [
+     "ray-of-enfeeblement"
+    ],
+    "group": "Unholy"
+   },
+   {
+    "level": 9,
+    "spells": [
+     "summon-undead"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "leeching-strike"
+    ],
+    "group": "Blood"
+   },
+   {
+    "level": 9,
+    "spells": [
+     "remorseless-winter"
+    ],
+    "group": "Frost"
+   },
+   {
+    "level": 9,
+    "spells": [
+     "bestow-curse"
+    ],
+    "group": "Unholy"
+   },
+   {
+    "level": 13,
+    "spells": [
+     "freedom-of-movement"
+    ]
+   },
+   {
+    "level": 13,
+    "spells": [
+     "black-tentacles"
+    ],
+    "group": "Blood"
+   },
+   {
+    "level": 13,
+    "spells": [
+     "ice-storm"
+    ],
+    "group": "Frost"
+   },
+   {
+    "level": 13,
+    "spells": [
+     "blight"
+    ],
+    "group": "Unholy"
+   },
+   {
+    "level": 17,
+    "spells": [
+     "circle-of-power"
+    ]
+   },
+   {
+    "level": 17,
+    "spells": [
+     "bonestorm"
+    ],
+    "group": "Blood"
+   },
+   {
+    "level": 17,
+    "spells": [
+     "cone-of-cold"
+    ],
+    "group": "Frost"
+   },
+   {
+    "level": 17,
+    "spells": [
+     "contagion"
+    ],
+    "group": "Unholy"
+   }
+  ],
+  "optionGroups": [],
+  "summary": "An undead death knight paladin who wields runes, necrotic power and cold against the Scourge."
+ },
+ {
+  "slug": "oath-of-the-holy",
+  "name": "Oath of the Holy",
+  "class": "paladin",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "paladin:oath-of-the-holy",
+  "features": [
+   {
+    "name": "Oath of the Holy Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Cure Wounds and Healing Word at Paladin 3; Lesser Restoration and Prayer of Healing at 5; Dispel Magic and Mass Healing Word at 9; Aura of Life and Death Ward at 13; Greater Restoration and Mass Cure Wounds at 17.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "cure-wounds",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "healing-word",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "lesser-restoration",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "prayer-of-healing",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "dispel-magic",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "mass-healing-word",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "aura-of-life",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "death-ward",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "greater-restoration",
+      "at": 17
+     },
+     {
+      "kind": "spell",
+      "spell": "mass-cure-wounds",
+      "at": 17
+     }
+    ]
+   },
+   {
+    "name": "Beacon of Light",
+    "level": 3,
+    "srd": false,
+    "summary": "Magic action, spend a Channel Divinity use on an ally within 60 ft: for 1 minute, when your spells or Lay On Hands heal someone else, that ally heals half as much.",
+    "activation": "magic",
+    "range": 60,
+    "duration": "1 minute"
+   },
+   {
+    "name": "Lightbringer’s Aura",
+    "level": 7,
+    "srd": false,
+    "summary": "Healing a Bloodied creature in your Aura of Protection with a spell or Lay On Hands adds 1d6 HP.",
+    "dice": "1d6"
+   },
+   {
+    "name": "Infusion of Light",
+    "level": 15,
+    "srd": false,
+    "summary": "Casting a Radiant-damage spell refills your Lay On Hands pool by the Radiant damage rolled, up to five times your Paladin level."
+   },
+   {
+    "name": "Holy Deliverance",
+    "level": 20,
+    "srd": false,
+    "summary": "Bonus Action for 10 minutes: your Aura of Protection sheds sunlight and heals Bloodied allies who start their turn in it by CHA + PB. Once per Long Rest, or restore it with a level 5 slot.",
+    "activation": "bonus",
+    "duration": "10 minutes",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "a level 5 spell slot"
+    },
+    "options": [
+     {
+      "name": "Healing Power",
+      "summary": "An ally that begins its turn Bloodied in the aura heals CHA + PB."
+     },
+     {
+      "name": "Sunlight",
+      "summary": "The aura is lit with Bright Light that counts as sunlight."
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "cure-wounds",
+     "healing-word"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "lesser-restoration",
+     "prayer-of-healing"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "dispel-magic",
+     "mass-healing-word"
+    ]
+   },
+   {
+    "level": 13,
+    "spells": [
+     "aura-of-life",
+     "death-ward"
+    ]
+   },
+   {
+    "level": 17,
+    "spells": [
+     "greater-restoration",
+     "mass-cure-wounds"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A paladin devoted to healing and support, channelling the Light to keep allies standing."
+ },
+ {
+  "slug": "oath-of-the-noble-genies",
+  "name": "Oath of the Noble Genies",
+  "class": "paladin",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "paladin:oath-of-the-noble-genies",
+  "features": [
+   {
+    "name": "Elemental Smite",
+    "level": 3,
+    "srd": false,
+    "summary": "Right after casting Divine Smite, spend a Channel Divinity use for one genie effect: grapple and restrain the target, teleport and turn semi-incorporeal, spread 2d4 Fire to a second creature, or knock foes back and Prone.",
+    "options": [
+     {
+      "name": "Dao’s Crush",
+      "summary": "The target is Grappled (escape DC = your spell save DC) and Restrained while Grappled."
+     },
+     {
+      "name": "Djinni’s Escape",
+      "summary": "Teleport up to 30 ft to a space you see; until the end of your next turn, resist Bludgeoning, Piercing and Slashing and ignore Grappled, Prone and Restrained.",
+      "range": 30,
+      "grants": [
+       {
+        "kind": "resistance",
+        "value": "Bludgeoning"
+       },
+       {
+        "kind": "resistance",
+        "value": "Piercing"
+       },
+       {
+        "kind": "resistance",
+        "value": "Slashing"
+       }
+      ]
+     },
+     {
+      "name": "Efreeti’s Fury",
+      "summary": "The target takes an extra 2d4 Fire, and another creature you see within 30 ft takes 2d4 Fire too.",
+      "dice": "2d4",
+      "damageType": "Fire",
+      "range": 30
+     },
+     {
+      "name": "Marid’s Surge",
+      "summary": "The target and chosen creatures in a 10-ft Emanation make a STR save; on a failure they're pushed 15 ft away and knocked Prone.",
+      "save": {
+       "ability": "STR",
+       "dc": "spell"
+      },
+      "range": 10
+     }
+    ]
+   },
+   {
+    "name": "Genie Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Chromatic Orb, Elementalism and Thunderous Smite at Paladin 3; Mirror Image and Phantasmal Force at 5; Fly and Gaseous Form at 9; Conjure Minor Elementals and Summon Elemental at 13; Banishing Smite and Contact Other Plane at 17.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "chromatic-orb",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "elementalism",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "thunderous-smite",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "mirror-image",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "phantasmal-force",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "fly",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "gaseous-form",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "conjure-minor-elementals",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "summon-elemental",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "banishing-smite",
+      "at": 17
+     },
+     {
+      "kind": "spell",
+      "spell": "contact-other-plane",
+      "at": 17
+     }
+    ]
+   },
+   {
+    "name": "Genie’s Splendor",
+    "level": 3,
+    "srd": false,
+    "summary": "Unarmored AC is 10 + DEX + CHA, and a Shield still stacks. Gain one of Acrobatics, Intimidation, Performance or Persuasion.",
+    "grants": [
+     {
+      "kind": "ac",
+      "formula": "10 + DEX + CHA"
+     }
+    ],
+    "choices": [
+     {
+      "kind": "skill",
+      "count": 1,
+      "from": [
+       "Acrobatics",
+       "Intimidation",
+       "Performance",
+       "Persuasion"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Aura of Elemental Shielding",
+    "level": 7,
+    "srd": false,
+    "summary": "You and allies in your Aura of Protection resist one of Acid, Cold, Fire, Lightning or Thunder; you can switch the type at the start of each of your turns.",
+    "choices": [
+     {
+      "kind": "damageType",
+      "count": 1,
+      "from": [
+       "Acid",
+       "Cold",
+       "Fire",
+       "Lightning",
+       "Thunder"
+      ],
+      "label": "Elemental Shielding"
+     }
+    ]
+   },
+   {
+    "name": "Elemental Rebuke",
+    "level": 15,
+    "srd": false,
+    "summary": "Reaction when an attack roll hits you: halve its damage and the attacker makes a DEX save, taking 2d10 + CHA Acid, Cold, Fire, Lightning or Thunder (half on a success). CHA modifier uses (min 1) per Long Rest.",
+    "activation": "reaction",
+    "uses": {
+     "count": "CHA",
+     "recharge": "long"
+    },
+    "dice": "2d10",
+    "save": {
+     "ability": "DEX",
+     "dc": "spell"
+    }
+   },
+   {
+    "name": "Noble Scion",
+    "level": 20,
+    "srd": false,
+    "summary": "Bonus Action: for 10 minutes gain a 60-ft Fly Speed with hover, and by Reaction turn a failed D20 Test into a success for you or an ally within your Aura of Protection. Once per Long Rest, or restore it with a level 5 slot.",
+    "activation": "bonus",
+    "duration": "10 minutes",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "a level 5 spell slot"
+    },
+    "options": [
+     {
+      "name": "Flight",
+      "summary": "Fly Speed 60 ft; you can hover."
+     },
+     {
+      "name": "Minor Wish",
+      "summary": "Reaction when you, or an ally within your Aura of Protection, fail a D20 Test: it becomes a success.",
+      "activation": "reaction"
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "chromatic-orb",
+     "elementalism",
+     "thunderous-smite"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "mirror-image",
+     "phantasmal-force"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "fly",
+     "gaseous-form"
+    ]
+   },
+   {
+    "level": 13,
+    "spells": [
+     "conjure-minor-elementals",
+     "summon-elemental"
+    ]
+   },
+   {
+    "level": 17,
+    "spells": [
+     "banishing-smite",
+     "contact-other-plane"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Paladin sworn to the four genie lords of the Elemental Planes, wielding earth, air, fire and water through their smites."
+ },
+ {
   "slug": "oath-of-vengeance",
   "name": "Oath of Vengeance",
   "class": "paladin",
@@ -3985,6 +7252,446 @@
   ],
   "optionGroups": [],
   "summary": "A ranger bonded to a primal beast that fights at their command."
+ },
+ {
+  "slug": "demon-hunter",
+  "name": "Demon Hunter",
+  "class": "ranger",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "ranger:demon-hunter",
+  "features": [
+   {
+    "name": "Spellcasting",
+    "level": 1,
+    "srd": false,
+    "summary": "An Arcane Focus (not a Druidic one) works as your Ranger spellcasting focus."
+   },
+   {
+    "name": "Deft Explorer",
+    "level": 2,
+    "srd": false,
+    "summary": "Deft Explorer languages come from the book's chapter 2 tables; Eredun and Nathrezim are suggested."
+   },
+   {
+    "name": "Fighting Style",
+    "level": 2,
+    "srd": false,
+    "summary": "Pick a Fighting Style feat, Druidic Warrior, or Void Warrior: two Warlock cantrips (Chill Touch and Mind Sliver suggested) cast as Ranger spells with WIS, one swappable per Ranger level.",
+    "options": [
+     {
+      "name": "Void Warrior",
+      "summary": "Learn two Warlock cantrips as Ranger spells, WIS casting; swap one for another Warlock cantrip each Ranger level.",
+      "choices": [
+       {
+        "kind": "cantrip",
+        "count": 2,
+        "list": "warlock",
+        "label": "Void Warrior"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Demon Hunter Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Throw Glaive (3), Sigil of Flame (5), Metamorphosis (9), Chaos Nova (13), Destructive Wave (17), plus one column of your choice: Devourer (Consume Soul, Misty Step, Soul Reap, Collapsing Star, Steel Wind Strike), Havoc (Fel Rush, Eye Beam, Blink, Fire Shield, Conjure Volley) or Vengeance (Infernal Strike, Fiery Brand, Demon Spikes, Banishment, Sigil of Chains).",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "throw-glaive",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "sigil-of-flame",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "metamorphosis",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "chaos-nova",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "destructive-wave",
+      "at": 17
+     }
+    ],
+    "options": [
+     {
+      "name": "Devourer",
+      "summary": "Consume Soul (3), Misty Step (5), Soul Reap (9), Collapsing Star (13), Steel Wind Strike (17).",
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "consume-soul",
+        "at": 3
+       },
+       {
+        "kind": "spell",
+        "spell": "misty-step",
+        "at": 5
+       },
+       {
+        "kind": "spell",
+        "spell": "soul-reap",
+        "at": 9
+       },
+       {
+        "kind": "spell",
+        "spell": "collapsing-star",
+        "at": 13
+       },
+       {
+        "kind": "spell",
+        "spell": "steel-wind-strike",
+        "at": 17
+       }
+      ]
+     },
+     {
+      "name": "Havoc",
+      "summary": "Fel Rush (3), Eye Beam (5), Blink (9), Fire Shield (13), Conjure Volley (17).",
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "fel-rush",
+        "at": 3
+       },
+       {
+        "kind": "spell",
+        "spell": "eye-beam",
+        "at": 5
+       },
+       {
+        "kind": "spell",
+        "spell": "blink",
+        "at": 9
+       },
+       {
+        "kind": "spell",
+        "spell": "fire-shield",
+        "at": 13
+       },
+       {
+        "kind": "spell",
+        "spell": "conjure-volley",
+        "at": 17
+       }
+      ]
+     },
+     {
+      "name": "Vengeance",
+      "summary": "Infernal Strike (3), Fiery Brand (5), Demon Spikes (9), Banishment (13), Sigil of Chains (17).",
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "infernal-strike",
+        "at": 3
+       },
+       {
+        "kind": "spell",
+        "spell": "fiery-brand",
+        "at": 5
+       },
+       {
+        "kind": "spell",
+        "spell": "demon-spikes",
+        "at": 9
+       },
+       {
+        "kind": "spell",
+        "spell": "banishment",
+        "at": 13
+       },
+       {
+        "kind": "spell",
+        "spell": "sigil-of-chains",
+        "at": 17
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Soul Fragments",
+    "level": 3,
+    "srd": false,
+    "summary": "Each Long Rest gives WIS-modifier soul fragments (min 1; +1 at Ranger 13, +2 at 17) that last until the next Long Rest and return to you past 30 ft; save DCs use your spell DC. Reaction when an enemy you see within 30 ft dies: regain one.",
+    "uses": {
+     "count": "WIS",
+     "recharge": "long"
+    },
+    "save": {
+     "ability": "DEX",
+     "dc": "spell"
+    },
+    "options": [
+     {
+      "name": "Double Jump",
+      "summary": "One fragment: cast Feather Fall or Jump with no slot.",
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "feather-fall",
+        "at": 3
+       },
+       {
+        "kind": "spell",
+        "spell": "jump",
+        "at": 3
+       }
+      ]
+     },
+     {
+      "name": "Soul Cleave",
+      "summary": "Once per turn in the Attack action, one fragment replaces an attack: creatures in a 10-ft Emanation make a DEX save or take 1d12 + WIS Psychic, and you heal WIS.",
+      "dice": "1d12",
+      "damageType": "Psychic",
+      "save": {
+       "ability": "DEX",
+       "dc": "spell"
+      },
+      "range": 10
+     },
+     {
+      "name": "Regaining Soul Fragments",
+      "summary": "Reaction when an enemy you see within 30 ft dies: get back one spent fragment.",
+      "activation": "reaction",
+      "range": 30
+     }
+    ]
+   },
+   {
+    "name": "Spectral Sight",
+    "level": 3,
+    "srd": false,
+    "summary": "Blindsight 10 ft.",
+    "grants": [
+     {
+      "kind": "sense",
+      "value": "Blindsight",
+      "range": 10
+     }
+    ]
+   },
+   {
+    "name": "Torment",
+    "level": 7,
+    "srd": false,
+    "summary": "Your Hunter's Mark target has Disadvantage attacking anyone but you; once per turn, hitting it with a weapon or Ranger spell adds Aura of Pain (-1d4 on its next save before your next turn ends) or Chaos Strike (+1d8 Fire).",
+    "uses": {
+     "count": 1,
+     "recharge": "turn"
+    },
+    "options": [
+     {
+      "name": "Aura of Pain",
+      "summary": "Its next save before the end of your next turn takes -1d4.",
+      "dice": "1d4"
+     },
+     {
+      "name": "Chaos Strike",
+      "summary": "It takes an extra 1d8 Fire.",
+      "dice": "1d8",
+      "damageType": "Fire"
+     }
+    ]
+   },
+   {
+    "name": "Illidari Knowledge",
+    "level": 11,
+    "srd": false,
+    "summary": "New fragment uses: two fragments to cast Counterspell; one fragment and a Bonus Action to cast Throw Glaive with no slot.",
+    "options": [
+     {
+      "name": "Disrupt",
+      "summary": "Spend two fragments to cast Counterspell when its trigger occurs.",
+      "activation": "reaction",
+      "grants": [
+       {
+        "kind": "spell",
+        "spell": "counterspell",
+        "at": 11
+       }
+      ]
+     },
+     {
+      "name": "Warglaive Mastery",
+      "summary": "Bonus Action, one fragment: cast Throw Glaive without a slot.",
+      "activation": "bonus"
+     }
+    ]
+   },
+   {
+    "name": "Soul Shatter",
+    "level": 15,
+    "srd": false,
+    "summary": "Soul Cleave deals 2d12 + WIS; rolling Initiative with no fragments left gives you one.",
+    "dice": "2d12",
+    "damageType": "Psychic"
+   },
+   {
+    "name": "Improved Spectral Sight",
+    "level": 18,
+    "srd": false,
+    "summary": "Replaces Feral Senses: Truesight 30 ft.",
+    "grants": [
+     {
+      "kind": "sense",
+      "value": "Truesight",
+      "range": 30
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "throw-glaive"
+    ]
+   },
+   {
+    "level": 3,
+    "spells": [
+     "consume-soul"
+    ],
+    "group": "Devourer"
+   },
+   {
+    "level": 3,
+    "spells": [
+     "fel-rush"
+    ],
+    "group": "Havoc"
+   },
+   {
+    "level": 3,
+    "spells": [
+     "infernal-strike"
+    ],
+    "group": "Vengeance"
+   },
+   {
+    "level": 5,
+    "spells": [
+     "sigil-of-flame"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "misty-step"
+    ],
+    "group": "Devourer"
+   },
+   {
+    "level": 5,
+    "spells": [
+     "eye-beam"
+    ],
+    "group": "Havoc"
+   },
+   {
+    "level": 5,
+    "spells": [
+     "fiery-brand"
+    ],
+    "group": "Vengeance"
+   },
+   {
+    "level": 9,
+    "spells": [
+     "metamorphosis"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "soul-reap"
+    ],
+    "group": "Devourer"
+   },
+   {
+    "level": 9,
+    "spells": [
+     "blink"
+    ],
+    "group": "Havoc"
+   },
+   {
+    "level": 9,
+    "spells": [
+     "demon-spikes"
+    ],
+    "group": "Vengeance"
+   },
+   {
+    "level": 13,
+    "spells": [
+     "chaos-nova"
+    ]
+   },
+   {
+    "level": 13,
+    "spells": [
+     "collapsing-star"
+    ],
+    "group": "Devourer"
+   },
+   {
+    "level": 13,
+    "spells": [
+     "fire-shield"
+    ],
+    "group": "Havoc"
+   },
+   {
+    "level": 13,
+    "spells": [
+     "banishment"
+    ],
+    "group": "Vengeance"
+   },
+   {
+    "level": 17,
+    "spells": [
+     "destructive-wave"
+    ]
+   },
+   {
+    "level": 17,
+    "spells": [
+     "steel-wind-strike"
+    ],
+    "group": "Devourer"
+   },
+   {
+    "level": 17,
+    "spells": [
+     "conjure-volley"
+    ],
+    "group": "Havoc"
+   },
+   {
+    "level": 17,
+    "spells": [
+     "sigil-of-chains"
+    ],
+    "group": "Vengeance"
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A ranger who takes the Burning Legion's fel magic into themselves to hunt demons, fuelled by harvested soul fragments."
  },
  {
   "slug": "fey-wanderer",
@@ -4226,6 +7933,168 @@
   "summary": "A ranger who ambushes foes from the dark with shadow magic and dread."
  },
  {
+  "slug": "hollow-warden",
+  "name": "Hollow Warden",
+  "class": "ranger",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "ranger:hollow-warden",
+  "features": [
+   {
+    "name": "Hollow Warden Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Wrathful Smite at Ranger 3, Alter Self at 5, Phantom Steed at 9, Dominate Beast at 13, Steel Wind Strike at 17.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "wrathful-smite",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "alter-self",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "phantom-steed",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "dominate-beast",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "steel-wind-strike",
+      "at": 17
+     }
+    ]
+   },
+   {
+    "name": "Wrath of the Wild",
+    "level": 3,
+    "srd": false,
+    "summary": "Bonus Action, 1 Favored Enemy use: take a ghastly form for 1 minute (ends if Incapacitated or you die, or at will). You gain +1 AC (+2 at Ranger 11), an Opportunity Attack against a creature within 5 ft right after it damages you or an ally, and an aura that makes chosen creatures within 10 ft save (WIS) or be Frightened, on transforming and each turn start.",
+    "activation": "bonus",
+    "duration": "1 minute",
+    "options": [
+     {
+      "name": "Ancient Armor",
+      "summary": "+1 AC while transformed, +2 from Ranger 11."
+     },
+     {
+      "name": "Prowling Retribution",
+      "summary": "Right after a creature you see within 5 ft damages you or an ally, make an Opportunity Attack against it."
+     },
+     {
+      "name": "Unnerving Aura",
+      "summary": "On transforming and at each of your turn starts, chosen creatures in a 10-ft Emanation make a WIS save or are Frightened until your next turn starts.",
+      "save": {
+       "ability": "WIS",
+       "dc": "spell"
+      },
+      "range": 10
+     }
+    ]
+   },
+   {
+    "name": "Hungering Might",
+    "level": 7,
+    "srd": false,
+    "summary": "Add WIS (min +1) to CON saves. Once per turn while transformed and Bloodied, an attack hit heals you 1d10 + WIS.",
+    "dice": "1d10",
+    "uses": {
+     "count": 1,
+     "recharge": "turn"
+    }
+   },
+   {
+    "name": "Rot and Violence",
+    "level": 11,
+    "srd": false,
+    "summary": "While transformed: creatures failing your Unnerving Aura save also can’t heal or take Reactions until your next turn starts, and weapon hits can trigger Sap or Slow on top of the weapon’s other mastery.",
+    "options": [
+     {
+      "name": "Menacing Aura",
+      "summary": "A failed Unnerving Aura save also blocks healing and Reactions until your next turn starts."
+     },
+     {
+      "name": "Strangling Roots",
+      "summary": "A weapon hit can apply Sap or Slow in addition to the weapon’s own (different) mastery property."
+     }
+    ]
+   },
+   {
+    "name": "Ancient Might",
+    "level": 15,
+    "srd": false,
+    "summary": "Hits on Frightened creatures add WIS damage. Dropping to 0 HP (not killed) while transformed sets your HP to 2× Ranger level instead, once per Long Rest or by spending a level 4+ slot. Immune to Exhaustion.",
+    "grants": [
+     {
+      "kind": "conditionImmunity",
+      "value": "Exhaustion"
+     }
+    ],
+    "options": [
+     {
+      "name": "Ominous Strikes",
+      "summary": "An attack hit on a Frightened creature deals extra damage equal to your WIS."
+     },
+     {
+      "name": "Persistent Wrath",
+      "summary": "At 0 HP but not killed while transformed, your HP becomes twice your Ranger level. Once per Long Rest; a level 4+ slot restores it.",
+      "uses": {
+       "count": 1,
+       "recharge": "long",
+       "restore": "a level 4+ spell slot"
+      }
+     },
+     {
+      "name": "Timeless",
+      "summary": "Immunity to the Exhaustion condition."
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "wrathful-smite"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "alter-self"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "phantom-steed"
+    ]
+   },
+   {
+    "level": 13,
+    "spells": [
+     "dominate-beast"
+    ]
+   },
+   {
+    "level": 17,
+    "spells": [
+     "steel-wind-strike"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Ranger sworn to ancient wild horrors who turns into a monstrous, fear-spreading guardian."
+ },
+ {
   "slug": "hunter",
   "name": "Hunter",
   "class": "ranger",
@@ -4315,7 +8184,198 @@
     "activation": "reaction"
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "You stalk prey in the wilds and elsewhere, using your abilities as a Hunter to protect nature and people everywhere from forces that would destroy them."
+ },
+ {
+  "slug": "winter-walker",
+  "name": "Winter Walker",
+  "class": "ranger",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "ranger:winter-walker",
+  "features": [
+   {
+    "name": "Frigid Explorer",
+    "level": 3,
+    "srd": false,
+    "summary": "Resist Cold; Cold you deal with weapon attacks, Ranger spells or Ranger features ignores Cold Resistance. Once per turn a weapon hit can add 1d4 Cold (1d6 from Ranger 11).",
+    "grants": [
+     {
+      "kind": "resistance",
+      "value": "Cold"
+     }
+    ],
+    "options": [
+     {
+      "name": "Biting Cold",
+      "summary": "Cold you deal with weapon attacks, Ranger spells or Ranger features ignores Resistance."
+     },
+     {
+      "name": "Frost Resistance",
+      "summary": "Resistance to Cold damage."
+     },
+     {
+      "name": "Polar Strikes",
+      "summary": "Once per turn, a weapon attack hit can deal an extra 1d4 Cold; 1d6 at Ranger 11.",
+      "dice": "1d4",
+      "damageType": "Cold",
+      "uses": {
+       "count": 1,
+       "recharge": "turn"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Hunter’s Rime",
+    "level": 3,
+    "srd": false,
+    "summary": "Casting Hunter's Mark grants 1d10 + Ranger level Temporary HP, and a creature you've marked can't take the Disengage action.",
+    "dice": "1d10"
+   },
+   {
+    "name": "Winter Walker Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Ice Knife at Ranger 3, Hold Person at 5, Remove Curse at 9, Ice Storm at 13, Cone of Cold at 17.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "ice-knife",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "hold-person",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "remove-curse",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "ice-storm",
+      "at": 13
+     },
+     {
+      "kind": "spell",
+      "spell": "cone-of-cold",
+      "at": 17
+     }
+    ]
+   },
+   {
+    "name": "Fortifying Soul",
+    "level": 7,
+    "srd": false,
+    "summary": "Magic action: up to WIS modifier creatures you see (min 1) each heal 1d10 + Ranger level and get Advantage on saves against Frightened for 1 hour. Once per Long Rest.",
+    "activation": "magic",
+    "uses": {
+     "count": 1,
+     "recharge": "long"
+    },
+    "dice": "1d10",
+    "duration": "1 hour"
+   },
+   {
+    "name": "Chilling Retribution",
+    "level": 11,
+    "srd": false,
+    "summary": "Reaction when a creature's attack roll hits you: it makes a WIS save or is Stunned, with Speed 0, until the end of your next turn. WIS modifier uses (min 1) per Long Rest.",
+    "activation": "reaction",
+    "uses": {
+     "count": "WIS",
+     "recharge": "long"
+    },
+    "save": {
+     "ability": "WIS",
+     "dc": "spell"
+    }
+   },
+   {
+    "name": "Frozen Haunt",
+    "level": 15,
+    "srd": false,
+    "summary": "When you cast Hunter's Mark, take a ghostly snow form for the spell's duration: Cold immunity, 2d4 Cold to chosen creatures in a 15-ft Emanation as it starts and each turn, and you pass through creatures and objects. Once per Long Rest, or restore it with a level 4+ slot.",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "a level 4+ spell slot"
+    },
+    "options": [
+     {
+      "name": "Frozen Soul",
+      "summary": "Immune to Cold. On entering the form and at the start of each later turn, chosen creatures in a 15-ft Emanation take 2d4 Cold.",
+      "dice": "2d4",
+      "damageType": "Cold",
+      "range": 15,
+      "grants": [
+       {
+        "kind": "immunity",
+        "value": "Cold"
+       }
+      ]
+     },
+     {
+      "name": "Partially Incorporeal",
+      "summary": "Immune to Grappled, Prone and Restrained. Move through creatures and objects as Difficult Terrain, taking 1d10 Force if you end a turn inside one; when the form ends you're pushed to the nearest free space.",
+      "dice": "1d10",
+      "damageType": "Force",
+      "grants": [
+       {
+        "kind": "conditionImmunity",
+        "value": "Grappled"
+       },
+       {
+        "kind": "conditionImmunity",
+        "value": "Prone"
+       },
+       {
+        "kind": "conditionImmunity",
+        "value": "Restrained"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "ice-knife"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "hold-person"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "remove-curse"
+    ]
+   },
+   {
+    "level": 13,
+    "spells": [
+     "ice-storm"
+    ]
+   },
+   {
+    "level": 17,
+    "spells": [
+     "cone-of-cold"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A hunter of the frozen north, like Icewind Dale, who wears rime as armour and turns the cold on its quarry."
  },
  {
   "slug": "arcane-trickster",
@@ -4709,6 +8769,233 @@
   "summary": "A Rogue built for ambushes, poison and disguise, striking hardest before foes can act."
  },
  {
+  "slug": "phantom",
+  "name": "Phantom",
+  "class": "rogue",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "rogue:phantom",
+  "features": [
+   {
+    "name": "Wails from the Grave",
+    "level": 3,
+    "srd": false,
+    "summary": "Right after dealing Sneak Attack on your turn, a second creature you see within 30 ft of the first takes Necrotic damage from half your Sneak Attack dice (round up). DEX-mod uses (min 1) per Long Rest.",
+    "damageType": "Necrotic",
+    "range": 30,
+    "uses": {
+     "count": "DEX",
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Whispers of the Dead",
+    "level": 3,
+    "srd": false,
+    "summary": "After each Short or Long Rest, gain one skill or tool proficiency you lack; it lasts until you pick another."
+   },
+   {
+    "name": "Tokens of the Departed",
+    "level": 9,
+    "srd": false,
+    "summary": "Hold two soul trinkets (3 at Rogue 13, 4 at 17) that return to you past 30 ft; refill to two each Long Rest, or gain one by Reaction when a creature you see dies within 30 ft. While you hold one you have Advantage on Death and CON saves; destroy one to fire a free Wails from the Grave after Sneak Attack, or (Magic action) to cast Augury with CON or question its spirit.",
+    "options": [
+     {
+      "name": "Death’s Knell",
+      "summary": "After dealing Sneak Attack on your turn, destroy a trinket to use Wails from the Grave without spending a use."
+     },
+     {
+      "name": "Life Essence",
+      "summary": "With at least one trinket, Advantage on Death Saving Throws and CON saves."
+     },
+     {
+      "name": "Spirit Query",
+      "summary": "Magic action: destroy a trinket to cast Augury without components (CON as the ability), or ask its known spirit one question.",
+      "activation": "magic"
+     },
+     {
+      "name": "Gaining Additional Soul Trinkets",
+      "summary": "Reaction when a creature you see within 30 ft dies: gain a trinket, replacing one if at your maximum.",
+      "activation": "reaction",
+      "range": 30
+     }
+    ]
+   },
+   {
+    "name": "Voice of Death",
+    "level": 9,
+    "srd": false,
+    "summary": "Cast Speak with Dead once per Short or Long Rest without a slot or components (DEX as the ability), and target a soul trinket in place of a corpse.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "speak-with-dead",
+      "free": {
+       "count": 1,
+       "recharge": "short"
+      }
+     }
+    ],
+    "uses": {
+     "count": 1,
+     "recharge": "short"
+    }
+   },
+   {
+    "name": "Ghost Walk",
+    "level": 13,
+    "srd": false,
+    "summary": "Bonus Action: spectral form for 10 minutes: Fly 10 ft with hover, attacks against you have Disadvantage, and move through creatures and objects as Difficult Terrain (1d10 Force if you end a turn inside). Once per Long Rest; destroying a trinket restores it.",
+    "activation": "bonus",
+    "duration": "10 minutes",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "destroy a soul trinket"
+    },
+    "grants": [
+     {
+      "kind": "speed",
+      "value": "fly",
+      "amount": 10
+     }
+    ]
+   },
+   {
+    "name": "Death’s Friend",
+    "level": 17,
+    "srd": false,
+    "summary": "Wails from the Grave can hit the first creature with its Necrotic damage too, and rolling Initiative with no trinkets gives you one.",
+    "options": [
+     {
+      "name": "Death’s Lament",
+      "summary": "Wails from the Grave damages both the Sneak Attack target and the second creature."
+     },
+     {
+      "name": "Draw of Death",
+      "summary": "On rolling Initiative with no soul trinkets, gain one."
+     }
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Rogue tied to death who spreads Sneak Attack as ghostly wails and carries trinkets holding fragments of souls."
+ },
+ {
+  "slug": "scion-of-the-three",
+  "name": "Scion of the Three",
+  "class": "rogue",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "rogue:scion-of-the-three",
+  "features": [
+   {
+    "name": "Bloodthirst",
+    "level": 3,
+    "srd": false,
+    "summary": "Reaction when an enemy you see within 30 ft is left Bloodied but alive by damage: teleport next to it and make one melee attack. INT modifier uses (min 1) per Long Rest.",
+    "activation": "reaction",
+    "uses": {
+     "count": "INT",
+     "recharge": "long"
+    },
+    "range": 30
+   },
+   {
+    "name": "Dread Allegiance",
+    "level": 3,
+    "srd": false,
+    "summary": "Pick one of the Dead Three for a damage Resistance and a cantrip (INT): Bane, Psychic and Minor Illusion; Bhaal, Poison and Blade Ward; Myrkul, Necrotic and Chill Touch. You can switch after a Long Rest.",
+    "options": [
+     {
+      "name": "Bane",
+      "summary": "Resistance to Psychic; Minor Illusion cantrip.",
+      "grants": [
+       {
+        "kind": "resistance",
+        "value": "Psychic"
+       },
+       {
+        "kind": "spell",
+        "spell": "minor-illusion"
+       }
+      ]
+     },
+     {
+      "name": "Bhaal",
+      "summary": "Resistance to Poison; Blade Ward cantrip.",
+      "grants": [
+       {
+        "kind": "resistance",
+        "value": "Poison"
+       },
+       {
+        "kind": "spell",
+        "spell": "blade-ward"
+       }
+      ]
+     },
+     {
+      "name": "Myrkul",
+      "summary": "Resistance to Necrotic; Chill Touch cantrip.",
+      "grants": [
+       {
+        "kind": "resistance",
+        "value": "Necrotic"
+       },
+       {
+        "kind": "spell",
+        "spell": "chill-touch"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Strike Fear",
+    "level": 9,
+    "srd": false,
+    "summary": "New Cunning Strike, Terrify (cost 1d6): the target makes a WIS save or is Frightened for 1 minute, giving you Advantage on attacks against it; it repeats the save at the end of each of its turns.",
+    "options": [
+     {
+      "name": "Terrify",
+      "summary": "Cost 1d6. WIS save or Frightened for 1 minute (repeat the save each turn end); you have Advantage on attacks against it meanwhile.",
+      "save": {
+       "ability": "WIS",
+       "dc": "8+PB+DEX"
+      },
+      "duration": "1 minute"
+     }
+    ]
+   },
+   {
+    "name": "Aura of Malevolence",
+    "level": 13,
+    "srd": false,
+    "summary": "When Bloodthirst teleports you, chosen creatures within 10 ft of your start or end space take INT modifier damage of your Dread Allegiance type, ignoring Resistance.",
+    "range": 10
+   },
+   {
+    "name": "Dread Incarnate",
+    "level": 17,
+    "srd": false,
+    "summary": "A Short Rest restores one Bloodthirst use, and Sneak Attack dice that roll 1 or 2 count as 3.",
+    "options": [
+     {
+      "name": "Cutthroat",
+      "summary": "Regain one spent Bloodthirst use on a Short Rest."
+     },
+     {
+      "name": "Murderous Intent",
+      "summary": "Treat 1s and 2s on Sneak Attack dice as 3s."
+     }
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Rogue empowered, by devotion or by curse, by the Dead Three (Bane, Bhaal and Myrkul), who preys on the wounded and spreads terror."
+ },
+ {
   "slug": "soulknife",
   "name": "Soulknife",
   "class": "rogue",
@@ -4798,6 +9085,80 @@
   "summary": "A Rogue whose inner psionic power forms blades of mental energy and fuels telepathy and teleportation."
  },
  {
+  "slug": "swashbuckler",
+  "name": "Swashbuckler",
+  "class": "rogue",
+  "srd": false,
+  "source": "World of Warcraft",
+  "wiki": "rogue:swashbuckler",
+  "features": [
+   {
+    "name": "Fancy Footwork",
+    "level": 3,
+    "srd": false,
+    "summary": "After you roll a melee attack against a creature on your turn, it can't make Opportunity Attacks on you until that turn ends."
+   },
+   {
+    "name": "Rakish Audacity",
+    "level": 3,
+    "srd": false,
+    "summary": "Add CHA to Initiative rolls. Sneak Attack also works without Advantage when your target is within 5 ft, nobody else is within 5 ft of you, and you lack Disadvantage."
+   },
+   {
+    "name": "Panache",
+    "level": 9,
+    "srd": false,
+    "summary": "New Cunning Strike options: Goad (1d6) and Awe (3d6).",
+    "options": [
+     {
+      "name": "Goad",
+      "summary": "Cost 1d6. Target fails a WIS save: until its next turn ends it has Disadvantage attacking others and can make Opportunity Attacks only against you.",
+      "save": {
+       "ability": "WIS",
+       "dc": "8+PB+DEX"
+      }
+     },
+     {
+      "name": "Awe",
+      "summary": "Cost 3d6. Creatures you choose within 30 ft make a WIS save or are Charmed until your next turn ends.",
+      "save": {
+       "ability": "WIS",
+       "dc": "8+PB+DEX"
+      },
+      "range": 30
+     }
+    ]
+   },
+   {
+    "name": "Dashing Strikes",
+    "level": 13,
+    "srd": false,
+    "summary": "New Cunning Strike options: Invigorate (2d6) and Parrying Stance (2d6).",
+    "options": [
+     {
+      "name": "Invigorate",
+      "summary": "Cost 2d6. A creature you see within 30 ft adds 1d6 to its attack rolls and saves until its next turn ends.",
+      "dice": "1d6",
+      "range": 30
+     },
+     {
+      "name": "Parrying Stance",
+      "summary": "Cost 2d6. Roll 1d6 and add it to your AC until your next turn starts.",
+      "dice": "1d6"
+     }
+    ]
+   },
+   {
+    "name": "Master Duelist",
+    "level": 17,
+    "srd": false,
+    "summary": "Right after a Sneak Attack, make another attack on that target if it is within 5 ft and no one else is within 5 ft of you."
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A rogue duellist who fights with flair, speed and charm, at their best one-on-one."
+ },
+ {
   "slug": "thief",
   "name": "Thief",
   "class": "rogue",
@@ -4864,7 +9225,8 @@
     "text": "You are adept at laying ambushes and quickly escaping danger. You can take two turns during the first round of any combat. You take your first turn at your normal Initiative and your second turn at your Initiative minus 10."
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "A mix of burglar, treasure hunter, and explorer, you are the epitome of an adventurer."
  },
  {
   "slug": "aberrant-sorcery",
@@ -5203,7 +9565,357 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Your innate magic comes from the gift of a dragon."
+ },
+ {
+  "slug": "shadow-sorcery",
+  "name": "Shadow Sorcery",
+  "class": "sorcerer",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "sorcerer:shadow-sorcery",
+  "features": [
+   {
+    "name": "Shadow Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Bane, Darkness, Inflict Wounds and Pass Without Trace at Sorcerer 3; Hunger of Hadar and Nondetection at 5; Greater Invisibility and Phantasmal Killer at 7; Contagion and Creation at 9.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "bane",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "darkness",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "inflict-wounds",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "pass-without-trace",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "hunger-of-hadar",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "nondetection",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "greater-invisibility",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "phantasmal-killer",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "contagion",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "creation",
+      "at": 9
+     }
+    ]
+   },
+   {
+    "name": "Power of Shadow",
+    "level": 3,
+    "srd": false,
+    "summary": "Darkvision 120 ft and Blindsight 10 ft, and you see through Darkness your own spells make. Once per Long Rest, when you would drop to 0 HP without dying, a CHA save (DC 5 + damage) leaves you at CHA + Sorcerer level HP.",
+    "grants": [
+     {
+      "kind": "sense",
+      "value": "Darkvision",
+      "range": 120
+     },
+     {
+      "kind": "sense",
+      "value": "Blindsight",
+      "range": 10
+     }
+    ],
+    "options": [
+     {
+      "name": "Eyes of the Dark",
+      "summary": "Darkvision 120 ft, Blindsight 10 ft; your spells’ Darkness doesn’t block your sight."
+     },
+     {
+      "name": "Strength of the Grave",
+      "summary": "On dropping to 0 HP (not killed), CHA save DC 5 + damage taken; success sets your HP to CHA + Sorcerer level. Once per Long Rest after a success.",
+      "uses": {
+       "count": 1,
+       "recharge": "long"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Beasts of Ill Omen",
+    "level": 6,
+    "srd": false,
+    "summary": "Spend 3 Sorcery Points: cast Summon Beast as a Bonus Action with no slot, preparation or Material components; it looks like shadow, and enemies within 5 ft of it have Disadvantage on saves against your spells. You may drop Concentration, making it last 1 minute and end if you recast.",
+    "activation": "bonus",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "summon-beast"
+     }
+    ]
+   },
+   {
+    "name": "Shadow Walk",
+    "level": 14,
+    "srd": false,
+    "summary": "Bonus Action in Dim Light or Darkness: teleport up to 120 ft to a space you see that is also dim or dark.",
+    "activation": "bonus",
+    "range": 120
+   },
+   {
+    "name": "Umbral Form",
+    "level": 18,
+    "srd": false,
+    "summary": "When you use Innate Sorcery, become shadow while it lasts: move through creatures and objects as Difficult Terrain (1d10 Force if you end a turn inside) and resist all damage but Force and Radiant. Once per Long Rest, or spend 6 Sorcery Points.",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "6 Sorcery Points"
+    },
+    "options": [
+     {
+      "name": "Incorporeal Movement",
+      "summary": "Pass through creatures and objects as Difficult Terrain; ending your turn inside one deals 1d10 Force to you.",
+      "dice": "1d10",
+      "damageType": "Force"
+     },
+     {
+      "name": "Shadow Resilience",
+      "summary": "Resistance to every damage type except Force and Radiant."
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "bane",
+     "darkness",
+     "inflict-wounds",
+     "pass-without-trace"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "hunger-of-hadar",
+     "nondetection"
+    ]
+   },
+   {
+    "level": 7,
+    "spells": [
+     "greater-invisibility",
+     "phantasmal-killer"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "contagion",
+     "creation"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Sorcerer whose magic springs from the Shadowfell, seeing through darkness, cheating death and calling shadow hounds."
+ },
+ {
+  "slug": "spellfire-sorcery",
+  "name": "Spellfire Sorcery",
+  "class": "sorcerer",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "sorcerer:spellfire-sorcery",
+  "features": [
+   {
+    "name": "Spellfire Burst",
+    "level": 3,
+    "srd": false,
+    "summary": "Once per turn, when you spend Sorcery Points in a Magic action or Bonus Action, a creature within 30 ft (or you) gains 1d4 + CHA Temporary HP, or a creature within 30 ft takes 1d4 Fire or Radiant.",
+    "uses": {
+     "count": 1,
+     "recharge": "turn"
+    },
+    "range": 30,
+    "options": [
+     {
+      "name": "Bolstering Flames",
+      "summary": "You or a creature you see within 30 ft gains 1d4 + CHA Temporary HP.",
+      "dice": "1d4"
+     },
+     {
+      "name": "Radiant Fire",
+      "summary": "A creature you see within 30 ft takes 1d4 Fire or Radiant, your pick.",
+      "dice": "1d4"
+     }
+    ]
+   },
+   {
+    "name": "Spellfire Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Cure Wounds, Guiding Bolt, Lesser Restoration and Scorching Ray at Sorcerer 3; Aura of Vitality and Dispel Magic at 5; Fire Shield and Wall of Fire at 7; Greater Restoration and Flame Strike at 9.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "cure-wounds",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "guiding-bolt",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "lesser-restoration",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "scorching-ray",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "aura-of-vitality",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "dispel-magic",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "fire-shield",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "wall-of-fire",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "greater-restoration",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "flame-strike",
+      "at": 9
+     }
+    ]
+   },
+   {
+    "name": "Absorb Spells",
+    "level": 6,
+    "srd": false,
+    "summary": "Counterspell is always prepared, and you regain 1d4 Sorcery Points whenever a target fails its save against your Counterspell.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "counterspell",
+      "at": 6
+     }
+    ],
+    "dice": "1d4"
+   },
+   {
+    "name": "Honed Spellfire",
+    "level": 14,
+    "srd": false,
+    "summary": "Bolstering Flames adds your Sorcerer level to its Temporary HP, and Radiant Fire deals 1d8.",
+    "dice": "1d8"
+   },
+   {
+    "name": "Crown of Spellfire",
+    "level": 18,
+    "srd": false,
+    "summary": "Once per Long Rest (or by spending 5 Sorcery Points), Innate Sorcery also grants a 60-ft Fly Speed with hover, lets you burn up to CHA Hit Point Dice once per turn to cut a hit's damage, and turns half-damage saves into no damage on a success and half on a failure.",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "5 Sorcery Points"
+    },
+    "options": [
+     {
+      "name": "Burning Life Force",
+      "summary": "Once per turn when an attack roll hits you, spend up to CHA modifier Hit Point Dice (min 1) and subtract their roll from the damage."
+     },
+     {
+      "name": "Flight",
+      "summary": "Fly Speed 60 ft; you can hover."
+     },
+     {
+      "name": "Spell Avoidance",
+      "summary": "Against a spell or magical effect whose save halves damage, take none on a success and half on a failure; not while Incapacitated."
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "cure-wounds",
+     "guiding-bolt",
+     "lesser-restoration",
+     "scorching-ray"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "aura-of-vitality",
+     "dispel-magic"
+    ]
+   },
+   {
+    "level": 7,
+    "spells": [
+     "fire-shield",
+     "wall-of-fire"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "greater-restoration",
+     "flame-strike"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Sorcerer who channels spellfire, the raw radiance of the Weave, to heal friends, burn foes and drink in hostile magic."
  },
  {
   "slug": "wild-magic-sorcery",
@@ -5622,7 +10334,8 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Your pact draws on the Lower Planes, the realms of perdition."
  },
  {
   "slug": "great-old-one-patron",
@@ -5736,6 +10449,326 @@
   "summary": "A warlock touched by an alien elder being, wielding telepathy, psychic damage and mind-warping curses."
  },
  {
+  "slug": "undead-patron",
+  "name": "Undead Patron",
+  "class": "warlock",
+  "srd": false,
+  "source": "Ravenloft: The Horrors Within",
+  "wiki": "warlock:undead-patron",
+  "features": [
+   {
+    "name": "Form of Dread",
+    "level": 3,
+    "srd": false,
+    "summary": "Bonus Action: transform for 1 minute (ends if Incapacitated or at will), CHA-mod times (min 1) per Long Rest. Gain 1d10 + Warlock level Temp HP and Frightened immunity; once per turn an attack hit can force a WIS save or Frightened until your next turn ends.",
+    "activation": "bonus",
+    "duration": "1 minute",
+    "uses": {
+     "count": "CHA",
+     "recharge": "long"
+    },
+    "options": [
+     {
+      "name": "Facsimile of Life",
+      "summary": "Gain Temporary HP equal to 1d10 + your Warlock level.",
+      "dice": "1d10"
+     },
+     {
+      "name": "Fearless Form",
+      "summary": "Immunity to Frightened while transformed; transforming ends it."
+     },
+     {
+      "name": "Frightful Avatar",
+      "summary": "Once per turn on an attack hit, the target makes a WIS save or is Frightened until the end of your next turn.",
+      "save": {
+       "ability": "WIS",
+       "dc": "spell"
+      },
+      "uses": {
+       "count": 1,
+       "recharge": "turn"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Undead Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Always prepared: Bane, Blindness/Deafness, Phantasmal Force and Ray of Sickness at Warlock 3; Speak with Dead and Summon Undead at 5; Greater Invisibility and Phantasmal Killer at 7; Antilife Shell and Cloudkill at 9.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "bane",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "blindness-deafness",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "phantasmal-force",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "ray-of-sickness",
+      "at": 3
+     },
+     {
+      "kind": "spell",
+      "spell": "speak-with-dead",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "summon-undead",
+      "at": 5
+     },
+     {
+      "kind": "spell",
+      "spell": "greater-invisibility",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "phantasmal-killer",
+      "at": 7
+     },
+     {
+      "kind": "spell",
+      "spell": "antilife-shell",
+      "at": 9
+     },
+     {
+      "kind": "spell",
+      "spell": "cloudkill",
+      "at": 9
+     }
+    ]
+   },
+   {
+    "name": "Grave Touched",
+    "level": 6,
+    "srd": false,
+    "summary": "Your Necrotic damage ignores Necrotic Resistance, and once per turn a damaging spell can switch to Necrotic. In Form of Dread, once per turn a Necrotic hit rolls one extra damage die. No sleep, and no Exhaustion from thirst, hunger or suffocation.",
+    "damageType": "Necrotic",
+    "options": [
+     {
+      "name": "Arcane Necrosis",
+      "summary": "Necrotic dealt by your attacks, Warlock spells or Warlock features ignores Necrotic Resistance; once per turn change a damaging spell’s type to Necrotic."
+     },
+     {
+      "name": "Dreaded Necrosis",
+      "summary": "Once per turn in Form of Dread, a hit dealing Necrotic damage rolls one more damage die.",
+      "uses": {
+       "count": 1,
+       "recharge": "turn"
+      }
+     },
+     {
+      "name": "Undead Endurance",
+      "summary": "No Exhaustion from dehydration, malnutrition or suffocation; you don’t sleep and can’t be magically slept."
+     }
+    ]
+   },
+   {
+    "name": "Necrotic Husk",
+    "level": 10,
+    "srd": false,
+    "summary": "Resistance to Necrotic (Immunity in Form of Dread). Once per Short or Long Rest, on dropping to 0 HP without dying, blast chosen creatures within 30 ft (CON save, 2d10 + CHA Necrotic, half on success), return to 2× Warlock level HP and gain 1 Exhaustion.",
+    "grants": [
+     {
+      "kind": "resistance",
+      "value": "Necrotic"
+     }
+    ],
+    "options": [
+     {
+      "name": "Necrotic Resilience",
+      "summary": "Resistance to Necrotic damage; Immunity while in Form of Dread."
+     },
+     {
+      "name": "Unholy Resuscitation",
+      "summary": "At 0 HP but not killed: chosen creatures in a 30-ft Emanation make a CON save, taking 2d10 + CHA Necrotic (half on success); your HP becomes 2× Warlock level and you gain 1 Exhaustion. Once per Short or Long Rest.",
+      "dice": "2d10",
+      "damageType": "Necrotic",
+      "save": {
+       "ability": "CON",
+       "dc": "spell"
+      },
+      "range": 30,
+      "uses": {
+       "count": 1,
+       "recharge": "short"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Superior Dread",
+    "level": 14,
+    "srd": false,
+    "summary": "In Form of Dread: resist Bludgeoning, Piercing and Slashing; fly at your Speed with hover and pass through creatures and objects as Difficult Terrain (1d10 Force if you end inside); cast Warlock Conjuration and Necromancy spells with no V, S or non-costly M components.",
+    "options": [
+     {
+      "name": "Dread Resistance",
+      "summary": "Resistance to Bludgeoning, Piercing and Slashing damage."
+     },
+     {
+      "name": "Ghostly Flight",
+      "summary": "Fly Speed equal to your Speed with hover; move through creatures and objects as Difficult Terrain, taking 1d10 Force if you end a turn inside one.",
+      "grants": [
+       {
+        "kind": "speed",
+        "value": "fly",
+        "amount": "walk"
+       }
+      ]
+     },
+     {
+      "name": "Profane Casting",
+      "summary": "Warlock Conjuration and Necromancy spells need no Verbal, Somatic or Material components, except costly or consumed ones."
+     }
+    ]
+   }
+  ],
+  "spells": [
+   {
+    "level": 3,
+    "spells": [
+     "bane",
+     "blindness-deafness",
+     "phantasmal-force",
+     "ray-of-sickness"
+    ]
+   },
+   {
+    "level": 5,
+    "spells": [
+     "speak-with-dead",
+     "summon-undead"
+    ]
+   },
+   {
+    "level": 7,
+    "spells": [
+     "greater-invisibility",
+     "phantasmal-killer"
+    ]
+   },
+   {
+    "level": 9,
+    "spells": [
+     "antilife-shell",
+     "cloudkill"
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Warlock bound to a lich, vampire or other deathless power, who takes on a terrifying form of undeath."
+ },
+ {
+  "slug": "vestige-patron",
+  "name": "Vestige Patron",
+  "class": "warlock",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "warlock:vestige-patron",
+  "features": [
+   {
+    "name": "Vestige Companion",
+    "level": 3,
+    "srd": false,
+    "summary": "A Small vestige (Celestial, Fiend or Undead, re-chosen each Long Rest) obeys you and acts on your turn, only Dodging unless you spend a Bonus Action or one of your attacks. AC 13 + CHA, HP 4 + 4 × Warlock level, hover 30 ft; Vestige's Strike (spell attack, reach 5 or range 60) deals 1d6 + 3 + CHA. Remake it with a 1-minute ceremony after it drops; dismiss or recall it as a Magic action.",
+    "dice": "1d6",
+    "choices": [
+     {
+      "kind": "option",
+      "count": 1,
+      "label": "Vestige type"
+     }
+    ],
+    "options": [
+     {
+      "name": "Celestial",
+      "summary": "Strike deals Radiant; resists Radiant. Healing Touch (Bonus Action, 1/day): a touched creature heals 2d8 + CHA and ends Blinded, Deafened or Poisoned.",
+      "damageType": "Radiant",
+      "dice": "2d8"
+     },
+     {
+      "name": "Fiend",
+      "summary": "Strike deals Fire; resists Fire. Fiendish Swap (Bonus Action, 1/day): you and the vestige trade places by teleport if within 60 ft of each other.",
+      "damageType": "Fire",
+      "range": 60
+     },
+     {
+      "name": "Undead",
+      "summary": "Strike deals Necrotic; resists Necrotic. Cursed Invocation (Bonus Action, 1/day): for 1 minute a creature within 30 ft of it has Disadvantage attacking you or the vestige.",
+      "damageType": "Necrotic",
+      "range": 30,
+      "duration": "1 minute"
+     }
+    ]
+   },
+   {
+    "name": "Vestige Spells",
+    "level": 3,
+    "srd": false,
+    "summary": "Pick the Life, Light, Trickery or War Domain: its domain spells count as Warlock spells and are always prepared once your Warlock level reaches each row's Cleric level.",
+    "choices": [
+     {
+      "kind": "option",
+      "count": 1,
+      "from": [
+       "Life Domain",
+       "Light Domain",
+       "Trickery Domain",
+       "War Domain"
+      ],
+      "label": "Vestige Spells domain"
+     }
+    ]
+   },
+   {
+    "name": "Vestige Power",
+    "level": 6,
+    "srd": false,
+    "summary": "Divine Power now recharges on any Short or Long Rest, and whenever you use Magical Cunning. Within 30 ft of your vestige, you share its damage Resistance.",
+    "range": 30
+   },
+   {
+    "name": "Vestige Recovery",
+    "level": 10,
+    "srd": false,
+    "summary": "Reaction and a Pact Magic slot when your vestige would hit 0 HP: it returns to full HP and teleports to a space you see within 30 ft of it. Once per Long Rest.",
+    "activation": "reaction",
+    "range": 30,
+    "uses": {
+     "count": 1,
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Semblance of Life",
+    "level": 14,
+    "srd": false,
+    "summary": "Magic action, vestige within 90 ft: for 1 hour it takes the Summon Celestial, Fiend or Undead spirit stat block matching its type, at spell level half your Warlock level, keeping its HP, Hit Dice, personality and Divine Power. It gains the spirit's HP as Temporary HP; the form ends when they run out. Once per Long Rest.",
+    "activation": "magic",
+    "range": 90,
+    "duration": "1 hour",
+    "uses": {
+     "count": 1,
+     "recharge": "long"
+    }
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A warlock bound to the fading remnant of a forgotten god, which fights at their side as a floating vestige."
+ },
+ {
   "slug": "abjurer",
   "name": "Abjurer",
   "class": "wizard",
@@ -5803,6 +10836,161 @@
   ],
   "optionGroups": [],
   "summary": "A wizard of protective magic who shields themselves and allies with an arcane ward and breaks hostile spells."
+ },
+ {
+  "slug": "bladesinger",
+  "name": "Bladesinger",
+  "class": "wizard",
+  "srd": false,
+  "source": "Forgotten Realms: Heroes of Faerûn",
+  "wiki": "wizard:bladesinger",
+  "features": [
+   {
+    "name": "Bladesong",
+    "level": 3,
+    "srd": false,
+    "summary": "Bonus Action, with no armor or Shield: for 1 minute add INT to AC (min +1), gain +10 ft Speed and Advantage on Acrobatics, attack with INT, and add INT to Concentration saves. Ends if you're Incapacitated, don armor or a Shield, or attack two-handed. INT modifier uses (min 1) per Long Rest; Arcane Recovery restores one.",
+    "activation": "bonus",
+    "duration": "1 minute",
+    "uses": {
+     "count": "INT",
+     "recharge": "long",
+     "restore": "Arcane Recovery restores one use"
+    },
+    "options": [
+     {
+      "name": "Agility",
+      "summary": "+INT to AC (min +1), +10 ft Speed and Advantage on DEX (Acrobatics) checks."
+     },
+     {
+      "name": "Bladework",
+      "summary": "Use INT for attack and damage rolls with weapons you're proficient with."
+     },
+     {
+      "name": "Focus",
+      "summary": "Add INT to CON saves to keep Concentration."
+     }
+    ]
+   },
+   {
+    "name": "Training in War and Song",
+    "level": 3,
+    "srd": false,
+    "summary": "Proficiency with Martial Melee weapons lacking Two-Handed and Heavy, which can serve as your spellcasting focus. Gain one of Acrobatics, Athletics, Performance or Persuasion.",
+    "grants": [
+     {
+      "kind": "weapon",
+      "value": "Martial Melee weapons without the Two-Handed or Heavy property"
+     }
+    ],
+    "choices": [
+     {
+      "kind": "skill",
+      "count": 1,
+      "from": [
+       "Acrobatics",
+       "Athletics",
+       "Performance",
+       "Persuasion"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Extra Attack",
+    "level": 6,
+    "srd": false,
+    "summary": "Attack twice with the Attack action, and one of those attacks can be swapped for a Wizard cantrip that takes an action."
+   },
+   {
+    "name": "Song of Defense",
+    "level": 10,
+    "srd": false,
+    "summary": "Reaction when you take damage during Bladesong: spend a spell slot to cut the damage by five times its level.",
+    "activation": "reaction"
+   },
+   {
+    "name": "Song of Victory",
+    "level": 14,
+    "srd": false,
+    "summary": "After casting a spell with a casting time of an action, make one weapon attack as a Bonus Action.",
+    "activation": "bonus"
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A Wizard of an elven tradition that weaves swordplay and dance into spellcasting."
+ },
+ {
+  "slug": "conjurer",
+  "name": "Conjurer",
+  "class": "wizard",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "wizard:conjurer",
+  "features": [
+   {
+    "name": "Benign Transposition",
+    "level": 3,
+    "srd": false,
+    "summary": "Bonus Action: teleport up to 30 ft to an unoccupied space you see, or trade places with a willing Medium or smaller creature there. INT modifier uses (min 1) per Long Rest.",
+    "activation": "bonus",
+    "range": 30,
+    "uses": {
+     "count": "INT",
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Conjuration Savant",
+    "level": 3,
+    "srd": false,
+    "summary": "Two Conjuration Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Conjuration spell you can cast, also free.",
+    "choices": [
+     {
+      "kind": "spell",
+      "count": 2,
+      "list": "wizard",
+      "maxLevel": 2,
+      "school": [
+       "Conjuration"
+      ],
+      "label": "Conjuration Savant (Conjuration)"
+     }
+    ]
+   },
+   {
+    "name": "Distant Transposition",
+    "level": 6,
+    "srd": false,
+    "summary": "Benign Transposition reaches 60 ft, and a level 3+ spell slot (no action) restores one of its uses.",
+    "range": 60
+   },
+   {
+    "name": "Durable Summons",
+    "level": 6,
+    "srd": false,
+    "summary": "A creature you summon or create with a slot-cast Conjuration spell arrives with Temporary HP of 2 × your Wizard level, and while those last it resists all damage but Force, Necrotic, Psychic and Radiant."
+   },
+   {
+    "name": "Focused Conjuration",
+    "level": 10,
+    "srd": false,
+    "summary": "Your Concentration on a Conjuration spell holds no matter how much damage you take."
+   },
+   {
+    "name": "Splintered Summons",
+    "level": 14,
+    "srd": false,
+    "summary": "A slot-cast Conjuration spell that calls a spirit with its own stat block (Summon Aberration and the like) can call two of them, each with half the HP; both vanish if Concentration ends. Once per Long Rest; a level 5+ slot restores it.",
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "a level 5+ spell slot"
+    }
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A wizard who treats distance as optional, teleporting at will and calling up creatures to fight for them."
  },
  {
   "slug": "diviner",
@@ -5901,6 +11089,108 @@
   "summary": "A wizard who reads the future, swapping in foreseen d20 rolls and casting divinations cheaply."
  },
  {
+  "slug": "enchanter",
+  "name": "Enchanter",
+  "class": "wizard",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "wizard:enchanter",
+  "features": [
+   {
+    "name": "Enchanting Conversationalist",
+    "level": 3,
+    "srd": false,
+    "summary": "Gain Deception, Intimidation or Persuasion, and add your INT modifier (min +1) to checks with it.",
+    "choices": [
+     {
+      "kind": "skill",
+      "count": 1,
+      "from": [
+       "Deception",
+       "Intimidation",
+       "Persuasion"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Enchantment Savant",
+    "level": 3,
+    "srd": false,
+    "summary": "Two Enchantment Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Enchantment spell you can cast, also free.",
+    "choices": [
+     {
+      "kind": "spell",
+      "count": 2,
+      "list": "wizard",
+      "maxLevel": 2,
+      "school": [
+       "Enchantment"
+      ],
+      "label": "Enchantment Savant (Enchantment)"
+     }
+    ]
+   },
+   {
+    "name": "Hypnotic Presence",
+    "level": 3,
+    "srd": false,
+    "summary": "Magic action: a creature within 10 ft that sees or hears you makes a WIS save or is Charmed, Incapacitated and at Speed 0 for 1 minute; it ends if it takes damage, moves over 10 ft off or loses sight and sound of you. INT modifier uses (min 1) per Long Rest.",
+    "activation": "magic",
+    "range": 10,
+    "duration": "1 minute",
+    "save": {
+     "ability": "WIS",
+     "dc": "spell"
+    },
+    "uses": {
+     "count": "INT",
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Split Enchantment",
+    "level": 6,
+    "srd": false,
+    "summary": "Cast a slot-cast Enchantment spell that gains targets when upcast (like Charm Person) as if one level higher. INT modifier uses per Long Rest.",
+    "uses": {
+     "count": "INT",
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Instinctive Charm",
+    "level": 10,
+    "srd": false,
+    "summary": "Reaction when a creature you see within 30 ft hits you: it makes a WIS save or misses, turning the same roll on another creature in its range that you pick. Once per Long Rest; casting a slot-cast Enchantment spell restores it.",
+    "activation": "reaction",
+    "range": 30,
+    "save": {
+     "ability": "WIS",
+     "dc": "spell"
+    },
+    "uses": {
+     "count": 1,
+     "recharge": "long",
+     "restore": "a slot-cast Enchantment spell"
+    }
+   },
+   {
+    "name": "Alter Memories",
+    "level": 14,
+    "srd": false,
+    "summary": "One creature you Charm with a slot-cast Enchantment spell doesn't know it's Charmed. Once during the spell, a Magic action forces an INT save: on a fail it forgets up to 1 + INT modifier hours (min 1), no longer than the spell's duration.",
+    "activation": "magic",
+    "save": {
+     "ability": "INT",
+     "dc": "spell"
+    }
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A wizard who sways minds, charming, entrancing and rewriting the memories of others."
+ },
+ {
   "slug": "evoker",
   "name": "Evoker",
   "class": "wizard",
@@ -5956,7 +11246,8 @@
     "damageType": "Necrotic"
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Your studies focus on magic that creates powerful elemental effects such as bitter cold, searing flame, rolling thunder, crackling lightning, and burning acid."
  },
  {
   "slug": "illusionist",
@@ -6043,5 +11334,284 @@
   ],
   "optionGroups": [],
   "summary": "A wizard of deception whose illusions grow stronger, summon spectral beasts and finally turn partly real."
+ },
+ {
+  "slug": "necromancer",
+  "name": "Necromancer",
+  "class": "wizard",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "wizard:necromancer",
+  "features": [
+   {
+    "name": "Necromancy Savant",
+    "level": 3,
+    "srd": false,
+    "summary": "Two Necromancy Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Necromancy spell you can cast, also free.",
+    "choices": [
+     {
+      "kind": "spell",
+      "count": 2,
+      "list": "wizard",
+      "maxLevel": 2,
+      "school": [
+       "Necromancy"
+      ],
+      "label": "Necromancy Savant (Necromancy)"
+     }
+    ]
+   },
+   {
+    "name": "Necromancy Spellbook",
+    "level": 3,
+    "srd": false,
+    "summary": "Resistance to Necrotic damage. Find Familiar enters your spellbook with Skeleton, Zombie or undead forms, and you can give up one attack of the Attack action so it attacks with its Reaction. Slot-cast Necromancy spells heal an Undead you see within 60 ft by slot level + Wizard level.",
+    "grants": [
+     {
+      "kind": "resistance",
+      "value": "Necrotic"
+     },
+     {
+      "kind": "spell",
+      "spell": "find-familiar"
+     }
+    ],
+    "options": [
+     {
+      "name": "Necrotic Resistance",
+      "summary": "You resist Necrotic damage."
+     },
+     {
+      "name": "Undead Familiar",
+      "summary": "Your familiar can be a Skeleton or Zombie, or a normal form of Undead type; trade one of your attacks to let it attack with its Reaction."
+     },
+     {
+      "name": "Undead Vitality",
+      "summary": "When you cast a Necromancy spell with a slot, an Undead you see within 60 ft regains HP equal to the slot level + your Wizard level.",
+      "range": 60
+     }
+    ]
+   },
+   {
+    "name": "Grave Power",
+    "level": 6,
+    "srd": false,
+    "summary": "While holding your spellbook: Arcane Recovery also lowers your Exhaustion by 1, and your Wizard spells and features ignore Necrotic Resistance.",
+    "options": [
+     {
+      "name": "Grave Resilience",
+      "summary": "Arcane Recovery removes 1 Exhaustion level."
+     },
+     {
+      "name": "Overwhelming Necrosis",
+      "summary": "Necrotic damage from your Wizard spells and features ignores Resistance."
+     }
+    ]
+   },
+   {
+    "name": "Undead Thralls",
+    "level": 6,
+    "srd": false,
+    "summary": "Animate Dead is always prepared; cast it free once per Long Rest, and any casting can go one level higher. Holding your spellbook, undead your Necromancy creates gain INT + half Wizard level HP, and your undead within 60 ft add INT (min 1) Necrotic to hits.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "animate-dead",
+      "free": {
+       "count": 1,
+       "recharge": "long"
+      }
+     }
+    ],
+    "options": [
+     {
+      "name": "Undead Fortitude",
+      "summary": "Undead you create or summon with Necromancy get max and current HP raised by INT modifier + half your Wizard level."
+     },
+     {
+      "name": "Withering Strike",
+      "summary": "Your controlled Undead within 60 ft deal extra Necrotic equal to your INT modifier (min 1) when they hit.",
+      "range": 60,
+      "damageType": "Necrotic"
+     }
+    ]
+   },
+   {
+    "name": "Harvest Undead",
+    "level": 10,
+    "srd": false,
+    "summary": "Reaction right after damage leaves you Bloodied but above 0 HP: drop an Undead you control and see to 0 HP and regain HP equal to your Wizard level.",
+    "activation": "reaction"
+   },
+   {
+    "name": "Death’s Master",
+    "level": 14,
+    "srd": false,
+    "summary": "Holding your spellbook: once per Long Rest, a Bonus Action grants your Necromancy-made Undead within 60 ft Temporary HP equal to your Wizard level. An Undead you see dropping to 0 HP can burst for d6s equal to half its unspent Hit Dice (min 1d6) of Necrotic in a 10-ft Emanation (DEX save for half; failures lose Reactions); one you don't control costs a Reaction and a level 5+ slot.",
+    "options": [
+     {
+      "name": "Bolster Undead",
+      "summary": "Bonus Action: chosen Undead you made or summoned with Necromancy within 60 ft each gain Temporary HP equal to your Wizard level. Once per Long Rest.",
+      "activation": "bonus",
+      "range": 60,
+      "uses": {
+       "count": 1,
+       "recharge": "long"
+      }
+     },
+     {
+      "name": "Extinguish Undead",
+      "summary": "An Undead you see at 0 HP explodes: d6s equal to half its unspent Hit Dice (round up, min 1) of Necrotic to each creature in a 10-ft Emanation, DEX save for half; those failing can't take Reactions until their next turn starts.",
+      "damageType": "Necrotic",
+      "save": {
+       "ability": "DEX",
+       "dc": "spell"
+      }
+     }
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A wizard who studies life, death and undeath, raising and empowering undead servants from a dread spellbook."
+ },
+ {
+  "slug": "transmuter",
+  "name": "Transmuter",
+  "class": "wizard",
+  "srd": false,
+  "source": "Arcana Unleashed",
+  "wiki": "wizard:transmuter",
+  "features": [
+   {
+    "name": "Transmutation Savant",
+    "level": 3,
+    "srd": false,
+    "summary": "Two Transmutation Wizard spells of level 2 or lower go into your spellbook free. Each time you unlock a new spell slot level, add one more Transmutation spell you can cast, also free.",
+    "choices": [
+     {
+      "kind": "spell",
+      "count": 2,
+      "list": "wizard",
+      "maxLevel": 2,
+      "school": [
+       "Transmutation"
+      ],
+      "label": "Transmutation Savant (Transmutation)"
+     }
+    ]
+   },
+   {
+    "name": "Transmuter’s Stone",
+    "level": 3,
+    "srd": false,
+    "summary": "After a Long Rest, make a Tiny stone (usable as your Wizard focus) that gives its holder CON save proficiency plus one benefit: Darkvision 60 ft (or +60 ft), Resistance to one of Acid, Cold, Fire, Lightning, Poison or Thunder, or +10 ft Speed. A slot-cast Transmutation spell lets you switch the benefit.",
+    "options": [
+     {
+      "name": "Darkvision",
+      "summary": "Darkvision 60 ft, or +60 ft to existing Darkvision."
+     },
+     {
+      "name": "Resistance",
+      "summary": "Resistance to your pick of Acid, Cold, Fire, Lightning, Poison or Thunder."
+     },
+     {
+      "name": "Speed",
+      "summary": "Speed +10 ft."
+     }
+    ]
+   },
+   {
+    "name": "Wondrous Alteration",
+    "level": 3,
+    "srd": false,
+    "summary": "Alter Self is always prepared; cast it free once per Long Rest. Under it, Aquatic Adaptation lets you Dash as a Bonus Action underwater, Change Appearance gives Advantage on Charisma (Deception), and Natural Weapons deal 2d6 and give Advantage on Concentration saves.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "alter-self",
+      "free": {
+       "count": 1,
+       "recharge": "long"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Empowered Transmutation",
+    "level": 6,
+    "srd": false,
+    "summary": "Cast a slot-cast Transmutation spell that makes no attack roll and forces no save (Fly, Magic Weapon…) as if one level higher. INT modifier uses (min 1) per Long Rest.",
+    "uses": {
+     "count": "INT",
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Potent Stone",
+    "level": 10,
+    "srd": false,
+    "summary": "Your stone holds two benefits (Resistance can be taken twice for different types), both switchable on a slot-cast Transmutation spell. New benefits: Mighty Build (Advantage on STR saves, carry as one size larger) and Tremorsense 30 ft.",
+    "options": [
+     {
+      "name": "Mighty Build",
+      "summary": "Advantage on STR saves; carrying capacity as one size larger."
+     },
+     {
+      "name": "Tremorsense",
+      "summary": "Tremorsense 30 ft."
+     }
+    ]
+   },
+   {
+    "name": "Shape-Shifter",
+    "level": 10,
+    "srd": false,
+    "summary": "Polymorph is always prepared; cast it free once per Long Rest. Once per Long Rest, when you Polymorph yourself, keep your mind, speech, INT/WIS/CHA, proficiencies, class features and feats, and cast Transmutation spells without costly or consumed Material components.",
+    "grants": [
+     {
+      "kind": "spell",
+      "spell": "polymorph",
+      "free": {
+       "count": 1,
+       "recharge": "long"
+      }
+     }
+    ],
+    "uses": {
+     "count": 1,
+     "recharge": "long"
+    }
+   },
+   {
+    "name": "Master Transmuter",
+    "level": 14,
+    "srd": false,
+    "summary": "Magic action, holding your stone: spend it for one effect, after which it turns to dust unless you also spend a level 7+ slot.",
+    "activation": "magic",
+    "options": [
+     {
+      "name": "Major Transformation",
+      "summary": "Over 10 minutes of handling, turn a nonmagical object up to a 10-ft Cube (or eight joined 5-ft Cubes) into a different mundane object of about the same size and mass, worth no more."
+     },
+     {
+      "name": "Panacea",
+      "summary": "A touched creature heals half its HP maximum and is freed of magical diseases, curses (cursed-item Attunement included), Poisoned and Petrified.",
+      "range": "Touch"
+     },
+     {
+      "name": "Restore Life",
+      "summary": "Cast Raise Dead with no slot, the stone standing in for its Material components."
+     },
+     {
+      "name": "Restore Youth",
+      "summary": "A willing creature you touch drops to 0 Exhaustion and permanently looks 3d10 years younger, never below young adulthood.",
+      "range": "Touch",
+      "dice": "3d10"
+     }
+    ]
+   }
+  ],
+  "optionGroups": [],
+  "summary": "A wizard who reshapes matter and energy, crafting a stone of transmutation and changing their own form."
  }
 ]

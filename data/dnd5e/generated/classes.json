@@ -1432,7 +1432,8 @@
     "text": "You embody primal power. Your Strength and Constitution scores increase by 4, to a maximum of 25."
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d12, primary ability Strength, STR and CON saves, Light armor, Medium armor and Shields training."
  },
  {
   "slug": "bard",
@@ -2360,7 +2361,8 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d8, primary ability Charisma, DEX and CHA saves, Light armor training, CHA spellcasting."
  },
  {
   "slug": "cleric",
@@ -3322,7 +3324,8 @@
     "text": "You can call on even more powerful divine intervention. When you use your Divine Intervention feature, you can choose _Wish_ when you select a spell. If you do so, you can’t use Divine Intervention again until you finish 2d4 Long Rests."
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d8, primary ability Wisdom, WIS and CHA saves, Light armor, Medium armor and Shields training, WIS spellcasting."
  },
  {
   "slug": "druid",
@@ -4332,7 +4335,8 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d8, primary ability Wisdom, INT and WIS saves, Light armor and Shields training, WIS spellcasting."
  },
  {
   "slug": "fighter",
@@ -4812,7 +4816,8 @@
     "text": "You can attack four times instead of once whenever you take the Attack action on your turn."
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d10, primary ability Strength or Dexterity, STR and CON saves, Light armor, Medium armor, Heavy armor and Shields training."
  },
  {
   "slug": "monk",
@@ -5415,7 +5420,8 @@
     "text": "You have developed your body and mind to new heights. Your Dexterity and Wisdom scores increase by 4, to a maximum of 25."
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d8, primary ability Dexterity and Wisdom, STR and DEX saves, no armor training."
  },
  {
   "slug": "paladin",
@@ -6323,7 +6329,8 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d10, primary ability Strength and Charisma, WIS and CHA saves, Light armor, Medium armor, Heavy armor and Shields training, CHA spellcasting."
  },
  {
   "slug": "ranger",
@@ -7248,7 +7255,8 @@
     "dice": "1d10"
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d10, primary ability Dexterity and Wisdom, STR and DEX saves, Light armor, Medium armor and Shields training, WIS spellcasting."
  },
  {
   "slug": "rogue",
@@ -7763,7 +7771,8 @@
     }
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d8, primary ability Dexterity, DEX and INT saves, Light armor training."
  },
  {
   "slug": "sorcerer",
@@ -8635,7 +8644,8 @@
   ],
   "optionGroups": [
    "metamagic"
-  ]
+  ],
+  "summary": "Hit Die d6, primary ability Charisma, CON and CHA saves, no armor training, CHA spellcasting."
  },
  {
   "slug": "warlock",
@@ -9244,7 +9254,8 @@
   ],
   "optionGroups": [
    "eldritch-invocations"
-  ]
+  ],
+  "summary": "Hit Die d8, primary ability Charisma, WIS and CHA saves, Light armor training, CHA spellcasting."
  },
  {
   "slug": "wizard",
@@ -10137,6 +10148,7 @@
     ]
    }
   ],
-  "optionGroups": []
+  "optionGroups": [],
+  "summary": "Hit Die d6, primary ability Intelligence, INT and WIS saves, no armor training, INT spellcasting."
  }
 ]

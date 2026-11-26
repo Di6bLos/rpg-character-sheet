@@ -1,0 +1,136 @@
+{
+  "subclasses": {
+    "sorrow-knight": {
+      "summary": "A fighter who turns a deep personal loss into Shadowfell despair, burdening foes with grief while guarding others from the same pain.",
+      "features": {
+        "Despairing Strikes": {
+          "summary": "Three d8 Despairing Strike Dice (four d10s at Fighter 10, five d12s at 15), all back on a Short or Long Rest. On a weapon hit, spend one (max one per attack) for that much extra Psychic damage plus, if you like, one effect (Abandoned or Dread); save DC 8 + PB + WIS.",
+          "uses": {
+            "count": 3,
+            "recharge": "short"
+          },
+          "dice": "1d8",
+          "damageType": "Psychic",
+          "options": [
+            {
+              "name": "Abandoned",
+              "summary": "INT save or Deafened until the end of your next turn, treating every creature it sees as an enemy meanwhile.",
+              "save": {
+                "ability": "INT",
+                "dc": "8+PB+WIS"
+              }
+            },
+            {
+              "name": "Dread",
+              "summary": "Disadvantage on its next saving throw before your next turn starts."
+            }
+          ]
+        },
+        "Solemn Gaze": {
+          "summary": "Darkvision 60 ft (or +60 ft if you have it). Magic action, WIS modifier uses (min 1) per Long Rest: a creature you see within 30 ft makes a WIS save (DC 8 + PB + WIS) or you learn one strong emotion it holds; if it can see you, it knows.",
+          "activation": "magic",
+          "uses": {
+            "count": "WIS",
+            "recharge": "long"
+          },
+          "range": 30,
+          "save": {
+            "ability": "WIS",
+            "dc": "8+PB+WIS"
+          },
+          "grants": [
+            {
+              "kind": "sense",
+              "value": "Darkvision",
+              "range": 60
+            }
+          ]
+        },
+        "Dreaded Appearance": {
+          "summary": "Tactical Shift can teleport you up to 30 ft to an unoccupied space you see. Once per Short or Long Rest, on arriving, creatures you choose in a 10-ft Emanation make a WIS save (DC 8 + PB + WIS): a failure means Psychic damage of one Despairing Strike Die roll and Frightened until your next turn ends; a success, half damage.",
+          "uses": {
+            "count": 1,
+            "recharge": "short"
+          },
+          "damageType": "Psychic",
+          "range": 30,
+          "save": {
+            "ability": "WIS",
+            "dc": "8+PB+WIS"
+          }
+        },
+        "Unsettled Strikes": {
+          "summary": "Three more Despairing Strike effects: Apathetic, Lost and Weary.",
+          "options": [
+            {
+              "name": "Apathetic",
+              "summary": "WIS save or Incapacitated until your next turn starts, answering only in single words.",
+              "save": {
+                "ability": "WIS",
+                "dc": "8+PB+WIS"
+              }
+            },
+            {
+              "name": "Lost",
+              "summary": "CHA save: a failure leaves it Blinded with Speed 0 through its next turn; a success halves its Speed for that long.",
+              "save": {
+                "ability": "CHA",
+                "dc": "8+PB+WIS"
+              }
+            },
+            {
+              "name": "Weary",
+              "summary": "CON save or 1 Exhaustion level (this can't push it past 2), removed when your next turn ends.",
+              "save": {
+                "ability": "CON",
+                "dc": "8+PB+WIS"
+              }
+            }
+          ]
+        },
+        "Grim Constitution": {
+          "summary": "Resistance to Necrotic and Psychic. When something would lower your HP maximum, a DC 15 CON save stops it; the DC rises by 5 per later save and resets to 15 after a Short or Long Rest.",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Necrotic"
+            },
+            {
+              "kind": "resistance",
+              "value": "Psychic"
+            }
+          ],
+          "save": {
+            "ability": "CON",
+            "dc": 15
+          }
+        },
+        "Grieving Mantle": {
+          "summary": "Action Surge also attunes you to the Shadowfell for 1 minute (ends if you're Incapacitated): immune to Charmed and Frightened (ending them if present), and as a Reaction when an attack roll hits you, turn insubstantial and take 0 damage from it.",
+          "duration": "1 minute",
+          "grants": [
+            {
+              "kind": "conditionImmunity",
+              "value": "Charmed"
+            },
+            {
+              "kind": "conditionImmunity",
+              "value": "Frightened"
+            }
+          ],
+          "options": [
+            {
+              "name": "Shade Form",
+              "summary": "Reaction when an attack roll hits you: its damage to you drops to 0.",
+              "activation": "reaction"
+            },
+            {
+              "name": "Unwavering Resolve",
+              "summary": "Immune to Charmed and Frightened; either ends on you when the mantle starts."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

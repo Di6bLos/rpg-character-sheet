@@ -1,0 +1,150 @@
+{
+  "dhampir": {
+    "summary": "A living person touched by vampirism: quick, climbs walls, shrugs off necrotic harm and feeds with a draining bite.",
+    "sizes": ["Small", "Medium"],
+    "traits": [
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [{ "kind": "sense", "value": "Darkvision", "range": 60 }]
+      },
+      {
+        "name": "Spider Climb",
+        "summary": "Climb Speed equal to your Speed; from level 3 you also scale walls and ceilings with your hands free.",
+        "grants": [{ "kind": "speed", "value": "climb", "amount": "walk" }]
+      },
+      {
+        "name": "Trace of Undeath",
+        "summary": "Resistance to Necrotic damage.",
+        "grants": [{ "kind": "resistance", "value": "Necrotic" }]
+      },
+      {
+        "name": "Vampiric Bite",
+        "summary": "An Unarmed Strike can be a bite for 1d4 + CON Piercing. PB times per Long Rest, a bite that damages a creature other than a Construct or Undead also empowers you in one of two ways.",
+        "dice": "1d4",
+        "damageType": "Piercing",
+        "uses": { "count": "PB", "recharge": "long" },
+        "options": [
+          {
+            "name": "Drain",
+            "summary": "Heal HP equal to the bite’s Piercing damage."
+          },
+          {
+            "name": "Strengthen",
+            "summary": "Add the bite’s Piercing damage as a bonus to your next ability check or attack roll within 1 minute.",
+            "duration": "1 minute"
+          }
+        ]
+      }
+    ]
+  },
+  "hexblood": {
+    "summary": "A Fey person remade by a hag’s bargain or other witchery, able to spy through a cursed token and work hexes.",
+    "sizes": ["Small", "Medium"],
+    "traits": [
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [{ "kind": "sense", "value": "Darkvision", "range": 60 }]
+      },
+      {
+        "name": "Eerie Token",
+        "summary": "Bonus Action: make a token from a lock of hair, nail or similar; it lasts until your next Long Rest and you can make one per Long Rest. Within 10 miles of it you can message its holder or see and hear through it.",
+        "activation": "bonus",
+        "uses": { "count": 1, "recharge": "long" },
+        "options": [
+          {
+            "name": "Distant Message",
+            "summary": "Magic action: send a telepathic message of up to 25 words to whoever holds or carries the token, within 10 miles.",
+            "activation": "magic"
+          },
+          {
+            "name": "Remote Viewing",
+            "summary": "Magic action within 10 miles: see and hear from the token’s location for 1 minute (ends if Incapacitated or at will); the token then crumbles.",
+            "activation": "magic",
+            "duration": "1 minute"
+          }
+        ]
+      },
+      {
+        "name": "Hex Magic",
+        "summary": "Disguise Self and Hex always prepared; cast each free once per Long Rest, or with your slots. INT, WIS or CHA is the casting ability (pick when you choose the species).",
+        "grants": [
+          { "kind": "spell", "spell": "disguise-self", "free": { "count": 1, "recharge": "long" } },
+          { "kind": "spell", "spell": "hex", "free": { "count": 1, "recharge": "long" } }
+        ],
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["INT", "WIS", "CHA"],
+            "label": "Hex Magic ability"
+          }
+        ]
+      }
+    ]
+  },
+  "lupin": {
+    "summary": "A wolfish humanoid left half-changed by a werewolf’s curse, with keen senses, raking claws and a dreadful howl.",
+    "sizes": ["Small", "Medium"],
+    "traits": [
+      {
+        "name": "Darkvision",
+        "summary": "See in darkness out to 60 ft.",
+        "grants": [{ "kind": "sense", "value": "Darkvision", "range": 60 }]
+      },
+      {
+        "name": "Feral Pounce",
+        "summary": "Unarmed Strikes deal Slashing. Once per turn, an Unarmed Strike hit during your Attack action can both deal damage and Shove.",
+        "damageType": "Slashing",
+        "uses": { "count": 1, "recharge": "turn" }
+      },
+      {
+        "name": "Howl",
+        "summary": "Bonus Action: chosen creatures within 15 ft make a WIS save (DC 8 + CON + PB) or have Disadvantage on attacks and saves until your next turn starts. PB uses per Long Rest.",
+        "activation": "bonus",
+        "range": 15,
+        "save": { "ability": "WIS", "dc": "8+PB+CON" },
+        "uses": { "count": "PB", "recharge": "long" }
+      },
+      {
+        "name": "Werewolf Instincts",
+        "summary": "Proficiency in Perception, Stealth or Survival.",
+        "choices": [{ "kind": "skill", "count": 1, "from": ["Perception", "Stealth", "Survival"] }]
+      }
+    ]
+  },
+  "reborn": {
+    "summary": "Someone who died yet lives on, by curse, magic or stitched science, carrying memories of a former life.",
+    "sizes": ["Small", "Medium"],
+    "traits": [
+      {
+        "name": "Escaped Death",
+        "summary": "Advantage on Death Saving Throws."
+      },
+      {
+        "name": "Everlasting",
+        "summary": "No Exhaustion from dehydration, malnutrition or suffocation; you don’t sleep and can’t be magically slept. A Long Rest takes you 4 hours of motionless, conscious inactivity."
+      },
+      {
+        "name": "Knowledge from a Past Life",
+        "summary": "Proficiency in one skill. PB times per Long Rest, after failing an ability check, add 1d6 to the d20 and maybe succeed.",
+        "dice": "1d6",
+        "uses": { "count": "PB", "recharge": "long" },
+        "choices": [{ "kind": "skill", "count": 1 }]
+      },
+      {
+        "name": "Strange Endurance",
+        "summary": "Resistance to Cold, Necrotic or Poison (your choice).",
+        "choices": [
+          {
+            "kind": "damageType",
+            "count": 1,
+            "from": ["Cold", "Necrotic", "Poison"],
+            "label": "Strange Endurance"
+          }
+        ]
+      }
+    ]
+  }
+}
