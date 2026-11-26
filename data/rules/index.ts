@@ -6,9 +6,8 @@
 //
 // Licensing (.claude/skills/rpg-rules/references/licensing.md): PF2e is ORC Remaster content
 // from Player Core and GM Core only, with no Golarion proper nouns; Nimble is referenced under
-// the Nimble 3rd Party Creator License. A system with no topics yet (5e, until there's an
-// SRD 5.2 source to write from) shows as "coming soon"; adding one means dropping its files
-// into `dnd5e/` and listing them here.
+// the Nimble 3rd Party Creator License. 5e is the SRD 5.2.1's own text (CC-BY-4.0), written by
+// `npm run dnd5e:rules`. A system with no topics yet shows as "coming soon".
 import type { GameSystem } from '~/types'
 
 export interface RulesTopic {
@@ -119,10 +118,49 @@ export const RULES_SYSTEMS: RulesSystem[] = [
   {
     id: 'dnd5e',
     label: '5e',
-    sources: 'System Reference Document 5.2',
+    sources: 'System Reference Document 5.2.1',
     attribution:
-      'This work includes material from the System Reference Document 5.2 (“SRD 5.2”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.',
-    topics: [],
+      'This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.',
+    topics: [
+      topic('dnd5e', '01', 'core-rules', 'Core rules', 'Abilities, D20 Tests, proficiency'),
+      topic(
+        'dnd5e',
+        '02',
+        'character-basics',
+        'Character creation',
+        'Class, origin, ability scores',
+      ),
+      topic('dnd5e', '03', 'combat', 'Combat', 'Initiative, movement, attacks, cover'),
+      topic('dnd5e', '04', 'actions', 'Actions', 'Every action, bonus actions, reactions'),
+      topic('dnd5e', '05', 'conditions', 'Conditions', 'Every condition, exhaustion'),
+      topic(
+        'dnd5e',
+        '06',
+        'spells-and-magic',
+        'Spells & magic',
+        'Slots, components, concentration',
+      ),
+      topic('dnd5e', '07', 'healing-and-rest', 'Damage, healing & rest', 'Damage types, resting'),
+      topic('dnd5e', '08', 'dying-and-death', 'Dying & death', 'Death saving throws, stabilizing'),
+      topic(
+        'dnd5e',
+        '09',
+        'movement-and-exploration',
+        'Movement & exploration',
+        'Light, hiding, travel, hazards',
+      ),
+      topic('dnd5e', '10', 'equipment', 'Equipment', 'Coins, properties, masteries, armor'),
+      topic('dnd5e', '11', 'leveling-up', 'Leveling up', 'Advancement, multiclassing'),
+      topic(
+        'dnd5e',
+        '12',
+        'running-encounters',
+        'Running encounters',
+        'For the GM: difficulty, traps',
+      ),
+      topic('dnd5e', '13', 'magic-items', 'Magic items', 'Rarity, attunement, crafting'),
+      topic('dnd5e', '14', 'rules-glossary', 'Rules glossary', 'Every defined term, A to Z'),
+    ],
   },
 ]
 
