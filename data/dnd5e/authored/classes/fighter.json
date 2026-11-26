@@ -1,0 +1,307 @@
+{
+  "features": {
+    "Fighting Style": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["fighting-style"],
+          "label": "Fighting Style"
+        }
+      ]
+    },
+    "Second Wind": {
+      "activation": "bonus",
+      "uses": {
+        "count": "column:Second Wind",
+        "recharge": "long",
+        "short": 1
+      },
+      "dice": "1d10"
+    },
+    "Weapon Mastery": {
+      "choices": [
+        {
+          "kind": "weaponMastery",
+          "count": 3
+        }
+      ]
+    },
+    "Action Surge": {
+      "activation": "free",
+      "uses": {
+        "count": 1,
+        "recharge": "short"
+      }
+    },
+    "Tactical Mind": {
+      "dice": "1d10"
+    },
+    "Fighter Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin", "fighting-style"],
+          "label": "Ability Score Improvement"
+        }
+      ]
+    },
+    "Extra Attack": {},
+    "Tactical Shift": {},
+    "Indomitable": {
+      "uses": {
+        "count": 1,
+        "recharge": "long"
+      }
+    },
+    "Tactical Master": {},
+    "Two Extra Attacks": {},
+    "Studied Attacks": {},
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin", "fighting-style"],
+          "label": "Epic Boon"
+        }
+      ]
+    },
+    "Three Extra Attacks": {}
+  },
+  "subclasses": {
+    "champion": {
+      "features": {
+        "Improved Critical": {},
+        "Remarkable Athlete": {},
+        "Additional Fighting Style": {
+          "choices": [
+            {
+              "kind": "feat",
+              "count": 1,
+              "category": ["fighting-style"],
+              "label": "Fighting Style"
+            }
+          ]
+        },
+        "Heroic Warrior": {},
+        "Superior Critical": {},
+        "Survivor": {
+          "options": [
+            {
+              "name": "Defy Death"
+            },
+            {
+              "name": "Heroic Rally"
+            }
+          ]
+        }
+      }
+    },
+    "battle-master": {
+      "summary": "A tactician who spends Superiority Dice on combat maneuvers that trip, push, rally and outwit.",
+      "features": {
+        "Combat Superiority": {
+          "summary": "Pick 3 maneuvers (2 more at Fighter 7, 10 and 15, each time also swapping one) and get four d8 Superiority Dice (five at 7, six at 15), all back on a Short or Long Rest. One maneuver per attack; save DC 8 + PB + STR or DEX.",
+          "uses": {
+            "count": 4,
+            "recharge": "short"
+          },
+          "dice": "1d8",
+          "save": {
+            "ability": "STR",
+            "dc": "8+PB+STR/DEX"
+          },
+          "choices": [
+            {
+              "kind": "option",
+              "count": 3,
+              "group": "maneuvers"
+            }
+          ]
+        },
+        "Student of War": {
+          "summary": "Gain one Artisan's Tools proficiency and one skill from the Fighter's level 1 skill list.",
+          "choices": [
+            {
+              "kind": "tool",
+              "count": 1,
+              "from": ["Artisan’s Tools"]
+            },
+            {
+              "kind": "skill",
+              "count": 1,
+              "from": [
+                "Acrobatics",
+                "Animal Handling",
+                "Athletics",
+                "History",
+                "Insight",
+                "Intimidation",
+                "Perception",
+                "Persuasion",
+                "Survival"
+              ]
+            }
+          ]
+        },
+        "Know Your Enemy": {
+          "summary": "Bonus Action: learn a visible creature's Immunities, Resistances and Vulnerabilities, if any, within 30 ft. Once per Long Rest, or spend a Superiority Die to use it again.",
+          "activation": "bonus",
+          "range": 30,
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "1 Superiority Die"
+          }
+        },
+        "Improved Combat Superiority": {
+          "summary": "Superiority Dice become d10s.",
+          "dice": "1d10"
+        },
+        "Relentless": {
+          "summary": "Once per turn, fuel a maneuver with a free 1d8 roll instead of spending a Superiority Die.",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "dice": "1d8"
+        },
+        "Ultimate Combat Superiority": {
+          "summary": "Superiority Dice become d12s.",
+          "dice": "1d12"
+        }
+      }
+    },
+    "eldritch-knight": {
+      "summary": "A fighter who backs up weapon skill with wizard spells, mostly protective and explosive ones.",
+      "features": {
+        "Spellcasting": {
+          "summary": "Cast Wizard spells with INT as a one-third caster: 2 cantrips (3 at Fighter 10) plus prepared spells and slots from the Eldritch Knight table. Each Fighter level, swap one cantrip and one prepared spell. An Arcane Focus works as your focus."
+        },
+        "War Bond": {
+          "summary": "A 1-hour ritual (doable in a Short Rest) binds a weapon to you; up to two at once. You can't be disarmed of it unless Incapacitated, and a Bonus Action teleports one bonded weapon on your plane into your hand.",
+          "activation": "bonus"
+        },
+        "War Magic": {
+          "summary": "Taking the Attack action, you may trade one attack for casting a Wizard cantrip whose casting time is an action."
+        },
+        "Eldritch Strike": {
+          "summary": "Hit a creature with a weapon and it has Disadvantage on its next save against your spell, if you cast it before your next turn ends.",
+          "duration": "until the end of your next turn"
+        },
+        "Arcane Charge": {
+          "summary": "Whenever you Action Surge, also teleport up to 30 ft to a space you see, before or after the extra action.",
+          "range": 30
+        },
+        "Improved War Magic": {
+          "summary": "Taking the Attack action, you may trade two attacks for casting a level 1 or 2 Wizard spell whose casting time is an action."
+        }
+      }
+    },
+    "psi-warrior": {
+      "summary": "A fighter who channels psionic energy dice into force-charged strikes, shields and telekinesis.",
+      "features": {
+        "Psionic Power": {
+          "summary": "You get Psionic Energy Dice: 4d6 at Fighter 3, 6d8 at 5, 8d8 at 9, 8d10 at 11, 10d10 at 13, 12d12 at 17. A Short Rest returns one, a Long Rest all. They fuel Protective Field, Psionic Strike and Telekinetic Movement.",
+          "uses": {
+            "count": 4,
+            "recharge": "long",
+            "short": 1
+          },
+          "dice": "1d6",
+          "options": [
+            {
+              "name": "Protective Field",
+              "summary": "Reaction when you or a visible creature within 30 ft takes damage: spend a die and cut the damage by its roll + INT (min 1).",
+              "activation": "reaction",
+              "range": 30
+            },
+            {
+              "name": "Psionic Strike",
+              "summary": "Once per turn, right after a weapon hit on a target within 30 ft, spend a die to add its roll + INT as Force damage.",
+              "uses": {
+                "count": 1,
+                "recharge": "turn"
+              },
+              "range": 30,
+              "damageType": "Force"
+            },
+            {
+              "name": "Telekinetic Movement",
+              "summary": "Magic action: move a loose Large or smaller object or a willing other creature within 30 ft up to 30 ft, or pull a Tiny object to or from your hand. Once per Short or Long Rest, or spend a die to use it again.",
+              "activation": "magic",
+              "range": 30,
+              "uses": {
+                "count": 1,
+                "recharge": "short",
+                "restore": "1 Psionic Energy Die"
+              }
+            }
+          ]
+        },
+        "Telekinetic Adept": {
+          "summary": "Two new psionic tricks: a Bonus Action leap that lets you fly, and a shove added to Psionic Strike.",
+          "options": [
+            {
+              "name": "Psi-Powered Leap",
+              "summary": "Bonus Action: Fly Speed of twice your Speed until the turn ends. Once per Short or Long Rest, or spend a die to use it again.",
+              "activation": "bonus",
+              "duration": "until the end of the current turn",
+              "uses": {
+                "count": 1,
+                "recharge": "short",
+                "restore": "1 Psionic Energy Die"
+              }
+            },
+            {
+              "name": "Telekinetic Thrust",
+              "summary": "When Psionic Strike deals damage, the target makes a STR save or you knock it Prone or move it up to 10 ft sideways.",
+              "save": {
+                "ability": "STR",
+                "dc": "8+PB+INT"
+              }
+            }
+          ]
+        },
+        "Guarded Mind": {
+          "summary": "Resistance to Psychic damage. Starting your turn Charmed or Frightened, you can spend a die to end every effect causing it.",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Psychic"
+            }
+          ]
+        },
+        "Bulwark of Force": {
+          "summary": "Bonus Action: up to INT mod creatures (min 1) within 30 ft, you included, get Half Cover for 1 minute or until you're Incapacitated. Once per Long Rest, or spend a die to use it again.",
+          "activation": "bonus",
+          "range": 30,
+          "duration": "1 minute",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "1 Psionic Energy Die"
+          }
+        },
+        "Telekinetic Master": {
+          "summary": "Telekinesis is always prepared; cast it with no slot or components, using INT. Each turn you concentrate on it, including the first, you may make one weapon attack as a Bonus Action. Once per Long Rest, or spend a die to cast it again.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "telekinesis",
+              "at": 18,
+              "free": {
+                "count": 1,
+                "recharge": "long",
+                "restore": "1 Psionic Energy Die"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

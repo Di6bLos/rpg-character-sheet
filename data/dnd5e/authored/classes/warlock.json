@@ -1,0 +1,306 @@
+{
+  "features": {
+    "Eldritch Invocations": {
+      "choices": [
+        {
+          "kind": "option",
+          "count": 1,
+          "group": "eldritch-invocations",
+          "label": "Eldritch Invocations"
+        }
+      ]
+    },
+    "Pact Magic": {},
+    "Magical Cunning": {
+      "activation": "special",
+      "uses": {
+        "count": 1,
+        "recharge": "long"
+      }
+    },
+    "Warlock Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin"]
+        }
+      ]
+    },
+    "Contact Patron": {
+      "grants": [
+        {
+          "kind": "spell",
+          "spell": "contact-other-plane",
+          "at": 9,
+          "free": {
+            "count": 1,
+            "recharge": "long"
+          }
+        }
+      ]
+    },
+    "Mystic Arcanum": {
+      "uses": {
+        "count": 1,
+        "recharge": "long"
+      },
+      "choices": [
+        {
+          "kind": "spell",
+          "count": 1,
+          "list": "warlock",
+          "maxLevel": 6,
+          "label": "Mystic Arcanum (Level 6 Spell)"
+        }
+      ]
+    },
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin"]
+        }
+      ]
+    },
+    "Eldritch Master": {}
+  },
+  "subclasses": {
+    "archfey-patron": {
+      "summary": "A warlock bound to a fey power, blinking around the battlefield with free Misty Steps that carry extra tricks.",
+      "features": {
+        "Archfey Spells": {
+          "summary": "Always-prepared patron spells at Warlock levels 3, 5, 7 and 9 (fey charms, teleports and illusions); they don't count against your prepared spells."
+        },
+        "Steps of the Fey": {
+          "summary": "Cast Misty Step with no slot CHA times (min 1) per Long Rest. Each casting of it can add one step effect: temp HP to you or an ally, or a WIS save that makes nearby foes worse at attacking anyone but you.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "misty-step",
+              "at": 3,
+              "free": {
+                "count": "CHA",
+                "recharge": "long"
+              }
+            }
+          ],
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "label": "Steps of the Fey"
+            }
+          ],
+          "options": [
+            {
+              "name": "Refreshing Step",
+              "summary": "Right after the teleport, you or a creature you see within 10 ft gets 1d10 temp HP.",
+              "dice": "1d10",
+              "range": 10
+            },
+            {
+              "name": "Taunting Step",
+              "summary": "Foes within 5 ft of where you left make a WIS save or attack others than you at Disadvantage until your next turn starts.",
+              "save": {
+                "ability": "WIS",
+                "dc": "spell"
+              },
+              "range": 5,
+              "duration": "until the start of your next turn"
+            }
+          ]
+        },
+        "Misty Escape": {
+          "summary": "Misty Step becomes a Reaction you can take when you're damaged. Two more step effects join Steps of the Fey: brief invisibility, or a psychic burst.",
+          "activation": "reaction",
+          "options": [
+            {
+              "name": "Disappearing Step",
+              "summary": "You turn Invisible until your next turn starts, ending early once you attack, deal damage or cast.",
+              "duration": "until the start of your next turn"
+            },
+            {
+              "name": "Dreadful Step",
+              "summary": "Creatures within 5 ft of your start or end point (pick one) make a WIS save or take 2d10 psychic.",
+              "save": {
+                "ability": "WIS",
+                "dc": "spell"
+              },
+              "dice": "2d10",
+              "damageType": "Psychic",
+              "range": 5
+            }
+          ]
+        },
+        "Beguiling Defenses": {
+          "summary": "Immune to Charmed. Reaction when a seen attacker hits you: halve the damage, and on a failed WIS save it takes psychic damage equal to what you took. 1/Long Rest, or spend a Pact slot to reuse.",
+          "activation": "reaction",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a Pact Magic spell slot"
+          },
+          "save": {
+            "ability": "WIS",
+            "dc": "spell"
+          },
+          "damageType": "Psychic",
+          "grants": [
+            {
+              "kind": "conditionImmunity",
+              "value": "Charmed"
+            }
+          ]
+        },
+        "Bewitching Magic": {
+          "summary": "After casting an Enchantment or Illusion spell with an action and a slot, you also get a free Misty Step within that same action, no slot needed."
+        }
+      }
+    },
+    "celestial-patron": {
+      "summary": "A warlock serving a heavenly power, mixing pact magic with healing and radiant fire.",
+      "features": {
+        "Celestial Spells": {
+          "summary": "Always-prepared patron spells at Warlock levels 3, 5, 7 and 9 (healing, light and radiant magic); they don't count against your prepared spells."
+        },
+        "Healing Light": {
+          "summary": "A pool of d6s equal to 1 + Warlock level, refilled on a Long Rest. Bonus Action: spend up to CHA dice (min 1) to heal yourself or a creature you see within 60 ft by their total.",
+          "activation": "bonus",
+          "dice": "1d6",
+          "range": 60
+        },
+        "Radiant Soul": {
+          "summary": "Resistance to Radiant. Once per turn, a spell of yours dealing Radiant or Fire damage adds your CHA to the damage against one target.",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Radiant"
+            }
+          ]
+        },
+        "Celestial Resilience": {
+          "summary": "Each rest (Short or Long) and each Magical Cunning gives you temp HP of Warlock level + CHA; up to five creatures you see get half your level + CHA."
+        },
+        "Searing Vengeance": {
+          "summary": "When you or an ally within 60 ft is about to roll a death save, they instead heal half their max HP and may stand up; foes you pick within 30 ft of them take 2d8 + CHA radiant and are Blinded this turn. 1/Long Rest.",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          },
+          "dice": "2d8",
+          "damageType": "Radiant",
+          "range": 60,
+          "duration": "until the end of the current turn"
+        }
+      }
+    },
+    "fiend-patron": {
+      "features": {
+        "Dark One’s Blessing": {},
+        "Fiend Spells": {},
+        "Dark One’s Own Luck": {
+          "activation": "free",
+          "uses": {
+            "count": "CHA",
+            "recharge": "long"
+          },
+          "dice": "1d10"
+        },
+        "Fiendish Resilience": {
+          "choices": [
+            {
+              "kind": "damageType",
+              "count": 1,
+              "from": [
+                "Acid",
+                "Bludgeoning",
+                "Cold",
+                "Fire",
+                "Lightning",
+                "Necrotic",
+                "Piercing",
+                "Poison",
+                "Psychic",
+                "Radiant",
+                "Slashing",
+                "Thunder"
+              ]
+            }
+          ]
+        },
+        "Hurl Through Hell": {
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a Pact Magic spell slot"
+          },
+          "save": {
+            "ability": "CHA",
+            "dc": "spell"
+          },
+          "dice": "8d10",
+          "damageType": "Psychic",
+          "duration": "until the end of your next turn"
+        }
+      }
+    },
+    "great-old-one-patron": {
+      "summary": "A warlock touched by an alien elder being, wielding telepathy, psychic damage and mind-warping curses.",
+      "features": {
+        "Awakened Mind": {
+          "summary": "Bonus Action: open a two-way telepathic link with a creature you see within 30 ft. Works up to CHA miles apart (min 1) for minutes equal to your Warlock level; a shared language is needed. A new link ends the old one.",
+          "activation": "bonus",
+          "range": 30
+        },
+        "Great Old One Spells": {
+          "summary": "Always-prepared patron spells at Warlock levels 3, 5, 7 and 9 (mind-reading, madness and aberrant magic); they don't count against your prepared spells."
+        },
+        "Psychic Spells": {
+          "summary": "Your damaging Warlock spells may deal Psychic instead of their normal type, and your Warlock Enchantment and Illusion spells need no Verbal or Somatic components."
+        },
+        "Clairvoyant Combatant": {
+          "summary": "When you make an Awakened Mind link, the target can be forced to make a WIS save; if it fails, while the link lasts it attacks you at Disadvantage and you attack it with Advantage. 1/Short or Long Rest, or spend a Pact slot to reuse.",
+          "uses": {
+            "count": 1,
+            "recharge": "short",
+            "restore": "a Pact Magic spell slot"
+          },
+          "save": {
+            "ability": "WIS",
+            "dc": "spell"
+          }
+        },
+        "Eldritch Hex": {
+          "summary": "Hex is always prepared for you. Its target also has Disadvantage on saves of the ability you picked for the curse.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "hex",
+              "at": 10
+            }
+          ]
+        },
+        "Thought Shield": {
+          "summary": "No one can read your mind unless you let them. Resistance to Psychic, and anyone who deals you psychic damage takes the same amount you took.",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Psychic"
+            }
+          ]
+        },
+        "Create Thrall": {
+          "summary": "Summon Aberration can skip Concentration (lasting 1 minute); the summon then starts with temp HP of Warlock level + CHA. Once per turn its hit on a hexed creature adds Hex's extra psychic damage.",
+          "damageType": "Psychic"
+        }
+      }
+    }
+  }
+}

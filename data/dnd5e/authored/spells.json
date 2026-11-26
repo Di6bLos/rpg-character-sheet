@@ -1,0 +1,357 @@
+{
+  "blade-ward": {
+    "summary": "For up to 1 minute (Concentration), anyone making an attack roll against you subtracts 1d4 from it."
+  },
+  "friends": {
+    "summary": "One creature within 10 ft makes a WIS save or is Charmed by you for up to 1 minute (Concentration). Non-Humanoids, foes you're fighting, and anyone you targeted in the past day succeed automatically. Ends early if it's hurt or you attack, deal damage, or force a save; afterward it knows."
+  },
+  "mind-sliver": {
+    "summary": "A creature you can see within 60 ft makes an INT save or takes 1d6 Psychic and subtracts 1d4 from its next save before your next turn ends.",
+    "higherLevel": "+1d6 damage at levels 5, 11 and 17."
+  },
+  "thorn-whip": {
+    "summary": "Melee spell attack against a creature up to 30 ft away: 1d6 Piercing, and you may yank a Large or smaller target up to 10 ft toward you.",
+    "higherLevel": "+1d6 damage at levels 5, 11 and 17."
+  },
+  "thunderclap": {
+    "summary": "Every creature within 5 ft of you makes a CON save or takes 1d6 Thunder. The boom carries 100 ft.",
+    "higherLevel": "+1d6 damage at levels 5, 11 and 17."
+  },
+  "toll-the-dead": {
+    "summary": "A creature you can see within 60 ft makes a WIS save or takes 1d8 Necrotic, or 1d12 if it is already below its HP maximum.",
+    "higherLevel": "One more die (d8 or d12) at levels 5, 11 and 17."
+  },
+  "word-of-radiance": {
+    "summary": "Creatures you choose within 5 ft of you make a CON save or take 1d6 Radiant.",
+    "higherLevel": "+1d6 damage at levels 5, 11 and 17."
+  },
+  "armor-of-agathys": {
+    "summary": "Bonus Action: gain 5 temp HP for 1 hour, and any creature hitting you with a melee attack takes 5 Cold. Ends once the temp HP are gone.",
+    "higherLevel": "+5 temp HP and +5 Cold per slot level above 1."
+  },
+  "arms-of-hadar": {
+    "summary": "Creatures within 10 ft of you make a STR save: 2d6 Necrotic and no Reactions until their next turn on a fail, half damage only on a success.",
+    "higherLevel": "+1d6 per slot level above 1."
+  },
+  "compelled-duel": {
+    "summary": "Bonus Action: a creature within 30 ft makes a WIS save or, for up to 1 minute (Concentration), has Disadvantage attacking anyone but you and can't willingly move over 30 ft from you. Ends if you attack or cast at another foe, an ally hurts it, or you end a turn over 30 ft away."
+  },
+  "hail-of-thorns": {
+    "summary": "Bonus Action right after a ranged weapon hit: the target and everyone within 5 ft of it make a DEX save, 1d10 Piercing on a fail, half on a success.",
+    "higherLevel": "+1d10 per slot level above 1."
+  },
+  "thunderous-smite": {
+    "summary": "Bonus Action right after a melee weapon or Unarmed Strike hit: +2d6 Thunder (audible 300 ft away), and a creature target makes a STR save or is shoved 10 ft and knocked Prone.",
+    "higherLevel": "+1d6 per slot level above 1."
+  },
+  "witch-bolt": {
+    "summary": "Ranged spell attack within 60 ft: 2d12 Lightning. For up to 1 minute (Concentration), a Bonus Action on later turns zaps it for 1d12 Lightning automatically, even if the first attack missed. Ends if it leaves range or gets Total Cover.",
+    "higherLevel": "The first hit gains 1d12 per slot level above 1."
+  },
+  "wrathful-smite": {
+    "summary": "Bonus Action right after a melee weapon or Unarmed Strike hit: +1d6 Necrotic, and a WIS save or Frightened for 1 minute, re-saving at the end of each of its turns.",
+    "higherLevel": "+1d6 per slot level above 1."
+  },
+  "arcane-vigor": {
+    "summary": "Bonus Action: roll one or two of your unspent Hit Point Dice and heal the total plus your spellcasting modifier; those dice are spent.",
+    "higherLevel": "Roll one more Hit Point Die per slot level above 2."
+  },
+  "beast-sense": {
+    "summary": "Touch a willing Beast; for up to 1 hour (Concentration) you can use its senses, special senses included, alongside your own."
+  },
+  "cloud-of-daggers": {
+    "summary": "A 5-ft Cube within 60 ft for up to 1 minute (Concentration): 4d4 Slashing to anyone in it when cast, entering it, ending a turn there, or that it moves onto (once per turn). Magic action on later turns: teleport it up to 30 ft.",
+    "higherLevel": "+2d4 per slot level above 2."
+  },
+  "cordon-of-arrows": {
+    "summary": "Plant up to four nonmagical arrows or bolts in your space for 8 hours. When a creature you didn't exempt first enters or ends a turn within 30 ft, one flies at it: DEX save or 2d4 Piercing, and that piece is used up. Ends when none are left.",
+    "higherLevel": "Two more pieces of ammunition per slot level above 2."
+  },
+  "crown-of-madness": {
+    "summary": "A Humanoid within 120 ft makes a WIS save or is Charmed for up to 1 minute (Concentration). Before moving each turn it must melee a creature you silently pick, if one is in reach. It re-saves at the end of its turns; you must use a Magic action each later turn to keep control."
+  },
+  "homunculus-servant": {
+    "summary": "Ritual-castable 1-hour summon (100 GP gem): a Tiny flying Construct helper (AC 13, 5 HP per spell level, telepathy 1 mile) that acts after you, hits with a 1d6 + spell level Force strike using your spell attack, and can deliver your touch spells within 120 ft. Recasting replaces it.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level.",
+    "save": null,
+    "scaling": {
+      "kind": "slot"
+    }
+  },
+  "summon-beast": {
+    "summary": "Summon a Small Air, Land or Water beast spirit within 90 ft for up to 1 hour (Concentration); it acts after you on your orders. AC 11 + spell level, 20 HP (Air) or 30 HP, +5 per level above 2; makes half the spell level in Rend attacks, 1d8 + 4 + spell level Piercing.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level."
+  },
+  "aura-of-vitality": {
+    "summary": "For up to 1 minute (Concentration), a 30-ft aura surrounds you: on casting and again as each of your turns begins, one creature in it heals 2d6 HP.",
+    "healing": "2d6"
+  },
+  "blinding-smite": {
+    "summary": "Bonus Action right after a melee weapon or Unarmed Strike hit: +3d8 Radiant and the target is Blinded for 1 minute, rolling a CON save at the end of each of its turns to end it.",
+    "higherLevel": "+1d8 per slot level above 3."
+  },
+  "conjure-barrage": {
+    "summary": "Each creature you choose in a 60-ft Cone makes a DEX save: 5d8 Force on a fail, half on a success. A weapon serves as the material.",
+    "higherLevel": "+1d8 per slot level above 3."
+  },
+  "crusaders-mantle": {
+    "summary": "For up to 1 minute (Concentration), you and allies in a 30-ft aura deal +1d4 Radiant on weapon and Unarmed Strike hits."
+  },
+  "elemental-weapon": {
+    "summary": "Touch a nonmagical weapon: for up to 1 hour (Concentration) it has +1 to hit and deals +1d4 of a type you pick (Acid, Cold, Fire, Lightning or Thunder).",
+    "higherLevel": "Level 5–6 slot: +2 and 2d4; level 7+ slot: +3 and 3d4.",
+    "damage": [
+      {
+        "dice": "1d4",
+        "type": "Acid, Cold, Fire, Lightning, or Thunder"
+      }
+    ]
+  },
+  "feign-death": {
+    "summary": "A willing creature you touch seems dead for 1 hour: Blinded, Incapacitated, Speed 0, resistant to all damage but Psychic, and immune to Poisoned."
+  },
+  "hunger-of-hadar": {
+    "summary": "A 20-ft-radius Sphere of magical Darkness within 150 ft for up to 1 minute (Concentration): Difficult Terrain, no light works, those inside are Blinded. Start a turn there: 2d6 Cold; end a turn there: DEX save or 2d6 Acid.",
+    "higherLevel": "Cold or Acid (your pick) +1d6 per slot level above 3."
+  },
+  "lightning-arrow": {
+    "summary": "Bonus Action after a ranged weapon attack hits or misses: instead of its normal effects the target takes 4d8 Lightning (half on a miss), then creatures within 10 ft of it make a DEX save for 2d8 Lightning, half on a success.",
+    "higherLevel": "Both parts +1d8 per slot level above 3."
+  },
+  "summon-fey": {
+    "summary": "Summon a Small Fey spirit (Fuming, Mirthful or Tricksy) within 90 ft for up to 1 hour (Concentration). AC 12 + spell level, 30 HP +10 per level above 3, fly 30; half the spell level in Fey Blade attacks (2d6 + 3 + spell level Force); Bonus Action 30-ft teleport with a mood effect.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level."
+  },
+  "summon-undead": {
+    "summary": "Summon a Medium Undead spirit (Ghostly, Putrid or Skeletal) within 90 ft for up to 1 hour (Concentration). AC 11 + spell level, 30 HP (Skeletal 20) +10 per level above 3; half the spell level in attacks: a frightening touch, a poisoning aura and paralyzing claw, or a 150-ft Necrotic bolt.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level."
+  },
+  "aura-of-purity": {
+    "summary": "For up to 10 minutes (Concentration), you and allies in a 30-ft aura resist Poison and have Advantage on saves against Blinded, Charmed, Deafened, Frightened, Paralyzed, Poisoned and Stunned effects."
+  },
+  "fount-of-moonlight": {
+    "summary": "For up to 10 minutes (Concentration) you glow (20 ft bright, 20 more dim), resist Radiant, and deal +2d6 Radiant on melee hits. Reaction when a creature you see within 60 ft damages you: it makes a CON save or is Blinded until your next turn ends."
+  },
+  "grasping-vine": {
+    "summary": "Bonus Action: a vine sprouts within 60 ft for up to 1 minute (Concentration). Melee spell attack on a creature within 30 ft of it: 4d8 Bludgeoning, dragged 30 ft toward the vine and Grappled if Huge or smaller. Repeat the attack as a Bonus Action on later turns.",
+    "higherLevel": "It can grapple one more creature per slot level above 4."
+  },
+  "staggering-smite": {
+    "summary": "Bonus Action right after a melee weapon or Unarmed Strike hit: +4d6 Psychic, and a WIS save or Stunned until your next turn ends.",
+    "higherLevel": "+1d6 per slot level above 4."
+  },
+  "summon-aberration": {
+    "summary": "Summon a Medium aberrant spirit (Beholderkin, Mind Flayer or Slaad) within 90 ft for up to 1 hour (Concentration). AC 11 + spell level, 40 HP +10 per level above 4; half the spell level in attacks: a 150-ft eye ray, a psychic slam with a 2d6 Psychic aura, or a regenerating slaad's healing-blocking claw.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level."
+  },
+  "summon-construct": {
+    "summary": "Summon a Medium Construct spirit (Clay, Metal or Stone) within 90 ft for up to 1 hour (Concentration). AC 13 + spell level, 40 HP +15 per level above 4; half the spell level in Slams (1d8 + 4 + spell level Bludgeoning). Clay strikes back when hurt, Metal burns for 1d10 Fire, Stone slows foes nearby.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level."
+  },
+  "summon-elemental": {
+    "summary": "Summon a Medium Elemental spirit (Air, Earth, Fire or Water) within 90 ft for up to 1 hour (Concentration). AC 11 + spell level, 50 HP +10 per level above 4, speed 40 with a fly, burrow or swim by element; half the spell level in Slams, 1d10 + 4 + spell level of the element's damage.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level."
+  },
+  "banishing-smite": {
+    "summary": "Bonus Action right after a melee weapon or Unarmed Strike hit: +5d10 Force. If that leaves it at 50 HP or fewer, it makes a CHA save or is sent to a harmless demiplane, Incapacitated, for up to 1 minute (Concentration)."
+  },
+  "circle-of-power": {
+    "summary": "For up to 10 minutes (Concentration), you and allies in a 30-ft aura have Advantage on saves against magic, and succeeding on a half-damage save means taking none."
+  },
+  "conjure-volley": {
+    "summary": "Each creature you choose in a 40-ft-radius, 20-ft-tall Cylinder within 150 ft makes a DEX save: 8d8 Force, half on a success. A weapon serves as the material."
+  },
+  "destructive-wave": {
+    "summary": "Creatures you choose within 30 ft make a CON save: 5d6 Thunder plus 5d6 Radiant or Necrotic (your pick) and Prone on a fail; half damage only on a success.",
+    "damage": [
+      {
+        "dice": "5d6",
+        "type": "Thunder"
+      },
+      {
+        "dice": "5d6",
+        "type": "Radiant or Necrotic"
+      }
+    ]
+  },
+  "jallarzis-storm-of-radiance": {
+    "summary": "A 10-ft-radius, 40-ft-tall Cylinder within 120 ft for up to 1 minute (Concentration): creatures inside are Blinded and Deafened and can't cast Verbal spells. When it appears, and on entering or ending a turn there (once per turn), CON save: 2d10 Radiant + 2d10 Thunder, half on a success.",
+    "higherLevel": "Each damage type +1d10 per slot level above 5."
+  },
+  "steel-wind-strike": {
+    "summary": "Pick as many as five visible creatures within 30 ft and make a melee spell attack on each, 6d10 Force on a hit; then teleport to a spot within 5 ft of one of them."
+  },
+  "summon-celestial": {
+    "summary": "Summon a Large Celestial spirit (Avenger or Defender) within 90 ft for up to 1 hour (Concentration). AC 11 + spell level (Defender +2), 40 HP +10 per level above 5, fly 40; half the spell level in attacks: a 600-ft Radiant bow or a mace that hands out 1d10 temp HP; heals 2d8 + spell level once a day.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level."
+  },
+  "swift-quiver": {
+    "summary": "For up to 1 minute (Concentration): when cast and as a Bonus Action each later turn, make two attacks with a bow or crossbow using conjured ammunition that vanishes after it hits or misses."
+  },
+  "synaptic-static": {
+    "summary": "Creatures in a 20-ft-radius Sphere within 120 ft make an INT save: 8d6 Psychic, half on a success. Those who fail subtract 1d6 from attacks, ability checks and Concentration saves for 1 minute, re-saving at the end of each turn."
+  },
+  "yolandes-regal-presence": {
+    "summary": "For up to 1 minute (Concentration), a 10-ft aura: when it reaches a creature you see, or one enters or ends a turn in it, you may force a WIS save (once per turn). Fail: 4d6 Psychic, Prone, and pushed up to 10 ft; success: half damage only."
+  },
+  "arcane-gate": {
+    "summary": "Open two linked portals for up to 10 minutes (Concentration), one within 10 ft of you and one within 500 ft. Whatever enters one's open side steps out of the other. Bonus Action: change which sides are open."
+  },
+  "summon-fiend": {
+    "summary": "Summon a Large Fiend spirit (Demon, Devil or Yugoloth) within 90 ft for up to 1 hour (Concentration). AC 12 + spell level, 50/40/60 HP +15 per level above 6, Magic Resistance; half the spell level in attacks (Necrotic bite, 150-ft Fire strike, or claws plus a 30-ft teleport). The Demon explodes for 2d10 + level Fire when it goes.",
+    "higherLevel": "Its stat block uses the slot's level as the spell level."
+  },
+  "tashas-bubbling-cauldron": {
+    "summary": "A cauldron appears within 5 ft for 10 minutes holding a Common or Uncommon potion you pick. Bonus Action: you or an ally draws one, up to your spellcasting modifier (min 1) in all. Leftover potions vanish when you cast it again."
+  },
+  "power-word-fortify": {
+    "summary": "Divide 120 temp HP as you like among as many as six visible creatures within 60 ft."
+  },
+  "telepathy": {
+    "summary": "For 24 hours, link minds with a willing creature you know anywhere on your plane, instantly sharing words, images and sensations it understands."
+  },
+  "arcane-hand": {
+    "damage": [
+      {
+        "dice": "5d8",
+        "type": "Force"
+      },
+      {
+        "dice": "4d6",
+        "type": "Bludgeoning"
+      }
+    ]
+  },
+  "arcane-sword": {
+    "damage": [
+      {
+        "dice": "4d12",
+        "type": "Force"
+      }
+    ]
+  },
+  "beacon-of-hope": {
+    "save": null
+  },
+  "chromatic-orb": {
+    "damage": [
+      {
+        "dice": "3d8",
+        "type": "Acid, Cold, Fire, Lightning, Poison, or Thunder"
+      }
+    ]
+  },
+  "conjure-animals": {
+    "save": "DEX"
+  },
+  "conjure-elemental": {
+    "damage": [
+      {
+        "dice": "8d8",
+        "type": "Lightning, Thunder, Fire, or Cold"
+      },
+      {
+        "dice": "4d8",
+        "type": "Lightning, Thunder, Fire, or Cold"
+      }
+    ]
+  },
+  "conjure-fey": {
+    "damage": [
+      {
+        "dice": "3d12",
+        "type": "Psychic"
+      }
+    ]
+  },
+  "conjure-minor-elementals": {
+    "damage": [
+      {
+        "dice": "2d8",
+        "type": "Acid, Cold, Fire, or Lightning"
+      }
+    ]
+  },
+  "delayed-blast-fireball": {
+    "damage": [
+      {
+        "dice": "12d6",
+        "type": "Fire"
+      }
+    ]
+  },
+  "dragons-breath": {
+    "damage": [
+      {
+        "dice": "3d6",
+        "type": "Acid, Cold, Fire, Lightning, or Poison"
+      }
+    ]
+  },
+  "eldritch-blast": {
+    "scaling": {
+      "kind": "cantrip"
+    }
+  },
+  "find-steed": {
+    "healing": null
+  },
+  "flame-blade": {
+    "damage": [
+      {
+        "dice": "3d6",
+        "type": "Fire"
+      }
+    ]
+  },
+  "forbiddance": {
+    "damage": [
+      {
+        "dice": "5d10",
+        "type": "Radiant or Necrotic"
+      }
+    ]
+  },
+  "gaseous-form": {
+    "save": null
+  },
+  "giant-insect": {
+    "damage": null
+  },
+  "glyph-of-warding": {
+    "damage": [
+      {
+        "dice": "5d8",
+        "type": "Acid, Cold, Fire, Lightning, or Thunder"
+      }
+    ]
+  },
+  "haste": {
+    "save": null
+  },
+  "prismatic-wall": {
+    "save": "DEX"
+  },
+  "sorcerous-burst": {
+    "damage": [
+      {
+        "dice": "1d8",
+        "type": "Acid, Cold, Fire, Lightning, Poison, Psychic, or Thunder"
+      }
+    ]
+  },
+  "spiritual-weapon": {
+    "damage": [
+      {
+        "dice": "1d8",
+        "type": "Force"
+      }
+    ]
+  },
+  "true-strike": {
+    "scaling": {
+      "kind": "cantrip",
+      "dice": "1d6"
+    }
+  }
+}

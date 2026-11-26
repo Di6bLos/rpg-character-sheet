@@ -1,0 +1,259 @@
+{
+  "features": {
+    "Bardic Inspiration": {
+      "activation": "bonus",
+      "uses": {
+        "count": "CHA",
+        "recharge": "long"
+      },
+      "dice": "column:Bardic Die",
+      "range": 60,
+      "duration": "1 hour"
+    },
+    "Spellcasting": {},
+    "Expertise": {
+      "choices": [
+        {
+          "kind": "expertise",
+          "count": 2
+        }
+      ]
+    },
+    "Jack of All Trades": {},
+    "Bard Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin"]
+        }
+      ]
+    },
+    "Font of Inspiration": {
+      "uses": {
+        "count": "CHA",
+        "recharge": "short",
+        "restore": "a spell slot (no action)"
+      }
+    },
+    "Countercharm": {
+      "activation": "reaction",
+      "range": 30
+    },
+    "Magical Secrets": {},
+    "Superior Inspiration": {},
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin"]
+        }
+      ]
+    },
+    "Words of Creation": {
+      "grants": [
+        {
+          "kind": "spell",
+          "spell": "power-word-heal",
+          "at": 20
+        },
+        {
+          "kind": "spell",
+          "spell": "power-word-kill",
+          "at": 20
+        }
+      ]
+    }
+  },
+  "subclasses": {
+    "college-of-dance": {
+      "summary": "A bard who performs through movement: fights unarmored with graceful strikes and moves the party around the battlefield.",
+      "features": {
+        "Dazzling Footwork": {
+          "summary": "Without armor or a Shield: Advantage on dance Performance checks, AC 10 + DEX + CHA, a free Unarmed Strike when you spend Bardic Inspiration, and Unarmed Strikes that use DEX and your Bardic Die.",
+          "options": [
+            {
+              "name": "Dance Virtuoso",
+              "summary": "Advantage on Charisma (Performance) checks made by dancing."
+            },
+            {
+              "name": "Unarmored Defense",
+              "grants": [
+                {
+                  "kind": "ac",
+                  "formula": "10 + DEX + CHA"
+                }
+              ],
+              "summary": "Base AC is 10 + DEX + CHA."
+            },
+            {
+              "name": "Agile Strikes",
+              "summary": "Spending a Bardic Inspiration use as part of an action, Bonus Action or Reaction lets you also make one Unarmed Strike with it."
+            },
+            {
+              "name": "Bardic Damage",
+              "dice": "column:Bardic Die",
+              "damageType": "Bludgeoning",
+              "summary": "Unarmed Strikes can attack with DEX and deal a roll of your Bardic Die + DEX as Bludgeoning damage; this roll costs no die."
+            }
+          ]
+        },
+        "Inspiring Movement": {
+          "summary": "Reaction when an enemy you see ends its turn within 5 ft: spend a Bardic Inspiration use to move half your Speed, and one ally within 30 ft may use their Reaction to do the same. None of it provokes.",
+          "activation": "reaction",
+          "range": 30
+        },
+        "Tandem Footwork": {
+          "summary": "On rolling Initiative (if not Incapacitated), spend a Bardic Inspiration use and roll the die: you and allies within 30 ft who see or hear you add it to Initiative.",
+          "dice": "column:Bardic Die",
+          "range": 30
+        },
+        "Leading Evasion": {
+          "summary": "DEX saves for half damage: take none on a success, half on a failure. Creatures within 5 ft making the same save can share it. Not while Incapacitated.",
+          "range": 5
+        }
+      }
+    },
+    "college-of-glamour": {
+      "summary": "A bard steeped in fey magic who charms and frightens, grants temp HP, and wraps themselves in an awe-inspiring presence.",
+      "features": {
+        "Beguiling Magic": {
+          "summary": "Charm Person and Mirror Image always prepared. Right after casting an Enchantment or Illusion spell with a slot, one creature within 60 ft makes a WIS save or is Charmed or Frightened (your pick) for 1 minute, saving again each turn. Once per Long Rest; a Bardic Inspiration use restores it.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "charm-person",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "mirror-image",
+              "at": 3
+            }
+          ],
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a use of Bardic Inspiration"
+          },
+          "save": {
+            "ability": "WIS",
+            "dc": "spell"
+          },
+          "range": 60,
+          "duration": "1 minute"
+        },
+        "Mantle of Inspiration": {
+          "summary": "Bonus Action: spend a Bardic Inspiration use and roll it. Up to CHA mod (min 1) other creatures within 60 ft gain temp HP equal to twice the roll, then may use their Reaction to move their Speed without provoking.",
+          "activation": "bonus",
+          "dice": "column:Bardic Die",
+          "range": 60
+        },
+        "Mantle of Majesty": {
+          "summary": "Command always prepared. Bonus Action: cast it free and look otherworldly for 1 minute (Concentration), casting it free as a Bonus Action each turn; creatures you've Charmed fail its save. Once per Long Rest; a level 3+ slot restores it.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "command",
+              "at": 6
+            }
+          ],
+          "activation": "bonus",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a level 3+ spell slot"
+          },
+          "duration": "1 minute"
+        },
+        "Unbreakable Majesty": {
+          "summary": "Bonus Action: for 1 minute (ends if Incapacitated), the first creature to hit you with an attack each turn must pass a CHA save or the attack misses. Once per Short or Long Rest.",
+          "activation": "bonus",
+          "uses": {
+            "count": 1,
+            "recharge": "short"
+          },
+          "save": {
+            "ability": "CHA",
+            "dc": "spell"
+          },
+          "duration": "1 minute"
+        }
+      }
+    },
+    "college-of-lore": {
+      "features": {
+        "Bonus Proficiencies": {
+          "choices": [
+            {
+              "kind": "skill",
+              "count": 3
+            }
+          ]
+        },
+        "Cutting Words": {
+          "activation": "reaction",
+          "dice": "column:Bardic Die",
+          "range": 60
+        },
+        "Magical Discoveries": {
+          "choices": [
+            {
+              "kind": "spell",
+              "count": 2,
+              "label": "Magical Discoveries (Cleric, Druid or Wizard list; cantrips allowed)"
+            }
+          ]
+        },
+        "Peerless Skill": {
+          "dice": "column:Bardic Die"
+        }
+      }
+    },
+    "college-of-valor": {
+      "summary": "A battle-ready bard who fights in the front line and lets allies spend inspiration on armor or damage.",
+      "features": {
+        "Combat Inspiration": {
+          "summary": "Anyone holding your Bardic Inspiration die can also spend it to boost AC against a hit (Reaction) or add it to damage after a hit.",
+          "options": [
+            {
+              "name": "Defense",
+              "activation": "reaction",
+              "summary": "When hit by an attack roll, roll the die and add it to AC against that attack, maybe turning it into a miss."
+            },
+            {
+              "name": "Offense",
+              "summary": "Right after hitting with an attack roll, roll the die and add it to that attack's damage."
+            }
+          ]
+        },
+        "Martial Training": {
+          "summary": "Proficiency with Martial weapons plus Medium armor and Shield training; Simple or Martial weapons can serve as your Bard spellcasting focus.",
+          "grants": [
+            {
+              "kind": "weapon",
+              "value": "Martial weapons"
+            },
+            {
+              "kind": "armor",
+              "value": "Medium armor"
+            },
+            {
+              "kind": "armor",
+              "value": "Shields"
+            }
+          ]
+        },
+        "Extra Attack": {
+          "summary": "Attack twice when you take the Attack action; one attack can be swapped for a one-action cantrip."
+        },
+        "Battle Magic": {
+          "summary": "After casting a spell that takes an action, make one weapon attack as a Bonus Action.",
+          "activation": "bonus"
+        }
+      }
+    }
+  }
+}

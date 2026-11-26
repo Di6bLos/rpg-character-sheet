@@ -1,0 +1,38 @@
+{
+  "artisan": {
+    "summary": "Grew up sweeping a craft workshop, then apprenticed there, picking up a trade, an eye for detail and a knack for calming fussy customers."
+  },
+  "charlatan": {
+    "summary": "A tavern-circuit con artist who sold gullible marks fake potions, forged papers and other comforting lies."
+  },
+  "entertainer": {
+    "summary": "Raised among travelling fairs and carnivals, trading odd jobs for lessons from performers, and still hungry for an audience."
+  },
+  "farmer": {
+    "summary": "Worked the fields and herds for years, gaining patience, a sturdy constitution and respect for the weather and wilds."
+  },
+  "guard": {
+    "summary": "Stood long watches on a town wall, scanning outside for raiders and inside for thieves and troublemakers."
+  },
+  "guide": {
+    "summary": "Lived rough in the wilderness, leading travellers through it and learning a little nature magic from druids along the way."
+  },
+  "hermit": {
+    "summary": "Spent early years in isolation far from any town, with animals for company and plenty of time to ponder life's big questions."
+  },
+  "merchant": {
+    "summary": "Trained under a trader or shopkeeper, buying and selling goods and hauling them from market to market."
+  },
+  "noble": {
+    "summary": "Born into a minor aristocratic family, given a fine education and a close-up view of courtly power and leadership."
+  },
+  "sailor": {
+    "summary": "A seasoned hand at sea who has weathered storms and swapped tales in countless harbour taverns."
+  },
+  "scribe": {
+    "summary": "Trained as a copyist in an archive, cloister or office, producing careful, error-free documents by hand."
+  },
+  "wayfarer": {
+    "summary": "Grew up homeless on city streets, scraping by on odd jobs and the occasional theft, yet never giving up hope."
+  }
+}

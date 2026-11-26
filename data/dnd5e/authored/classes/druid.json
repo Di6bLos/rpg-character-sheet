@@ -1,0 +1,627 @@
+{
+  "features": {
+    "Spellcasting": {},
+    "Druidic": {
+      "grants": [
+        {
+          "kind": "language",
+          "value": "Druidic"
+        },
+        {
+          "kind": "spell",
+          "spell": "speak-with-animals",
+          "at": 1
+        }
+      ]
+    },
+    "Primal Order": {
+      "choices": [
+        {
+          "kind": "option",
+          "count": 1,
+          "label": "Primal Order"
+        }
+      ],
+      "options": [
+        {
+          "name": "Magician",
+          "choices": [
+            {
+              "kind": "cantrip",
+              "count": 1,
+              "list": "druid"
+            }
+          ]
+        },
+        {
+          "name": "Warden",
+          "grants": [
+            {
+              "kind": "weapon",
+              "value": "Martial weapons"
+            },
+            {
+              "kind": "armor",
+              "value": "Medium armor"
+            }
+          ]
+        }
+      ]
+    },
+    "Wild Shape": {
+      "activation": "bonus",
+      "uses": {
+        "count": "column:Wild Shape",
+        "recharge": "long",
+        "short": 1
+      },
+      "duration": "half your Druid level in hours"
+    },
+    "Wild Companion": {
+      "activation": "magic",
+      "duration": "until you finish a Long Rest"
+    },
+    "Druid Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin"],
+          "label": "Ability Score Improvement"
+        }
+      ]
+    },
+    "Wild Resurgence": {
+      "options": [
+        {
+          "name": "Spell Slot to Wild Shape",
+          "activation": "free",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          }
+        },
+        {
+          "name": "Wild Shape to Spell Slot",
+          "activation": "free",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          }
+        }
+      ]
+    },
+    "Elemental Fury": {
+      "choices": [
+        {
+          "kind": "option",
+          "count": 1,
+          "label": "Elemental Fury"
+        }
+      ],
+      "options": [
+        {
+          "name": "Potent Spellcasting"
+        },
+        {
+          "name": "Primal Strike",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "dice": "1d8"
+        }
+      ]
+    },
+    "Improved Elemental Fury": {
+      "options": [
+        {
+          "name": "Potent Spellcasting"
+        },
+        {
+          "name": "Primal Strike",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "dice": "2d8"
+        }
+      ]
+    },
+    "Beast Spells": {},
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin"],
+          "label": "Epic Boon"
+        }
+      ]
+    },
+    "Archdruid": {
+      "options": [
+        {
+          "name": "Evergreen Wild Shape"
+        },
+        {
+          "name": "Nature Magician",
+          "activation": "free",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          }
+        },
+        {
+          "name": "Longevity"
+        }
+      ]
+    }
+  },
+  "subclasses": {
+    "circle-of-the-land": {
+      "features": {
+        "Circle of the Land Spells": {
+          "choices": [
+            {
+              "kind": "option",
+              "count": 1,
+              "label": "Land Type"
+            }
+          ],
+          "options": [
+            {
+              "name": "Arid Land",
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "blur",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "burning-hands",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "fire-bolt",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "fireball",
+                  "at": 5
+                },
+                {
+                  "kind": "spell",
+                  "spell": "blight",
+                  "at": 7
+                },
+                {
+                  "kind": "spell",
+                  "spell": "wall-of-stone",
+                  "at": 9
+                }
+              ]
+            },
+            {
+              "name": "Polar Land",
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "fog-cloud",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "hold-person",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "ray-of-frost",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "sleet-storm",
+                  "at": 5
+                },
+                {
+                  "kind": "spell",
+                  "spell": "ice-storm",
+                  "at": 7
+                },
+                {
+                  "kind": "spell",
+                  "spell": "cone-of-cold",
+                  "at": 9
+                }
+              ]
+            },
+            {
+              "name": "Temperate Land",
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "misty-step",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "shocking-grasp",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "sleep",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "lightning-bolt",
+                  "at": 5
+                },
+                {
+                  "kind": "spell",
+                  "spell": "freedom-of-movement",
+                  "at": 7
+                },
+                {
+                  "kind": "spell",
+                  "spell": "tree-stride",
+                  "at": 9
+                }
+              ]
+            },
+            {
+              "name": "Tropical Land",
+              "grants": [
+                {
+                  "kind": "spell",
+                  "spell": "acid-splash",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "ray-of-sickness",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "web",
+                  "at": 3
+                },
+                {
+                  "kind": "spell",
+                  "spell": "stinking-cloud",
+                  "at": 5
+                },
+                {
+                  "kind": "spell",
+                  "spell": "polymorph",
+                  "at": 7
+                },
+                {
+                  "kind": "spell",
+                  "spell": "insect-plague",
+                  "at": 9
+                }
+              ]
+            }
+          ]
+        },
+        "Land’s Aid": {
+          "activation": "magic",
+          "range": 60,
+          "dice": "2d6",
+          "damageType": "Necrotic",
+          "save": {
+            "ability": "CON",
+            "dc": "spell"
+          }
+        },
+        "Natural Recovery": {
+          "options": [
+            {
+              "name": "Free Circle Spell",
+              "uses": {
+                "count": 1,
+                "recharge": "long"
+              }
+            },
+            {
+              "name": "Recover Spell Slots",
+              "uses": {
+                "count": 1,
+                "recharge": "long"
+              }
+            }
+          ]
+        },
+        "Nature’s Ward": {
+          "grants": [
+            {
+              "kind": "conditionImmunity",
+              "value": "Poisoned"
+            }
+          ],
+          "options": [
+            {
+              "name": "Arid Land",
+              "grants": [
+                {
+                  "kind": "resistance",
+                  "value": "Fire"
+                }
+              ]
+            },
+            {
+              "name": "Polar Land",
+              "grants": [
+                {
+                  "kind": "resistance",
+                  "value": "Cold"
+                }
+              ]
+            },
+            {
+              "name": "Temperate Land",
+              "grants": [
+                {
+                  "kind": "resistance",
+                  "value": "Lightning"
+                }
+              ]
+            },
+            {
+              "name": "Tropical Land",
+              "grants": [
+                {
+                  "kind": "resistance",
+                  "value": "Poison"
+                }
+              ]
+            }
+          ]
+        },
+        "Nature’s Sanctuary": {
+          "activation": "magic",
+          "range": 120,
+          "duration": "1 minute"
+        }
+      }
+    },
+    "circle-of-the-moon": {
+      "summary": "A shape-shifter whose lunar magic makes Wild Shape forms tougher, deadlier and able to cast circle spells.",
+      "features": {
+        "Circle Forms": {
+          "summary": "Shape-shifted, your top form CR is Druid level ÷ 3 (round down), your AC is the beast's or 13 + WIS, whichever is higher, and you get temp HP of 3 × Druid level."
+        },
+        "Circle of the Moon Spells": {
+          "summary": "Always prepared: Cure Wounds, Moonbeam, Starry Wisp at 3; Conjure Animals at 5; Fount of Moonlight at 7; Mass Cure Wounds at 9. These work even in Wild Shape.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "cure-wounds",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "moonbeam",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "starry-wisp",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "conjure-animals",
+              "at": 5
+            },
+            {
+              "kind": "spell",
+              "spell": "fount-of-moonlight",
+              "at": 7
+            },
+            {
+              "kind": "spell",
+              "spell": "mass-cure-wounds",
+              "at": 9
+            }
+          ]
+        },
+        "Improved Circle Forms": {
+          "summary": "In beast form, each hit can deal Radiant instead of its usual type (pick per hit), and you add WIS to CON saves."
+        },
+        "Moonlight Step": {
+          "summary": "Bonus Action: teleport up to 30 ft to a space you see; your next attack roll this turn has Advantage. WIS mod uses (min 1) per Long Rest; a level 2+ slot buys back one use.",
+          "activation": "bonus",
+          "range": 30,
+          "uses": {
+            "count": "WIS",
+            "recharge": "long",
+            "restore": "a level 2+ spell slot per use"
+          }
+        },
+        "Lunar Form": {
+          "summary": "Once per turn a beast-form hit adds 2d10 Radiant. Moonlight Step can bring a willing creature within 10 ft along, setting it down within 10 ft of where you arrive.",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "dice": "2d10",
+          "damageType": "Radiant"
+        }
+      }
+    },
+    "circle-of-the-sea": {
+      "summary": "A storm-caller who spends Wild Shape on a freezing aura of sea spray that batters foes.",
+      "features": {
+        "Circle of the Sea Spells": {
+          "summary": "Always-prepared spells by Druid level. 3: Thunderwave, Ray of Frost, Fog Cloud, Gust of Wind. 5: Water Breathing, Lightning Bolt. 7: Ice Storm, Control Water. 9: Hold Monster, Conjure Elemental.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "fog-cloud",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "gust-of-wind",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "ray-of-frost",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "thunderwave",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "lightning-bolt",
+              "at": 5
+            },
+            {
+              "kind": "spell",
+              "spell": "water-breathing",
+              "at": 5
+            },
+            {
+              "kind": "spell",
+              "spell": "control-water",
+              "at": 7
+            },
+            {
+              "kind": "spell",
+              "spell": "ice-storm",
+              "at": 7
+            },
+            {
+              "kind": "spell",
+              "spell": "conjure-elemental",
+              "at": 9
+            },
+            {
+              "kind": "spell",
+              "spell": "hold-monster",
+              "at": 9
+            }
+          ]
+        },
+        "Wrath of the Sea": {
+          "summary": "Bonus Action, spend a Wild Shape use: a 5-ft spray aura around you for 10 min. On creation and as a later Bonus Action, one creature in it makes a CON save or takes (WIS mod, min 1)d6 Cold; Large or smaller is shoved up to 15 ft.",
+          "activation": "bonus",
+          "range": 5,
+          "duration": "10 minutes",
+          "damageType": "Cold",
+          "save": {
+            "ability": "CON",
+            "dc": "spell"
+          }
+        },
+        "Aquatic Affinity": {
+          "summary": "The Wrath of the Sea aura grows to 10 ft, and you swim at your walking Speed.",
+          "grants": [
+            {
+              "kind": "speed",
+              "value": "swim",
+              "amount": "walk"
+            }
+          ]
+        },
+        "Stormborn": {
+          "summary": "While Wrath of the Sea is up, you fly at your Speed and resist Cold, Lightning and Thunder."
+        },
+        "Oceanic Gift": {
+          "summary": "You may center Wrath of the Sea on a willing creature within 60 ft; it uses your save DC and WIS. Spending two Wild Shape uses gives the aura to both of you.",
+          "range": 60
+        }
+      }
+    },
+    "circle-of-the-stars": {
+      "summary": "A stargazer who carries a star chart, reads daily omens and takes on a glowing constellation form.",
+      "features": {
+        "Star Map": {
+          "summary": "You own a Tiny star chart that works as a Druid focus. Holding it, you have Guidance and Guiding Bolt prepared and cast Guiding Bolt slot-free WIS mod times (min 1) per Long Rest. Remake a lost one in a 1-hour rite during a rest.",
+          "grants": [
+            {
+              "kind": "spell",
+              "spell": "guidance",
+              "at": 3
+            },
+            {
+              "kind": "spell",
+              "spell": "guiding-bolt",
+              "at": 3,
+              "free": {
+                "count": "WIS",
+                "recharge": "long"
+              }
+            }
+          ]
+        },
+        "Starry Form": {
+          "summary": "Bonus Action, spend a Wild Shape use: glow for 10 min (bright light 10 ft, dim 10 ft past that) and keep your own stats instead of changing shape. Each time, pick a constellation: Archer, Chalice or Dragon.",
+          "activation": "bonus",
+          "duration": "10 minutes",
+          "options": [
+            {
+              "name": "Archer",
+              "summary": "When you take the form and as a Bonus Action later: ranged spell attack vs one creature within 60 ft, 1d8 + WIS Radiant.",
+              "activation": "bonus",
+              "range": 60,
+              "dice": "1d8",
+              "damageType": "Radiant"
+            },
+            {
+              "name": "Chalice",
+              "summary": "When a spell cast with a slot heals someone, you or a creature within 30 ft also heals 1d8 + WIS.",
+              "range": 30,
+              "dice": "1d8"
+            },
+            {
+              "name": "Dragon",
+              "summary": "On INT or WIS checks and CON saves to hold Concentration, a d20 of 9 or less counts as 10."
+            }
+          ]
+        },
+        "Cosmic Omen": {
+          "summary": "After each Long Rest roll a die: even means Weal, odd means Woe until your next one. Reaction when a creature you see within 30 ft makes a D20 Test: roll 1d6 to add (Weal) or subtract (Woe). WIS mod uses (min 1) per Long Rest.",
+          "activation": "reaction",
+          "range": 30,
+          "dice": "1d6",
+          "uses": {
+            "count": "WIS",
+            "recharge": "long"
+          },
+          "options": [
+            {
+              "name": "Weal",
+              "summary": "Even roll: your 1d6 goes onto the creature's D20 Test."
+            },
+            {
+              "name": "Woe",
+              "summary": "Odd roll: your 1d6 comes off the creature's D20 Test."
+            }
+          ]
+        },
+        "Twinkling Constellations": {
+          "summary": "Archer and Chalice roll 2d8 instead of 1d8; with Dragon you fly 20 ft and can hover. At the start of each of your turns in Starry Form you may switch constellation.",
+          "dice": "2d8"
+        },
+        "Full of Stars": {
+          "summary": "In Starry Form you resist Bludgeoning, Piercing and Slashing damage."
+        }
+      }
+    }
+  }
+}

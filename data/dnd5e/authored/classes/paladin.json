@@ -1,0 +1,275 @@
+{
+  "features": {
+    "Lay On Hands": {
+      "activation": "bonus",
+      "range": "Touch",
+      "summary": "Healing pool of 5 × Paladin level HP, refilled on a Long Rest; 5 points from it cure Poisoned instead of healing."
+    },
+    "Spellcasting": {},
+    "Weapon Mastery": {
+      "choices": [
+        {
+          "kind": "weaponMastery",
+          "count": 2
+        }
+      ]
+    },
+    "Fighting Style": {
+      "choices": [
+        {
+          "kind": "option",
+          "count": 1,
+          "label": "Fighting Style"
+        }
+      ],
+      "options": [
+        {
+          "name": "Fighting Style feat",
+          "choices": [
+            {
+              "kind": "feat",
+              "count": 1,
+              "category": ["fighting-style"]
+            }
+          ]
+        },
+        {
+          "name": "Blessed Warrior",
+          "choices": [
+            {
+              "kind": "cantrip",
+              "count": 2,
+              "list": "cleric"
+            }
+          ]
+        }
+      ]
+    },
+    "Paladin’s Smite": {
+      "grants": [
+        {
+          "kind": "spell",
+          "spell": "divine-smite",
+          "at": 2,
+          "free": {
+            "count": 1,
+            "recharge": "long"
+          }
+        }
+      ]
+    },
+    "Channel Divinity": {
+      "uses": {
+        "count": "column:Channel Divinity",
+        "recharge": "long",
+        "short": 1
+      },
+      "options": [
+        {
+          "name": "Divine Sense",
+          "activation": "bonus",
+          "range": 60,
+          "duration": "10 minutes"
+        }
+      ]
+    },
+    "Paladin Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin", "fighting-style"]
+        }
+      ]
+    },
+    "Extra Attack": {},
+    "Faithful Steed": {
+      "grants": [
+        {
+          "kind": "spell",
+          "spell": "find-steed",
+          "at": 5,
+          "free": {
+            "count": 1,
+            "recharge": "long"
+          }
+        }
+      ]
+    },
+    "Aura of Protection": {
+      "range": 10
+    },
+    "Abjure Foes": {
+      "activation": "magic",
+      "range": 60,
+      "save": {
+        "ability": "WIS",
+        "dc": "spell"
+      },
+      "duration": "1 minute",
+      "summary": "Costs one Channel Divinity use."
+    },
+    "Aura of Courage": {},
+    "Radiant Strikes": {
+      "dice": "1d8",
+      "damageType": "Radiant"
+    },
+    "Restoring Touch": {},
+    "Aura Expansion": {
+      "range": 30
+    },
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin", "fighting-style"]
+        }
+      ]
+    }
+  },
+  "subclasses": {
+    "oath-of-devotion": {
+      "features": {
+        "Oath of Devotion Spells": {},
+        "Sacred Weapon": {
+          "duration": "10 minutes",
+          "damageType": "Radiant",
+          "summary": "Costs one Channel Divinity use."
+        },
+        "Aura of Devotion": {},
+        "Smite of Protection": {},
+        "Holy Nimbus": {
+          "activation": "bonus",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a level 5 spell slot"
+          },
+          "duration": "10 minutes",
+          "damageType": "Radiant"
+        }
+      }
+    },
+    "oath-of-glory": {
+      "summary": "A paladin sworn to heroic deeds who bolsters allies' vigor, speed and defense.",
+      "features": {
+        "Inspiring Smite": {
+          "summary": "Right after casting Divine Smite, spend a Channel Divinity use to split 2d8 + Paladin level Temporary HP among any creatures within 30 ft, you included.",
+          "dice": "2d8",
+          "range": 30
+        },
+        "Oath of Glory Spells": {
+          "summary": "Oath spells you always have prepared, gained at Paladin levels 3, 5, 9, 13 and 17."
+        },
+        "Peerless Athlete": {
+          "summary": "Bonus Action, one Channel Divinity use: for 1 hour, Advantage on Athletics and Acrobatics checks and +10 ft on Long and High Jumps.",
+          "activation": "bonus",
+          "duration": "1 hour"
+        },
+        "Aura of Alacrity": {
+          "summary": "+10 ft Speed. An ally who first enters your Aura of Protection on a turn, or starts its turn there, gets +10 ft Speed until its next turn ends.",
+          "grants": [
+            {
+              "kind": "speed",
+              "value": "walk",
+              "bonus": 10
+            }
+          ]
+        },
+        "Glorious Defense": {
+          "summary": "Reaction when you or a creature you see within 10 ft is hit: add your CHA mod (min +1) to its AC against that attack; on a miss, make one weapon attack at the attacker if it's in range. CHA mod uses per Long Rest.",
+          "activation": "reaction",
+          "range": 10,
+          "uses": {
+            "count": "CHA",
+            "recharge": "long"
+          }
+        },
+        "Living Legend": {
+          "summary": "Bonus Action, 10 minutes: Advantage on Charisma checks, a Reaction to reroll a failed save, and once per turn a missed weapon attack can hit instead. Once per Long Rest, or spend a level 5 slot to use it again.",
+          "activation": "bonus",
+          "duration": "10 minutes",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a level 5 spell slot"
+          }
+        }
+      }
+    },
+    "oath-of-the-ancients": {
+      "summary": "A paladin who defends life, light and the natural world with primal magic.",
+      "features": {
+        "Nature's Wrath": {
+          "summary": "Magic action, one Channel Divinity use: chosen creatures within 15 ft make a STR save or are Restrained for 1 minute, saving again at the end of each of their turns.",
+          "activation": "magic",
+          "range": 15,
+          "save": {
+            "ability": "STR",
+            "dc": "spell"
+          },
+          "duration": "1 minute"
+        },
+        "Oath of the Ancients Spells": {
+          "summary": "Oath spells you always have prepared, gained at Paladin levels 3, 5, 9, 13 and 17."
+        },
+        "Aura of Warding": {
+          "summary": "You and allies inside your Aura of Protection resist Necrotic, Psychic and Radiant damage."
+        },
+        "Undying Sentinel": {
+          "summary": "Once per Long Rest, when dropped to 0 HP but not killed, stay at 1 HP and then heal 3 × Paladin level. You also stop aging and can't be aged by magic.",
+          "uses": {
+            "count": 1,
+            "recharge": "long"
+          }
+        },
+        "Elder Champion": {
+          "summary": "Bonus Action, 1 minute: foes in your aura have Disadvantage on saves against your spells and Channel Divinity, you regain 10 HP at each turn start, and 1-action spells can be cast as a Bonus Action. Once per Long Rest, or spend a level 5 slot.",
+          "activation": "bonus",
+          "duration": "1 minute",
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a level 5 spell slot"
+          }
+        }
+      }
+    },
+    "oath-of-vengeance": {
+      "summary": "A paladin sworn to hunt down and punish grievous evil at any cost.",
+      "features": {
+        "Oath of Vengeance Spells": {
+          "summary": "Oath spells you always have prepared, gained at Paladin levels 3, 5, 9, 13 and 17."
+        },
+        "Vow of Enmity": {
+          "summary": "As part of the Attack action, spend a Channel Divinity use to mark a creature within 30 ft: Advantage on attacks against it for 1 minute. If it drops to 0 HP, move the mark to another creature within 30 ft for free.",
+          "range": 30,
+          "duration": "1 minute"
+        },
+        "Relentless Avenger": {
+          "summary": "When your Opportunity Attack hits, the target's Speed becomes 0 for the turn, and that same Reaction lets you move half your Speed without provoking."
+        },
+        "Soul of Vengeance": {
+          "summary": "Reaction right after your Vow of Enmity target makes an attack roll, hit or miss: make a melee attack against it if it's in range.",
+          "activation": "reaction"
+        },
+        "Avenging Angel": {
+          "summary": "Bonus Action, 10 minutes: Fly Speed 60 ft with hover, and foes who start a turn in your aura make a WIS save or are Frightened for 1 minute (ends on damage), with attacks against them at Advantage. Once per Long Rest, or spend a level 5 slot.",
+          "activation": "bonus",
+          "duration": "10 minutes",
+          "save": {
+            "ability": "WIS",
+            "dc": "spell"
+          },
+          "uses": {
+            "count": 1,
+            "recharge": "long",
+            "restore": "a level 5 spell slot"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,287 @@
+{
+  "features": {
+    "Spellcasting": {},
+    "Divine Order": {
+      "choices": [
+        {
+          "kind": "option",
+          "count": 1,
+          "label": "Divine Order"
+        }
+      ],
+      "options": [
+        {
+          "name": "Protector",
+          "grants": [
+            {
+              "kind": "weapon",
+              "value": "Martial weapons"
+            },
+            {
+              "kind": "armor",
+              "value": "Heavy armor"
+            }
+          ]
+        },
+        {
+          "name": "Thaumaturge",
+          "choices": [
+            {
+              "kind": "cantrip",
+              "count": 1,
+              "list": "cleric"
+            }
+          ]
+        }
+      ]
+    },
+    "Channel Divinity": {
+      "uses": {
+        "count": "column:Channel Divinity",
+        "recharge": "long",
+        "short": 1
+      },
+      "options": [
+        {
+          "name": "Divine Spark",
+          "activation": "magic",
+          "dice": "1d8",
+          "save": {
+            "ability": "CON",
+            "dc": "spell"
+          },
+          "range": 30
+        },
+        {
+          "name": "Turn Undead",
+          "activation": "magic",
+          "save": {
+            "ability": "WIS",
+            "dc": "spell"
+          },
+          "range": 30,
+          "duration": "1 minute"
+        }
+      ]
+    },
+    "Cleric Subclass": {},
+    "Ability Score Improvement": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["general", "origin"]
+        }
+      ]
+    },
+    "Sear Undead": {
+      "damageType": "Radiant"
+    },
+    "Blessed Strikes": {
+      "choices": [
+        {
+          "kind": "option",
+          "count": 1,
+          "label": "Blessed Strikes"
+        }
+      ],
+      "options": [
+        {
+          "name": "Divine Strike",
+          "uses": {
+            "count": 1,
+            "recharge": "turn"
+          },
+          "dice": "1d8"
+        },
+        {
+          "name": "Potent Spellcasting"
+        }
+      ]
+    },
+    "Divine Intervention": {
+      "activation": "magic",
+      "uses": {
+        "count": 1,
+        "recharge": "long"
+      }
+    },
+    "Improved Blessed Strikes": {
+      "options": [
+        {
+          "name": "Divine Strike",
+          "dice": "2d8"
+        },
+        {
+          "name": "Potent Spellcasting",
+          "range": 60
+        }
+      ]
+    },
+    "Epic Boon": {
+      "choices": [
+        {
+          "kind": "feat",
+          "count": 1,
+          "category": ["epic-boon", "general", "origin"]
+        }
+      ]
+    },
+    "Greater Divine Intervention": {}
+  },
+  "subclasses": {
+    "life-domain": {
+      "features": {
+        "Disciple of Life": {},
+        "Life Domain Spells": {},
+        "Preserve Life": {
+          "activation": "magic",
+          "range": 30
+        },
+        "Blessed Healer": {},
+        "Supreme Healing": {}
+      }
+    },
+    "light-domain": {
+      "summary": "A cleric of radiance and revelation who scorches foes with fire and light and shields allies with flashes of glare.",
+      "features": {
+        "Light Domain Spells": {
+          "summary": "Fire, light and seeing spells join your prepared list for free at Cleric levels 3, 5, 7 and 9 (see the domain spell list)."
+        },
+        "Radiance of the Dawn": {
+          "summary": "Magic action, spend a Channel Divinity use: dispel magical Darkness in a 30-ft Emanation, and chosen creatures there make a CON save, taking 2d10 + Cleric level Radiant (half on a success).",
+          "activation": "magic",
+          "dice": "2d10",
+          "damageType": "Radiant",
+          "save": {
+            "ability": "CON",
+            "dc": "spell"
+          },
+          "range": 30
+        },
+        "Warding Flare": {
+          "summary": "Reaction: give Disadvantage to an attack roll made by a creature you see within 30 ft. WIS mod uses (min 1) per Long Rest.",
+          "activation": "reaction",
+          "uses": {
+            "count": "WIS",
+            "recharge": "long"
+          },
+          "range": 30
+        },
+        "Improved Warding Flare": {
+          "summary": "Warding Flare now refills on a Short or Long Rest, and each use can give the attack's target 2d6 + WIS mod temp HP.",
+          "uses": {
+            "count": "WIS",
+            "recharge": "short"
+          },
+          "dice": "2d6"
+        },
+        "Corona of Light": {
+          "summary": "Magic action: shed sunlight for 1 minute (60 ft bright, 30 ft more dim); enemies in the bright part have Disadvantage on saves against Radiance of the Dawn and your Fire or Radiant spells. WIS mod uses (min 1) per Long Rest.",
+          "activation": "magic",
+          "uses": {
+            "count": "WIS",
+            "recharge": "long"
+          },
+          "range": 60,
+          "duration": "1 minute"
+        }
+      }
+    },
+    "trickery-domain": {
+      "summary": "A mischievous cleric of deception and stealth who fights through an illusory double.",
+      "features": {
+        "Blessing of the Trickster": {
+          "summary": "Magic action: you or a willing creature within 30 ft gets Advantage on Dexterity (Stealth) checks until your next Long Rest or until you use this again.",
+          "activation": "magic",
+          "range": 30
+        },
+        "Trickery Domain Spells": {
+          "summary": "Deception, stealth and mind spells join your prepared list for free at Cleric levels 3, 5, 7 and 9 (see the domain spell list)."
+        },
+        "Invoke Duplicity": {
+          "summary": "Bonus Action, spend a Channel Divinity use: make an intangible illusion of yourself within 30 ft for 1 minute. Cast spells from its space, gain Advantage on foes next to both of you, and move it 30 ft as a Bonus Action.",
+          "activation": "bonus",
+          "range": 30,
+          "duration": "1 minute",
+          "options": [
+            {
+              "name": "Cast Spells",
+              "summary": "Cast spells as if standing where the illusion is, using your own senses."
+            },
+            {
+              "name": "Distract",
+              "range": 5,
+              "summary": "Advantage on attacks against a creature that sees the illusion when you and it are both within 5 ft of that creature."
+            },
+            {
+              "name": "Move",
+              "activation": "bonus",
+              "range": 120,
+              "summary": "Bonus Action: shift the illusion up to 30 ft to a space you see within 120 ft."
+            }
+          ]
+        },
+        "Trickster’s Transposition": {
+          "summary": "When you use the Bonus Action to create or move your Invoke Duplicity illusion, you can also teleport to swap places with it."
+        },
+        "Improved Duplicity": {
+          "summary": "You and allies get Advantage attacking creatures within 5 ft of your illusion, and when it ends, you or someone within 5 ft of it heals HP equal to your Cleric level.",
+          "options": [
+            {
+              "name": "Shared Distraction",
+              "range": 5,
+              "summary": "Attack rolls by you and your allies against a creature within 5 ft of the illusion have Advantage."
+            },
+            {
+              "name": "Healing Illusion",
+              "range": 5,
+              "summary": "As the illusion ends, you or a chosen creature within 5 ft of it regains HP equal to your Cleric level."
+            }
+          ]
+        }
+      }
+    },
+    "war-domain": {
+      "summary": "A battle priest who makes extra attacks, guides strikes home and channels divinity into combat spells.",
+      "features": {
+        "Guided Strike": {
+          "summary": "Spend a Channel Divinity use to add +10 to a missed attack roll by you or a creature within 30 ft; helping someone else costs your Reaction.",
+          "range": 30
+        },
+        "War Domain Spells": {
+          "summary": "Combat and protection spells join your prepared list for free at Cleric levels 3, 5, 7 and 9 (see the domain spell list)."
+        },
+        "War Priest": {
+          "summary": "Bonus Action: one attack with a weapon or Unarmed Strike. WIS mod uses (min 1), back on a Short or Long Rest.",
+          "activation": "bonus",
+          "uses": {
+            "count": "WIS",
+            "recharge": "short"
+          }
+        },
+        "War God’s Blessing": {
+          "summary": "Pay a Channel Divinity use in place of a slot for Shield of Faith or Spiritual Weapon. Then it skips Concentration and runs 1 minute, ending early if you recast it, become Incapacitated or die.",
+          "duration": "1 minute"
+        },
+        "Avatar of Battle": {
+          "summary": "Resistance to Bludgeoning, Piercing and Slashing damage.",
+          "grants": [
+            {
+              "kind": "resistance",
+              "value": "Bludgeoning"
+            },
+            {
+              "kind": "resistance",
+              "value": "Piercing"
+            },
+            {
+              "kind": "resistance",
+              "value": "Slashing"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

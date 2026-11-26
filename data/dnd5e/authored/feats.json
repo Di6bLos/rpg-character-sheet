@@ -1,0 +1,1499 @@
+{
+  "ability-score-improvement": {
+    "benefits": {
+      "Repeatable": {}
+    }
+  },
+  "actor": {
+    "summary": "A performer who passes as other people and copies voices and sounds.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Charisma, max 20."
+      },
+      "Impersonation": {
+        "summary": "Advantage on Deception and Performance checks to pass yourself off as someone while disguised as them."
+      },
+      "Mimicry": {
+        "summary": "Copy any creature’s sounds or speech; a listener sees through it only with an Insight check against DC 8 + PB + your CHA modifier."
+      }
+    }
+  },
+  "alert": {
+    "benefits": {
+      "Initiative Proficiency": {},
+      "Initiative Swap": {}
+    }
+  },
+  "archery": {},
+  "athlete": {
+    "summary": "Climbing, jumping and getting up are easy for you.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Climb Speed": {
+        "summary": "Climb Speed equal to your Speed.",
+        "grants": [
+          {
+            "kind": "speed",
+            "value": "climb",
+            "amount": "walk"
+          }
+        ]
+      },
+      "Hop Up": {
+        "summary": "Standing up from Prone costs just 5 ft of movement."
+      },
+      "Jumping": {
+        "summary": "A 5 ft run-up is enough for a running Long or High Jump."
+      }
+    }
+  },
+  "blind-fighting": {
+    "summary": "Fighting style: Blindsight out to 10 ft.",
+    "grants": [
+      {
+        "kind": "sense",
+        "value": "Blindsight",
+        "range": 10
+      }
+    ]
+  },
+  "boon-of-combat-prowess": {
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {},
+      "Peerless Aim": {
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      }
+    }
+  },
+  "boon-of-dimensional-travel": {
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {},
+      "Blink Steps": {
+        "range": 30
+      }
+    }
+  },
+  "boon-of-energy-resistance": {
+    "summary": "Resist two energy types and hurl that energy back at a foe.",
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Energy Resistances": {
+        "summary": "Resist two energy types of your choice (any but Bludgeoning, Piercing, Slashing and Force); you may swap them after each Long Rest.",
+        "choices": [
+          {
+            "kind": "damageType",
+            "count": 2,
+            "from": [
+              "Acid",
+              "Cold",
+              "Fire",
+              "Lightning",
+              "Necrotic",
+              "Poison",
+              "Psychic",
+              "Radiant",
+              "Thunder"
+            ],
+            "label": "Energy Resistances"
+          }
+        ]
+      },
+      "Energy Redirection": {
+        "summary": "Reaction when one of those types damages you: a visible creature within 60 ft (not behind Total Cover) makes a DEX save (DC 8 + PB + CON) or takes 2d12 + CON damage of that type.",
+        "activation": "reaction",
+        "range": 60,
+        "dice": "2d12",
+        "save": {
+          "ability": "DEX",
+          "dc": "8+PB+CON"
+        }
+      }
+    }
+  },
+  "boon-of-fate": {
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {},
+      "Improve Fate": {
+        "dice": "2d4",
+        "range": 60,
+        "uses": {
+          "count": 1,
+          "recharge": "short",
+          "restore": "rolling Initiative"
+        }
+      }
+    }
+  },
+  "boon-of-fortitude": {
+    "summary": "Much tougher: 40 more maximum HP and a bit extra on each heal.",
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Fortified Health": {
+        "summary": "Max HP +40. Once per turn when you regain HP, you may add your CON modifier to it (usable again from the start of your next turn).",
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      }
+    }
+  },
+  "boon-of-irresistible-offense": {
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {},
+      "Overcome Defenses": {},
+      "Overwhelming Strike": {}
+    }
+  },
+  "boon-of-recovery": {
+    "summary": "Cheat death once a day and heal from a pool of d10s.",
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Last Stand": {
+        "summary": "When dropped to 0 HP, stay at 1 HP and then heal half your max HP. Once per Long Rest.",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        }
+      },
+      "Recover Vitality": {
+        "summary": "Pool of ten d10s. Bonus Action: roll any number of them and heal the total. The pool refills on a Long Rest.",
+        "activation": "bonus",
+        "dice": "1d10",
+        "uses": {
+          "count": 10,
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "boon-of-skill": {
+    "summary": "Proficient in every skill, with Expertise in one more.",
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "All-Around Adept": {
+        "summary": "Proficiency in all skills.",
+        "grants": [
+          {
+            "kind": "skill",
+            "value": "Acrobatics"
+          },
+          {
+            "kind": "skill",
+            "value": "Animal Handling"
+          },
+          {
+            "kind": "skill",
+            "value": "Arcana"
+          },
+          {
+            "kind": "skill",
+            "value": "Athletics"
+          },
+          {
+            "kind": "skill",
+            "value": "Deception"
+          },
+          {
+            "kind": "skill",
+            "value": "History"
+          },
+          {
+            "kind": "skill",
+            "value": "Insight"
+          },
+          {
+            "kind": "skill",
+            "value": "Intimidation"
+          },
+          {
+            "kind": "skill",
+            "value": "Investigation"
+          },
+          {
+            "kind": "skill",
+            "value": "Medicine"
+          },
+          {
+            "kind": "skill",
+            "value": "Nature"
+          },
+          {
+            "kind": "skill",
+            "value": "Perception"
+          },
+          {
+            "kind": "skill",
+            "value": "Performance"
+          },
+          {
+            "kind": "skill",
+            "value": "Persuasion"
+          },
+          {
+            "kind": "skill",
+            "value": "Religion"
+          },
+          {
+            "kind": "skill",
+            "value": "Sleight of Hand"
+          },
+          {
+            "kind": "skill",
+            "value": "Stealth"
+          },
+          {
+            "kind": "skill",
+            "value": "Survival"
+          }
+        ]
+      },
+      "Expertise": {
+        "summary": "Expertise in one skill that lacks it.",
+        "choices": [
+          {
+            "kind": "expertise",
+            "count": 1
+          }
+        ]
+      }
+    }
+  },
+  "boon-of-speed": {
+    "summary": "Very fast and hard to pin down.",
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 30."
+      },
+      "Escape Artist": {
+        "summary": "Bonus Action: Disengage, which also frees you from Grappled.",
+        "activation": "bonus"
+      },
+      "Quickness": {
+        "summary": "Speed +30 ft.",
+        "grants": [
+          {
+            "kind": "speed",
+            "value": "walk",
+            "bonus": 30
+          }
+        ]
+      }
+    }
+  },
+  "boon-of-spell-recall": {
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {},
+      "Free Casting": {
+        "dice": "1d4"
+      }
+    }
+  },
+  "boon-of-the-night-spirit": {
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {},
+      "Merge with Shadows": {
+        "activation": "bonus"
+      },
+      "Shadowy Form": {}
+    }
+  },
+  "boon-of-truesight": {
+    "prerequisite": {
+      "text": "Level 19+",
+      "level": 19
+    },
+    "benefits": {
+      "Ability Score Increase": {},
+      "Truesight": {
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Truesight",
+            "range": 60
+          }
+        ]
+      }
+    }
+  },
+  "charger": {
+    "summary": "Dash farther and hit harder after a straight-line rush.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Improved Dash": {
+        "summary": "Dashing adds 10 ft to your Speed for that Dash."
+      },
+      "Charge Attack": {
+        "summary": "Move 10+ ft straight at a target, then hit it with a melee attack (Attack action): add 1d8 damage, or shove it up to 10 ft if it is at most one size bigger. Once per turn.",
+        "dice": "1d8",
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      }
+    }
+  },
+  "chef": {
+    "summary": "Cook food that boosts rest healing and treats that grant temp HP.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution or Wisdom, max 20."
+      },
+      "Cook's Utensils": {
+        "summary": "Proficiency with Cook’s Utensils.",
+        "grants": [
+          {
+            "kind": "tool",
+            "value": "Cook’s Utensils"
+          }
+        ]
+      },
+      "Replenishing Meal": {
+        "summary": "Short Rest with ingredients and utensils: feed 4 + PB creatures; each who spends Hit Dice that rest heals 1d8 extra.",
+        "dice": "1d8"
+      },
+      "Bolstering Treats": {
+        "summary": "After a Long Rest or 1 hour of cooking, make PB treats (good for 8 hours). Eating one is a Bonus Action and gives temp HP equal to your PB."
+      }
+    }
+  },
+  "crafter": {
+    "summary": "A tradesperson: three artisan tools, cheaper shopping and quick temporary gear.",
+    "benefits": {
+      "Tool Proficiency": {
+        "summary": "Proficiency with three Artisan’s Tools from the Fast Crafting table.",
+        "choices": [
+          {
+            "kind": "tool",
+            "count": 3,
+            "from": [
+              "Carpenter’s Tools",
+              "Leatherworker’s Tools",
+              "Mason’s Tools",
+              "Potter’s Tools",
+              "Smith’s Tools",
+              "Tinker’s Tools",
+              "Weaver’s Tools",
+              "Woodcarver’s Tools"
+            ]
+          }
+        ]
+      },
+      "Discount": {
+        "summary": "Nonmagical items cost you 20% less."
+      },
+      "Fast Crafting": {
+        "summary": "After a Long Rest, make one item from the Fast Crafting table with tools you are proficient in; it breaks down at your next Long Rest."
+      }
+    }
+  },
+  "crossbow-expert": {
+    "summary": "Load crossbows freely and shoot them up close without penalty.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity, max 20."
+      },
+      "Ignore Loading": {
+        "summary": "Hand, light and heavy crossbows lose the Loading property for you, and you can load one without a free hand."
+      },
+      "Firing in Melee": {
+        "summary": "An enemy within 5 ft gives no Disadvantage to your crossbow attacks."
+      },
+      "Dual Wielding": {
+        "summary": "A Light-property bonus attack made with a Light crossbow adds your ability modifier to damage, unless you already add it."
+      }
+    }
+  },
+  "crusher": {
+    "summary": "Bludgeoning hits shove foes around and leave them open after a crit.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Constitution, max 20."
+      },
+      "Push": {
+        "summary": "Once per turn, a Bludgeoning hit moves the target 5 ft to an empty space (target at most one size larger).",
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      },
+      "Enhanced Critical": {
+        "summary": "Crit with Bludgeoning damage: attacks against that creature have Advantage until your next turn starts."
+      }
+    }
+  },
+  "defense": {},
+  "defensive-duelist": {
+    "summary": "Parry melee blows with a Finesse weapon.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity, max 20."
+      },
+      "Parry": {
+        "summary": "Reaction when hit by a melee attack while holding a Finesse weapon: AC + PB against melee attacks, possibly turning that hit into a miss, until your next turn starts.",
+        "activation": "reaction",
+        "duration": "until the start of your next turn"
+      }
+    }
+  },
+  "dual-wielder": {
+    "summary": "Better two-weapon fighting with a wider choice of off-hand weapons.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Enhanced Dual Wielding": {
+        "summary": "After attacking with a Light weapon in the Attack action, Bonus Action: one more attack with another melee weapon that is not Two-Handed (no ability modifier to damage unless it is negative).",
+        "activation": "bonus"
+      },
+      "Quick Draw": {
+        "summary": "Draw or stow two non-Two-Handed weapons where you could normally handle one."
+      }
+    }
+  },
+  "dueling": {
+    "summary": "Fighting style: +2 damage with a one-handed melee weapon when you hold no other weapon."
+  },
+  "durable": {
+    "summary": "Hard to kill and quick to patch up.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution, max 20."
+      },
+      "Defy Death": {
+        "summary": "Advantage on Death Saving Throws."
+      },
+      "Speedy Recovery": {
+        "summary": "Bonus Action: spend and roll one Hit Point Die and heal that much.",
+        "activation": "bonus"
+      }
+    }
+  },
+  "elemental-adept": {
+    "summary": "Your spells of one energy type punch through Resistance.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Energy Mastery": {
+        "summary": "Pick Acid, Cold, Fire, Lightning or Thunder. Your spells ignore Resistance to it, and 1s on their damage dice of that type count as 2s.",
+        "choices": [
+          {
+            "kind": "damageType",
+            "count": 1,
+            "from": ["Acid", "Cold", "Fire", "Lightning", "Thunder"]
+          }
+        ]
+      },
+      "Repeatable": {
+        "summary": "Can be taken again with a new damage type each time."
+      }
+    }
+  },
+  "fey-touched": {
+    "summary": "Fey magic: Misty Step plus one level 1 Divination or Enchantment spell.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Fey Magic": {
+        "summary": "Misty Step and a level 1 Divination or Enchantment spell of your choice are always prepared. Each can be cast once per Long Rest without a slot, or with your slots. The ability you raised casts them.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "misty-step",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "spell",
+            "count": 1,
+            "maxLevel": 1,
+            "from": [
+              "animal-friendship",
+              "bane",
+              "bless",
+              "charm-person",
+              "command",
+              "compelled-duel",
+              "comprehend-languages",
+              "detect-evil-and-good",
+              "detect-magic",
+              "detect-poison-and-disease",
+              "dissonant-whispers",
+              "heroism",
+              "hex",
+              "hideous-laughter",
+              "hunters-mark",
+              "identify",
+              "sleep",
+              "speak-with-animals"
+            ],
+            "label": "Level 1 Divination or Enchantment spell (free once per Long Rest)"
+          }
+        ]
+      }
+    }
+  },
+  "grappler": {
+    "benefits": {
+      "Ability Score Increase": {},
+      "Punch and Grab": {
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      },
+      "Attack Advantage": {},
+      "Fast Wrestler": {}
+    }
+  },
+  "great-weapon-fighting": {},
+  "great-weapon-master": {
+    "summary": "Heavy weapons hit for extra damage and earn follow-up swings.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength, max 20."
+      },
+      "Heavy Weapon Mastery": {
+        "summary": "A hit with a Heavy weapon during the Attack action on your turn can deal extra damage equal to your PB."
+      },
+      "Hew": {
+        "summary": "Right after a melee weapon crit or dropping a creature to 0 HP with one, Bonus Action: one more attack with that weapon.",
+        "activation": "bonus"
+      }
+    }
+  },
+  "healer": {
+    "summary": "A field medic who heals with a Healer’s Kit and rerolls low healing dice.",
+    "benefits": {
+      "Battle Medic": {
+        "summary": "Utilize action, one Healer’s Kit use: a creature within 5 ft spends a Hit Point Die; you roll it and they heal the roll + your PB.",
+        "activation": "action",
+        "range": 5
+      },
+      "Healing Rerolls": {
+        "summary": "Reroll any 1 on a healing die from your spells or Battle Medic; keep the new roll."
+      }
+    }
+  },
+  "heavily-armored": {
+    "summary": "Training in Heavy armor.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution or Strength, max 20."
+      },
+      "Armor Training": {
+        "summary": "Heavy armor training.",
+        "grants": [
+          {
+            "kind": "armor",
+            "value": "Heavy armor"
+          }
+        ]
+      }
+    }
+  },
+  "heavy-armor-master": {
+    "summary": "Heavy armor shrugs off part of every weapon blow.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Constitution or Strength, max 20."
+      },
+      "Damage Reduction": {
+        "summary": "In Heavy armor, Bludgeoning, Piercing and Slashing damage from an attack that hits you drops by your PB."
+      }
+    }
+  },
+  "inspiring-leader": {
+    "summary": "Rally the party with a performance that grants temp HP.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Wisdom or Charisma, max 20."
+      },
+      "Bolstering Performance": {
+        "summary": "After a Short or Long Rest, perform for up to six allies (you included) within 30 ft; each gains temp HP equal to your level + the modifier of the ability you raised.",
+        "range": 30
+      }
+    }
+  },
+  "interception": {
+    "summary": "Fighting style: Reaction when a creature you see hits someone within 5 ft of you; cut the damage by 1d10 + PB. Requires a weapon (Simple or Martial) or Shield in hand.",
+    "activation": "reaction",
+    "range": 5,
+    "dice": "1d10"
+  },
+  "keen-mind": {
+    "summary": "A scholar’s memory and fast study.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, max 20."
+      },
+      "Lore Knowledge": {
+        "summary": "Pick Arcana, History, Investigation, Nature or Religion: gain proficiency, or Expertise if already proficient.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1,
+            "from": ["Arcana", "History", "Investigation", "Nature", "Religion"],
+            "label": "Proficiency, or Expertise if already proficient"
+          }
+        ]
+      },
+      "Quick Study": {
+        "summary": "Study as a Bonus Action.",
+        "activation": "bonus"
+      }
+    }
+  },
+  "lightly-armored": {
+    "summary": "Training in Light armor and Shields.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Armor Training": {
+        "summary": "Light armor and Shield training.",
+        "grants": [
+          {
+            "kind": "armor",
+            "value": "Light armor"
+          },
+          {
+            "kind": "armor",
+            "value": "Shields"
+          }
+        ]
+      }
+    }
+  },
+  "lucky": {
+    "summary": "A pool of luck to boost your rolls or spoil attacks against you.",
+    "benefits": {
+      "Luck Points": {
+        "summary": "Luck Points equal to your PB, all back on a Long Rest.",
+        "uses": {
+          "count": "PB",
+          "recharge": "long"
+        }
+      },
+      "Advantage": {
+        "summary": "Spend 1 Luck Point to give your own D20 Test Advantage."
+      },
+      "Disadvantage": {
+        "summary": "Spend 1 Luck Point to give an attack roll against you Disadvantage."
+      }
+    }
+  },
+  "mage-slayer": {
+    "summary": "Break enemy concentration and shrug off mind magic.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Concentration Breaker": {
+        "summary": "A concentrating creature you damage rolls its Concentration save with Disadvantage."
+      },
+      "Guarded Mind": {
+        "summary": "Turn a failed INT, WIS or CHA save into a success. Once per Short or Long Rest.",
+        "uses": {
+          "count": 1,
+          "recharge": "short"
+        }
+      }
+    }
+  },
+  "magic-initiate": {
+    "choices": [
+      {
+        "kind": "option",
+        "count": 1,
+        "label": "Spell list"
+      },
+      {
+        "kind": "ability",
+        "count": 1,
+        "from": ["INT", "WIS", "CHA"],
+        "label": "Spellcasting ability"
+      }
+    ],
+    "options": [
+      {
+        "name": "Cleric",
+        "choices": [
+          {
+            "kind": "cantrip",
+            "count": 2,
+            "list": "cleric"
+          },
+          {
+            "kind": "spell",
+            "count": 1,
+            "list": "cleric",
+            "maxLevel": 1
+          }
+        ]
+      },
+      {
+        "name": "Druid",
+        "choices": [
+          {
+            "kind": "cantrip",
+            "count": 2,
+            "list": "druid"
+          },
+          {
+            "kind": "spell",
+            "count": 1,
+            "list": "druid",
+            "maxLevel": 1
+          }
+        ]
+      },
+      {
+        "name": "Wizard",
+        "choices": [
+          {
+            "kind": "cantrip",
+            "count": 2,
+            "list": "wizard"
+          },
+          {
+            "kind": "spell",
+            "count": 1,
+            "list": "wizard",
+            "maxLevel": 1
+          }
+        ]
+      }
+    ],
+    "benefits": {
+      "Two Cantrips": {},
+      "Level 1 Spell": {
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        }
+      },
+      "Spell Change": {},
+      "Repeatable": {}
+    }
+  },
+  "martial-weapon-training": {
+    "summary": "Proficiency with Martial weapons.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Weapon Proficiency": {
+        "summary": "Martial weapon proficiency.",
+        "grants": [
+          {
+            "kind": "weapon",
+            "value": "Martial weapons"
+          }
+        ]
+      }
+    }
+  },
+  "medium-armor-master": {
+    "summary": "Get more out of high Dexterity in Medium armor.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Dexterous Wearer": {
+        "summary": "In Medium armor with DEX 16+, your DEX adds up to 3 to AC instead of 2."
+      }
+    }
+  },
+  "moderately-armored": {
+    "summary": "Training in Medium armor.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Armor Training": {
+        "summary": "Medium armor training.",
+        "grants": [
+          {
+            "kind": "armor",
+            "value": "Medium armor"
+          }
+        ]
+      }
+    }
+  },
+  "mounted-combatant": {
+    "summary": "Fight well from the saddle and shield your mount.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength, Dexterity or Wisdom, max 20."
+      },
+      "Mounted Strike": {
+        "summary": "While riding, Advantage on attacks against unmounted creatures within 5 ft of your mount that are smaller than it."
+      },
+      "Leap Aside": {
+        "summary": "While you ride it and neither of you is Incapacitated, your mount takes no damage on a successful DEX save for half, and half on a failure."
+      },
+      "Veer": {
+        "summary": "While riding and not Incapacitated, redirect an attack that hits your mount so it hits you."
+      }
+    }
+  },
+  "musician": {
+    "summary": "Plays three instruments and inspires allies at each rest.",
+    "benefits": {
+      "Instrument Training": {
+        "summary": "Proficiency with three Musical Instruments.",
+        "choices": [
+          {
+            "kind": "tool",
+            "count": 3,
+            "from": ["Musical Instrument"]
+          }
+        ]
+      },
+      "Encouraging Song": {
+        "summary": "At the end of a Short or Long Rest, play an instrument you know to give Heroic Inspiration to up to PB allies who hear it."
+      }
+    }
+  },
+  "observant": {
+    "summary": "Sharp eyes and a quick search.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence or Wisdom, max 20."
+      },
+      "Keen Observer": {
+        "summary": "Pick Insight, Investigation or Perception: gain proficiency, or Expertise if already proficient.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1,
+            "from": ["Insight", "Investigation", "Perception"],
+            "label": "Proficiency, or Expertise if already proficient"
+          }
+        ]
+      },
+      "Quick Search": {
+        "summary": "Search as a Bonus Action.",
+        "activation": "bonus"
+      }
+    }
+  },
+  "piercer": {
+    "summary": "Piercing attacks reroll a damage die and crit harder.",
+    "asi": {
+      "abilities": ["STR", "DEX"],
+      "amount": 1,
+      "max": 20
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Puncture": {
+        "summary": "Once per turn on a Piercing hit, reroll one damage die and take the new result.",
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      },
+      "Enhanced Critical": {
+        "summary": "A Piercing crit rolls one extra damage die."
+      }
+    }
+  },
+  "poisoner": {
+    "summary": "Brew poison doses and make your poison bite through Resistance.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Intelligence, max 20."
+      },
+      "Potent Poison": {
+        "summary": "Your Poison damage ignores Resistance to Poison."
+      },
+      "Brew Poison": {
+        "summary": "Poisoner’s Kit proficiency. 1 hour and 50 GP of materials make PB doses. Bonus Action: coat a weapon or ammunition for 1 minute or until it deals damage; the creature it damages makes a CON save (DC 8 + PB + the raised ability) or takes 2d8 Poison and is Poisoned until your next turn ends.",
+        "activation": "bonus",
+        "dice": "2d8",
+        "damageType": "Poison",
+        "save": {
+          "ability": "CON",
+          "dc": "8+PB+DEX/INT"
+        },
+        "duration": "1 minute",
+        "grants": [
+          {
+            "kind": "tool",
+            "value": "Poisoner’s Kit"
+          }
+        ]
+      }
+    }
+  },
+  "polearm-master": {
+    "summary": "Strike with the butt of a polearm and punish foes entering your reach.",
+    "prerequisite": {
+      "text": "Level 4+, Strength or Dexterity 13+",
+      "level": 4,
+      "abilities": {
+        "abilities": ["STR", "DEX"],
+        "min": 13,
+        "any": true
+      }
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Strength, max 20."
+      },
+      "Pole Strike": {
+        "summary": "After the Attack action with a Quarterstaff, Spear or Heavy Reach weapon, Bonus Action: a melee attack with its other end for 1d4 Bludgeoning.",
+        "activation": "bonus",
+        "dice": "1d4",
+        "damageType": "Bludgeoning"
+      },
+      "Reactive Strike": {
+        "summary": "Holding one of those weapons, Reaction: a melee attack on a creature that steps into its reach.",
+        "activation": "reaction"
+      }
+    }
+  },
+  "protection": {
+    "summary": "Fighting style: Reaction with a Shield in hand when a creature you see attacks someone else within 5 ft of you; that attack and others on them have Disadvantage until your next turn, while you stay within 5 ft.",
+    "activation": "reaction",
+    "range": 5,
+    "duration": "until the start of your next turn"
+  },
+  "resilient": {
+    "summary": "Raise one ability and gain proficiency in its saving throws.",
+    "asi": {
+      "abilities": ["STR", "DEX", "CON", "INT", "WIS", "CHA"],
+      "amount": 1,
+      "max": 20
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to an ability whose save you are not proficient in, max 20."
+      },
+      "Saving Throw Proficiency": {
+        "summary": "Saving throw proficiency in that same ability.",
+        "choices": [
+          {
+            "kind": "ability",
+            "count": 1,
+            "from": ["STR", "DEX", "CON", "INT", "WIS", "CHA"],
+            "label": "Saving throw proficiency (the ability this feat raised)"
+          }
+        ]
+      }
+    }
+  },
+  "ritual-caster": {
+    "summary": "Keep a set of ritual spells ready and cast one quickly each day.",
+    "prerequisite": {
+      "text": "Level 4+, Intelligence, Wisdom, or Charisma 13+",
+      "level": 4,
+      "abilities": {
+        "abilities": ["INT", "WIS", "CHA"],
+        "min": 13,
+        "any": true
+      }
+    },
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Ritual Spells": {
+        "summary": "PB level 1 Ritual spells always prepared, castable with your slots using the ability you raised; add another each time your PB goes up.",
+        "choices": [
+          {
+            "kind": "spell",
+            "count": 2,
+            "maxLevel": 1,
+            "from": [
+              "alarm",
+              "comprehend-languages",
+              "detect-magic",
+              "detect-poison-and-disease",
+              "find-familiar",
+              "floating-disk",
+              "identify",
+              "illusory-script",
+              "purify-food-and-drink",
+              "speak-with-animals",
+              "unseen-servant"
+            ],
+            "label": "Level 1 Ritual spells (PB; one more per PB increase)"
+          }
+        ]
+      },
+      "Quick Ritual": {
+        "summary": "Once per Long Rest, cast a prepared Ritual spell at its normal casting time without using a slot.",
+        "uses": {
+          "count": 1,
+          "recharge": "long"
+        }
+      }
+    }
+  },
+  "savage-attacker": {
+    "uses": {
+      "count": 1,
+      "recharge": "turn"
+    }
+  },
+  "sentinel": {
+    "summary": "Lock down enemies near you with Opportunity Attacks.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Guardian": {
+        "summary": "Opportunity Attack a creature within 5 ft right after it Disengages or attacks someone other than you.",
+        "activation": "reaction"
+      },
+      "Halt": {
+        "summary": "An Opportunity Attack hit drops the target’s Speed to 0 for the rest of the turn."
+      }
+    }
+  },
+  "shadow-touched": {
+    "summary": "Shadow magic: Invisibility plus one level 1 Illusion or Necromancy spell.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Shadow Magic": {
+        "summary": "Invisibility and a level 1 Illusion or Necromancy spell of your choice are always prepared. Each can be cast once per Long Rest without a slot, or with your slots. The ability you raised casts them.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "invisibility",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ],
+        "choices": [
+          {
+            "kind": "spell",
+            "count": 1,
+            "maxLevel": 1,
+            "from": [
+              "color-spray",
+              "disguise-self",
+              "false-life",
+              "illusory-script",
+              "inflict-wounds",
+              "ray-of-sickness",
+              "silent-image",
+              "wrathful-smite"
+            ],
+            "label": "Level 1 Illusion or Necromancy spell (free once per Long Rest)"
+          }
+        ]
+      }
+    }
+  },
+  "sharpshooter": {
+    "summary": "Ranged weapon shots ignore cover, close quarters and long range.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity, max 20."
+      },
+      "Bypass Cover": {
+        "summary": "Ranged weapon attacks ignore Half and Three-Quarters Cover."
+      },
+      "Firing in Melee": {
+        "summary": "An enemy within 5 ft gives no Disadvantage to your Ranged weapon attacks."
+      },
+      "Long Shots": {
+        "summary": "No Disadvantage for Ranged weapon attacks at long range."
+      }
+    }
+  },
+  "shield-master": {
+    "summary": "Bash foes with your shield and hide behind it from blasts.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength, max 20."
+      },
+      "Shield Bash": {
+        "summary": "Once per turn, after a melee weapon hit on a creature within 5 ft during the Attack action, hit it with your equipped Shield: STR save (DC 8 + PB + STR) or be pushed 5 ft or knocked Prone, your pick.",
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        },
+        "range": 5,
+        "save": {
+          "ability": "STR",
+          "dc": "8+PB+STR"
+        }
+      },
+      "Interpose Shield": {
+        "summary": "Holding a Shield, Reaction to a DEX save for half damage: take none if you succeed.",
+        "activation": "reaction"
+      }
+    }
+  },
+  "skill-expert": {
+    "summary": "One new skill and Expertise in another.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 to any ability, max 20."
+      },
+      "Skill Proficiency": {
+        "summary": "Proficiency in one skill of your choice.",
+        "choices": [
+          {
+            "kind": "skill",
+            "count": 1
+          }
+        ]
+      },
+      "Expertise": {
+        "summary": "Expertise in one proficient skill that lacks it.",
+        "choices": [
+          {
+            "kind": "expertise",
+            "count": 1
+          }
+        ]
+      }
+    }
+  },
+  "skilled": {
+    "choices": [
+      {
+        "kind": "skill",
+        "count": 3,
+        "from": [
+          "Acrobatics",
+          "Animal Handling",
+          "Arcana",
+          "Athletics",
+          "Deception",
+          "History",
+          "Insight",
+          "Intimidation",
+          "Investigation",
+          "Medicine",
+          "Nature",
+          "Perception",
+          "Performance",
+          "Persuasion",
+          "Religion",
+          "Sleight of Hand",
+          "Stealth",
+          "Survival",
+          "Alchemist’s Supplies",
+          "Brewer’s Supplies",
+          "Calligrapher’s Supplies",
+          "Carpenter’s Tools",
+          "Cartographer’s Tools",
+          "Cobbler’s Tools",
+          "Cook’s Utensils",
+          "Glassblower’s Tools",
+          "Jeweler’s Tools",
+          "Leatherworker’s Tools",
+          "Mason’s Tools",
+          "Painter’s Supplies",
+          "Potter’s Tools",
+          "Smith’s Tools",
+          "Tinker’s Tools",
+          "Weaver’s Tools",
+          "Woodcarver’s Tools",
+          "Disguise Kit",
+          "Forgery Kit",
+          "Gaming Set",
+          "Herbalism Kit",
+          "Musical Instrument",
+          "Navigator’s Tools",
+          "Poisoner’s Kit",
+          "Thieves’ Tools"
+        ],
+        "label": "Skills or tools, in any mix"
+      }
+    ],
+    "benefits": {
+      "Repeatable": {}
+    }
+  },
+  "skulker": {
+    "summary": "Sense nearby foes and stay hidden while fighting.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity, max 20."
+      },
+      "Blindsight": {
+        "summary": "Blindsight to 10 ft.",
+        "grants": [
+          {
+            "kind": "sense",
+            "value": "Blindsight",
+            "range": 10
+          }
+        ]
+      },
+      "Fog of War": {
+        "summary": "In combat, Advantage on the Stealth check of a Hide action."
+      },
+      "Sniper": {
+        "summary": "Missing an attack while hidden doesn’t give away where you are."
+      }
+    }
+  },
+  "slasher": {
+    "summary": "Slashing hits slow foes, and crits throw off their attacks.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Hamstring": {
+        "summary": "Once per turn on a Slashing hit, the target’s Speed drops 10 ft until your next turn starts.",
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      },
+      "Enhanced Critical": {
+        "summary": "A Slashing crit gives the target Disadvantage on its attacks until your next turn starts."
+      }
+    }
+  },
+  "speedy": {
+    "summary": "Faster, nimble over rough ground and hard to catch.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Dexterity or Constitution, max 20."
+      },
+      "Speed Increase": {
+        "summary": "Speed +10 ft.",
+        "grants": [
+          {
+            "kind": "speed",
+            "value": "walk",
+            "bonus": 10
+          }
+        ]
+      },
+      "Dash over Difficult Terrain": {
+        "summary": "After you Dash on your turn, Difficult Terrain costs no extra movement for the rest of it."
+      },
+      "Agile Movement": {
+        "summary": "Opportunity Attacks against you have Disadvantage."
+      }
+    }
+  },
+  "spell-sniper": {
+    "summary": "Spell attacks reach farther and ignore cover and nearby enemies.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Bypass Cover": {
+        "summary": "Spell attack rolls ignore Half and Three-Quarters Cover."
+      },
+      "Casting in Melee": {
+        "summary": "An enemy within 5 ft gives no Disadvantage to your spell attacks."
+      },
+      "Increased Range": {
+        "summary": "A spell attack with a range of 10 ft or more gets +60 ft of range."
+      }
+    }
+  },
+  "tavern-brawler": {
+    "summary": "A scrapper with heavy fists and a knack for improvised weapons.",
+    "benefits": {
+      "Enhanced Unarmed Strike": {
+        "summary": "Your Unarmed Strike can deal 1d4 + STR Bludgeoning damage.",
+        "dice": "1d4",
+        "damageType": "Bludgeoning"
+      },
+      "Damage Rerolls": {
+        "summary": "Reroll 1s on Unarmed Strike damage dice; keep the new roll."
+      },
+      "Improvised Weaponry": {
+        "summary": "Proficiency with improvised weapons.",
+        "grants": [
+          {
+            "kind": "weapon",
+            "value": "Improvised weapons"
+          }
+        ]
+      },
+      "Push": {
+        "summary": "Once per turn, an Unarmed Strike hit during the Attack action can both deal damage and push the target 5 ft away.",
+        "uses": {
+          "count": 1,
+          "recharge": "turn"
+        }
+      }
+    }
+  },
+  "telekinetic": {
+    "summary": "Move objects with your mind and shove creatures from afar.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Minor Telekinesis": {
+        "summary": "Learn Mage Hand: no Verbal or Somatic components, the hand can be Invisible, and its range and leash grow by 30 ft. Cast with the ability you raised.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "mage-hand"
+          }
+        ]
+      },
+      "Telekinetic Shove": {
+        "summary": "Bonus Action: a creature you see within 30 ft makes a STR save (DC 8 + PB + the raised ability) or is moved 5 ft toward or away from you.",
+        "activation": "bonus",
+        "range": 30
+      }
+    }
+  },
+  "telepathic": {
+    "summary": "Speak mind to mind and read thoughts.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Telepathic Utterance": {
+        "summary": "Talk telepathically to a creature you see within 60 ft in a language you know; it can’t reply that way.",
+        "range": 60
+      },
+      "Detect Thoughts": {
+        "summary": "Detect Thoughts always prepared; once per Long Rest cast it with no slot or components, otherwise with slots. Uses the ability you raised.",
+        "grants": [
+          {
+            "kind": "spell",
+            "spell": "detect-thoughts",
+            "free": {
+              "count": 1,
+              "recharge": "long"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "thrown-weapon-fighting": {
+    "summary": "Fighting style: +2 damage on ranged hits with Thrown weapons."
+  },
+  "tough": {
+    "summary": "Max HP rises by twice your level now, and by 2 more each level after.",
+    "grants": [
+      {
+        "kind": "hp",
+        "perLevel": 2
+      }
+    ]
+  },
+  "two-weapon-fighting": {},
+  "unarmed-fighting": {
+    "summary": "Fighting style: your Unarmed Strike can deal 1d6 + STR Bludgeoning (1d8 with no weapon or Shield held), and at the start of your turn you can deal 1d4 Bludgeoning to one creature you grapple.",
+    "dice": "1d6",
+    "damageType": "Bludgeoning"
+  },
+  "war-caster": {
+    "summary": "Cast reliably in the thick of melee.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Intelligence, Wisdom or Charisma, max 20."
+      },
+      "Concentration": {
+        "summary": "Advantage on CON saves to keep Concentration."
+      },
+      "Reactive Spell": {
+        "summary": "When a creature provokes an Opportunity Attack by leaving your reach, Reaction: cast a 1-action spell targeting only it instead of attacking.",
+        "activation": "reaction"
+      },
+      "Somatic Components": {
+        "summary": "Do Somatic components with weapons or a Shield in your hands."
+      }
+    }
+  },
+  "weapon-master": {
+    "summary": "Use one weapon kind’s mastery property.",
+    "benefits": {
+      "Ability Score Increase": {
+        "summary": "+1 Strength or Dexterity, max 20."
+      },
+      "Mastery Property": {
+        "summary": "Use the mastery property of one Simple or Martial weapon kind you are proficient with; swap the kind after a Long Rest.",
+        "choices": [
+          {
+            "kind": "weaponMastery",
+            "count": 1
+          }
+        ]
+      }
+    }
+  }
+}
