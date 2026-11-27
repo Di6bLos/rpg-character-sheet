@@ -25,7 +25,11 @@ function hero(slug: string, base: Record<Dnd5eAbility, number>) {
   const c = creation(slug)
   c.base = base
   const prefer = { abilities: cls(slug).primaryAbility.abilities }
-  return buildDnd5eSheet(c, fill((p) => creationPicks(c, p, data), prefer), data)
+  return buildDnd5eSheet(
+    c,
+    fill((p) => creationPicks(c, p, data), prefer),
+    data,
+  )
 }
 
 /** Levels the sheet in each class of `levels` in turn, with first-valid picks. */
