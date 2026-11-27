@@ -132,6 +132,11 @@
   }
 }
 
+// Temp HP − n + stay on one line on a phone.
+.vit-row .row:has(> .temp-label) {
+  flex-wrap: nowrap;
+}
+
 .temp-label {
   font-size: 12px;
   font-weight: 600;

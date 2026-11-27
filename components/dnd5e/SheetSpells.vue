@@ -2,8 +2,9 @@
 // The 5e sheet's Spells, laid out like Nimble's and PF2e's: the spell attack and save DC, slot
 // pips per level and the Pact Magic slots (tap to spend or restore), then cantrips and each
 // spell level folding, every spell a card (`.tile.spell`) of the same three lines: name and its
-// Conc. / Ritual / Always / Free tags, cost, range, duration and school, and the summary clamped to two
-// lines (left out on a phone); open, it spans the grid with its text, what it casts with
+// Conc. / Ritual / Always / Free tags; cost (or casting time), range and duration; the summary
+// clamped to two lines (left out on a phone). Open, it spans the grid with its school, text, what
+// it casts with
 // (slot levels to upcast, a pact slot, free casts, a Ritual), Cast and the result, and "Heal
 // yourself" for healing. Spellbook spells not prepared fold away (rituals only, with Ritual
 // Adept). Casting is useDnd5eCasting's (utils/dnd5eSpells.ts, SRD 5.2.1 pp. 104–106).
@@ -62,7 +63,8 @@ function togglePact(n: number) {
 function meta(r: Dnd5eSpellRef) {
   const d = casting.defOf(r.slug)
   if (!d) return r.from
-  return [d.range, d.duration.replace(/^Concentration, /, '')].filter(Boolean).join(' · ')
+  const lasts = d.duration.replace(/^Concentration, /, '').replace(/^Instantaneous$/, 'Instant')
+  return [d.range, lasts].filter(Boolean).join(' · ')
 }
 
 function tags(r: Dnd5eSpellRef) {
@@ -75,11 +77,6 @@ function tags(r: Dnd5eSpellRef) {
     ...(r.always ? [{ t: 'Always', title: `Always prepared (${r.from})` }] : []),
     ...(r.free ? [{ t: 'Free', title: `Free cast from ${r.from}` }] : []),
   ]
-}
-
-function line(r: Dnd5eSpellRef) {
-  const d = casting.defOf(r.slug)
-  return [meta(r), d?.school].filter(Boolean).join(' · ')
 }
 
 function gist(r: Dnd5eSpellRef) {
@@ -173,8 +170,13 @@ const components = (r: Dnd5eSpellRef) => {
               <Dnd5eCostPill
                 v-if="casting.defOf(r.slug)"
                 :cost="spellCost(casting.defOf(r.slug)!)"
+                :text="
+                  spellCost(casting.defOf(r.slug)!) === 'time'
+                    ? casting.defOf(r.slug)!.castingTime
+                    : undefined
+                "
               />
-              <small>{{ line(r) }}</small>
+              <small>{{ meta(r) }}</small>
             </span>
             <span class="spell__gist">{{ gist(r) }}</span>
           </summary>
@@ -188,7 +190,8 @@ const components = (r: Dnd5eSpellRef) => {
               <strong>Higher levels.</strong> {{ casting.defOf(r.slug)!.higherLevel }}
             </p>
             <p class="small muted">
-              {{ casting.defOf(r.slug)?.castingTime }} · {{ components(r) }} · from {{ r.from }}
+              {{ casting.defOf(r.slug)?.school }} · {{ casting.defOf(r.slug)?.castingTime }} ·
+              {{ components(r) }} · from {{ r.from }}
             </p>
             <p v-if="casting.damage(r)" class="small dmg">{{ casting.damage(r) }}</p>
             <div class="spell__act">
@@ -250,7 +253,7 @@ const components = (r: Dnd5eSpellRef) => {
               >
             </span>
             <span class="spell__line">
-              <small>{{ [levelName(r.level), line(r)].filter(Boolean).join(' · ') }}</small>
+              <small>{{ [levelName(r.level), meta(r)].filter(Boolean).join(' · ') }}</small>
             </span>
             <span class="spell__gist">{{ gist(r) }}</span>
           </summary>
