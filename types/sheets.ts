@@ -67,8 +67,10 @@ export interface InventoryItem {
   custom?: CustomItem
   /** PF2e: what the inventory tracks about the item; `qty` stays the Bulk of one. */
   pf2e?: Pf2eItemState
-  /** Nimble: armor or a shield the hero is wearing; what they wear sets their Armor. */
+  /** Nimble and 5e: armor or a shield the hero is wearing; what they wear sets their Armor. */
   worn?: boolean
+  /** 5e: a magic item the hero is attuned to (at most 3, SRD 5.2.1 p. 204). */
+  attuned?: boolean
 }
 
 /**
@@ -347,6 +349,40 @@ export interface Dnd5eSheet extends SheetCommon {
   defenses?: { resistances: string[]; immunities: string[]; conditionImmunities: string[] }
   size?: string
   coins?: Dnd5eCoins
+  // Play state, kept by the sheet's play engine (utils/dnd5ePlay.ts and friends). All optional,
+  // so a sheet from before it loads as it was.
+  /** "Manual dice" from the player's profile (`profiles.own_dice`), copied on by the sheet editor. */
+  ownDice?: boolean
+  /** The turn tracker (SRD 5.2.1 pp. 9–13). */
+  turn?: Dnd5eTurn
+  /** In an encounter (from New encounter, or the GM seating the hero, until it ends). */
+  inEncounter?: boolean
+  /** New encounter was started and Initiative isn't rolled yet. */
+  awaitingInitiative?: boolean
+  /** This round's turn is over (End turn); New round starts the next. */
+  turnDone?: boolean
+  /** The GM's tracker seat (combatant id) the sheet last joined, as Nimble's `gmCombatant`. */
+  gmCombatant?: string
+  /** Uses spent of each limited resource, by `Dnd5eResource.name`. */
+  used?: Record<string, number>
+  /** Spell slots spent, per spell level 1–9. */
+  slotsUsed?: number[]
+  /** Pact Magic slots spent. */
+  pactUsed?: number
+  /** Free casts spent (a feat's or species' spell), by `<slug>|<from>`. */
+  freeUsed?: Record<string, number>
+  /** The spell the hero is concentrating on (SRD 5.2.1 p. 179). */
+  concentration?: { slug: string; name: string; level: number }
+  /** Effects on the hero from its own features and spells, or an ally's (`DND5E_EFFECTS`). */
+  effects?: Dnd5eEffect[]
+  /** Exhaustion level 0–6 (SRD 5.2.1 p. 181); "Exhaustion" is in `conditions` while above 0. */
+  exhaustion?: number
+  /** When each condition the player set an end for goes away; absent: when they remove it. */
+  conditionEnds?: Record<string, Dnd5eConditionEnd>
+  /** Hit Point Dice spent (a hero has one per level, SRD 5.2.1 p. 185). */
+  hitDiceUsed?: number
+  /** Heroic Inspiration (SRD 5.2.1 p. 8): spend it to reroll a die. */
+  heroicInspiration?: boolean
 }
 
 export interface Dnd5eCoins {
@@ -355,6 +391,56 @@ export interface Dnd5eCoins {
   sp?: number
   ep?: number
   pp?: number
+}
+
+/** When a condition or effect ends: your next turn's start or end, the next round, combat's end. */
+export type Dnd5eConditionEnd = 'turnStart' | 'turnEnd' | 'round' | 'encounter'
+
+/**
+ * An effect on the hero: `key` names its numbers in `DND5E_EFFECTS` (utils/dnd5eEffects.ts).
+ * `ends` is when it goes; `concentration` effects end with the hero's concentration, `long`
+ * ones on a Long Rest, `attack` ones with the next attack roll, `manual` ones when turned off.
+ */
+export interface Dnd5eEffect {
+  key: string
+  /** As shown ("Rage", "Shield", "Bless (ally)"). */
+  name: string
+  ends: Dnd5eConditionEnd | 'concentration' | 'long' | 'manual' | 'attack'
+  /** Set during this turn: "until the end of your next turn" skips this turn's end. */
+  held?: boolean
+  /** A number it carries (a Bardic Inspiration die's size). */
+  value?: number
+}
+
+/**
+ * The turn tracker (SRD 5.2.1 pp. 9–13): `active` between Start turn and End turn. On your turn
+ * you have an action (more with Action Surge or Haste), a Bonus Action, movement and one free
+ * object interaction; the Reaction is one a round, back at the start of your turn.
+ */
+export interface Dnd5eTurn {
+  active: boolean
+  /** Actions left this turn. */
+  actions: number
+  /** Actions this turn has had (1, plus Action Surge or Haste), for the circles. */
+  actionsMax: number
+  bonus: boolean
+  reaction: boolean
+  /** The free object interaction is still unused. */
+  object: boolean
+  /** Feet moved this turn. */
+  moved: number
+  /** Attacks left in the Attack action taken this turn (Extra Attack, SRD 5.2.1 p. 10). */
+  attacks: number
+  round: number
+  /** The Initiative rolled this encounter. */
+  initiative?: number
+  /** The GM tracker's round whose turn the tracker started for the hero. */
+  trackerRound?: number
+  /**
+   * Once-a-turn things used this turn: Sneak Attack, Savage Attacker, Cleave, Nick, a spell
+   * slot (SRD 5.2.1 p. 105), Great Weapon Master's extra damage…
+   */
+  once: string[]
 }
 
 /**

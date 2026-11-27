@@ -1,8 +1,13 @@
 import type { InjectionKey, Ref } from 'vue'
 import type { Character } from '~/types'
-import type { AnySheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
+import type { AnySheet, Dnd5eSheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
 import { portraitUrl } from '~/stores/character'
 import { showOutcome } from '~/utils/dice'
+import {
+  beginEncounter as beginDnd5eEncounter,
+  endEncounter as endDnd5eEncounter,
+  setInitiative as setDnd5eInitiative,
+} from '~/utils/dnd5ePlay'
 import { applyHpChangeFor } from '~/utils/heroHpChange'
 import { beginEncounter, endEncounter, initiativeRoll } from '~/utils/nimblePlay'
 import { endPf2eEncounter, inEncounter as pf2eInEncounter, newTurn } from '~/utils/pf2eActions'
@@ -140,13 +145,14 @@ export function provideSheetEditor(
   onBeforeUnmount(saveQuietly)
 
   // "Manual dice" is the player's (account menu, `profiles.own_dice`); copy it
-  // onto the Nimble sheet they edit, where the rules read `sheet.ownDice`.
+  // onto the Nimble or 5e sheet they edit, where the rules read `sheet.ownDice`.
   const auth = useAuthStore()
   watch(
     () => auth.profile?.own_dice,
     (on) => {
-      if (on === undefined || !canEdit.value || draft.value.system !== 'nimble') return
-      const sheet = draft.value.sheet as NimbleSheet
+      const system = draft.value.system
+      if (on === undefined || !canEdit.value || (system !== 'nimble' && system !== 'dnd5e')) return
+      const sheet = draft.value.sheet as NimbleSheet | Dnd5eSheet
       if (sheet.ownDice !== on) sheet.ownDice = on
     },
     { immediate: true },
@@ -167,17 +173,17 @@ export function provideSheetEditor(
     { immediate: true },
   )
 
-  // The GM's encounter, for a Nimble or PF2e hero the player edits in a campaign: its
+  // The GM's encounter, for a Nimble, PF2e or 5e hero the player edits in a campaign: its
   // initiative rules (Nimble: Classic starts heroes with full actions, read as
   // `sheet.classicInitiative`), and whether the hero is seated on the tracker. Being seated
   // joins the encounter (Nimble: New encounter, then Roll Initiative); leaving the tracker
   // ends it, and while seated the Nimble turn steps are only Roll Initiative, Start turn and
   // End turn (`gmEncounter`). PF2e: leaving ends the encounter (endPf2eEncounter: Rage and
   // the encounter's effects end), a new fight clears the last one's turn, and the tracker's
-  // Initiative is the sheet's (`turn.initiative`).
+  // Initiative is the sheet's (`turn.initiative`). 5e follows Nimble's seat (dnd5eSeat).
   const nimble = computed(() => draft.value.system === 'nimble')
   const tracked = computed(
-    () => canEdit.value && (draft.value.system === 'nimble' || draft.value.system === 'pf2e'),
+    () => canEdit.value && ['nimble', 'pf2e', 'dnd5e'].includes(draft.value.system),
   )
   const encounter = useCampaignEncounter(
     computed(() => (tracked.value ? campaignId.value : null)),
@@ -211,7 +217,8 @@ export function provideSheetEditor(
     seat,
     (now, before) => {
       if (!tracked.value) return
-      if (!nimble.value) return pf2eSeat(now, before)
+      if (draft.value.system === 'pf2e') return pf2eSeat(now, before)
+      if (draft.value.system === 'dnd5e') return dnd5eSeat(now, before)
       const sheet = draft.value.sheet as NimbleSheet
       const change = seatChange(before, now, sheet)
       if (change === 'begin') lastRoll.value = beginEncounter(sheet)
@@ -241,6 +248,23 @@ export function provideSheetEditor(
     const joined = now || undefined
     if (sheet.gmCombatant !== joined) sheet.gmCombatant = joined
   }
+  /**
+   * 5e's seat, as Nimble's (the same sheet fields): being seated starts a new encounter that
+   * waits for Initiative, leaving the tracker ends it (Rage, Dodge and the like end).
+   */
+  function dnd5eSeat(now: Seat, before: Seat | undefined) {
+    const sheet = draft.value.sheet as Dnd5eSheet
+    const change = seatChange(before, now, {
+      inEncounter: !!sheet.inEncounter,
+      awaitingInitiative: !!sheet.awaitingInitiative,
+      ...(sheet.gmCombatant ? { gmCombatant: sheet.gmCombatant } : {}),
+    })
+    if (change === 'begin') lastRoll.value = beginDnd5eEncounter(sheet)
+    else if (change === 'end') lastRoll.value = endDnd5eEncounter(sheet)
+    if (now === null) return
+    const joined = now || undefined
+    if (sheet.gmCombatant !== joined) sheet.gmCombatant = joined
+  }
   const gmEncounter = computed(() => tracked.value && encounter.seated.value === true)
   // The GM typed this hero's Initiative while the sheet waits for it: take that score
   // (starting actions and "when you roll Initiative" effects) instead of asking for a
@@ -248,7 +272,14 @@ export function provideSheetEditor(
   // tracker is never applied to a new encounter.
   watch(encounter.hero, (now, before) => {
     if (!tracked.value || !now?.rolled) return
-    if (!nimble.value) return pf2eTrackerInitiative(now.initiative)
+    if (draft.value.system === 'pf2e') return pf2eTrackerInitiative(now.initiative)
+    if (draft.value.system === 'dnd5e') {
+      const sheet = draft.value.sheet as Dnd5eSheet
+      if (before?.rolled !== false || !sheet.awaitingInitiative) return
+      setDnd5eInitiative(sheet, now.initiative)
+      lastRoll.value = `GM set your Initiative: ${now.initiative}.`
+      return
+    }
     if (before?.rolled !== false) return
     const sheet = draft.value.sheet as NimbleSheet
     if (!sheet.awaitingInitiative) return

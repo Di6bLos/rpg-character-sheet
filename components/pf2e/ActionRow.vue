@@ -22,7 +22,7 @@ const props = defineProps<{
   dmg: string
   /** The result of its last use, shown under it. */
   result?: string
-  /** Manual dice: what its roll needs typed (usePf2eTypedRoll's prompt), or ''. */
+  /** Manual dice: what its roll needs typed (useTypedRoll's prompt), or ''. */
   typedLabel?: string
 }>()
 const emit = defineEmits<{

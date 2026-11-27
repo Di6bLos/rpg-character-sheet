@@ -1,6 +1,11 @@
 import type { Ref } from 'vue'
 import type { SheetEditor } from '~/composables/useSheetEditor'
-import type { NimbleSheet, Pf2eSheet } from '~/types/sheets'
+import type { Dnd5eSheet, NimbleSheet, Pf2eSheet } from '~/types/sheets'
+import {
+  endTurn as endDnd5eTurn,
+  newRound as newDnd5eRound,
+  startTurn as startDnd5eTurn,
+} from '~/utils/dnd5ePlay'
 import { endTurn, newRound, startTurn } from '~/utils/nimblePlay'
 import { slaySummon } from '~/utils/nimbleSummons'
 import { endPf2eTurn, startPf2eTurn } from '~/utils/pf2eActions'
@@ -102,6 +107,52 @@ export function usePf2eTrackerTurnSteps(
     if (end) editor.say(endPf2eTurn(sheet))
     if (!start) return
     const line = startPf2eTurn(sheet)
+    if (round !== null && sheet.turn) sheet.turn.trackerRound = round
+    editor.say(line)
+  }
+  watch(
+    () => [props.turnCharacterId.value, props.round.value] as const,
+    ([now], [before, prevRound]) => step(now, before, prevRound),
+  )
+  step(props.turnCharacterId.value, null, null)
+}
+
+/**
+ * The tracker's turn steps on a seated 5e hero's sheet editor (SRD 5.2.1 p. 13), as PF2e's:
+ * Start turn when initiative reaches the hero, End turn when it moves past, a new round on the
+ * tracker counts the sheet's round up, and a one-time line-up with a tracker already running.
+ * A dying hero's Start turn asks for the death save. The full sheet (Shell) runs it.
+ */
+export function useDnd5eTrackerTurnSteps(
+  editor: SheetEditor,
+  props: {
+    characterId: string
+    turnCharacterId: Ref<string | null>
+    round: Ref<number | null>
+  },
+): void {
+  let synced = false
+  function step(now: string | null, before: string | null, prevRound: number | null) {
+    if (!editor.canEdit.value) return
+    const sheet = editor.draft.value.sheet as Dnd5eSheet
+    const round = props.round.value
+    const { end, start } = trackerTurnStep({
+      mine: props.characterId,
+      now,
+      before,
+      round,
+      prevRound,
+      active: !!sheet.turn?.active,
+      startedRound: sheet.turn?.trackerRound,
+      synced,
+    })
+    const wasSynced = synced
+    if (now !== null) synced = true
+    if (end) editor.say(endDnd5eTurn(sheet))
+    if (wasSynced && round !== null && prevRound !== null && round > prevRound && sheet.inEncounter)
+      newDnd5eRound(sheet)
+    if (!start) return
+    const line = startDnd5eTurn(sheet)
     if (round !== null && sheet.turn) sheet.turn.trackerRound = round
     editor.say(line)
   }

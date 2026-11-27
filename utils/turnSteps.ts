@@ -119,7 +119,7 @@ export interface TurnPip {
 
 /**
  * What the shared Turn panel (components/sheet/TurnPanel.vue) shows and does, filled per
- * system: Nimble from useTurnSteps, PF2e from usePf2eTurnSteps.
+ * system: Nimble from useTurnSteps, PF2e from usePf2eTurnSteps, 5e from useDnd5eTurnSteps.
  */
 export interface TurnModel {
   help: string
@@ -129,8 +129,12 @@ export interface TurnModel {
   pips: TurnPip[]
   /** The pips and +1 can't be used now (PF2e off your turn: actions wait for it). */
   pipsLocked?: boolean
-  /** PF2e's one reaction a round (p. 436); Nimble tracks reactions by name instead. */
+  /** PF2e's and 5e's one reaction a round; Nimble tracks reactions by name instead. */
   reaction?: { ready: boolean }
+  /** 5e: the Bonus Action and the free object interaction, circles beside the reaction. */
+  economy?: { key: string; glyph: string; label: string; ready: boolean; title: string }[]
+  /** 5e: feet moved this turn out of the movement it has (Dash adds to it). */
+  movement?: { used: number; max: number }
   leftText: string
   note: string
   /** Nimble's multi-turn casting. */
@@ -145,6 +149,8 @@ export interface TurnModel {
   toggleAction(n: number): void
   extraAction(): void
   toggleReaction?(): void
+  toggleEconomy?(key: string): void
+  move?(by: number): void
   cancelCasting?(): void
   startEncounter(): void
   rollInitiative(values?: number[]): void

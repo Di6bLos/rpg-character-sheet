@@ -16,7 +16,7 @@ Design reference: `design/README.md`. Check tasks off as they land.
 ## Phase 2 · Characters
 
 - [x] Five character slots, new character by system
-- [x] D&D 5e sheet: Classic, Gothic, Eldritch and Cursed layouts
+- [x] D&D 5e sheet in Nimble's layout for every theme, with its play engine: turn tracker and action economy, attacks with masteries, spells with slots, upcasting and Concentration, features with uses, death saves, rests, conditions and Exhaustion
 - [x] Pathfinder 2e sheet (ranks, shield, hero points, conditions, MAP strikes, focus, Bulk)
 - [x] Nimble sheet (saves adv/dis, wounds, action tracker, class resource dice, heroic reactions)
 - [x] Dice rollers per system, HP trackers, portrait upload, autosave

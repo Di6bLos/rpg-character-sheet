@@ -132,17 +132,18 @@ onBeforeUnmount(() => {
     border-color: var(--accent);
   }
 
-  // A 44px touch target around the small circle.
+  // A 44px touch target around the small circle (20px less its 1px border, plus 13px a side).
   @media (pointer: coarse) {
     &:not(.help__btn--text)::after {
       content: '';
       position: absolute;
-      inset: -12px;
+      inset: -13px;
     }
   }
 }
 
-// The word itself is the trigger (a skill's name): a 44px tall touch target around it.
+// The word itself is the trigger (a skill's name): a 44px touch target around it, at least 44px
+// wide for a short word.
 .help__btn--text {
   display: inline;
   width: auto;
@@ -162,14 +163,18 @@ onBeforeUnmount(() => {
   }
 
   @media (pointer: coarse) {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+
     &::after {
       content: '';
       position: absolute;
       top: 50%;
-      left: -2px;
-      right: -2px;
+      left: 50%;
+      width: max(100% + 4px, 44px);
       height: 44px;
-      transform: translateY(-50%);
+      transform: translate(-50%, -50%);
     }
   }
 }

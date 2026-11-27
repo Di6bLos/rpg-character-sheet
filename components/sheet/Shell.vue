@@ -19,7 +19,6 @@ const emit = defineEmits<{ deleted: [] }>()
 
 const store = useCharacterStore()
 const snackbar = useSnackbarStore()
-const { theme } = useTheme()
 
 const editor = provideSheetEditor(props.character, {
   canEdit: props.canEdit,
@@ -31,7 +30,7 @@ const { draft, dirty, saving, save } = editor
 const editable = editor.canEdit
 
 // Seated in the GM's encounter, the full sheet follows the tracker as the board does:
-// End turn, Start turn and New round (Nimble) as initiative moves.
+// End turn, Start turn and New round (Nimble, 5e) as initiative moves.
 const tracker = {
   characterId: props.character.id,
   turnCharacterId: computed(() => (editor.gmEncounter.value ? editor.trackerTurnId.value : null)),
@@ -39,6 +38,7 @@ const tracker = {
 }
 if (props.character.system === 'nimble') useTrackerTurnSteps(editor, tracker)
 else if (props.character.system === 'pf2e') usePf2eTrackerTurnSteps(editor, tracker)
+else if (props.character.system === 'dnd5e') useDnd5eTrackerTurnSteps(editor, tracker)
 
 const editing = ref(false)
 const levelUpOpen = ref(false)
@@ -61,9 +61,6 @@ const canChangeSubclass = computed(
     !!(draft.value.sheet as { classSlug?: string }).classSlug &&
     draft.value.level >= 3,
 )
-
-// The dark-fantasy 5e layouts carry their own Level up button.
-const layoutHasLevelUp = computed(() => draft.value.system === 'dnd5e' && theme.value !== 'classic')
 
 const saveLabel = computed(() =>
   saving.value ? 'Saving…' : dirty.value ? 'Save changes' : 'Saved',
@@ -146,12 +143,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
         <button type="button" class="btn btn--ghost" :disabled="saving || !dirty" @click="save">
           {{ saveLabel }}
         </button>
-        <button
-          v-if="!layoutHasLevelUp || editing"
-          type="button"
-          class="btn"
-          @click="levelUpOpen = true"
-        >
+        <button type="button" class="btn" @click="levelUpOpen = true">
           <svg
             width="16"
             height="16"
@@ -198,7 +190,7 @@ useHead({ title: () => `${draft.value.name} · Lantern` })
       </div>
     </template>
     <template v-else>
-      <SheetDnd5eSheet v-if="draft.system === 'dnd5e'" @level-up="levelUpOpen = true" />
+      <SheetDnd5eSheet v-if="draft.system === 'dnd5e'" />
       <SheetPf2eSheet v-else-if="draft.system === 'pf2e'" />
       <SheetNimbleSheet v-else />
     </template>

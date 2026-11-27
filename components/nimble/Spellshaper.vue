@@ -107,6 +107,10 @@ function use(name: string, amount: number) {
     cursor: pointer;
     list-style: none;
 
+    @media (pointer: coarse) {
+      min-height: 44px;
+    }
+
     &::-webkit-details-marker {
       display: none;
     }
