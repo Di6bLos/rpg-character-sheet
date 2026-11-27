@@ -6,7 +6,9 @@
 // its types and what adds to it, grips (two hands, thrown, off-hand, long range), Sneak Attack,
 // and Roll, which rolls the attack and its damage (utils/dnd5eAttacks.ts). Spells: attack and
 // damage spells cast from here (useDnd5eCasting). Abilities: features that deal damage (Breath
-// Weapon). On a hit: maneuvers, Arcane Shots and other riders that spend a die or use.
+// Weapon). Each card offers its riders (Brutal Strike, Cunning Strike, maneuvers, Arcane Shots,
+// Divine Strike…, utils/dnd5eRiders.ts) as chips that Roll applies; the other maneuvers that
+// spend a die show under "Other maneuvers".
 import type { Dnd5eSheet, Dnd5eWeapon } from '~/types/sheets'
 import { showOutcome, sign } from '~/utils/dice'
 import {
@@ -23,6 +25,15 @@ import {
   weaponDef,
 } from '~/utils/dnd5eAttacks'
 import { costWhy, d20Mode, dnd5eHero, payCost } from '~/utils/dnd5ePlay'
+import {
+  DND5E_RIDERS,
+  type Dnd5eRiderPick,
+  attackRiders,
+  defaultRiders,
+  limitRiders,
+  riderDamageText,
+  riderPlan,
+} from '~/utils/dnd5eRiders'
 import { levelName, spellCost } from '~/utils/dnd5eSpells'
 import { tipText } from '~/utils/ruleTips'
 
@@ -37,6 +48,7 @@ const turnActive = computed(() => !!sheet.value.turn?.active)
 
 const grips = ref<Record<string, Dnd5eGrip>>({})
 const sneakPick = ref<Record<string, boolean>>({})
+const riderPicks = ref<Record<string, Dnd5eRiderPick[]>>({})
 
 function setGrip(key: string, part: keyof Dnd5eGrip) {
   const now = grips.value[key] ?? {}
@@ -122,6 +134,29 @@ function sneakOn(c: Card) {
   return modeOf(c.plan) === 'adv' || (!!target.value.allyNear && modeOf(c.plan) !== 'dis')
 }
 
+function ridersOf(c: Card) {
+  return attackRiders(sheet.value, level.value, c.plan, {
+    columns: columns.value,
+    sneak: sneakOn(c),
+    mode: attackMode.value,
+  })
+}
+
+function picksOf(c: Card): Dnd5eRiderPick[] {
+  const options = ridersOf(c)
+  const chosen = riderPicks.value[c.key] ?? defaultRiders(options)
+  return limitRiders(sheet.value, level.value, options, chosen)
+}
+
+function setPicks(c: Card, picks: Dnd5eRiderPick[]) {
+  riderPicks.value = { ...riderPicks.value, [c.key]: picks }
+}
+
+function damageOf(c: Card) {
+  const extra = riderDamageText(ridersOf(c), picksOf(c))
+  return [damageText(c.plan, { sneak: sneakOn(c) }), ...extra].join(' + ')
+}
+
 function oddsText(p: Dnd5eAttackPlan) {
   const ac = target.value.ac
   if (ac === null) return ''
@@ -151,18 +186,22 @@ function attack(c: Card) {
   const why = costWhy(sheet.value, c.plan.cost)
   if (why) return claim(c.key, () => say(`${c.plan.name}: ${why}.`))
   const sneak = sneakOn(c)
+  const picks = picksOf(c)
+  const ctx = { columns: columns.value, sneak, mode: attackMode.value }
   typed.run(c.key, c.plan.name, () => {
     payCost(sheet.value, level.value, c.plan.cost)
     const r = rollAttack5e(sheet.value, c.plan, {
       mode: attackMode.value,
       target: target.value,
       sneak,
+      ...(picks.length ? { riders: riderPlan(sheet.value, level.value, c.plan, picks, ctx) } : {}),
     })
     claim(c.key, () => say(r.line))
     showOutcome({ label: c.plan.name, total: r.damage, detail: r.line })
   })
   attackMode.value = 'normal'
   delete sneakPick.value[c.key]
+  delete riderPicks.value[c.key]
 }
 
 const MODES = [
@@ -181,8 +220,11 @@ const spellAttacks = computed(() =>
   }),
 )
 const abilities = computed(() => entries.value.filter((e) => e.attack))
+const riderNames = new Set(DND5E_RIDERS.map((r) => r.feature).filter(Boolean))
 const riders = computed(() =>
-  entries.value.filter((e) => e.kind === 'option' && !!e.resource && e.cost === 'special'),
+  entries.value.filter(
+    (e) => e.kind === 'option' && !!e.resource && e.cost === 'special' && !riderNames.has(e.name),
+  ),
 )
 </script>
 
@@ -237,7 +279,7 @@ const riders = computed(() =>
               </UiTooltip>
             </div>
             <SheetDmg
-              :dmg="damageText(c.plan, { sneak: sneakOn(c) })"
+              :dmg="damageOf(c)"
               :why="damageWhy(c.plan).join('\n')"
               style="font-size: 14px; text-align: right"
             />
@@ -294,6 +336,12 @@ const riders = computed(() =>
               Sneak Attack
             </button>
           </div>
+          <Dnd5eRiderPicks
+            :options="ridersOf(c)"
+            :picks="picksOf(c)"
+            :disabled="!canEdit"
+            @update:picks="(p) => setPicks(c, p)"
+          />
           <button
             type="button"
             class="btn"
@@ -395,7 +443,7 @@ const riders = computed(() =>
 
     <details v-if="riders.length" class="atk-group" :open="turnActive">
       <summary>
-        <span class="caps">On a hit</span>
+        <span class="caps">Other maneuvers</span>
         <span class="badge badge--outline">{{ riders[0]?.resource }}</span>
       </summary>
       <div class="attacks">

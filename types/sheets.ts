@@ -71,6 +71,10 @@ export interface InventoryItem {
   worn?: boolean
   /** 5e: a magic item the hero is attuned to (at most 3, SRD 5.2.1 p. 204). */
   attuned?: boolean
+  /** 5e: made with the Artificer's Replicate Magic Item, from a plan. */
+  replicated?: boolean
+  /** 5e: charges spent from a magic item that has them. */
+  chargesUsed?: number
 }
 
 /**
@@ -347,6 +351,29 @@ export interface Dnd5eSheet extends SheetCommon {
   hitDiceUsed?: number
   /** Heroic Inspiration (SRD 5.2.1 p. 8): spend it to reroll a die. */
   heroicInspiration?: boolean
+  /** The Abjurer's Arcane Ward: Hit Points it has left (it takes damage first). */
+  arcaneWard?: number
+  /** The Diviner's Portent: the foretold d20 rolls not yet used. */
+  portent?: number[]
+  /** Wild Shape's known Beast forms, entered by hand (the data has no stat blocks). */
+  beastForms?: Dnd5eBeastForm[]
+  /** The Beast form the hero is in (a `beastForms` name), while Wild Shape lasts. */
+  beastForm?: string
+  /** The Artificer's Spell-Storing Item: the spell in it and its uses left. */
+  storedSpell?: { slug: string; name: string; level: number; uses: number }
+}
+
+/** A Beast form for Wild Shape (SRD 5.2.1 p. 44), its stat block's numbers as typed. */
+export interface Dnd5eBeastForm {
+  name: string
+  /** Challenge Rating as printed ("1/4", "1"). */
+  cr: string
+  ac: number
+  /** Speeds as printed ("40 ft, climb 30 ft"). */
+  speed: string
+  fly?: boolean
+  attacks: { name: string; bonus: number; damage: string; type: string }[]
+  notes?: string
 }
 
 export interface Dnd5eCoins {
@@ -372,8 +399,12 @@ export interface Dnd5eEffect {
   ends: Dnd5eConditionEnd | 'concentration' | 'long' | 'manual' | 'attack'
   /** Set during this turn: "until the end of your next turn" skips this turn's end. */
   held?: boolean
-  /** A number it carries (a Bardic Inspiration die's size). */
+  /** A number it carries (a Bardic Inspiration die's size, Parrying Stance's AC). */
   value?: number
+  /** Who gave it (an ally's name). */
+  from?: string
+  /** A Bardic Inspiration die from a College of Valor bard (Combat Inspiration). */
+  valor?: boolean
 }
 
 /**

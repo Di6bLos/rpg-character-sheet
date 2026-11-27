@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { DND5E_EFFECTS, SPELL_EFFECTS } from '../utils/dnd5eEffects'
+import { DND5E_MODIFIERS } from '../utils/dnd5eModifiers'
+import { DND5E_RIDER_GROUPS, DND5E_RIDERS } from '../utils/dnd5eRiders'
 import { DND5E_FEATURE_RULES, entryWhy, heroEntries, useEntry } from '../utils/dnd5eFeatures'
 import { norm5e, usesLeft } from '../utils/dnd5ePlay'
 import { SPELL_RULES } from '../utils/dnd5eSpells'
@@ -16,6 +18,8 @@ const SOURCES = [
   '../utils/dnd5eAttacks.ts',
   '../utils/dnd5eSpells.ts',
   '../utils/dnd5eFeatures.ts',
+  '../utils/dnd5eRiders.ts',
+  '../utils/dnd5eModifiers.ts',
 ]
 
 const options = data.options.flatMap((g) => g.entries)
@@ -33,6 +37,7 @@ for (const f of data.feats)
     featureNames.add(norm5e(`${f.name}: ${b.name}`))
   }
 const featSlugs = new Set(data.feats.map((f) => f.slug))
+const optionNames = new Set(options.map((o) => norm5e(o.name)))
 const optionSlugs = new Set(options.map((o) => o.slug))
 const spellSlugs = new Set(data.spells.map((s) => s.slug))
 
@@ -92,6 +97,37 @@ describe('5e rules names', () => {
     for (const key of Object.values(SPELL_EFFECTS)) expect(DND5E_EFFECTS[key]).toBeDefined()
     for (const r of Object.values(DND5E_FEATURE_RULES))
       if (r.effect) expect(DND5E_EFFECTS[r.effect]).toBeDefined()
+  })
+
+  it.each(
+    [
+      ...DND5E_RIDERS.flatMap((r) => [r.feature, r.also ?? '']),
+      ...DND5E_MODIFIERS.map((m) => m.feature),
+      ...Object.values(DND5E_EFFECTS).map((d) => d.feature ?? ''),
+    ].filter((n, i, all) => n && all.indexOf(n) === i),
+  )('rider, modifier or effect feature “%s” is in the data', (name) => {
+    expect(featureNames.has(norm5e(name)) || optionNames.has(norm5e(name))).toBe(true)
+  })
+
+  it('names an effect or a known state for every rider and modifier condition', () => {
+    const states = [
+      'sneak',
+      'round1',
+      'bloodied',
+      'heroic',
+      'bardic-inspiration',
+      'bardic-inspiration:valor',
+    ]
+    const needs = [
+      ...DND5E_RIDERS.flatMap((r) => r.needs ?? []),
+      ...Object.values(DND5E_RIDER_GROUPS).flatMap((g) => g.needs ?? []),
+    ]
+    for (const n of needs) expect(states.includes(n) || !!DND5E_EFFECTS[n], n).toBe(true)
+    const whiles = ['unarmored', 'no-shield', 'no-heavy', 'bloodied', 'round1', 'first-turn']
+    for (const w of DND5E_MODIFIERS.flatMap((m) => m.while ?? []))
+      for (const k of w.split('|')) expect(whiles.includes(k) || !!DND5E_EFFECTS[k], k).toBe(true)
+    for (const r of DND5E_RIDERS)
+      if (r.effect) expect(DND5E_EFFECTS[r.effect], r.effect).toBeDefined()
   })
 
   it('finds the rules phrases in the source', () => {

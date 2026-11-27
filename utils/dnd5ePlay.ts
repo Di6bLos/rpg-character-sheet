@@ -16,12 +16,14 @@ import {
 import {
   DND5E_EFFECTS,
   activeEffectDefs,
+  effectValues,
   effectsOn,
   endEffects,
   hasEffect,
   removeEffect,
   spendEffects,
 } from '~/utils/dnd5eEffects'
+import { activeModifiers, allAbilities, amountOf } from '~/utils/dnd5eModifiers'
 import {
   type Rng,
   abilityMod,
@@ -117,10 +119,13 @@ export interface Dnd5eNumber {
  * Speed now: Haste and Longstrider, Speed 0 from Grappled, Restrained and the like (and Steady
  * Aim), −5 ft per Exhaustion level (SRD 5.2.1 p. 181).
  */
-export function speedNow(s: Dnd5eSheet): Dnd5eNumber & { others: string } {
+export function speedNow(s: Dnd5eSheet, level = 0): Dnd5eNumber & { others: string } {
   const base = walkSpeed(s)
   const lines = [`${base} ft on the sheet`]
-  const others = (s.speed ?? '').split(',').slice(1).join(',').trim()
+  const moves = activeEffectDefs(s).flatMap((d) => (d.moves ? [`${d.moves} (${d.name})`] : []))
+  const others = [(s.speed ?? '').split(',').slice(1).join(',').trim(), ...moves]
+    .filter(Boolean)
+    .join(', ')
   const zero = conditionRules(s).filter((r) => r.speedZero)
   const fx = activeEffectDefs(s)
   if (zero.length || fx.some((d) => d.speed?.zero)) {
@@ -128,6 +133,21 @@ export function speedNow(s: Dnd5eSheet): Dnd5eNumber & { others: string } {
     return { value: 0, lines: [...lines, `Speed 0: ${why.join(', ')}`], changed: true, others }
   }
   let v = base
+  const hero = dnd5eHero(s, level)
+  if (hero.has('Fast Movement') && wearsHeavy(s)) {
+    v -= 10
+    lines.push('Fast Movement: not in Heavy armor −10 ft')
+  }
+  if (hero.has('Unarmored Movement') && (wearsArmor(s) || wearsShield(s)) && level) {
+    v -= unarmoredMovement(level)
+    lines.push(`Unarmored Movement: not with armor or a Shield −${unarmoredMovement(level)} ft`)
+  }
+  for (const m of level ? modifiersNow(s, level) : []) {
+    if (m.speed) {
+      v += m.speed
+      lines.push(`${m.feature} ${sign(m.speed)} ft`)
+    }
+  }
   for (const d of fx) {
     if (d.speed?.bonus) {
       v += d.speed.bonus
@@ -152,6 +172,20 @@ export function speedNow(s: Dnd5eSheet): Dnd5eNumber & { others: string } {
 
 const wearsArmor = (s: Dnd5eSheet) => s.inventory.some((i) => i.worn && i.tag === 'Armor')
 const wearsShield = (s: Dnd5eSheet) => s.inventory.some((i) => i.worn && i.tag === 'Shield')
+
+/** Heavy armor by its SRD names (SRD 5.2.1 p. 92): Ring Mail, Chain Mail, Splint, Plate. */
+const HEAVY_ARMOR = /^(ring mail|chain mail|splint|plate)/i
+
+export const wearsHeavy = (s: Dnd5eSheet) =>
+  s.inventory.some((i) => i.worn && i.tag === 'Armor' && HEAVY_ARMOR.test(i.name.trim()))
+
+/** The Monk's Unarmored Movement bonus by Monk level (SRD 5.2.1 p. 49). */
+const unarmoredMovement = (level: number) =>
+  level >= 18 ? 30 : level >= 14 ? 25 : level >= 10 ? 20 : level >= 6 ? 15 : level >= 2 ? 10 : 0
+
+/** The modifiers (utils/dnd5eModifiers.ts) that hold for the hero now. */
+export const modifiersNow = (s: Dnd5eSheet, level: number) =>
+  activeModifiers(s, dnd5eHero(s, level), wearsHeavy(s))
 
 /**
  * AC now: the sheet's AC (armor, shield and unarmored formulas, from Equip), then Mage Armor's
@@ -181,6 +215,27 @@ export function acNow(s: Dnd5eSheet, level: number): Dnd5eNumber {
     if (d.ac) {
       v += d.ac
       lines.push(`${d.name} ${sign(d.ac)}`)
+    }
+  }
+  for (const e of effectValues(s, 'ac')) {
+    v += e.value
+    lines.push(`${e.label} ${sign(e.value)}`)
+  }
+  const mods = modifiersNow(s, level)
+  for (const m of mods) {
+    if (m.ac) {
+      const n = amountOf(hero, m.ac)
+      v += n
+      lines.push(`${m.feature} ${sign(n)}`)
+    }
+  }
+  for (const m of mods) {
+    if (m.acFloor) {
+      const floor = m.acFloor.base + hero.mod(m.acFloor.plus)
+      if (v < floor) {
+        v = floor
+        lines.push(`${m.feature}: at least ${m.acFloor.base} + ${m.acFloor.plus} = ${floor}`)
+      }
     }
   }
   for (const d of fx) {
@@ -213,6 +268,10 @@ export interface Dnd5eD20 {
   reliable?: boolean
   /** Halfling Luck: a 1 on the d20 is rerolled once (SRD 5.2.1 p. 85). */
   lucky?: boolean
+  /** A total below this counts as this (Indomitable Might: your Strength score). */
+  floor?: { value: number; label: string }
+  /** A death save this high counts as a 20 (Survivor). */
+  twentyOn?: number
 }
 
 /**
@@ -290,6 +349,39 @@ export function d20Test(
   }
   if (t.kind === 'check' && t.skill === 'Athletics' && hero.has('Remarkable Athlete'))
     out.adv.push('Remarkable Athlete')
+  if (t.kind === 'check' && t.skill)
+    for (const d of activeEffectDefs(s))
+      if (d.skillAdv?.includes(t.skill) && !out.adv.includes(d.name)) out.adv.push(d.name)
+  const rely = t.kind === 'initiative' || t.kind === 'death' ? null : t.kind
+  if (rely && activeEffectDefs(s).some((d) => d.reliable?.includes(rely))) out.reliable = true
+  for (const m of modifiersNow(s, level)) {
+    const add = (n: number) => {
+      out.bonus += n
+      out.lines.push(`${m.feature} ${sign(n)}`)
+    }
+    if (t.kind === 'save' && m.save && a && allAbilities(m.save.abilities).includes(a)) {
+      if (m.save.plus !== undefined) add(amountOf(hero, m.save.plus))
+      if (m.save.adv) out.adv.push(m.feature)
+    }
+    if (t.kind === 'check' && m.check) {
+      const hit =
+        (!!t.skill && !!m.check.skills?.includes(t.skill)) ||
+        (!!a && !!m.check.abilities?.includes(a))
+      if (hit && m.check.plus !== undefined) add(amountOf(hero, m.check.plus))
+      if (hit && m.check.adv) out.adv.push(m.feature)
+    }
+    if (t.kind === 'initiative' && m.initiative) {
+      if (m.initiative.plus !== undefined) add(amountOf(hero, m.initiative.plus))
+      if (m.initiative.dice) out.dice.push({ dice: m.initiative.dice, label: m.feature })
+      if (m.initiative.adv) out.adv.push(m.feature)
+    }
+    if (t.kind === 'death' && m.death) {
+      if (m.death.adv) out.adv.push(m.feature)
+      if (m.death.twentyOn) out.twentyOn = m.death.twentyOn
+    }
+  }
+  if (a === 'STR' && (t.kind === 'check' || t.kind === 'save') && hero.has('Indomitable Might'))
+    out.floor = { value: s.abilities.STR ?? 10, label: 'Indomitable Might' }
   if (hero.has('Luck') && s.speciesSlug === 'halfling') out.lucky = true
   return out
 }
@@ -384,7 +476,11 @@ export function rollD20(
     extra += neg ? -r : r
     notes.push(`${d.label} ${neg ? '−' : '+'}${r}`)
   }
-  const total = counted + t.bonus + extra
+  let total = counted + t.bonus + extra
+  if (t.floor && total < t.floor.value) {
+    notes.push(`${t.floor.label}: ${total} counts as ${t.floor.value}`)
+    total = t.floor.value
+  }
   const dice = rolls.length > 1 ? `${rolls.join(' / ')} → ${d20}` : `${d20}`
   const how = modeNote(t, o.mode)
   const nat = natural ? `, natural ${natural}` : ''
@@ -552,13 +648,22 @@ const has = (list: string[] | undefined, type: string) =>
   (list ?? []).some((x) => norm5e(x) === norm5e(type) || norm5e(x) === 'all damage')
 
 /** The hero's resistances, vulnerabilities and immunities now: the sheet's, plus effects' and conditions'. */
-export function defensesNow(s: Dnd5eSheet): {
+export function defensesNow(
+  s: Dnd5eSheet,
+  level = 0,
+): {
   resist: string[]
   immune: string[]
   vulnerable: string[]
 } {
   const resist = [...(s.defenses?.resistances ?? [])]
-  for (const d of activeEffectDefs(s)) for (const r of d.resist ?? []) resist.push(r)
+  for (const d of activeEffectDefs(s)) {
+    for (const r of d.resist ?? []) resist.push(r)
+    if (d.resistAllBut)
+      for (const t of DND5E_DAMAGE_TYPES) if (!d.resistAllBut.includes(t)) resist.push(t)
+  }
+  for (const m of level ? modifiersNow(s, level) : [])
+    for (const r of m.resist ?? []) resist.push(r)
   if (conditionRules(s).some((r) => r.resistAll)) resist.push('All damage')
   return {
     resist: [...new Set(resist)],
@@ -575,6 +680,68 @@ export interface Dnd5eHit {
   halve?: string
   /** Amounts taken off first (Heavy Armor Master, Deflect Attacks), with what does it. */
   reduce?: { label: string; amount: number }[]
+  /** The hero's level, for the Resistances its features give (Primordial Bond). */
+  level?: number
+  /** It's halved after the rest (a reaction's Resistance to it, Warding Maneuver). */
+  resisted?: string
+  /** Dice for what rolls on its own (Relentless Rage's save). */
+  rng?: Rng
+}
+
+/**
+ * Features that keep a hero dropping to 0 HP standing, in the order the sheet tries them:
+ * Relentless Endurance (Orc, SRD 5.2.1 p. 86), Undying Sentinel (Ancients 15), Persistent
+ * Wrath (Hollow Warden 15, while transformed), Unholy Resuscitation (Undead Patron 10),
+ * Relentless Rage (SRD 5.2.1 p. 29, a CON save while raging, DC 10 + 5 a use), Strength of the
+ * Grave (Shadow Sorcery 3, a CHA save of DC 5 + the damage). Returns what happened, or ''.
+ */
+function keepStanding(s: Dnd5eSheet, hit: Dnd5eHit, taken: number): string {
+  const level = hit.level ?? 0
+  const hero = dnd5eHero(s, level)
+  if (usesLeft(s, 'Relentless Endurance') > 0) {
+    spendUses(s, 'Relentless Endurance')
+    s.hp = 1
+    return 'Relentless Endurance: you drop to 1 HP instead.'
+  }
+  if (usesLeft(s, 'Undying Sentinel') > 0) {
+    spendUses(s, 'Undying Sentinel')
+    s.hp = Math.min(s.hpMax, 1 + 3 * level)
+    return `Undying Sentinel: you stay at 1 HP and regain ${3 * level} (${s.hp}/${s.hpMax}).`
+  }
+  if (hasEffect(s, 'wrath-of-the-wild') && usesLeft(s, 'Ancient Might: Persistent Wrath') > 0) {
+    spendUses(s, 'Ancient Might: Persistent Wrath')
+    s.hp = Math.min(s.hpMax, 2 * level)
+    return `Persistent Wrath: your HP becomes ${s.hp}.`
+  }
+  if (usesLeft(s, 'Necrotic Husk: Unholy Resuscitation') > 0) {
+    spendUses(s, 'Necrotic Husk: Unholy Resuscitation')
+    s.hp = Math.min(s.hpMax, 2 * level)
+    setExhaustion(s, exhaustionOf(s) + 1)
+    return `Unholy Resuscitation: your HP becomes ${s.hp} and you gain 1 Exhaustion level; chosen creatures within 30 ft make a CON save against 2d10 + CHA Necrotic, half on a success.`
+  }
+  if (hasEffect(s, 'rage') && hero.has('Relentless Rage')) {
+    const uses = s.used?.['Relentless Rage'] ?? 0
+    const dc = 10 + 5 * uses
+    s.used = { ...s.used, 'Relentless Rage': uses + 1 }
+    const r = rollD20(saveRow(s, level, 'CON').test, hit.rng ? { rng: hit.rng } : {})
+    if (!r.failed && r.total >= dc) {
+      s.hp = Math.min(s.hpMax, 2 * level)
+      return `Relentless Rage: DC ${dc} CON save ${r.total}, your HP becomes ${s.hp}.`
+    }
+    return `Relentless Rage: DC ${dc} CON save ${r.total}, failed.`
+  }
+  const grave = 'Power of Shadow: Strength of the Grave'
+  if (usesLeft(s, grave) > 0) {
+    const dc = 5 + taken
+    const r = rollD20(saveRow(s, level, 'CHA').test, hit.rng ? { rng: hit.rng } : {})
+    if (!r.failed && r.total >= dc) {
+      spendUses(s, grave)
+      s.hp = Math.min(s.hpMax, Math.max(1, hero.mod('CHA') + level))
+      return `Strength of the Grave: DC ${dc} CHA save ${r.total}, your HP becomes ${s.hp}.`
+    }
+    return `Strength of the Grave: DC ${dc} CHA save ${r.total}, failed.`
+  }
+  return ''
 }
 
 /**
@@ -595,8 +762,12 @@ export function damageAfter(s: Dnd5eSheet, hit: Dnd5eHit): { taken: number; note
     notes.push(`${hit.halve}: halved`)
   }
   const type = hit.type?.trim()
+  const d = defensesNow(s, hit.level ?? 0)
+  if (hit.resisted && n > 0 && !(type && has(d.resist, type))) {
+    n = Math.floor(n / 2)
+    notes.push(`${hit.resisted}: resisted`)
+  }
   if (type) {
-    const d = defensesNow(s)
     if (has(d.immune, type)) return { taken: 0, notes: [...notes, `immune to ${type}`] }
     if (has(d.resist, type)) {
       n = Math.floor(n / 2)
@@ -649,10 +820,15 @@ export function takeDamage(s: Dnd5eSheet, hit: Dnd5eHit): Dnd5eDamageResult {
   const { taken, notes } = damageAfter(s, hit)
   const saves = (s.deathSaves ??= { successes: 0, failures: 0 })
   const wasUp = s.hp > 0
+  const ward = Math.min(Math.max(0, s.arcaneWard ?? 0), taken)
+  if (ward) {
+    s.arcaneWard = (s.arcaneWard ?? 0) - ward
+    notes.push(`Arcane Ward took ${ward}`)
+  }
   const temp = Math.max(0, s.tempHp ?? 0)
-  const fromTemp = Math.min(temp, taken)
+  const fromTemp = Math.min(temp, taken - ward)
   s.tempHp = temp - fromTemp
-  const toHp = taken - fromTemp
+  const toHp = taken - ward - fromTemp
   const before = Math.max(0, s.hp)
   s.hp = Math.max(0, before - toHp)
   const overflow = Math.max(0, toHp - before)
@@ -661,15 +837,15 @@ export function takeDamage(s: Dnd5eSheet, hit: Dnd5eHit): Dnd5eDamageResult {
     if (overflow >= s.hpMax && s.hpMax > 0) {
       saves.failures = 3
       after.push('Massive damage: dead.')
-    } else if (wasUp && usesLeft(s, 'Relentless Endurance') > 0) {
-      spendUses(s, 'Relentless Endurance')
-      s.hp = 1
-      after.push('Relentless Endurance: you drop to 1 HP instead.')
     } else if (wasUp) {
-      setUnconscious(s, true)
-      after.push('Down: roll death saves.')
-      const ended = endOnIncapacitated(s)
-      if (ended.length) after.push(`${ended.join(', ')} ended.`)
+      const stand = keepStanding(s, hit, taken)
+      if (stand) after.push(stand)
+      if (s.hp === 0) {
+        setUnconscious(s, true)
+        after.push('Down: roll death saves.')
+        const ended = endOnIncapacitated(s)
+        if (ended.length) after.push(`${ended.join(', ')} ended.`)
+      }
     } else if (overflow > 0 && saves.failures < 3) {
       if (saves.successes >= 3) saves.successes = 0
       saves.failures = Math.min(3, saves.failures + (hit.crit ? 2 : 1))
@@ -725,9 +901,10 @@ export function deathSave(
   o: { d20?: number[]; mode?: D20Mode; rng?: Rng } = {},
 ): string {
   if (!isDying(s)) return isDead(s) ? 'The hero is dead.' : 'No death save needed.'
-  const r = rollD20(deathSaveTest(s, level), o)
+  const t = deathSaveTest(s, level)
+  const r = rollD20(t, o)
   const saves = (s.deathSaves ??= { successes: 0, failures: 0 })
-  if (r.natural === 20) {
+  if (r.natural === 20 || (t.twentyOn && r.d20 >= t.twentyOn)) {
     s.hp = 1
     s.deathSaves = { successes: 0, failures: 0 }
     setUnconscious(s, false)
@@ -789,6 +966,19 @@ export function concentrationTest(s: Dnd5eSheet, level: number, dc: number): Dnd
   t.label = `Concentration (DC ${dc})`
   if (hero.feat('war-caster')) t.adv.push('War Caster')
   if (hero.option('eldritch-mind')) t.adv.push('Eldritch Mind')
+  for (const v of effectValues(s, 'concentration')) {
+    t.bonus += v.value
+    t.lines.push(`${v.label} ${sign(v.value)}`)
+  }
+  if (activeEffectDefs(s).some((d) => d.reliable?.includes('concentration'))) t.reliable = true
+  for (const m of modifiersNow(s, level)) {
+    if (m.concentration?.plus !== undefined) {
+      const n = amountOf(hero, m.concentration.plus)
+      t.bonus += n
+      t.lines.push(`${m.feature} ${sign(n)}`)
+    }
+    if (m.concentration?.adv) t.adv.push(m.feature)
+  }
   return t
 }
 
