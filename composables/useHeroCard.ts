@@ -78,7 +78,7 @@ export function useHeroCard(characterId: Ref<string | null>, roster: Ref<RosterE
       conditionValues,
       /**
        * AC (Nimble: Armor) now: PF2e's after conditions, effects and a raised shield
-       * (`acFromParts`), Nimble's with its statuses, 5e's as the roster has it.
+       * (`acFromParts`), Nimble's with its statuses, 5e's as the roster has it (`currentAc`).
        */
       ac: pf2e
         ? (s?.acNow ??

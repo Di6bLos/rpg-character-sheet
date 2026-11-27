@@ -4,10 +4,11 @@
 // A click does what the sheet's button does (through `guarded`, so a dimmed tile does
 // nothing); Opportunity Attack and Help open a picker of their choices instead, and
 // upcastable spells get a tier popover (NimbleUpcast), 5e spells a popover of how to cast
-// them (slot level, Pact slot, free cast, ritual). A 5e tile shows its cost ("Bonus Action")
-// where a Nimble one shows its action pips.
+// them (slot level, Pact slot, free cast, ritual), 5e weapons a popover of their grips and
+// Sneak Attack (BattleGrips; the corner button names what's on). A 5e tile shows its cost
+// ("Bonus Action") where a Nimble one shows its action pips.
 // On touch a tap only opens the details (ActionDetails: a bottom sheet on a phone, a
-// popover elsewhere), which hold the picks, the upcast stepper and the Use button; the
+// popover elsewhere), which hold the picks, the upcast stepper, the grips and the Use button; the
 // tile then renders no tooltip, tier button or picker of its own.
 import type { FunctionalComponent } from 'vue'
 import type { BattleTile } from '~/composables/useBattleActions'
@@ -38,12 +39,21 @@ const tone = computed(() => {
 
 const sub = computed(() => tileSub(a.value))
 
+const gripsOn = computed(() => a.value.grips?.filter((g) => g.on) ?? [])
+/** The grips button's label: the one toggle on ("2H"), how many, or "Grip". */
+const gripShort = computed(() => {
+  const on = gripsOn.value
+  if (on.length > 1) return `${on.length} on`
+  return on[0]?.short ?? 'Grip'
+})
+
 const keys = computed(() => {
   const n = a.value.actions
   return [
     a.value.cost ?? (n ? `${n} ${n === 1 ? 'action' : 'actions'}` : 'No action'),
     a.value.castWith?.options.find((o) => o.key === a.value.castWith?.at)?.label ?? '',
     a.value.oddsText ?? '',
+    gripsOn.value.map((g) => g.label).join(', '),
     a.value.mana ? `${a.value.mana} mana` : '',
     a.value.unavailable ||
       (touch.value ? 'Tap for details' : a.value.choices ? 'Click to choose' : 'Click to use'),
@@ -140,6 +150,18 @@ function onClick() {
     >
       T{{ a.upcast.at }}
     </button>
+    <button
+      v-else-if="a.grips?.length && !touch"
+      ref="upBtn"
+      type="button"
+      class="act__up"
+      :class="{ 'act__up--on': gripsOn.length }"
+      :aria-label="`Grip for ${a.name}: ${gripsOn.map((g) => g.label).join(', ') || 'none'}`"
+      :aria-expanded="upcasting"
+      @click="upcasting = !upcasting"
+    >
+      {{ gripShort }}
+    </button>
 
     <BattleActionDetails
       v-if="touch"
@@ -180,6 +202,14 @@ function onClick() {
         :disabled="readonly"
         @set="a.upcast.set"
       />
+    </BattleActionPop>
+    <BattleActionPop
+      v-else-if="a.grips?.length && !touch"
+      v-model="upcasting"
+      :anchor="upBtn"
+      :label="`Grip for ${a.name}`"
+    >
+      <BattleGrips :name="a.name" :grips="a.grips" :disabled="readonly" />
     </BattleActionPop>
   </div>
 </template>
@@ -375,6 +405,12 @@ function onClick() {
   &:hover,
   &[aria-expanded='true'] {
     border-color: var(--accent);
+    color: var(--page-text);
+  }
+
+  &--on {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, var(--field));
     color: var(--page-text);
   }
 }

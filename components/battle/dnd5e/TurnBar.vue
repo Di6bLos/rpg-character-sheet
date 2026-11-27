@@ -5,8 +5,8 @@
 // note (attacks left in the Attack action, Concentration, a death save due) and the sheet's
 // turn steps (useDnd5eTurnSteps, as the sheet's Turn panel). Initiative goes to the GM's
 // tracker; Start and End turn follow the tracker by themselves (HeroEditor). Compact
-// (phone): one row, the headline with what's left as its sub line and the step button; the
-// circles are on the Hero tab there.
+// (phone): one row, the headline with what's left as its sub line (once: the note may already
+// say it) and the step button; the circles are on the Hero tab there.
 import type { useInitiative } from '~/composables/useInitiative'
 import type { Dnd5eSheet } from '~/types/sheets'
 import { turnHeadline } from '~/utils/turnSteps'
@@ -58,8 +58,12 @@ const sub = computed(() =>
     .filter(Boolean)
     .join(' · '),
 )
+/** The note already starts with the actions left (dnd5eTurnLeft), so compact skips `leftText`. */
+const noteHasLeft = computed(() => /^(\d+ actions? left|Action used)\b/.test(model.value.note))
 const subRest = computed(() =>
-  props.compact ? [model.value.leftText, sub.value].filter(Boolean).join(' · ') : sub.value,
+  props.compact && !noteHasLeft.value
+    ? [model.value.leftText, sub.value].filter(Boolean).join(' · ')
+    : sub.value,
 )
 const subLine = computed(() => [headTail.value, subRest.value].filter(Boolean).join(' · '))
 const steps = computed(() => model.value.steps)

@@ -20,6 +20,17 @@ export interface BattleChoice {
   use: () => void
 }
 
+/** 5e: a toggle a weapon tile offers before its attack (a grip, Sneak Attack). */
+export interface BattleGrip {
+  key: string
+  label: string
+  /** Its label in the tile's corner button ("2H"). */
+  short: string
+  title: string
+  on: boolean
+  toggle: () => void
+}
+
 export type BattleTile = BattleAction & {
   use: () => void
   /** When set, the tile opens these picks instead of acting on a click (the sheet's dropdown). */
@@ -40,6 +51,8 @@ export type BattleTile = BattleAction & {
   }
   /** 5e: the odds line the sheet's card shows ("vs AC 15: 60% hit · 5% crit · Advantage"). */
   oddsText?: string
+  /** 5e: the weapon card's grip and Sneak Attack toggles (Two hands, Off-hand, Thrown…). */
+  grips?: BattleGrip[]
 }
 
 /** The odds fields of a sheet attack, as the tile's `odds`. */

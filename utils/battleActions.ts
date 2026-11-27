@@ -227,31 +227,40 @@ export function readyNote(
   return parts.join(' · ')
 }
 
+/** What a 5e hero has left of the turn (SRD 5.2.1 p. 13). */
+export interface Dnd5eTurnLeft {
+  actions: number
+  bonus: boolean
+  reaction: boolean
+  movement: { used: number; max: number } | null
+}
+
+/**
+ * A 5e turn's economy as words: "1 action left · Bonus Action used · Reaction ready · 20 ft to
+ * move" (the Turn panel's and turn bar's note, and the start of the Ready now line).
+ */
+export function dnd5eTurnLeft(t: Dnd5eTurnLeft): string {
+  const parts = [
+    t.actions > 0 ? `${t.actions} ${t.actions === 1 ? 'action' : 'actions'} left` : 'Action used',
+    t.bonus ? 'Bonus Action ready' : 'Bonus Action used',
+    t.reaction ? 'Reaction ready' : 'Reaction used',
+  ]
+  if (t.movement) parts.push(`${Math.max(0, t.movement.max - t.movement.used)} ft to move`)
+  return parts.join(' · ')
+}
+
 /**
  * The 5e line under Ready now: the action, Bonus Action and Reaction left and the movement, or
  * what's open off your turn.
  */
 export function dnd5eReadyNote(
   list: BattleAction[],
-  ctx: {
-    onTurn: boolean
-    actions: number
-    bonus: boolean
-    reaction: boolean
-    movement: { used: number; max: number } | null
-  },
+  ctx: Dnd5eTurnLeft & { onTurn: boolean },
 ): string {
-  const reaction = ctx.reaction ? 'Reaction ready' : 'Reaction used'
-  if (!ctx.onTurn) return `Not your turn · ${reaction} · only reactions and free options`
+  if (!ctx.onTurn)
+    return `Not your turn · ${ctx.reaction ? 'Reaction ready' : 'Reaction used'} · only reactions and free options`
   const hidden = list.filter((a) => a.unavailable !== '').length
-  const parts = [
-    ctx.actions > 0
-      ? `${ctx.actions} ${ctx.actions === 1 ? 'action' : 'actions'} left`
-      : 'Action used',
-    ctx.bonus ? 'Bonus Action ready' : 'Bonus Action used',
-    reaction,
-  ]
-  if (ctx.movement) parts.push(`${Math.max(0, ctx.movement.max - ctx.movement.used)} ft to move`)
+  const parts = [dnd5eTurnLeft(ctx)]
   if (hidden > 0) parts.push(`hiding ${hidden} you can't use now`)
   return parts.join(' · ')
 }

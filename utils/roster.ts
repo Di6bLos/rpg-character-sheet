@@ -148,7 +148,7 @@ export function conditionLabels(
 /**
  * A seated hero's AC or Armor on the board from the roster: PF2e's AC now (the sheet's saved AC
  * parts with the conditions and a raised shield, `acFromParts`), Nimble's Armor with its
- * statuses, 5e's AC.
+ * statuses, 5e's AC now (the roster reads the sheet's `currentAc`).
  */
 export function rosterAc(entry: RosterEntry | null | undefined): number | undefined {
   const s = entry?.summary

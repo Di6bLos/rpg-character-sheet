@@ -4,7 +4,9 @@
 // attack's), and its `use` is the call that button makes (useDnd5eAttacks, useDnd5eReactions,
 // useDnd5eActions, useDnd5eCasting, useEntry, takeCoreAction).
 import type { Dnd5eSheet, Dnd5eSpellRef } from '~/types/sheets'
-import type { BattleChoice, BattleTile } from '~/composables/useBattleActions'
+import type { Dnd5eAttackCard } from '~/composables/useDnd5eAttacks'
+import type { Dnd5eGrip } from '~/utils/dnd5eAttacks'
+import type { BattleChoice, BattleGrip, BattleTile } from '~/composables/useBattleActions'
 import { sign } from '~/utils/dice'
 import { DND5E_CORE_ACTIONS, type Dnd5eEntry, entryWhy, useEntry } from '~/utils/dnd5eFeatures'
 import { COST_LABEL, type Dnd5eCost, costWhy, newTurn, usesLeft } from '~/utils/dnd5ePlay'
@@ -82,6 +84,50 @@ export function useBattleDnd5eActions(options: { onResult?: (message: string) =>
   const base = { tier: null, actions: 0, mana: 0, dice: '', detail: '', desc: '', school: null }
   const costOf = (c: Dnd5eCost | null | undefined) => (c ? COST_LABEL[c] : 'Free')
 
+  /** The toggles the sheet's weapon card shows above Roll, with its labels. */
+  function gripsOf(c: Dnd5eAttackCard): BattleGrip[] {
+    const now = attacks.grips.value[c.key] ?? {}
+    const grip = (part: keyof Dnd5eGrip, label: string, short: string, title: string) => ({
+      key: part,
+      label,
+      short,
+      title,
+      on: !!now[part],
+      toggle: () => attacks.setGrip(c.key, part),
+    })
+    const out: BattleGrip[] = []
+    if (c.canGrip.twoHands)
+      out.push(grip('twoHands', 'Two hands', '2H', 'Versatile: the bigger damage die in two hands'))
+    if (c.canGrip.thrown)
+      out.push(grip('thrown', 'Thrown', 'Thr', 'Thrown: a ranged attack with the same ability'))
+    if (c.canGrip.offhand)
+      out.push(
+        grip(
+          'offhand',
+          'Off-hand',
+          'Off',
+          'Light: the extra attack with a second Light weapon (a Bonus Action, or part of the Attack action with Nick)',
+        ),
+      )
+    if (c.canGrip.long || now.thrown)
+      out.push(grip('long', 'Long range', 'Far', 'Beyond normal range: Disadvantage'))
+    if (attacks.sneakable(c.plan)) {
+      const on = attacks.sneakOn(c)
+      out.push({
+        key: 'sneak',
+        label: 'Sneak Attack',
+        short: 'SA',
+        title:
+          'Sneak Attack, once a turn: with Advantage, or an ally within 5 ft of the target and no Disadvantage',
+        on,
+        toggle: () => {
+          attacks.sneakPick.value = { ...attacks.sneakPick.value, [c.key]: !on }
+        },
+      })
+    }
+    return out
+  }
+
   const weaponTiles = computed<BattleTile[]>(() =>
     attacks.cards.value.map((c) => ({
       ...base,
@@ -96,6 +142,7 @@ export function useBattleDnd5eActions(options: { onResult?: (message: string) =>
       offTurn: false,
       unavailable: costWhy(sheet.value, c.plan.cost),
       oddsText: [attacks.oddsText(c.plan), attacks.modeLabel(c.plan)].filter(Boolean).join(' · '),
+      grips: gripsOf(c),
       use: () => run(c.plan.name, { ...attacks.typed, key: c.key }, () => attacks.attack(c)),
     })),
   )
