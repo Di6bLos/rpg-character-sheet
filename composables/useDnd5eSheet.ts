@@ -26,7 +26,8 @@ export interface Dnd5eSheetApi {
   build: ComputedRef<ReturnType<typeof walkDnd5e>>
 }
 
-const KEY: InjectionKey<Dnd5eSheetApi> = Symbol('dnd5e-sheet')
+/** The 5e sheet's shared data and state (provideDnd5eSheet); the battle board provides it too. */
+export const DND5E_SHEET: InjectionKey<Dnd5eSheetApi> = Symbol('dnd5e-sheet')
 
 /**
  * Loads the 5e data for the sheet in the current sheet editor and provides what its panels
@@ -64,12 +65,12 @@ export function provideDnd5eSheet(): Dnd5eSheetApi {
   const target = useState<Dnd5eTarget>(`dnd5e-target-${id}`, () => ({ ac: null }))
   const attackMode = useState<D20Mode>(`dnd5e-odds-${id}`, () => 'normal')
   const api: Dnd5eSheetApi = { data, columns, entries, target, attackMode, build }
-  provide(KEY, api)
+  provide(DND5E_SHEET, api)
   return api
 }
 
 export function useDnd5eSheet(): Dnd5eSheetApi {
-  const api = inject(KEY)
+  const api = inject(DND5E_SHEET)
   if (!api) throw new Error('useDnd5eSheet() must be used inside the 5e sheet')
   return api
 }

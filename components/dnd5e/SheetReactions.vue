@@ -4,60 +4,28 @@
 // reaction spells (Shield, Counterspell, Hellish Rebuke…) cast through useDnd5eCasting, and the
 // hero's reaction features, feats and options (Uncanny Dodge, Parry, Riposte, Sentinel…). One
 // Reaction a round, back at the start of your turn. Results nothing else claims show here.
-import type { Dnd5eSheet } from '~/types/sheets'
-import { showOutcome, sign } from '~/utils/dice'
-import { rollAttack5e, weaponAttack, weaponDef } from '~/utils/dnd5eAttacks'
-import { costWhy, payCost } from '~/utils/dnd5ePlay'
+// The logic is useDnd5eReactions, shared with the battle board's action tiles.
+import { sign } from '~/utils/dice'
+import { weaponAttack } from '~/utils/dnd5eAttacks'
 import { levelName } from '~/utils/dnd5eSpells'
 import { tipText } from '~/utils/ruleTips'
 
-const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
-const { claim, resultFor, unclaimed } = useResultOwner()
-const { data, columns, entries, target, attackMode } = useDnd5eSheet()
-const casting = useDnd5eCasting()
-const typed = useTypedRoll()
-const sheet = computed(() => draft.value.sheet)
-const level = computed(() => draft.value.level)
-const ready = computed(() => sheet.value.turn?.reaction !== false)
-
-const melee = computed(() =>
-  sheet.value.weapons
-    .map((w, i) => ({ w, i, def: weaponDef(w, data.value?.weapons ?? []) }))
-    .filter((x) => (x.def ? x.def.type === 'Melee' : !/\d+\s*\/\s*\d+/.test(x.w.range))),
-)
-const picked = ref(0)
-const oaWhy = computed(() =>
-  melee.value.length ? costWhy(sheet.value, 'reaction') : 'No melee weapon',
-)
-
-function opportunity() {
-  const m = melee.value[picked.value] ?? melee.value[0]
-  if (!canEdit.value || !m || oaWhy.value) return
-  const plan = weaponAttack(sheet.value, level.value, m.w, m.def, {
-    key: 'rea:oa',
-    target: target.value,
-    columns: columns.value,
-  })
-  typed.run('rea:oa', 'Opportunity Attack', () => {
-    payCost(sheet.value, level.value, 'reaction')
-    const r = rollAttack5e(
-      sheet.value,
-      { ...plan, name: `Opportunity Attack (${m.w.name})` },
-      {
-        mode: attackMode.value,
-        target: target.value,
-      },
-    )
-    claim('rea:oa', () => say(r.line))
-    showOutcome({ label: 'Opportunity Attack', total: r.damage, detail: r.line })
-  })
-  attackMode.value = 'normal'
-}
-
-const spells = computed(() =>
-  casting.spells.value.filter((r) => !r.book && casting.defOf(r.slug)?.activation === 'reaction'),
-)
-const own = computed(() => entries.value.filter((e) => e.cost === 'reaction'))
+const {
+  canEdit,
+  resultFor,
+  unclaimed,
+  casting,
+  typed,
+  sheet,
+  level,
+  ready,
+  melee,
+  picked,
+  oaWhy,
+  opportunity,
+  spells,
+  own,
+} = useDnd5eReactions()
 </script>
 
 <template>
