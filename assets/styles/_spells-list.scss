@@ -32,6 +32,12 @@
     }
   }
 
+  @media (pointer: coarse) {
+    > summary {
+      min-height: 44px;
+    }
+  }
+
   &[open] > summary {
     margin-bottom: 8px;
 

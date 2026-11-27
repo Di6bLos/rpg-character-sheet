@@ -26,6 +26,11 @@
   input {
     accent-color: var(--danger);
   }
+
+  // A 44px tall target around the box and its word on touch screens.
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
 }
 
 .vit-top {
@@ -42,6 +47,11 @@
   min-width: 96px;
   padding: 10px 14px;
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+
+  @media (max-width: 480px) {
+    min-width: 80px;
+    padding: 10px 8px;
+  }
 }
 
 .armor__badge {
@@ -99,12 +109,22 @@
   color: var(--page-muted);
 }
 
+// − HP + stay on one line beside the Armor badge on a phone.
+.hp-steps {
+  flex-wrap: nowrap;
+}
+
 .hp-value {
   font-family: var(--font-heading);
   font-size: 26px;
   font-weight: 700;
   min-width: 90px;
   text-align: center;
+  white-space: nowrap;
+
+  @media (max-width: 480px) {
+    min-width: 0;
+  }
 
   span {
     font-size: 16px;

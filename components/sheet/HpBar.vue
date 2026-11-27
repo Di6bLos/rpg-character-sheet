@@ -163,6 +163,12 @@ function key(event: KeyboardEvent) {
   &.is-dragging .meter > span {
     transition: none;
   }
+
+  // A 44px tall strip to grab on touch screens.
+  @media (pointer: coarse) {
+    margin: -4px 0;
+    padding: 18px 0;
+  }
 }
 
 .hpbar__loss,

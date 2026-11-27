@@ -347,10 +347,26 @@ const components = (r: Dnd5eSpellRef) => {
   }
 }
 
+// On touch the slots are 30px boxes 44px apart, each with a 44px target.
 @media (pointer: coarse) {
+  .slots {
+    gap: 14px;
+  }
+
   .slot {
-    width: 32px;
-    height: 32px;
+    position: relative;
+    width: 30px;
+    height: 30px;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -8.5px;
+    }
+  }
+
+  .rank-head {
+    flex-wrap: wrap;
   }
 }
 </style>
