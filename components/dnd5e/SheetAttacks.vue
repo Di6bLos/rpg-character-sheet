@@ -195,6 +195,10 @@ const riders = computed(() =>
         label="About attacks"
         text="Roll makes the attack roll and its damage together (SRD 5.2.1 p. 16). The Attack action makes all your Extra Attacks; the first one takes the action. A natural 20, or your crit range, is a Critical Hit: every damage die rolls twice. With the target's AC each card shows its chance to hit and the roll says hit or miss. Advantage and Disadvantage cancel each other (p. 6); a Light weapon's off-hand attack is a Bonus Action without your modifier (p. 89)."
       />
+      <span class="fold-hint"
+        >{{ cards.length + spellAttacks.length + abilities.length }} ready · opens on your
+        turn</span
+      >
     </div>
     <Dnd5eTargetAc />
     <SheetSituation chips-label="Next attack" :chips="chips" :steppers="[]" @toggle="toggleMode" />

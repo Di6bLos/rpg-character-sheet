@@ -5,7 +5,8 @@
 // notes. Built heroes play from the 5e data (provideDnd5eSheet); a hand-made sheet uses what it
 // holds (typed weapons, feature text) and sets its own skill proficiencies. Every theme styles
 // it through the shared variables, as the Nimble and PF2e sheets. The GM's HP and condition
-// changes from the battle board go through the 5e engine.
+// changes from the battle board go through the 5e engine. Without spells, Skills moves under
+// Inventory so the two columns stay even on a wide screen (the phone order is the same).
 import type { Dnd5eAbility, Dnd5eSheet } from '~/types/sheets'
 import { abilityMod, sign } from '~/utils/dice'
 import { DND5E_ABILITY_NAME } from '~/utils/dnd5eBuild'
@@ -122,6 +123,7 @@ const hasSpells = computed(() => !!sheet.value.castingStats || !!sheet.value.spe
       <Dnd5eSheetVitals style="order: 1" />
       <Dnd5eSheetSpells v-if="hasSpells" style="order: 8" />
       <Dnd5eSheetInventory style="order: 12" />
+      <Dnd5eSheetSkills v-if="!hasSpells" style="order: 11" />
     </div>
     <div class="play__col">
       <Dnd5eSheetTurn style="order: 2" />
@@ -129,7 +131,7 @@ const hasSpells = computed(() => !!sheet.value.castingStats || !!sheet.value.spe
       <Dnd5eSheetReactions :style="{ order: turnActive ? 4 : 3 }" />
       <Dnd5eSheetResources style="order: 5" />
       <Dnd5eSheetActions style="order: 6" />
-      <Dnd5eSheetSkills style="order: 11" />
+      <Dnd5eSheetSkills v-if="hasSpells" style="order: 11" />
     </div>
   </div>
 
@@ -163,6 +165,18 @@ const hasSpells = computed(() => !!sheet.value.castingStats || !!sheet.value.spe
 @media (max-width: 720px) {
   .stats--six {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stats--six .stat {
+    padding: 10px 4px 8px;
+  }
+
+  .stats--six .stat__save {
+    padding: 2px 0;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }
 }
 

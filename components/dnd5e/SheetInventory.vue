@@ -325,11 +325,11 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
 }
 
 .tag {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--page-muted);
+  color: var(--page-soft);
 
   &--mastery {
     color: var(--secondary);

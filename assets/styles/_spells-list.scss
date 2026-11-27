@@ -23,12 +23,16 @@
       color: var(--page-muted);
     }
 
+    // A chevron pointing down while folded, up while open.
     &::after {
-      content: '▾';
-      margin-left: auto;
-      font-size: 12px;
-      letter-spacing: normal;
-      color: var(--accent-text);
+      content: '';
+      flex: none;
+      width: 7px;
+      height: 7px;
+      margin: 0 4px 4px auto;
+      border: solid var(--accent-text);
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
     }
   }
 
@@ -42,7 +46,8 @@
     margin-bottom: 8px;
 
     &::after {
-      content: '▴';
+      margin-bottom: -4px;
+      transform: rotate(-135deg);
     }
   }
 }
