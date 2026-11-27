@@ -59,7 +59,7 @@ describe('Wild Shape', () => {
     const wis = Math.floor((sheet.abilities.WIS - 10) / 2)
     expect(acNow(sheet, 3).value).toBe(Math.max(11, 13 + wis))
     expect(speedNow(sheet, 3)).toMatchObject({ value: 40, others: 'climb 30 ft' })
-    const spell = data.spells.find((s) => s.slug === 'cure-wounds')!
+    const spell = data.spells.find((s) => s.slug === 'thunderwave')!
     expect(
       castWhy(sheet, spell, { key: 'slot1', label: '', level: 1, kind: 'slot', left: 1 }),
     ).toBe('No spells while in Wild Shape')
@@ -80,5 +80,21 @@ describe('Wild Shape', () => {
     const keys = attackRiders(sheet, 14, p).map((o) => o.def.key)
     expect(keys).toEqual(expect.arrayContaining(['primal-strike', 'lunar-form']))
     expect(rollAttack5e(sheet, p, { target: { ac: 5 }, rng: () => 0.7 }).hit).toBe(true)
+  })
+})
+
+describe('Circle of the Moon spells', () => {
+  it('casts its Circle spells in Wild Shape', () => {
+    const { sheet } = build('druid')
+    levelTo(sheet, 1, 3, 'circle-of-the-moon')
+    learnForm(sheet, 3, wolf)
+    assumeForm(sheet, 3, 'Wolf')
+    const moonbeam = data.spells.find((s) => s.slug === 'moonbeam')!
+    expect(
+      sheet.spells?.some((r) => r.slug === 'moonbeam' && r.from.startsWith('Circle of the Moon')),
+    ).toBe(true)
+    expect(
+      castWhy(sheet, moonbeam, { key: 'slot2', label: '', level: 2, kind: 'slot', left: 1 }),
+    ).toBe('')
   })
 })

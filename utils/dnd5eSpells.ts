@@ -194,7 +194,10 @@ export function castWhy(
   opt: Dnd5eCastOption | undefined,
 ): string {
   if (!opt) return 'No slot left'
-  const beastSpells = dnd5eHero(s, 0).has('Beast Spells')
+  const moon = !!s.spells?.some(
+    (r) => r.slug === def.slug && r.from.startsWith('Circle of the Moon'),
+  )
+  const beastSpells = moon || dnd5eHero(s, 0).has('Beast Spells')
   const rage = activeEffectDefs(s).find(
     (d) =>
       d.noSpells &&
