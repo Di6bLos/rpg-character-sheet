@@ -384,6 +384,12 @@ export interface Dnd5eSheet extends SheetCommon {
   effects?: Dnd5eEffect[]
   /** Exhaustion level 0–6 (SRD 5.2.1 p. 181); "Exhaustion" is in `conditions` while above 0. */
   exhaustion?: number
+  /**
+   * AC now (`acNow`: Shield, Haste, Mage Armor…) and the base `ac` it was worked out from,
+   * saved when either changes so the board's roster and hero card show it while `base` still
+   * matches `ac`.
+   */
+  currentAc?: { value: number; base: number }
   /** When each condition the player set an end for goes away; absent: when they remove it. */
   conditionEnds?: Record<string, Dnd5eConditionEnd>
   /** Hit Point Dice spent (a hero has one per level, SRD 5.2.1 p. 185). */

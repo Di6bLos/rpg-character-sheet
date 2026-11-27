@@ -5,7 +5,7 @@ import type { Dnd5eColumns, Dnd5eTarget } from '~/utils/dnd5eAttacks'
 import { DND5E_BUILD_SETS, type Dnd5eBuildData, walkDnd5e } from '~/utils/dnd5eBuild'
 import { type Dnd5eEntry, heroEntries } from '~/utils/dnd5eFeatures'
 import { isBuiltDnd5e } from '~/utils/dnd5eLevelUp'
-import type { D20Mode } from '~/utils/dnd5ePlay'
+import { acNow, type D20Mode } from '~/utils/dnd5ePlay'
 import type { Dnd5eLastRoll } from '~/utils/dnd5eRerolls'
 
 /** The data sets the 5e sheet plays from (magic items load when the inventory asks). */
@@ -34,10 +34,11 @@ export const DND5E_SHEET: InjectionKey<Dnd5eSheetApi> = Symbol('dnd5e-sheet')
 
 /**
  * Loads the 5e data for the sheet in the current sheet editor and provides what its panels
- * share: the class columns, the feature entries, the Target row and the attack's odds.
+ * share: the class columns, the feature entries, the Target row and the attack's odds. Saves the
+ * hero's AC now as `currentAc` when it or the base AC changes, never on load.
  */
 export function provideDnd5eSheet(): Dnd5eSheetApi {
-  const { draft } = useSheet<Dnd5eSheet>()
+  const { draft, canEdit } = useSheet<Dnd5eSheet>()
   const data = shallowRef<SheetData | null>(null)
   onMounted(async () => {
     try {
@@ -63,6 +64,11 @@ export function provideDnd5eSheet(): Dnd5eSheetApi {
       data.value as Dnd5eBuildData,
       s.abilities,
     )
+  })
+  watch([() => acNow(sheet.value, level.value).value, () => sheet.value.ac], ([value, base]) => {
+    const now = sheet.value.currentAc
+    if (canEdit.value && (now?.value !== value || now.base !== base))
+      sheet.value.currentAc = { value, base }
   })
   const id = draft.value.id
   const target = useState<Dnd5eTarget>(`dnd5e-target-${id}`, () => ({ ac: null }))
