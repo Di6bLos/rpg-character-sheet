@@ -1,0 +1,836 @@
+{
+  "circle-of-the-land": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Guide",
+        "Feat · Guide: Magic Initiate",
+        "Magic Initiate: Spell list: Druid",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Druid 1: Spellcasting",
+        "Druid 1: Druidic",
+        "Druid 1: Primal Order",
+        "Druid 1: Primal Order: Magician"
+      ],
+      "picks": [
+        "L1:background:feat>1 ability×1",
+        "L1:background:feat>0>druid:0 cantrip×2",
+        "L1:background:feat>0>druid:1 spell×1",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:class:skills skill×2",
+        "L1:languages language×2",
+        "L1:primal-order:0 option×1",
+        "L1:primal-order:0>magician:0 cantrip×1",
+        "L1:spells:cantrips cantrip×2",
+        "L1:spells:prepared spell×4"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 10,
+        "ac": 14,
+        "slots": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 4,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Druid 2: Wild Shape",
+        "Druid 2: Wild Companion"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:spells:prepared spell×1",
+        "L2:swap:cantrip:out swapOut×1?",
+        "L2:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 17,
+        "ac": 14,
+        "slots": [
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 5,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 2/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "Circle of the Land 3: Circle of the Land Spells",
+        "Circle of the Land: Land Type: Arid Land",
+        "Circle of the Land 3: Land’s Aid"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:subclass subclass×1",
+        "L3:circle-of-the-land:circle-of-the-land-spells:0 option×1",
+        "L3:spells:prepared spell×1",
+        "L3:swap:cantrip:out swapOut×1?",
+        "L3:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 24,
+        "ac": 14,
+        "slots": [
+          4,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 6,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 2/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Feat · Druid 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2",
+        "L4:spells:cantrips cantrip×1",
+        "L4:spells:prepared spell×1",
+        "L4:swap:cantrip:out swapOut×1?",
+        "L4:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 31,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 7,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 2/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Druid 5: Wild Resurgence"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:spells:prepared spell×2",
+        "L5:swap:cantrip:out swapOut×1?",
+        "L5:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 38,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 9,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 2/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 6,
+      "features": [
+        "Circle of the Land 6: Natural Recovery"
+      ],
+      "picks": [
+        "L6:class class×1?",
+        "L6:spells:prepared spell×1",
+        "L6:swap:cantrip:out swapOut×1?",
+        "L6:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 45,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 10,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Druid 7: Elemental Fury",
+        "Druid 7: Elemental Fury: Potent Spellcasting"
+      ],
+      "picks": [
+        "L7:class class×1?",
+        "L7:elemental-fury:0 option×1",
+        "L7:spells:prepared spell×1",
+        "L7:swap:cantrip:out swapOut×1?",
+        "L7:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 52,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 11,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Druid 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:class class×1?",
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2",
+        "L8:spells:prepared spell×1",
+        "L8:swap:cantrip:out swapOut×1?",
+        "L8:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 59,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 12,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 9,
+      "features": [],
+      "picks": [
+        "L9:class class×1?",
+        "L9:spells:prepared spell×2",
+        "L9:swap:cantrip:out swapOut×1?",
+        "L9:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 66,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 14,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Circle of the Land 10: Nature’s Ward"
+      ],
+      "picks": [
+        "L10:class class×1?",
+        "L10:spells:cantrips cantrip×1",
+        "L10:spells:prepared spell×1",
+        "L10:swap:cantrip:out swapOut×1?",
+        "L10:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 73,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 15,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 11,
+      "features": [],
+      "picks": [
+        "L11:class class×1?",
+        "L11:spells:prepared spell×1",
+        "L11:swap:cantrip:out swapOut×1?",
+        "L11:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 80,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 16,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Druid 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:class class×1?",
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2",
+        "L12:swap:cantrip:out swapOut×1?",
+        "L12:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 99,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 16,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 13,
+      "features": [],
+      "picks": [
+        "L13:class class×1?",
+        "L13:spells:prepared spell×1",
+        "L13:swap:cantrip:out swapOut×1?",
+        "L13:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 107,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 17,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "Circle of the Land 14: Nature’s Sanctuary"
+      ],
+      "picks": [
+        "L14:class class×1?",
+        "L14:swap:cantrip:out swapOut×1?",
+        "L14:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 115,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 17,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 15,
+      "features": [
+        "Druid 15: Improved Elemental Fury"
+      ],
+      "picks": [
+        "L15:class class×1?",
+        "L15:spells:prepared spell×1",
+        "L15:swap:cantrip:out swapOut×1?",
+        "L15:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 123,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 18,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Druid 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:class class×1?",
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2",
+        "L16:swap:cantrip:out swapOut×1?",
+        "L16:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 147,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 18,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 3/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 17,
+      "features": [],
+      "picks": [
+        "L17:class class×1?",
+        "L17:spells:prepared spell×1",
+        "L17:swap:cantrip:out swapOut×1?",
+        "L17:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 156,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 19,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 4/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Druid 18: Beast Spells"
+      ],
+      "picks": [
+        "L18:class class×1?",
+        "L18:spells:prepared spell×1",
+        "L18:swap:cantrip:out swapOut×1?",
+        "L18:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 165,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 20,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 4/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Druid 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:class class×1?",
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2",
+        "L19:spells:prepared spell×1",
+        "L19:swap:cantrip:out swapOut×1?",
+        "L19:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 193,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 21,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 4/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 7
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Druid 20: Archdruid"
+      ],
+      "picks": [
+        "L20:class class×1?",
+        "L20:spells:prepared spell×1",
+        "L20:swap:cantrip:out swapOut×1?",
+        "L20:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 203,
+        "ac": 14,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 22,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Wild Shape 4/long",
+          "Wild Resurgence: Wild Shape to Spell Slot 1/long",
+          "Natural Recovery: Free Circle Spell 1/long",
+          "Natural Recovery: Recover Spell Slots 1/long",
+          "Archdruid: Nature Magician 1/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 7
+      }
+    }
+  ]
+}

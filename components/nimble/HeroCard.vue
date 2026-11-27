@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Selectable class card for the Nimble hero picker: sigil, NAME, tagline.
+// Selectable class card for the hero pickers: sigil, NAME, tagline. The `art` slot swaps the
+// Nimble sigil for another system's (the 5e builder's).
 defineProps<{
   slug: string
   name: string
@@ -14,7 +15,7 @@ defineEmits<{ select: [] }>()
 <template>
   <button type="button" class="hero" :aria-pressed="selected" @click="$emit('select')">
     <span class="hero__art">
-      <NimbleSigil :slug="slug" :size="100" />
+      <slot name="art"><NimbleSigil :slug="slug" :size="100" /></slot>
       <span v-if="badge" class="hero__badge">{{ badge }}</span>
     </span>
     <span class="hero__name">{{ name }}</span>

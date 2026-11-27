@@ -1,0 +1,829 @@
+{
+  "fiend-patron": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Charlatan",
+        "Feat · Charlatan: Skilled",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Warlock 1: Eldritch Invocations",
+        "Warlock 1: Pact Magic",
+        "Eldritch Invocations: Armor of Shadows"
+      ],
+      "picks": [
+        "L1:background:feat>0 skill×3",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:class:skills skill×2",
+        "L1:languages language×2",
+        "L1:eldritch-invocations:0 option×1",
+        "L1:spells:cantrips cantrip×2",
+        "L1:spells:prepared spell×2"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 10,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "1×1",
+        "cantrips": 2,
+        "prepared": 2,
+        "resources": [],
+        "options": 1,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Warlock 2: Magical Cunning",
+        "Eldritch Invocations: Agonizing Blast",
+        "Eldritch Invocations: Devil’s Sight"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:eldritch-invocations:0 option×2",
+        "L2:eldritch-invocations:0>agonizing-blast:0 cantrip×1",
+        "L2:spells:prepared spell×1",
+        "L2:swap:cantrip:out swapOut×1?",
+        "L2:swap:prepared-spell:out swapOut×1?",
+        "L2:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 17,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×1",
+        "cantrips": 2,
+        "prepared": 3,
+        "resources": [
+          "Magical Cunning 1/long"
+        ],
+        "options": 3,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "Fiend Patron 3: Dark One’s Blessing",
+        "Fiend Patron 3: Fiend Spells"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:subclass subclass×1",
+        "L3:spells:prepared spell×1",
+        "L3:swap:cantrip:out swapOut×1?",
+        "L3:swap:prepared-spell:out swapOut×1?",
+        "L3:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 24,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×2",
+        "cantrips": 2,
+        "prepared": 4,
+        "resources": [
+          "Magical Cunning 1/long"
+        ],
+        "options": 3,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Feat · Warlock 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2",
+        "L4:spells:cantrips cantrip×1",
+        "L4:spells:prepared spell×1",
+        "L4:swap:cantrip:out swapOut×1?",
+        "L4:swap:prepared-spell:out swapOut×1?",
+        "L4:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 31,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×2",
+        "cantrips": 3,
+        "prepared": 5,
+        "resources": [
+          "Magical Cunning 1/long"
+        ],
+        "options": 3,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Eldritch Invocations: Ascendant Step"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:eldritch-invocations:0 option×2",
+        "L5:eldritch-invocations:0>agonizing-blast:0 cantrip×1",
+        "L5:spells:prepared spell×1",
+        "L5:swap:cantrip:out swapOut×1?",
+        "L5:swap:prepared-spell:out swapOut×1?",
+        "L5:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 38,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×3",
+        "cantrips": 3,
+        "prepared": 6,
+        "resources": [
+          "Magical Cunning 1/long"
+        ],
+        "options": 5,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 6,
+      "features": [
+        "Fiend Patron 6: Dark One’s Own Luck"
+      ],
+      "picks": [
+        "L6:class class×1?",
+        "L6:spells:prepared spell×1",
+        "L6:swap:cantrip:out swapOut×1?",
+        "L6:swap:prepared-spell:out swapOut×1?",
+        "L6:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 45,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×3",
+        "cantrips": 3,
+        "prepared": 7,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 4×1d10/long"
+        ],
+        "options": 5,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Eldritch Invocations: Eldritch Mind"
+      ],
+      "picks": [
+        "L7:class class×1?",
+        "L7:eldritch-invocations:0 option×1",
+        "L7:spells:prepared spell×1",
+        "L7:swap:cantrip:out swapOut×1?",
+        "L7:swap:prepared-spell:out swapOut×1?",
+        "L7:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 52,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×4",
+        "cantrips": 3,
+        "prepared": 8,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 4×1d10/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Warlock 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:class class×1?",
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2",
+        "L8:spells:prepared spell×1",
+        "L8:swap:cantrip:out swapOut×1?",
+        "L8:swap:prepared-spell:out swapOut×1?",
+        "L8:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 59,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×4",
+        "cantrips": 3,
+        "prepared": 9,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long"
+        ],
+        "options": 6,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 9,
+      "features": [
+        "Warlock 9: Contact Patron",
+        "Eldritch Invocations: Eldritch Spear"
+      ],
+      "picks": [
+        "L9:class class×1?",
+        "L9:eldritch-invocations:0 option×1",
+        "L9:eldritch-invocations:0>eldritch-spear:0 cantrip×1",
+        "L9:spells:prepared spell×1",
+        "L9:swap:cantrip:out swapOut×1?",
+        "L9:swap:prepared-spell:out swapOut×1?",
+        "L9:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 66,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×5",
+        "cantrips": 3,
+        "prepared": 10,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long"
+        ],
+        "options": 7,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Fiend Patron 10: Fiendish Resilience"
+      ],
+      "picks": [
+        "L10:class class×1?",
+        "L10:fiend-patron:fiendish-resilience:0 damageType×1",
+        "L10:spells:cantrips cantrip×1",
+        "L10:swap:cantrip:out swapOut×1?",
+        "L10:swap:prepared-spell:out swapOut×1?",
+        "L10:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 73,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "2×5",
+        "cantrips": 4,
+        "prepared": 10,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long"
+        ],
+        "options": 7,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 11,
+      "features": [
+        "Warlock 11: Mystic Arcanum"
+      ],
+      "picks": [
+        "L11:class class×1?",
+        "L11:mystic-arcanum:0 spell×1",
+        "L11:spells:prepared spell×1",
+        "L11:swap:cantrip:out swapOut×1?",
+        "L11:swap:prepared-spell:out swapOut×1?",
+        "L11:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 80,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "3×5",
+        "cantrips": 4,
+        "prepared": 11,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long"
+        ],
+        "options": 7,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Warlock 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:class class×1?",
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2",
+        "L12:eldritch-invocations:0 option×1",
+        "L12:eldritch-invocations:0>eldritch-spear:0 cantrip×1",
+        "L12:swap:cantrip:out swapOut×1?",
+        "L12:swap:prepared-spell:out swapOut×1?",
+        "L12:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 99,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "3×5",
+        "cantrips": 4,
+        "prepared": 11,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long"
+        ],
+        "options": 8,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 13,
+      "features": [],
+      "picks": [
+        "L13:class class×1?",
+        "L13:mystic-arcanum:0 spell×1",
+        "L13:spells:prepared spell×1",
+        "L13:swap:cantrip:out swapOut×1?",
+        "L13:swap:prepared-spell:out swapOut×1?",
+        "L13:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 107,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "3×5",
+        "cantrips": 4,
+        "prepared": 12,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long"
+        ],
+        "options": 8,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "Fiend Patron 14: Hurl Through Hell"
+      ],
+      "picks": [
+        "L14:class class×1?",
+        "L14:swap:cantrip:out swapOut×1?",
+        "L14:swap:prepared-spell:out swapOut×1?",
+        "L14:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 115,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "3×5",
+        "cantrips": 4,
+        "prepared": 12,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long",
+          "Hurl Through Hell 1×8d10/long"
+        ],
+        "options": 8,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 15,
+      "features": [
+        "Eldritch Invocations: Fiendish Vigor"
+      ],
+      "picks": [
+        "L15:class class×1?",
+        "L15:mystic-arcanum:0 spell×1",
+        "L15:eldritch-invocations:0 option×1",
+        "L15:spells:prepared spell×1",
+        "L15:swap:cantrip:out swapOut×1?",
+        "L15:swap:prepared-spell:out swapOut×1?",
+        "L15:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 123,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "3×5",
+        "cantrips": 4,
+        "prepared": 13,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long",
+          "Hurl Through Hell 1×8d10/long"
+        ],
+        "options": 9,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Warlock 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:class class×1?",
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2",
+        "L16:swap:cantrip:out swapOut×1?",
+        "L16:swap:prepared-spell:out swapOut×1?",
+        "L16:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 147,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "3×5",
+        "cantrips": 4,
+        "prepared": 13,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long",
+          "Hurl Through Hell 1×8d10/long"
+        ],
+        "options": 9,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 17,
+      "features": [],
+      "picks": [
+        "L17:class class×1?",
+        "L17:mystic-arcanum:0 spell×1",
+        "L17:spells:prepared spell×1",
+        "L17:swap:cantrip:out swapOut×1?",
+        "L17:swap:prepared-spell:out swapOut×1?",
+        "L17:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 156,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "4×5",
+        "cantrips": 4,
+        "prepared": 14,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long",
+          "Hurl Through Hell 1×8d10/long"
+        ],
+        "options": 9,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Eldritch Invocations: Gaze of Two Minds"
+      ],
+      "picks": [
+        "L18:class class×1?",
+        "L18:eldritch-invocations:0 option×1",
+        "L18:swap:cantrip:out swapOut×1?",
+        "L18:swap:prepared-spell:out swapOut×1?",
+        "L18:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 165,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "4×5",
+        "cantrips": 4,
+        "prepared": 14,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long",
+          "Hurl Through Hell 1×8d10/long"
+        ],
+        "options": 10,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Warlock 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:class class×1?",
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2",
+        "L19:spells:prepared spell×1",
+        "L19:swap:cantrip:out swapOut×1?",
+        "L19:swap:prepared-spell:out swapOut×1?",
+        "L19:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 193,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "4×5",
+        "cantrips": 4,
+        "prepared": 15,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long",
+          "Hurl Through Hell 1×8d10/long"
+        ],
+        "options": 10,
+        "masteries": 0,
+        "feats": 7
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Warlock 20: Eldritch Master"
+      ],
+      "picks": [
+        "L20:class class×1?",
+        "L20:swap:cantrip:out swapOut×1?",
+        "L20:swap:prepared-spell:out swapOut×1?",
+        "L20:swap:eldritch-invocations:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 203,
+        "ac": 13,
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": "4×5",
+        "cantrips": 4,
+        "prepared": 15,
+        "resources": [
+          "Magical Cunning 1/long",
+          "Dark One’s Own Luck 5×1d10/long",
+          "Mystic Arcanum 1/long",
+          "Hurl Through Hell 1×8d10/long"
+        ],
+        "options": 10,
+        "masteries": 0,
+        "feats": 7
+      }
+    }
+  ]
+}

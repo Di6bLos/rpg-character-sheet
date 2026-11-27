@@ -1,0 +1,591 @@
+{
+  "champion": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Soldier",
+        "Feat · Soldier: Savage Attacker",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Fighter 1: Fighting Style",
+        "Feat · Fighter 1: Archery",
+        "Fighter 1: Second Wind",
+        "Fighter 1: Weapon Mastery"
+      ],
+      "picks": [
+        "L1:background:tool tool×1",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:class:skills skill×2",
+        "L1:languages language×2",
+        "L1:fighting-style:0 feat×1",
+        "L1:weapon-mastery:0 weaponMastery×3"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 11,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 2×1d10/long"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 3
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Fighter 2: Action Surge",
+        "Fighter 2: Tactical Mind"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:swap:fighting-style feat×1?",
+        "L2:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 18,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 2×1d10/long",
+          "Action Surge 1/short"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 3
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "Champion 3: Improved Critical",
+        "Champion 3: Remarkable Athlete"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:subclass subclass×1",
+        "L3:swap:fighting-style feat×1?",
+        "L3:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 25,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 2×1d10/long",
+          "Action Surge 1/short"
+        ],
+        "options": 0,
+        "masteries": 3,
+        "feats": 3
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Feat · Fighter 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2",
+        "L4:weapon-mastery:0 weaponMastery×1",
+        "L4:swap:fighting-style feat×1?",
+        "L4:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 32,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 3×1d10/long",
+          "Action Surge 1/short"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 4
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Fighter 5: Extra Attack",
+        "Fighter 5: Tactical Shift"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:swap:fighting-style feat×1?",
+        "L5:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 39,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 3×1d10/long",
+          "Action Surge 1/short"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 4
+      }
+    },
+    {
+      "level": 6,
+      "features": [
+        "Feat · Fighter 6: Ability Score Improvement"
+      ],
+      "picks": [
+        "L6:class class×1?",
+        "L6:asi feat×1",
+        "L6:asi>asi asi×2",
+        "L6:swap:fighting-style feat×1?",
+        "L6:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 46,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 3×1d10/long",
+          "Action Surge 1/short"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 5
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Champion 7: Additional Fighting Style",
+        "Feat · Champion: Defense"
+      ],
+      "picks": [
+        "L7:class class×1?",
+        "L7:champion:additional-fighting-style:0 feat×1",
+        "L7:swap:fighting-style feat×1?",
+        "L7:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 53,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 3×1d10/long",
+          "Action Surge 1/short"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 6
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Fighter 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:class class×1?",
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2",
+        "L8:swap:fighting-style feat×1?",
+        "L8:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 60,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 3×1d10/long",
+          "Action Surge 1/short"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 7
+      }
+    },
+    {
+      "level": 9,
+      "features": [
+        "Fighter 9: Indomitable",
+        "Fighter 9: Tactical Master"
+      ],
+      "picks": [
+        "L9:class class×1?",
+        "L9:swap:fighting-style feat×1?",
+        "L9:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 67,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 3×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 4,
+        "feats": 7
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Champion 10: Heroic Warrior"
+      ],
+      "picks": [
+        "L10:class class×1?",
+        "L10:weapon-mastery:0 weaponMastery×1",
+        "L10:swap:fighting-style feat×1?",
+        "L10:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 74,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 5,
+        "feats": 7
+      }
+    },
+    {
+      "level": 11,
+      "features": [
+        "Fighter 11: Two Extra Attacks"
+      ],
+      "picks": [
+        "L11:class class×1?",
+        "L11:swap:fighting-style feat×1?",
+        "L11:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 81,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 5,
+        "feats": 7
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Fighter 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:class class×1?",
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2",
+        "L12:swap:fighting-style feat×1?",
+        "L12:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 88,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 5,
+        "feats": 8
+      }
+    },
+    {
+      "level": 13,
+      "features": [
+        "Fighter 13: Studied Attacks"
+      ],
+      "picks": [
+        "L13:class class×1?",
+        "L13:swap:fighting-style feat×1?",
+        "L13:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 95,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 5,
+        "feats": 8
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "Feat · Fighter 14: Ability Score Improvement"
+      ],
+      "picks": [
+        "L14:class class×1?",
+        "L14:asi feat×1",
+        "L14:asi>asi asi×2",
+        "L14:swap:fighting-style feat×1?",
+        "L14:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 102,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 5,
+        "feats": 9
+      }
+    },
+    {
+      "level": 15,
+      "features": [
+        "Champion 15: Superior Critical"
+      ],
+      "picks": [
+        "L15:class class×1?",
+        "L15:swap:fighting-style feat×1?",
+        "L15:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 109,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 5,
+        "feats": 9
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Fighter 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:class class×1?",
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2",
+        "L16:weapon-mastery:0 weaponMastery×1",
+        "L16:swap:fighting-style feat×1?",
+        "L16:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 132,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 6,
+        "feats": 10
+      }
+    },
+    {
+      "level": 17,
+      "features": [],
+      "picks": [
+        "L17:class class×1?",
+        "L17:swap:fighting-style feat×1?",
+        "L17:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 140,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 6,
+        "feats": 10
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Champion 18: Survivor"
+      ],
+      "picks": [
+        "L18:class class×1?",
+        "L18:swap:fighting-style feat×1?",
+        "L18:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 148,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 6,
+        "feats": 10
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Fighter 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:class class×1?",
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2",
+        "L19:swap:fighting-style feat×1?",
+        "L19:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 175,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 6,
+        "feats": 11
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Fighter 20: Three Extra Attacks"
+      ],
+      "picks": [
+        "L20:class class×1?",
+        "L20:swap:fighting-style feat×1?",
+        "L20:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 184,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Second Wind 4×1d10/long",
+          "Action Surge 1/short",
+          "Indomitable 1/long"
+        ],
+        "options": 0,
+        "masteries": 6,
+        "feats": 11
+      }
+    }
+  ]
+}

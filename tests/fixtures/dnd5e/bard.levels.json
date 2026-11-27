@@ -1,0 +1,779 @@
+{
+  "college-of-lore": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Entertainer",
+        "Feat · Entertainer: Musician",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Bard 1: Bardic Inspiration",
+        "Bard 1: Spellcasting"
+      ],
+      "picks": [
+        "L1:background:tool tool×1",
+        "L1:background:feat>b0:0 tool×3",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:class:tool tool×3",
+        "L1:class:skills skill×3",
+        "L1:languages language×2",
+        "L1:spells:cantrips cantrip×2",
+        "L1:spells:prepared spell×4"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 9,
+        "ac": 13,
+        "slots": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 4,
+        "resources": [
+          "Bardic Inspiration 3×d6/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Bard 2: Expertise",
+        "Bard 2: Jack of All Trades"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:expertise:0 expertise×2",
+        "L2:spells:prepared spell×1",
+        "L2:swap:cantrip:out swapOut×1?",
+        "L2:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 15,
+        "ac": 13,
+        "slots": [
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 5,
+        "resources": [
+          "Bardic Inspiration 3×d6/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "College of Lore 3: Bonus Proficiencies",
+        "College of Lore 3: Cutting Words"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:subclass subclass×1",
+        "L3:college-of-lore:bonus-proficiencies:0 skill×3",
+        "L3:spells:prepared spell×1",
+        "L3:swap:cantrip:out swapOut×1?",
+        "L3:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 21,
+        "ac": 13,
+        "slots": [
+          4,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 2,
+        "prepared": 6,
+        "resources": [
+          "Bardic Inspiration 3×d6/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 2
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Feat · Bard 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2",
+        "L4:spells:cantrips cantrip×1",
+        "L4:spells:prepared spell×1",
+        "L4:swap:cantrip:out swapOut×1?",
+        "L4:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 27,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 7,
+        "resources": [
+          "Bardic Inspiration 4×d6/long"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Bard 5: Font of Inspiration"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:spells:prepared spell×2",
+        "L5:swap:cantrip:out swapOut×1?",
+        "L5:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 33,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 9,
+        "resources": [
+          "Bardic Inspiration 4×d8/long",
+          "Font of Inspiration 4/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 6,
+      "features": [
+        "College of Lore 6: Magical Discoveries"
+      ],
+      "picks": [
+        "L6:class class×1?",
+        "L6:college-of-lore:magical-discoveries:0 spell×2",
+        "L6:spells:prepared spell×1",
+        "L6:swap:cantrip:out swapOut×1?",
+        "L6:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 39,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 10,
+        "resources": [
+          "Bardic Inspiration 4×d8/long",
+          "Font of Inspiration 4/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Bard 7: Countercharm"
+      ],
+      "picks": [
+        "L7:class class×1?",
+        "L7:spells:prepared spell×1",
+        "L7:swap:cantrip:out swapOut×1?",
+        "L7:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 45,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 11,
+        "resources": [
+          "Bardic Inspiration 4×d8/long",
+          "Font of Inspiration 4/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 3
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Bard 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:class class×1?",
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2",
+        "L8:spells:prepared spell×1",
+        "L8:swap:cantrip:out swapOut×1?",
+        "L8:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 51,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 12,
+        "resources": [
+          "Bardic Inspiration 5×d8/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 9,
+      "features": [],
+      "picks": [
+        "L9:class class×1?",
+        "L9:expertise:0 expertise×2",
+        "L9:spells:prepared spell×2",
+        "L9:swap:cantrip:out swapOut×1?",
+        "L9:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 57,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 3,
+        "prepared": 14,
+        "resources": [
+          "Bardic Inspiration 5×d8/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Bard 10: Magical Secrets"
+      ],
+      "picks": [
+        "L10:class class×1?",
+        "L10:spells:cantrips cantrip×1",
+        "L10:spells:prepared spell×1",
+        "L10:swap:cantrip:out swapOut×1?",
+        "L10:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 63,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 15,
+        "resources": [
+          "Bardic Inspiration 5×d10/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 11,
+      "features": [],
+      "picks": [
+        "L11:class class×1?",
+        "L11:spells:prepared spell×1",
+        "L11:swap:cantrip:out swapOut×1?",
+        "L11:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 69,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 16,
+        "resources": [
+          "Bardic Inspiration 5×d10/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 4
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Bard 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:class class×1?",
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2",
+        "L12:swap:cantrip:out swapOut×1?",
+        "L12:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 87,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 16,
+        "resources": [
+          "Bardic Inspiration 5×d10/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 13,
+      "features": [],
+      "picks": [
+        "L13:class class×1?",
+        "L13:spells:prepared spell×1",
+        "L13:swap:cantrip:out swapOut×1?",
+        "L13:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 94,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 17,
+        "resources": [
+          "Bardic Inspiration 5×d10/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "College of Lore 14: Peerless Skill"
+      ],
+      "picks": [
+        "L14:class class×1?",
+        "L14:swap:cantrip:out swapOut×1?",
+        "L14:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 101,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          0,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 17,
+        "resources": [
+          "Bardic Inspiration 5×d10/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 15,
+      "features": [],
+      "picks": [
+        "L15:class class×1?",
+        "L15:spells:prepared spell×1",
+        "L15:swap:cantrip:out swapOut×1?",
+        "L15:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 108,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 18,
+        "resources": [
+          "Bardic Inspiration 5×d12/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 5
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Bard 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:class class×1?",
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2",
+        "L16:swap:cantrip:out swapOut×1?",
+        "L16:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 131,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          0
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 18,
+        "resources": [
+          "Bardic Inspiration 5×d12/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 17,
+      "features": [],
+      "picks": [
+        "L17:class class×1?",
+        "L17:spells:prepared spell×1",
+        "L17:swap:cantrip:out swapOut×1?",
+        "L17:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 139,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 19,
+        "resources": [
+          "Bardic Inspiration 5×d12/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Bard 18: Superior Inspiration"
+      ],
+      "picks": [
+        "L18:class class×1?",
+        "L18:spells:prepared spell×1",
+        "L18:swap:cantrip:out swapOut×1?",
+        "L18:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 147,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 20,
+        "resources": [
+          "Bardic Inspiration 5×d12/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 6
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Bard 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:class class×1?",
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2",
+        "L19:spells:prepared spell×1",
+        "L19:swap:cantrip:out swapOut×1?",
+        "L19:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 174,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          2,
+          1,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 21,
+        "resources": [
+          "Bardic Inspiration 5×d12/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 7
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Bard 20: Words of Creation"
+      ],
+      "picks": [
+        "L20:class class×1?",
+        "L20:spells:prepared spell×1",
+        "L20:swap:cantrip:out swapOut×1?",
+        "L20:swap:prepared-spell:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 183,
+        "ac": 13,
+        "slots": [
+          4,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          1,
+          1
+        ],
+        "pact": null,
+        "cantrips": 4,
+        "prepared": 22,
+        "resources": [
+          "Bardic Inspiration 5×d12/long",
+          "Font of Inspiration 5/short"
+        ],
+        "options": 0,
+        "masteries": 0,
+        "feats": 7
+      }
+    }
+  ]
+}

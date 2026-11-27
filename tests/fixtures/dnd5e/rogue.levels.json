@@ -1,0 +1,542 @@
+{
+  "thief": [
+    {
+      "level": 1,
+      "features": [
+        "Background: Criminal",
+        "Feat · Criminal: Alert",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Magic Initiate",
+        "Magic Initiate: Spell list: Cleric",
+        "Rogue 1: Expertise",
+        "Rogue 1: Sneak Attack",
+        "Rogue 1: Thieves’ Cant",
+        "Rogue 1: Weapon Mastery"
+      ],
+      "picks": [
+        "L1:class>dup-thieves-tools tool×1",
+        "L1:species:size size×1",
+        "L1:species:skillful:0 skill×1",
+        "L1:species:versatile:0 feat×1",
+        "L1:species:versatile:0>1 ability×1",
+        "L1:species:versatile:0>0 option×1",
+        "L1:species:versatile:0>0>cleric:0 cantrip×2",
+        "L1:species:versatile:0>0>cleric:1 spell×1",
+        "L1:class:skills skill×4",
+        "L1:languages language×2",
+        "L1:expertise:0 expertise×2",
+        "L1:thieves-cant:0 language×1",
+        "L1:weapon-mastery:0 weaponMastery×2"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 10,
+        "ac": 14,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 2
+      }
+    },
+    {
+      "level": 2,
+      "features": [
+        "Rogue 2: Cunning Action"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 17,
+        "ac": 14,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 2
+      }
+    },
+    {
+      "level": 3,
+      "features": [
+        "Rogue 3: Steady Aim",
+        "Thief 3: Fast Hands",
+        "Thief 3: Second-Story Work"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:subclass subclass×1",
+        "L3:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 24,
+        "ac": 14,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 2
+      }
+    },
+    {
+      "level": 4,
+      "features": [
+        "Feat · Rogue 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:asi feat×1",
+        "L4:asi>asi asi×2",
+        "L4:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 2,
+        "hpMax": 31,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 3
+      }
+    },
+    {
+      "level": 5,
+      "features": [
+        "Rogue 5: Cunning Strike",
+        "Rogue 5: Uncanny Dodge"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 38,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 3
+      }
+    },
+    {
+      "level": 6,
+      "features": [],
+      "picks": [
+        "L6:class class×1?",
+        "L6:expertise:0 expertise×2",
+        "L6:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 45,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 3
+      }
+    },
+    {
+      "level": 7,
+      "features": [
+        "Rogue 7: Evasion",
+        "Rogue 7: Reliable Talent"
+      ],
+      "picks": [
+        "L7:class class×1?",
+        "L7:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 52,
+        "ac": 15,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 3
+      }
+    },
+    {
+      "level": 8,
+      "features": [
+        "Feat · Rogue 8: Ability Score Improvement"
+      ],
+      "picks": [
+        "L8:class class×1?",
+        "L8:asi feat×1",
+        "L8:asi>asi asi×2",
+        "L8:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 3,
+        "hpMax": 59,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 4
+      }
+    },
+    {
+      "level": 9,
+      "features": [
+        "Thief 9: Supreme Sneak"
+      ],
+      "picks": [
+        "L9:class class×1?",
+        "L9:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 66,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 4
+      }
+    },
+    {
+      "level": 10,
+      "features": [
+        "Feat · Rogue 10: Ability Score Improvement"
+      ],
+      "picks": [
+        "L10:class class×1?",
+        "L10:asi feat×1",
+        "L10:asi>asi asi×2",
+        "L10:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 83,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 5
+      }
+    },
+    {
+      "level": 11,
+      "features": [
+        "Rogue 11: Improved Cunning Strike"
+      ],
+      "picks": [
+        "L11:class class×1?",
+        "L11:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 91,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 5
+      }
+    },
+    {
+      "level": 12,
+      "features": [
+        "Feat · Rogue 12: Ability Score Improvement"
+      ],
+      "picks": [
+        "L12:class class×1?",
+        "L12:asi feat×1",
+        "L12:asi>asi asi×2",
+        "L12:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 4,
+        "hpMax": 111,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 6
+      }
+    },
+    {
+      "level": 13,
+      "features": [
+        "Thief 13: Use Magic Device"
+      ],
+      "picks": [
+        "L13:class class×1?",
+        "L13:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 120,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 6
+      }
+    },
+    {
+      "level": 14,
+      "features": [
+        "Rogue 14: Devious Strikes"
+      ],
+      "picks": [
+        "L14:class class×1?",
+        "L14:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 129,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 6
+      }
+    },
+    {
+      "level": 15,
+      "features": [
+        "Rogue 15: Slippery Mind"
+      ],
+      "picks": [
+        "L15:class class×1?",
+        "L15:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 138,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 6
+      }
+    },
+    {
+      "level": 16,
+      "features": [
+        "Feat · Rogue 16: Ability Score Improvement"
+      ],
+      "picks": [
+        "L16:class class×1?",
+        "L16:asi feat×1",
+        "L16:asi>asi asi×2",
+        "L16:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 5,
+        "hpMax": 163,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 7
+      }
+    },
+    {
+      "level": 17,
+      "features": [
+        "Thief 17: Thief’s Reflexes"
+      ],
+      "picks": [
+        "L17:class class×1?",
+        "L17:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 173,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 7
+      }
+    },
+    {
+      "level": 18,
+      "features": [
+        "Rogue 18: Elusive"
+      ],
+      "picks": [
+        "L18:class class×1?",
+        "L18:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 183,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 7
+      }
+    },
+    {
+      "level": 19,
+      "features": [
+        "Feat · Rogue 19: Ability Score Improvement"
+      ],
+      "picks": [
+        "L19:class class×1?",
+        "L19:boon feat×1",
+        "L19:boon>asi asi×2",
+        "L19:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 193,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 8
+      }
+    },
+    {
+      "level": 20,
+      "features": [
+        "Rogue 20: Stroke of Luck"
+      ],
+      "picks": [
+        "L20:class class×1?",
+        "L20:swap:mastery:out swapOut×1?"
+      ],
+      "after": {
+        "profBonus": 6,
+        "hpMax": 203,
+        "ac": 16,
+        "slots": [],
+        "pact": null,
+        "cantrips": 0,
+        "prepared": 0,
+        "resources": [
+          "Magic Initiate: Level 1 Spell 1/long",
+          "Stroke of Luck 1/short"
+        ],
+        "options": 0,
+        "masteries": 2,
+        "feats": 8
+      }
+    }
+  ]
+}
