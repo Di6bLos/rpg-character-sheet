@@ -2,16 +2,19 @@
 // Reconfigure: go back to an earlier level, undoing what the levels above it
 // granted, then level back up one level at a time, starting from the old picks.
 // Nimble heroes built from class data can also redo their level 1 choices; PF2e and 5e heroes
-// replay their recorded level-up picks the same way.
+// replay their recorded level-up picks the same way. A 5e hero redoes level 1 in the builder
+// (`useDnd5eRebuild`), which hands the rebuilt sheet back here to replay the later levels.
 import { STAT_ARRAYS } from '~/data/nimble/core'
 import type {
   AnySheet,
   Dnd5eLevelInput,
+  Dnd5eSheet,
   NimbleLevelInput,
   NimbleSheet,
   NimbleStat,
   Pf2eLevelInput,
 } from '~/types/sheets'
+import { isBuiltDnd5e } from '~/utils/dnd5eLevelUp'
 import { canRestore, keepDamage, restoreBuild, restoreLevel } from '~/utils/levelHistory'
 import {
   buildNimbleSheet,
@@ -31,8 +34,11 @@ const creation = computed(() =>
     ? creationInput(draft.value.sheet as NimbleSheet, draft.value.level)
     : null,
 )
+const dnd5eLevelOne = computed(
+  () => draft.value.system === 'dnd5e' && isBuiltDnd5e(draft.value.sheet as Dnd5eSheet),
+)
 const targets = computed(() => [
-  ...(creation.value ? [0] : []),
+  ...(creation.value || dnd5eLevelOne.value ? [0] : []),
   ...Array.from({ length: Math.max(0, draft.value.level - 1) }, (_, i) => i + 1).filter((l) =>
     canRestore(draft.value.sheet, l),
   ),
@@ -120,6 +126,10 @@ async function climb(from: number) {
 }
 
 async function start() {
+  if (target.value === 0 && dnd5eLevelOne.value) {
+    await saveNow()
+    return navigateTo(`/characters/new/dnd5e?reconfigure=${draft.value.id}`)
+  }
   if (target.value === 0) return startLevelOne()
   begin(target.value)
   restoreLevel(draft.value.sheet, target.value)
@@ -142,6 +152,17 @@ async function rebuildLevelOne() {
   )
   await climb(1)
 }
+
+/** A 5e level 1 rebuilt in the builder: put it in place, then replay the later levels. */
+const rebuilt = useDnd5eRebuild()
+onMounted(async () => {
+  if (draft.value.system !== 'dnd5e') return
+  const built = rebuilt.take(draft.value.id)
+  if (!built) return
+  begin(1)
+  restoreBuild(draft.value.sheet, built)
+  await climb(1)
+})
 
 async function finish() {
   const level = goal.value
@@ -220,7 +241,13 @@ onBeforeUnmount(() => guardLeaving(false))
         <label for="rc-level">Redo from</label>
         <select id="rc-level" v-model.number="target" class="input">
           <option v-for="l in targets" :key="l" :value="l">
-            {{ l === 0 ? 'Level 1: stats, skills and starting picks' : `Level ${l + 1}` }}
+            {{
+              l === 0
+                ? dnd5eLevelOne
+                  ? 'Level 1: class, species, background and starting picks'
+                  : 'Level 1: stats, skills and starting picks'
+                : `Level ${l + 1}`
+            }}
           </option>
         </select>
       </div>

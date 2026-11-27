@@ -243,6 +243,31 @@ export interface Dnd5eCasting {
   prepared: number
 }
 
+/**
+ * One spellcasting class's own numbers on a hero with more than one class (SRD 5.2.1 p. 25):
+ * its spells are prepared and cast with its ability, as if single-classed; the slots are the
+ * hero's (`Dnd5eSheet.castingStats`).
+ */
+export interface Dnd5eClassCasting extends Omit<Dnd5eCasting, 'slots'> {
+  classSlug: string
+  /** The class, or the subclass whose casting it is ("Eldritch Knight"). */
+  className: string
+  /** The class's level. */
+  level: number
+  /** The highest spell level this class prepares (lower than the slots may go). */
+  maxSpellLevel: number
+}
+
+/** A class a built hero has levels in (multiclassing, SRD 5.2.1 p. 24). */
+export interface Dnd5eClassLevel {
+  slug: string
+  name: string
+  level: number
+  hitDie: number
+  subclassSlug?: string
+  subclass?: string
+}
+
 /** A limited-use feature at the hero's level (Rage, Channel Divinity, Sorcery Points). */
 export interface Dnd5eResource {
   name: string
@@ -294,6 +319,17 @@ export interface Dnd5eSheet extends SheetCommon {
   /** Class slug; empty or absent means a hand-made sheet. */
   classSlug?: string
   subclassSlug?: string
+  /**
+   * Every class with its level and subclass, the first class first (SRD 5.2.1 p. 24); one entry
+   * for a single class. `classSlug` and `subclassSlug` stay the first class's, and a save from
+   * before multiclassing has neither this nor `hitDice`: read it as one class at the sheet's
+   * level.
+   */
+  classes?: Dnd5eClassLevel[]
+  /** Hit Point Dice by size, one per class level; the same size pools (SRD 5.2.1 p. 24). */
+  hitDice?: { die: number; count: number }[]
+  /** Each casting class's DC, attack and spells when the hero has more than one class. */
+  castingClasses?: Dnd5eClassCasting[]
   speciesSlug?: string
   backgroundSlug?: string
   creation?: Dnd5eCreation
