@@ -3,58 +3,11 @@
 // an action, a Bonus Action or nothing at all, with their uses and Use (Dnd5eEntryCard), split
 // by cost; then the 2024 core actions (SRD 5.2.1 pp. 9–11): Dash, Disengage and Dodge set what
 // the sheet tracks, the others say what they do. Reactions and attacks have their own panels.
-import type { Dnd5eSheet } from '~/types/sheets'
-import { DND5E_CORE_ACTIONS, takeCoreAction } from '~/utils/dnd5eFeatures'
+// The logic is useDnd5eActions, shared with the battle board's action tiles.
+import { DND5E_CORE_ACTIONS } from '~/utils/dnd5eFeatures'
 import { costWhy } from '~/utils/dnd5ePlay'
 
-const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
-const { claim, resultFor } = useResultOwner()
-const { entries } = useDnd5eSheet()
-const sheet = computed(() => draft.value.sheet)
-
-const usable = computed(() =>
-  entries.value.filter(
-    (e) =>
-      !e.passive &&
-      !e.attack &&
-      !e.rule?.skip &&
-      e.cost !== 'reaction' &&
-      !(e.kind === 'option' && e.resource && e.cost === 'special'),
-  ),
-)
-const sections = computed(() =>
-  [
-    {
-      id: 'action',
-      label: 'Actions',
-      entries: usable.value.filter((e) => e.cost === 'action' || e.cost === 'magic'),
-    },
-    {
-      id: 'bonus',
-      label: 'Bonus Actions',
-      entries: usable.value.filter((e) => e.cost === 'bonus'),
-    },
-    {
-      id: 'other',
-      label: 'Free and limited uses',
-      entries: usable.value.filter((e) => !['action', 'magic', 'bonus'].includes(e.cost ?? '')),
-    },
-  ].filter((s) => s.entries.length),
-)
-
-const helping = useDnd5eHelp()
-const ally = ref('')
-
-async function helpAlly() {
-  if (!ally.value) return
-  const line = await helping.help(ally.value)
-  if (line) claim('core:help', () => say(line))
-}
-
-function core(id: string) {
-  if (canEdit.value)
-    claim(`core:${id}`, () => say(takeCoreAction(sheet.value, draft.value.level, id)))
-}
+const { canEdit, resultFor, sheet, sections, helping, ally, helpAlly, core } = useDnd5eActions()
 </script>
 
 <template>

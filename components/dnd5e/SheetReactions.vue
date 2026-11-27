@@ -8,98 +8,32 @@
 // features, feats and options (Cutting Words, Warding Flare…). Reactions that cut a hit's
 // damage (Uncanny Dodge, Parry…) sit beside Hit points instead. One Reaction a round, back at
 // the start of your turn. Results nothing else claims show here.
-import type { Dnd5eSheet } from '~/types/sheets'
-import { showOutcome, sign } from '~/utils/dice'
-import { rollAttack5e, weaponAttack, weaponDef } from '~/utils/dnd5eAttacks'
-import {
-  DND5E_GUARDS,
-  type Dnd5eReactionAttack,
-  acReactions,
-  reactionAttacks,
-  useAcReaction,
-} from '~/utils/dnd5eDefense'
-import { attackRiders, defaultRiders, riderPlan } from '~/utils/dnd5eRiders'
-import { payCost, spendUses } from '~/utils/dnd5ePlay'
+// The logic is useDnd5eReactions, shared with the battle board's action tiles.
+import { sign } from '~/utils/dice'
+import { weaponAttack } from '~/utils/dnd5eAttacks'
 import { levelName } from '~/utils/dnd5eSpells'
 import { tipText } from '~/utils/ruleTips'
 
-const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
-const { claim, resultFor, unclaimed } = useResultOwner()
-const { data, columns, entries, target, attackMode } = useDnd5eSheet()
-const casting = useDnd5eCasting()
-const typed = useTypedRoll()
-const sheet = computed(() => draft.value.sheet)
-const level = computed(() => draft.value.level)
-const ready = computed(() => sheet.value.turn?.reaction !== false)
-
-const weapons = computed(() =>
-  sheet.value.weapons.map((w, i) => {
-    const def = weaponDef(w, data.value?.weapons ?? [])
-    const ranged = def ? def.type === 'Ranged' : /\d+\s*\/\s*\d+/.test(w.range)
-    return { w, i, def, ranged }
-  }),
-)
-const attacks = computed(() => reactionAttacks(sheet.value, level.value))
-const picked = ref<Record<string, number>>({})
-const usable = (r: Dnd5eReactionAttack) => weapons.value.filter((x) => x.ranged === !!r.ranged)
-const why = (r: Dnd5eReactionAttack) =>
-  usable(r).length ? r.why : r.ranged ? 'No ranged weapon' : 'No melee weapon'
-
-/** One attack as a Reaction: Riposte adds its Superiority Die, the hero's auto riders ride along. */
-function reactionAttack(r: Dnd5eReactionAttack) {
-  const list = usable(r)
-  const m = list.find((x) => x.i === picked.value[r.key]) ?? list[0]
-  const key = `rea:${r.key}`
-  if (!canEdit.value || !m || why(r)) return
-  const plan = weaponAttack(sheet.value, level.value, m.w, m.def, {
-    key,
-    target: target.value,
-    columns: columns.value,
-  })
-  typed.run(key, r.name, () => {
-    payCost(sheet.value, level.value, 'reaction')
-    if (r.spend) spendUses(sheet.value, r.spend)
-    const ctx = { columns: columns.value, mode: attackMode.value }
-    const riders = riderPlan(
-      sheet.value,
-      level.value,
-      plan,
-      defaultRiders(attackRiders(sheet.value, level.value, plan, ctx)),
-      ctx,
-    )
-    if (r.dice) riders.parts.push({ dice: r.dice, type: plan.type, label: r.name })
-    const res = rollAttack5e(
-      sheet.value,
-      { ...plan, name: `${r.name} (${m.w.name})` },
-      { mode: attackMode.value, target: target.value, riders },
-    )
-    claim(key, () => say(res.line))
-    showOutcome({ label: r.name, total: res.damage, detail: res.line })
-  })
-  attackMode.value = 'normal'
-}
-
-const spells = computed(() =>
-  casting.spells.value.filter((r) => !r.book && casting.defOf(r.slug)?.activation === 'reaction'),
-)
-const own = computed(() => entries.value.filter((e) => e.cost === 'reaction'))
-const guardNames = new Set([
-  ...DND5E_GUARDS.map((g) => g.name),
-  'Riposte',
-  'Retaliation',
-  'Soul of Vengeance',
-  'Bloodthirst',
-  'Masterful Shots',
-])
-const shown = computed(() =>
-  own.value.filter((e) => !guardNames.has(e.name.split(': ').pop() ?? e.name)),
-)
-const meet = computed(() => acReactions(sheet.value, level.value))
-const meetResult = computed(() => meet.value.map((m) => resultFor(`rea:${m.key}`)).find(Boolean))
-
-function meetAttack(key: string) {
-  if (canEdit.value) claim(`rea:${key}`, () => say(useAcReaction(sheet.value, level.value, key)))
-}
+const {
+  canEdit,
+  resultFor,
+  unclaimed,
+  casting,
+  typed,
+  sheet,
+  level,
+  ready,
+  attacks,
+  picked,
+  usable,
+  why,
+  reactionAttack,
+  spells,
+  shown,
+  meet,
+  meetResult,
+  meetAttack,
+} = useDnd5eReactions()
 </script>
 
 <template>

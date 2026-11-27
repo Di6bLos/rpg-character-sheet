@@ -5,8 +5,9 @@
 // at a time (the GM's tabs: Encounter, Creature, Party, Chat). On a tablet (768–1279px)
 // the tablet frame has the left and centre columns, with Party, Chat and Scribe in a
 // drawer. Every frame sits inside one HeroScope, so switching frames (a rotation) keeps
-// the hero's sheet editor and its automatic turn steps. Systems without the Nimble hero
-// editor (5e, PF2e; `features.nimbleHero` false) give a seated player a read-only hero card
+// the hero's sheet editor and its automatic turn steps. A 5e hero gets the same hero column,
+// turn bar and action tiles as a Nimble one, in their 5e versions (BattleDnd5e*, picked by
+// the slot's `system`). PF2e (`features.heroEditor` false) gives a seated player a read-only hero card
 // (HeroBasic) and a basic turn line with Roll initiative (TurnBasic); the other heroes are in
 // the party list (right column, tablet drawer, phone Party tab), not repeated in the centre.
 import { downSummonKeys } from '~/utils/initiative'
@@ -31,11 +32,11 @@ const turnCharacterId = computed(
 )
 const encounterRound = computed(() => (init.turnId.value ? init.round.value : null))
 /**
- * A seated player's hero in a system without the hero editor (5e, PF2e); else null. Phone.vue's
+ * A seated player's hero in a system without the hero editor (PF2e); else null. Phone.vue's
  * `basicPlayer` is the same rule: keep them in step.
  */
 const basicHeroId = computed(() =>
-  !gmControls.value && !features.value.nimbleHero ? (campaign.value?.myCharacterId ?? null) : null,
+  !gmControls.value && !features.value.heroEditor ? (campaign.value?.myCharacterId ?? null) : null,
 )
 const basicEntry = computed(() =>
   basicHeroId.value ? roster.value.find((r) => r.character_id === basicHeroId.value) : undefined,
@@ -109,9 +110,9 @@ function onGridHero(characterId: string) {
 <template>
   <!-- Keyed by `enabled`: HeroScope reads it once, at setup. -->
   <BattleHeroScope
-    :key="features.nimbleHero ? 'hero' : 'basic'"
-    v-slot="{ hero }"
-    :enabled="features.nimbleHero"
+    :key="features.heroEditor ? 'hero' : 'basic'"
+    v-slot="{ hero, system }"
+    :enabled="features.heroEditor"
     :turn-character-id="actingCharacterId"
     :round="encounterRound"
     :down-summons="downSummons"
@@ -144,6 +145,7 @@ function onGridHero(characterId: string) {
           <BattleStatBlock v-else :init="init" :combatant-id="gmSelected" />
         </template>
         <BattleActions v-else-if="tab === 'actions' && hero" compact sheet />
+        <BattleDnd5eHero v-else-if="tab === 'hero' && system === 'dnd5e'" compact />
         <BattleHero v-else-if="tab === 'hero' && hero" compact />
         <template v-else-if="tab === 'hero' && basicHeroId">
           <BattleHeroBasic v-if="basicEntry" compact :entry="basicEntry" />
@@ -180,6 +182,7 @@ function onGridHero(characterId: string) {
       <template #turn>
         <BattleGmTurnBar v-if="gmControls" compact :init="init" :roster="roster" />
         <BattleTurnBasic v-else-if="basicHeroId" compact :init="init" :character-id="basicHeroId" />
+        <BattleDnd5eTurnBar v-else-if="system === 'dnd5e'" compact :init="init" />
         <BattleTurnBar v-else compact :init="init" />
       </template>
       <template #dialogs="{ go }">
@@ -190,7 +193,9 @@ function onGridHero(characterId: string) {
           :gm="gmControls"
           @whisper="go('chat')"
         >
-          <template v-if="hero" #own-hp><BattleHeroHp /></template>
+          <template v-if="hero" #own-hp
+            ><BattleDnd5eHeroHp v-if="system === 'dnd5e'" /><BattleHeroHp v-else
+          /></template>
         </BattleHeroCardDialog>
       </template>
     </BattlePhone>
@@ -207,7 +212,8 @@ function onGridHero(characterId: string) {
         />
       </template>
       <template #left>
-        <BattleHero v-if="hero" />
+        <BattleDnd5eHero v-if="system === 'dnd5e'" />
+        <BattleHero v-else-if="hero" />
         <BattleHeroBasic v-else-if="basicEntry" :entry="basicEntry" />
         <p v-else-if="basicHeroId" class="panel battle-empty" role="status">Loading your hero…</p>
         <BattleGmHero
@@ -224,7 +230,8 @@ function onGridHero(characterId: string) {
         />
       </template>
       <template #turn>
-        <BattleTurnBar v-if="hero" :init="init" />
+        <BattleDnd5eTurnBar v-if="system === 'dnd5e'" :init="init" />
+        <BattleTurnBar v-else-if="hero" :init="init" />
         <BattleGmTurnBar v-else-if="gmControls" compact :init="init" :roster="roster" />
         <BattleTurnBasic v-else-if="basicHeroId" :init="init" :character-id="basicHeroId" />
       </template>
@@ -249,7 +256,9 @@ function onGridHero(characterId: string) {
           Seat a hero (Playing as, in the campaign menu) to play from the battle board.
         </p>
         <BattleHeroCardDialog v-model:character-id="cardId" :roster="roster" :gm="gmControls">
-          <template v-if="hero" #own-hp><BattleHeroHp /></template>
+          <template v-if="hero" #own-hp
+            ><BattleDnd5eHeroHp v-if="system === 'dnd5e'" /><BattleHeroHp v-else
+          /></template>
         </BattleHeroCardDialog>
       </template>
       <template #drawer="{ tab }">
@@ -282,7 +291,8 @@ function onGridHero(characterId: string) {
         />
       </template>
       <template #left>
-        <BattleHero v-if="hero" />
+        <BattleDnd5eHero v-if="system === 'dnd5e'" />
+        <BattleHero v-else-if="hero" />
         <BattleHeroBasic v-else-if="basicEntry" :entry="basicEntry" />
         <p v-else-if="basicHeroId" class="panel battle-empty" role="status">Loading your hero…</p>
         <BattleGmHero
@@ -300,7 +310,8 @@ function onGridHero(characterId: string) {
       </template>
       <template #centre>
         <template v-if="hero">
-          <BattleTurnBar :init="init" />
+          <BattleDnd5eTurnBar v-if="system === 'dnd5e'" :init="init" />
+          <BattleTurnBar v-else :init="init" />
           <BattleActions />
         </template>
         <template v-else-if="gmControls">
@@ -325,7 +336,9 @@ function onGridHero(characterId: string) {
         <!-- In the centre (inside the hero's sheet editor, so the viewer's own hero gets the
              hero column's HP) and not the left column, which may be closed (hidden). -->
         <BattleHeroCardDialog v-model:character-id="cardId" :roster="roster" :gm="gmControls">
-          <template v-if="hero" #own-hp><BattleHeroHp /></template>
+          <template v-if="hero" #own-hp
+            ><BattleDnd5eHeroHp v-if="system === 'dnd5e'" /><BattleHeroHp v-else
+          /></template>
         </BattleHeroCardDialog>
       </template>
       <template #right>

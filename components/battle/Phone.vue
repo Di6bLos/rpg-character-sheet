@@ -5,7 +5,7 @@
 // result, the turn bar and the bottom tabs. Watchers (no seated hero, or a GM on the
 // player board) get no hero strip, result bar or turn bar; the GM gets the turn bar (their
 // own, from the `turn` slot) but no hero strip or result bar. A seated player in a system
-// without the hero editor (5e, PF2e: `hero` false) is still a player, with the turn bar
+// without the hero editor (PF2e: `hero` false) is still a player, with the turn bar
 // but no hero strip or result bar (both read the editor). The turn bar steps aside
 // while the on-screen keyboard is open and on Chat and Scribe. With the keyboard open
 // the frame shrinks to what the keyboard leaves and keeps only the bar, the content and
@@ -38,12 +38,12 @@ const features = useBattleFeatures()
  * with View.vue's `basicHeroId`.
  */
 const basicPlayer = computed(
-  () => !gmControls.value && !features.value.nimbleHero && !!campaign.value?.myCharacterId,
+  () => !gmControls.value && !features.value.heroEditor && !!campaign.value?.myCharacterId,
 )
 const role = computed(() =>
   phoneRole({ gmControls: gmControls.value, hero: props.hero || basicPlayer.value }),
 )
-const actions = computed(() => features.value.nimbleHero)
+const actions = computed(() => features.value.heroEditor)
 const tab = usePhoneTab(role, scribe, actions)
 const tabs = computed(() => phoneTabs(role.value, scribe.value, actions.value))
 

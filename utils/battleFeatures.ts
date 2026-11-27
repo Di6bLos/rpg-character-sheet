@@ -6,7 +6,9 @@ import { SPELL_STATUSES } from '~/utils/nimbleConditions'
 
 /** What the battle board offers for a campaign's game system. */
 export interface BattleFeatures {
-  /** The sheet-editor hero column, action tiles and turn steps (HeroScope). */
+  /** The sheet-editor hero column, action tiles and turn steps (HeroScope): Nimble and 5e. */
+  heroEditor: boolean
+  /** Nimble's own hero rules on the board (Armor, Wounds, mana, condition ends). */
   nimbleHero: boolean
   /** Action pips on cards. */
   pips: boolean
@@ -19,13 +21,14 @@ export interface BattleFeatures {
 }
 
 /**
- * Nimble's features (the hero editor, pips, summons, initiative modes) and PF2e's points; 5e
- * and PF2e otherwise get the plain board. The GM's HP and condition controls on a hero are
+ * Nimble's features (pips, summons, initiative modes) and PF2e's points; the hero editor for
+ * Nimble and 5e; PF2e otherwise gets the plain board (HeroBasic, TurnBasic). The GM's HP and condition controls on a hero are
  * on for every system (each sheet applies them with its own rules), so they have no flag.
  */
 export function battleFeatures(system: GameSystem): BattleFeatures {
   const on = system === 'nimble'
   return {
+    heroEditor: on || system === 'dnd5e',
     nimbleHero: on,
     pips: on,
     summons: on,

@@ -3,11 +3,13 @@ import { battleFeatures, conditionNames } from '~/utils/battleFeatures'
 import { PF2E_CONDITION_DEFS } from '~/utils/pf2ePlay'
 
 describe('battleFeatures', () => {
-  it('gives Nimble its features and other systems none of them but PF2e points', () => {
+  it('gives Nimble its features, 5e the hero editor and PF2e its points', () => {
     const { gmPoints, ...nimble } = battleFeatures('nimble')
     expect(Object.values(nimble).every(Boolean)).toBe(true)
     expect(gmPoints).toBe(false)
-    expect(Object.values(battleFeatures('dnd5e')).some(Boolean)).toBe(false)
+    const { heroEditor, ...dnd5e } = battleFeatures('dnd5e')
+    expect(heroEditor).toBe(true)
+    expect(Object.values(dnd5e).some(Boolean)).toBe(false)
     const { gmPoints: pf2ePoints, ...pf2e } = battleFeatures('pf2e')
     expect(Object.values(pf2e).some(Boolean)).toBe(false)
     expect(pf2ePoints).toBe(true)

@@ -29,7 +29,8 @@ export interface Dnd5eSheetApi {
   lastRoll: Ref<Dnd5eLastRoll | null>
 }
 
-const KEY: InjectionKey<Dnd5eSheetApi> = Symbol('dnd5e-sheet')
+/** The 5e sheet's shared data and state (provideDnd5eSheet); the battle board provides it too. */
+export const DND5E_SHEET: InjectionKey<Dnd5eSheetApi> = Symbol('dnd5e-sheet')
 
 /**
  * Loads the 5e data for the sheet in the current sheet editor and provides what its panels
@@ -68,12 +69,12 @@ export function provideDnd5eSheet(): Dnd5eSheetApi {
   const attackMode = useState<D20Mode>(`dnd5e-odds-${id}`, () => 'normal')
   const lastRoll = shallowRef<Dnd5eLastRoll | null>(null)
   const api: Dnd5eSheetApi = { data, columns, entries, target, attackMode, build, lastRoll }
-  provide(KEY, api)
+  provide(DND5E_SHEET, api)
   return api
 }
 
 export function useDnd5eSheet(): Dnd5eSheetApi {
-  const api = inject(KEY)
+  const api = inject(DND5E_SHEET)
   if (!api) throw new Error('useDnd5eSheet() must be used inside the 5e sheet')
   return api
 }

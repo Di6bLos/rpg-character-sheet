@@ -12,6 +12,7 @@ import {
   heroDown,
   hpClass,
   hpTone,
+  rosterAc,
 } from '../utils/roster'
 
 const entry = (patch: Partial<RosterEntry>): RosterEntry => ({
@@ -174,5 +175,24 @@ describe('conditionLabels', () => {
   it('leaves other systems by name', () => {
     expect(conditionLabels(['Frightened'], 'nimble', { Frightened: 2 })).toEqual(['Frightened'])
     expect(conditionLabels(['Frightened'], 'dnd5e')).toEqual(['Frightened'])
+  })
+
+  it('gives 5e Exhaustion its level when the roster knows it', () => {
+    expect(conditionLabels(['Exhaustion', 'Prone'], 'dnd5e', { Exhaustion: 2 })).toEqual([
+      'Exhaustion 2',
+      'Prone',
+    ])
+    expect(conditionLabels(['Exhaustion'], 'dnd5e')).toEqual(['Exhaustion'])
+  })
+})
+
+describe('rosterAc', () => {
+  it("reads a 5e hero's AC as the roster has it, without Nimble's statuses", () => {
+    const hero = entry({
+      character_system: 'dnd5e',
+      character_level: 5,
+      summary: { ac: 17, conditions: ['Dragonform'] },
+    })
+    expect(rosterAc(hero)).toBe(17)
   })
 })

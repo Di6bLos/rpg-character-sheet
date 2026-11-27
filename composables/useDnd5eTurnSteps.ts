@@ -81,7 +81,7 @@ export function useDnd5eTurnSteps(options: { onResult?: (message: string) => voi
   }
 
   const movementMax = computed(() => {
-    const speed = speedNow(sheet.value).value
+    const speed = speedNow(sheet.value, level.value).value
     return hasEffect(sheet.value, 'dash') ? speed * 2 : speed
   })
 

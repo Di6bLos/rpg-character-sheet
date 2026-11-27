@@ -30,7 +30,8 @@ export interface Dnd5eCastingApi {
   typed: ReturnType<typeof useTypedRoll>
 }
 
-const KEY: InjectionKey<Dnd5eCastingApi> = Symbol('dnd5e-casting')
+/** The 5e sheet's casting (provideDnd5eCasting); the battle board provides it too. */
+export const DND5E_CASTING: InjectionKey<Dnd5eCastingApi> = Symbol('dnd5e-casting')
 
 /**
  * Casting for the 5e sheet in the current sheet editor, shared by the Spells panel and the
@@ -132,12 +133,12 @@ export function provideDnd5eCasting(sheetApi: Dnd5eSheetApi = useDnd5eSheet()): 
     healSelf,
     typed,
   }
-  provide(KEY, api)
+  provide(DND5E_CASTING, api)
   return api
 }
 
 export function useDnd5eCasting(): Dnd5eCastingApi {
-  const api = inject(KEY)
+  const api = inject(DND5E_CASTING)
   if (!api) throw new Error('useDnd5eCasting() must be used inside the 5e sheet')
   return api
 }

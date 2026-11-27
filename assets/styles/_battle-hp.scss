@@ -1,0 +1,96 @@
+// The battle board's hero HP block (components/battle/HeroHp.vue, and its 5e twin
+// components/battle/dnd5e/HeroHp.vue): notices, the value with temp HP, the − amount + Crit
+// row, hints and the temp HP stepper.
+.hp {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hp__notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  justify-content: space-between;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.hp__head,
+.hp__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hp__value {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+
+  span {
+    font-size: 13px;
+    color: var(--page-muted);
+  }
+}
+
+.hp__temp {
+  margin-left: 4px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.hp__ctl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.hp__amt {
+  min-height: 32px;
+  padding: 4px 8px;
+  text-align: center;
+}
+
+.hp__crit[aria-pressed='true'] {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-color: var(--danger);
+}
+
+.hp__hint {
+  font-size: 11px;
+  color: var(--page-muted);
+}
+
+.hp__tempctl,
+.hp__wounds {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hp__mini {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+
+  // Fading the whole button lost the glyph on Cursed parchment; mute the glyph instead.
+  &:disabled {
+    opacity: 1;
+    color: var(--page-muted);
+  }
+}
+
+.hp__num {
+  min-width: 18px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

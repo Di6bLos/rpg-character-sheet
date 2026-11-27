@@ -3,7 +3,9 @@
 // one detail, with the full text, costs and the reason it's greyed out in a tooltip.
 // A click does what the sheet's button does (through `guarded`, so a dimmed tile does
 // nothing); Opportunity Attack and Help open a picker of their choices instead, and
-// upcastable spells get a tier popover (NimbleUpcast).
+// upcastable spells get a tier popover (NimbleUpcast), 5e spells a popover of how to cast
+// them (slot level, Pact slot, free cast, ritual). A 5e tile shows its cost ("Bonus Action")
+// where a Nimble one shows its action pips.
 // On touch a tap only opens the details (ActionDetails: a bottom sheet on a phone, a
 // popover elsewhere), which hold the picks, the upcast stepper and the Use button; the
 // tile then renders no tooltip, tier button or picker of its own.
@@ -39,7 +41,9 @@ const sub = computed(() => tileSub(a.value))
 const keys = computed(() => {
   const n = a.value.actions
   return [
-    n ? `${n} ${n === 1 ? 'action' : 'actions'}` : 'No action',
+    a.value.cost ?? (n ? `${n} ${n === 1 ? 'action' : 'actions'}` : 'No action'),
+    a.value.castWith?.options.find((o) => o.key === a.value.castWith?.at)?.label ?? '',
+    a.value.oddsText ?? '',
     a.value.mana ? `${a.value.mana} mana` : '',
     a.value.unavailable ||
       (touch.value ? 'Tap for details' : a.value.choices ? 'Click to choose' : 'Click to use'),
@@ -48,7 +52,9 @@ const keys = computed(() => {
     .join(' · ')
 })
 
-const pips = computed(() => Math.min(3, a.value.actions))
+const pips = computed(() => (a.value.cost ? 0 : Math.min(3, a.value.actions)))
+/** A 5e cost as the tile's tag: "Attack action" → "Attack", "Bonus Action" → "Bonus". */
+const costTag = computed(() => a.value.cost?.replace(/ [Aa]ction$/, '') ?? '')
 
 const btn = ref<HTMLButtonElement | null>(null)
 const upBtn = ref<HTMLButtonElement | null>(null)
@@ -102,6 +108,7 @@ function onClick() {
           <span v-if="pips" class="act__pips" role="img" :aria-label="`${a.actions} actions`">
             <i v-for="n in pips" :key="n" />
           </span>
+          <span v-else-if="costTag" class="act__cost">{{ costTag }}</span>
         </span>
         <span v-if="a.dice || a.detail || a.mana" class="act__meta">
           <span v-if="a.dice" class="act__dice">{{ a.dice }}</span>
@@ -112,7 +119,18 @@ function onClick() {
       </button>
     </component>
     <button
-      v-if="a.upcast && !touch"
+      v-if="a.castWith && a.castWith.options.length > 1 && !touch"
+      ref="upBtn"
+      type="button"
+      class="act__up"
+      :aria-label="`Cast ${a.name} with: ${a.castWith.options.find((o) => o.key === a.castWith?.at)?.label ?? ''}`"
+      :aria-expanded="upcasting"
+      @click="upcasting = !upcasting"
+    >
+      {{ a.castWith.short }}
+    </button>
+    <button
+      v-else-if="a.upcast && !touch"
       ref="upBtn"
       type="button"
       class="act__up"
@@ -139,7 +157,15 @@ function onClick() {
       :name="a.name"
     />
     <BattleActionPop
-      v-if="a.upcast && !touch"
+      v-if="a.castWith && a.castWith.options.length > 1 && !touch"
+      v-model="upcasting"
+      :anchor="upBtn"
+      :label="`Cast ${a.name} with`"
+    >
+      <BattleCastWith :name="a.name" :cast-with="a.castWith" :disabled="readonly" />
+    </BattleActionPop>
+    <BattleActionPop
+      v-else-if="a.upcast && !touch"
       v-model="upcasting"
       :anchor="upBtn"
       :label="`Upcast ${a.name}`"
@@ -285,6 +311,14 @@ function onClick() {
     border-radius: 50%;
     background: color-mix(in srgb, var(--accent) 70%, var(--page-text));
   }
+}
+
+.act__cost {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--page-soft);
+  white-space: nowrap;
 }
 
 .act__mana {

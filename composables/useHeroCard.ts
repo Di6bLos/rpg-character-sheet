@@ -62,7 +62,11 @@ export function useHeroCard(characterId: Ref<string | null>, roster: Ref<RosterE
     const pf2e = c.system === 'pf2e' ? c : null
     /** PF2e: the shield as the roster has it now (raised or not), else the card's. */
     const shield = pf2e ? (s?.shield ? { ...pf2e.shield, ...s.shield } : pf2e.shield) : null
-    const conditionValues = pf2e ? (s?.conditionValues ?? pf2e.conditionValues ?? null) : null
+    const conditionValues = pf2e
+      ? (s?.conditionValues ?? pf2e.conditionValues ?? null)
+      : c.system === 'dnd5e'
+        ? (s?.conditionValues ?? null)
+        : null
     return {
       hp: s?.hp ?? c.hp,
       hpMax: s?.hpMax ?? c.hpMax,
@@ -70,11 +74,11 @@ export function useHeroCard(characterId: Ref<string | null>, roster: Ref<RosterE
       wounds: s?.wounds ?? c.wounds,
       woundsMax: s?.woundsMax ?? c.woundsMax,
       conditions,
-      /** PF2e values of valued conditions (frightened 2); null for other systems. */
+      /** PF2e values of valued conditions (frightened 2), 5e's Exhaustion level; null for Nimble. */
       conditionValues,
       /**
        * AC (Nimble: Armor) now: PF2e's after conditions, effects and a raised shield
-       * (`acFromParts`), Nimble's with its statuses.
+       * (`acFromParts`), Nimble's with its statuses, 5e's as the roster has it.
        */
       ac: pf2e
         ? (s?.acNow ??
@@ -85,7 +89,9 @@ export function useHeroCard(characterId: Ref<string | null>, roster: Ref<RosterE
             conditionValues: conditionValues ?? undefined,
             shield,
           }))
-        : heroArmor(c.ac, conditions, c.level),
+        : c.system === 'dnd5e'
+          ? (s?.ac ?? c.ac)
+          : heroArmor(c.ac, conditions, c.level),
       /** PF2e: the shield now and persistent damage; null and [] for other systems. */
       shield,
       persistent: pf2e ? (s?.persistent ?? pf2e.persistent ?? []) : [],
