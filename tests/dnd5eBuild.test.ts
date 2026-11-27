@@ -717,6 +717,20 @@ describe('5e: Fighting Style swaps, Magic Initiate, coins, redoing level 1', () 
     expect(pickProblem(list, ['Cleric'])).toMatch(/Cleric/)
   })
 
+  it('starting gear the class and background both give is one row with both counted', () => {
+    const wiz = build('wizard').sheet
+    expect(wiz.inventory.filter((i) => i.name === 'Robe')).toEqual([{ name: 'Robe', qty: '2' }])
+    for (const k of data.classes)
+      for (const bg of data.backgrounds)
+        for (const option of ['A', 'B']) {
+          const c = creation(k.slug, 'human', bg.slug)
+          c.equipment.class = option
+          const choices = fill((p) => creationPicks(c, p, data), prefer(k.slug))
+          const names = buildDnd5eSheet(c, choices, data).inventory.map((i) => i.name)
+          expect(names.length, `${k.slug} ${option} + ${bg.slug}`).toBe(new Set(names).size)
+        }
+  })
+
   it('coins keep silver and copper', () => {
     expect(cpToCoins(3766)).toEqual({ cp: 6, sp: 6, ep: 0, gp: 37, pp: 0 })
     expect(coinsText({ gp: 37, sp: 6, cp: 6 })).toBe('37 GP, 6 SP, 6 CP')

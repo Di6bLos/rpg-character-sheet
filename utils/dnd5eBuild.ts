@@ -2552,6 +2552,25 @@ export function parseEquipment(
   return { items: out, gp: coins.gp, coins }
 }
 
+/**
+ * Folds items of the same name into one row with their quantities added: a Wizard's and a Sage's
+ * Robe are "2 Robe", not two rows.
+ */
+export function mergeItems(items: InventoryItem[]): void {
+  const seen = new Map<string, InventoryItem>()
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!
+    const key = norm(item.name)
+    const first = seen.get(key)
+    if (!first) {
+      seen.set(key, item)
+      continue
+    }
+    first.qty = String((Number(first.qty) || 1) + (Number(item.qty) || 1))
+    items.splice(i--, 1)
+  }
+}
+
 function matchItem(data: Dnd5eBuildData, name: string): { name: string; tag?: string } | null {
   const tries = [name, name.replace(/es$/, ''), name.replace(/s$/, '')].map(norm)
   for (const t of tries) {
@@ -3136,6 +3155,7 @@ export function buildDnd5eSheet(
     for (const k of Object.keys(coins) as Coin[]) coins[k] += parsed.coins[k]
     inventory.push(...parsed.items)
   })
+  mergeItems(inventory)
   // Wear the first armor and shield the hero is trained in.
   const trained = (a: Dnd5eArmorDef) =>
     [...st.armor].some(
