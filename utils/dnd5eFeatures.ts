@@ -123,6 +123,7 @@ export const DND5E_FEATURE_RULES: Record<string, Dnd5eFeatureRule> = {
   'Spell Slot to Wild Shape': { skip: true },
   'Wild Shape to Spell Slot': { skip: true },
   'Lucky: Luck Points': { skip: true },
+  'Font of Inspiration': { skip: true },
   'Flash of Genius': { skip: true },
   Portent: { skip: true },
   'Tides of Chaos': { effect: 'tides-of-chaos', cost: 'free' },
@@ -327,6 +328,8 @@ export interface Dnd5eEntry {
   oncePerTurn?: boolean
   /** The feature this is an option of (Cunning Action for its Dash). */
   parent?: string
+  /** What else gives a use back, as the data says ("a level 5 spell slot"). */
+  restore?: string
 }
 
 const ACTIVATION: Record<Dnd5eActivation, Dnd5eCost> = {
@@ -538,6 +541,7 @@ function makeEntry(
     passive: !cost && !resource && !(oncePerTurn && (!!dice || !!save)),
     ...(mech.duration ? { duration: mech.duration } : {}),
     ...(oncePerTurn ? { oncePerTurn } : {}),
+    ...(mech.uses?.restore ? { restore: mech.uses.restore } : {}),
   }
 }
 

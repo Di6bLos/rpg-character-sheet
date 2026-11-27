@@ -3,7 +3,8 @@
 // actions and PF2e's ActionRow show theirs: name and where it's from, its cost pill, its uses
 // left, its dice and save DC, the text (folded), and Use, which pays the cost on the turn,
 // spends the use and does what the rules engine knows (utils/dnd5eFeatures.ts useEntry). Lay on
-// Hands-style pools take an amount. Passive ones are cards without Use.
+// Hands-style pools take an amount; Bardic Inspiration picks the ally it goes to. Passive ones
+// are cards without Use.
 import type { Dnd5eSheet } from '~/types/sheets'
 import { type Dnd5eEntry, entryWhy, useEntry } from '~/utils/dnd5eFeatures'
 import { usesLeft } from '~/utils/dnd5ePlay'
@@ -12,6 +13,7 @@ import { loreHtml } from '~/utils/loreText'
 const props = defineProps<{ entry: Dnd5eEntry; compact?: boolean }>()
 const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
 const { claim, resultFor } = useResultOwner()
+const { target, columns } = useDnd5eSheet()
 const typed = useTypedRoll()
 const sheet = computed(() => draft.value.sheet)
 const e = computed(() => props.entry)
@@ -24,10 +26,27 @@ const left = computed(() => (e.value.resource ? usesLeft(sheet.value, e.value.re
 const why = computed(() => (e.value.passive ? '' : entryWhy(sheet.value, e.value)))
 const pool = ref(1)
 
+/** Bardic Inspiration and the like go to an ally in the campaign (useDnd5eHelp().inspire). */
+const helping = props.entry.rule?.give ? useDnd5eHelp() : null
+const ally = ref('')
+
+async function give() {
+  if (!helping || !ally.value || why.value) return
+  const line = await helping.inspire(ally.value, e.value.dice ?? '', () =>
+    useEntry(sheet.value, draft.value.level, e.value),
+  )
+  if (line) claim(key.value, () => say(line))
+}
+
 function use() {
   if (!canEdit.value) return
+  if (helping && ally.value) return void give()
   typed.run(key.value, e.value.name, () => {
-    const line = useEntry(sheet.value, draft.value.level, e.value, { amount: pool.value })
+    const line = useEntry(sheet.value, draft.value.level, e.value, {
+      amount: pool.value,
+      target: target.value,
+      columns: columns.value,
+    })
     claim(key.value, () => say(line))
   })
 }
@@ -69,6 +88,13 @@ const RESOURCE_PIPS = 8
       <div class="small" v-html="loreHtml(e.full ?? e.text)" />
     </details>
     <div v-if="!e.passive" class="entry__act">
+      <label v-if="helping?.allies.value.length" class="ally">
+        <span class="sr-only">Give it to</span>
+        <select v-model="ally" class="input input--sm" :disabled="!canEdit">
+          <option value="">An ally (say who)</option>
+          <option v-for="a in helping.allies.value" :key="a.id" :value="a.id">{{ a.name }}</option>
+        </select>
+      </label>
       <label v-if="e.rule?.pool" class="pool">
         <span class="sr-only">Points to spend</span>
         <input
@@ -186,6 +212,11 @@ const RESOURCE_PIPS = 8
   }
 }
 
+.ally .input {
+  min-height: 36px;
+  max-width: 160px;
+}
+
 .pool .input {
   width: 72px;
   min-height: 36px;
@@ -198,6 +229,11 @@ const RESOURCE_PIPS = 8
 
 @media (pointer: coarse) {
   .entry__text summary,
+  .ally .input {
+    min-height: 36px;
+    max-width: 160px;
+  }
+
   .pool .input {
     min-height: 44px;
   }

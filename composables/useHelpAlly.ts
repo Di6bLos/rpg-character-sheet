@@ -3,7 +3,7 @@ import { supabase } from '~/lib/supabase'
 import type { RosterEntry } from '~/types'
 import type { Dnd5eSheet, NimbleSheet } from '~/types/sheets'
 import { addEffect } from '~/utils/dnd5eEffects'
-import { costWhy, payCost } from '~/utils/dnd5ePlay'
+import { costWhy, dnd5eHero, payCost } from '~/utils/dnd5ePlay'
 import { addCondition } from '~/utils/nimbleConditions'
 
 interface HeroEffect {
@@ -108,13 +108,48 @@ export function useDnd5eHelp() {
     return line
   }
 
-  return { allies, help, why }
+  /**
+   * Bardic Inspiration (SRD 5.2.1 p. 33) for an ally in the campaign: `pay` uses the entry
+   * (the Bonus Action and the use; the caller checked it can), then this leaves the die for the
+   * ally in `hero_effects` ("Bardic Inspiration d8", "… Valor" from a College of Valor bard),
+   * and on failure puts the turn and uses back.
+   */
+  async function inspire(characterId: string, die: string, pay: () => void): Promise<string> {
+    const ally = allies.value.find((a) => a.id === characterId)
+    const campaign = campaignId.value
+    const sides = /d(6|8|10|12)\b/.exec(die)?.[1]
+    if (!canEdit.value || !ally || !campaign || !sides) return ''
+    const sheet = draft.value.sheet
+    const before = JSON.stringify({ turn: sheet.turn ?? null, used: sheet.used ?? {} })
+    pay()
+    const valor = dnd5eHero(sheet, draft.value.level).has('Combat Inspiration')
+    const { error } = await supabase.from('hero_effects').insert({
+      campaign_id: campaign,
+      character_id: ally.id,
+      effect: `Bardic Inspiration d${sides}${valor ? ' Valor' : ''}`,
+      from_name: draft.value.name.slice(0, 80),
+    })
+    if (error) {
+      const was = JSON.parse(before) as {
+        turn: Dnd5eSheet['turn'] | null
+        used: Record<string, number>
+      }
+      sheet.turn = was.turn ?? undefined
+      sheet.used = was.used
+      return `Could not reach ${ally.name}: Bardic Inspiration not used.`
+    }
+    const line = `Bardic Inspiration: ${ally.name} gains your d${sides}${valor ? ' (Combat Inspiration too)' : ''} to add to a failed D20 Test within the hour.`
+    say(line)
+    return line
+  }
+
+  return { allies, help, why, inspire }
 }
 
 /**
- * Picks up statuses other heroes gave this one (Helped) while its sheet is open
- * or the next time it loads, adds them to the sheet (Nimble: the Helped condition; 5e: the
- * Helped effect) and clears them.
+ * Picks up statuses other heroes gave this one (Helped, a 5e Bardic Inspiration die) while its
+ * sheet is open or the next time it loads, adds them to the sheet (Nimble: the Helped
+ * condition; 5e: the Helped or Bardic Inspiration effect) and clears them.
  */
 export function useHeroEffects() {
   const { draft, canEdit, held, say } = useSheet<NimbleSheet>()
@@ -127,10 +162,26 @@ export function useHeroEffects() {
     if (!canEdit.value || held.value || !fresh.length) return
     for (const r of fresh) taken.add(r.id)
     for (const row of fresh) {
+      const from = row.from_name || 'An ally'
+      const bardic = /^Bardic Inspiration d(\d+)( Valor)?$/.exec(row.effect)
+      if (draft.value.system === 'dnd5e' && bardic) {
+        const e = addEffect(draft.value.sheet as unknown as Dnd5eSheet, 'bardic-inspiration', {
+          value: Number(bardic[1]),
+          name: `Bardic Inspiration d${bardic[1]}`,
+        })
+        if (e) {
+          e.from = from
+          if (bardic[2]) e.valor = true
+        }
+        say(
+          `${from} inspired you: a d${bardic[1]} to add to a failed D20 Test${bardic[2] ? ', or to a hit’s damage or your AC (Combat Inspiration)' : ''}.`,
+        )
+        continue
+      }
       if (draft.value.system === 'dnd5e')
         addEffect(draft.value.sheet as unknown as Dnd5eSheet, 'helped', { ends: 'encounter' })
       else addCondition(draft.value.sheet, row.effect)
-      say(`${row.from_name || 'An ally'} Helped you: advantage on your next roll.`)
+      say(`${from} Helped you: advantage on your next roll.`)
     }
     await supabase
       .from('hero_effects')

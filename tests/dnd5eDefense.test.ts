@@ -3,6 +3,7 @@
 // Initiative hooks (utils/dnd5eDefense.ts, utils/dnd5eModifiers.ts, utils/dnd5ePlay.ts).
 import { describe, expect, it } from 'vitest'
 import type { Dnd5eSheet } from '../types/sheets'
+import type { Dnd5eHit } from '../utils/dnd5ePlay'
 import {
   acReactions,
   damageGuards,
@@ -64,7 +65,7 @@ describe('damage reactions', () => {
     expect(damageGuards(s, 5, 'Fire')[0]!.why).toBe('Not against Fire')
     s.features.push({ name: 'Deflect Energy', desc: '', from: 'Monk 13' })
     expect(damageGuards(s, 13, 'Fire')[0]!.why).toBe('')
-    const hit = { amount: 30, type: 'Fire' }
+    const hit: Dnd5eHit = { amount: 30, type: 'Fire' }
     guardHit(s, 13, hit, ['deflect-attacks'], max)
     expect(hit.reduce?.[0]?.amount).toBe(10 + 3 + 13)
   })
@@ -75,7 +76,7 @@ describe('damage reactions', () => {
         { name: 'Combat Superiority', from: 'BM', max: 4, recharge: 'short', dice: '1d8' },
       ],
     })
-    const hit = { amount: 15 }
+    const hit: Dnd5eHit = { amount: 15 }
     guardHit(s, 3, hit, ['parry'], max)
     expect(hit.reduce?.[0]?.amount).toBe(8 + 4)
     expect(usesLeft(s, 'Combat Superiority')).toBe(3)
@@ -96,7 +97,7 @@ describe('damage reactions', () => {
     })
     expect(damageGuards(s, 10)[0]!.why).toBe('Not active')
     addEffect(s, 'bladesong', { value: 2 })
-    const hit = { amount: 12 }
+    const hit: Dnd5eHit = { amount: 12 }
     guardHit(s, 10, hit, ['song-of-defense'])
     expect(hit.reduce?.[0]?.amount).toBe(15)
     expect(s.slotsUsed?.[2]).toBe(1)

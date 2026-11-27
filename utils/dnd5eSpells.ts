@@ -186,7 +186,12 @@ export function castWhy(
   opt: Dnd5eCastOption | undefined,
 ): string {
   if (!opt) return 'No slot left'
-  const rage = activeEffectDefs(s).find((d) => d.noSpells)
+  const beastSpells = dnd5eHero(s, 0).has('Beast Spells')
+  const rage = activeEffectDefs(s).find(
+    (d) =>
+      d.noSpells &&
+      !(d.key === 'wild-shape' && beastSpells && !def.components.cost && !def.components.consumed),
+  )
   if (rage) return `No spells while in ${rage.name}`
   const cost = opt.kind === 'ritual' ? 'time' : spellCost(def)
   const turn = costWhy(s, cost)
@@ -587,4 +592,80 @@ export function magicalCunning(s: Dnd5eSheet): string {
   const back = Math.min(s.pactUsed ?? 0, Math.ceil(p.slots / 2))
   s.pactUsed = (s.pactUsed ?? 0) - back
   return `Magical Cunning: ${back} Pact Magic slot${back === 1 ? '' : 's'} back.`
+}
+
+/** What gives a limited use back early, read from the data's `restore` ("a level 5 spell slot"). */
+export interface Dnd5eRestoreCost {
+  /** A spell slot of at least this level (`pact`: a Pact Magic slot). */
+  slot?: number | 'pact'
+  /** Uses of another resource, by its sheet name. */
+  resource?: string
+  n: number
+  /** The use comes back per slot level (Mystic Focus: Focus Points equal to the slot's level). */
+  perLevel?: boolean
+}
+
+const RESTORE_RESOURCES: [RegExp, string][] = [
+  [/superiority di/i, 'Combat Superiority'],
+  [/psionic energy di/i, 'Psionic Power'],
+  [/sorcery points?/i, SORCERY_POINTS],
+  [/use of rage/i, 'Rage'],
+  [/bardic inspiration/i, 'Bardic Inspiration'],
+  [/channel divinity/i, 'Channel Divinity'],
+  [/second wind/i, 'Second Wind'],
+]
+
+/** Reads a `restore` text; null when it's something the sheet doesn't track (a soul trinket). */
+export function restoreCost(text: string | undefined): Dnd5eRestoreCost | null {
+  if (!text) return null
+  if (/pact magic spell slot/i.test(text)) return { slot: 'pact', n: 1 }
+  const lvl = /level (\d)\+? spell slot/i.exec(text)
+  if (lvl) return { slot: Number(lvl[1]), n: 1 }
+  if (/spell slot/i.test(text)) return { slot: 1, n: 1 }
+  for (const [re, resource] of RESTORE_RESOURCES)
+    if (re.test(text)) return { resource, n: Number(/(\d+)/.exec(text)?.[1] ?? 1) }
+  return null
+}
+
+/** The slot levels a restore can spend now (those left at or above its minimum). */
+export function restoreSlots(s: Dnd5eSheet, c: Dnd5eRestoreCost): number[] {
+  if (c.slot === 'pact') return pactLeft(s) > 0 ? [s.castingStats!.pact!.level] : []
+  if (!c.slot) return []
+  return slotsLeft(s).flatMap((n, i) => (n > 0 && i + 1 >= (c.slot as number) ? [i + 1] : []))
+}
+
+/**
+ * Gives back a use of `name` by paying its restore cost: a spell slot (the level chosen), a
+ * Pact Magic slot, or uses of another resource. With `perLevel` the slot's level in uses.
+ */
+export function restoreUse(
+  s: Dnd5eSheet,
+  name: string,
+  c: Dnd5eRestoreCost,
+  slotLevel?: number,
+): string {
+  if ((s.used?.[name] ?? 0) <= 0) return `${name} is full.`
+  let paid = ''
+  let n = 1
+  if (c.slot === 'pact') {
+    if (pactLeft(s) < 1) return 'No Pact Magic slot left.'
+    s.pactUsed = (s.pactUsed ?? 0) + 1
+    paid = 'a Pact Magic slot'
+  } else if (c.slot) {
+    const at = slotLevel ?? restoreSlots(s, c)[0]
+    if (!at || (slotsLeft(s)[at - 1] ?? 0) < 1 || at < c.slot) return 'No spell slot to spend.'
+    const used = [...(s.slotsUsed ?? [])]
+    while (used.length < 9) used.push(0)
+    used[at - 1] = (used[at - 1] ?? 0) + 1
+    s.slotsUsed = used
+    paid = `a ${ORD[at]}-level slot`
+    if (c.perLevel) n = at
+  } else if (c.resource) {
+    if (!spendUses(s, c.resource, c.n)) return `Not enough ${c.resource}.`
+    paid = `${c.n} ${c.resource}`
+  } else return ''
+  const back = Math.min(n, s.used?.[name] ?? 0)
+  s.used = { ...s.used, [name]: (s.used?.[name] ?? 0) - back }
+  if (!s.used[name]) delete s.used[name]
+  return `${name}: ${back} back for ${paid}.`
 }

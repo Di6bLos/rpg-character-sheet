@@ -4,7 +4,8 @@
 // as shared SheetSkillRows: the proficiency mark (○ none, ½ Jack of All Trades, ● proficient,
 // ◆ Expertise; a hand-made sheet taps it to change), what the skill is for, the value with its
 // breakdown (ability, proficiency, Exhaustion, conditions, Bless…) and Roll. With Manual dice
-// Roll asks for the d20.
+// Roll asks for the d20. Under the result, what can still change it (Dnd5eAfterRoll: Heroic
+// Inspiration, Indomitable, Portent…); above, a Luck Point for Advantage on the next one.
 import type { Dnd5eSheet } from '~/types/sheets'
 import { showOutcome, sign } from '~/utils/dice'
 import { isBuiltDnd5e } from '~/utils/dnd5eLevelUp'
@@ -20,6 +21,7 @@ import {
 
 const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
 const { claim, resultIn } = useResultOwner()
+const { lastRoll } = useDnd5eSheet()
 const sheet = computed(() => draft.value.sheet)
 const level = computed(() => draft.value.level)
 const ownDice = computed(() => !!sheet.value.ownDice)
@@ -66,6 +68,7 @@ function roll(r: Dnd5eSkillRow, values?: number[]) {
   const m = mode.value as D20Mode
   claim(`skills:${r.name}`, () => {
     const out = rollTest(sheet.value, r.test, { mode: m, ...(values ? { d20: values } : {}) })
+    lastRoll.value = { key: `skills:${r.name}`, test: r.test, result: out, mode: m }
     say(out.line)
     showOutcome({ label: r.name, total: out.failed ? null : out.total, detail: out.line })
   })
@@ -107,6 +110,7 @@ function cycle(r: Dnd5eSkillRow) {
       />
     </div>
     <SheetNextCheck v-model="mode" :options="MODES" :disabled="!canEdit" />
+    <Dnd5eAfterRoll pre />
     <NimbleDiceEntry
       v-if="pending"
       :label="`d20 you rolled for ${pending.name}${d20Mode(pending.test, mode as D20Mode) !== 'normal' ? ' (both dice)' : ''}`"
@@ -166,6 +170,7 @@ function cycle(r: Dnd5eSkillRow) {
     <p v-if="resultIn('skills:')" class="roll-status" role="status" aria-live="polite">
       {{ resultIn('skills:') }}
     </p>
+    <Dnd5eAfterRoll scope="skills:" />
   </section>
 </template>
 

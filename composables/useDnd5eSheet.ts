@@ -6,6 +6,7 @@ import { DND5E_BUILD_SETS, type Dnd5eBuildData, walkDnd5e } from '~/utils/dnd5eB
 import { type Dnd5eEntry, heroEntries } from '~/utils/dnd5eFeatures'
 import { isBuiltDnd5e } from '~/utils/dnd5eLevelUp'
 import type { D20Mode } from '~/utils/dnd5ePlay'
+import type { Dnd5eLastRoll } from '~/utils/dnd5eRerolls'
 
 /** The data sets the 5e sheet plays from (magic items load when the inventory asks). */
 const SETS = [...DND5E_BUILD_SETS, 'masteries', 'conditions'] as const
@@ -24,6 +25,8 @@ export interface Dnd5eSheetApi {
   attackMode: Ref<D20Mode>
   /** The build walked to the hero's level, for AC from worn gear (null for a hand-made hero). */
   build: ComputedRef<ReturnType<typeof walkDnd5e>>
+  /** The D20 Test just rolled, for the rerolls and boosts offered under it. */
+  lastRoll: Ref<Dnd5eLastRoll | null>
 }
 
 const KEY: InjectionKey<Dnd5eSheetApi> = Symbol('dnd5e-sheet')
@@ -63,7 +66,8 @@ export function provideDnd5eSheet(): Dnd5eSheetApi {
   const id = draft.value.id
   const target = useState<Dnd5eTarget>(`dnd5e-target-${id}`, () => ({ ac: null }))
   const attackMode = useState<D20Mode>(`dnd5e-odds-${id}`, () => 'normal')
-  const api: Dnd5eSheetApi = { data, columns, entries, target, attackMode, build }
+  const lastRoll = shallowRef<Dnd5eLastRoll | null>(null)
+  const api: Dnd5eSheetApi = { data, columns, entries, target, attackMode, build, lastRoll }
   provide(KEY, api)
   return api
 }

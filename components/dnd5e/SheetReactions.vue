@@ -2,11 +2,15 @@
 // The 5e sheet's Reactions, a panel of their own as on the Nimble and PF2e sheets: the
 // Opportunity Attack (one melee attack when a creature leaves your reach, SRD 5.2.1 p. 15),
 // reaction spells (Shield, Counterspell, Hellish Rebuke…) cast through useDnd5eCasting, and the
-// hero's reaction features, feats and options (Uncanny Dodge, Parry, Riposte, Sentinel…). One
-// Reaction a round, back at the start of your turn. Results nothing else claims show here.
+// hero's reaction features, feats and options (Riposte, Sentinel, Cutting Words…), and what
+// meets an attack before it's known to hit (Defensive Duelist, Combat Inspiration, a Luck
+// Point; utils/dnd5eDefense.ts). Reactions that cut a hit's damage (Uncanny Dodge, Parry…) sit
+// beside Hit points instead. One Reaction a round, back at the start of your turn. Results
+// nothing else claims show here.
 import type { Dnd5eSheet } from '~/types/sheets'
 import { showOutcome, sign } from '~/utils/dice'
 import { rollAttack5e, weaponAttack, weaponDef } from '~/utils/dnd5eAttacks'
+import { DND5E_GUARDS, acReactions, useAcReaction } from '~/utils/dnd5eDefense'
 import { costWhy, payCost } from '~/utils/dnd5ePlay'
 import { levelName } from '~/utils/dnd5eSpells'
 import { tipText } from '~/utils/ruleTips'
@@ -58,6 +62,16 @@ const spells = computed(() =>
   casting.spells.value.filter((r) => !r.book && casting.defOf(r.slug)?.activation === 'reaction'),
 )
 const own = computed(() => entries.value.filter((e) => e.cost === 'reaction'))
+const guardNames = new Set(DND5E_GUARDS.map((g) => g.name))
+const shown = computed(() =>
+  own.value.filter((e) => !guardNames.has(e.name.split(': ').pop() ?? e.name)),
+)
+const meet = computed(() => acReactions(sheet.value, level.value))
+const meetResult = computed(() => meet.value.map((m) => resultFor(`rea:${m.key}`)).find(Boolean))
+
+function meetAttack(key: string) {
+  if (canEdit.value) claim(`rea:${key}`, () => say(useAcReaction(sheet.value, level.value, key)))
+}
 </script>
 
 <template>
@@ -151,7 +165,30 @@ const own = computed(() => entries.value.filter((e) => e.cost === 'reaction'))
           {{ resultFor(`spell:${r.slug}`) }}
         </p>
       </div>
-      <Dnd5eEntryCard v-for="e in own" :key="e.key" :entry="e" />
+      <div v-if="meet.length" class="tile attack">
+        <div class="stack" style="gap: 2px">
+          <strong style="font-size: 15px">When an attack comes at you</strong>
+          <span class="small muted"
+            >Before you know it hits: more AC against it, or Disadvantage on it. Reactions that cut
+            the damage are beside Hit points.</span
+          >
+        </div>
+        <div class="row" style="gap: 6px; flex-wrap: wrap">
+          <button
+            v-for="m in meet"
+            :key="m.key"
+            type="button"
+            class="btn btn--ghost btn--sm"
+            :disabled="!canEdit || !!m.why"
+            :title="m.why ? `${m.why}\n${m.note}` : m.note"
+            @click="meetAttack(m.key)"
+          >
+            {{ m.name }}{{ m.ac ? ` +${m.ac}` : '' }}
+          </button>
+        </div>
+        <p v-if="meetResult" class="roll-status" role="status">{{ meetResult }}</p>
+      </div>
+      <Dnd5eEntryCard v-for="e in shown" :key="e.key" :entry="e" />
     </div>
     <p v-if="unclaimed" class="roll-status" role="status" aria-live="polite">{{ unclaimed }}</p>
   </section>

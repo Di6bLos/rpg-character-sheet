@@ -101,6 +101,12 @@ export function restoreUses(s: Dnd5eSheet, name: string, n: number | 'all' = 'al
 
 // --- Speed and AC ----------------------------------------------------------------------
 
+/** The Beast form the hero is in while Wild Shape lasts (utils/dnd5eWildShape.ts). */
+const formNow = (s: Dnd5eSheet) =>
+  hasEffect(s, 'wild-shape') && s.beastForm
+    ? (s.beastForms?.find((f) => f.name === s.beastForm) ?? null)
+    : null
+
 /** The walking Speed in feet: the first number of the sheet's Speed ("30 ft, climb 30 ft"). */
 export function walkSpeed(s: Pick<Dnd5eSheet, 'speed'>): number {
   const n = /\d+/.exec(s.speed ?? '')
@@ -120,10 +126,11 @@ export interface Dnd5eNumber {
  * Aim), −5 ft per Exhaustion level (SRD 5.2.1 p. 181).
  */
 export function speedNow(s: Dnd5eSheet, level = 0): Dnd5eNumber & { others: string } {
-  const base = walkSpeed(s)
-  const lines = [`${base} ft on the sheet`]
+  const form = formNow(s)
+  const base = walkSpeed(form ?? s)
+  const lines = [form ? `${base} ft: the ${form.name}’s` : `${base} ft on the sheet`]
   const moves = activeEffectDefs(s).flatMap((d) => (d.moves ? [`${d.moves} (${d.name})`] : []))
-  const others = [(s.speed ?? '').split(',').slice(1).join(',').trim(), ...moves]
+  const others = [((form ?? s).speed ?? '').split(',').slice(1).join(',').trim(), ...moves]
     .filter(Boolean)
     .join(', ')
   const zero = conditionRules(s).filter((r) => r.speedZero)
@@ -194,8 +201,9 @@ export const modifiersNow = (s: Dnd5eSheet, level: number) =>
  */
 export function acNow(s: Dnd5eSheet, level: number): Dnd5eNumber {
   const hero = dnd5eHero(s, level)
-  const lines = [`AC ${s.ac} on the sheet`]
-  let v = s.ac
+  const form = formNow(s)
+  const lines = form ? [`AC ${form.ac}: the ${form.name}’s`] : [`AC ${s.ac} on the sheet`]
+  let v = form ? form.ac : s.ac
   const fx = activeEffectDefs(s)
   const shield = wearsShield(s) ? 2 : 0
   for (const d of fx) {

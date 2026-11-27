@@ -8,7 +8,7 @@
 // damage spells cast from here (useDnd5eCasting). Abilities: features that deal damage (Breath
 // Weapon). Each card offers its riders (Brutal Strike, Cunning Strike, maneuvers, Arcane Shots,
 // Divine Strike…, utils/dnd5eRiders.ts) as chips that Roll applies; the other maneuvers that
-// spend a die show under "Other maneuvers".
+// spend a die show under "Other maneuvers". In Wild Shape the form's attacks replace the weapons.
 import type { Dnd5eSheet, Dnd5eWeapon } from '~/types/sheets'
 import { showOutcome, sign } from '~/utils/dice'
 import {
@@ -35,6 +35,7 @@ import {
   riderPlan,
 } from '~/utils/dnd5eRiders'
 import { levelName, spellCost } from '~/utils/dnd5eSpells'
+import { activeForm, beastAttack } from '~/utils/dnd5eWildShape'
 import { tipText } from '~/utils/ruleTips'
 
 const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
@@ -101,6 +102,16 @@ const cards = computed<Card[]>(() => {
     })
   })
   const none = { twoHands: false, thrown: false, offhand: false, long: false }
+  const form = activeForm(sheet.value)
+  if (form)
+    return form.attacks.map((a, i) => ({
+      key: `beast:${i}`,
+      w: null,
+      plan: beastAttack(sheet.value, level.value, form, i, { target: t }),
+      props: [{ label: `${form.name} · Wild Shape` }],
+      masteryName: '',
+      canGrip: none,
+    }))
   out.push({
     key: 'unarmed',
     w: null,
@@ -240,6 +251,7 @@ const riders = computed(() =>
     </div>
     <Dnd5eTargetAc />
     <SheetSituation chips-label="Next attack" :chips="chips" :steppers="[]" @toggle="toggleMode" />
+    <Dnd5eAfterRoll pre />
 
     <details class="atk-group" open>
       <summary>

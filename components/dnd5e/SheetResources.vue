@@ -2,18 +2,23 @@
 // The 5e sheet's resources, as Nimble's SheetResources shows mana and the class resource: each
 // limited use (Rage, Channel Divinity, Focus Points, Sorcery Points, Superiority Dice, Lay on
 // Hands…) with what's left, when it comes back and −/+; Font of Magic's conversions (SRD 5.2.1
-// p. 66), Arcane Recovery (p. 77) and Magical Cunning (p. 72) beside theirs; and Concentration,
+// p. 66), Arcane Recovery (p. 77) and Magical Cunning (p. 72) beside theirs; a use bought back
+// with a slot or another resource where a feature allows it; and Concentration,
 // its own panel while the hero concentrates (p. 179). Rules in utils/dnd5ePlay.ts and
 // utils/dnd5eSpells.ts.
 import type { Dnd5eSheet } from '~/types/sheets'
-import { endConcentration, restoreUses, spendUses, usesLeft } from '~/utils/dnd5ePlay'
+import { dnd5eHero, endConcentration, restoreUses, spendUses, usesLeft } from '~/utils/dnd5ePlay'
 import {
   FONT_COST,
   SORCERY_POINTS,
   arcaneRecovery,
   levelName,
   magicalCunning,
+  type Dnd5eRestoreCost,
   pointsToSlot,
+  restoreCost,
+  restoreSlots,
+  restoreUse,
   slotToPoints,
   slotsLeft,
   slotsMax,
@@ -21,8 +26,41 @@ import {
 
 const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
 const { claim, resultIn } = useResultOwner()
+const { entries } = useDnd5eSheet()
 const sheet = computed(() => draft.value.sheet)
 const level = computed(() => draft.value.level)
+
+/**
+ * What gives each resource a use back early: its feature's `restore` (a level 5 slot, a
+ * Superiority Die), Font of Inspiration's spell slot for Bardic Inspiration (SRD 5.2.1 p. 34),
+ * Mystic Focus's slot for Focus Points by its level, Wild Resurgence's slot for Wild Shape.
+ */
+const restores = computed(() => {
+  const hero = dnd5eHero(sheet.value, level.value)
+  const out: Record<string, Dnd5eRestoreCost> = {}
+  for (const e of entries.value) {
+    const c = e.resource === e.name ? restoreCost(e.restore) : null
+    if (c && !out[e.name]) out[e.name] = c
+  }
+  if (hero.has('Font of Inspiration')) out['Bardic Inspiration'] = { slot: 1, n: 1 }
+  if (hero.has('Mystic Focus')) out['Monk’s Focus'] = { slot: 1, n: 1, perLevel: true }
+  if (hero.has('Wild Resurgence')) out['Wild Shape'] = { slot: 1, n: 1 }
+  return out
+})
+const restoreAt = ref<Record<string, number>>({})
+
+function restoreLabel(c: Dnd5eRestoreCost) {
+  if (c.slot === 'pact') return 'a Pact slot'
+  if (c.slot) return c.slot > 1 ? `a level ${c.slot}+ slot` : 'a spell slot'
+  return `${c.n} ${c.resource}`
+}
+
+function restore(name: string) {
+  const c = restores.value[name]
+  if (!canEdit.value || !c) return
+  const at = restoreAt.value[name] ?? restoreSlots(sheet.value, c)[0]
+  run(name, restoreUse(sheet.value, name, c, at))
+}
 
 const RECHARGE = { short: 'Short Rest', long: 'Long Rest', dawn: 'dawn', turn: 'turn' }
 const resources = computed(() =>
@@ -100,6 +138,8 @@ function stopConcentrating() {
       </p>
     </section>
 
+    <Dnd5eWildShape v-if="resources.some((r) => r.name === 'Wild Shape')" />
+
     <section v-if="resources.length" class="panel stack" aria-labelledby="res-h">
       <UiFold name="Resources" />
       <div class="title-help">
@@ -145,6 +185,34 @@ function stopConcentrating() {
             </button>
           </div>
           <small class="muted">{{ r.dice ? `${r.dice} · ` : '' }}back on a {{ r.back }}</small>
+
+          <div v-if="restores[r.name]" class="font">
+            <select
+              v-if="restoreSlots(sheet, restores[r.name]!).length > 1"
+              class="input input--sm"
+              :aria-label="`Slot to spend on ${r.name}`"
+              :value="restoreAt[r.name] ?? restoreSlots(sheet, restores[r.name]!)[0]"
+              @change="
+                restoreAt = {
+                  ...restoreAt,
+                  [r.name]: Number(($event.target as HTMLSelectElement).value),
+                }
+              "
+            >
+              <option v-for="l in restoreSlots(sheet, restores[r.name]!)" :key="l" :value="l">
+                {{ levelName(l) }} slot
+              </option>
+            </select>
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm"
+              :disabled="!canEdit || r.left >= r.max"
+              :title="`Spend ${restoreLabel(restores[r.name]!)} to get a use back`"
+              @click="restore(r.name)"
+            >
+              Restore with {{ restoreLabel(restores[r.name]!) }}
+            </button>
+          </div>
 
           <div v-if="r.name === SORCERY_POINTS && slotLevels.length" class="font">
             <label class="sr-only" for="font-slot">Slot level</label>
