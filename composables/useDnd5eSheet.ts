@@ -3,9 +3,9 @@ import { type Dnd5eData, loadDnd5e } from '~/data/dnd5e'
 import type { Dnd5eSheet } from '~/types/sheets'
 import type { Dnd5eColumns, Dnd5eTarget } from '~/utils/dnd5eAttacks'
 import { DND5E_BUILD_SETS, type Dnd5eBuildData, walkDnd5e } from '~/utils/dnd5eBuild'
-import { type Dnd5eEntry, heroEntries } from '~/utils/dnd5eFeatures'
+import { type Dnd5eEntry, heroColumns, heroEntries } from '~/utils/dnd5eFeatures'
 import { isBuiltDnd5e } from '~/utils/dnd5eLevelUp'
-import type { D20Mode } from '~/utils/dnd5ePlay'
+import { acNow, type D20Mode } from '~/utils/dnd5ePlay'
 import type { Dnd5eLastRoll } from '~/utils/dnd5eRerolls'
 
 /** The data sets the 5e sheet plays from (magic items load when the inventory asks). */
@@ -15,7 +15,7 @@ type SheetData = Pick<Dnd5eData, (typeof SETS)[number]>
 export interface Dnd5eSheetApi {
   /** The data, once loaded (null until then, or when it failed: the sheet still works from what it holds). */
   data: ShallowRef<SheetData | null>
-  /** The class table's columns at the hero's level ("Rage Damage", "Sneak Attack"). */
+  /** Each class's table columns at that class's level ("Rage Damage", "Sneak Attack"). */
   columns: ComputedRef<Dnd5eColumns>
   /** Every feature, trait, feat and option as a usable entry. */
   entries: ComputedRef<Dnd5eEntry[]>
@@ -34,10 +34,11 @@ export const DND5E_SHEET: InjectionKey<Dnd5eSheetApi> = Symbol('dnd5e-sheet')
 
 /**
  * Loads the 5e data for the sheet in the current sheet editor and provides what its panels
- * share: the class columns, the feature entries, the Target row and the attack's odds.
+ * share: the class columns, the feature entries, the Target row and the attack's odds. Saves the
+ * hero's AC now as `currentAc` when it or the base AC changes, never on load.
  */
 export function provideDnd5eSheet(): Dnd5eSheetApi {
-  const { draft } = useSheet<Dnd5eSheet>()
+  const { draft, canEdit } = useSheet<Dnd5eSheet>()
   const data = shallowRef<SheetData | null>(null)
   onMounted(async () => {
     try {
@@ -49,10 +50,7 @@ export function provideDnd5eSheet(): Dnd5eSheetApi {
   })
   const sheet = computed(() => draft.value.sheet)
   const level = computed(() => draft.value.level)
-  const columns = computed<Dnd5eColumns>(() => {
-    const cls = data.value?.classes.find((c) => c.slug === sheet.value.classSlug)
-    return cls?.levels.find((l) => l.level === level.value)?.columns ?? {}
-  })
+  const columns = computed<Dnd5eColumns>(() => heroColumns(sheet.value, level.value, data.value))
   const entries = computed(() => heroEntries(sheet.value, level.value, data.value, columns.value))
   const build = computed(() => {
     const s = sheet.value
@@ -63,6 +61,11 @@ export function provideDnd5eSheet(): Dnd5eSheetApi {
       data.value as Dnd5eBuildData,
       s.abilities,
     )
+  })
+  watch([() => acNow(sheet.value, level.value).value, () => sheet.value.ac], ([value, base]) => {
+    const now = sheet.value.currentAc
+    if (canEdit.value && (now?.value !== value || now.base !== base))
+      sheet.value.currentAc = { value, base }
   })
   const id = draft.value.id
   const target = useState<Dnd5eTarget>(`dnd5e-target-${id}`, () => ({ ac: null }))

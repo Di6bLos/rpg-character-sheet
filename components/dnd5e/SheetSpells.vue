@@ -7,17 +7,14 @@
 // it casts with
 // (slot levels to upcast, a pact slot, free casts, a Ritual), Cast and the result, and "Heal
 // yourself" for healing. Spellbook spells not prepared fold away (rituals only, with Ritual
-// Adept). Casting is useDnd5eCasting's (utils/dnd5eSpells.ts, SRD 5.2.1 pp. 104–106).
-import type { Dnd5eSheet, Dnd5eSpellRef } from '~/types/sheets'
+// Adept). A multiclass hero (SRD 5.2.1 p. 25) sees the shared slots and the Pact Magic row on
+// top, then each spellcasting class's spells under its own attack, DC and highest spell level;
+// spells from elsewhere (a feat, an invocation) follow. Casting is useDnd5eCasting's, the
+// slots useDnd5eSpellSlots' (utils/dnd5eSpells.ts, SRD 5.2.1 pp. 104–106).
+import type { Dnd5eClassCasting, Dnd5eSheet, Dnd5eSpellRef } from '~/types/sheets'
 import { sign } from '~/utils/dice'
-import {
-  levelName,
-  pactLeft,
-  slotsLeft,
-  slotsMax,
-  spellCost,
-  spellNumbers,
-} from '~/utils/dnd5eSpells'
+import { classOfSource } from '~/utils/dnd5ePlay'
+import { levelName, spellCost, spellNumbers } from '~/utils/dnd5eSpells'
 import { loreHtml } from '~/utils/loreText'
 import { tipText } from '~/utils/ruleTips'
 
@@ -32,33 +29,54 @@ const nums = computed(() =>
   sc.value ? spellNumbers(sheet.value, level.value, { ability: sc.value.ability }) : null,
 )
 
+const { levels, pact, toggleSlot, togglePact, casters } = useDnd5eSpellSlots()
+const multi = computed(() => casters.value.length > 0)
+
 const known = computed(() => casting.spells.value.filter((r) => !r.book))
 const book = computed(() => casting.spells.value.filter((r) => r.book))
-const groups = computed(() =>
-  Array.from({ length: 10 }, (_, lvl) => ({
-    level: lvl,
-    spells: known.value.filter((r) => r.level === lvl),
-    max: lvl ? (slotsMax(sheet.value)[lvl - 1] ?? 0) : 0,
-    left: lvl ? (slotsLeft(sheet.value)[lvl - 1] ?? 0) : 0,
-  })).filter((g) => g.spells.length || g.max),
-)
 
-function toggleSlot(lvl: number, n: number) {
-  if (!canEdit.value) return
-  const max = slotsMax(sheet.value)[lvl - 1] ?? 0
-  const left = slotsLeft(sheet.value)[lvl - 1] ?? 0
-  const used = [...(sheet.value.slotsUsed ?? [])]
-  while (used.length < 9) used.push(0)
-  used[lvl - 1] = n <= left ? max - n + 1 : max - n
-  sheet.value.slotsUsed = used
+/** Spells by level; on one class each level carries its slots. */
+function groupsOf(spells: Dnd5eSpellRef[], withSlots: boolean) {
+  return Array.from({ length: 10 }, (_, lvl) => {
+    const row = withSlots && lvl ? levels.value.find((l) => l.level === lvl) : undefined
+    return {
+      level: lvl,
+      spells: spells.filter((r) => r.level === lvl),
+      max: row?.max ?? 0,
+      left: row?.left ?? 0,
+    }
+  }).filter((g) => g.spells.length || g.max)
 }
 
-function togglePact(n: number) {
-  const p = sc.value?.pact
-  if (!canEdit.value || !p) return
-  const left = pactLeft(sheet.value)
-  sheet.value.pactUsed = n <= left ? p.slots - n + 1 : p.slots - n
+interface Section {
+  key: string
+  cc: Dnd5eClassCasting | null
+  title: string
+  groups: ReturnType<typeof groupsOf>
 }
+
+/** One section on one class; a multiclass hero's spells by the class they come from. */
+const sections = computed<Section[]>(() => {
+  if (!multi.value)
+    return [{ key: 'all', cc: null, title: '', groups: groupsOf(known.value, true) }]
+  const by = new Map<string, Dnd5eSpellRef[]>()
+  for (const r of known.value) {
+    const slug = classOfSource(sheet.value, r.from)?.slug ?? ''
+    const key = casters.value.some((c) => c.cc.classSlug === slug) ? slug : ''
+    by.set(key, [...(by.get(key) ?? []), r])
+  }
+  const out: Section[] = casters.value.map((c) => ({
+    key: c.cc.classSlug,
+    cc: c.cc,
+    title: c.cc.className,
+    groups: groupsOf(by.get(c.cc.classSlug) ?? [], false),
+  }))
+  const other = by.get('') ?? []
+  if (other.length)
+    out.push({ key: 'other', cc: null, title: 'Other spells', groups: groupsOf(other, false) })
+  return out
+})
+const casterOf = (slug: string) => casters.value.find((c) => c.cc.classSlug === slug)
 
 function meta(r: Dnd5eSpellRef) {
   const d = casting.defOf(r.slug)
@@ -102,10 +120,51 @@ const components = (r: Dnd5eSpellRef) => {
           text="Casting spends a slot of the spell's level or higher (a higher slot upcasts it); on your turn only one spell slot is spent (SRD 5.2.1 p. 105). Cantrips grow at levels 5, 11 and 17. A Ritual spell can be cast without a slot, 10 minutes longer. Concentration: one spell at a time (p. 179). Your save DC is 8 + your ability modifier + PB, your spell attack that modifier + PB (p. 106)."
         />
       </div>
-      <span v-if="sc" class="small muted">{{ sc.ability }} · {{ sc.list }}</span>
+      <span v-if="sc && !multi" class="small muted">{{ sc.ability }} · {{ sc.list }}</span>
     </div>
 
-    <div v-if="nums" class="head">
+    <div v-if="multi" class="slot-rows">
+      <div v-for="l in levels" :key="l.level" class="slot-row">
+        <span class="caps">{{ l.label }}</span>
+        <span
+          class="slots"
+          role="group"
+          :aria-label="`${l.left} of ${l.max} ${l.label} slots left`"
+        >
+          <button
+            v-for="n in Math.max(l.max, l.left)"
+            :key="n"
+            type="button"
+            class="slot"
+            :class="{ on: n <= l.left }"
+            :aria-label="`${l.label} slot ${n}`"
+            :aria-pressed="n <= l.left"
+            :disabled="!canEdit"
+            @click="toggleSlot(l.level, n)"
+          />
+        </span>
+        <small>{{ l.left }} / {{ l.max }}</small>
+      </div>
+      <div v-if="pact" class="slot-row">
+        <span class="caps">Pact Magic · {{ pact.label }}</span>
+        <span class="slots" role="group" aria-label="Pact Magic slots">
+          <button
+            v-for="n in pact.slots"
+            :key="n"
+            type="button"
+            class="slot"
+            :class="{ on: n <= pact.left }"
+            :aria-label="`Pact slot ${n}`"
+            :aria-pressed="n <= pact.left"
+            :disabled="!canEdit"
+            @click="togglePact(n)"
+          />
+        </span>
+        <small>{{ pact.left }} / {{ pact.slots }}</small>
+      </div>
+    </div>
+
+    <div v-else-if="nums" class="head">
       <div class="tile head__tile">
         <span class="tile__label">Spell attack</span>
         <span class="tile__value">{{ sign(nums.attack) }}</span>
@@ -114,17 +173,17 @@ const components = (r: Dnd5eSpellRef) => {
         <span class="tile__label">Save DC</span>
         <span class="tile__value">{{ nums.dc }}</span>
       </div>
-      <div v-if="sc?.pact" class="tile head__tile">
-        <span class="tile__label">Pact slots · level {{ sc.pact.level }}</span>
+      <div v-if="pact" class="tile head__tile">
+        <span class="tile__label">Pact slots · level {{ pact.level }}</span>
         <span class="slots" role="group" aria-label="Pact Magic slots">
           <button
-            v-for="n in sc.pact.slots"
+            v-for="n in pact.slots"
             :key="n"
             type="button"
             class="slot"
-            :class="{ on: n <= pactLeft(sheet) }"
+            :class="{ on: n <= pact.left }"
             :aria-label="`Pact slot ${n}`"
-            :aria-pressed="n <= pactLeft(sheet)"
+            :aria-pressed="n <= pact.left"
             :disabled="!canEdit"
             @click="togglePact(n)"
           />
@@ -132,113 +191,130 @@ const components = (r: Dnd5eSpellRef) => {
       </div>
     </div>
 
-    <details v-for="g in groups" :key="g.level" class="tier" open>
-      <summary class="rank-head">
-        <span class="caps">{{ g.level ? levelName(g.level) : 'Cantrips' }}</span>
-        <span
-          v-if="g.max || g.left"
-          class="slots"
-          role="group"
-          :aria-label="`${g.left} of ${g.max} ${levelName(g.level)} slots left`"
-          @click.prevent
+    <template v-for="sec in sections" :key="sec.key">
+      <div v-if="sec.title" class="caster">
+        <strong>{{ sec.title }}</strong>
+        <span v-if="sec.cc" class="small muted"
+          >{{ sec.cc.ability }} · spell attack
+          {{ sign(casterOf(sec.key)?.attack ?? sec.cc.attack) }} ·
+          <span :class="{ 'is-changed': casterOf(sec.key)?.changed }"
+            >save DC {{ casterOf(sec.key)?.dc ?? sec.cc.saveDc }}</span
+          >
+          ·
+          {{ sec.cc.maxSpellLevel ? `up to ${levelName(sec.cc.maxSpellLevel)}` : 'cantrips' }}</span
         >
-          <button
-            v-for="n in Math.max(g.max, g.left)"
-            :key="n"
-            type="button"
-            class="slot"
-            :class="{ on: n <= g.left }"
-            :aria-label="`${levelName(g.level)} slot ${n}`"
-            :aria-pressed="n <= g.left"
-            :disabled="!canEdit"
-            @click="toggleSlot(g.level, n)"
-          />
-        </span>
-        <small v-if="g.max">{{ g.left }} / {{ g.max }}</small>
-      </summary>
-      <div class="spell-grid">
-        <details v-for="r in g.spells" :key="r.slug" name="dnd5e-spell" class="tile spell">
-          <summary class="spell__head">
-            <span class="spell__top">
-              <strong class="spell__name" :title="r.name">{{ r.name }}</strong>
-              <span v-for="t in tags(r)" :key="t.t" class="tag" :title="t.title"
-                ><span aria-hidden="true">{{ t.t }}</span
-                ><span class="sr-only">{{ t.title }}</span></span
-              >
-            </span>
-            <span class="spell__line">
-              <Dnd5eCostPill
-                v-if="casting.defOf(r.slug)"
-                :cost="spellCost(casting.defOf(r.slug)!)"
-                :text="
-                  spellCost(casting.defOf(r.slug)!) === 'time'
-                    ? casting.defOf(r.slug)!.castingTime
-                    : undefined
+        <span v-else class="small muted">each with its own ability</span>
+      </div>
+      <details v-for="g in sec.groups" :key="g.level" class="tier" open>
+        <summary class="rank-head">
+          <span class="caps">{{ g.level ? levelName(g.level) : 'Cantrips' }}</span>
+          <span
+            v-if="g.max || g.left"
+            class="slots"
+            role="group"
+            :aria-label="`${g.left} of ${g.max} ${levelName(g.level)} slots left`"
+            @click.prevent
+          >
+            <button
+              v-for="n in Math.max(g.max, g.left)"
+              :key="n"
+              type="button"
+              class="slot"
+              :class="{ on: n <= g.left }"
+              :aria-label="`${levelName(g.level)} slot ${n}`"
+              :aria-pressed="n <= g.left"
+              :disabled="!canEdit"
+              @click="toggleSlot(g.level, n)"
+            />
+          </span>
+          <small v-if="g.max">{{ g.left }} / {{ g.max }}</small>
+        </summary>
+        <div class="spell-grid">
+          <details v-for="r in g.spells" :key="r.slug" name="dnd5e-spell" class="tile spell">
+            <summary class="spell__head">
+              <span class="spell__top">
+                <strong class="spell__name" :title="r.name">{{ r.name }}</strong>
+                <span v-for="t in tags(r)" :key="t.t" class="tag" :title="t.title"
+                  ><span aria-hidden="true">{{ t.t }}</span
+                  ><span class="sr-only">{{ t.title }}</span></span
+                >
+              </span>
+              <span class="spell__line">
+                <Dnd5eCostPill
+                  v-if="casting.defOf(r.slug)"
+                  :cost="spellCost(casting.defOf(r.slug)!)"
+                  :text="
+                    spellCost(casting.defOf(r.slug)!) === 'time'
+                      ? casting.defOf(r.slug)!.castingTime
+                      : undefined
+                  "
+                />
+                <small>{{ meta(r) }}</small>
+              </span>
+              <span class="spell__gist">{{ gist(r) }}</span>
+            </summary>
+            <div class="spell__body">
+              <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
+              <div
+                class="spell__text"
+                v-html="
+                  loreHtml(casting.defOf(r.slug)?.text ?? casting.defOf(r.slug)?.summary ?? '')
                 "
               />
-              <small>{{ meta(r) }}</small>
-            </span>
-            <span class="spell__gist">{{ gist(r) }}</span>
-          </summary>
-          <div class="spell__body">
-            <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
-            <div
-              class="spell__text"
-              v-html="loreHtml(casting.defOf(r.slug)?.text ?? casting.defOf(r.slug)?.summary ?? '')"
-            />
-            <p v-if="casting.defOf(r.slug)?.higherLevel" class="small muted">
-              <strong>Higher levels.</strong> {{ casting.defOf(r.slug)!.higherLevel }}
-            </p>
-            <p class="small muted">
-              {{ casting.defOf(r.slug)?.school }} · {{ casting.defOf(r.slug)?.castingTime }} ·
-              {{ components(r) }} · from {{ r.from }}
-            </p>
-            <p v-if="casting.damage(r)" class="small dmg">{{ casting.damage(r) }}</p>
-            <div class="spell__act">
-              <select
-                v-if="casting.options(r).length > 1"
-                class="input input--sm"
-                :aria-label="`Cast ${r.name} with`"
-                :value="casting.option(r)?.key"
-                @change="casting.choose(r, ($event.target as HTMLSelectElement).value)"
-              >
-                <option v-for="o in casting.options(r)" :key="o.key" :value="o.key">
-                  {{ o.label }}{{ o.left !== undefined ? ` (${o.left} left)` : '' }}
-                </option>
-              </select>
+              <p v-if="casting.defOf(r.slug)?.higherLevel" class="small muted">
+                <strong>Higher levels.</strong> {{ casting.defOf(r.slug)!.higherLevel }}
+              </p>
+              <p class="small muted">
+                {{ casting.defOf(r.slug)?.school }} · {{ casting.defOf(r.slug)?.castingTime }} ·
+                {{ components(r) }} · from {{ r.from }}
+              </p>
+              <p v-if="casting.damage(r)" class="small dmg">{{ casting.damage(r) }}</p>
+              <div class="spell__act">
+                <select
+                  v-if="casting.options(r).length > 1"
+                  class="input input--sm"
+                  :aria-label="`Cast ${r.name} with`"
+                  :value="casting.option(r)?.key"
+                  @change="casting.choose(r, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option v-for="o in casting.options(r)" :key="o.key" :value="o.key">
+                    {{ o.label }}{{ o.left !== undefined ? ` (${o.left} left)` : '' }}
+                  </option>
+                </select>
+                <button
+                  type="button"
+                  class="btn btn--sm"
+                  :disabled="!canEdit || !!casting.why(r)"
+                  :aria-label="`${casting.why(r) || 'Cast'}, ${r.name}`"
+                  @click="casting.cast(r)"
+                >
+                  {{ casting.why(r) || 'Cast' }}
+                </button>
+              </div>
+              <NimbleDiceEntry
+                v-if="casting.typed.prompt(`spell:${r.slug}`)"
+                :label="casting.typed.prompt(`spell:${r.slug}`)"
+                action="Roll"
+                :disabled="!canEdit"
+                @submit="casting.typed.submit"
+              />
+              <p v-if="resultFor(`spell:${r.slug}`)" class="roll-status" role="status">
+                {{ resultFor(`spell:${r.slug}`) }}
+              </p>
               <button
+                v-if="casting.healed.value?.key === `spell:${r.slug}`"
                 type="button"
-                class="btn btn--sm"
-                :disabled="!canEdit || !!casting.why(r)"
-                :aria-label="`${casting.why(r) || 'Cast'}, ${r.name}`"
-                @click="casting.cast(r)"
+                class="btn btn--ghost btn--sm"
+                :disabled="!canEdit"
+                @click="casting.healSelf()"
               >
-                {{ casting.why(r) || 'Cast' }}
+                Heal yourself {{ casting.healed.value.amount }}
               </button>
             </div>
-            <NimbleDiceEntry
-              v-if="casting.typed.prompt(`spell:${r.slug}`)"
-              :label="casting.typed.prompt(`spell:${r.slug}`)"
-              action="Roll"
-              :disabled="!canEdit"
-              @submit="casting.typed.submit"
-            />
-            <p v-if="resultFor(`spell:${r.slug}`)" class="roll-status" role="status">
-              {{ resultFor(`spell:${r.slug}`) }}
-            </p>
-            <button
-              v-if="casting.healed.value?.key === `spell:${r.slug}`"
-              type="button"
-              class="btn btn--ghost btn--sm"
-              :disabled="!canEdit"
-              @click="casting.healSelf()"
-            >
-              Heal yourself {{ casting.healed.value.amount }}
-            </button>
-          </div>
-        </details>
-      </div>
-    </details>
+          </details>
+        </div>
+      </details>
+    </template>
 
     <details v-if="book.length" class="tier">
       <summary class="caps">Spellbook · not prepared ({{ book.length }})</summary>
@@ -296,6 +372,31 @@ const components = (r: Dnd5eSpellRef) => {
 .head__tile {
   gap: 4px;
   padding: 12px;
+}
+
+.slot-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .caps {
+    min-width: 7.5em;
+  }
+}
+
+.caster {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
 }
 
 .slots {

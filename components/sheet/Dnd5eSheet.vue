@@ -10,7 +10,7 @@
 import type { Dnd5eAbility, Dnd5eSheet } from '~/types/sheets'
 import { abilityMod, sign } from '~/utils/dice'
 import { DND5E_ABILITY_NAME } from '~/utils/dnd5eBuild'
-import { isDead, saveRow } from '~/utils/dnd5ePlay'
+import { classLine, heroClasses, isDead, saveRow } from '~/utils/dnd5ePlay'
 
 const { draft, canEdit } = useSheet<Dnd5eSheet>()
 useHeroHpChanges()
@@ -25,9 +25,12 @@ const dead = computed(() => isDead(sheet.value))
 const turnActive = computed(() => !!sheet.value.turn?.active)
 
 const identityBits = computed(() =>
-  [sheet.value.lineage, sheet.value.class, sheet.value.background, sheet.value.alignment].filter(
-    (b) => b?.trim(),
-  ),
+  [
+    sheet.value.lineage,
+    classLine(sheet.value, level.value, data.value),
+    sheet.value.background,
+    sheet.value.alignment,
+  ].filter((b) => b?.trim()),
 )
 
 const details = computed(() =>
@@ -41,10 +44,10 @@ const details = computed(() =>
   ].filter((d) => d.value.trim() !== ''),
 )
 
-const primary = computed(
-  () =>
-    data.value?.classes.find((c) => c.slug === sheet.value.classSlug)?.primaryAbility.abilities ??
-    [],
+const primary = computed(() =>
+  heroClasses(sheet.value, level.value).flatMap(
+    (t) => data.value?.classes.find((c) => c.slug === t.slug)?.primaryAbility.abilities ?? [],
+  ),
 )
 
 const ABILITIES: Dnd5eAbility[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']

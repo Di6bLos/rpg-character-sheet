@@ -131,8 +131,18 @@ export interface TurnModel {
   pipsLocked?: boolean
   /** PF2e's and 5e's one reaction a round; Nimble tracks reactions by name instead. */
   reaction?: { ready: boolean }
-  /** 5e: the Bonus Action and the free object interaction, circles beside the reaction. */
-  economy?: { key: string; glyph: string; label: string; ready: boolean; title: string }[]
+  /**
+   * 5e: the Bonus Action and the free object interaction, circles beside the reaction, each
+   * captioned with its `short` name.
+   */
+  economy?: {
+    key: string
+    glyph: string
+    label: string
+    short: string
+    ready: boolean
+    title: string
+  }[]
   /** 5e: feet moved this turn out of the movement it has (Dash adds to it). */
   movement?: { used: number; max: number }
   leftText: string

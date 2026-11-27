@@ -89,7 +89,9 @@ const slotLevels = computed(() =>
 )
 const fontSlot = ref(1)
 const recover = ref<number[]>([])
-const recoveryBudget = computed(() => Math.ceil(level.value / 2))
+const recoveryBudget = computed(() =>
+  Math.ceil(dnd5eHero(sheet.value, level.value).levelOf('Arcane Recovery') / 2),
+)
 
 function toggleRecover(l: number) {
   const i = recover.value.indexOf(l)

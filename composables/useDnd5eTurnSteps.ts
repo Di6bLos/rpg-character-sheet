@@ -22,6 +22,7 @@ import {
   onInitiative,
   startTurn,
 } from '~/utils/dnd5ePlay'
+import { dnd5eTurnLeft } from '~/utils/battleActions'
 import { hasEffect } from '~/utils/dnd5eEffects'
 import { type TurnModel, turnSteps, typesInitiative } from '~/utils/turnSteps'
 
@@ -165,7 +166,16 @@ export function useDnd5eTurnSteps(options: { onResult?: (message: string) => voi
     else if (per > 1) bits.push(`The Attack action makes ${per} attacks`)
     if (s.concentration) bits.push(`Concentrating on ${s.concentration.name}`)
     if (isDying(s)) bits.push('Dying: roll a death save at the start of your turn')
-    return bits.join(' · ') || (x.active ? 'Your action, Bonus Action and movement are ready' : '')
+    if (!bits.length && x.active)
+      bits.push(
+        dnd5eTurnLeft({
+          actions: x.actions,
+          bonus: x.bonus,
+          reaction: x.reaction,
+          movement: { used: x.moved, max: movementMax.value },
+        }),
+      )
+    return bits.join(' · ')
   })
 
   const model = computed<TurnModel>(() => {
@@ -184,6 +194,7 @@ export function useDnd5eTurnSteps(options: { onResult?: (message: string) => voi
           key: 'bonus',
           glyph: 'B',
           label: 'Bonus Action',
+          short: 'Bonus',
           ready: x.bonus,
           title: 'Your Bonus Action this turn',
         },
@@ -191,6 +202,7 @@ export function useDnd5eTurnSteps(options: { onResult?: (message: string) => voi
           key: 'object',
           glyph: '✋',
           label: 'object interaction',
+          short: 'Object',
           ready: x.object,
           title: 'One free object interaction this turn (draw a weapon, open a door)',
         },

@@ -9,6 +9,7 @@ import {
   setInitiative as setDnd5eInitiative,
 } from '~/utils/dnd5ePlay'
 import { applyHpChangeFor } from '~/utils/heroHpChange'
+import { jsonKey } from '~/utils/jsonKey'
 import { beginEncounter, endEncounter, initiativeRoll } from '~/utils/nimblePlay'
 import { endPf2eEncounter, inEncounter as pf2eInEncounter, newTurn } from '~/utils/pf2eActions'
 import { acParts } from '~/utils/pf2ePlay'
@@ -74,6 +75,23 @@ export function provideSheetEditor(
 
   let pendingSave: Promise<void> | null = null
 
+  /** The row's editable fields as a save writes them. */
+  function changes() {
+    const { name, level, sheet, portrait_path } = draft.value
+    return {
+      name: name.trim() || 'Unnamed',
+      level,
+      // The sheet is plain JSON (jsonb). A JSON round-trip copies it even when
+      // reactive proxies ended up nested inside (e.g. arrays rebuilt with
+      // .filter() on the reactive draft), which structuredClone rejects.
+      sheet: JSON.parse(JSON.stringify(sheet)) as AnySheet,
+      portrait_path,
+    }
+  }
+
+  /** What the database holds, as `jsonKey`: a save that would write the same is skipped. */
+  let saved = jsonKey(changes())
+
   /**
    * Saves the draft. A call made while a save is in flight runs after it. Each save is
    * tracked per character, so a load elsewhere (the board after a layout swap) waits for it.
@@ -89,7 +107,13 @@ export function provideSheetEditor(
       return saveInOrder()
     }
     if (!canEdit.value || held.value || !dirty.value) return
-    pendingSave = persist()
+    const next = changes()
+    const key = jsonKey(next)
+    if (key === saved) {
+      dirty.value = false
+      return
+    }
+    pendingSave = persist(next, key)
     try {
       await pendingSave
     } finally {
@@ -97,21 +121,13 @@ export function provideSheetEditor(
     }
   }
 
-  async function persist() {
+  async function persist(next: ReturnType<typeof changes>, key: string) {
     saving.value = true
     // Cleared up front so edits made while the request is in flight re-mark it.
     dirty.value = false
     try {
-      const { name, level, sheet, portrait_path } = draft.value
-      await store.save(draft.value.id, {
-        name: name.trim() || 'Unnamed',
-        level,
-        // The sheet is plain JSON (jsonb). A JSON round-trip copies it even when
-        // reactive proxies ended up nested inside (e.g. arrays rebuilt with
-        // .filter() on the reactive draft), which structuredClone rejects.
-        sheet: JSON.parse(JSON.stringify(sheet)) as AnySheet,
-        portrait_path,
-      })
+      await store.save(draft.value.id, next)
+      saved = key
     } catch (err) {
       dirty.value = true
       snackbar.error(err, 'Could not save the sheet')
@@ -153,7 +169,7 @@ export function provideSheetEditor(
       const system = draft.value.system
       if (on === undefined || !canEdit.value || (system !== 'nimble' && system !== 'dnd5e')) return
       const sheet = draft.value.sheet as NimbleSheet | Dnd5eSheet
-      if (sheet.ownDice !== on) sheet.ownDice = on
+      if ((sheet.ownDice ?? false) !== on) sheet.ownDice = on
     },
     { immediate: true },
   )
@@ -163,12 +179,12 @@ export function provideSheetEditor(
   watch(
     () =>
       canEdit.value && draft.value.system === 'pf2e'
-        ? JSON.stringify(acParts(draft.value.sheet as Pf2eSheet))
+        ? jsonKey(acParts(draft.value.sheet as Pf2eSheet))
         : null,
     (parts) => {
       if (parts === null) return
       const sheet = draft.value.sheet as Pf2eSheet
-      if (JSON.stringify(sheet.acParts ?? null) !== parts) sheet.acParts = JSON.parse(parts)
+      if (jsonKey(sheet.acParts ?? null) !== parts) sheet.acParts = JSON.parse(parts)
     },
     { immediate: true },
   )

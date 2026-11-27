@@ -4,7 +4,13 @@
 // Initiative) with Advantage and Disadvantage cancelling, damage and healing, dying and death
 // saves, Concentration, rests and Hit Point Dice, limited uses, and the turn tracker with its
 // action economy. Rules cite the SRD 5.2.1; pure, so tests/dnd5ePlay.test.ts covers it.
-import type { Dnd5eAbility, Dnd5eSheet, Dnd5eTurn } from '~/types/sheets'
+import type {
+  Dnd5eAbility,
+  Dnd5eClassCasting,
+  Dnd5eClassLevel,
+  Dnd5eSheet,
+  Dnd5eTurn,
+} from '~/types/sheets'
 import { DND5E_ABILITIES, DND5E_SKILLS, proficiencyBonus } from '~/utils/dnd5eBuild'
 import {
   activeConditions,
@@ -55,10 +61,110 @@ export interface Dnd5eHero {
   mod: (a: Dnd5eAbility) => number
   classSlug: string
   subclassSlug: string
+  /** A class's level by slug or name (0 without it); a single class is at the hero's level. */
+  classLevel: (cls: string) => number
+  /**
+   * The level of the class a feature comes from, by the feature's name ("Rage" → the Barbarian
+   * level): what "your Monk level" means on a multiclass hero. The hero's level when the feature
+   * isn't a class's (a feat, an invocation) or the hero has one class.
+   */
+  levelOf: (feature: string) => number
+  /** Where a feature comes from, as the sheet records it ("Barbarian 1", "Thief 3"), or ''. */
+  sourceOf: (feature: string) => string
+}
+
+/**
+ * Every class the hero has levels in, the first class first: `classes`, or one class at the
+ * hero's level for a single-class save from before multiclassing or a hand-made sheet.
+ */
+export function heroClasses(s: Dnd5eSheet, level: number): Dnd5eClassLevel[] {
+  if (s.classes?.length) return s.classes
+  const slug = s.classSlug ?? ''
+  return [
+    {
+      slug,
+      name: slug ? slug[0]!.toUpperCase() + slug.slice(1) : s.class,
+      level,
+      hitDie: s.hitDie || 8,
+      ...(s.subclassSlug ? { subclassSlug: s.subclassSlug } : {}),
+    },
+  ]
+}
+
+/** A slug as words, for a name the data doesn't give ("fiend-patron" → "Fiend Patron"). */
+const titled = (slug: string) =>
+  slug.replace(
+    /(^|-)(\w)/g,
+    (_m, dash: string, c: string) => `${dash ? ' ' : ''}${c.toUpperCase()}`,
+  )
+
+/**
+ * The hero's classes as a line: "Paladin 2 / Warlock 3 (Fiend Patron)" from `classes`, or
+ * "Rogue (Thief)" for one class, its names from the data when given. A save from before
+ * `classes` reads `classSlug` / `subclassSlug`; a hand-made sheet keeps its typed `class`.
+ */
+export function classLine(
+  s: Dnd5eSheet,
+  level: number,
+  data?: {
+    classes: { slug: string; name: string }[]
+    subclasses: { slug: string; name: string }[]
+  } | null,
+): string {
+  if (!s.classSlug && !s.classes?.length) return s.class
+  const list = heroClasses(s, level)
+  return list
+    .map((c) => {
+      const name = data?.classes.find((x) => x.slug === c.slug)?.name ?? (c.name || titled(c.slug))
+      const sub = c.subclassSlug
+        ? (c.subclass ??
+          data?.subclasses.find((x) => x.slug === c.subclassSlug)?.name ??
+          titled(c.subclassSlug))
+        : ''
+      return `${name}${list.length > 1 ? ` ${c.level}` : ''}${sub ? ` (${sub})` : ''}`
+    })
+    .join(' / ')
+}
+
+/** The class a feature's source names ("Rogue 3", "Thief 3"): by class or subclass name. */
+export function classOfSource(s: Dnd5eSheet, from: string): Dnd5eClassLevel | undefined {
+  const owner = norm5e(from.replace(/\s+\d+$/, ''))
+  return s.classes?.find(
+    (c) => norm5e(c.name) === owner || (!!c.subclass && norm5e(c.subclass) === owner),
+  )
+}
+
+/**
+ * The casting numbers (DC, attack) of the class a source names, on a hero with more than one
+ * spellcasting class (`castingClasses`); undefined otherwise, when `castingStats` holds them.
+ */
+export function castingFor(s: Dnd5eSheet, from: string): Dnd5eClassCasting | undefined {
+  const slug = from ? classOfSource(s, from)?.slug : undefined
+  return slug ? s.castingClasses?.find((c) => c.classSlug === slug) : undefined
+}
+
+/** The level a feature from `from` counts as its class's level (see `Dnd5eHero.levelOf`). */
+export function sourceLevel(s: Dnd5eSheet, level: number, from: string | undefined): number {
+  if ((s.classes?.length ?? 0) < 2 || !from) return level
+  return classOfSource(s, from)?.level ?? level
 }
 
 export function dnd5eHero(s: Dnd5eSheet, level: number): Dnd5eHero {
   const names = new Set((s.features ?? []).map((f) => norm5e(f.name)))
+  const sources = new Map<string, string>()
+  for (const f of s.features ?? []) {
+    const n = norm5e(f.name)
+    if (f.from && !sources.has(n)) sources.set(n, f.from)
+  }
+  const sourceOf = (feature: string) => {
+    const n = norm5e(feature)
+    return (
+      sources.get(n) ??
+      sources.get(n.replace(/:.*$/, '')) ??
+      [...sources].find(([k]) => k.startsWith(`${n}:`))?.[1] ??
+      ''
+    )
+  }
   const feats = new Set((s.featsTaken ?? []).map((f) => f.slug))
   const options = new Set((s.options ?? []).map((o) => o.slug))
   const slugName = (slug: string) => slug.replace(/-/g, ' ')
@@ -71,6 +177,13 @@ export function dnd5eHero(s: Dnd5eSheet, level: number): Dnd5eHero {
     mod: (a) => abilityMod(s.abilities?.[a] ?? 10),
     classSlug: s.classSlug ?? '',
     subclassSlug: s.subclassSlug ?? '',
+    classLevel: (cls) => {
+      const c = norm5e(cls)
+      if (!s.classes?.length) return !s.classSlug || s.classSlug === c ? level : 0
+      return s.classes.find((x) => x.slug === c || norm5e(x.name) === c)?.level ?? 0
+    },
+    levelOf: (feature) => sourceLevel(s, level, sourceOf(feature)),
+    sourceOf,
   }
 }
 
@@ -154,8 +267,9 @@ export function speedNow(s: Dnd5eSheet, level = 0): Dnd5eNumber & { others: stri
     lines.push('Fast Movement: not in Heavy armor −10 ft')
   }
   if (hero.has('Unarmored Movement') && (wearsArmor(s) || wearsShield(s)) && level) {
-    v -= unarmoredMovement(level)
-    lines.push(`Unarmored Movement: not with armor or a Shield −${unarmoredMovement(level)} ft`)
+    const cut = unarmoredMovement(hero.levelOf('Unarmored Movement'))
+    v -= cut
+    lines.push(`Unarmored Movement: not with armor or a Shield −${cut} ft`)
   }
   for (const m of level ? modifiersNow(s, level) : []) {
     if (m.speed) {
@@ -729,17 +843,18 @@ function keepStanding(s: Dnd5eSheet, hit: Dnd5eHit, taken: number): string {
   }
   if (usesLeft(s, 'Undying Sentinel') > 0) {
     spendUses(s, 'Undying Sentinel')
-    s.hp = Math.min(s.hpMax, 1 + 3 * level)
-    return `Undying Sentinel: you stay at 1 HP and regain ${3 * level} (${s.hp}/${s.hpMax}).`
+    const n = 3 * hero.levelOf('Undying Sentinel')
+    s.hp = Math.min(s.hpMax, 1 + n)
+    return `Undying Sentinel: you stay at 1 HP and regain ${n} (${s.hp}/${s.hpMax}).`
   }
   if (hasEffect(s, 'wrath-of-the-wild') && usesLeft(s, 'Ancient Might: Persistent Wrath') > 0) {
     spendUses(s, 'Ancient Might: Persistent Wrath')
-    s.hp = Math.min(s.hpMax, 2 * level)
+    s.hp = Math.min(s.hpMax, 2 * hero.levelOf('Ancient Might'))
     return `Persistent Wrath: your HP becomes ${s.hp}.`
   }
   if (usesLeft(s, 'Necrotic Husk: Unholy Resuscitation') > 0) {
     spendUses(s, 'Necrotic Husk: Unholy Resuscitation')
-    s.hp = Math.min(s.hpMax, 2 * level)
+    s.hp = Math.min(s.hpMax, 2 * hero.levelOf('Necrotic Husk'))
     setExhaustion(s, exhaustionOf(s) + 1)
     return `Unholy Resuscitation: your HP becomes ${s.hp} and you gain 1 Exhaustion level; chosen creatures within 30 ft make a CON save against 2d10 + CHA Necrotic, half on a success.`
   }
@@ -749,7 +864,7 @@ function keepStanding(s: Dnd5eSheet, hit: Dnd5eHit, taken: number): string {
     s.used = { ...s.used, 'Relentless Rage': uses + 1 }
     const r = rollD20(saveRow(s, level, 'CON').test, hit.rng ? { rng: hit.rng } : {})
     if (!r.failed && r.total >= dc) {
-      s.hp = Math.min(s.hpMax, 2 * level)
+      s.hp = Math.min(s.hpMax, 2 * hero.levelOf('Relentless Rage'))
       return `Relentless Rage: DC ${dc} CON save ${r.total}, your HP becomes ${s.hp}.`
     }
     return `Relentless Rage: DC ${dc} CON save ${r.total}, failed.`
@@ -760,7 +875,7 @@ function keepStanding(s: Dnd5eSheet, hit: Dnd5eHit, taken: number): string {
     const r = rollD20(saveRow(s, level, 'CHA').test, hit.rng ? { rng: hit.rng } : {})
     if (!r.failed && r.total >= dc) {
       spendUses(s, grave)
-      s.hp = Math.min(s.hpMax, Math.max(1, hero.mod('CHA') + level))
+      s.hp = Math.min(s.hpMax, Math.max(1, hero.mod('CHA') + hero.levelOf('Power of Shadow')))
       return `Strength of the Grave: DC ${dc} CHA save ${r.total}, your HP becomes ${s.hp}.`
     }
     return `Strength of the Grave: DC ${dc} CHA save ${r.total}, failed.`
@@ -1037,26 +1152,79 @@ export function concentrationSave(
 
 // --- Rests ---------------------------------------------------------------------------------
 
-export const hitDiceLeft = (s: Dnd5eSheet, level: number) =>
-  Math.max(0, level - (s.hitDiceUsed ?? 0))
+/** One size of Hit Point Dice: how many the hero has, has spent and has left. */
+export interface Dnd5eHitDicePool {
+  die: number
+  count: number
+  used: number
+  left: number
+}
 
 /**
- * Spends a Hit Point Die (SRD 5.2.1 p. 186): the die (rolled, or the player's `roll`) plus the
- * Constitution modifier, at least 1 HP.
+ * The hero's Hit Point Dice by size, largest first (SRD 5.2.1 pp. 24, 186): `hitDice` with
+ * `hitDiceSpent`, or one pool of `hitDie` at the hero's level for a hand-made sheet. A save from
+ * before `hitDiceSpent` counts its `hitDiceUsed` against the largest dice first.
+ */
+export function hitDicePools(s: Dnd5eSheet, level: number): Dnd5eHitDicePool[] {
+  const base = s.hitDice?.length ? s.hitDice : [{ die: s.hitDie || 8, count: level }]
+  let legacy = s.hitDiceSpent ? 0 : (s.hitDiceUsed ?? 0)
+  return [...base]
+    .sort((a, b) => b.die - a.die)
+    .map((p) => {
+      const spent = s.hitDiceSpent ? (s.hitDiceSpent[p.die] ?? 0) : legacy
+      const used = Math.max(0, Math.min(p.count, spent))
+      if (!s.hitDiceSpent) legacy -= used
+      return { die: p.die, count: p.count, used, left: p.count - used }
+    })
+}
+
+export const hitDiceLeft = (s: Dnd5eSheet, level: number) =>
+  hitDicePools(s, level).reduce((n, p) => n + p.left, 0)
+
+/** Marks `n` dice of size `die` spent, keeping `hitDiceUsed` the total. */
+function markHitDice(s: Dnd5eSheet, level: number, die: number, n: number) {
+  const spent: Record<number, number> = {}
+  for (const p of hitDicePools(s, level)) if (p.used) spent[p.die] = p.used
+  spent[die] = (spent[die] ?? 0) + n
+  s.hitDiceSpent = spent
+  s.hitDiceUsed = Object.values(spent).reduce((a, b) => a + b, 0)
+}
+
+/**
+ * Spends `n` Hit Point Dice for a feature (Burning Life Force), the largest left first, and
+ * returns their sizes.
+ */
+export function takeHitDice(s: Dnd5eSheet, level: number, n: number): number[] {
+  const out: number[] = []
+  for (const p of hitDicePools(s, level)) {
+    const k = Math.min(p.left, n - out.length)
+    if (k < 1) continue
+    markHitDice(s, level, p.die, k)
+    out.push(...Array<number>(k).fill(p.die))
+  }
+  return out
+}
+
+/**
+ * Spends a Hit Point Die (SRD 5.2.1 p. 186) of size `die` (the largest left when absent): the
+ * die (rolled, or the player's `roll`) plus the Constitution modifier, at least 1 HP.
  */
 export function spendHitDie(
   s: Dnd5eSheet,
   level: number,
-  o: { roll?: number; rng?: Rng } = {},
+  o: { roll?: number; die?: number; rng?: Rng } = {},
 ): string {
-  if (hitDiceLeft(s, level) < 1) return 'No Hit Point Dice left.'
+  const pools = hitDicePools(s, level).filter((p) => p.left > 0)
+  const pool = pools.find((p) => p.die === o.die) ?? pools[0]
+  if (!pool) return 'No Hit Point Dice left.'
+  if (o.die && pool.die !== o.die) return `No d${o.die} Hit Point Dice left.`
   if (isDead(s)) return 'The hero is dead.'
-  const die = s.hitDie || 8
+  const die = pool.die
   const roll =
     o.roll !== undefined ? Math.max(1, Math.min(die, Math.round(o.roll))) : rollDie(die, o.rng)
   const con = abilityMod(s.abilities.CON)
   const gain = Math.max(1, roll + con)
-  s.hitDiceUsed = (s.hitDiceUsed ?? 0) + 1
+  markHitDice(s, level, die, 1)
   const healed = heal(s, gain)
   return `Hit Point Die d${die}: ${roll} ${sign(con)} = ${gain}. ${healed}`
 }
@@ -1107,7 +1275,7 @@ function restExtras(s: Dnd5eSheet, level: number, kind: 'short' | 'long'): strin
     }
     const sp = s.used?.['Font of Magic'] ?? 0
     if (hero.has('Sorcerous Restoration') && sp && usesLeft(s, 'Sorcerous Restoration') > 0) {
-      const n = Math.min(sp, Math.floor(level / 2))
+      const n = Math.min(sp, Math.floor(hero.levelOf('Sorcerous Restoration') / 2))
       restoreUses(s, 'Font of Magic', n)
       spendUses(s, 'Sorcerous Restoration')
       out.push(`Sorcerous Restoration: ${n} Sorcery Point${n === 1 ? '' : 's'} back.`)
@@ -1132,10 +1300,18 @@ function restExtras(s: Dnd5eSheet, level: number, kind: 'short' | 'long'): strin
       out.push(`Portent: ${s.portent.join(', ')} foretold.`)
     }
     if (hero.has('Runeforging: Blood'))
-      out.push(gainTempHp(s, Math.max(1, hero.mod('CHA')) + level, 'Blood rune'))
+      out.push(
+        gainTempHp(s, Math.max(1, hero.mod('CHA')) + hero.levelOf('Runeforging'), 'Blood rune'),
+      )
   }
   if (hero.has('Celestial Resilience'))
-    out.push(gainTempHp(s, level + Math.max(0, hero.mod('CHA')), 'Celestial Resilience'))
+    out.push(
+      gainTempHp(
+        s,
+        hero.levelOf('Celestial Resilience') + Math.max(0, hero.mod('CHA')),
+        'Celestial Resilience',
+      ),
+    )
   return out
 }
 
@@ -1151,6 +1327,7 @@ export function longRest(s: Dnd5eSheet, level: number): string {
   s.hp = s.hpMax
   s.tempHp = 0
   s.hitDiceUsed = 0
+  delete s.hitDiceSpent
   s.used = {}
   s.slotsUsed = []
   s.pactUsed = 0

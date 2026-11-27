@@ -22,6 +22,7 @@ import type {
 import { addEffect, hasEffect } from '~/utils/dnd5eEffects'
 import {
   type Dnd5eHero,
+  castingFor,
   dnd5eHero,
   heal,
   spendUses,
@@ -131,7 +132,7 @@ const ELEMENTS = ['Cold', 'Fire', 'Lightning', 'Thunder']
 export const DND5E_RIDER_GROUPS: Record<string, Dnd5eRiderGroup> = {
   brutal: {
     label: 'Brutal Strike',
-    max: (h) => (h.level >= 17 && h.has('Improved Brutal Strike') ? 2 : 1),
+    max: (h) => (h.levelOf('Brutal Strike') >= 17 && h.has('Improved Brutal Strike') ? 2 : 1),
     dice: { at: { 9: '1d10', 17: '2d10' } },
     once: 'brutal',
     needs: ['reckless'],
@@ -1136,14 +1137,15 @@ function diceOf(
   return `${c[1] || 1}d${c[2]}`
 }
 
-const plusOf = (hero: Dnd5eHero, plus: Dnd5eRiderPart['plus']) =>
+/** A rider's flat amount; "level" is the level of the class whose feature it is. */
+const plusOf = (hero: Dnd5eHero, plus: Dnd5eRiderPart['plus'], level = hero.level) =>
   (plus ?? []).reduce(
     (n, p) =>
       n +
       (p === 'level'
-        ? hero.level
+        ? level
         : p === 'half'
-          ? Math.floor(hero.level / 2)
+          ? Math.floor(level / 2)
           : p === 'PB'
             ? hero.pb
             : Math.max(1, hero.mod(p))),
@@ -1170,7 +1172,7 @@ export interface Dnd5eRiderOption {
 
 /** True when the sheet has the feature (and the `also` one), and the level it needs. */
 function hasRider(hero: Dnd5eHero, d: Dnd5eRiderDef): boolean {
-  if (d.minLevel && hero.level < d.minLevel) return false
+  if (d.minLevel && hero.levelOf(d.feature) < d.minLevel) return false
   if (d.also && !hero.has(d.also)) return false
   if (!d.feature) return true
   return hero.has(d.feature)
@@ -1224,12 +1226,13 @@ export function attackRiders(
     const sneakDice = parseDice(plan.extras.find((e) => e.once === 'sneak')?.dice ?? '')
     if (!why && d.sneakCost && (sneakDice?.count ?? 0) < d.sneakCost)
       why = `Needs ${d.sneakCost}d6 of Sneak Attack`
+    const classLevel = d.feature ? hero.levelOf(d.feature) : level
     const own = d.dice
       ? d.key === 'wails'
         ? `${Math.ceil((sneakDice?.count ?? 0) / 2)}d6`
-        : diceOf(s, level, d.dice, ctx.columns)
+        : diceOf(s, classLevel, d.dice, ctx.columns)
       : ''
-    const flat = plusOf(hero, d.plus)
+    const flat = plusOf(hero, d.plus, classLevel)
     const types =
       typeof d.type === 'string'
         ? [d.type]
@@ -1241,10 +1244,14 @@ export function attackRiders(
     const save = d.save
       ? {
           ability: d.save.ability,
-          dc: abilityDc(hero, d.save.dc, s.castingStats?.saveDc),
+          dc: abilityDc(
+            hero,
+            d.save.dc,
+            castingFor(s, hero.sourceOf(d.feature))?.saveDc ?? s.castingStats?.saveDc,
+          ),
         }
       : undefined
-    const base = g?.dice ? diceOf(s, level, g.dice, ctx.columns) : ''
+    const base = g?.dice ? diceOf(s, classLevel, g.dice, ctx.columns) : ''
     const numbers = [
       base ? `${g!.label} ${base}` : '',
       d.sneakCost ? `costs ${d.sneakCost}d6 of Sneak Attack` : '',

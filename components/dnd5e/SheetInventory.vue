@@ -290,7 +290,7 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
         v-model="adding"
         class="input"
         list="d5-catalog"
-        placeholder="Add an item (from the rules, or write one in)"
+        placeholder="Add or write in an item"
         :disabled="!canEdit"
         @focus="loadMagic"
       />
@@ -353,6 +353,11 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
   // A wrapped row keeps the name's 44px touch target off the buttons under it.
   @media (pointer: coarse) {
     min-height: 44px;
+
+    > :deep(.help) {
+      min-height: 44px;
+      align-items: center;
+    }
   }
 }
 

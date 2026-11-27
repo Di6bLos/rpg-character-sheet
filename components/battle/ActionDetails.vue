@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // An action's details on touch, opened by a tap on its tile (a tap never uses it): the
 // name, kind and tier line, costs, the rules text, why it is unavailable, its picks
-// (Opportunity Attack, Help) or upcast stepper (a 5e spell: how to cast it), and one big
+// (Opportunity Attack, Help) or upcast stepper (a 5e spell: how to cast it), a 5e weapon's
+// grips and Sneak Attack (BattleGrips), and one big
 // button that uses it. A 5e tile shows its cost ("Bonus Action") and its odds line. On a
 // phone it is a bottom sheet (UiDialog, closed by Escape, the backdrop or a swipe down);
 // elsewhere a popover under the tile. Using the action closes it. The tile is read live,
@@ -127,6 +128,7 @@ const swipe = computed(() =>
           :disabled="readonly"
           @set="a.upcast.set"
         />
+        <BattleGrips v-if="a.grips?.length" :name="a.name" :grips="a.grips" :disabled="readonly" />
         <button
           type="button"
           class="btn btn--block det__use"
@@ -260,6 +262,9 @@ const swipe = computed(() =>
   min-height: 48px;
   width: 100%;
   justify-content: center;
+  padding-block: 8px;
+  white-space: normal;
+  text-align: center;
 }
 
 .det__odds {

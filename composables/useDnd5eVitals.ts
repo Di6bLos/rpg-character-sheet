@@ -9,6 +9,7 @@ import {
   dnd5eHero,
   heal,
   hitDiceLeft,
+  hitDicePools,
   initiativeTest,
   isDead,
   isDying,
@@ -154,8 +155,12 @@ export function useDnd5eVitals() {
     )
   }
 
-  function hitDie(values?: number[]) {
+  /** The Hit Point Die size being spent (a multiclass hero picks one). */
+  const hdDie = ref<number | null>(null)
+
+  function hitDie(values?: number[], die = hdDie.value) {
     if (!canEdit.value) return
+    hdDie.value = die
     if (ownDice.value && !values) {
       typing.value = 'hd'
       return
@@ -163,7 +168,12 @@ export function useDnd5eVitals() {
     typing.value = null
     const roll = values?.[0]
     claim('vit:rest', () =>
-      say(spendHitDie(sheet.value, level.value, roll !== undefined ? { roll } : {})),
+      say(
+        spendHitDie(sheet.value, level.value, {
+          ...(roll !== undefined ? { roll } : {}),
+          ...(die ? { die } : {}),
+        }),
+      ),
     )
   }
 
@@ -267,6 +277,9 @@ export function useDnd5eVitals() {
   const shortOpen = ref(false)
   const longOpen = ref(false)
   const diceLeft = computed(() => hitDiceLeft(sheet.value, level.value))
+  /** Hit Point Dice by size, largest first; one pool unless the hero has several classes. */
+  const pools = computed(() => hitDicePools(sheet.value, level.value))
+  const diceMax = computed(() => pools.value.reduce((n, p) => n + p.count, 0))
 
   function confirmShort() {
     shortOpen.value = false
@@ -316,6 +329,7 @@ export function useDnd5eVitals() {
     rollDeath,
     rollConcentration,
     hitDie,
+    hdDie,
     setSaves,
     speed,
     init,
@@ -334,6 +348,8 @@ export function useDnd5eVitals() {
     shortOpen,
     longOpen,
     diceLeft,
+    pools,
+    diceMax,
     confirmShort,
     confirmLong,
     toggleInspiration,

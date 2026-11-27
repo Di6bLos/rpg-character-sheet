@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   castReason,
   dnd5eReadyNote,
+  dnd5eTurnLeft,
   oddsLine,
   guarded,
   reactionReason,
@@ -14,7 +15,7 @@ import {
   type BattleAction,
 } from '../utils/battleActions'
 import { counterCost, usableOffTurn } from '../utils/nimblePlay'
-import { beginEncounter, costWhy, setInitiative, startTurn } from '../utils/dnd5ePlay'
+import { beginEncounter, costWhy, payCost, setInitiative, startTurn } from '../utils/dnd5ePlay'
 import { build } from './helpers/dnd5e'
 
 function act(patch: Partial<BattleAction> = {}): BattleAction {
@@ -387,6 +388,29 @@ describe('5e tiles', () => {
     ).toBe("Action used · Bonus Action used · Reaction ready · hiding 1 you can't use now")
     expect(dnd5eReadyNote(fives, { onTurn: false, ...turn, reaction: false })).toBe(
       'Not your turn · Reaction used · only reactions and free options',
+    )
+  })
+
+  it("follows what the hero's turn spends: the action, Bonus Action, Reaction and movement", () => {
+    const { sheet } = build('fighter')
+    const level = 1
+    beginEncounter(sheet)
+    setInitiative(sheet, 12)
+    startTurn(sheet, level)
+    const left = () => {
+      const t = sheet.turn!
+      return dnd5eTurnLeft({ ...t, movement: { used: t.moved, max: 30 } })
+    }
+    expect(left()).toBe('1 action left · Bonus Action ready · Reaction ready · 30 ft to move')
+    payCost(sheet, level, 'action')
+    payCost(sheet, level, 'bonus')
+    sheet.turn!.moved = 25
+    expect(left()).toBe('Action used · Bonus Action used · Reaction ready · 5 ft to move')
+    payCost(sheet, level, 'reaction')
+    sheet.turn!.moved = 40
+    expect(left()).toBe('Action used · Bonus Action used · Reaction used · 0 ft to move')
+    expect(dnd5eReadyNote([], { onTurn: true, ...sheet.turn!, movement: null })).toBe(
+      'Action used · Bonus Action used · Reaction used',
     )
   })
 })
