@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // The 5e sheet's Spells, laid out like Nimble's and PF2e's: the spell attack and save DC, slot
 // pips per level and the Pact Magic slots (tap to spend or restore), then cantrips and each
-// spell level folding, every spell a card (`.tile.spell`): name with its text on hover, school,
-// cost, Concentration and Ritual tags, range and duration; open, its text, what it casts with
+// spell level folding, every spell a card (`.tile.spell`) of the same three lines: name and its
+// C / R / Always / Free tags, cost, range, duration and school, and the summary clamped to two
+// lines (left out on a phone); open, it spans the grid with its text, what it casts with
 // (slot levels to upcast, a pact slot, free casts, a Ritual), Cast and the result, and "Heal
 // yourself" for healing. Spellbook spells not prepared fold away (rituals only, with Ritual
 // Adept). Casting is useDnd5eCasting's (utils/dnd5eSpells.ts, SRD 5.2.1 pp. 104–106).
@@ -67,13 +68,21 @@ function meta(r: Dnd5eSpellRef) {
 function tags(r: Dnd5eSpellRef) {
   const d = casting.defOf(r.slug)
   return [
-    ...(d?.concentration ? [{ t: 'Conc.', title: 'Concentration: one such spell at a time' }] : []),
-    ...(d?.ritual
-      ? [{ t: 'Ritual', title: 'Ritual: cast it without a slot, 10 minutes longer' }]
-      : []),
-    ...(r.always ? [{ t: 'Always prepared', title: `Always prepared (${r.from})` }] : []),
-    ...(r.free ? [{ t: 'Free cast', title: `Free cast from ${r.from}` }] : []),
+    ...(d?.concentration ? [{ t: 'C', title: 'Concentration: one such spell at a time' }] : []),
+    ...(d?.ritual ? [{ t: 'R', title: 'Ritual: cast it without a slot, 10 minutes longer' }] : []),
+    ...(r.always ? [{ t: 'Always', title: `Always prepared (${r.from})` }] : []),
+    ...(r.free ? [{ t: 'Free', title: `Free cast from ${r.from}` }] : []),
   ]
+}
+
+function line(r: Dnd5eSpellRef) {
+  const d = casting.defOf(r.slug)
+  return [meta(r), d?.school].filter(Boolean).join(' · ')
+}
+
+function gist(r: Dnd5eSpellRef) {
+  const d = casting.defOf(r.slug)
+  return tipText(d?.summary ?? d?.text ?? '', 200)
 }
 
 const components = (r: Dnd5eSpellRef) => {
@@ -151,19 +160,21 @@ const components = (r: Dnd5eSpellRef) => {
       <div class="spell-grid">
         <details v-for="r in g.spells" :key="r.slug" name="dnd5e-spell" class="tile spell">
           <summary class="spell__head">
-            <strong
-              ><SheetRuleTip
-                :title="r.name"
-                :text="tipText(casting.defOf(r.slug)?.summary ?? casting.defOf(r.slug)?.text ?? '')"
-                >{{ r.name }}</SheetRuleTip
-              ></strong
-            >
-            <span v-if="casting.defOf(r.slug)" class="school">{{
-              casting.defOf(r.slug)!.school
-            }}</span>
-            <Dnd5eCostPill v-if="casting.defOf(r.slug)" :cost="spellCost(casting.defOf(r.slug)!)" />
-            <abbr v-for="t in tags(r)" :key="t.t" class="tag" :title="t.title">{{ t.t }}</abbr>
-            <small>{{ meta(r) }}</small>
+            <span class="spell__top">
+              <strong class="spell__name">{{ r.name }}</strong>
+              <span v-for="t in tags(r)" :key="t.t" class="tag" :title="t.title"
+                ><span aria-hidden="true">{{ t.t }}</span
+                ><span class="sr-only">{{ t.title }}</span></span
+              >
+            </span>
+            <span class="spell__line">
+              <Dnd5eCostPill
+                v-if="casting.defOf(r.slug)"
+                :cost="spellCost(casting.defOf(r.slug)!)"
+              />
+              <small>{{ line(r) }}</small>
+            </span>
+            <span class="spell__gist">{{ gist(r) }}</span>
           </summary>
           <div class="spell__body">
             <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
@@ -229,15 +240,17 @@ const components = (r: Dnd5eSpellRef) => {
       <div class="spell-grid">
         <details v-for="r in book" :key="r.slug" name="dnd5e-spell" class="tile spell">
           <summary class="spell__head">
-            <strong
-              ><SheetRuleTip
-                :title="r.name"
-                :text="tipText(casting.defOf(r.slug)?.summary ?? casting.defOf(r.slug)?.text ?? '')"
-                >{{ r.name }}</SheetRuleTip
-              ></strong
-            >
-            <abbr v-for="t in tags(r)" :key="t.t" class="tag" :title="t.title">{{ t.t }}</abbr>
-            <small>{{ levelName(r.level) }}</small>
+            <span class="spell__top">
+              <strong class="spell__name">{{ r.name }}</strong>
+              <span v-for="t in tags(r)" :key="t.t" class="tag" :title="t.title"
+                ><span aria-hidden="true">{{ t.t }}</span
+                ><span class="sr-only">{{ t.title }}</span></span
+              >
+            </span>
+            <span class="spell__line">
+              <small>{{ [levelName(r.level), line(r)].filter(Boolean).join(' · ') }}</small>
+            </span>
+            <span class="spell__gist">{{ gist(r) }}</span>
           </summary>
           <div class="spell__body">
             <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
@@ -304,20 +317,84 @@ const components = (r: Dnd5eSpellRef) => {
   }
 }
 
-.school {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--page-muted);
+// Every closed card has the same three lines, so the cards of a level line up; an open one takes
+// the whole row.
+.spell-grid {
+  align-items: stretch;
+}
+
+.spell[open] {
+  grid-column: 1 / -1;
+}
+
+.spell > .spell__head {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+.spell__top,
+.spell__line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.spell__name {
+  min-width: 0;
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spell__line small {
+  min-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spell__gist {
+  display: -webkit-box;
+  min-height: calc(2 * 1.45em);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--page-soft);
+}
+
+.spell[open] .spell__gist {
+  display: none;
+}
+
+.spell[open] .spell__name {
+  white-space: normal;
+}
+
+@media (max-width: 560px) {
+  .spell__gist {
+    display: none;
+  }
 }
 
 .tag {
+  flex: none;
   font-size: 10px;
   font-weight: 800;
   padding: 1px 5px;
   border-radius: 4px;
   border: 1px solid var(--line-strong);
   color: var(--page-soft);
-  text-decoration: none;
 }
 
 .spell__text {

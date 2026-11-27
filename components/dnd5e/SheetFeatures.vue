@@ -3,7 +3,8 @@
 // class and subclass features, species traits, feats, then each option group's picks
 // (Eldritch Invocations, Metamagic, maneuvers, Arcane Shots, plans…), every card with where it's
 // from, its cost and uses, its dice and save, and its text (SRD text or Lantern's summary).
-// Using them is in Actions, Reactions and Attacks; the proficiencies close the panel.
+// Using them is in Actions, Reactions and Attacks; the proficiencies close the panel. Each card is
+// a one-line row (name, where it's from, cost and uses) that opens across the grid to its text.
 import type { Dnd5eSheet } from '~/types/sheets'
 import type { Dnd5eEntry } from '~/utils/dnd5eFeatures'
 import { COST_LABEL, usesLeft } from '~/utils/dnd5ePlay'
@@ -91,12 +92,12 @@ const profs = computed(() => {
     <template v-for="g in groups" :key="g.label">
       <h3 class="caps group">{{ g.label }}</h3>
       <div class="abilities">
-        <article v-for="e in g.entries" :key="e.key" class="tile ability">
-          <div class="ability__head">
+        <details v-for="e in g.entries" :key="e.key" class="tile ability">
+          <summary class="ability__head">
             <strong>{{ e.name }}</strong>
             <small>{{ e.from }}</small>
-          </div>
-          <small v-if="detail(e)" class="ability__detail">{{ detail(e) }}</small>
+            <small v-if="detail(e)" class="ability__detail">{{ detail(e) }}</small>
+          </summary>
           <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
           <div v-if="e.text" class="ability__text" v-html="loreHtml(e.text)" />
           <details v-if="e.full" class="full">
@@ -104,7 +105,7 @@ const profs = computed(() => {
             <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
             <div class="ability__text" v-html="loreHtml(e.full)" />
           </details>
-        </article>
+        </details>
       </div>
     </template>
     <p v-if="!groups.length" class="empty">No features recorded yet.</p>
@@ -124,6 +125,78 @@ const profs = computed(() => {
   margin: 6px 0 0;
   font-size: 11px;
   color: var(--accent-text);
+}
+
+.ability {
+  padding: 0;
+  gap: 6px;
+
+  &[open] {
+    grid-column: 1 / -1;
+    border-color: var(--accent);
+  }
+
+  > :not(summary) {
+    margin: 0 14px;
+    max-width: 75ch;
+  }
+
+  > :last-child:not(summary) {
+    margin-bottom: 12px;
+  }
+}
+
+.ability > .ability__head {
+  flex-wrap: nowrap;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  strong {
+    flex: none;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &::after {
+    content: '';
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin: 0 4px 4px auto;
+    border: solid var(--accent-text);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+}
+
+.ability[open] > .ability__head {
+  flex-wrap: wrap;
+
+  strong,
+  small {
+    white-space: normal;
+  }
+
+  &::after {
+    margin-bottom: -4px;
+    transform: rotate(-135deg);
+  }
 }
 
 .ability__detail {
