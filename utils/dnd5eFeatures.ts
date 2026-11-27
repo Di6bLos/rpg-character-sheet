@@ -19,10 +19,14 @@ import {
   type Dnd5eCost,
   costWhy,
   d20Test,
+  castingFor,
+  classOfSource,
   dnd5eHero,
+  heroClasses,
   gainTempHp,
   heal,
   norm5e,
+  sourceLevel,
   payCost,
   restoreUses,
   rollTest,
@@ -332,6 +336,25 @@ export interface Dnd5eEntry {
   parent?: string
   /** What else gives a use back, as the data says ("a level 5 spell slot"). */
   restore?: string
+  /** The level of the class it comes from ("your Barbarian level"); the hero's level otherwise. */
+  classLevel?: number
+}
+
+/**
+ * The class table columns ("Rage Damage", "Sneak Attack", "Martial Arts") of every class the
+ * hero has, each at that class's level, the first class's first when two share a name.
+ */
+export function heroColumns(
+  s: Dnd5eSheet,
+  level: number,
+  data: Pick<Dnd5eFeatureData, 'classes'> | null,
+): Dnd5eColumns {
+  const out: Dnd5eColumns = {}
+  for (const c of [...heroClasses(s, level)].reverse()) {
+    const cls = data?.classes.find((x) => x.slug === c.slug)
+    Object.assign(out, cls?.levels.find((l) => l.level === c.level)?.columns ?? {})
+  }
+  return out
 }
 
 const ACTIVATION: Record<Dnd5eActivation, Dnd5eCost> = {
@@ -361,8 +384,9 @@ export function featureRecord(
   if (!from) return null
   const n = norm5e(f.name)
   const o = owner(from)
-  const cls = data.classes.find((c) => c.slug === s.classSlug)
-  const sub = data.subclasses.find((x) => x.slug === s.subclassSlug)
+  const track = classOfSource(s, from)
+  const cls = data.classes.find((c) => c.slug === (track?.slug ?? s.classSlug))
+  const sub = data.subclasses.find((x) => x.slug === (track ? track.subclassSlug : s.subclassSlug))
   const byName = <T extends { name: string }>(list: T[] | undefined) =>
     list?.find((x) => norm5e(x.name) === n)
   const named = (list: Dnd5eFeature[] | undefined): Dnd5eMechanics | undefined => {
@@ -429,11 +453,16 @@ function saveDc(
   s: Dnd5eSheet,
   level: number,
   save: Dnd5eSave,
+  from = '',
 ): { ability: Dnd5eAbility; dc: number } {
   const hero = dnd5eHero(s, level)
   if (typeof save.dc === 'number') return { ability: save.ability, dc: save.dc }
-  if (save.dc === 'spell')
-    return { ability: save.ability, dc: s.castingStats?.saveDc ?? 8 + hero.pb + hero.mod('WIS') }
+  if (save.dc === 'spell') {
+    return {
+      ability: save.ability,
+      dc: castingFor(s, from)?.saveDc ?? s.castingStats?.saveDc ?? 8 + hero.pb + hero.mod('WIS'),
+    }
+  }
   const abilities = save.dc.replace('8+PB+', '').split('/') as Dnd5eAbility[]
   return { ability: save.ability, dc: 8 + hero.pb + Math.max(...abilities.map((a) => hero.mod(a))) }
 }
@@ -517,8 +546,15 @@ function makeEntry(
   const cost =
     rule?.cost ??
     (mech.activation ? ACTIVATION[mech.activation] : resource && !mech.uses ? 'special' : null)
-  const dice = timesDice(s, level, resolveDice(s, level, mech.dice, p.cols, rule), rule, p.cols)
-  const save = mech.save ? saveDc(s, level, mech.save) : undefined
+  const classLevel = sourceLevel(s, level, p.from)
+  const dice = timesDice(
+    s,
+    level,
+    resolveDice(s, classLevel, mech.dice, p.cols, rule),
+    rule,
+    p.cols,
+  )
+  const save = mech.save ? saveDc(s, level, mech.save, p.from) : undefined
   const oncePerTurn = mech.uses?.recharge === 'turn'
   const heals = !!rule?.heal || !!rule?.temp || !!rule?.pool
   return {
@@ -544,6 +580,7 @@ function makeEntry(
     ...(mech.duration ? { duration: mech.duration } : {}),
     ...(oncePerTurn ? { oncePerTurn } : {}),
     ...(mech.uses?.restore ? { restore: mech.uses.restore } : {}),
+    classLevel,
   }
 }
 
@@ -617,11 +654,16 @@ export function entryWhy(s: Dnd5eSheet, e: Dnd5eEntry): string {
   return ''
 }
 
-function plusOf(s: Dnd5eSheet, level: number, plus: ('level' | 'PB' | Dnd5eAbility)[] | undefined) {
+function plusOf(
+  s: Dnd5eSheet,
+  level: number,
+  plus: ('level' | 'PB' | Dnd5eAbility)[] | undefined,
+  classLevel = level,
+) {
   const hero = dnd5eHero(s, level)
   return (plus ?? []).map((p) =>
     p === 'level'
-      ? { label: 'level', value: level }
+      ? { label: 'level', value: classLevel }
       : p === 'PB'
         ? { label: 'PB', value: hero.pb }
         : { label: p, value: hero.mod(p) },
@@ -634,10 +676,11 @@ function rollAmount(
   dice: string | undefined,
   plus: ('level' | 'PB' | Dnd5eAbility)[] | undefined,
   rng?: Rng,
+  classLevel = level,
 ): { total: number; text: string } {
   const d = dice ? parseDice(dice) : null
   const r = d ? rollDice(d, rng) : null
-  const adds = plusOf(s, level, plus)
+  const adds = plusOf(s, level, plus, classLevel)
   const total = Math.max(0, (r?.total ?? 0) + adds.reduce((n, a) => n + a.value, 0))
   const text = [
     r ? `${dice} ${r.rolls.join('+')}` : '',
@@ -705,7 +748,8 @@ function useExtras(
     const used = { ...s.used }
     delete used['Fanatical Focus']
     s.used = used
-    if (hero.has('Vitality of the Tree')) out.push(gainTempHp(s, level, 'Vitality Surge'))
+    if (hero.has('Vitality of the Tree'))
+      out.push(gainTempHp(s, hero.levelOf('Vitality of the Tree'), 'Vitality Surge'))
     if (hero.has('Mindless Rage')) {
       const had: string[] = (s.conditions ?? []).filter(
         (c) => c === 'Charmed' || c === 'Frightened',
@@ -717,7 +761,8 @@ function useExtras(
   }
   if (e.name === 'Wild Shape') {
     const moon = hero.has('Circle Forms')
-    out.push(gainTempHp(s, moon ? 3 * level : level, moon ? 'Circle Forms' : 'Wild Shape'))
+    const druid = e.classLevel ?? level
+    out.push(gainTempHp(s, moon ? 3 * druid : druid, moon ? 'Circle Forms' : 'Wild Shape'))
   }
   if (e.name === 'Monk’s Focus: Patient Defense' && hero.has('Heightened Focus')) {
     const ma = (cols?.['Martial Arts'] ?? '').match(/(\d*)d(\d+)/)
@@ -810,7 +855,7 @@ export function useEntry(
       ? `${e.spend > 1 ? `${e.spend} ` : ''}${e.resource}`
       : ''
   if (r?.effect && DND5E_EFFECTS[r.effect]) {
-    const value = effectValue(s, level, r.value, o.rng)
+    const value = effectValue(s, e.classLevel ?? level, r.value, o.rng)
     addEffect(s, r.effect, {
       ...(s.turn?.active ? { held: false } : {}),
       ...(value !== undefined ? { value } : {}),
@@ -833,14 +878,15 @@ export function useEntry(
     const a = rollAmount(
       s,
       level,
-      r.heal.dice ? resolveDice(s, level, r.heal.dice, undefined) : e.dice,
+      r.heal.dice ? resolveDice(s, e.classLevel ?? level, r.heal.dice, undefined) : e.dice,
       r.heal.plus,
       o.rng,
+      e.classLevel,
     )
     parts.push(`${heal(s, a.total) || `heals ${a.total}`} (${a.text})`)
   }
   if (r?.temp) {
-    const a = rollAmount(s, level, r.temp.dice ?? e.dice, r.temp.plus, o.rng)
+    const a = rollAmount(s, level, r.temp.dice ?? e.dice, r.temp.plus, o.rng, e.classLevel)
     parts.push(`${gainTempHp(s, Math.max(1, a.total), e.name)} (${a.text})`)
   }
   if (r?.refill) {
@@ -858,7 +904,7 @@ export function useEntry(
       const d = dice ? parseDice(dice) : null
       const crit = !!atk?.crit
       const roll = d ? rollDice({ ...d, count: d.count * (crit ? 2 : 1) }, o.rng) : null
-      const adds = plusOf(s, level, r?.plus)
+      const adds = plusOf(s, level, r?.plus, e.classLevel)
       const total = Math.max(0, (roll?.total ?? 0) + adds.reduce((n, a) => n + a.value, 0))
       const text = [
         roll ? `${d!.count * (crit ? 2 : 1)}d${d!.sides} ${roll.rolls.join('+')}` : '',

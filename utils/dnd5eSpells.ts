@@ -621,7 +621,7 @@ function castExtras(
   const out: string[] = []
   const slot = opt.kind === 'slot' || opt.kind === 'pact'
   if (def.school === 'Abjuration' && slot && hero.has('Arcane Ward')) {
-    const max = 2 * level + hero.mod('INT')
+    const max = 2 * hero.levelOf('Arcane Ward') + hero.mod('INT')
     if (!s.arcaneWard && usesLeft(s, 'Arcane Ward') > 0) {
       spendUses(s, 'Arcane Ward')
       s.arcaneWard = max
@@ -632,7 +632,7 @@ function castExtras(
     }
   }
   if (def.slug === 'hunters-mark' && hero.has('Hunter’s Rime')) {
-    const n = rollDice({ count: 1, sides: 10, mod: 0 }, o.rng).total + level
+    const n = rollDice({ count: 1, sides: 10, mod: 0 }, o.rng).total + hero.levelOf('Hunter’s Rime')
     out.push(gainTempHp(s, n, 'Hunter’s Rime').replace(/\.$/, ''))
   }
   if (slot && ref.from.startsWith('Sorcerer') && hero.has('Wild Magic Surge')) {
@@ -745,7 +745,7 @@ function regainSlot(s: Dnd5eSheet, slotLevel: number): boolean {
  * whose levels add up to half your Wizard level (rounded up) or less, none 6th level or higher.
  */
 export function arcaneRecovery(s: Dnd5eSheet, level: number, levels: number[]): string {
-  const budget = Math.ceil(level / 2)
+  const budget = Math.ceil(dnd5eHero(s, level).levelOf('Arcane Recovery') / 2)
   const total = levels.reduce((n, l) => n + l, 0)
   if (!levels.length) return 'Choose the slots to regain.'
   if (levels.some((l) => l >= 6))

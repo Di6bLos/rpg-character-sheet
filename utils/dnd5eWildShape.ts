@@ -28,13 +28,15 @@ export function crValue(cr: string): number {
   return Number.isFinite(n) ? n : Infinity
 }
 
-/** The Beast Shapes table at the hero's level (SRD 5.2.1 p. 44), and Circle Forms' CR. */
+/** The Beast Shapes table at the hero's Druid level (SRD 5.2.1 p. 44), and Circle Forms' CR. */
 export function beastShapes(
   s: Dnd5eSheet,
-  level: number,
+  heroLevel: number,
 ): { known: number; maxCr: number; maxCrText: string; fly: boolean } {
+  const hero = dnd5eHero(s, heroLevel)
+  const level = hero.levelOf('Wild Shape')
   const known = level >= 8 ? 8 : level >= 4 ? 6 : 4
-  const moon = dnd5eHero(s, level).has('Circle Forms')
+  const moon = hero.has('Circle Forms')
   const base = level >= 8 ? 1 : level >= 4 ? 0.5 : 0.25
   const maxCr = moon ? Math.max(base, Math.floor(level / 3)) : base
   const maxCrText = maxCr === 0.25 ? '1/4' : maxCr === 0.5 ? '1/2' : String(maxCr)
@@ -91,8 +93,10 @@ export function assumeForm(s: Dnd5eSheet, level: number, name: string): string {
   spendUses(s, 'Wild Shape')
   s.beastForm = f.name
   addEffect(s, 'wild-shape', { name: `Wild Shape: ${f.name}` })
-  const moon = dnd5eHero(s, level).has('Circle Forms')
-  const temp = gainTempHp(s, moon ? 3 * level : level, moon ? 'Circle Forms' : 'Wild Shape')
+  const hero = dnd5eHero(s, level)
+  const moon = hero.has('Circle Forms')
+  const druid = hero.levelOf('Wild Shape')
+  const temp = gainTempHp(s, moon ? 3 * druid : druid, moon ? 'Circle Forms' : 'Wild Shape')
   return `Wild Shape: you become a ${f.name} (AC ${f.ac}, ${f.speed}). ${temp}`
 }
 

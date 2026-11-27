@@ -33,7 +33,7 @@ import {
 } from '~/utils/dnd5ePlay'
 import { type Rng, parseDice, rollDice, sign } from '~/utils/dice'
 
-/** The class table's columns at the hero's level ("Rage Damage", "Sneak Attack", "Martial Arts"). */
+/** Class table columns, each class's at its level ("Rage Damage", "Sneak Attack", "Martial Arts"). */
 export type Dnd5eColumns = Record<string, string>
 
 /** What the Target row knows about the creature attacked. */

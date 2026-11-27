@@ -17,6 +17,7 @@ import {
   costWhy,
   dnd5eHero,
   hitDiceLeft,
+  takeHitDice,
   payCost,
   rollTest,
   saveRow,
@@ -283,9 +284,9 @@ export function guardHit(
       for (const p of g.plus ?? []) {
         const n =
           p === 'level'
-            ? level
+            ? hero.levelOf(g.feature)
             : p === 'level5'
-              ? 5 * level
+              ? 5 * hero.levelOf(g.feature)
               : p === 'STR/DEX'
                 ? Math.max(hero.mod('STR'), hero.mod('DEX'))
                 : hero.mod(p)
@@ -309,10 +310,11 @@ export function guardHit(
       }
       if (g.hitDice) {
         const n = Math.min(Math.max(1, hero.mod('CHA')), hitDiceLeft(s, level))
-        const r = rollDice({ count: n, sides: s.hitDie || 8, mod: 0 }, rng)
-        s.hitDiceUsed = (s.hitDiceUsed ?? 0) + n
-        cut += r.total
-        parts.push(`${n} Hit Point Dice ${r.rolls.join('+')}`)
+        const rolls = takeHitDice(s, level, n).map(
+          (d) => rollDice({ count: 1, sides: d, mod: 0 }, rng).total,
+        )
+        cut += rolls.reduce((a, b) => a + b, 0)
+        parts.push(`${n} Hit Point Dice ${rolls.join('+')}`)
       }
       hit.reduce = [...(hit.reduce ?? []), { label: `${g.name} (${parts.join(' ')})`, amount: cut }]
     }

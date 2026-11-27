@@ -3,7 +3,7 @@ import { type Dnd5eData, loadDnd5e } from '~/data/dnd5e'
 import type { Dnd5eSheet } from '~/types/sheets'
 import type { Dnd5eColumns, Dnd5eTarget } from '~/utils/dnd5eAttacks'
 import { DND5E_BUILD_SETS, type Dnd5eBuildData, walkDnd5e } from '~/utils/dnd5eBuild'
-import { type Dnd5eEntry, heroEntries } from '~/utils/dnd5eFeatures'
+import { type Dnd5eEntry, heroColumns, heroEntries } from '~/utils/dnd5eFeatures'
 import { isBuiltDnd5e } from '~/utils/dnd5eLevelUp'
 import type { D20Mode } from '~/utils/dnd5ePlay'
 import type { Dnd5eLastRoll } from '~/utils/dnd5eRerolls'
@@ -15,7 +15,7 @@ type SheetData = Pick<Dnd5eData, (typeof SETS)[number]>
 export interface Dnd5eSheetApi {
   /** The data, once loaded (null until then, or when it failed: the sheet still works from what it holds). */
   data: ShallowRef<SheetData | null>
-  /** The class table's columns at the hero's level ("Rage Damage", "Sneak Attack"). */
+  /** Each class's table columns at that class's level ("Rage Damage", "Sneak Attack"). */
   columns: ComputedRef<Dnd5eColumns>
   /** Every feature, trait, feat and option as a usable entry. */
   entries: ComputedRef<Dnd5eEntry[]>
@@ -49,10 +49,7 @@ export function provideDnd5eSheet(): Dnd5eSheetApi {
   })
   const sheet = computed(() => draft.value.sheet)
   const level = computed(() => draft.value.level)
-  const columns = computed<Dnd5eColumns>(() => {
-    const cls = data.value?.classes.find((c) => c.slug === sheet.value.classSlug)
-    return cls?.levels.find((l) => l.level === level.value)?.columns ?? {}
-  })
+  const columns = computed<Dnd5eColumns>(() => heroColumns(sheet.value, level.value, data.value))
   const entries = computed(() => heroEntries(sheet.value, level.value, data.value, columns.value))
   const build = computed(() => {
     const s = sheet.value

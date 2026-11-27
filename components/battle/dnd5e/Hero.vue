@@ -11,8 +11,14 @@ import type { Dnd5eAbility, Dnd5eSheet } from '~/types/sheets'
 import { abilityMod, sign } from '~/utils/dice'
 import { exhaustionOf } from '~/utils/dnd5eConditions'
 import { DND5E_ABILITY_NAME } from '~/utils/dnd5eBuild'
-import { endConcentration, restoreUses, saveRow, spendUses, usesLeft } from '~/utils/dnd5ePlay'
-import { levelName, pactLeft, slotsLeft, slotsMax } from '~/utils/dnd5eSpells'
+import {
+  classLine,
+  endConcentration,
+  restoreUses,
+  saveRow,
+  spendUses,
+  usesLeft,
+} from '~/utils/dnd5ePlay'
 
 defineProps<{ compact?: boolean }>()
 
@@ -24,9 +30,10 @@ const {
   dead,
   ac,
   tiles: vitalTiles,
-  diceLeft,
   typing,
   hitDie,
+  hdDie,
+  pools,
   shortOpen,
   longOpen,
   confirmShort,
@@ -36,8 +43,14 @@ const {
 } = useDnd5eVitals()
 const { model: turn } = useDnd5eTurnSteps({ onResult: useAnnounce() })
 
+const { data } = useDnd5eSheet()
 const identity = computed(() =>
-  [[sheet.value.lineage, sheet.value.class].filter(Boolean).join(' '), `Lvl ${level.value}`]
+  [
+    [sheet.value.lineage, classLine(sheet.value, level.value, data.value)]
+      .filter(Boolean)
+      .join(' '),
+    `Lvl ${level.value}`,
+  ]
     .filter(Boolean)
     .join(' · '),
 )
@@ -69,22 +82,27 @@ function stopConcentrating() {
   if (name) say(`You stop concentrating on ${name}.`)
 }
 
-const slots = computed(() => {
-  const max = slotsMax(sheet.value)
-  const left = slotsLeft(sheet.value)
-  const rows = max
-    .map((n, i) => ({ key: `L${i + 1}`, label: levelName(i + 1), max: n, left: left[i] ?? 0 }))
-    .filter((r) => r.max > 0)
-  const pact = sheet.value.castingStats?.pact
-  if (pact && pact.slots > 0)
-    rows.push({
-      key: 'pact',
-      label: `Pact (${levelName(pact.level)})`,
-      max: pact.slots,
-      left: pactLeft(sheet.value),
-    })
-  return rows
-})
+const { levels: slotLevels, pact, toggleSlot, togglePact } = useDnd5eSpellSlots()
+const slots = computed(() => [
+  ...slotLevels.value.map((l) => ({
+    key: `L${l.level}`,
+    label: l.label,
+    max: Math.max(l.max, l.left),
+    left: l.left,
+    tap: (n: number) => toggleSlot(l.level, n),
+  })),
+  ...(pact.value
+    ? [
+        {
+          key: 'pact',
+          label: `Pact (${pact.value.label})`,
+          max: pact.value.slots,
+          left: pact.value.left,
+          tap: togglePact,
+        },
+      ]
+    : []),
+])
 
 const PIPS = 8
 const resources = computed(() =>
@@ -179,14 +197,25 @@ const abilities = computed(() =>
 
     <div v-if="slots.length" class="hero__block">
       <span class="sect">Spell slots</span>
-      <div v-for="s in slots" :key="s.key" class="hero__res">
+      <div v-for="s in slots" :key="s.key" class="hero__res hero__res--slots">
         <span>{{ s.label }}</span>
         <span
-          class="hero__pips"
-          role="img"
+          class="hero__slots"
+          role="group"
           :aria-label="`${s.left} of ${s.max} ${s.label} slots left`"
         >
-          <i v-for="n in s.max" :key="n" :class="{ on: n <= s.left }" />
+          <button
+            v-for="n in s.max"
+            :key="n"
+            type="button"
+            class="hero__slot"
+            :class="{ on: n <= s.left }"
+            :aria-label="`${s.label} slot ${n}`"
+            :aria-pressed="n <= s.left"
+            :title="n <= s.left ? 'Spend this slot' : 'Get this slot back'"
+            :disabled="!canEdit"
+            @click="s.tap(n)"
+          />
         </span>
       </div>
     </div>
@@ -271,16 +300,21 @@ const abilities = computed(() =>
     </div>
 
     <div class="hero__block">
-      <span class="sect">Rest · Hit Point Dice {{ diceLeft }}/{{ level }} d{{ sheet.hitDie }}</span>
+      <span class="sect"
+        >Rest · Hit Point Dice
+        {{ pools.map((p) => `${p.left}/${p.count} d${p.die}`).join(' · ') }}</span
+      >
       <div class="hero__rest">
         <button
+          v-for="p in pools"
+          :key="p.die"
           type="button"
           class="btn btn--ghost btn--sm"
-          :disabled="!canEdit || diceLeft < 1 || dead"
-          :title="`Roll a d${sheet.hitDie} + CON and heal that much (at least 1), as on a Short Rest (SRD 5.2.1 p. 186)`"
-          @click="hitDie()"
+          :disabled="!canEdit || p.left < 1 || dead"
+          :title="`Roll a d${p.die} + CON and heal that much (at least 1), as on a Short Rest (SRD 5.2.1 p. 186)`"
+          @click="hitDie(undefined, p.die)"
         >
-          Spend a Hit Die
+          {{ pools.length > 1 ? `Spend a d${p.die}` : 'Spend a Hit Die' }}
         </button>
         <button
           type="button"
@@ -311,7 +345,7 @@ const abilities = computed(() =>
       </div>
       <NimbleDiceEntry
         v-if="typing === 'hd'"
-        :label="`d${sheet.hitDie} you rolled`"
+        :label="`d${hdDie ?? pools[0]?.die ?? 8} you rolled`"
         action="Heal"
         :disabled="!canEdit"
         @submit="hitDie"
@@ -321,8 +355,8 @@ const abilities = computed(() =>
 
     <UiDialog v-model="shortOpen" title="Take a Short Rest?" width="460px">
       <p>
-        An hour of rest (SRD 5.2.1 p. 186). Spend Hit Point Dice to heal with “Spend a Hit Die” ({{
-          diceLeft
+        An hour of rest (SRD 5.2.1 p. 186). Spend Hit Point Dice to heal with the Spend buttons ({{
+          pools.map((p) => `${p.left} d${p.die}`).join(', ')
         }}
         left). Features that recharge on a Short Rest and Pact Magic slots come back.
       </p>
@@ -414,6 +448,43 @@ const abilities = computed(() =>
   }
 }
 
+.hero__res--slots {
+  flex-wrap: wrap;
+}
+
+.hero__slots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.hero__slot {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+
+  &::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid var(--secondary);
+  }
+
+  &.on::before {
+    background: var(--secondary);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
 .hero__mini {
   width: 24px;
   height: 24px;
@@ -482,6 +553,16 @@ const abilities = computed(() =>
 .hero--touch {
   gap: 10px;
   padding: 12px 14px;
+
+  .hero__slot {
+    width: 44px;
+    height: 44px;
+
+    &::before {
+      width: 16px;
+      height: 16px;
+    }
+  }
 
   .hero__mini,
   :deep(.hp__mini),

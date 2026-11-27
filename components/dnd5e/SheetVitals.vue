@@ -13,7 +13,6 @@ const {
   canEdit,
   resultIn,
   sheet,
-  level,
   dead,
   dying,
   stable,
@@ -34,6 +33,7 @@ const {
   rollDeath,
   rollConcentration,
   hitDie,
+  hdDie,
   setSaves,
   tiles,
   amount,
@@ -49,6 +49,8 @@ const {
   shortOpen,
   longOpen,
   diceLeft,
+  pools,
+  diceMax,
   confirmShort,
   confirmLong,
   toggleInspiration,
@@ -287,23 +289,28 @@ const {
       <div class="vit-col">
         <div class="vit-head">
           <span class="caps">Hit Point Dice</span>
-          <span class="hint">{{ diceLeft }} / {{ level }} d{{ sheet.hitDie }}</span>
+          <span class="hint">{{ diceLeft }} / {{ diceMax }}</span>
         </div>
-        <div class="row" style="gap: 5px; flex-wrap: wrap" aria-hidden="true">
-          <i v-for="n in level" :key="n" class="hd" :class="{ on: n <= diceLeft }" />
+        <div v-for="p in pools" :key="p.die" class="hd-pool">
+          <span class="hint">{{ p.left }}/{{ p.count }} d{{ p.die }}</span>
+          <span class="row" style="gap: 5px; flex-wrap: wrap" aria-hidden="true">
+            <i v-for="n in p.count" :key="n" class="hd" :class="{ on: n <= p.left }" />
+          </span>
         </div>
         <button
+          v-for="p in pools"
+          :key="p.die"
           type="button"
           class="btn btn--ghost btn--sm hd-btn"
-          :disabled="!canEdit || diceLeft < 1 || dead"
-          :title="`Roll a d${sheet.hitDie} + CON and heal that much (at least 1), as on a Short Rest (SRD 5.2.1 p. 186)`"
-          @click="hitDie()"
+          :disabled="!canEdit || p.left < 1 || dead"
+          :title="`Roll a d${p.die} + CON and heal that much (at least 1), as on a Short Rest (SRD 5.2.1 p. 186)`"
+          @click="hitDie(undefined, p.die)"
         >
-          Spend a Hit Die
+          {{ pools.length > 1 ? `Spend a d${p.die}` : 'Spend a Hit Die' }}
         </button>
         <NimbleDiceEntry
           v-if="typing === 'hd'"
-          :label="`d${sheet.hitDie} you rolled`"
+          :label="`d${hdDie ?? pools[0]?.die ?? 8} you rolled`"
           action="Heal"
           :disabled="!canEdit"
           @submit="hitDie"
@@ -449,8 +456,8 @@ const {
 
     <UiDialog v-model="shortOpen" title="Take a Short Rest?" width="460px">
       <p>
-        An hour of rest (SRD 5.2.1 p. 186). Spend Hit Point Dice to heal with “Spend a Hit Die” ({{
-          diceLeft
+        An hour of rest (SRD 5.2.1 p. 186). Spend Hit Point Dice to heal with the Spend buttons ({{
+          pools.map((p) => `${p.left} d${p.die}`).join(', ')
         }}
         left). Features that recharge on a Short Rest and Pact Magic slots come back.
       </p>
@@ -485,6 +492,13 @@ const {
 
 .hd-btn {
   align-self: flex-start;
+}
+
+.hd-pool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .death-row {

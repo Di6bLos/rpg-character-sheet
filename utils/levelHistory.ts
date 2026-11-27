@@ -35,6 +35,7 @@ const PLAY_STATE = new Set([
   'heroPoints',
   'actionsSpent',
   'hitDiceUsed',
+  'hitDiceSpent',
   'rushed',
   'reactionsUsed',
   'concentration',

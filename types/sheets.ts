@@ -386,8 +386,13 @@ export interface Dnd5eSheet extends SheetCommon {
   exhaustion?: number
   /** When each condition the player set an end for goes away; absent: when they remove it. */
   conditionEnds?: Record<string, Dnd5eConditionEnd>
-  /** Hit Point Dice spent (a hero has one per level, SRD 5.2.1 p. 185). */
+  /** Hit Point Dice spent (a hero has one per level, SRD 5.2.1 p. 185), all sizes together. */
   hitDiceUsed?: number
+  /**
+   * Hit Point Dice spent by die size (`hitDice`'s pools); absent on a save from before it, whose
+   * `hitDiceUsed` then counts against the largest dice first (`hitDicePools`).
+   */
+  hitDiceSpent?: Record<number, number>
   /** Heroic Inspiration (SRD 5.2.1 p. 8): spend it to reroll a die. */
   heroicInspiration?: boolean
   /** The Abjurer's Arcane Ward: Hit Points it has left (it takes damage first). */
