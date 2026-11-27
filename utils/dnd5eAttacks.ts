@@ -10,8 +10,15 @@
 import type { Dnd5eMastery, Dnd5eWeaponDef } from '~/data/dnd5e/types'
 import type { Dnd5eAbility, Dnd5eSheet, Dnd5eWeapon } from '~/types/sheets'
 import { proficientWith } from '~/utils/dnd5eBuild'
+import { gearUnarmed } from '~/utils/dnd5eMagicItems'
 import { conditionRules } from '~/utils/dnd5eConditions'
-import { activeEffectDefs, addEffect } from '~/utils/dnd5eEffects'
+import {
+  activeEffectDefs,
+  activeEffects,
+  addEffect,
+  effectValues,
+  hasEffect,
+} from '~/utils/dnd5eEffects'
 import {
   type D20Mode,
   type Dnd5eCost,
@@ -60,6 +67,45 @@ export interface Dnd5eDamagePart {
   label: string
   /** Only once a turn (Sneak Attack). */
   once?: string
+  /** Added to these dice (Hand of Harm's WIS). */
+  flat?: number
+  /** Dealt after the hit, so a Critical Hit doesn't double it (Psionic Strike). */
+  separate?: boolean
+}
+
+/** What the riders the player picked (utils/dnd5eRiders.ts riderPlan) do to one roll. */
+export interface Dnd5eAttackRiders {
+  names: string[]
+  /** Extra damage on a hit. */
+  parts: Dnd5eDamagePart[]
+  /** What each does, with its save DC, said after the damage. */
+  notes: string[]
+  /** Sneak Attack d6s traded away (Cunning Strike). */
+  sneakCost: number
+  /** The roll forgoes Advantage (Brutal Strike). */
+  forgoAdv: boolean
+  /** What can still turn a miss into a hit, in order (Precision Attack, Heroic Inspiration…). */
+  misses: Dnd5eMissBoost[]
+  /** No attack roll: a save for the damage, half on a success (Piercing Shot). */
+  noAttack: { label: string; save: { ability: Dnd5eAbility; dc: number } } | null
+  /** On a failed save the attack's damage is dealt again (Death Strike). */
+  double: { label: string; save: { ability: Dnd5eAbility; dc: number } } | null
+  /** Spends what the hit riders cost; returns what their healing or effects did. */
+  pay: (rng?: Rng) => string[]
+}
+
+/** Something used after an attack roll misses: dice or a bonus added, a reroll, or a 20. */
+export interface Dnd5eMissBoost {
+  label: string
+  dice?: string
+  bonus?: number
+  reroll?: boolean
+  /** The roll becomes a 20 (Stroke of Luck). */
+  twenty?: boolean
+  /** Spent only when it turns the miss into a hit (Peerless Skill, Homing Strikes). */
+  onlyIfHit?: boolean
+  /** Spends what it costs. */
+  pay: () => void
 }
 
 export interface Dnd5eAttackPlan {
@@ -91,6 +137,16 @@ export interface Dnd5eAttackPlan {
   notes: string[]
   /** Topple's save DC: 8 + the attack's ability modifier + PB. */
   masteryDc: number
+  /** A weapon, an Unarmed Strike or a Beast form's attack (what riders read). */
+  kind?: 'weapon' | 'unarmed' | 'beast'
+  /** The weapon's properties. */
+  props?: string[]
+  /** A Monk weapon (Martial Arts). */
+  monk?: boolean
+  /** The Light property's extra attack. */
+  offhand?: boolean
+  /** A Soulknife's Psychic Blade. */
+  blade?: boolean
 }
 
 /** The weapon properties in a line each (SRD 5.2.1 pp. 89–90), for their tooltips. */
@@ -126,6 +182,16 @@ export const MASTERY_TEXT: Record<Dnd5eMastery, string> = {
   Vex: 'On a hit that deals damage, Advantage on your next attack roll against it before the end of your next turn.',
 }
 
+/** Dice an effect holds for the next hit (Feinting Attack's die; Lunging Attack's on a melee hit). */
+const valueDice = (s: Dnd5eSheet, type: string, melee: boolean): Dnd5eDamagePart[] =>
+  activeEffects(s)
+    .filter((x) => x.def.valueDie && x.effect.value && (x.def.key !== 'lunging' || melee))
+    .map((x) => ({ dice: `1d${x.effect.value}`, type, label: x.effect.name }))
+
+/** Foe Slayer (Ranger 20): Hunter's Mark's die is a d10 (SRD 5.2.1 p. 58). */
+const markDie = (hero: ReturnType<typeof dnd5eHero>, key: string, dice: string) =>
+  key === 'hunters-mark' && hero.has('Foe Slayer') ? '1d10' : dice
+
 const columnDice = (cols: Dnd5eColumns | undefined, name: string) =>
   (cols?.[name] ?? '').replace(/\s+/g, '').match(/\d*d\d+/)?.[0] ?? ''
 
@@ -141,7 +207,7 @@ const DIE_STEP: Record<string, string> = {
 }
 
 /** Weapons a Monk can use with Martial Arts: Simple melee, and Martial melee with Light (p. 50). */
-const monkWeapon = (d: Dnd5eWeaponDef) =>
+export const monkWeapon = (d: Dnd5eWeaponDef) =>
   d.type === 'Melee' && (d.category === 'Simple' || d.properties.includes('Light'))
 
 export function adjustAttackTest(
@@ -164,7 +230,14 @@ export function adjustAttackTest(
       t.lines.push(`${d.name} ${sign(a.bonus)}`)
     }
   }
+  for (const v of effectValues(s, 'attack')) {
+    t.bonus += v.value
+    t.lines.push(`${v.label} ${sign(v.value)}`)
+  }
+  if (activeEffectDefs(s).some((d) => d.reliable?.includes('attack'))) t.reliable = true
   if (o.target?.prone) (o.melee ? t.adv : t.dis).push('target Prone')
+  if (hasEffect(s, 'hunters-mark') && dnd5eHero(s, 0).has('Precise Hunter'))
+    t.adv.push('Precise Hunter')
 }
 
 /**
@@ -192,6 +265,8 @@ export function weaponAttack(
   if (def && (props.has('Finesse') || (hero.has('Martial Arts') && monkWeapon(def))))
     ability = hero.mod('DEX') > hero.mod('STR') ? 'DEX' : 'STR'
   else if (!def) ability = ranged ? 'DEX' : 'STR'
+  if (w.magic && hero.has('Battle Ready') && hero.mod('INT') > hero.mod(ability)) ability = 'INT'
+  if (hasEffect(s, 'bladesong') && hero.mod('INT') > hero.mod(ability)) ability = 'INT'
   const mod = hero.mod(ability)
   let bonus: number
   const lines: string[] = []
@@ -233,6 +308,10 @@ export function weaponAttack(
       dmgMod = 0
     } else if (dmgMod > 0) notes.push('Two-Weapon Fighting: modifier to off-hand damage')
   }
+  if (w.magic) {
+    bonus += w.magic
+    lines.push(`${w.enchant ?? 'Magic weapon'} ${sign(w.magic)}`)
+  }
   if (ranged && def && hero.feat('archery')) {
     bonus += 2
     lines.push('Archery +2')
@@ -245,6 +324,7 @@ export function weaponAttack(
     if (!melee && (s.abilities.DEX ?? 10) < 13) t.dis.push('Heavy, Dexterity under 13')
   }
   if (grip.long) t.dis.push('long range')
+  if (w.magic) flat.push({ label: w.enchant ?? 'Magic weapon', value: w.magic })
   const oneHanded = melee && def && !props.has('Two-Handed') && !grip.twoHands && !grip.offhand
   if (oneHanded && hero.feat('dueling')) flat.push({ label: 'Dueling', value: 2 })
   if (grip.thrown && props.has('Thrown') && hero.feat('thrown-weapon-fighting'))
@@ -263,10 +343,17 @@ export function weaponAttack(
     }
     if (dm.bonus) flat.push({ label: d.name, value: dm.bonus })
     if (dm.dice)
-      extras.push({ dice: dm.dice, type: dm.type ?? def?.damageType ?? w.type, label: d.name })
+      extras.push({
+        dice: markDie(hero, d.key, dm.dice),
+        type: dm.type ?? def?.damageType ?? w.type,
+        label: d.name,
+      })
   }
   if (melee && hero.has('Radiant Strikes'))
     extras.push({ dice: '1d8', type: 'Radiant', label: 'Radiant Strikes' })
+  if (melee && hero.has('Runic Strikes'))
+    extras.push({ dice: '1d8', type: 'Necrotic', label: 'Runic Strikes' })
+  extras.push(...valueDice(s, def?.damageType ?? w.type, melee))
   const sneak = columnDice(o.columns, 'Sneak Attack')
   if (sneak && def && (props.has('Finesse') || def.type === 'Ranged') && !usedOnce(s, 'sneak'))
     extras.push({ dice: sneak, type: def.damageType, label: 'Sneak Attack', once: 'sneak' })
@@ -292,6 +379,10 @@ export function weaponAttack(
     nick: !!grip.offhand && nick,
     notes,
     masteryDc: 8 + mod + hero.pb,
+    kind: 'weapon',
+    props: [...props],
+    monk: !!def && hero.has('Martial Arts') && monkWeapon(def),
+    offhand: !!grip.offhand,
   }
 }
 
@@ -308,12 +399,18 @@ export function unarmedAttack(
   const ma = hero.has('Martial Arts') ? columnDice(o.columns, 'Martial Arts') : ''
   const ability: Dnd5eAbility = ma && hero.mod('DEX') > hero.mod('STR') ? 'DEX' : 'STR'
   const mod = hero.mod(ability)
-  const lines = [`${ability} ${sign(mod)}`, `Proficiency ${sign(hero.pb)}`]
+  const wraps = gearUnarmed(s)
+  const plus = wraps.reduce((n, g) => n + g.value, 0)
+  const lines = [
+    `${ability} ${sign(mod)}`,
+    `Proficiency ${sign(hero.pb)}`,
+    ...wraps.map((g) => `${g.label} ${sign(g.value)}`),
+  ]
   const t = d20Test(s, level, {
     label: 'Unarmed Strike',
     kind: 'attack',
     ability,
-    bonus: mod + hero.pb,
+    bonus: mod + hero.pb + plus,
     lines,
   })
   adjustAttackTest(s, t, {
@@ -331,7 +428,7 @@ export function unarmedAttack(
       : hero.feat('tavern-brawler')
         ? '1d4'
         : '')
-  const flat: { label: string; value: number }[] = []
+  const flat: { label: string; value: number }[] = wraps.map((g) => ({ ...g }))
   const extras: Dnd5eDamagePart[] = []
   for (const d of activeEffectDefs(s)) {
     const dm = d.damage
@@ -341,10 +438,17 @@ export function unarmedAttack(
       if (v) flat.push({ label: 'Rage', value: v })
     }
     if (dm.dice && !dm.weapon)
-      extras.push({ dice: dm.dice, type: dm.type ?? 'Bludgeoning', label: d.name })
+      extras.push({
+        dice: markDie(hero, d.key, dm.dice),
+        type: dm.type ?? 'Bludgeoning',
+        label: d.name,
+      })
   }
   if (hero.has('Radiant Strikes'))
     extras.push({ dice: '1d8', type: 'Radiant', label: 'Radiant Strikes' })
+  if (hero.has('Runic Strikes'))
+    extras.push({ dice: '1d8', type: 'Necrotic', label: 'Runic Strikes' })
+  extras.push(...valueDice(s, 'Bludgeoning', true))
   return {
     key: o.bonusAction ? 'unarmed:bonus' : 'unarmed',
     name: o.bonusAction ? 'Martial Arts strike' : 'Unarmed Strike',
@@ -364,6 +468,7 @@ export function unarmedAttack(
     nick: false,
     notes: ma ? [`Martial Arts die ${ma}`] : [],
     masteryDc: 8 + mod + hero.pb,
+    kind: 'unarmed',
   }
 }
 
@@ -447,35 +552,127 @@ function againstTarget(n: number, t: Dnd5eTarget | undefined): number {
   return v
 }
 
+/** Rolls one damage part of a hit: its dice (twice on a crit, unless dealt after the hit) and flat. */
+function rollExtra(e: Dnd5eDamagePart, crit: boolean, rng?: Rng) {
+  const x = rollPart(e.dice, { crit: crit && !e.separate, ...(rng ? { rng } : {}) })
+  const flat = e.flat ?? 0
+  const n = parseDice(e.dice) ? x.total + flat : Number(e.dice) || 0
+  return { total: n, text: x.text ? `${x.text}${flat ? ` ${sign(flat)}` : ''}` : String(n) }
+}
+
+/** Sneak Attack's dice less those a Cunning Strike traded ("7d6" − 2 → "5d6"). */
+function lessDice(dice: string, n: number): string {
+  const d = parseDice(dice)
+  if (!d || !n) return dice
+  return d.count - n > 0 ? `${d.count - n}d${d.sides}` : ''
+}
+
+/** A Piercing or Seeking Shot: no attack roll, the damage on a failed save, half on a success. */
+function noAttackRoll(
+  s: Dnd5eSheet,
+  p: Dnd5eAttackPlan,
+  rd: Dnd5eAttackRiders,
+  o: { target?: Dnd5eTarget; rng?: Rng },
+): Dnd5eAttackResult {
+  const na = rd.noAttack!
+  const main = p.dice ? rollPart(p.dice, { crit: false, ...(o.rng ? { rng: o.rng } : {}) }) : null
+  const flat = p.mod + p.flat.reduce((n, f) => n + f.value, 0)
+  let total = againstTarget(Math.max(0, (main?.total ?? 0) + flat), o.target)
+  const parts = [main ? `${main.text}${flat ? ` ${sign(flat)}` : ''}` : `${Math.max(0, flat)}`]
+  for (const e of rd.parts) {
+    const x = rollExtra(e, false, o.rng)
+    total += againstTarget(x.total, o.target)
+    parts.push(`${e.label} ${x.text} ${e.type.toLowerCase()}`)
+  }
+  const said = rd.pay(o.rng)
+  const line = `${p.name}, ${na.label}: DC ${na.save.dc} ${na.save.ability} save, ${total} damage on a failure, ${Math.floor(total / 2)} on a success (${parts.join('; ')}).${said.length ? ` ${said.join('. ')}.` : ''}`
+  return {
+    line,
+    total: 0,
+    natural: null,
+    hit: null,
+    crit: false,
+    damage: total,
+    masteryNote: '',
+  }
+}
+
 /**
  * Rolls an attack and its damage at once. Against a known AC a miss deals nothing (Graze still
  * deals its modifier); a natural 20, or the Champion's lower crit range, doubles every damage
  * die. Sneak Attack (when `sneak`), Savage Attacker and Nick are used up for the turn; Vex
- * gives the next attack Advantage.
+ * gives the next attack Advantage, and a miss with Studied Attacks the next one. `riders`
+ * (utils/dnd5eRiders.ts) add their damage, saves and notes on a hit, can forgo the roll's
+ * Advantage (Brutal Strike), trade Sneak Attack dice (Cunning Strike), replace the roll with a
+ * save (Piercing Shot), or turn a miss into a hit (Precision Attack, Heroic Inspiration).
  */
 export function rollAttack5e(
   s: Dnd5eSheet,
   p: Dnd5eAttackPlan,
-  o: { mode?: D20Mode; target?: Dnd5eTarget; sneak?: boolean; rng?: Rng; d20?: number[] } = {},
+  o: {
+    mode?: D20Mode
+    target?: Dnd5eTarget
+    sneak?: boolean
+    rng?: Rng
+    d20?: number[]
+    riders?: Dnd5eAttackRiders
+  } = {},
 ): Dnd5eAttackResult {
-  const mode = d20Mode(p.test, o.mode)
-  const r = rollTest(s, p.test, {
-    mode: o.mode ?? 'normal',
+  const rd = o.riders
+  if (rd?.noAttack) return noAttackRoll(s, p, rd, o)
+  const test = rd?.forgoAdv ? { ...p.test, adv: [] } : p.test
+  const chosen = rd?.forgoAdv && o.mode === 'adv' ? 'normal' : (o.mode ?? 'normal')
+  const mode = d20Mode(test, chosen)
+  const r = rollTest(s, test, {
+    mode: chosen,
     ...(o.d20 ? { d20: o.d20 } : {}),
     ...(o.rng ? { rng: o.rng } : {}),
   })
-  const crit = r.d20 >= p.critOn
+  let d20 = r.d20
+  let total = r.total
+  let crit = d20 >= p.critOn
   const ac = o.target?.ac ?? null
-  const hit = r.natural === 1 ? false : crit ? true : ac === null ? null : r.total >= ac
+  const hits = (n: number, die: number) =>
+    die === 1 ? false : die >= p.critOn ? true : ac === null ? null : n >= ac
+  let hit = hits(total, d20)
   const vs = ac === null ? '' : ` vs AC ${ac}`
-  const head = `${p.name}: ${r.total} to hit${vs} (${r.rolls.length > 1 ? `${r.rolls.join(' / ')} → ` : ''}${r.d20} ${sign(p.test.bonus)}${r.extra ? ` ${sign(r.extra)}` : ''})${mode !== 'normal' ? ` · ${mode === 'adv' ? 'advantage' : 'disadvantage'}` : ''}`
+  const forgone = rd?.forgoAdv && p.test.adv.length ? ' · Advantage forgone (Brutal Strike)' : ''
+  const head = `${p.name}: ${r.total} to hit${vs} (${r.rolls.length > 1 ? `${r.rolls.join(' / ')} → ` : ''}${r.d20} ${sign(p.test.bonus)}${r.extra ? ` ${sign(r.extra)}` : ''})${mode !== 'normal' ? ` · ${mode === 'adv' ? 'advantage' : 'disadvantage'}` : ''}${forgone}`
+  const turned: string[] = []
+  for (const m of rd?.misses ?? []) {
+    if (hit !== false) break
+    if (m.reroll) {
+      const again = rollTest(s, { ...test, adv: [], dis: [] }, o.rng ? { rng: o.rng } : {})
+      d20 = again.d20
+      total = again.total
+    } else if (m.twenty) {
+      total += 20 - d20
+      d20 = 20
+    } else {
+      if (d20 === 1) continue
+      const die = m.dice ? parseDice(m.dice) : null
+      const add = (die ? rollDice(die, o.rng).total : 0) + (m.bonus ?? 0)
+      total += add
+      turned.push(`${m.label} +${add}`)
+    }
+    const now = hits(total, d20)
+    if (!m.onlyIfHit || now !== false) m.pay()
+    if (m.reroll || m.twenty) turned.push(`${m.label}: ${m.reroll ? `rerolled ${d20}` : '20'}`)
+    hit = now
+    crit = d20 >= p.critOn && d20 !== 1
+    turned.push(now === false ? `still ${total}, a miss` : `${total}${now ? ', a hit' : ''}`)
+  }
+  const turnedText = turned.length ? ` · ${turned.join(', ')}` : ''
   if (p.nick) useOnce(s, 'nick')
   if (hit === false) {
+    const studied = dnd5eHero(s, 0).has('Studied Attacks')
+    if (studied) addEffect(s, 'studied', { held: !!s.turn?.active })
+    const study = studied ? ' Studied Attacks: Advantage on your next attack roll against it.' : ''
     if (p.mastery === 'Graze') {
       const g = againstTarget(Math.max(0, p.mod), o.target)
       return {
-        line: `${head} · miss. Graze: ${g} ${p.type.toLowerCase()} damage anyway.`,
-        total: r.total,
+        line: `${head}${turnedText} · miss. Graze: ${g} ${p.type.toLowerCase()} damage anyway.${study}`,
+        total,
         natural: r.natural,
         hit,
         crit: false,
@@ -484,8 +681,8 @@ export function rollAttack5e(
       }
     }
     return {
-      line: `${head} · ${r.natural === 1 ? 'natural 1, a miss' : 'miss'}.`,
-      total: r.total,
+      line: `${head}${turnedText} · ${r.natural === 1 && !turned.length ? 'natural 1, a miss' : 'miss'}.${study}`,
+      total,
       natural: r.natural,
       hit,
       crit: false,
@@ -498,24 +695,37 @@ export function rollAttack5e(
     ? rollPart(p.dice, { crit, gwf: p.gwf, savage, ...(o.rng ? { rng: o.rng } : {}) })
     : { total: 0, text: '' }
   const flat = p.mod + p.flat.reduce((n, f) => n + f.value, 0)
-  let total = againstTarget(Math.max(0, main.total + flat), o.target)
+  let damage = againstTarget(Math.max(0, main.total + flat), o.target)
   const parts = [main.text ? `${main.text}${flat ? ` ${sign(flat)}` : ''}` : `${Math.max(0, flat)}`]
   for (const e of p.extras) {
     if (e.once === 'sneak' && (!o.sneak || !useOnce(s, 'sneak'))) continue
-    const x = rollPart(e.dice, { crit, ...(o.rng ? { rng: o.rng } : {}) })
-    total += againstTarget(x.total, o.target)
+    const dice = e.once === 'sneak' ? lessDice(e.dice, rd?.sneakCost ?? 0) : e.dice
+    if (!dice) continue
+    const x = rollPart(dice, { crit, ...(o.rng ? { rng: o.rng } : {}) })
+    damage += againstTarget(x.total, o.target)
     parts.push(`${e.label} ${x.text} ${e.type.toLowerCase()}`)
   }
-  const mastery = masteryOnHit(s, p, total > 0)
+  for (const e of rd?.parts ?? []) {
+    const x = rollExtra(e, crit, o.rng)
+    damage += againstTarget(x.total, o.target)
+    parts.push(`${e.label} ${x.text} ${e.type.toLowerCase()}`)
+  }
+  const said = rd ? rd.pay(o.rng) : []
+  const notes = [...(rd?.notes ?? []), ...said]
+  if (rd?.double)
+    notes.push(
+      `${rd.double.label}: DC ${rd.double.save.dc} ${rd.double.save.ability} save or ${damage} more damage`,
+    )
+  const mastery = masteryOnHit(s, p, damage > 0)
   const outcome = crit ? 'Critical Hit!' : hit ? 'hit' : 'if it hits'
-  const line = `${head} · ${outcome} ${total} ${p.type.toLowerCase()} damage (${parts.join('; ')}).${mastery ? ` ${mastery}` : ''}`
+  const line = `${head}${turnedText} · ${outcome} ${damage} ${p.type.toLowerCase()} damage (${parts.join('; ')}).${mastery ? ` ${mastery}` : ''}${notes.length ? ` ${notes.map((n) => n.replace(/\.$/, '')).join('. ')}.` : ''}`
   return {
     line,
-    total: r.total,
+    total,
     natural: r.natural,
     hit,
     crit,
-    damage: total,
+    damage,
     masteryNote: mastery,
   }
 }
@@ -541,6 +751,50 @@ export function masteryOnHit(s: Dnd5eSheet, p: Dnd5eAttackPlan, damaged: boolean
         : ''
     default:
       return ''
+  }
+}
+
+/** The Soulknife's Psychic Blade as a weapon (Phantom of the 2024 PHB: Simple melee, Finesse, Thrown 60/120, Vex). */
+const PSYCHIC_BLADE: Dnd5eWeaponDef = {
+  slug: 'psychic-blade',
+  name: 'Psychic Blade',
+  srd: false,
+  source: 'PHB 2024',
+  category: 'Simple',
+  type: 'Melee',
+  damage: '1d6',
+  damageType: 'Psychic',
+  properties: ['Finesse', 'Thrown'],
+  propertyText: ['Finesse', 'Thrown (Range 60/120)'],
+  range: { normal: 60, long: 120 },
+  mastery: 'Vex',
+  weight: 0,
+  cost: 0,
+}
+
+/**
+ * A Soulknife's Psychic Blade (PHB 2024): 1d6 Psychic + the attack's modifier, Finesse, Thrown
+ * 60/120, with its Vex mastery; `second` is the Bonus Action blade after it, a d4.
+ */
+export function psychicBlade(
+  s: Dnd5eSheet,
+  level: number,
+  o: { second?: boolean; grip?: Dnd5eGrip; target?: Dnd5eTarget; columns?: Dnd5eColumns } = {},
+): Dnd5eAttackPlan {
+  const def = o.second ? { ...PSYCHIC_BLADE, damage: '1d4' } : PSYCHIC_BLADE
+  const w = { name: def.name, atk: 0, dmg: def.damage, type: 'Psychic', range: '60/120 ft' }
+  const p = weaponAttack(s, level, w, def, {
+    key: o.second ? 'blade:bonus' : 'blade',
+    ...(o.grip ? { grip: o.grip } : {}),
+    ...(o.target ? { target: o.target } : {}),
+    ...(o.columns ? { columns: o.columns } : {}),
+  })
+  return {
+    ...p,
+    name: o.second ? 'Psychic Blade (Bonus Action)' : 'Psychic Blade',
+    mastery: 'Vex',
+    cost: o.second ? 'bonus' : 'attack',
+    blade: true,
   }
 }
 

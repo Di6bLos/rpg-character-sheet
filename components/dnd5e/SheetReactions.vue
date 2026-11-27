@@ -1,13 +1,25 @@
 <script setup lang="ts">
 // The 5e sheet's Reactions, a panel of their own as on the Nimble and PF2e sheets: the
-// Opportunity Attack (one melee attack when a creature leaves your reach, SRD 5.2.1 p. 15),
-// reaction spells (Shield, Counterspell, Hellish Rebuke…) cast through useDnd5eCasting, and the
-// hero's reaction features, feats and options (Uncanny Dodge, Parry, Riposte, Sentinel…). One
-// Reaction a round, back at the start of your turn. Results nothing else claims show here.
+// Opportunity Attack (one melee attack when a creature leaves your reach, SRD 5.2.1 p. 15) and
+// the other reaction attacks (Riposte with its die, Retaliation, Soul of Vengeance…) with the
+// hero's automatic riders; what meets an attack before it's known to hit (Defensive Duelist,
+// Combat Inspiration, a Luck Point; utils/dnd5eDefense.ts); reaction spells (Shield,
+// Counterspell, Hellish Rebuke…) cast through useDnd5eCasting; and the hero's other reaction
+// features, feats and options (Cutting Words, Warding Flare…). Reactions that cut a hit's
+// damage (Uncanny Dodge, Parry…) sit beside Hit points instead. One Reaction a round, back at
+// the start of your turn. Results nothing else claims show here.
 import type { Dnd5eSheet } from '~/types/sheets'
 import { showOutcome, sign } from '~/utils/dice'
 import { rollAttack5e, weaponAttack, weaponDef } from '~/utils/dnd5eAttacks'
-import { costWhy, payCost } from '~/utils/dnd5ePlay'
+import {
+  DND5E_GUARDS,
+  type Dnd5eReactionAttack,
+  acReactions,
+  reactionAttacks,
+  useAcReaction,
+} from '~/utils/dnd5eDefense'
+import { attackRiders, defaultRiders, riderPlan } from '~/utils/dnd5eRiders'
+import { payCost, spendUses } from '~/utils/dnd5ePlay'
 import { levelName } from '~/utils/dnd5eSpells'
 import { tipText } from '~/utils/ruleTips'
 
@@ -20,36 +32,49 @@ const sheet = computed(() => draft.value.sheet)
 const level = computed(() => draft.value.level)
 const ready = computed(() => sheet.value.turn?.reaction !== false)
 
-const melee = computed(() =>
-  sheet.value.weapons
-    .map((w, i) => ({ w, i, def: weaponDef(w, data.value?.weapons ?? []) }))
-    .filter((x) => (x.def ? x.def.type === 'Melee' : !/\d+\s*\/\s*\d+/.test(x.w.range))),
+const weapons = computed(() =>
+  sheet.value.weapons.map((w, i) => {
+    const def = weaponDef(w, data.value?.weapons ?? [])
+    const ranged = def ? def.type === 'Ranged' : /\d+\s*\/\s*\d+/.test(w.range)
+    return { w, i, def, ranged }
+  }),
 )
-const picked = ref(0)
-const oaWhy = computed(() =>
-  melee.value.length ? costWhy(sheet.value, 'reaction') : 'No melee weapon',
-)
+const attacks = computed(() => reactionAttacks(sheet.value, level.value))
+const picked = ref<Record<string, number>>({})
+const usable = (r: Dnd5eReactionAttack) => weapons.value.filter((x) => x.ranged === !!r.ranged)
+const why = (r: Dnd5eReactionAttack) =>
+  usable(r).length ? r.why : r.ranged ? 'No ranged weapon' : 'No melee weapon'
 
-function opportunity() {
-  const m = melee.value[picked.value] ?? melee.value[0]
-  if (!canEdit.value || !m || oaWhy.value) return
+/** One attack as a Reaction: Riposte adds its Superiority Die, the hero's auto riders ride along. */
+function reactionAttack(r: Dnd5eReactionAttack) {
+  const list = usable(r)
+  const m = list.find((x) => x.i === picked.value[r.key]) ?? list[0]
+  const key = `rea:${r.key}`
+  if (!canEdit.value || !m || why(r)) return
   const plan = weaponAttack(sheet.value, level.value, m.w, m.def, {
-    key: 'rea:oa',
+    key,
     target: target.value,
     columns: columns.value,
   })
-  typed.run('rea:oa', 'Opportunity Attack', () => {
+  typed.run(key, r.name, () => {
     payCost(sheet.value, level.value, 'reaction')
-    const r = rollAttack5e(
+    if (r.spend) spendUses(sheet.value, r.spend)
+    const ctx = { columns: columns.value, mode: attackMode.value }
+    const riders = riderPlan(
       sheet.value,
-      { ...plan, name: `Opportunity Attack (${m.w.name})` },
-      {
-        mode: attackMode.value,
-        target: target.value,
-      },
+      level.value,
+      plan,
+      defaultRiders(attackRiders(sheet.value, level.value, plan, ctx)),
+      ctx,
     )
-    claim('rea:oa', () => say(r.line))
-    showOutcome({ label: 'Opportunity Attack', total: r.damage, detail: r.line })
+    if (r.dice) riders.parts.push({ dice: r.dice, type: plan.type, label: r.name })
+    const res = rollAttack5e(
+      sheet.value,
+      { ...plan, name: `${r.name} (${m.w.name})` },
+      { mode: attackMode.value, target: target.value, riders },
+    )
+    claim(key, () => say(res.line))
+    showOutcome({ label: r.name, total: res.damage, detail: res.line })
   })
   attackMode.value = 'normal'
 }
@@ -58,6 +83,23 @@ const spells = computed(() =>
   casting.spells.value.filter((r) => !r.book && casting.defOf(r.slug)?.activation === 'reaction'),
 )
 const own = computed(() => entries.value.filter((e) => e.cost === 'reaction'))
+const guardNames = new Set([
+  ...DND5E_GUARDS.map((g) => g.name),
+  'Riposte',
+  'Retaliation',
+  'Soul of Vengeance',
+  'Bloodthirst',
+  'Masterful Shots',
+])
+const shown = computed(() =>
+  own.value.filter((e) => !guardNames.has(e.name.split(': ').pop() ?? e.name)),
+)
+const meet = computed(() => acReactions(sheet.value, level.value))
+const meetResult = computed(() => meet.value.map((m) => resultFor(`rea:${m.key}`)).find(Boolean))
+
+function meetAttack(key: string) {
+  if (canEdit.value) claim(`rea:${key}`, () => say(useAcReaction(sheet.value, level.value, key)))
+}
 </script>
 
 <template>
@@ -76,21 +118,27 @@ const own = computed(() => entries.value.filter((e) => e.cost === 'reaction'))
       }}</span>
     </div>
     <div class="rows">
-      <div class="tile attack">
+      <div v-for="r in attacks" :key="r.key" class="tile attack">
         <div class="stack" style="gap: 2px">
-          <strong style="font-size: 15px">Opportunity Attack</strong>
-          <span class="small muted"
-            >One melee attack when a creature you can see leaves your reach.</span
-          >
-          <Dnd5eCostPill cost="reaction" />
+          <strong style="font-size: 15px">{{ r.name }}</strong>
+          <span class="small muted">{{ r.note }}</span>
+          <span class="row" style="gap: 6px">
+            <Dnd5eCostPill cost="reaction" />
+            <small v-if="r.spend" class="muted"
+              >1 {{ r.spend }}{{ r.dice ? ` (+${r.dice})` : '' }}</small
+            >
+          </span>
         </div>
         <select
-          v-if="melee.length > 1"
-          v-model.number="picked"
+          v-if="usable(r).length > 1"
           class="input input--sm"
-          aria-label="Weapon for the Opportunity Attack"
+          :aria-label="`Weapon for ${r.name}`"
+          :value="picked[r.key] ?? usable(r)[0]?.i"
+          @change="
+            picked = { ...picked, [r.key]: Number(($event.target as HTMLSelectElement).value) }
+          "
         >
-          <option v-for="(m, k) in melee" :key="m.i" :value="k">
+          <option v-for="m in usable(r)" :key="m.i" :value="m.i">
             {{ m.w.name }}
             {{ sign(weaponAttack(sheet, level, m.w, m.def, { key: 'x' }).test.bonus) }}
           </option>
@@ -98,20 +146,20 @@ const own = computed(() => entries.value.filter((e) => e.cost === 'reaction'))
         <button
           type="button"
           class="btn btn--sm"
-          :disabled="!canEdit || !!oaWhy"
-          @click="opportunity"
+          :disabled="!canEdit || !!why(r)"
+          @click="reactionAttack(r)"
         >
-          {{ oaWhy || 'Attack' }}
+          {{ why(r) || 'Attack' }}
         </button>
         <NimbleDiceEntry
-          v-if="typed.prompt('rea:oa')"
-          :label="typed.prompt('rea:oa')"
+          v-if="typed.prompt(`rea:${r.key}`)"
+          :label="typed.prompt(`rea:${r.key}`)"
           action="Roll"
           :disabled="!canEdit"
           @submit="typed.submit"
         />
-        <p v-if="resultFor('rea:oa')" class="roll-status" role="status">
-          {{ resultFor('rea:oa') }}
+        <p v-if="resultFor(`rea:${r.key}`)" class="roll-status" role="status">
+          {{ resultFor(`rea:${r.key}`) }}
         </p>
       </div>
       <div v-for="r in spells" :key="r.slug" class="tile attack">
@@ -151,7 +199,30 @@ const own = computed(() => entries.value.filter((e) => e.cost === 'reaction'))
           {{ resultFor(`spell:${r.slug}`) }}
         </p>
       </div>
-      <Dnd5eEntryCard v-for="e in own" :key="e.key" :entry="e" />
+      <div v-if="meet.length" class="tile attack">
+        <div class="stack" style="gap: 2px">
+          <strong style="font-size: 15px">When an attack comes at you</strong>
+          <span class="small muted"
+            >Before you know it hits: more AC against it, or Disadvantage on it. Reactions that cut
+            the damage are beside Hit points.</span
+          >
+        </div>
+        <div class="row" style="gap: 6px; flex-wrap: wrap">
+          <button
+            v-for="m in meet"
+            :key="m.key"
+            type="button"
+            class="btn btn--ghost btn--sm"
+            :disabled="!canEdit || !!m.why"
+            :title="m.why ? `${m.why}\n${m.note}` : m.note"
+            @click="meetAttack(m.key)"
+          >
+            {{ m.name }}{{ m.ac ? ` +${m.ac}` : '' }}
+          </button>
+        </div>
+        <p v-if="meetResult" class="roll-status" role="status">{{ meetResult }}</p>
+      </div>
+      <Dnd5eEntryCard v-for="e in shown" :key="e.key" :entry="e" />
     </div>
     <p v-if="unclaimed" class="roll-status" role="status" aria-live="polite">{{ unclaimed }}</p>
   </section>

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-// Vitals panel of the 5e sheet, laid out like Nimble's: HP with Crit (and Uncanny Dodge or
-// Deflect Attacks while the hero has them) for the next damage, the draggable bar (temp HP
-// first; halving, Deflect and Heavy Armor Master in the preview) and a temp HP stepper; the AC
+// Vitals panel of the 5e sheet, laid out like Nimble's: HP with Crit and the reactions that cut
+// the next hit (Uncanny Dodge, Deflect Attacks, Parry, Song of Defense…, utils/dnd5eDefense.ts),
+// the draggable bar (temp HP first; halving and Heavy Armor Master in the preview) and a temp
+// HP stepper; damage from a save, half on a success, with Evasion; the AC
 // badge with its breakdown; death saves beside the Hit Point Dice and Heroic Inspiration;
 // Speed, Initiative, Proficiency and Passive Perception; conditions; typed damage folded;
 // Short and Long Rest. Damage and healing go through utils/dnd5ePlay.ts (SRD 5.2.1 pp. 16–18).
 import type { Dnd5eSheet } from '~/types/sheets'
-import { rollDie, sign } from '~/utils/dice'
+import { sign } from '~/utils/dice'
 import {
   DND5E_DAMAGE_TYPES,
   type Dnd5eHit,
@@ -22,7 +23,6 @@ import {
   isDying,
   isStable,
   longRest,
-  payCost,
   resurrect,
   shortRest,
   skillRow,
@@ -32,6 +32,7 @@ import {
   takeDamage,
 } from '~/utils/dnd5ePlay'
 import { exhaustionOf } from '~/utils/dnd5eConditions'
+import { damageGuards, guardHit, guardPreview, saveDamage } from '~/utils/dnd5eDefense'
 import { hpTone as toneFor } from '~/utils/roster'
 import type { HpTakes } from '~/utils/hpPreview'
 
@@ -48,15 +49,16 @@ const dying = computed(() => isDying(sheet.value))
 const stable = computed(() => isStable(sheet.value))
 const hpTone = computed(() => toneFor(sheet.value.hp, sheet.value.hpMax))
 
-/** The next damage is a Critical Hit; Uncanny Dodge halves it; Deflect Attacks cuts it. */
+/** The next damage is a Critical Hit; the guards picked cut it (Uncanny Dodge halves it). */
 const crit = ref(false)
-const dodge = ref(false)
-const deflect = ref(false)
-const reactionReady = computed(
-  () => sheet.value.turn?.reaction !== false || !sheet.value.inEncounter,
-)
-const canUncanny = computed(() => hero.value.has('Uncanny Dodge'))
-const canDeflect = computed(() => hero.value.has('Deflect Attacks'))
+const guarding = ref<string[]>([])
+const guards = computed(() => damageGuards(sheet.value, level.value))
+
+function toggleGuard(key: string) {
+  guarding.value = guarding.value.includes(key)
+    ? guarding.value.filter((k) => k !== key)
+    : [...guarding.value, key]
+}
 
 /** Heavy Armor Master (PHB 2024): Bludgeoning, Piercing and Slashing cut by PB in Heavy armor. */
 const heavyArmor = computed(() =>
@@ -74,17 +76,18 @@ function hitOf(amount: number, type = ''): Dnd5eHit {
   return {
     amount,
     crit: crit.value,
+    level: level.value,
     ...(type ? { type } : {}),
-    ...(dodge.value && reactionReady.value ? { halve: 'Uncanny Dodge' } : {}),
     ...(reduce.length ? { reduce } : {}),
   }
 }
 
 const takes = computed<HpTakes | undefined>(() => {
-  if (!dodge.value) return undefined
+  const keys = guarding.value
+  if (!keys.length) return undefined
   return (d: number) => {
-    const r = damageAfter(sheet.value, hitOf(d))
-    return { taken: r.taken, note: r.notes.join(', ') }
+    const r = damageAfter(sheet.value, hitOf(guardPreview(keys, d)))
+    return { taken: r.taken, note: keys.join(', ') }
   }
 })
 
@@ -94,24 +97,34 @@ const concDc = ref<number | null>(null)
 function hurt(amount: number, type = '') {
   if (!canEdit.value || amount <= 0) return
   const hit = hitOf(amount, type)
-  if (deflect.value && reactionReady.value) {
-    const r = rollDie(10)
-    const cut = r + hero.value.mod('DEX') + level.value
-    hit.reduce = [
-      ...(hit.reduce ?? []),
-      {
-        label: `Deflect Attacks (${r} ${sign(hero.value.mod('DEX'))} ${sign(level.value)})`,
-        amount: cut,
-      },
-    ]
-  }
-  if (hit.halve || deflect.value) payCost(sheet.value, level.value, 'reaction')
+  guardHit(sheet.value, level.value, hit, guarding.value)
   const r = takeDamage(sheet.value, hit)
   concDc.value = r.concentrationDc
   crit.value = false
-  dodge.value = false
-  deflect.value = false
+  guarding.value = []
   claim('vit:hp', () => say(r.line))
+}
+
+// Damage from an effect with a saving throw: the sheet rolls the save against the DC (or the
+// table says how it went), then a success halves it, or Evasion takes none (SRD 5.2.1 p. 9).
+const saveAbility = ref<'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA'>('DEX')
+const saveDc = ref<number | null>(null)
+const saveHalf = ref(true)
+
+function fromSave(saved?: boolean) {
+  if (!canEdit.value || !amount.value) return
+  const r = saveDamage(sheet.value, level.value, {
+    amount: amount.value,
+    ability: saveAbility.value,
+    half: saveHalf.value,
+    ...(dmgType.value ? { type: dmgType.value } : {}),
+    ...(saved !== undefined ? { saved } : saveDc.value ? { dc: saveDc.value } : { saved: false }),
+  })
+  const hit = { ...hitOf(r.taken, dmgType.value), crit: false }
+  const t = r.taken > 0 ? takeDamage(sheet.value, hit) : null
+  if (t) concDc.value = t.concentrationDc
+  amount.value = null
+  claim('vit:hp', () => say(`${r.line}${t ? ` ${t.line}` : ' No damage.'}`))
 }
 
 function mend(amount: number) {
@@ -182,7 +195,7 @@ function setSaves(kind: 'successes' | 'failures', n: number) {
   saves[kind] = saves[kind] === n ? n - 1 : n
 }
 
-const speed = computed(() => speedNow(sheet.value))
+const speed = computed(() => speedNow(sheet.value, level.value))
 const init = computed(() => initiativeTest(sheet.value, level.value))
 const perception = computed(() => {
   const r = skillRow(sheet.value, level.value, 'Perception')
@@ -253,7 +266,7 @@ const diceLeft = computed(() => hitDiceLeft(sheet.value, level.value))
 
 function confirmShort() {
   shortOpen.value = false
-  if (canEdit.value) claim('vit:rest', () => say(shortRest(sheet.value)))
+  if (canEdit.value) claim('vit:rest', () => say(shortRest(sheet.value, level.value)))
 }
 
 function confirmLong() {
@@ -307,28 +320,18 @@ function toggleInspiration() {
               Crit
             </label>
             <label
-              v-if="canUncanny"
+              v-for="g in guards"
+              :key="g.guard.key"
               class="crit crit--react"
-              :title="
-                reactionReady
-                  ? 'Your Reaction: halve the next attack’s damage (SRD 5.2.1 p. 63)'
-                  : 'Reaction used'
-              "
+              :title="g.why || g.guard.note"
             >
-              <input v-model="dodge" type="checkbox" :disabled="!canEdit || !reactionReady" />
-              Uncanny Dodge
-            </label>
-            <label
-              v-if="canDeflect"
-              class="crit crit--react"
-              :title="
-                reactionReady
-                  ? 'Your Reaction: cut the next attack’s damage by 1d10 + DEX + Monk level (SRD 5.2.1 p. 51)'
-                  : 'Reaction used'
-              "
-            >
-              <input v-model="deflect" type="checkbox" :disabled="!canEdit || !reactionReady" />
-              Deflect
+              <input
+                type="checkbox"
+                :checked="guarding.includes(g.guard.key)"
+                :disabled="!canEdit || (!!g.why && !guarding.includes(g.guard.key))"
+                @change="toggleGuard(g.guard.key)"
+              />
+              {{ g.guard.name }}
             </label>
           </div>
           <div class="row hp-steps" style="gap: 8px">
@@ -597,9 +600,62 @@ function toggleInspiration() {
           Heal
         </button>
       </form>
+      <form class="hurt" @submit.prevent="fromSave()">
+        <span class="hint">From a save:</span>
+        <label class="sr-only" for="d5-save-ability">Saving throw</label>
+        <select
+          id="d5-save-ability"
+          v-model="saveAbility"
+          class="input hurt__type"
+          :disabled="!canEdit"
+        >
+          <option v-for="a in ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']" :key="a" :value="a">
+            {{ a }} save
+          </option>
+        </select>
+        <label class="sr-only" for="d5-save-dc">Save DC</label>
+        <input
+          id="d5-save-dc"
+          v-model.number="saveDc"
+          class="input hurt__n"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          placeholder="DC"
+          :disabled="!canEdit"
+        />
+        <label class="crit" title="A success halves the damage (else it avoids it all)">
+          <input v-model="saveHalf" type="checkbox" :disabled="!canEdit" />
+          Half on a success
+        </label>
+        <button
+          type="submit"
+          class="btn btn--sm"
+          :disabled="!canEdit || !amount || !saveDc"
+          title="Roll the save against the DC, then take the damage"
+        >
+          Roll the save
+        </button>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm"
+          :disabled="!canEdit || !amount"
+          @click="fromSave(true)"
+        >
+          Passed
+        </button>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm"
+          :disabled="!canEdit || !amount"
+          @click="fromSave(false)"
+        >
+          Failed
+        </button>
+      </form>
       <p class="hint">
-        Resistances: {{ sheet.defenses?.resistances.join(', ') || 'none' }}. Crit and Uncanny Dodge
-        beside Hit points apply here too.
+        Resistances: {{ sheet.defenses?.resistances.join(', ') || 'none' }}. Crit and the reactions
+        beside Hit points apply to Damage; Evasion applies to a DEX save for half.
       </p>
     </details>
 
