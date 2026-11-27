@@ -376,6 +376,13 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
   min-width: 0;
   font-size: 14px;
   overflow-wrap: anywhere;
+
+  // A wrapped row keeps the name's 44px touch target off the buttons under it.
+  @media (pointer: coarse) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 
 .items__actions {
@@ -440,6 +447,11 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
   &[aria-pressed='true'] {
     border-color: var(--accent);
     color: var(--accent-text);
+  }
+
+  @media (pointer: coarse) {
+    min-height: 44px;
+    padding: 2px 12px;
   }
 }
 
@@ -533,6 +545,10 @@ function setCoins(kind: 'gp' | 'sp', event: Event) {
     font-weight: 700;
     color: var(--page-text);
     appearance: textfield;
+
+    @media (pointer: coarse) {
+      min-height: 44px;
+    }
 
     &.gp {
       color: var(--accent-text);

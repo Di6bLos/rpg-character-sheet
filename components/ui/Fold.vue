@@ -84,11 +84,12 @@ function toggle() {
     border-color: var(--accent);
   }
 
+  // 44px on touch: the 30px box less its 1px border, plus 8px each side.
   @media (pointer: coarse) {
     &::after {
       content: '';
       position: absolute;
-      inset: -7px;
+      inset: -8px;
     }
   }
 }

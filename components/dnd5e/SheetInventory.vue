@@ -302,6 +302,11 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
+
+  // A wrapped row keeps the name's 44px touch target off the buttons under it.
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
 }
 
 .items__actions {
@@ -320,11 +325,11 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
 }
 
 .tag {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--page-muted);
+  color: var(--page-soft);
 
   &--mastery {
     color: var(--secondary);
