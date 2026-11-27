@@ -6,7 +6,9 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { DND5E_EFFECTS, SPELL_EFFECTS } from '../utils/dnd5eEffects'
+import { DND5E_GUARDS } from '../utils/dnd5eDefense'
 import { DND5E_MODIFIERS } from '../utils/dnd5eModifiers'
+import { DND5E_REROLLS } from '../utils/dnd5eRerolls'
 import { DND5E_RIDER_GROUPS, DND5E_RIDERS } from '../utils/dnd5eRiders'
 import { DND5E_FEATURE_RULES, entryWhy, heroEntries, useEntry } from '../utils/dnd5eFeatures'
 import { norm5e, usesLeft } from '../utils/dnd5ePlay'
@@ -20,6 +22,8 @@ const SOURCES = [
   '../utils/dnd5eFeatures.ts',
   '../utils/dnd5eRiders.ts',
   '../utils/dnd5eModifiers.ts',
+  '../utils/dnd5eDefense.ts',
+  '../utils/dnd5eRerolls.ts',
 ]
 
 const options = data.options.flatMap((g) => g.entries)
@@ -67,8 +71,8 @@ const phrases = [...code.matchAll(LITERAL)]
   )
 
 describe('5e rules names', () => {
-  it.each(calls('has'))('feature or trait “%s” is in the data', (name) => {
-    expect(featureNames.has(norm5e(name))).toBe(true)
+  it.each(calls('has'))('feature, trait or option “%s” is in the data', (name) => {
+    expect(featureNames.has(norm5e(name)) || optionNames.has(norm5e(name))).toBe(true)
   })
 
   it.each(calls('feat'))('feat “%s” is in the data', (slug) => {
@@ -80,9 +84,9 @@ describe('5e rules names', () => {
   })
 
   it.each(Object.keys(DND5E_FEATURE_RULES))(
-    'rule “%s” names a feature, trait or benefit',
+    'rule “%s” names a feature, trait, benefit or option',
     (name) => {
-      expect(featureNames.has(norm5e(name))).toBe(true)
+      expect(featureNames.has(norm5e(name)) || optionNames.has(norm5e(name))).toBe(true)
     },
   )
 
@@ -103,6 +107,8 @@ describe('5e rules names', () => {
     [
       ...DND5E_RIDERS.flatMap((r) => [r.feature, r.also ?? '']),
       ...DND5E_MODIFIERS.map((m) => m.feature),
+      ...DND5E_GUARDS.map((g) => g.feature),
+      ...DND5E_REROLLS.map((r) => r.feature),
       ...Object.values(DND5E_EFFECTS).map((d) => d.feature ?? ''),
     ].filter((n, i, all) => n && all.indexOf(n) === i),
   )('rider, modifier or effect feature “%s” is in the data', (name) => {

@@ -1022,8 +1022,11 @@ export function spendHitDie(
   return `Hit Point Die d${die}: ${roll} ${sign(con)} = ${gain}. ${healed}`
 }
 
-/** Short Rest (SRD 5.2.1 p. 186): Short Rest uses and Pact Magic slots come back. */
-export function shortRest(s: Dnd5eSheet): string {
+/**
+ * Short Rest (SRD 5.2.1 p. 186): Short Rest uses and Pact Magic slots come back, and what
+ * features add to it (`restExtras`: Font of Inspiration, Sorcerous Restoration…).
+ */
+export function shortRest(s: Dnd5eSheet, level = 0): string {
   const back: string[] = []
   for (const r of s.resources ?? []) {
     const spent = s.used?.[r.name] ?? 0
@@ -1040,7 +1043,61 @@ export function shortRest(s: Dnd5eSheet): string {
     s.pactUsed = 0
     back.push('Pact Magic slots')
   }
-  return `Short Rest.${back.length ? ` Back: ${back.join(', ')}.` : ''}`
+  const extras = level ? restExtras(s, level, 'short') : []
+  return `Short Rest.${back.length ? ` Back: ${back.join(', ')}.` : ''}${extras.length ? ` ${extras.join(' ')}` : ''}`
+}
+
+/**
+ * What features do at the end of a rest: Font of Inspiration (Bardic Inspiration back on a
+ * Short Rest, SRD 5.2.1 p. 34), Sorcerous Restoration (Sorcery Points up to half the level,
+ * p. 66), Refreshed Genius and Magical Guidance (Flash of Genius), Cutthroat (Bloodthirst),
+ * Celestial Resilience's temporary HP, Relentless Rage's DC back to 10; after a Long Rest also
+ * Portent's foretold d20s, the Blood rune's temporary HP, and the Arcane Ward gone.
+ */
+function restExtras(s: Dnd5eSheet, level: number, kind: 'short' | 'long'): string[] {
+  const hero = dnd5eHero(s, level)
+  const out: string[] = []
+  const used = { ...s.used }
+  delete used['Relentless Rage']
+  delete used['Fanatical Focus']
+  s.used = used
+  if (kind === 'short') {
+    if (hero.has('Font of Inspiration') && s.used?.['Bardic Inspiration']) {
+      restoreUses(s, 'Bardic Inspiration')
+      out.push('Font of Inspiration: Bardic Inspiration back.')
+    }
+    const sp = s.used?.['Font of Magic'] ?? 0
+    if (hero.has('Sorcerous Restoration') && sp && usesLeft(s, 'Sorcerous Restoration') > 0) {
+      const n = Math.min(sp, Math.floor(level / 2))
+      restoreUses(s, 'Font of Magic', n)
+      spendUses(s, 'Sorcerous Restoration')
+      out.push(`Sorcerous Restoration: ${n} Sorcery Point${n === 1 ? '' : 's'} back.`)
+    }
+    const fog = s.used?.['Flash of Genius'] ?? 0
+    if (fog && hero.has('Soul of Artifice') && s.inventory.some((i) => i.attuned)) {
+      restoreUses(s, 'Flash of Genius')
+      out.push('Magical Guidance: Flash of Genius back.')
+    } else if (fog && hero.has('Advanced Artifice')) {
+      restoreUses(s, 'Flash of Genius', 1)
+      out.push('Refreshed Genius: 1 Flash of Genius back.')
+    }
+    if (hero.has('Dread Incarnate') && s.used?.['Bloodthirst']) {
+      restoreUses(s, 'Bloodthirst', 1)
+      out.push('Cutthroat: 1 Bloodthirst back.')
+    }
+  } else {
+    s.arcaneWard = 0
+    if (hero.has('Portent')) {
+      const n = hero.has('Greater Portent') ? 3 : 2
+      s.portent = Array.from({ length: n }, () => rollDie(20))
+      out.push(`Portent: ${s.portent.join(', ')} foretold.`)
+    }
+    if (hero.has('Runeforging: Blood'))
+      out.push(gainTempHp(s, Math.max(1, hero.mod('CHA')) + level, 'Blood rune'))
+  }
+  if (hero.has('Celestial Resilience'))
+    out.push(gainTempHp(s, level + Math.max(0, hero.mod('CHA')), 'Celestial Resilience'))
+  return out
 }
 
 /**
@@ -1073,7 +1130,8 @@ export function longRest(s: Dnd5eSheet, level: number): string {
     s.heroicInspiration = true
     notes.push('Resourceful: Heroic Inspiration')
   }
-  return `Long Rest: ${notes.join('; ')}.`
+  const extras = restExtras(s, level, 'long')
+  return `Long Rest: ${notes.join('; ')}.${extras.length ? ` ${extras.join(' ')}` : ''}`
 }
 
 // --- The turn and the action economy ------------------------------------------------------
@@ -1224,7 +1282,7 @@ export function setInitiative(s: Dnd5eSheet, total: number) {
  * and object interaction come back; what ends at the start of your turn ends. A dying hero
  * makes a death save.
  */
-export function startTurn(s: Dnd5eSheet): string {
+export function startTurn(s: Dnd5eSheet, level = 0): string {
   const was = s.turn ?? newTurn()
   const n = turnActions(s)
   s.turn = {
@@ -1245,7 +1303,62 @@ export function startTurn(s: Dnd5eSheet): string {
   if (isDying(s)) notes.push('roll a death saving throw')
   else if (!n) notes.push(`${cantAct(s)}: no actions`)
   if (hasEffect(s, 'heroism')) notes.push('Heroism: gain your temporary HP')
+  if (level) notes.push(...turnStartExtras(s, level))
   return `${notes.join('; ')}.`
+}
+
+/**
+ * What features do as your turn starts: Heroic Warrior's Heroic Inspiration in combat (SRD
+ * 5.2.1 p. 47), Survivor's Heroic Rally (5 + CON while Bloodied, p. 47), Elder Champion's 10 HP.
+ */
+function turnStartExtras(s: Dnd5eSheet, level: number): string[] {
+  const hero = dnd5eHero(s, level)
+  const out: string[] = []
+  if (s.inEncounter && hero.has('Heroic Warrior') && !s.heroicInspiration) {
+    s.heroicInspiration = true
+    out.push('Heroic Warrior: Heroic Inspiration')
+  }
+  const bloodied = s.hp > 0 && s.hp <= Math.floor(s.hpMax / 2)
+  if (bloodied && hero.has('Survivor')) out.push(`Heroic Rally: ${heal(s, 5 + hero.mod('CON'))}`)
+  if (s.hp > 0 && hasEffect(s, 'elder-champion')) out.push(`Elder Champion: ${heal(s, 10)}`)
+  return out
+}
+
+/**
+ * What features do when the hero rolls Initiative: Persistent Rage gives Rage back (SRD 5.2.1
+ * p. 30), Superior Inspiration tops Bardic Inspiration up to 2 (p. 34), Perfect Focus Focus
+ * Points to 4 (p. 52), Evergreen Wild Shape gives a use when none is left (p. 45), Ever-Ready
+ * Shot an Arcane Shot use.
+ */
+export function onInitiative(s: Dnd5eSheet, level: number): string[] {
+  const hero = dnd5eHero(s, level)
+  const out: string[] = []
+  const topUp = (name: string, to: number, label: string) => {
+    const r = s.resources?.find((x) => x.name === name)
+    if (!r) return
+    const left = usesLeft(s, name)
+    if (left >= to) return
+    restoreUses(s, name, Math.min(to, r.max) - left)
+    out.push(`${label}: ${name} ${Math.min(to, r.max)}`)
+  }
+  if (
+    hero.has('Persistent Rage') &&
+    (s.used?.['Rage'] ?? 0) > 0 &&
+    usesLeft(s, 'Persistent Rage') > 0
+  ) {
+    restoreUses(s, 'Rage')
+    spendUses(s, 'Persistent Rage')
+    out.push('Persistent Rage: all Rage uses back')
+  }
+  if (hero.has('Superior Inspiration')) topUp('Bardic Inspiration', 2, 'Superior Inspiration')
+  if (hero.has('Perfect Focus')) topUp('Monk’s Focus', 4, 'Perfect Focus')
+  if (hero.has('Archdruid') && usesLeft(s, 'Wild Shape') < 1)
+    topUp('Wild Shape', 1, 'Evergreen Wild Shape')
+  if (hero.has('Ever-Ready Shot') && (s.used?.['Arcane Shot'] ?? 0) > 0) {
+    restoreUses(s, 'Arcane Shot', 1)
+    out.push('Ever-Ready Shot: 1 Arcane Shot use back')
+  }
+  return out
 }
 
 /** End turn: what ends at the end of your turn ends; the next round starts the next turn. */
