@@ -3,7 +3,8 @@
 // (utils/dnd5eRiders.ts through rollAttack5e).
 import { describe, expect, it } from 'vitest'
 import type { Dnd5eSheet } from '../types/sheets'
-import { rollAttack5e, unarmedAttack, weaponAttack } from '../utils/dnd5eAttacks'
+import { psychicBlade, rollAttack5e, unarmedAttack, weaponAttack } from '../utils/dnd5eAttacks'
+import { reactionAttacks } from '../utils/dnd5eDefense'
 import { addEffect, hasEffect } from '../utils/dnd5eEffects'
 import { beginEncounter, startTurn, usesLeft } from '../utils/dnd5ePlay'
 import {
@@ -393,5 +394,32 @@ describe('built heroes', () => {
       },
     )
     expect(attackRiders(sheet, 7, p).map((o) => o.def.key)).toContain('divine-strike')
+  })
+})
+
+describe('Soulknife and reaction attacks', () => {
+  it('makes Psychic Blades: Finesse 1d6 Psychic with Vex, a d4 second blade, Rend Mind on a Sneak Attack', () => {
+    const s = hero(['Psychic Blades', 'Sneak Attack', 'Rend Mind'], {
+      resources: [{ name: 'Rend Mind', from: 'Soulknife', max: 1, recharge: 'long' }],
+    })
+    const cols = { 'Sneak Attack': '9d6' }
+    const p = psychicBlade(s, 17, { columns: cols })
+    expect(p).toMatchObject({ dice: '1d6', type: 'Psychic', mastery: 'Vex', ability: 'STR' })
+    expect(p.extras.some((e) => e.once === 'sneak')).toBe(true)
+    expect(psychicBlade(s, 17, { second: true })).toMatchObject({ dice: '1d4', cost: 'bonus' })
+    const rend = attackRiders(s, 17, p, { sneak: true }).find((o) => o.def.key === 'rend-mind')!
+    expect(rend).toMatchObject({ why: '', save: { ability: 'WIS', dc: 8 + 4 + 3 } })
+  })
+
+  it('lists Riposte with its Superiority Die among the reaction attacks', () => {
+    const s = hero(['Riposte'], {
+      resources: [
+        { name: 'Combat Superiority', from: 'BM', max: 4, recharge: 'short', dice: '1d8' },
+      ],
+    })
+    expect(reactionAttacks(s, 3).map((r) => [r.key, r.dice ?? ''])).toEqual([
+      ['oa', ''],
+      ['riposte', '1d8'],
+    ])
   })
 })

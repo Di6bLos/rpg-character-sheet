@@ -15,6 +15,7 @@ import {
   type Dnd5eAttackPlan,
   type Dnd5eGrip,
   MASTERY_TEXT,
+  psychicBlade,
   WEAPON_PROPERTY_TEXT,
   damageText,
   damageWhy,
@@ -112,6 +113,32 @@ const cards = computed<Card[]>(() => {
       masteryName: '',
       canGrip: none,
     }))
+  if (dnd5eHero(sheet.value, level.value).has('Psychic Blades'))
+    for (const second of [false, true]) {
+      const key = second ? 'blade:bonus' : 'blade'
+      out.push({
+        key,
+        w: null,
+        plan: psychicBlade(sheet.value, level.value, {
+          second,
+          grip: grips.value[key] ?? {},
+          target: t,
+          columns: columns.value,
+        }),
+        props: [
+          { label: second ? 'Bonus Action after a blade attack' : 'Simple melee' },
+          { label: 'Finesse', title: 'Finesse', text: WEAPON_PROPERTY_TEXT.Finesse ?? '' },
+          { label: 'Thrown (60/120)', title: 'Thrown', text: WEAPON_PROPERTY_TEXT.Thrown ?? '' },
+        ],
+        masteryName: 'Vex',
+        canGrip: {
+          twoHands: false,
+          thrown: true,
+          offhand: false,
+          long: !!grips.value[key]?.thrown,
+        },
+      })
+    }
   out.push({
     key: 'unarmed',
     w: null,

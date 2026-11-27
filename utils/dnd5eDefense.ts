@@ -488,3 +488,112 @@ export function saveDamage(
 
 /** The damage types, for the save-damage picker. */
 export const SAVE_DAMAGE_TYPES = DND5E_DAMAGE_TYPES
+
+/** A Reaction that makes one attack (the Opportunity Attack, Riposte, Retaliation…). */
+export interface Dnd5eReactionAttack {
+  key: string
+  name: string
+  /** With a melee weapon (or Unarmed Strike), or a ranged one. */
+  ranged?: boolean
+  /** A resource it spends, and dice it adds to the hit's damage (Riposte's Superiority Die). */
+  spend?: string
+  dice?: string
+  why: string
+  note: string
+}
+
+interface ReactionAttackDef {
+  key: string
+  name: string
+  feature?: string
+  feat?: string
+  ranged?: boolean
+  spend?: string
+  pool?: boolean
+  needs?: string
+  note: string
+}
+
+const REACTION_ATTACKS: ReactionAttackDef[] = [
+  {
+    key: 'oa',
+    name: 'Opportunity Attack',
+    note: 'One melee attack when a creature you can see leaves your reach (SRD 5.2.1 p. 15).',
+  },
+  {
+    key: 'riposte',
+    name: 'Riposte',
+    feature: 'Riposte',
+    spend: 'Combat Superiority',
+    pool: true,
+    note: 'A creature misses you with a melee attack: strike back, adding the Superiority Die to the damage on a hit.',
+  },
+  {
+    key: 'retaliation',
+    name: 'Retaliation',
+    feature: 'Retaliation',
+    note: 'A creature within 5 ft damages you: one melee attack against it.',
+  },
+  {
+    key: 'soul-of-vengeance',
+    name: 'Soul of Vengeance',
+    feature: 'Soul of Vengeance',
+    note: 'Your Vow of Enmity target makes an attack roll: a melee attack against it.',
+  },
+  {
+    key: 'prowling-retribution',
+    name: 'Prowling Retribution',
+    feature: 'Wrath of the Wild',
+    needs: 'wrath-of-the-wild',
+    note: 'A creature within 5 ft damages you or an ally: an Opportunity Attack against it.',
+  },
+  {
+    key: 'bloodthirst',
+    name: 'Bloodthirst',
+    feature: 'Bloodthirst',
+    spend: 'Bloodthirst',
+    note: 'An enemy you see within 30 ft is left Bloodied: teleport beside it and make one melee attack.',
+  },
+  {
+    key: 'masterful-shots',
+    name: 'Masterful Shots',
+    feature: 'Masterful Shots',
+    ranged: true,
+    note: 'A creature misses you: back off up to half your Speed, then one ranged attack at it.',
+  },
+  {
+    key: 'sentinel',
+    name: 'Sentinel: Guardian',
+    feat: 'sentinel',
+    note: 'A creature within 5 ft Disengages or hits someone else: one melee attack against it.',
+  },
+  {
+    key: 'reactive-strike',
+    name: 'Polearm Master: Reactive Strike',
+    feat: 'polearm-master',
+    note: 'A creature enters your reach with a Quarterstaff, Spear or Heavy Reach weapon in hand: one melee attack.',
+  },
+]
+
+/** The hero's reaction attacks, with why each can't be made now. */
+export function reactionAttacks(s: Dnd5eSheet, level: number): Dnd5eReactionAttack[] {
+  const hero = dnd5eHero(s, level)
+  const react = costWhy(s, 'reaction')
+  return REACTION_ATTACKS.filter((r) =>
+    r.feat ? hero.feat(r.feat) : !r.feature || hero.has(r.feature),
+  ).map((r) => ({
+    key: r.key,
+    name: r.name,
+    ...(r.ranged ? { ranged: true } : {}),
+    ...(r.spend ? { spend: r.spend } : {}),
+    ...(r.pool && r.spend ? { dice: pool(s, r.spend) } : {}),
+    why:
+      react ||
+      (r.needs && !hasEffect(s, r.needs) ? 'Not active' : '') ||
+      (r.spend && usesLeft(s, r.spend) < 1 ? `No ${r.spend} left` : ''),
+    note:
+      r.key === 'oa' && hero.has('Relentless Avenger')
+        ? `${r.note} Relentless Avenger: on a hit its Speed becomes 0 and you can move half your Speed.`
+        : r.note,
+  }))
+}

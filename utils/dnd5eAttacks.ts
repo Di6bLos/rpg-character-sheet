@@ -145,6 +145,8 @@ export interface Dnd5eAttackPlan {
   monk?: boolean
   /** The Light property's extra attack. */
   offhand?: boolean
+  /** A Soulknife's Psychic Blade. */
+  blade?: boolean
 }
 
 /** The weapon properties in a line each (SRD 5.2.1 pp. 89–90), for their tooltips. */
@@ -749,6 +751,50 @@ export function masteryOnHit(s: Dnd5eSheet, p: Dnd5eAttackPlan, damaged: boolean
         : ''
     default:
       return ''
+  }
+}
+
+/** The Soulknife's Psychic Blade as a weapon (Phantom of the 2024 PHB: Simple melee, Finesse, Thrown 60/120, Vex). */
+const PSYCHIC_BLADE: Dnd5eWeaponDef = {
+  slug: 'psychic-blade',
+  name: 'Psychic Blade',
+  srd: false,
+  source: 'PHB 2024',
+  category: 'Simple',
+  type: 'Melee',
+  damage: '1d6',
+  damageType: 'Psychic',
+  properties: ['Finesse', 'Thrown'],
+  propertyText: ['Finesse', 'Thrown (Range 60/120)'],
+  range: { normal: 60, long: 120 },
+  mastery: 'Vex',
+  weight: 0,
+  cost: 0,
+}
+
+/**
+ * A Soulknife's Psychic Blade (PHB 2024): 1d6 Psychic + the attack's modifier, Finesse, Thrown
+ * 60/120, with its Vex mastery; `second` is the Bonus Action blade after it, a d4.
+ */
+export function psychicBlade(
+  s: Dnd5eSheet,
+  level: number,
+  o: { second?: boolean; grip?: Dnd5eGrip; target?: Dnd5eTarget; columns?: Dnd5eColumns } = {},
+): Dnd5eAttackPlan {
+  const def = o.second ? { ...PSYCHIC_BLADE, damage: '1d4' } : PSYCHIC_BLADE
+  const w = { name: def.name, atk: 0, dmg: def.damage, type: 'Psychic', range: '60/120 ft' }
+  const p = weaponAttack(s, level, w, def, {
+    key: o.second ? 'blade:bonus' : 'blade',
+    ...(o.grip ? { grip: o.grip } : {}),
+    ...(o.target ? { target: o.target } : {}),
+    ...(o.columns ? { columns: o.columns } : {}),
+  })
+  return {
+    ...p,
+    name: o.second ? 'Psychic Blade (Bonus Action)' : 'Psychic Blade',
+    mastery: 'Vex',
+    cost: o.second ? 'bonus' : 'attack',
+    blade: true,
   }
 }
 

@@ -43,6 +43,7 @@ export type Dnd5eRiderOn =
   | 'monk'
   | 'heavy'
   | 'offhand'
+  | 'blade'
 
 /**
  * What must hold on the hero: an effect by key (`rage`, `reckless`, `wild-shape`, `form-of-dread`),
@@ -452,6 +453,16 @@ export const DND5E_RIDERS: Dnd5eRiderDef[] = [
     double: true,
     auto: true,
     note: 'On a failed save it takes the attack’s damage again (double).',
+  },
+  {
+    key: 'rend-mind',
+    name: 'Rend Mind',
+    feature: 'Rend Mind',
+    save: { ability: 'WIS', dc: DEX_DC },
+    spend: { resource: 'Rend Mind' },
+    needs: ['sneak'],
+    on: ['blade'],
+    note: 'Stunned for 1 minute on a failed save, repeating it at the end of each of its turns.',
   },
   {
     key: 'wails',
@@ -995,6 +1006,7 @@ export function attackTraits(p: Dnd5eAttackPlan): Set<Dnd5eRiderOn> {
   }
   if (p.monk) out.add('monk')
   if (p.offhand) out.add('offhand')
+  if (p.blade) out.add('blade')
   return out
 }
 

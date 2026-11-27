@@ -11,7 +11,13 @@
 import type { Dnd5eSpellDef } from '~/data/dnd5e/types'
 import type { Dnd5eSheet, Dnd5eSpellRef } from '~/types/sheets'
 import { type Dnd5eTarget, adjustAttackTest } from '~/utils/dnd5eAttacks'
-import { DND5E_EFFECTS, SPELL_EFFECTS, activeEffectDefs, addEffect } from '~/utils/dnd5eEffects'
+import {
+  DND5E_EFFECTS,
+  SPELL_EFFECTS,
+  activeEffectDefs,
+  addEffect,
+  hasEffect,
+} from '~/utils/dnd5eEffects'
 import { gearSpellAttack } from '~/utils/dnd5eMagicItems'
 import {
   type D20Mode,
@@ -25,6 +31,7 @@ import {
   useOnce,
   usedOnce,
   usesLeft,
+  restoreUses,
   spendUses,
 } from '~/utils/dnd5ePlay'
 import { type Rng, parseDice, rollDice, sign } from '~/utils/dice'
@@ -307,7 +314,13 @@ export function spellDamage(
   if (rule?.damage?.addMod) flat.push({ label: ref.ability, value: mod })
   if (def.level === 0 && cantripsWithAgonizing(s).includes(def.slug))
     flat.push({ label: 'Agonizing Blast', value: hero.mod('CHA') })
-  if (def.level === 0 && hero.has('Potent Spellcasting'))
+  const potent = (cls: string, feature: string) => ref.from.startsWith(cls) && hero.has(feature)
+  if (
+    def.level === 0 &&
+    (hero.has('Potent Spellcasting') ||
+      potent('Cleric', 'Blessed Strikes: Potent Spellcasting') ||
+      potent('Druid', 'Elemental Fury: Potent Spellcasting'))
+  )
     flat.push({ label: 'Potent Spellcasting', value: hero.mod('WIS') })
   if (
     def.school === 'Evocation' &&
@@ -315,7 +328,52 @@ export function spellDamage(
     ref.from.startsWith('Wizard')
   )
     flat.push({ label: 'Empowered Evocation', value: hero.mod('INT') })
+  for (const b of spellBonuses(s, level, ref, def, parts)) {
+    if (b.dice) parts.push({ dice: b.dice, type: b.type ?? parts[0]!.type })
+    else flat.push({ label: b.label, value: b.value ?? 0 })
+  }
   return { parts, flat: flat.filter((f) => f.value) }
+}
+
+/**
+ * Subclass bonuses to a spell's damage (one roll each): Elemental Affinity's CHA to its type
+ * (SRD 5.2.1 p. 70), Radiant Soul's CHA to Radiant or Fire, the Alchemist's Alchemical Savant
+ * and Chemical Mastery, the Artillerist's Arcane Firearm, the Cartographer's Guided Precision,
+ * Shadowform's Void Empowerment and the College of Spirits' Power from Beyond.
+ */
+function spellBonuses(
+  s: Dnd5eSheet,
+  level: number,
+  ref: Dnd5eSpellRef,
+  def: Dnd5eSpellDef,
+  parts: { dice: string; type: string }[],
+): { label: string; value?: number; dice?: string; type?: string }[] {
+  const hero = dnd5eHero(s, level)
+  const types = parts.map((p) => p.type.toLowerCase())
+  const of = (...t: string[]) => t.some((x) => types.includes(x.toLowerCase()))
+  const artificer =
+    /^(Artificer|Alchemist|Artillerist|Armorer|Battle Smith|Cartographer|Reanimator)/.test(ref.from)
+  const slot = def.level > 0
+  const out: { label: string; value?: number; dice?: string; type?: string }[] = []
+  const affinity = Object.entries(s.choices ?? {}).find(([k]) =>
+    /elemental-affinity/.test(k),
+  )?.[1]?.[0]
+  if (hero.has('Elemental Affinity') && affinity && of(affinity))
+    out.push({ label: 'Elemental Affinity', value: hero.mod('CHA') })
+  if (hero.has('Radiant Soul') && of('Radiant', 'Fire'))
+    out.push({ label: 'Radiant Soul (once a turn)', value: hero.mod('CHA') })
+  if (hero.has('Alchemical Savant') && artificer && of('Acid', 'Fire', 'Poison'))
+    out.push({ label: 'Alchemical Savant', value: Math.max(1, hero.mod('INT')) })
+  if (hero.has('Guided Precision') && ref.from.startsWith('Cartographer'))
+    out.push({ label: 'Guided Precision (once a turn)', value: hero.mod('INT') })
+  if (hero.has('Arcane Firearm') && artificer) out.push({ label: 'Arcane Firearm', dice: '1d8' })
+  if (hero.has('Chemical Mastery') && artificer && of('Acid', 'Fire', 'Poison'))
+    out.push({ label: 'Alchemical Eruption', dice: '2d8', type: 'Force' })
+  if (hasEffect(s, 'shadowform') && slot && of('Psychic', 'Necrotic'))
+    out.push({ label: 'Void Empowerment', dice: '1d6' })
+  if (hero.has('Empowered Channeling') && slot && ref.from.startsWith('Bard'))
+    out.push({ label: 'Power from Beyond', dice: '1d6' })
+  return out
 }
 
 /** Separate attack rolls or darts the cast makes. */
@@ -343,6 +401,8 @@ export function spellHealing(
   const flat: { label: string; value: number }[] = []
   if (hero.has('Disciple of Life') && def.level > 0)
     flat.push({ label: 'Disciple of Life', value: 2 + castLevel })
+  if (hero.has('Alchemical Savant') && /^(Artificer|Alchemist)/.test(ref.from))
+    flat.push({ label: 'Alchemical Savant', value: Math.max(1, hero.mod('INT')) })
   if (rule?.healFlat) {
     flat.unshift({ label: def.name, value: rule.healFlat.amount + rule.healFlat.perLevel * up })
     return { dice: '', flat }
@@ -517,15 +577,78 @@ export function castSpell(
   const h = spellHealing(s, level, ref, def, opt.level)
   if (h) {
     const d = h.dice ? parseDice(h.dice) : null
-    const r = d ? rollDice(d, o.rng) : null
+    const supreme = dnd5eHero(s, level).has('Supreme Healing')
+    const r = d
+      ? supreme
+        ? { total: d.count * d.sides + d.mod, rolls: Array(d.count).fill(d.sides) as number[] }
+        : rollDice(d, o.rng)
+      : null
     const add2 = h.flat.reduce((n, f) => n + f.value, 0)
     healing = Math.max(0, (r?.total ?? 0) + add2)
     lines.push(
       `Heals ${healing}${r ? ` (${h.dice}: ${r.rolls.join('+')}${add2 ? ` ${sign(add2)}` : ''})` : ''}${h.flat.length ? ` with ${h.flat.map((f) => f.label).join(', ')}` : ''}.`,
     )
   }
+  notes.push(...castExtras(s, level, ref, def, opt, { damage, healing, rng: o.rng }))
   const line = [`${head}:`, ...lines, ...(notes.length ? [`${notes.join('; ')}.`] : [])].join(' ')
   return { line: line.endsWith(':') ? `${head}.` : line, healing, damage }
+}
+
+/**
+ * What casting sets off: the Abjurer's Arcane Ward (made by the first Abjuration slot spell
+ * after a Long Rest, 2 × Wizard level + INT, and topped up 2 × the slot's level by the next),
+ * the Winter Walker's Hunter's Rime temporary HP, Tides of Chaos coming back with a Wild Magic
+ * Surge roll, Potent Cantrip's half damage, Improved Blessed Strikes' temporary HP, Blessed
+ * Healer.
+ */
+function castExtras(
+  s: Dnd5eSheet,
+  level: number,
+  ref: Dnd5eSpellRef,
+  def: Dnd5eSpellDef,
+  opt: Dnd5eCastOption,
+  o: { damage: number | null; healing: number | null; rng?: Rng },
+): string[] {
+  const hero = dnd5eHero(s, level)
+  const out: string[] = []
+  const slot = opt.kind === 'slot' || opt.kind === 'pact'
+  if (def.school === 'Abjuration' && slot && hero.has('Arcane Ward')) {
+    const max = 2 * level + hero.mod('INT')
+    if (!s.arcaneWard && usesLeft(s, 'Arcane Ward') > 0) {
+      spendUses(s, 'Arcane Ward')
+      s.arcaneWard = max
+      out.push(`Arcane Ward: ${max} HP`)
+    } else if (s.arcaneWard !== undefined && usesLeft(s, 'Arcane Ward') < 1) {
+      s.arcaneWard = Math.min(max, (s.arcaneWard ?? 0) + 2 * opt.level)
+      out.push(`Arcane Ward: ${s.arcaneWard}/${max} HP`)
+    }
+  }
+  if (def.slug === 'hunters-mark' && hero.has('Hunter’s Rime')) {
+    const n = rollDice({ count: 1, sides: 10, mod: 0 }, o.rng).total + level
+    out.push(gainTempHp(s, n, 'Hunter’s Rime').replace(/\.$/, ''))
+  }
+  if (slot && ref.from.startsWith('Sorcerer') && hero.has('Wild Magic Surge')) {
+    if ((s.used?.['Tides of Chaos'] ?? 0) > 0) {
+      restoreUses(s, 'Tides of Chaos')
+      out.push('Tides of Chaos is back: roll on the Wild Magic Surge table')
+    } else if (useOnce(s, 'surge')) {
+      const d = rollDice({ count: 1, sides: 20, mod: 0 }, o.rng).total
+      out.push(`Wild Magic Surge d20: ${d}${d === 20 ? ', a surge: roll on the table' : ''}`)
+    }
+  }
+  if (def.level === 0 && o.damage !== null && hero.has('Potent Cantrip'))
+    out.push('Potent Cantrip: on a miss or a successful save it still takes half')
+  if (
+    def.level === 0 &&
+    o.damage &&
+    ref.from.startsWith('Cleric') &&
+    hero.has('Blessed Strikes: Potent Spellcasting') &&
+    hero.has('Improved Blessed Strikes')
+  )
+    out.push(`you or a creature within 60 ft can gain ${2 * hero.mod('WIS')} temporary HP`)
+  if (o.healing && slot && hero.has('Blessed Healer'))
+    out.push(`Blessed Healer: if it healed someone else, you regain ${2 + opt.level}`)
+  return out
 }
 
 // --- Slot features ------------------------------------------------------------------------
