@@ -45,6 +45,8 @@ export interface Dnd5eModifier {
   death?: { adv?: boolean; twentyOn?: number }
   concentration?: { plus?: Dnd5eAmount; adv?: boolean }
   speed?: number
+  /** Another way to move it gives ("fly (your Speed)"), said on the Speed tile. */
+  moves?: string
   note: string
 }
 
@@ -87,8 +89,22 @@ export const DND5E_MODIFIERS: Dnd5eModifier[] = [
     note: 'In Wild Shape, add your WIS modifier to Constitution saves.',
   },
   {
+    feature: 'Stride of the Elements',
+    while: ['elemental-attunement'],
+    moves: 'fly and swim (your Speed)',
+    note: 'While Elemental Attunement lasts: Fly and Swim Speeds equal to your Speed.',
+  },
+  {
+    feature: 'Superior Dread',
+    while: ['form-of-dread'],
+    resist: ['Bludgeoning', 'Piercing', 'Slashing'],
+    moves: 'fly (your Speed), hover',
+    note: 'In Form of Dread: Resistance to Bludgeoning, Piercing and Slashing, and you fly at your Speed.',
+  },
+  {
     feature: 'Stormborn',
     while: ['wrath-of-the-sea'],
+    moves: 'fly (your Speed)',
     resist: ['Cold', 'Lightning', 'Thunder'],
     note: 'While Wrath of the Sea lasts: Resistance to Cold, Lightning and Thunder, and a Fly Speed equal to your Speed.',
   },

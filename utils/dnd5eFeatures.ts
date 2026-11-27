@@ -728,6 +728,14 @@ function useExtras(
     addEffect(s, 'grieving-mantle')
     out.push('Grieving Mantle is on')
   }
+  if (e.name === 'Action Surge' && hero.has('Arcane Charge'))
+    out.push('Arcane Charge: teleport up to 30 ft before or after the extra action')
+  if (e.name === 'Action Surge' && hero.has('Rallying Surge'))
+    out.push('Rallying Surge: up to CHA allies within 30 ft can use a Reaction to attack or move')
+  if (e.name === 'Second Wind' && hero.has('Tactical Shift'))
+    out.push('Tactical Shift: move up to half your Speed without provoking')
+  if (e.name === 'Monk’s Focus: Patient Defense' && hero.has('Drunken Technique') && e.resource)
+    out.push('Drunken Technique: +10 ft Speed this turn and an Unarmed Strike')
   return out
 }
 

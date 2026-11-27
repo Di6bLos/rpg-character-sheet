@@ -594,6 +594,8 @@ export function reactionAttacks(s: Dnd5eSheet, level: number): Dnd5eReactionAtta
     note:
       r.key === 'oa' && hero.has('Relentless Avenger')
         ? `${r.note} Relentless Avenger: on a hit its Speed becomes 0 and you can move half your Speed.`
-        : r.note,
+        : r.key === 'bloodthirst' && hero.has('Aura of Malevolence')
+          ? `${r.note} Aura of Malevolence: creatures you choose within 10 ft of either space take INT damage of your Dread Allegiance type.`
+          : r.note,
   }))
 }

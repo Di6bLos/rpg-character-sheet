@@ -493,7 +493,12 @@ export function castSpell(
   const spent = spendCast(s, ref, opt)
   const at = opt.level > def.level ? ` at ${ORD[opt.level]} level` : ''
   if (def.concentration) {
-    const ended = startConcentration(s, { slug: def.slug, name: def.name, level: opt.level })
+    const ended = startConcentration(s, {
+      slug: def.slug,
+      name: def.name,
+      level: opt.level,
+      school: def.school,
+    })
     if (ended) notes.push(`${ended} ends (Concentration)`)
   }
   const fx = SPELL_EFFECTS[def.slug]
@@ -633,7 +638,10 @@ function castExtras(
       out.push('Tides of Chaos is back: roll on the Wild Magic Surge table')
     } else if (useOnce(s, 'surge')) {
       const d = rollDice({ count: 1, sides: 20, mod: 0 }, o.rng).total
-      out.push(`Wild Magic Surge d20: ${d}${d === 20 ? ', a surge: roll on the table' : ''}`)
+      const twice = hero.has('Controlled Chaos') ? ' (roll on it twice and pick one)' : ''
+      out.push(
+        `Wild Magic Surge d20: ${d}${d === 20 ? `, a surge: roll on the table${twice}` : ''}`,
+      )
     }
   }
   if (def.level === 0 && o.damage !== null && hero.has('Potent Cantrip'))
@@ -648,6 +656,42 @@ function castExtras(
     out.push(`you or a creature within 60 ft can gain ${2 * hero.mod('WIS')} temporary HP`)
   if (o.healing && slot && hero.has('Blessed Healer'))
     out.push(`Blessed Healer: if it healed someone else, you regain ${2 + opt.level}`)
+  if (def.slug === 'divine-smite' && hero.has('Smite of Protection'))
+    out.push(
+      'Smite of Protection: you and allies in your aura have Half Cover until your next turn',
+    )
+  if (o.damage && hero.has('Infusion of Light') && def.damage?.some((d) => d.type === 'Radiant')) {
+    const r = s.resources?.find((x) => x.name === 'Lay on Hands')
+    if (r && (s.used?.['Lay on Hands'] ?? 0) > 0) {
+      const n = Math.min(o.damage, s.used!['Lay on Hands']!)
+      restoreUses(s, 'Lay on Hands', n)
+      out.push(`Infusion of Light: ${n} back in your Lay on Hands pool`)
+    }
+  }
+  if (slot && def.school === 'Divination' && opt.level >= 2 && hero.has('Expert Divination')) {
+    const back = [...Array(Math.min(5, opt.level - 1)).keys()]
+      .map((i) => i + 1)
+      .reverse()
+      .find((l) => (s.slotsUsed?.[l - 1] ?? 0) > 0)
+    if (back) {
+      const used = [...(s.slotsUsed ?? [])]
+      used[back - 1] = (used[back - 1] ?? 0) - 1
+      s.slotsUsed = used
+      out.push(`Expert Divination: a ${ORD[back]}-level slot back`)
+    }
+  }
+  if (slot && def.school === 'Evocation' && hero.has('Sculpt Spells'))
+    out.push(
+      `Sculpt Spells: up to ${1 + opt.level} creatures you see succeed on the save and take no damage`,
+    )
+  if (
+    slot &&
+    (def.school === 'Enchantment' || def.school === 'Illusion') &&
+    hero.has('Bewitching Magic')
+  )
+    out.push('Bewitching Magic: cast Misty Step as part of the same action, with no slot')
+  if ((s.conditions ?? []).includes('Invisible') && hero.has('Magical Ambush') && def.save)
+    out.push('Magical Ambush: its targets have Disadvantage on the save this turn')
   return out
 }
 

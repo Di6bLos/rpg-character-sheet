@@ -343,7 +343,7 @@ export interface Dnd5eSheet extends SheetCommon {
   /** Free casts spent (a feat's or species' spell), by `<slug>|<from>`. */
   freeUsed?: Record<string, number>
   /** The spell the hero is concentrating on (SRD 5.2.1 p. 179). */
-  concentration?: { slug: string; name: string; level: number }
+  concentration?: { slug: string; name: string; level: number; school?: string }
   /** Effects on the hero from its own features and spells, or an ally's (`DND5E_EFFECTS`). */
   effects?: Dnd5eEffect[]
   /** Exhaustion level 0–6 (SRD 5.2.1 p. 181); "Exhaustion" is in `conditions` while above 0. */

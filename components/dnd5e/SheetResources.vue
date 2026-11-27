@@ -45,6 +45,7 @@ const restores = computed(() => {
   if (hero.has('Font of Inspiration')) out['Bardic Inspiration'] = { slot: 1, n: 1 }
   if (hero.has('Mystic Focus')) out['Monk’s Focus'] = { slot: 1, n: 1, perLevel: true }
   if (hero.has('Wild Resurgence')) out['Wild Shape'] = { slot: 1, n: 1 }
+  if (hero.has('Distant Transposition')) out['Benign Transposition'] = { slot: 3, n: 1 }
   return out
 })
 const restoreAt = ref<Record<string, number>>({})

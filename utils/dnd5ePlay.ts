@@ -130,12 +130,19 @@ export function speedNow(s: Dnd5eSheet, level = 0): Dnd5eNumber & { others: stri
   const form = formNow(s)
   const base = walkSpeed(form ?? s)
   const lines = [form ? `${base} ft: the ${form.name}’s` : `${base} ft on the sheet`]
-  const moves = activeEffectDefs(s).flatMap((d) => (d.moves ? [`${d.moves} (${d.name})`] : []))
+  const moves = [
+    ...activeEffectDefs(s).flatMap((d) => (d.moves ? [`${d.moves} (${d.name})`] : [])),
+    ...(level ? modifiersNow(s, level) : []).flatMap((m) =>
+      m.moves ? [`${m.moves} (${m.feature})`] : [],
+    ),
+  ]
   const others = [((form ?? s).speed ?? '').split(',').slice(1).join(',').trim(), ...moves]
     .filter(Boolean)
     .join(', ')
   const zero = conditionRules(s).filter((r) => r.speedZero)
-  const fx = activeEffectDefs(s)
+  const fx = activeEffectDefs(s).filter(
+    (d) => !(d.key === 'steady-aim' && level && dnd5eHero(s, level).has('Infiltration Expertise')),
+  )
   if (zero.length || fx.some((d) => d.speed?.zero)) {
     const why = [...zero.map((r) => r.name), ...fx.filter((d) => d.speed?.zero).map((d) => d.name)]
     return { value: 0, lines: [...lines, `Speed 0: ${why.join(', ')}`], changed: true, others }
@@ -873,12 +880,27 @@ export function takeDamage(s: Dnd5eSheet, hit: Dnd5eHit): Dnd5eDamageResult {
       )
     }
   }
-  const dc = taken > 0 && s.concentration && s.hp > 0 ? concentrationDc(taken) : null
+  const dc =
+    taken > 0 && s.concentration && s.hp > 0 && !holdsConcentration(s, hit.level ?? 0)
+      ? concentrationDc(taken)
+      : null
   if (dc !== null) after.push(`Concentration on ${s.concentration!.name}: CON save DC ${dc}.`)
   const type = hit.type?.trim() ? ` ${hit.type.trim().toLowerCase()}` : ''
   const why = notes.length ? ` (${notes.join(', ')})` : ''
   const line = `Took ${taken}${type} damage${hit.crit ? ' (crit)' : ''}${why}: ${s.hp}/${s.hpMax} HP.${after.length ? ` ${after.join(' ')}` : ''}`
   return { line, taken, concentrationDc: dc }
+}
+
+/**
+ * Concentration damage can't break: Relentless Hunter's Hunter's Mark (SRD 5.2.1 p. 58),
+ * Focused Conjuration's Conjuration spells.
+ */
+function holdsConcentration(s: Dnd5eSheet, level: number): boolean {
+  const c = s.concentration
+  if (!c) return false
+  const hero = dnd5eHero(s, level)
+  if (c.slug === 'hunters-mark' && hero.has('Relentless Hunter')) return true
+  return c.school === 'Conjuration' && hero.has('Focused Conjuration')
 }
 
 /** Healing up to the maximum; from 0 it resets the death saves and wakes the hero (p. 18). */
@@ -969,7 +991,7 @@ export function endConcentration(s: Dnd5eSheet): string {
 /** Starts concentrating on a spell; another spell's Concentration ends first. Returns that spell's name. */
 export function startConcentration(
   s: Dnd5eSheet,
-  spell: { slug: string; name: string; level: number },
+  spell: { slug: string; name: string; level: number; school?: string },
 ): string {
   const was = s.concentration?.slug !== spell.slug ? endConcentration(s) : ''
   s.concentration = { ...spell }

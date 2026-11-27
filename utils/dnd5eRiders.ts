@@ -341,6 +341,16 @@ export const DND5E_RIDERS: Dnd5eRiderDef[] = [
     'Poisoned for 1 minute on a failed save, repeating it at the end of each of its turns (needs a Poisoner’s Kit).',
     { save: { ability: 'CON', dc: DEX_DC } },
   ),
+  {
+    key: 'envenom',
+    name: 'Envenom Weapons',
+    feature: 'Envenom Weapons',
+    dice: '2d6',
+    type: 'Poison',
+    needs: ['sneak'],
+    separate: true,
+    note: 'With Poison: the target also takes 2d6 Poison (ignoring Resistance) each time it fails the save.',
+  },
   cunning(
     'trip',
     'Trip',
@@ -475,6 +485,23 @@ export const DND5E_RIDERS: Dnd5eRiderDef[] = [
     separate: true,
     note: 'A second creature within 30 ft of the target takes Necrotic damage from half your Sneak Attack dice.',
   },
+  {
+    key: 'master-duelist',
+    name: 'Master Duelist',
+    feature: 'Master Duelist',
+    needs: ['sneak'],
+    on: ['melee'],
+    auto: true,
+    note: 'Right after the Sneak Attack, make another attack on it if no one else is within 5 ft of you.',
+  },
+  {
+    key: 'fancy-footwork',
+    name: 'Fancy Footwork',
+    feature: 'Fancy Footwork',
+    on: ['melee'],
+    auto: true,
+    note: 'It can’t make Opportunity Attacks against you for the rest of your turn.',
+  },
   // Monk (SRD 5.2.1 p. 51) and its subclasses
   {
     key: 'stunning',
@@ -485,6 +512,20 @@ export const DND5E_RIDERS: Dnd5eRiderDef[] = [
     once: 'stunning',
     any: ['monk', 'unarmed'],
     note: 'Stunned until the start of your next turn on a failed save; on a success its Speed is halved and the next attack on it has Advantage.',
+  },
+  {
+    key: 'focused-strike',
+    name: 'Focused Strike',
+    feature: 'Focused Strike',
+    any: ['monk', 'unarmed'],
+    note: 'After a Stunning Strike, pass or fail, it has Disadvantage on saves against your spells until your next turn starts.',
+  },
+  {
+    key: 'physicians-touch',
+    name: 'Physician’s Touch',
+    feature: 'Physician’s Touch',
+    on: ['unarmed'],
+    note: 'With Hand of Harm: it’s also Poisoned until the end of your next turn.',
   },
   {
     key: 'hand-of-harm',
@@ -756,6 +797,14 @@ export const DND5E_RIDERS: Dnd5eRiderDef[] = [
     save: { ability: 'CON', dc: WIS_DC },
     note: 'On a failed save, 1 Exhaustion level (not past 2), gone when your next turn ends.',
   },
+  {
+    key: 'eldritch-strike',
+    name: 'Eldritch Strike',
+    feature: 'Eldritch Strike',
+    on: ['weapon'],
+    auto: true,
+    note: 'It has Disadvantage on its next save against a spell you cast before the end of your next turn.',
+  },
   // Ranger subclasses
   {
     key: 'colossus-slayer',
@@ -826,6 +875,14 @@ export const DND5E_RIDERS: Dnd5eRiderDef[] = [
     once: 'hungering-might',
     auto: true,
     note: 'Once a turn while transformed and Bloodied, a hit heals you 1d10 + WIS.',
+  },
+  {
+    key: 'strangling-roots',
+    name: 'Strangling Roots',
+    feature: 'Rot and Violence',
+    needs: ['wrath-of-the-wild'],
+    on: ['weapon'],
+    note: 'Sap or Slow too, besides the weapon’s own mastery.',
   },
   {
     key: 'ominous-strikes',
