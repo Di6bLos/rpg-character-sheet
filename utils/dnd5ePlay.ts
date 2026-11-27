@@ -1283,15 +1283,20 @@ export function payCost(s: Dnd5eSheet, level: number, cost: Dnd5eCost): string {
   return ''
 }
 
-/** Marks a once-a-turn thing used; false when it already was this turn. */
+/**
+ * Marks a once-a-turn thing used; false when it already was this turn. Outside an encounter
+ * there are no turns, so nothing is counted (as costs aren't).
+ */
 export function useOnce(s: Dnd5eSheet, key: string): boolean {
+  if (!s.inEncounter) return true
   const t = (s.turn ??= newTurn())
   if (t.once.includes(key)) return false
   t.once = [...t.once, key]
   return true
 }
 
-export const usedOnce = (s: Dnd5eSheet, key: string) => !!s.turn?.once.includes(key)
+export const usedOnce = (s: Dnd5eSheet, key: string) =>
+  !!s.inEncounter && !!s.turn?.once.includes(key)
 
 /** Actions a turn starts with: 1, Haste's extra one; none while Incapacitated. */
 export function turnActions(s: Dnd5eSheet): number {

@@ -28,6 +28,8 @@ import {
   rollTest,
   spendHitDie,
   spendUses,
+  useOnce,
+  usedOnce,
   usesLeft,
 } from '~/utils/dnd5ePlay'
 import { type Rng, parseDice, rollDice, sign } from '~/utils/dice'
@@ -611,7 +613,7 @@ export function entryWhy(s: Dnd5eSheet, e: Dnd5eEntry): string {
     if (!p || (s.pactUsed ?? 0) + e.spend > p.slots) return 'No Pact Magic slot left'
   }
   if (e.resource && !e.rule?.pool && usesLeft(s, e.resource) < e.spend) return 'None left'
-  if (e.oncePerTurn && s.turn?.once.includes(`entry:${e.key}`)) return 'Used this turn'
+  if (e.oncePerTurn && usedOnce(s, `entry:${e.key}`)) return 'Used this turn'
   return ''
 }
 
@@ -800,7 +802,7 @@ export function useEntry(
   if (e.cost) payCost(s, level, e.cost)
   if (e.pact) s.pactUsed = (s.pactUsed ?? 0) + e.spend
   else if (e.resource) spendUses(s, e.resource, e.spend)
-  if (e.oncePerTurn && s.turn) s.turn.once = [...s.turn.once, `entry:${e.key}`]
+  if (e.oncePerTurn) useOnce(s, `entry:${e.key}`)
   const parts: string[] = []
   const spent = e.pact
     ? 'a Pact Magic slot'

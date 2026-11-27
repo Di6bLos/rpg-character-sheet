@@ -21,6 +21,8 @@ import {
   payCost,
   rollD20,
   spendUses,
+  useOnce,
+  usedOnce,
   usesLeft,
 } from '~/utils/dnd5ePlay'
 import { type Rng, parseDice, rollDice, sign } from '~/utils/dice'
@@ -306,7 +308,7 @@ export function rerollOptions(
     if (!why && d.spend && usesLeft(s, d.spend) < 1) why = `No ${d.spend} left`
     if (!why && d.needs && !hasEffect(s, d.needs)) why = 'Not active'
     if (!why && d.key === 'fanatical' && s.used?.['Fanatical Focus']) why = 'Used this Rage'
-    if (!why && d.key === 'portent' && s.turn?.once.includes('portent')) why = 'Used this turn'
+    if (!why && d.key === 'portent' && usedOnce(s, 'portent')) why = 'Used this turn'
     const dice = diceOf(s, d.dice)
     const plus = plusOf(s, level, d.plus, cols)
     const numbers = [
@@ -368,7 +370,7 @@ export function useReroll(
     const i = Math.max(0, Math.min(list.length - 1, o.portent ?? 0))
     const v = list.splice(i, 1)[0]!
     s.portent = list
-    if (s.turn) s.turn.once = [...s.turn.once, 'portent']
+    useOnce(s, 'portent')
     next = {
       ...r,
       total: r.total + (v - r.d20),
