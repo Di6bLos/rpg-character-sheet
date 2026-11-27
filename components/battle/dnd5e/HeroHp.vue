@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // A 5e hero's HP in the battle board's hero column, the Nimble HeroHp's twin: the draggable
-// bar with temp HP, an amount with − (damage) and + (healing), Crit, Uncanny Dodge and Deflect
-// for the next damage, temp HP, then at 0 HP the death saves (Death save, Stabilize) and after
+// bar with temp HP, an amount with − (damage) and + (healing), Crit and the reactions that cut
+// the next damage (Uncanny Dodge, Deflect Attacks, Parry…, utils/dnd5eDefense.ts), temp HP, then at 0 HP the death saves (Death save, Stabilize) and after
 // damage the Concentration save. Same rules and state as the sheet's Vitals
 // (useDnd5eVitals, SRD 5.2.1 pp. 16–18); the last of those results shows beneath.
 const {
@@ -12,11 +12,9 @@ const {
   stable,
   hpTone,
   crit,
-  dodge,
-  deflect,
-  reactionReady,
-  canUncanny,
-  canDeflect,
+  guarding,
+  guards,
+  toggleGuard,
   takes,
   concDc,
   changeHp,
@@ -120,36 +118,18 @@ const last = computed(() => resultIn('vit:hp'))
         Crit
       </button>
     </div>
-    <div v-if="canUncanny || canDeflect" class="hp__react">
+    <div v-if="guards.length" class="hp__react">
       <button
-        v-if="canUncanny"
+        v-for="g in guards"
+        :key="g.guard.key"
         type="button"
         class="btn btn--ghost btn--sm hp__crit"
-        :aria-pressed="dodge"
-        :title="
-          reactionReady
-            ? 'Your Reaction: halve the next attack’s damage (SRD 5.2.1 p. 63)'
-            : 'Reaction used'
-        "
-        :disabled="!canEdit || !reactionReady"
-        @click="dodge = !dodge"
+        :aria-pressed="guarding.includes(g.guard.key)"
+        :title="g.why || g.guard.note"
+        :disabled="!canEdit || (!!g.why && !guarding.includes(g.guard.key))"
+        @click="toggleGuard(g.guard.key)"
       >
-        Uncanny Dodge
-      </button>
-      <button
-        v-if="canDeflect"
-        type="button"
-        class="btn btn--ghost btn--sm hp__crit"
-        :aria-pressed="deflect"
-        :title="
-          reactionReady
-            ? 'Your Reaction: cut the next attack’s damage by 1d10 + DEX + Monk level (SRD 5.2.1 p. 51)'
-            : 'Reaction used'
-        "
-        :disabled="!canEdit || !reactionReady"
-        @click="deflect = !deflect"
-      >
-        Deflect
+        {{ g.guard.name }}
       </button>
     </div>
     <div class="hp__row">

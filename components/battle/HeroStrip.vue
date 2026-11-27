@@ -81,7 +81,11 @@ function dnd5eStrip(): Strip {
     tile: computed(() => {
       const slots = slotsLeft(five.value).reduce((n, x) => n + x, 0)
       if (five.value.castingStats) return { label: 'Slots', value: String(slots), mana: true }
-      return { label: 'Speed', value: String(speedNow(five.value).value), mana: false }
+      return {
+        label: 'Speed',
+        value: String(speedNow(five.value, draft.value.level).value),
+        mana: false,
+      }
     }),
   }
 }

@@ -6,10 +6,12 @@
 // its types and what adds to it, grips (two hands, thrown, off-hand, long range), Sneak Attack,
 // and Roll, which rolls the attack and its damage (utils/dnd5eAttacks.ts). Spells: attack and
 // damage spells cast from here (useDnd5eCasting). Abilities: features that deal damage (Breath
-// Weapon). On a hit: maneuvers, Arcane Shots and other riders that spend a die or use.
+// Weapon). Each card offers its riders (Brutal Strike, Cunning Strike, maneuvers, Arcane Shots,
+// Divine Strike…, utils/dnd5eRiders.ts) as chips that Roll applies; the other maneuvers that
+// spend a die show under "Other maneuvers". In Wild Shape the form's attacks replace the weapons.
 // The logic is useDnd5eAttacks, shared with the battle board's action tiles.
 import { sign } from '~/utils/dice'
-import { MASTERY_TEXT, damageText, damageWhy } from '~/utils/dnd5eAttacks'
+import { MASTERY_TEXT, damageWhy } from '~/utils/dnd5eAttacks'
 import { costWhy } from '~/utils/dnd5ePlay'
 import { levelName, spellCost } from '~/utils/dnd5eSpells'
 import { tipText } from '~/utils/ruleTips'
@@ -27,6 +29,10 @@ const {
   cards,
   sneakable,
   sneakOn,
+  ridersOf,
+  picksOf,
+  setPicks,
+  damageOf,
   oddsText,
   oddsWhy,
   modeLabel,
@@ -55,6 +61,7 @@ const {
     </div>
     <Dnd5eTargetAc />
     <SheetSituation chips-label="Next attack" :chips="chips" :steppers="[]" @toggle="toggleMode" />
+    <Dnd5eAfterRoll pre />
 
     <details class="atk-group" open>
       <summary>
@@ -94,7 +101,7 @@ const {
               </UiTooltip>
             </div>
             <SheetDmg
-              :dmg="damageText(c.plan, { sneak: sneakOn(c) })"
+              :dmg="damageOf(c)"
               :why="damageWhy(c.plan).join('\n')"
               style="font-size: 14px; text-align: right"
             />
@@ -151,6 +158,12 @@ const {
               Sneak Attack
             </button>
           </div>
+          <Dnd5eRiderPicks
+            :options="ridersOf(c)"
+            :picks="picksOf(c)"
+            :disabled="!canEdit"
+            @update:picks="(p) => setPicks(c, p)"
+          />
           <button
             type="button"
             class="btn"
@@ -252,7 +265,7 @@ const {
 
     <details v-if="riders.length" class="atk-group" :open="turnActive">
       <summary>
-        <span class="caps">On a hit</span>
+        <span class="caps">Other maneuvers</span>
         <span class="badge badge--outline">{{ riders[0]?.resource }}</span>
       </summary>
       <div class="attacks">

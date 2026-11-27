@@ -15,8 +15,9 @@ import { norm5e } from '~/utils/dnd5ePlay'
 
 export const ATTUNE_MAX = 3
 
+/** The armor's record by name; a magic "+1" on the name is the same armor underneath. */
 export const armorOf = (armor: Dnd5eArmorDef[], name: string) =>
-  armor.find((a) => norm5e(a.name) === norm5e(name))
+  armor.find((a) => norm5e(a.name) === norm5e(name.replace(/\s*\+[1-3]$/, '')))
 
 /** AC from the worn gear: the build's unarmored formulas for a built hero, 10 + DEX otherwise. */
 export function gearAc(
@@ -66,12 +67,12 @@ export function wearItem(
   return `${on ? 'Wearing' : 'Took off'} ${item.name}: AC ${s.ac}.${notes.length ? ` ${notes.join('; ')}.` : ''}`
 }
 
-/** Attunes or ends attunement; at most three items at once. */
-export function toggleAttune(s: Dnd5eSheet, index: number): string {
+/** Attunes or ends attunement; at most `max` items at once (three, more for an Artificer). */
+export function toggleAttune(s: Dnd5eSheet, index: number, max = ATTUNE_MAX): string {
   const item = s.inventory[index]
   if (!item) return ''
-  if (!item.attuned && s.inventory.filter((i) => i.attuned).length >= ATTUNE_MAX)
-    return `You’re attuned to ${ATTUNE_MAX} items already: end one first.`
+  if (!item.attuned && s.inventory.filter((i) => i.attuned).length >= max)
+    return `You’re attuned to ${max} items already: end one first.`
   s.inventory = s.inventory.map((it, i) => (i === index ? { ...it, attuned: !it.attuned } : it))
   return `${item.attuned ? 'No longer attuned to' : 'Attuned to'} ${item.name}.`
 }

@@ -19,6 +19,7 @@ import {
   rollTest,
   setInitiative,
   speedNow,
+  onInitiative,
   startTurn,
 } from '~/utils/dnd5ePlay'
 import { hasEffect } from '~/utils/dnd5eEffects'
@@ -80,7 +81,7 @@ export function useDnd5eTurnSteps(options: { onResult?: (message: string) => voi
   }
 
   const movementMax = computed(() => {
-    const speed = speedNow(sheet.value).value
+    const speed = speedNow(sheet.value, level.value).value
     return hasEffect(sheet.value, 'dash') ? speed * 2 : speed
   })
 
@@ -91,7 +92,8 @@ export function useDnd5eTurnSteps(options: { onResult?: (message: string) => voi
   }
 
   function beginTurn() {
-    if (canEdit.value && steps.value.includes('start')) report('turn:step', startTurn(sheet.value))
+    if (canEdit.value && steps.value.includes('start'))
+      report('turn:step', startTurn(sheet.value, level.value))
   }
 
   function finishTurn() {
@@ -141,6 +143,8 @@ export function useDnd5eTurnSteps(options: { onResult?: (message: string) => voi
       showOutcome({ label: 'Initiative', total, detail: line })
     }
     setInitiative(sheet.value, total)
+    const extras = onInitiative(sheet.value, level.value)
+    if (extras.length) line = `${line} ${extras.join('. ')}.`
     report('turn:init', line)
     await send(total, line)
   }

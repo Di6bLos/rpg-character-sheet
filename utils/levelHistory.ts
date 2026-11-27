@@ -66,8 +66,9 @@ type Loose = Record<string, unknown>
 
 /**
  * Fields a level-up can add to a sheet that didn't have them (PF2e: the sheet's level, partial
- * boosts, level-up choices, a first focus spell; 5e: a subclass's spellcasting): gone again when
- * a snapshot without them is restored.
+ * boosts, level-up choices, a first focus spell; 5e: a subclass's spellcasting, a second
+ * class's casting, the class list and Hit Point Dice of a save from before multiclassing): gone
+ * again when a snapshot without them is restored.
  */
 const ADDED_BY_LEVELS = [
   'level',
@@ -76,6 +77,9 @@ const ADDED_BY_LEVELS = [
   'focusSpells',
   'archetypeCasting',
   'castingStats',
+  'castingClasses',
+  'classes',
+  'hitDice',
 ]
 
 /**

@@ -2,7 +2,8 @@
 // Wraps a loaded character with the editing state, the action bar, the
 // system-specific layout, the editor form and the level-up dialog.
 import type { Character } from '~/types'
-import type { AnySheet, NimbleSheet } from '~/types/sheets'
+import type { AnySheet, Dnd5eSheet, NimbleSheet } from '~/types/sheets'
+import { isBuiltDnd5e } from '~/utils/dnd5eLevelUp'
 import { canRestore } from '~/utils/levelHistory'
 import { creationInput } from '~/utils/nimbleBuild'
 
@@ -49,7 +50,8 @@ const canReconfigure = computed(
   () =>
     canRestore(draft.value.sheet, draft.value.level - 1) ||
     (draft.value.system === 'nimble' &&
-      !!creationInput(draft.value.sheet as NimbleSheet, draft.value.level)),
+      !!creationInput(draft.value.sheet as NimbleSheet, draft.value.level)) ||
+    (draft.value.system === 'dnd5e' && isBuiltDnd5e(draft.value.sheet as Dnd5eSheet)),
 )
 
 // Nimble heroes built from class data can swap subclass once they have one (level 3+).

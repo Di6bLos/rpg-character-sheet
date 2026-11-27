@@ -3,8 +3,9 @@
 // per condition with its rules on hover, Exhaustion with its level and −/+; the effects on the
 // hero (Rage, Dodge, Shield, Bless…) with when they end and End; each active condition with
 // when it ends; what they all do to the numbers; then the effects allies give (Bless, Help,
-// Bardic Inspiration), folded to those on the hero. Rules in utils/dnd5eConditions.ts and
-// utils/dnd5eEffects.ts.
+// Bardic Inspiration), folded to those on the hero, and the states the hero's own features let
+// it pick (a Wild Heart's Bear, Eagle or Wolf spirit while raging). Rules in
+// utils/dnd5eConditions.ts and utils/dnd5eEffects.ts.
 import type { Dnd5eConditionEnd, Dnd5eSheet } from '~/types/sheets'
 import {
   DND5E_CONDITION_RULES,
@@ -17,7 +18,7 @@ import {
   toggleCondition,
 } from '~/utils/dnd5eConditions'
 import { DND5E_EFFECTS, activeEffectDefs, addEffect, removeEffect } from '~/utils/dnd5eEffects'
-import { endConcentration, endOnIncapacitated } from '~/utils/dnd5ePlay'
+import { dnd5eHero, endConcentration, endOnIncapacitated } from '~/utils/dnd5ePlay'
 
 const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
 const sheet = computed(() => draft.value.sheet)
@@ -113,6 +114,18 @@ const shownAllies = computed(() =>
   alliesOpen.value ? ALLY : ALLY.filter((d) => on.value.has(d.key)),
 )
 
+const OWN = Object.values(DND5E_EFFECTS).filter((d) => d.feature)
+const own = computed(() => {
+  const hero = dnd5eHero(sheet.value, draft.value.level)
+  return OWN.filter((d) => hero.has(d.feature!))
+})
+
+function ownToggle(key: string) {
+  if (!canEdit.value) return
+  if (on.value.has(key)) removeEffect(sheet.value, key)
+  else addEffect(sheet.value, key)
+}
+
 function giveToggle(key: string) {
   if (!canEdit.value) return
   if (on.value.has(key)) removeEffect(sheet.value, key)
@@ -133,6 +146,21 @@ function giveToggle(key: string) {
     @end="endStatus"
   >
     <template #after-groups>
+      <div v-if="own.length" class="chips" style="gap: 6px">
+        <span class="cond-group">Your states</span>
+        <button
+          v-for="d in own"
+          :key="d.key"
+          type="button"
+          class="chip cond"
+          :aria-pressed="on.has(d.key)"
+          :title="d.note"
+          :disabled="!canEdit"
+          @click="ownToggle(d.key)"
+        >
+          {{ d.name }}
+        </button>
+      </div>
       <div class="chips" style="gap: 6px">
         <button
           type="button"

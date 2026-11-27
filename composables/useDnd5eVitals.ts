@@ -1,5 +1,5 @@
 import type { Dnd5eSheet } from '~/types/sheets'
-import { rollDie, sign } from '~/utils/dice'
+import { sign } from '~/utils/dice'
 import {
   type Dnd5eHit,
   acNow,
@@ -14,7 +14,6 @@ import {
   isDying,
   isStable,
   longRest,
-  payCost,
   resurrect,
   shortRest,
   skillRow,
@@ -24,14 +23,16 @@ import {
   takeDamage,
 } from '~/utils/dnd5ePlay'
 import { exhaustionOf } from '~/utils/dnd5eConditions'
+import { damageGuards, guardHit, guardPreview, saveDamage } from '~/utils/dnd5eDefense'
 import { hpTone as toneFor } from '~/utils/roster'
 import type { HpTakes } from '~/utils/hpPreview'
 
 /**
  * The 5e Vitals for the hero in the current sheet editor (SRD 5.2.1 pp. 16–18): HP with Crit,
- * Uncanny Dodge, Deflect Attacks and Heavy Armor Master for the next damage, temp HP, AC,
- * death saves, Concentration saves, Hit Point Dice, the Speed / Initiative / Proficiency /
- * Passive Perception tiles, typed damage, Short and Long Rest, Heroic Inspiration. Shared by
+ * the reactions that cut the next hit (`damageGuards`) and Heavy Armor Master for the next
+ * damage, temp HP, AC, death saves, Concentration saves, Hit Point Dice, the Speed /
+ * Initiative / Proficiency / Passive Perception tiles, typed damage and damage from a save,
+ * Short and Long Rest, Heroic Inspiration. Shared by
  * the sheet's Vitals panel and the battle board's hero column; results show under `vit:`.
  */
 export function useDnd5eVitals() {
@@ -48,15 +49,16 @@ export function useDnd5eVitals() {
   const stable = computed(() => isStable(sheet.value))
   const hpTone = computed(() => toneFor(sheet.value.hp, sheet.value.hpMax))
 
-  /** The next damage is a Critical Hit; Uncanny Dodge halves it; Deflect Attacks cuts it. */
+  /** The next damage is a Critical Hit; the guards picked cut it (Uncanny Dodge halves it). */
   const crit = ref(false)
-  const dodge = ref(false)
-  const deflect = ref(false)
-  const reactionReady = computed(
-    () => sheet.value.turn?.reaction !== false || !sheet.value.inEncounter,
-  )
-  const canUncanny = computed(() => hero.value.has('Uncanny Dodge'))
-  const canDeflect = computed(() => hero.value.has('Deflect Attacks'))
+  const guarding = ref<string[]>([])
+  const guards = computed(() => damageGuards(sheet.value, level.value))
+
+  function toggleGuard(key: string) {
+    guarding.value = guarding.value.includes(key)
+      ? guarding.value.filter((k) => k !== key)
+      : [...guarding.value, key]
+  }
 
   /** Heavy Armor Master (PHB 2024): Bludgeoning, Piercing and Slashing cut by PB in Heavy armor. */
   const heavyArmor = computed(() =>
@@ -74,17 +76,18 @@ export function useDnd5eVitals() {
     return {
       amount,
       crit: crit.value,
+      level: level.value,
       ...(type ? { type } : {}),
-      ...(dodge.value && reactionReady.value ? { halve: 'Uncanny Dodge' } : {}),
       ...(reduce.length ? { reduce } : {}),
     }
   }
 
   const takes = computed<HpTakes | undefined>(() => {
-    if (!dodge.value) return undefined
+    const keys = guarding.value
+    if (!keys.length) return undefined
     return (d: number) => {
-      const r = damageAfter(sheet.value, hitOf(d))
-      return { taken: r.taken, note: r.notes.join(', ') }
+      const r = damageAfter(sheet.value, hitOf(guardPreview(keys, d)))
+      return { taken: r.taken, note: keys.join(', ') }
     }
   })
 
@@ -94,23 +97,11 @@ export function useDnd5eVitals() {
   function hurt(amount: number, type = '') {
     if (!canEdit.value || amount <= 0) return
     const hit = hitOf(amount, type)
-    if (deflect.value && reactionReady.value) {
-      const r = rollDie(10)
-      const cut = r + hero.value.mod('DEX') + level.value
-      hit.reduce = [
-        ...(hit.reduce ?? []),
-        {
-          label: `Deflect Attacks (${r} ${sign(hero.value.mod('DEX'))} ${sign(level.value)})`,
-          amount: cut,
-        },
-      ]
-    }
-    if (hit.halve || deflect.value) payCost(sheet.value, level.value, 'reaction')
+    guardHit(sheet.value, level.value, hit, guarding.value)
     const r = takeDamage(sheet.value, hit)
     concDc.value = r.concentrationDc
     crit.value = false
-    dodge.value = false
-    deflect.value = false
+    guarding.value = []
     claim('vit:hp', () => say(r.line))
   }
 
@@ -182,7 +173,7 @@ export function useDnd5eVitals() {
     saves[kind] = saves[kind] === n ? n - 1 : n
   }
 
-  const speed = computed(() => speedNow(sheet.value))
+  const speed = computed(() => speedNow(sheet.value, level.value))
   const init = computed(() => initiativeTest(sheet.value, level.value))
   const perception = computed(() => {
     const r = skillRow(sheet.value, level.value, 'Perception')
@@ -243,6 +234,28 @@ export function useDnd5eVitals() {
     amount.value = null
   }
 
+  // Damage from an effect with a saving throw: the sheet rolls the save against the DC (or the
+  // table says how it went), then a success halves it, or Evasion takes none (SRD 5.2.1 p. 9).
+  const saveAbility = ref<'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA'>('DEX')
+  const saveDc = ref<number | null>(null)
+  const saveHalf = ref(true)
+
+  function fromSave(saved?: boolean) {
+    if (!canEdit.value || !amount.value) return
+    const r = saveDamage(sheet.value, level.value, {
+      amount: amount.value,
+      ability: saveAbility.value,
+      half: saveHalf.value,
+      ...(dmgType.value ? { type: dmgType.value } : {}),
+      ...(saved !== undefined ? { saved } : saveDc.value ? { dc: saveDc.value } : { saved: false }),
+    })
+    const hit = { ...hitOf(r.taken, dmgType.value), crit: false }
+    const t = r.taken > 0 ? takeDamage(sheet.value, hit) : null
+    if (t) concDc.value = t.concentrationDc
+    amount.value = null
+    claim('vit:hp', () => say(`${r.line}${t ? ` ${t.line}` : ' No damage.'}`))
+  }
+
   function revive() {
     if (canEdit.value) claim('vit:hp', () => say(resurrect(sheet.value)))
   }
@@ -257,7 +270,7 @@ export function useDnd5eVitals() {
 
   function confirmShort() {
     shortOpen.value = false
-    if (canEdit.value) claim('vit:rest', () => say(shortRest(sheet.value)))
+    if (canEdit.value) claim('vit:rest', () => say(shortRest(sheet.value, level.value)))
   }
 
   function confirmLong() {
@@ -285,11 +298,9 @@ export function useDnd5eVitals() {
     stable,
     hpTone,
     crit,
-    dodge,
-    deflect,
-    reactionReady,
-    canUncanny,
-    canDeflect,
+    guarding,
+    guards,
+    toggleGuard,
     heavyArmor,
     ham,
     hitOf,
@@ -314,6 +325,10 @@ export function useDnd5eVitals() {
     dmgType,
     typedHurt,
     typedHeal,
+    saveAbility,
+    saveDc,
+    saveHalf,
+    fromSave,
     revive,
     stable5e,
     shortOpen,

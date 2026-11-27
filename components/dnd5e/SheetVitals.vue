@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// Vitals panel of the 5e sheet, laid out like Nimble's: HP with Crit (and Uncanny Dodge or
-// Deflect Attacks while the hero has them) for the next damage, the draggable bar (temp HP
-// first; halving, Deflect and Heavy Armor Master in the preview) and a temp HP stepper; the AC
+// Vitals panel of the 5e sheet, laid out like Nimble's: HP with Crit and the reactions that cut
+// the next hit (Uncanny Dodge, Deflect Attacks, Parry, Song of Defense…, utils/dnd5eDefense.ts),
+// the draggable bar (temp HP first; halving and Heavy Armor Master in the preview) and a temp
+// HP stepper; damage from a save, half on a success, with Evasion; the AC
 // badge with its breakdown; death saves beside the Hit Point Dice and Heroic Inspiration;
 // Speed, Initiative, Proficiency and Passive Perception; conditions; typed damage folded;
 // Short and Long Rest. Damage and healing go through utils/dnd5ePlay.ts (SRD 5.2.1 pp. 16–18).
@@ -18,11 +19,9 @@ const {
   stable,
   hpTone,
   crit,
-  dodge,
-  deflect,
-  reactionReady,
-  canUncanny,
-  canDeflect,
+  guarding,
+  guards,
+  toggleGuard,
   takes,
   concDc,
   hurt,
@@ -41,6 +40,10 @@ const {
   dmgType,
   typedHurt,
   typedHeal,
+  saveAbility,
+  saveDc,
+  saveHalf,
+  fromSave,
   revive,
   stable5e,
   shortOpen,
@@ -93,28 +96,18 @@ const {
               Crit
             </label>
             <label
-              v-if="canUncanny"
+              v-for="g in guards"
+              :key="g.guard.key"
               class="crit crit--react"
-              :title="
-                reactionReady
-                  ? 'Your Reaction: halve the next attack’s damage (SRD 5.2.1 p. 63)'
-                  : 'Reaction used'
-              "
+              :title="g.why || g.guard.note"
             >
-              <input v-model="dodge" type="checkbox" :disabled="!canEdit || !reactionReady" />
-              Uncanny Dodge
-            </label>
-            <label
-              v-if="canDeflect"
-              class="crit crit--react"
-              :title="
-                reactionReady
-                  ? 'Your Reaction: cut the next attack’s damage by 1d10 + DEX + Monk level (SRD 5.2.1 p. 51)'
-                  : 'Reaction used'
-              "
-            >
-              <input v-model="deflect" type="checkbox" :disabled="!canEdit || !reactionReady" />
-              Deflect
+              <input
+                type="checkbox"
+                :checked="guarding.includes(g.guard.key)"
+                :disabled="!canEdit || (!!g.why && !guarding.includes(g.guard.key))"
+                @change="toggleGuard(g.guard.key)"
+              />
+              {{ g.guard.name }}
             </label>
           </div>
           <div class="row hp-steps" style="gap: 8px">
@@ -383,9 +376,62 @@ const {
           Heal
         </button>
       </form>
+      <form class="hurt" @submit.prevent="fromSave()">
+        <span class="hint">From a save:</span>
+        <label class="sr-only" for="d5-save-ability">Saving throw</label>
+        <select
+          id="d5-save-ability"
+          v-model="saveAbility"
+          class="input hurt__type"
+          :disabled="!canEdit"
+        >
+          <option v-for="a in ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']" :key="a" :value="a">
+            {{ a }} save
+          </option>
+        </select>
+        <label class="sr-only" for="d5-save-dc">Save DC</label>
+        <input
+          id="d5-save-dc"
+          v-model.number="saveDc"
+          class="input hurt__n"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          placeholder="DC"
+          :disabled="!canEdit"
+        />
+        <label class="crit" title="A success halves the damage (else it avoids it all)">
+          <input v-model="saveHalf" type="checkbox" :disabled="!canEdit" />
+          Half on a success
+        </label>
+        <button
+          type="submit"
+          class="btn btn--sm"
+          :disabled="!canEdit || !amount || !saveDc"
+          title="Roll the save against the DC, then take the damage"
+        >
+          Roll the save
+        </button>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm"
+          :disabled="!canEdit || !amount"
+          @click="fromSave(true)"
+        >
+          Passed
+        </button>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm"
+          :disabled="!canEdit || !amount"
+          @click="fromSave(false)"
+        >
+          Failed
+        </button>
+      </form>
       <p class="hint">
-        Resistances: {{ sheet.defenses?.resistances.join(', ') || 'none' }}. Crit and Uncanny Dodge
-        beside Hit points apply here too.
+        Resistances: {{ sheet.defenses?.resistances.join(', ') || 'none' }}. Crit and the reactions
+        beside Hit points apply to Damage; Evasion applies to a DEX save for half.
       </p>
     </details>
 

@@ -13,19 +13,23 @@
 import type { Dnd5eData } from '~/data/dnd5e'
 import type { Dnd5eActivation, Dnd5eFeature, Dnd5eMechanics, Dnd5eSave } from '~/data/dnd5e/types'
 import type { Dnd5eAbility, Dnd5eFeatureEntry, Dnd5eSheet } from '~/types/sheets'
-import type { Dnd5eColumns } from '~/utils/dnd5eAttacks'
+import { type Dnd5eColumns, type Dnd5eTarget, adjustAttackTest } from '~/utils/dnd5eAttacks'
 import { addEffect, DND5E_EFFECTS } from '~/utils/dnd5eEffects'
 import {
   type Dnd5eCost,
   costWhy,
+  d20Test,
   dnd5eHero,
   gainTempHp,
   heal,
   norm5e,
   payCost,
   restoreUses,
+  rollTest,
   spendHitDie,
   spendUses,
+  useOnce,
+  usedOnce,
   usesLeft,
 } from '~/utils/dnd5ePlay'
 import { type Rng, parseDice, rollDice, sign } from '~/utils/dice'
@@ -63,6 +67,31 @@ export interface Dnd5eFeatureRule {
   cost?: Dnd5eCost
   /** Not used from the Actions panel: the Resources panel does it (Font of Magic, Arcane Recovery). */
   skip?: boolean
+  /**
+   * The value the effect keeps: an ability modifier (at least +1), a number by class level, a
+   * pool's die size (`die`: Feinting Attack) or its roll (`roll`: Evasive Footwork's AC).
+   */
+  value?: Dnd5eAbility | { at: Record<number, number> } | { die: string } | { roll: string }
+  /** The resource it spends when the data doesn't say (Cutting Words: Bardic Inspiration). */
+  resource?: string
+  /** How many uses of it (Elemental Burst: 2 Focus Points). */
+  spend?: number
+  /** Its dice and healing go to someone else: rolled and said, not applied. */
+  toAlly?: boolean
+  /** A condition it gives you (Nature's Veil: Invisible). */
+  condition?: string
+  /** It makes a spell attack roll (Holy Bolt), against the Target row's AC. */
+  spellAttack?: Dnd5eAbility
+  /** Added to its damage or healing: class level or an ability modifier. */
+  plus?: ('level' | Dnd5eAbility)[]
+  /** Its dice count is the Rage Damage bonus or an ability modifier (Lava Burst: Rage d4s). */
+  diceTimes?: 'rage' | Dnd5eAbility | number
+  /** You also regain as many Hit Points as it deals (Devouring Plague). */
+  healSame?: boolean
+  /** Its pool is dice (Warrior of the Gods' d12s): the amount spent is how many to roll. */
+  poolDice?: string
+  /** A line it adds to the result. */
+  say?: string
 }
 
 export const DND5E_FEATURE_RULES: Record<string, Dnd5eFeatureRule> = {
@@ -95,6 +124,180 @@ export const DND5E_FEATURE_RULES: Record<string, Dnd5eFeatureRule> = {
   'Creating Spell Slots': { skip: true },
   'Spell Slot to Wild Shape': { skip: true },
   'Wild Shape to Spell Slot': { skip: true },
+  'Lucky: Luck Points': { skip: true },
+  'Font of Inspiration': { skip: true },
+  'Flash of Genius': { skip: true },
+  Portent: { skip: true },
+  'Tides of Chaos': { effect: 'tides-of-chaos', cost: 'free' },
+  // Barbarian subclasses
+  'Rage of the Gods': { effect: 'rage-of-the-gods', cost: 'free' },
+  'Warrior of the Gods': { pool: true, poolDice: '1d12' },
+  'Raging Elements: Icefury': { spellAttack: 'CON', diceTimes: 'rage' },
+  'Raging Elements: Lava Burst': { diceTimes: 'rage' },
+  'Raging Elements: Lightning Bolt': { diceTimes: 'rage' },
+  'Spirit Shield': { diceTimes: 'rage', toAlly: true },
+  'Zealous Presence': { say: 'Up to ten other creatures within 60 ft gain Zealous Presence.' },
+  // Bard
+  'Cutting Words': { resource: 'Bardic Inspiration' },
+  'Mantle of Inspiration': {
+    resource: 'Bardic Inspiration',
+    toAlly: true,
+    say: 'Up to CHA creatures gain twice the roll in temporary HP and may move.',
+  },
+  'Inspiring Movement': { resource: 'Bardic Inspiration' },
+  'Tandem Footwork': {
+    resource: 'Bardic Inspiration',
+    toAlly: true,
+    say: 'You and allies within 30 ft add it to Initiative.',
+  },
+  'Spirits from Beyond': { resource: 'Bardic Inspiration' },
+  // Cleric
+  'Holy Bolt': {
+    resource: 'Channel Divinity',
+    spellAttack: 'WIS',
+    plus: ['WIS'],
+    say: 'On a hit, a creature you see within 60 ft heals 1d10 + WIS.',
+  },
+  'Radiance of the Dawn': { resource: 'Channel Divinity', plus: ['level'] },
+  'Preserve Life': {
+    resource: 'Channel Divinity',
+    say: 'Divide five times your Cleric level in healing among Bloodied creatures within 30 ft.',
+  },
+  'Path to the Grave': { resource: 'Channel Divinity' },
+  Shadowform: { resource: 'Channel Divinity', effect: 'shadowform' },
+  'Devouring Plague': { healSame: true },
+  'Luminous Barrier': {
+    resource: 'Channel Divinity',
+    toAlly: true,
+    plus: ['level', 'WIS'],
+    say: 'Each blessed creature gains that many temporary HP and resists all damage while they last.',
+  },
+  'Divine Foreknowledge': { effect: 'foreknowledge' },
+  'Invoke Duplicity': { resource: 'Channel Divinity' },
+  'Mind Magic': { resource: 'Channel Divinity' },
+  'Modify Magic: Fortifying Spell': {
+    resource: 'Channel Divinity',
+    toAlly: true,
+    plus: ['level'],
+    say: 'One of the spell’s targets gains that many temporary HP.',
+  },
+  'Modify Magic: Tenacious Spell': { resource: 'Channel Divinity', toAlly: true },
+  // Druid
+  'Moonlight Step': { effect: 'moonlight-step' },
+  'Starry Form: Archer': {
+    effect: 'starry-archer',
+    resource: 'Wild Shape',
+    spellAttack: 'WIS',
+    plus: ['WIS'],
+  },
+  'Starry Form: Chalice': {
+    effect: 'starry-chalice',
+    resource: 'Wild Shape',
+    toAlly: true,
+    plus: ['WIS'],
+  },
+  'Starry Form: Dragon': { effect: 'starry-dragon', resource: 'Wild Shape' },
+  'Wrath of the Sea': { effect: 'wrath-of-the-sea', resource: 'Wild Shape', diceTimes: 'WIS' },
+  'Land’s Aid': {
+    resource: 'Wild Shape',
+    say: 'One creature you choose in the Sphere regains 2d6 HP.',
+  },
+  'Nature’s Sanctuary': { resource: 'Wild Shape' },
+  // Fighter
+  'Feinting Attack': { effect: 'feinting', value: { die: 'Combat Superiority' } },
+  'Lunging Attack': { core: ['dash'], effect: 'lunging', value: { die: 'Combat Superiority' } },
+  'Evasive Footwork': {
+    core: ['disengage'],
+    effect: 'evasive-footwork',
+    value: { roll: 'Combat Superiority' },
+  },
+  'Bait and Switch': { effect: 'bait-and-switch', value: { roll: 'Combat Superiority' } },
+  Rally: {
+    toAlly: true,
+    say: 'An ally within 30 ft gains the roll + half your Fighter level in temporary HP.',
+  },
+  'Battle Shout': {
+    toAlly: true,
+    say: 'Allies within 30 ft add the roll to damage on their next melee hit before your next turn.',
+  },
+  'Demoralizing Shout': {
+    toAlly: true,
+    say: 'Enemies within 30 ft take the roll off their next melee hit against anyone but you.',
+  },
+  'Commander’s Strike': {
+    cost: 'attack',
+    toAlly: true,
+    say: 'Give up one attack: an ally uses its Reaction to attack, adding the roll to damage on a hit.',
+  },
+  'Telekinetic Adept: Psi-Powered Leap': { effect: 'psi-leap' },
+  'Group Recovery': {
+    toAlly: true,
+    plus: ['level'],
+    say: 'Up to CHA allies within 30 ft each regain that many HP.',
+  },
+  // Monk
+  'Hand of Healing': { heal: { plus: ['WIS'] }, resource: 'Monk’s Focus' },
+  'Wholeness of Body': { heal: { plus: ['WIS'] } },
+  'Elemental Attunement': { effect: 'elemental-attunement', resource: 'Monk’s Focus' },
+  'Elemental Burst': { resource: 'Monk’s Focus', spend: 2, diceTimes: 3 },
+  'Shadow Step': { effect: 'shadow-step' },
+  'Cloak of Shadows': { condition: 'Invisible', resource: 'Monk’s Focus', spend: 3 },
+  'Superior Defense': {
+    effect: 'superior-defense',
+    resource: 'Monk’s Focus',
+    spend: 3,
+    cost: 'free',
+  },
+  'Quivering Palm': { resource: 'Monk’s Focus', spend: 4 },
+  'Hand of Ultimate Mercy': { resource: 'Monk’s Focus', spend: 5, plus: ['WIS'], toAlly: true },
+  // Paladin
+  'Sacred Weapon': {
+    effect: 'sacred-weapon',
+    value: 'CHA',
+    resource: 'Channel Divinity',
+    cost: 'free',
+  },
+  'Vow of Enmity': { effect: 'vow-of-enmity', resource: 'Channel Divinity', cost: 'free' },
+  'Peerless Athlete': { effect: 'peerless-athlete', resource: 'Channel Divinity' },
+  'Nature’s Wrath': { resource: 'Channel Divinity' },
+  'Abjure Foes': { resource: 'Channel Divinity' },
+  'Inspiring Smite': {
+    resource: 'Channel Divinity',
+    toAlly: true,
+    plus: ['level'],
+    say: 'Split that many temporary HP among creatures within 30 ft, you included.',
+  },
+  'Beacon of Light': { resource: 'Channel Divinity' },
+  'Holy Nimbus': { effect: 'holy-nimbus' },
+  'Living Legend': { effect: 'living-legend' },
+  'Elder Champion': { effect: 'elder-champion' },
+  'Avenging Angel': { effect: 'avenging-angel' },
+  'Noble Scion': { effect: 'noble-scion' },
+  // Ranger
+  'Nature’s Veil': { condition: 'Invisible' },
+  'Wrath of the Wild': { effect: 'wrath-of-the-wild', value: { at: { 3: 1, 11: 2 } } },
+  'Fortifying Soul': {
+    toAlly: true,
+    plus: ['level'],
+    say: 'Up to WIS creatures each heal that much.',
+  },
+  'Soul Fragments: Soul Cleave': { resource: 'Soul Fragments', plus: ['WIS'] },
+  // Rogue, Sorcerer, Warlock, Wizard
+  'Ghost Walk': { effect: 'ghost-walk' },
+  'Psychic Veil': { condition: 'Invisible' },
+  'Umbral Form': { effect: 'umbral-form', cost: 'free' },
+  'Crown of Spellfire': { effect: 'crown-of-spellfire', cost: 'free' },
+  'Dragon Wings': { effect: 'dragon-wings' },
+  'Trance of Order': { effect: 'trance-of-order' },
+  'Form of Dread': { effect: 'form-of-dread', temp: { dice: '1d10', plus: ['level'] } },
+  'Steps of the Fey: Refreshing Step': { toAlly: true },
+  Bladesong: { effect: 'bladesong', value: 'INT' },
+  // Artificer
+  'Experimental Elixir: Healing': { heal: { plus: ['INT'] } },
+  'Experimental Elixir: Swiftness': { effect: 'elixir-swiftness' },
+  'Experimental Elixir: Resilience': { effect: 'elixir-resilience' },
+  'Experimental Elixir: Boldness': { effect: 'elixir-boldness' },
+  'Experimental Elixir: Flight': { effect: 'elixir-flight' },
 }
 
 /** A feature or pick the hero has, ready to show and use. */
@@ -127,6 +330,8 @@ export interface Dnd5eEntry {
   oncePerTurn?: boolean
   /** The feature this is an option of (Cunning Action for its Dash). */
   parent?: string
+  /** What else gives a use back, as the data says ("a level 5 spell slot"). */
+  restore?: string
 }
 
 const ACTIVATION: Record<Dnd5eActivation, Dnd5eCost> = {
@@ -254,6 +459,26 @@ export function resolveDice(
 
 type Mech = Dnd5eMechanics & { text?: string; summary?: string; cost?: string; name?: string }
 
+/** A rule's `diceTimes`: the die rolled that many times (Rage Damage d4s, WIS d6s). */
+function timesDice(
+  s: Dnd5eSheet,
+  level: number,
+  dice: string | undefined,
+  rule: Dnd5eFeatureRule | undefined,
+  cols: Dnd5eColumns | undefined,
+): string | undefined {
+  const d = dice ? parseDice(dice) : null
+  if (!d || !rule?.diceTimes) return dice
+  const t = rule.diceTimes
+  const n =
+    typeof t === 'number'
+      ? t
+      : t === 'rage'
+        ? Number(/\d+/.exec(cols?.['Rage Damage'] ?? '')?.[0] ?? 1)
+        : Math.max(1, dnd5eHero(s, level).mod(t))
+  return `${n}d${d.sides}`
+}
+
 function makeEntry(
   s: Dnd5eSheet,
   level: number,
@@ -280,6 +505,10 @@ function makeEntry(
     spend = c.spend
     pact = !!c.pact
   }
+  if (!resource && rule?.resource && resources.some((r) => r.name === rule.resource)) {
+    resource = rule.resource
+    spend = rule.spend ?? 1
+  }
   if (!resource && !mech.uses) resource = p.parentResource
   if (!resource && p.kind === 'feat' && !mech.uses)
     resource = resources.find(
@@ -288,7 +517,7 @@ function makeEntry(
   const cost =
     rule?.cost ??
     (mech.activation ? ACTIVATION[mech.activation] : resource && !mech.uses ? 'special' : null)
-  const dice = resolveDice(s, level, mech.dice, p.cols, rule)
+  const dice = timesDice(s, level, resolveDice(s, level, mech.dice, p.cols, rule), rule, p.cols)
   const save = mech.save ? saveDc(s, level, mech.save) : undefined
   const oncePerTurn = mech.uses?.recharge === 'turn'
   const heals = !!rule?.heal || !!rule?.temp || !!rule?.pool
@@ -307,10 +536,14 @@ function makeEntry(
     ...(mech.damageType ? { damageType: mech.damageType } : {}),
     ...(save ? { save } : {}),
     ...(rule ? { rule } : {}),
-    attack: !!dice && !heals && !rule?.give && (!!save || !!mech.damageType) && !!cost,
+    attack:
+      !!cost &&
+      !rule?.toAlly &&
+      (!!rule?.spellAttack || (!!dice && !heals && !rule?.give && (!!save || !!mech.damageType))),
     passive: !cost && !resource && !(oncePerTurn && (!!dice || !!save)),
     ...(mech.duration ? { duration: mech.duration } : {}),
     ...(oncePerTurn ? { oncePerTurn } : {}),
+    ...(mech.uses?.restore ? { restore: mech.uses.restore } : {}),
   }
 }
 
@@ -380,7 +613,7 @@ export function entryWhy(s: Dnd5eSheet, e: Dnd5eEntry): string {
     if (!p || (s.pactUsed ?? 0) + e.spend > p.slots) return 'No Pact Magic slot left'
   }
   if (e.resource && !e.rule?.pool && usesLeft(s, e.resource) < e.spend) return 'None left'
-  if (e.oncePerTurn && s.turn?.once.includes(`entry:${e.key}`)) return 'Used this turn'
+  if (e.oncePerTurn && usedOnce(s, `entry:${e.key}`)) return 'Used this turn'
   return ''
 }
 
@@ -431,32 +664,145 @@ export function coreEffect(s: Dnd5eSheet, id: string): string {
   return `${CORE_NAMES[id] ?? id}: ${DND5E_EFFECTS[id]!.note}`
 }
 
+/** The die of a resource ("1d8"), for rules that read a pool's die. */
+const poolDie = (s: Dnd5eSheet, name: string) => {
+  const m = /(\d*)d(\d+)/.exec(s.resources?.find((r) => r.name === name)?.dice ?? '')
+  return m ? `${m[1] || 1}d${m[2]}` : ''
+}
+
+/** The number an effect keeps from its rule's `value`. */
+function effectValue(
+  s: Dnd5eSheet,
+  level: number,
+  v: Dnd5eFeatureRule['value'],
+  rng?: Rng,
+): number | undefined {
+  if (!v) return undefined
+  if (typeof v === 'string') return Math.max(1, dnd5eHero(s, level).mod(v))
+  if ('at' in v)
+    return Object.entries(v.at).reduce((n, [at, x]) => (level >= Number(at) ? x : n), 0)
+  const d = parseDice(poolDie(s, 'die' in v ? v.die : v.roll))
+  if (!d) return undefined
+  return 'die' in v ? d.sides : rollDice(d, rng).total
+}
+
+/**
+ * What a few features add when they're used, beyond their rule: Rage's Vitality Surge temp HP
+ * and Mindless Rage (SRD 5.2.1 p. 30), Wild Shape's temporary HP (Druid level, three times it
+ * with Circle Forms, p. 44), Patient Defense's Heightened Focus temp HP (p. 51), Action Surge's
+ * Grieving Mantle.
+ */
+function useExtras(
+  s: Dnd5eSheet,
+  level: number,
+  e: Dnd5eEntry,
+  cols: Dnd5eColumns | undefined,
+  rng?: Rng,
+): string[] {
+  const hero = dnd5eHero(s, level)
+  const out: string[] = []
+  if (e.name === 'Rage') {
+    const used = { ...s.used }
+    delete used['Fanatical Focus']
+    s.used = used
+    if (hero.has('Vitality of the Tree')) out.push(gainTempHp(s, level, 'Vitality Surge'))
+    if (hero.has('Mindless Rage')) {
+      const had: string[] = (s.conditions ?? []).filter(
+        (c) => c === 'Charmed' || c === 'Frightened',
+      )
+      s.conditions = (s.conditions ?? []).filter((c) => !had.includes(c))
+      if (had.length) out.push(`Mindless Rage: ${had.join(' and ')} ended`)
+    }
+    if (hero.has('Rage of the Wilds')) out.push('pick a spirit (Bear, Eagle or Wolf) in Conditions')
+  }
+  if (e.name === 'Wild Shape') {
+    const moon = hero.has('Circle Forms')
+    out.push(gainTempHp(s, moon ? 3 * level : level, moon ? 'Circle Forms' : 'Wild Shape'))
+  }
+  if (e.name === 'Monk’s Focus: Patient Defense' && hero.has('Heightened Focus')) {
+    const ma = (cols?.['Martial Arts'] ?? '').match(/(\d*)d(\d+)/)
+    if (ma) {
+      const r = rollDice({ count: 2 * Number(ma[1] || 1), sides: Number(ma[2]), mod: 0 }, rng)
+      out.push(gainTempHp(s, r.total, 'Heightened Focus'))
+    }
+  }
+  if (e.name === 'Action Surge' && hero.has('Grieving Mantle')) {
+    addEffect(s, 'grieving-mantle')
+    out.push('Grieving Mantle is on')
+  }
+  if (e.name === 'Action Surge' && hero.has('Arcane Charge'))
+    out.push('Arcane Charge: teleport up to 30 ft before or after the extra action')
+  if (e.name === 'Action Surge' && hero.has('Rallying Surge'))
+    out.push('Rallying Surge: up to CHA allies within 30 ft can use a Reaction to attack or move')
+  if (e.name === 'Second Wind' && hero.has('Tactical Shift'))
+    out.push('Tactical Shift: move up to half your Speed without provoking')
+  if (e.name === 'Monk’s Focus: Patient Defense' && hero.has('Drunken Technique') && e.resource)
+    out.push('Drunken Technique: +10 ft Speed this turn and an Unarmed Strike')
+  return out
+}
+
+/** A spell attack a feature makes (Holy Bolt, Icefury): the roll against the Target row's AC. */
+function featureAttack(
+  s: Dnd5eSheet,
+  level: number,
+  e: Dnd5eEntry,
+  ability: Dnd5eAbility,
+  o: { target?: Dnd5eTarget; rng?: Rng },
+): { line: string; hit: boolean | null; crit: boolean } {
+  const hero = dnd5eHero(s, level)
+  const bonus = hero.mod(ability) + hero.pb
+  const t = d20Test(s, level, {
+    label: e.name,
+    kind: 'attack',
+    ability,
+    bonus,
+    lines: [`Spell attack ${sign(bonus)}`],
+  })
+  adjustAttackTest(s, t, {
+    melee: false,
+    strength: false,
+    ...(o.target ? { target: o.target } : {}),
+  })
+  const r = rollTest(s, t, o.rng ? { rng: o.rng } : {})
+  const ac = o.target?.ac ?? null
+  const crit = r.natural === 20
+  const hit = r.natural === 1 ? false : crit ? true : ac === null ? null : r.total >= ac
+  const line = `${r.total} to hit${ac !== null ? ` vs AC ${ac}` : ''} (${r.rolls.join(' / ')} ${sign(t.bonus)})${hit === false ? ', a miss' : crit ? ', a Critical Hit' : hit ? ', a hit' : ''}`
+  return { line, hit, crit }
+}
+
 /**
  * Uses an entry: pays its cost on the turn, spends its uses (or `amount` of a pool), then does
- * what its rule says (an effect, healing, temporary HP, an extra action, core actions, a Hit
- * Point Die) or rolls its dice and says its save DC. Returns the result line; `why` when it
- * can't be used.
+ * what its rule says (an effect with its value, a condition, healing, temporary HP, an extra
+ * action, core actions, a Hit Point Die, a spell attack) or rolls its dice and says its save DC;
+ * dice meant for an ally are rolled and said. Returns the result line; `why` when it can't be
+ * used.
  */
 export function useEntry(
   s: Dnd5eSheet,
   level: number,
   e: Dnd5eEntry,
-  o: { amount?: number; rng?: Rng } = {},
+  o: { amount?: number; rng?: Rng; target?: Dnd5eTarget; columns?: Dnd5eColumns } = {},
 ): string {
   const why = entryWhy(s, e)
   if (why) return `${e.name}: ${why}.`
   const r = e.rule
   if (r?.pool) {
     const n = Math.max(0, Math.min(o.amount ?? 0, usesLeft(s, e.resource ?? e.name)))
-    if (!n) return `${e.name}: choose how many points to spend.`
+    if (!n) return `${e.name}: choose how many ${r.poolDice ? 'dice' : 'points'} to spend.`
     if (e.cost) payCost(s, level, e.cost)
     spendUses(s, e.resource ?? e.name, n)
-    return `${e.name}: ${n} point${n === 1 ? '' : 's'} spent. ${heal(s, n)}`
+    const d = r.poolDice ? parseDice(r.poolDice) : null
+    const amount = d ? rollDice({ count: n * d.count, sides: d.sides, mod: 0 }, o.rng).total : n
+    const what = r.poolDice
+      ? `${n} ${r.poolDice.replace(/^1/, '')} spent`
+      : `${n} point${n === 1 ? '' : 's'} spent`
+    return `${e.name}: ${what}. ${heal(s, amount)}`
   }
   if (e.cost) payCost(s, level, e.cost)
   if (e.pact) s.pactUsed = (s.pactUsed ?? 0) + e.spend
   else if (e.resource) spendUses(s, e.resource, e.spend)
-  if (e.oncePerTurn && s.turn) s.turn.once = [...s.turn.once, `entry:${e.key}`]
+  if (e.oncePerTurn) useOnce(s, `entry:${e.key}`)
   const parts: string[] = []
   const spent = e.pact
     ? 'a Pact Magic slot'
@@ -464,8 +810,18 @@ export function useEntry(
       ? `${e.spend > 1 ? `${e.spend} ` : ''}${e.resource}`
       : ''
   if (r?.effect && DND5E_EFFECTS[r.effect]) {
-    addEffect(s, r.effect, s.turn?.active ? { held: false } : {})
-    parts.push(`${DND5E_EFFECTS[r.effect]!.name} is on`)
+    const value = effectValue(s, level, r.value, o.rng)
+    addEffect(s, r.effect, {
+      ...(s.turn?.active ? { held: false } : {}),
+      ...(value !== undefined ? { value } : {}),
+    })
+    parts.push(
+      `${DND5E_EFFECTS[r.effect]!.name} is on${value !== undefined && r.value && typeof r.value === 'object' && 'roll' in r.value ? ` (+${value})` : ''}`,
+    )
+  }
+  if (r?.condition && !(s.conditions ?? []).includes(r.condition)) {
+    s.conditions = [...(s.conditions ?? []), r.condition]
+    parts.push(`you have the ${r.condition} condition`)
   }
   if (r?.actions && s.turn?.active) {
     s.turn.actions += r.actions
@@ -493,14 +849,31 @@ export function useEntry(
   }
   if (r?.hitDie) parts.push(spendHitDie(s, level, o.rng ? { rng: o.rng } : {}))
   if (r?.unarmed) parts.push(`make ${r.unarmed} Unarmed Strikes`)
-  if (!r?.heal && !r?.temp && e.dice) {
-    if (r?.give) parts.push(`an ally gains your ${e.dice} to add to a failed D20 Test`)
-    else {
-      const a = rollAmount(s, level, e.dice, undefined, o.rng)
-      parts.push(`${a.total}${e.damageType ? ` ${e.damageType.toLowerCase()}` : ''} (${a.text})`)
+  const dice = e.dice || (r?.toAlly && e.resource ? poolDie(s, e.resource) : '')
+  if (!r?.heal && !r?.temp && (dice || r?.toAlly || r?.spellAttack)) {
+    const atk = r?.spellAttack ? featureAttack(s, level, e, r.spellAttack, o) : null
+    if (atk) parts.push(atk.line)
+    if (r?.give) parts.push(`an ally gains your ${dice} to add to a failed D20 Test`)
+    else if (atk?.hit !== false && (dice || r?.plus)) {
+      const d = dice ? parseDice(dice) : null
+      const crit = !!atk?.crit
+      const roll = d ? rollDice({ ...d, count: d.count * (crit ? 2 : 1) }, o.rng) : null
+      const adds = plusOf(s, level, r?.plus)
+      const total = Math.max(0, (roll?.total ?? 0) + adds.reduce((n, a) => n + a.value, 0))
+      const text = [
+        roll ? `${d!.count * (crit ? 2 : 1)}d${d!.sides} ${roll.rolls.join('+')}` : '',
+        ...adds.map((a) => `${sign(a.value)} ${a.label}`),
+      ]
+        .filter(Boolean)
+        .join(' ')
+      const kind = r?.toAlly ? ' for an ally' : e.damageType ? ` ${e.damageType.toLowerCase()}` : ''
+      parts.push(`${total}${kind} (${text})`)
+      if (r?.healSame) parts.push(`you ${heal(s, total).replace(/^Healed/, 'heal')}`)
     }
   }
   if (e.save) parts.push(`DC ${e.save.dc} ${e.save.ability} save`)
+  parts.push(...useExtras(s, level, e, o.columns, o.rng))
+  if (r?.say) parts.push(r.say.replace(/\.$/, ''))
   const head = `${e.name}${spent ? ` (${spent})` : ''}`
   return parts.length ? `${head}: ${parts.join('; ')}.` : `${head}: used.`
 }

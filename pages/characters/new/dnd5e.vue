@@ -5,12 +5,14 @@
 // each step and builds the level 1 sheet. A subclass step shows only when level 1 offers one (in
 // the 2024 rules every class picks at level 3, but some World of Warcraft subclasses start at
 // level 1; theirs comes after Species, whose picks it joins). The Sources menu hides the books
-// the player turns off from every picker.
+// the player turns off from every picker. With `?reconfigure=<id>` it reopens a built hero's
+// level 1 picks (Reconfigure from level 1): the rebuilt sheet goes back to the hero's sheet page
+// (`useDnd5eRebuild`), whose Reconfigure replays the later levels.
 import { dnd5eSource, loadDnd5e } from '~/data/dnd5e'
 import type { Dnd5eSourceBook } from '~/data/dnd5e'
 import type { Dnd5eClassDef, Dnd5eFeature } from '~/data/dnd5e/types'
 import { MAX_CHARACTERS } from '~/stores/character'
-import type { Dnd5eAbility, Dnd5eCreation } from '~/types/sheets'
+import type { Dnd5eAbility, Dnd5eCreation, Dnd5eSheet } from '~/types/sheets'
 import { abilityMod, rollDie, sign } from '~/utils/dice'
 import {
   DND5E_ABILITIES,
@@ -31,6 +33,8 @@ import {
   customProblem,
   buildDnd5eSheet,
   clashPicks,
+  coinsText,
+  cpToCoins,
   creationPicks,
   earlySubclasses,
   emptyCreation,
@@ -45,11 +49,16 @@ import {
 import { loreHtml } from '~/utils/loreText'
 
 definePageMeta({ middleware: 'auth' })
-useHead({ title: 'New 5e hero · Lantern' })
 
 const auth = useAuthStore()
 const store = useCharacterStore()
 const snackbar = useSnackbarStore()
+const route = useRoute()
+const rebuilder = useDnd5eRebuild()
+/** The hero whose level 1 is being redone (Reconfigure), or empty for a new hero. */
+const rebuildId = typeof route.query.reconfigure === 'string' ? route.query.reconfigure : ''
+const rebuildLevel = ref(1)
+const rebuildReady = ref(false)
 
 const data = shallowRef<Dnd5eBuildData | null>(null)
 const loadError = ref('')
@@ -60,10 +69,18 @@ const step = ref(0)
 const showErrors = ref(false)
 const creating = ref(false)
 
-const atCap = computed(() => store.loaded && store.characters.length >= MAX_CHARACTERS)
+useHead({
+  title: () =>
+    rebuildId ? `Reconfigure ${name.value || 'hero'} · Lantern` : 'New 5e hero · Lantern',
+})
+
+const atCap = computed(
+  () => !rebuildId && store.loaded && store.characters.length >= MAX_CHARACTERS,
+)
 
 onMounted(async () => {
-  store.fetchMine().catch((err) => snackbar.error(err, 'Could not load your characters'))
+  const mine = store.fetchMine()
+  mine.catch((err) => snackbar.error(err, 'Could not load your characters'))
   try {
     const sets = await Promise.all(DND5E_BUILD_SETS.map((s) => loadDnd5e(s)))
     data.value = Object.fromEntries(DND5E_BUILD_SETS.map((s, i) => [s, sets[i]])) as Dnd5eBuildData
@@ -71,7 +88,26 @@ onMounted(async () => {
     loadError.value = 'The 5e rules could not be loaded. Check your connection and reload.'
     snackbar.error(err, 'Could not load the 5e rules')
   }
+  if (rebuildId) await mine.then(startRebuild, () => {})
 })
+
+/** Reconfigure: the hero's recorded level 1 creation and picks, to change and rebuild. */
+function startRebuild() {
+  const hero = store.characters.find((x) => x.id === rebuildId)
+  const sheet = hero?.system === 'dnd5e' ? (hero.sheet as Dnd5eSheet) : null
+  if (!hero || !sheet?.classSlug || !sheet.creation) {
+    loadError.value =
+      'This hero wasn’t made in the 5e builder, so its level 1 can’t be redone here.'
+    return
+  }
+  c.value = JSON.parse(JSON.stringify(sheet.creation)) as Dnd5eCreation
+  choices.value = Object.fromEntries(
+    Object.entries(sheet.choices ?? {}).filter(([k]) => k.startsWith('L1:')),
+  )
+  name.value = hero.name
+  rebuildLevel.value = hero.level
+  rebuildReady.value = true
+}
 
 const cls = computed(() => data.value?.classes.find((x) => x.slug === c.value.classSlug))
 const species = computed(() => data.value?.species.find((x) => x.slug === c.value.speciesSlug))
@@ -178,7 +214,7 @@ const stepErrors = computed<Record<StepId, string>>(() => ({
   choices: firstProblem(settled(otherPicks.value)),
   equipment: '',
   spells: firstProblem(settled(spellPicks.value)),
-  review: name.value.trim() ? '' : 'Give your hero a name',
+  review: rebuildId || name.value.trim() ? '' : 'Give your hero a name',
 }))
 const errorAt = (i: number) =>
   (i === step.value ? firstProblem(clashes.value) : '') || (stepErrors.value[steps.value[i]!] ?? '')
@@ -490,6 +526,11 @@ async function create() {
     toTop()
     return
   }
+  if (rebuildId) {
+    rebuilder.hand(rebuildId, built.value)
+    await navigateTo(`/character/${rebuildId}`)
+    return
+  }
   creating.value = true
   try {
     const created = await store.create('dnd5e', name.value.trim(), built.value)
@@ -524,7 +565,16 @@ function jumpToProblem() {
 <template>
   <div class="page">
     <header class="page-head">
-      <div>
+      <div v-if="rebuildId">
+        <NuxtLink :to="`/character/${rebuildId}`" class="back small">← Back to the sheet</NuxtLink>
+        <h1>Reconfigure {{ name || 'your hero' }}: level 1</h1>
+        <p>
+          Change your class, species, background, scores and starting picks. Then you level back up
+          to {{ rebuildLevel }} one level at a time, starting from your previous choices; cancelling
+          a level on the way leaves the hero as before.
+        </p>
+      </div>
+      <div v-else>
         <NuxtLink to="/characters" class="back small">← Characters</NuxtLink>
         <h1>New 5e hero</h1>
         <p>
@@ -546,6 +596,9 @@ function jumpToProblem() {
     </div>
     <div v-else-if="loadError" class="notice notice--error" role="alert">{{ loadError }}</div>
     <p v-else-if="!data" class="muted" aria-live="polite">Loading the 5e rules…</p>
+    <p v-else-if="rebuildId && !rebuildReady" class="muted" aria-live="polite">
+      Loading your hero…
+    </p>
 
     <template v-else>
       <nav aria-label="Hero builder steps">
@@ -735,8 +788,8 @@ function jumpToProblem() {
           <div class="stack" style="gap: 8px">
             <span class="small" aria-live="polite">
               <strong>Equipment</strong>: {{ money(gearSpent) }} spent,
-              {{ Math.floor((CUSTOM_GEAR_CP - gearSpent) / 100) }} gp left as gold (option A on the
-              Equipment step; option B keeps all 50 GP)
+              {{ coinsText(cpToCoins(CUSTOM_GEAR_CP - gearSpent)).toLowerCase() }} left as coins
+              (option A on the Equipment step; option B keeps all 50 GP)
             </span>
             <Pf2eOptionCards
               v-model="custom.gear"
@@ -949,7 +1002,10 @@ function jumpToProblem() {
             </span>
           </label>
         </fieldset>
-        <p class="small muted">
+        <p v-if="rebuildId" class="small muted">
+          Your inventory and coins stay as they are on the sheet; this records the choice.
+        </p>
+        <p v-else class="small muted">
           Armor and a shield you’re trained in are worn and set your AC; buy anything else on the
           sheet with the gold.
         </p>
@@ -972,8 +1028,10 @@ function jumpToProblem() {
 
       <!-- Review ------------------------------------------------------------- -->
       <section v-else class="section stack" aria-labelledby="rev-h">
-        <div class="section-head"><h2 id="rev-h">Name &amp; review</h2></div>
-        <div class="panel field">
+        <div class="section-head">
+          <h2 id="rev-h">{{ rebuildId ? 'Review' : 'Name & review' }}</h2>
+        </div>
+        <div v-if="!rebuildId" class="panel field">
           <label for="hero-name">Hero name</label>
           <input
             id="hero-name"
@@ -1037,7 +1095,7 @@ function jumpToProblem() {
                     )
                     .join(', ') || 'None'
                 }}
-                · {{ built.coins?.gp ?? 0 }} gp
+                · {{ coinsText(built.coins ?? { gp: 0 }).toLowerCase() }}
               </p>
             </div>
             <div class="stack" style="gap: 8px">
@@ -1081,7 +1139,15 @@ function jumpToProblem() {
           Next: {{ STEP_LABEL[steps[step + 1]!] }}
         </button>
         <button v-else type="button" class="btn" :disabled="creating" @click="create">
-          {{ creating ? 'Creating…' : 'Create hero' }}
+          {{
+            rebuildId
+              ? rebuildLevel > 1
+                ? 'Rebuild level 1 and continue'
+                : 'Rebuild level 1'
+              : creating
+                ? 'Creating…'
+                : 'Create hero'
+          }}
         </button>
       </div>
     </template>

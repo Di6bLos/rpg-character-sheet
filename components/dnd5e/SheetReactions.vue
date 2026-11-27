@@ -1,9 +1,13 @@
 <script setup lang="ts">
 // The 5e sheet's Reactions, a panel of their own as on the Nimble and PF2e sheets: the
-// Opportunity Attack (one melee attack when a creature leaves your reach, SRD 5.2.1 p. 15),
-// reaction spells (Shield, Counterspell, Hellish Rebuke…) cast through useDnd5eCasting, and the
-// hero's reaction features, feats and options (Uncanny Dodge, Parry, Riposte, Sentinel…). One
-// Reaction a round, back at the start of your turn. Results nothing else claims show here.
+// Opportunity Attack (one melee attack when a creature leaves your reach, SRD 5.2.1 p. 15) and
+// the other reaction attacks (Riposte with its die, Retaliation, Soul of Vengeance…) with the
+// hero's automatic riders; what meets an attack before it's known to hit (Defensive Duelist,
+// Combat Inspiration, a Luck Point; utils/dnd5eDefense.ts); reaction spells (Shield,
+// Counterspell, Hellish Rebuke…) cast through useDnd5eCasting; and the hero's other reaction
+// features, feats and options (Cutting Words, Warding Flare…). Reactions that cut a hit's
+// damage (Uncanny Dodge, Parry…) sit beside Hit points instead. One Reaction a round, back at
+// the start of your turn. Results nothing else claims show here.
 // The logic is useDnd5eReactions, shared with the battle board's action tiles.
 import { sign } from '~/utils/dice'
 import { weaponAttack } from '~/utils/dnd5eAttacks'
@@ -19,12 +23,16 @@ const {
   sheet,
   level,
   ready,
-  melee,
+  attacks,
   picked,
-  oaWhy,
-  opportunity,
+  usable,
+  why,
+  reactionAttack,
   spells,
-  own,
+  shown,
+  meet,
+  meetResult,
+  meetAttack,
 } = useDnd5eReactions()
 </script>
 
@@ -44,21 +52,27 @@ const {
       }}</span>
     </div>
     <div class="rows">
-      <div class="tile attack">
+      <div v-for="r in attacks" :key="r.key" class="tile attack">
         <div class="stack" style="gap: 2px">
-          <strong style="font-size: 15px">Opportunity Attack</strong>
-          <span class="small muted"
-            >One melee attack when a creature you can see leaves your reach.</span
-          >
-          <Dnd5eCostPill cost="reaction" />
+          <strong style="font-size: 15px">{{ r.name }}</strong>
+          <span class="small muted">{{ r.note }}</span>
+          <span class="row" style="gap: 6px">
+            <Dnd5eCostPill cost="reaction" />
+            <small v-if="r.spend" class="muted"
+              >1 {{ r.spend }}{{ r.dice ? ` (+${r.dice})` : '' }}</small
+            >
+          </span>
         </div>
         <select
-          v-if="melee.length > 1"
-          v-model.number="picked"
+          v-if="usable(r).length > 1"
           class="input input--sm"
-          aria-label="Weapon for the Opportunity Attack"
+          :aria-label="`Weapon for ${r.name}`"
+          :value="picked[r.key] ?? usable(r)[0]?.i"
+          @change="
+            picked = { ...picked, [r.key]: Number(($event.target as HTMLSelectElement).value) }
+          "
         >
-          <option v-for="(m, k) in melee" :key="m.i" :value="k">
+          <option v-for="m in usable(r)" :key="m.i" :value="m.i">
             {{ m.w.name }}
             {{ sign(weaponAttack(sheet, level, m.w, m.def, { key: 'x' }).test.bonus) }}
           </option>
@@ -66,20 +80,20 @@ const {
         <button
           type="button"
           class="btn btn--sm"
-          :disabled="!canEdit || !!oaWhy"
-          @click="opportunity"
+          :disabled="!canEdit || !!why(r)"
+          @click="reactionAttack(r)"
         >
-          {{ oaWhy || 'Attack' }}
+          {{ why(r) || 'Attack' }}
         </button>
         <NimbleDiceEntry
-          v-if="typed.prompt('rea:oa')"
-          :label="typed.prompt('rea:oa')"
+          v-if="typed.prompt(`rea:${r.key}`)"
+          :label="typed.prompt(`rea:${r.key}`)"
           action="Roll"
           :disabled="!canEdit"
           @submit="typed.submit"
         />
-        <p v-if="resultFor('rea:oa')" class="roll-status" role="status">
-          {{ resultFor('rea:oa') }}
+        <p v-if="resultFor(`rea:${r.key}`)" class="roll-status" role="status">
+          {{ resultFor(`rea:${r.key}`) }}
         </p>
       </div>
       <div v-for="r in spells" :key="r.slug" class="tile attack">
@@ -119,7 +133,30 @@ const {
           {{ resultFor(`spell:${r.slug}`) }}
         </p>
       </div>
-      <Dnd5eEntryCard v-for="e in own" :key="e.key" :entry="e" />
+      <div v-if="meet.length" class="tile attack">
+        <div class="stack" style="gap: 2px">
+          <strong style="font-size: 15px">When an attack comes at you</strong>
+          <span class="small muted"
+            >Before you know it hits: more AC against it, or Disadvantage on it. Reactions that cut
+            the damage are beside Hit points.</span
+          >
+        </div>
+        <div class="row" style="gap: 6px; flex-wrap: wrap">
+          <button
+            v-for="m in meet"
+            :key="m.key"
+            type="button"
+            class="btn btn--ghost btn--sm"
+            :disabled="!canEdit || !!m.why"
+            :title="m.why ? `${m.why}\n${m.note}` : m.note"
+            @click="meetAttack(m.key)"
+          >
+            {{ m.name }}{{ m.ac ? ` +${m.ac}` : '' }}
+          </button>
+        </div>
+        <p v-if="meetResult" class="roll-status" role="status">{{ meetResult }}</p>
+      </div>
+      <Dnd5eEntryCard v-for="e in shown" :key="e.key" :entry="e" />
     </div>
     <p v-if="unclaimed" class="roll-status" role="status" aria-live="polite">{{ unclaimed }}</p>
   </section>

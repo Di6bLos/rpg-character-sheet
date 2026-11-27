@@ -59,6 +59,7 @@
         "Cleric 2: Channel Divinity"
       ],
       "picks": [
+        "L2:class class×1?",
         "L2:spells:prepared spell×1",
         "L2:swap:cantrip:out swapOut×1?",
         "L2:swap:prepared-spell:out swapOut×1?"
@@ -98,6 +99,7 @@
         "Life Domain 3: Preserve Life"
       ],
       "picks": [
+        "L3:class class×1?",
         "L3:subclass subclass×1",
         "L3:spells:prepared spell×1",
         "L3:swap:cantrip:out swapOut×1?",
@@ -136,6 +138,7 @@
         "Feat · Cleric 4: Ability Score Improvement"
       ],
       "picks": [
+        "L4:class class×1?",
         "L4:asi feat×1",
         "L4:asi>asi asi×2",
         "L4:spells:cantrips cantrip×1",
@@ -176,6 +179,7 @@
         "Cleric 5: Sear Undead"
       ],
       "picks": [
+        "L5:class class×1?",
         "L5:spells:prepared spell×2",
         "L5:swap:cantrip:out swapOut×1?",
         "L5:swap:prepared-spell:out swapOut×1?"
@@ -213,6 +217,7 @@
         "Life Domain 6: Blessed Healer"
       ],
       "picks": [
+        "L6:class class×1?",
         "L6:spells:prepared spell×1",
         "L6:swap:cantrip:out swapOut×1?",
         "L6:swap:prepared-spell:out swapOut×1?"
@@ -251,6 +256,7 @@
         "Cleric 7: Blessed Strikes: Divine Strike"
       ],
       "picks": [
+        "L7:class class×1?",
         "L7:blessed-strikes:0 option×1",
         "L7:spells:prepared spell×1",
         "L7:swap:cantrip:out swapOut×1?",
@@ -289,6 +295,7 @@
         "Feat · Cleric 8: Ability Score Improvement"
       ],
       "picks": [
+        "L8:class class×1?",
         "L8:asi feat×1",
         "L8:asi>asi asi×2",
         "L8:spells:prepared spell×1",
@@ -326,6 +333,7 @@
       "level": 9,
       "features": [],
       "picks": [
+        "L9:class class×1?",
         "L9:spells:prepared spell×2",
         "L9:swap:cantrip:out swapOut×1?",
         "L9:swap:prepared-spell:out swapOut×1?"
@@ -363,6 +371,7 @@
         "Cleric 10: Divine Intervention"
       ],
       "picks": [
+        "L10:class class×1?",
         "L10:spells:cantrips cantrip×1",
         "L10:spells:prepared spell×1",
         "L10:swap:cantrip:out swapOut×1?",
@@ -400,6 +409,7 @@
       "level": 11,
       "features": [],
       "picks": [
+        "L11:class class×1?",
         "L11:spells:prepared spell×1",
         "L11:swap:cantrip:out swapOut×1?",
         "L11:swap:prepared-spell:out swapOut×1?"
@@ -438,6 +448,7 @@
         "Feat · Cleric 12: Ability Score Improvement"
       ],
       "picks": [
+        "L12:class class×1?",
         "L12:asi feat×1",
         "L12:asi>asi asi×2",
         "L12:swap:cantrip:out swapOut×1?",
@@ -475,6 +486,7 @@
       "level": 13,
       "features": [],
       "picks": [
+        "L13:class class×1?",
         "L13:spells:prepared spell×1",
         "L13:swap:cantrip:out swapOut×1?",
         "L13:swap:prepared-spell:out swapOut×1?"
@@ -513,6 +525,7 @@
         "Cleric 14: Improved Blessed Strikes"
       ],
       "picks": [
+        "L14:class class×1?",
         "L14:swap:cantrip:out swapOut×1?",
         "L14:swap:prepared-spell:out swapOut×1?"
       ],
@@ -548,6 +561,7 @@
       "level": 15,
       "features": [],
       "picks": [
+        "L15:class class×1?",
         "L15:spells:prepared spell×1",
         "L15:swap:cantrip:out swapOut×1?",
         "L15:swap:prepared-spell:out swapOut×1?"
@@ -586,6 +600,7 @@
         "Feat · Cleric 16: Ability Score Improvement"
       ],
       "picks": [
+        "L16:class class×1?",
         "L16:asi feat×1",
         "L16:asi>asi asi×2",
         "L16:swap:cantrip:out swapOut×1?",
@@ -625,6 +640,7 @@
         "Life Domain 17: Supreme Healing"
       ],
       "picks": [
+        "L17:class class×1?",
         "L17:spells:prepared spell×1",
         "L17:swap:cantrip:out swapOut×1?",
         "L17:swap:prepared-spell:out swapOut×1?"
@@ -661,6 +677,7 @@
       "level": 18,
       "features": [],
       "picks": [
+        "L18:class class×1?",
         "L18:spells:prepared spell×1",
         "L18:swap:cantrip:out swapOut×1?",
         "L18:swap:prepared-spell:out swapOut×1?"
@@ -699,6 +716,7 @@
         "Feat · Cleric 19: Ability Score Improvement"
       ],
       "picks": [
+        "L19:class class×1?",
         "L19:boon feat×1",
         "L19:boon>asi asi×2",
         "L19:spells:prepared spell×1",
@@ -739,6 +757,7 @@
         "Cleric 20: Greater Divine Intervention"
       ],
       "picks": [
+        "L20:class class×1?",
         "L20:spells:prepared spell×1",
         "L20:swap:cantrip:out swapOut×1?",
         "L20:swap:prepared-spell:out swapOut×1?"

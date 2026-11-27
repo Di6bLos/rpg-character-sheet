@@ -71,6 +71,10 @@ export interface InventoryItem {
   worn?: boolean
   /** 5e: a magic item the hero is attuned to (at most 3, SRD 5.2.1 p. 204). */
   attuned?: boolean
+  /** 5e: made with the Artificer's Replicate Magic Item, from a plan. */
+  replicated?: boolean
+  /** 5e: charges spent from a magic item that has them. */
+  chargesUsed?: number
 }
 
 /**
@@ -187,6 +191,9 @@ export interface Dnd5eWeapon {
   range: string
   /** The weapon's data slug when the builder added it; its numbers follow the hero's level-ups. */
   slug?: string
+  /** A magic bonus to its attack and damage rolls (a +1 weapon), and the item that gives it. */
+  magic?: number
+  enchant?: string
 }
 
 /** A feature on the sheet. `from` marks one the builder added ("Fighter 2", "Elf", "Alert"). */
@@ -243,6 +250,31 @@ export interface Dnd5eCasting {
   prepared: number
 }
 
+/**
+ * One spellcasting class's own numbers on a hero with more than one class (SRD 5.2.1 p. 25):
+ * its spells are prepared and cast with its ability, as if single-classed; the slots are the
+ * hero's (`Dnd5eSheet.castingStats`).
+ */
+export interface Dnd5eClassCasting extends Omit<Dnd5eCasting, 'slots'> {
+  classSlug: string
+  /** The class, or the subclass whose casting it is ("Eldritch Knight"). */
+  className: string
+  /** The class's level. */
+  level: number
+  /** The highest spell level this class prepares (lower than the slots may go). */
+  maxSpellLevel: number
+}
+
+/** A class a built hero has levels in (multiclassing, SRD 5.2.1 p. 24). */
+export interface Dnd5eClassLevel {
+  slug: string
+  name: string
+  level: number
+  hitDie: number
+  subclassSlug?: string
+  subclass?: string
+}
+
 /** A limited-use feature at the hero's level (Rage, Channel Divinity, Sorcery Points). */
 export interface Dnd5eResource {
   name: string
@@ -294,6 +326,17 @@ export interface Dnd5eSheet extends SheetCommon {
   /** Class slug; empty or absent means a hand-made sheet. */
   classSlug?: string
   subclassSlug?: string
+  /**
+   * Every class with its level and subclass, the first class first (SRD 5.2.1 p. 24); one entry
+   * for a single class. `classSlug` and `subclassSlug` stay the first class's, and a save from
+   * before multiclassing has neither this nor `hitDice`: read it as one class at the sheet's
+   * level.
+   */
+  classes?: Dnd5eClassLevel[]
+  /** Hit Point Dice by size, one per class level; the same size pools (SRD 5.2.1 p. 24). */
+  hitDice?: { die: number; count: number }[]
+  /** Each casting class's DC, attack and spells when the hero has more than one class. */
+  castingClasses?: Dnd5eClassCasting[]
   speciesSlug?: string
   backgroundSlug?: string
   creation?: Dnd5eCreation
@@ -336,7 +379,7 @@ export interface Dnd5eSheet extends SheetCommon {
   /** Free casts spent (a feat's or species' spell), by `<slug>|<from>`. */
   freeUsed?: Record<string, number>
   /** The spell the hero is concentrating on (SRD 5.2.1 p. 179). */
-  concentration?: { slug: string; name: string; level: number }
+  concentration?: { slug: string; name: string; level: number; school?: string }
   /** Effects on the hero from its own features and spells, or an ally's (`DND5E_EFFECTS`). */
   effects?: Dnd5eEffect[]
   /** Exhaustion level 0–6 (SRD 5.2.1 p. 181); "Exhaustion" is in `conditions` while above 0. */
@@ -347,6 +390,29 @@ export interface Dnd5eSheet extends SheetCommon {
   hitDiceUsed?: number
   /** Heroic Inspiration (SRD 5.2.1 p. 8): spend it to reroll a die. */
   heroicInspiration?: boolean
+  /** The Abjurer's Arcane Ward: Hit Points it has left (it takes damage first). */
+  arcaneWard?: number
+  /** The Diviner's Portent: the foretold d20 rolls not yet used. */
+  portent?: number[]
+  /** Wild Shape's known Beast forms, entered by hand (the data has no stat blocks). */
+  beastForms?: Dnd5eBeastForm[]
+  /** The Beast form the hero is in (a `beastForms` name), while Wild Shape lasts. */
+  beastForm?: string
+  /** The Artificer's Spell-Storing Item: the spell in it and its uses left. */
+  storedSpell?: { slug: string; name: string; level: number; uses: number }
+}
+
+/** A Beast form for Wild Shape (SRD 5.2.1 p. 44), its stat block's numbers as typed. */
+export interface Dnd5eBeastForm {
+  name: string
+  /** Challenge Rating as printed ("1/4", "1"). */
+  cr: string
+  ac: number
+  /** Speeds as printed ("40 ft, climb 30 ft"). */
+  speed: string
+  fly?: boolean
+  attacks: { name: string; bonus: number; damage: string; type: string }[]
+  notes?: string
 }
 
 export interface Dnd5eCoins {
@@ -372,8 +438,12 @@ export interface Dnd5eEffect {
   ends: Dnd5eConditionEnd | 'concentration' | 'long' | 'manual' | 'attack'
   /** Set during this turn: "until the end of your next turn" skips this turn's end. */
   held?: boolean
-  /** A number it carries (a Bardic Inspiration die's size). */
+  /** A number it carries (a Bardic Inspiration die's size, Parrying Stance's AC). */
   value?: number
+  /** Who gave it (an ally's name). */
+  from?: string
+  /** A Bardic Inspiration die from a College of Valor bard (Combat Inspiration). */
+  valor?: boolean
 }
 
 /**

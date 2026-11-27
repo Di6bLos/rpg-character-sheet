@@ -152,7 +152,7 @@ export function useDnd5eTrackerTurnSteps(
     if (wasSynced && round !== null && prevRound !== null && round > prevRound && sheet.inEncounter)
       newDnd5eRound(sheet)
     if (!start) return
-    const line = startDnd5eTurn(sheet)
+    const line = startDnd5eTurn(sheet, editor.draft.value.level)
     if (round !== null && sheet.turn) sheet.turn.trackerRound = round
     editor.say(line)
   }

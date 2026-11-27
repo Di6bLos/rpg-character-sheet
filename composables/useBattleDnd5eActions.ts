@@ -1,12 +1,11 @@
 // Every action of the 5e hero in the current sheet editor as battle-board tiles, as
 // useBattleActions does for Nimble. Nothing here is a rule: each tile's `unavailable` is the
-// reason the sheet's own button shows (costWhy, casting.why, entryWhy, the Opportunity
-// Attack's), and its `use` is the call that button makes (useDnd5eAttacks, useDnd5eReactions,
+// reason the sheet's own button shows (costWhy, casting.why, entryWhy, a reaction
+// attack's), and its `use` is the call that button makes (useDnd5eAttacks, useDnd5eReactions,
 // useDnd5eActions, useDnd5eCasting, useEntry, takeCoreAction).
 import type { Dnd5eSheet, Dnd5eSpellRef } from '~/types/sheets'
 import type { BattleChoice, BattleTile } from '~/composables/useBattleActions'
 import { sign } from '~/utils/dice'
-import { damageText } from '~/utils/dnd5eAttacks'
 import { DND5E_CORE_ACTIONS, type Dnd5eEntry, entryWhy, useEntry } from '~/utils/dnd5eFeatures'
 import { COST_LABEL, type Dnd5eCost, costWhy, newTurn, usesLeft } from '~/utils/dnd5ePlay'
 import { type Dnd5eCastOption, levelName, spellCost } from '~/utils/dnd5eSpells'
@@ -91,7 +90,7 @@ export function useBattleDnd5eActions(options: { onResult?: (message: string) =>
       kind: 'weapon' as const,
       group: 'attack' as const,
       cost: c.plan.cost === 'attack' ? 'Attack action' : costOf(c.plan.cost),
-      dice: damageText(c.plan, { sneak: attacks.sneakOn(c) }),
+      dice: attacks.damageOf(c),
       detail: `${sign(c.plan.test.bonus)} to hit`,
       desc: c.props.map((p) => p.label).join(' · '),
       offTurn: false,
@@ -190,39 +189,58 @@ export function useBattleDnd5eActions(options: { onResult?: (message: string) =>
     ...attacks.abilities.value.map((e) => entryTile(e, 'attack')),
     ...acting.usable.value.map((e) => entryTile(e, 'support')),
     ...attacks.riders.value.map((e) => entryTile(e, 'support')),
-    ...reactions.own.value.map((e) => entryTile(e, 'react')),
+    ...reactions.shown.value.map((e) => entryTile(e, 'react')),
   ])
 
-  const opportunityTile = computed<BattleTile>(() => ({
-    ...base,
-    key: 'react:opportunity',
-    name: 'Opportunity Attack',
-    kind: 'reaction',
-    group: 'react',
-    cost: 'Reaction',
-    detail: 'A creature leaves your reach',
-    desc: 'One melee attack when a creature you can see leaves your reach (SRD 5.2.1 p. 15).',
-    offTurn: true,
-    unavailable: reactions.oaWhy.value,
-    choices:
-      reactions.melee.value.length > 1
-        ? reactions.melee.value.map((m, k) => ({
-            key: String(m.i),
-            label: m.w.name,
-            unavailable: '',
-            use: () => {
-              reactions.picked.value = k
-              run('Opportunity Attack', { ...reactions.typed, key: 'rea:oa' }, () =>
-                reactions.opportunity(),
-              )
-            },
-          }))
-        : undefined,
-    use: () =>
-      run('Opportunity Attack', { ...reactions.typed, key: 'rea:oa' }, () =>
-        reactions.opportunity(),
-      ),
-  }))
+  const reactionAttackTiles = computed<BattleTile[]>(() =>
+    reactions.attacks.value.map((r) => {
+      const key = `rea:${r.key}`
+      const list = reactions.usable(r)
+      const fire = () => run(r.name, { ...reactions.typed, key }, () => reactions.reactionAttack(r))
+      return {
+        ...base,
+        key: `react:attack:${r.key}`,
+        name: r.name,
+        kind: 'reaction' as const,
+        group: 'react' as const,
+        cost: 'Reaction',
+        dice: r.dice ?? '',
+        detail: r.spend ? `1 ${r.spend}` : '',
+        desc: r.note,
+        offTurn: true,
+        unavailable: reactions.why(r),
+        choices:
+          list.length > 1
+            ? list.map((m) => ({
+                key: String(m.i),
+                label: m.w.name,
+                unavailable: '',
+                use: () => {
+                  reactions.picked.value = { ...reactions.picked.value, [r.key]: m.i }
+                  fire()
+                },
+              }))
+            : undefined,
+        use: fire,
+      }
+    }),
+  )
+
+  const meetTiles = computed<BattleTile[]>(() =>
+    reactions.meet.value.map((m) => ({
+      ...base,
+      key: `react:meet:${m.key}`,
+      name: m.ac ? `${m.name} +${m.ac}` : m.name,
+      kind: 'reaction' as const,
+      group: 'react' as const,
+      cost: 'Reaction',
+      detail: 'An attack comes at you',
+      desc: m.note,
+      offTurn: true,
+      unavailable: m.why,
+      use: () => run(m.name, null, () => reactions.meetAttack(m.key)),
+    })),
+  )
 
   const coreTiles = computed<BattleTile[]>(() =>
     DND5E_CORE_ACTIONS.filter((a) => a.id !== 'attack' && a.id !== 'magic').map((a) => {
@@ -254,7 +272,8 @@ export function useBattleDnd5eActions(options: { onResult?: (message: string) =>
     ...weaponTiles.value,
     ...spellTiles.value,
     ...entryTiles.value,
-    opportunityTile.value,
+    ...reactionAttackTiles.value,
+    ...meetTiles.value,
     ...coreTiles.value,
   ])
 
