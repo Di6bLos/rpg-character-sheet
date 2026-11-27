@@ -2,7 +2,9 @@
 // (SRD 5.2.1 pp. 19–23), what each level grants and asks for, and the numbers that follow from
 // them. One engine walks a hero's levels in order with the picks recorded on the sheet, so the
 // builder, the level-up and Reconfigure all read the same choices. Level-ups live in
-// `utils/dnd5eLevelUp.ts`.
+// `utils/dnd5eLevelUp.ts`. A level may go to another class (multiclassing, SRD 5.2.1 pp. 24–26):
+// each class keeps its own level, subclass and spells (`Dnd5eClassTrack`), while the
+// Proficiency Bonus and the spell slots come from the whole hero.
 import type { Dnd5eData } from '~/data/dnd5e'
 import { type Dnd5eSourceBook, dnd5eSource } from '~/data/dnd5e/sources'
 import type {
@@ -29,6 +31,8 @@ import type {
 import type {
   Dnd5eAbility,
   Dnd5eCasting,
+  Dnd5eClassCasting,
+  Dnd5eCoins,
   Dnd5eCreation,
   Dnd5eFeatureEntry,
   Dnd5eResource,
@@ -271,6 +275,7 @@ export type Dnd5ePickKind =
   | 'lineage'
   | 'swapOut'
   | 'swapIn'
+  | 'class'
 
 /** A pick the builder or level-up asks for. */
 export interface Dnd5ePick {
@@ -303,6 +308,38 @@ interface Uses {
   dice?: string
   /** A pool of this many points per use count (Lay on Hands: 5 × Paladin level). */
   times?: number
+  /** The class being walked when it came: its level and table set "level" and column counts. */
+  cls: string
+}
+
+/** One class a hero has levels in, with what belongs to that class alone (SRD 5.2.1 p. 25). */
+export interface Dnd5eClassTrack {
+  cls: Dnd5eClassDef
+  level: number
+  sub?: Dnd5eSubclassDef
+  /** The class level the subclass was chosen at. */
+  subLevel?: number
+  /** Spells are prepared per class, with that class's ability. */
+  cantrips: string[]
+  prepared: string[]
+  book: string[]
+  /** Bard's Magical Secrets: prepared spells may come from these lists too. */
+  extraLists: string[]
+  /** Another subclass whose spell table a pick lends (Vestige Patron's domain). */
+  borrowed: { sub: Dnd5eSubclassDef; from: string }[]
+}
+
+function newTrack(cls: Dnd5eClassDef): Dnd5eClassTrack {
+  return { cls, level: 0, cantrips: [], prepared: [], book: [], extraLists: [], borrowed: [] }
+}
+
+/** What a feat added, so a swap can take it back (a Fighter's Fighting Style). */
+interface FeatTrace {
+  feat: { slug: string; name: string; level: number }
+  features: Dnd5eFeatureEntry[]
+  extra: Dnd5eSpellRef[]
+  uses: Uses[]
+  senses: [string, number | undefined][]
 }
 
 /** Pools the data states only in prose: Lay on Hands, 5 × Paladin level a Long Rest (SRD 5.2.1 p. 53). */
@@ -310,10 +347,19 @@ const POOLS: Record<string, { count: Dnd5eUses['count']; times: number }> = {
   'Lay on Hands': { count: 'level', times: 5 },
 }
 
-/** What a hero has, built up level by level. */
+/**
+ * What a hero has, built up level by level. `ctx.cls`, `sub`, `subLevel`, `cantrips`,
+ * `prepared`, `book`, `extraLists` and `borrowed` are the class being walked (`track`, the same
+ * arrays); `tracks` holds every class, the first class first.
+ */
 export interface Dnd5eBuildState {
   ctx: Ctx
+  /** Character level. */
   level: number
+  /** The walked class's own level. */
+  classLevel: number
+  tracks: Dnd5eClassTrack[]
+  track: Dnd5eClassTrack
   abilities: Record<Dnd5eAbility, number>
   sub?: Dnd5eSubclassDef
   size: string
@@ -359,28 +405,44 @@ export interface Dnd5eBuildState {
   lastIncrease?: Partial<Record<Dnd5eAbility, number>>
   /** Alert: Proficiency Bonus added to Initiative. */
   initiativePb?: boolean
-  /** Spells a grant gives at a later level ("at": 5), added when the walk reaches it. */
-  later: { at: number; slug: string; from: string; extra: Partial<Dnd5eSpellRef> }[]
+  /**
+   * Spells a grant gives at a later level ("at": 5), added when the walk reaches it: a class's
+   * (`cls`) at that class level, a species' or feat's at that character level.
+   */
+  later: { at: number; slug: string; from: string; extra: Partial<Dnd5eSpellRef>; cls?: string }[]
   /** Another subclass whose spell table a pick lends (Vestige Patron's domain), by its row levels. */
   borrowed: { sub: Dnd5eSubclassDef; from: string }[]
   /** The level the subclass was chosen at. */
   subLevel?: number
+  /** Fighting Style feats a later level of their class may replace, by class slug. */
+  styles: Map<string, FeatTrace>
+  /** Options picked for each repeatable feat ("a different spell list each time"), by feat slug. */
+  featPicks: Map<string, string[]>
 }
 
 type Picks = Record<string, string[]>
 
 interface Walker {
   st: Dnd5eBuildState
+  /** Character level: pick keys, feats, species traits. */
   level: number
+  /** The walked class's level: its table, features and spells. */
+  cl: number
+  /** Inside a class or subclass feature, whose "at" levels are class levels. */
+  classScope: boolean
   picks: Picks
   /** Record what is asked (the level being planned). */
   asking: boolean
 }
 
 function newState(ctx: Ctx, abilities: Record<Dnd5eAbility, number>): Dnd5eBuildState {
+  const first = newTrack(ctx.cls)
   return {
     ctx,
     level: 0,
+    classLevel: 0,
+    tracks: [first],
+    track: first,
     abilities: { ...abilities },
     size: ctx.species.sizes[0] ?? 'Medium',
     saves: new Set(),
@@ -393,9 +455,9 @@ function newState(ctx: Ctx, abilities: Record<Dnd5eAbility, number>): Dnd5eBuild
     feats: [],
     options: [],
     masteries: [],
-    cantrips: [],
-    prepared: [],
-    book: [],
+    cantrips: first.cantrips,
+    prepared: first.prepared,
+    book: first.book,
     extra: [],
     features: [],
     picked: new Set(),
@@ -409,12 +471,41 @@ function newState(ctx: Ctx, abilities: Record<Dnd5eAbility, number>): Dnd5eBuild
     hpPerLevel: 0,
     uses: [],
     fightingStyle: false,
-    extraLists: [],
+    extraLists: first.extraLists,
     asked: [],
     increases: {},
     later: [],
-    borrowed: [],
+    borrowed: first.borrowed,
+    styles: new Map(),
+    featPicks: new Map(),
   }
+}
+
+/** Makes `t` the walked class: `ctx.cls`, the subclass and the spell lists become its own. */
+function enterTrack(st: Dnd5eBuildState, t: Dnd5eClassTrack) {
+  st.track = t
+  st.ctx = { ...st.ctx, cls: t.cls }
+  st.sub = t.sub
+  st.subLevel = t.subLevel
+  st.cantrips = t.cantrips
+  st.prepared = t.prepared
+  st.book = t.book
+  st.extraLists = t.extraLists
+  st.borrowed = t.borrowed
+}
+
+function leaveTrack(st: Dnd5eBuildState, t: Dnd5eClassTrack) {
+  t.sub = st.sub
+  t.subLevel = st.subLevel
+}
+
+const trackOf = (st: Pick<Dnd5eBuildState, 'tracks'>, slug: string | undefined) =>
+  st.tracks.find((t) => t.cls.slug === slug) ?? st.tracks[0]!
+
+/** Replaces `out` with `inn` in place, so a class's spell list stays the track's own array. */
+function replaceIn(list: string[], out: string, inn: string) {
+  const i = list.indexOf(out)
+  if (i >= 0) list.splice(i, 1, inn)
 }
 
 /** Records a pick (when planning) and returns its values, cut to its count. */
@@ -545,8 +636,16 @@ function applyGrants(w: Walker, grants: Dnd5eGrant[] | undefined, from: string, 
           ...(g.atWill ? { atWill: true } : {}),
           ...(st.featAbility ? { ability: st.featAbility } : {}),
         }
-        if (!g.at || g.at <= w.level) addExtraSpell(st, g.spell, from, extra)
-        else st.later.push({ at: g.at, slug: g.spell, from, extra })
+        if (!g.at || g.at <= (w.classScope ? w.cl : w.level))
+          addExtraSpell(st, g.spell, from, extra)
+        else
+          st.later.push({
+            at: g.at,
+            slug: g.spell,
+            from,
+            extra,
+            ...(w.classScope ? { cls: st.ctx.cls.slug } : {}),
+          })
         break
       }
       case 'hp':
@@ -568,11 +667,18 @@ function applyGrants(w: Walker, grants: Dnd5eGrant[] | undefined, from: string, 
 /** Uses that refresh on a rest become resources; per-turn limits don't. */
 function addUses(st: Dnd5eBuildState, name: string, from: string, m: Dnd5eMechanics) {
   const pool = POOLS[name]
+  const cls = st.ctx.cls.slug
   if (pool && !st.uses.some((u) => u.name === name))
-    st.uses.push({ name, from, uses: { count: pool.count, recharge: 'long' }, times: pool.times })
+    st.uses.push({
+      name,
+      from,
+      uses: { count: pool.count, recharge: 'long' },
+      times: pool.times,
+      cls,
+    })
   if (!m.uses || m.uses.recharge === 'turn') return
   if (st.uses.some((u) => u.name === name)) return
-  st.uses.push({ name, from, uses: m.uses, ...(m.dice ? { dice: m.dice } : {}) })
+  st.uses.push({ name, from, uses: m.uses, ...(m.dice ? { dice: m.dice } : {}), cls })
 }
 
 // --- Prerequisites -------------------------------------------------------------------
@@ -599,9 +705,10 @@ export function unmetPrerequisite(
     !pre.species.some((s) => [st.ctx.species.slug, norm(st.ctx.species.name)].includes(norm(s)))
   )
     out.push(pre.species.join(' or '))
-  if (pre.classes?.length && !pre.classes.includes(st.ctx.cls.slug))
+  if (pre.classes?.length && !st.tracks.some((t) => pre.classes!.includes(t.cls.slug)))
     out.push(pre.classes.join(' or '))
-  if (pre.spellcasting && !castingOf(st)) out.push('Spellcasting or Pact Magic')
+  if (pre.spellcasting && !st.tracks.some((t) => t.cls.spellcasting ?? t.sub?.spellcasting))
+    out.push('Spellcasting or Pact Magic')
   if (pre.feature)
     for (const r of requirementsOf(pre.feature))
       if (!r.any.some((f) => hasFeature(st, f))) out.push(r.text)
@@ -727,8 +834,12 @@ function labelSchool(label: string | undefined): string | undefined {
 const exactLevel = (label: string | undefined) =>
   Number(/\(Level (\d) Spell\)/i.exec(label ?? '')?.[1] ?? 0)
 
+/** Every spell the hero knows, from any class. */
 function knownSpellSlugs(st: Dnd5eBuildState) {
-  return new Set([...st.cantrips, ...st.prepared, ...st.extra.map((s) => s.slug)])
+  return new Set([
+    ...st.tracks.flatMap((t) => [...t.cantrips, ...t.prepared]),
+    ...st.extra.map((s) => s.slug),
+  ])
 }
 
 const KIND_WORD: Partial<Record<Dnd5eChoice['kind'], string>> = {
@@ -753,8 +864,10 @@ function defaultLabel(c: Dnd5eChoice, from: string, owner: string | undefined): 
 }
 
 /**
- * Asks for a choice of a feature, trait, feat, option or lineage and applies what's picked.
- * `owner` gives the record whose named `options` an `option` choice picks among.
+ * Asks for a choice of a feature, trait, feat, option or lineage and applies what's picked, and
+ * returns an `option` or `damageType` choice's values. `owner` gives the record whose named
+ * `options` an `option` choice picks among; `taken` are options an earlier copy of a repeatable
+ * feat chose, which this one can't (Magic Initiate's spell list).
  */
 function runChoice(
   w: Walker,
@@ -763,7 +876,10 @@ function runChoice(
   from: string,
   owner: { options?: Dnd5eOption[]; uses?: Dnd5eUses; name?: string },
   fixed?: string,
-) {
+  taken: string[] = [],
+): string[] {
+  const again = (v: string) =>
+    taken.includes(v) ? { disabled: `Chosen when you took ${owner.name ?? from} before` } : {}
   const st = w.st
   const data = st.ctx.data
   const label = c.label ?? defaultLabel(c, from, owner.name)
@@ -791,7 +907,7 @@ function runChoice(
         if (expertIfHad && st.skills.has(v)) st.expertise.add(v)
         else if (SKILL_NAMES.has(v)) st.skills.add(v)
         else st.tools.add(v)
-      return
+      return []
     }
     case 'expertise': {
       const pool = [...st.skills].filter((s) => !c.from?.length || c.from.includes(s))
@@ -806,7 +922,7 @@ function runChoice(
         note: c.note ?? 'Expertise doubles your Proficiency Bonus for the skill.',
       })
       values.forEach((v) => st.expertise.add(v))
-      return
+      return []
     }
     case 'tool': {
       const values = ask(w, {
@@ -819,7 +935,7 @@ function runChoice(
         })),
       })
       values.forEach((v) => st.tools.add(v))
-      return
+      return []
     }
     case 'language': {
       const values = ask(w, {
@@ -833,14 +949,14 @@ function runChoice(
         })),
       })
       values.forEach((v) => st.languages.add(v))
-      return
+      return []
     }
     case 'cantrip':
     case 'spell': {
       const cantrip = c.kind === 'cantrip'
       const lists = choiceLists(st, c)
       const exact = exactLevel(c.label)
-      const top = exact || c.maxLevel || Math.max(1, maxSpellLevel(castingOf(st), w.level))
+      const top = exact || c.maxLevel || Math.max(1, maxSpellLevel(castingOf(st), w.cl))
       const school = c.school?.length
         ? c.school
         : labelSchool(c.label)
@@ -887,11 +1003,11 @@ function runChoice(
             ...(owner.uses ? { free: owner.uses } : {}),
             ...(w.st.featAbility ? { ability: w.st.featAbility } : {}),
           })
-      return
+      return []
     }
     case 'feat':
       featChoice(w, key, label, from, c.category ?? ['general'], c.from)
-      return
+      return []
     case 'ability': {
       const values = ask(w, {
         ...base,
@@ -902,27 +1018,27 @@ function runChoice(
         })),
       })
       if (values[0]) st.featAbility = values[0] as Dnd5eAbility
-      return
+      return []
     }
     case 'weaponMastery': {
       masteryChoice(w, key, label, from, c.count)
-      return
+      return []
     }
     case 'damageType': {
       const values = ask(w, {
         ...base,
         kind: 'damageType',
-        options: (c.from ?? []).map((v) => ({ id: v, name: v })),
+        options: (c.from ?? []).map((v) => ({ id: v, name: v, ...again(v) })),
       })
       if (/resist|resilience|affinity|ward/i.test(`${from} ${owner.name ?? ''} ${label}`))
         values.forEach((v) => st.resistances.add(v))
       values.forEach((v) => st.picked.add(v))
-      return
+      return values
     }
     case 'option': {
       if (c.group) {
         groupChoice(w, key, label, from, c.group, c.count)
-        return
+        return []
       }
       const opts: Dnd5eOption[] = owner.options?.length
         ? owner.options
@@ -936,6 +1052,7 @@ function runChoice(
               id: o.name,
               name: o.name,
               ...(o.text || o.summary ? { text: o.text ?? o.summary } : {}),
+              ...again(o.name),
             })),
           })
       for (const v of values) {
@@ -947,9 +1064,10 @@ function runChoice(
         const lent = data.subclasses.find((x) => norm(x.name) === norm(o.name))
         if (lent?.spells?.length) st.borrowed.push({ sub: lent, from })
       }
-      return
+      return values
     }
   }
+  return []
 }
 
 /** Grants, uses and choices of a feature, trait, option, feat benefit or lineage. */
@@ -1033,11 +1151,52 @@ function featChoice(
   for (const v of values) takeFeat(w, v, key, from)
 }
 
+/** What the hero has now, so `traceSince` can tell what a feat taken after it added. */
+function traceMark(st: Dnd5eBuildState) {
+  return {
+    feats: st.feats.length,
+    features: st.features.length,
+    extra: st.extra.length,
+    uses: st.uses.length,
+    senses: new Map(st.senses),
+  }
+}
+
+function traceSince(
+  st: Dnd5eBuildState,
+  mark: ReturnType<typeof traceMark>,
+): FeatTrace | undefined {
+  const feat = st.feats[mark.feats]
+  if (!feat) return undefined
+  return {
+    feat,
+    features: st.features.slice(mark.features),
+    extra: st.extra.slice(mark.extra),
+    uses: st.uses.slice(mark.uses),
+    senses: [...st.senses.keys()]
+      .filter((k) => st.senses.get(k) !== mark.senses.get(k))
+      .map((k) => [k, mark.senses.get(k)]),
+  }
+}
+
+/** Takes back a feat and what it added (a swapped Fighting Style). */
+function dropFeat(st: Dnd5eBuildState, t: FeatTrace) {
+  st.feats = st.feats.filter((x) => x !== t.feat)
+  st.features = st.features.filter((x) => !t.features.includes(x))
+  st.extra = st.extra.filter((x) => !t.extra.includes(x))
+  st.uses = st.uses.filter((x) => !t.uses.includes(x))
+  for (const [k, v] of t.senses)
+    if (v === undefined) st.senses.delete(k)
+    else st.senses.set(k, v)
+}
+
 /** Takes a feat: its benefits' grants and uses, its increase and its own picks. */
 function takeFeat(w: Walker, slug: string, key: string, from: string, fixedOption?: string) {
   const st = w.st
   const f = bySlug(st.ctx.data.feats, slug)
   if (!f) return
+  const scope = w.classScope
+  w.classScope = false
   st.feats.push({ slug: f.slug, name: f.name, level: w.level })
   addFeature(st, f.name, `Feat${from ? ` · ${from}` : ''}`, f)
   const saved = st.featAbility
@@ -1054,15 +1213,21 @@ function takeFeat(w: Walker, slug: string, key: string, from: string, fixedOptio
   // The spellcasting ability first, so the spells the feat's option picks use it.
   const order = (f.choices ?? []).map((c, i) => [c, i] as const)
   order.sort(([a], [b]) => Number(b.kind === 'ability') - Number(a.kind === 'ability'))
-  for (const [c, i] of order)
-    runChoice(
+  // "You must choose a different spell list each time" (Magic Initiate, SRD 5.2.1 p. 87).
+  const different = !!f.repeatable && /different .+ each time/i.test(f.text ?? f.summary ?? '')
+  for (const [c, i] of order) {
+    const values = runChoice(
       w,
       c,
       `${key}>${i}`,
       f.name,
       f,
       c.kind === 'option' && !c.group ? fixedOption : undefined,
+      different ? (st.featPicks.get(f.slug) ?? []) : [],
     )
+    if (different && values.length)
+      st.featPicks.set(f.slug, [...(st.featPicks.get(f.slug) ?? []), ...values])
+  }
   f.benefits.forEach((b, bi) => {
     applyGrants(w, b.grants, f.name, `${key}>b${bi}`)
     addUses(st, `${f.name}: ${b.name}`, f.name, b)
@@ -1078,6 +1243,7 @@ function takeFeat(w: Walker, slug: string, key: string, from: string, fixedOptio
   })
   if (/initiative proficiency/i.test(f.benefits.map((b) => b.name).join())) st.initiativePb = true
   st.featAbility = saved
+  w.classScope = scope
 }
 
 /** A feat's Ability Score Increase: +2 to one or +1 to two for the ASI feat, else +1. */
@@ -1249,7 +1415,7 @@ function groupChoice(
     from,
     kind: 'option',
     count,
-    options: optionGroupEntries(st, group).map((e) => entryOption(st, e, w.level)),
+    options: optionGroupEntries(st, group).map((e) => entryOption(st, e, w.cl)),
   })
   for (const v of values) takeEntry(w, group, v, key)
 }
@@ -1294,7 +1460,8 @@ function spellPicks(w: Walker) {
   const st = w.st
   const sc = castingOf(st)
   if (!sc) return
-  const L = w.level
+  const L = w.cl
+  const K = w.level
   const from = st.sub?.spellcasting ? st.sub.name : st.ctx.cls.name
   const at = (arr: number[], l: number) => (l >= 1 ? (arr[l - 1] ?? 0) : 0)
   const newCantrips = at(sc.cantrips, L) - at(sc.cantrips, L - 1)
@@ -1303,11 +1470,12 @@ function spellPicks(w: Walker) {
   const lists = [sc.list, ...st.extraLists]
   const data = st.ctx.data
   const always = new Set(st.extra.map((s) => s.slug))
+  const known = knownSpellSlugs(st)
   const classSpells = data.spells.filter((s) => onHeroLists(st, s, lists))
 
   if (newCantrips > 0) {
     const values = ask(w, {
-      key: `L${L}:spells:cantrips`,
+      key: `L${K}:spells:cantrips`,
       label: 'Cantrips',
       from,
       kind: 'cantrip',
@@ -1315,10 +1483,7 @@ function spellPicks(w: Walker) {
       options: classSpells
         .filter((s) => s.level === 0)
         .map((s) =>
-          spellOption(
-            s,
-            st.cantrips.includes(s.slug) || always.has(s.slug) ? 'Already known' : undefined,
-          ),
+          spellOption(s, known.has(s.slug) || always.has(s.slug) ? 'Already known' : undefined),
         ),
     })
     values.forEach((v) => st.cantrips.includes(v) || st.cantrips.push(v))
@@ -1327,7 +1492,7 @@ function spellPicks(w: Walker) {
   const book = usesSpellbook(st)
   if (book && L > 1) {
     const values = ask(w, {
-      key: `L${L}:spells:book`,
+      key: `L${K}:spells:book`,
       label: 'Spellbook: two new spells',
       from,
       kind: 'spell',
@@ -1345,7 +1510,7 @@ function spellPicks(w: Walker) {
       ? data.spells.filter((s) => st.book.includes(s.slug))
       : classSpells.filter((s) => s.level >= 1 && s.level <= top)
     const values = ask(w, {
-      key: `L${L}:spells:prepared`,
+      key: `L${K}:spells:prepared`,
       label: 'Prepared spells',
       from,
       kind: 'spell',
@@ -1368,10 +1533,15 @@ function spellPicks(w: Walker) {
   }
 }
 
-/** Optional swaps at a level-up: one cantrip, one prepared spell, one of each option group, one mastery. */
+/**
+ * Optional swaps at a level-up: one cantrip, one prepared spell and one of each option group of
+ * the class gaining the level, its Fighting Style feat where its text allows (Fighter, SRD 5.2.1
+ * p. 47), and one weapon mastery.
+ */
 function swaps(w: Walker) {
   const st = w.st
   const L = w.level
+  const CL = w.cl
   const data = st.ctx.data
   const sc = castingOf(st)
   const swap = (
@@ -1403,7 +1573,7 @@ function swaps(w: Walker) {
     })[0]
     if (inn) replace(out, inn)
   }
-  if (sc && maxSpellLevel(sc, L - 1) + (sc.cantrips[L - 2] ?? 0) > 0) {
+  if (sc && maxSpellLevel(sc, CL - 1) + (sc.cantrips[CL - 2] ?? 0) > 0) {
     const lists = [sc.list, ...st.extraLists]
     const known = knownSpellSlugs(st)
     swap(
@@ -1413,10 +1583,10 @@ function swaps(w: Walker) {
         data.spells
           .filter((s) => s.level === 0 && onHeroLists(st, s, lists))
           .map((s) => spellOption(s, known.has(s.slug) ? 'Already known' : undefined)),
-      (out, inn) => (st.cantrips = st.cantrips.map((s) => (s === out ? inn : s))),
+      (out, inn) => replaceIn(st.cantrips, out, inn),
       'cantrip',
     )
-    const top = maxSpellLevel(sc, L)
+    const top = maxSpellLevel(sc, CL)
     swap(
       'prepared-spell',
       st.prepared.map((s) => ({ id: s, name: spellName(data, s) })),
@@ -1425,16 +1595,24 @@ function swaps(w: Walker) {
           ? data.spells.filter((s) => st.book.includes(s.slug))
           : data.spells.filter((s) => s.level >= 1 && s.level <= top && onHeroLists(st, s, lists))
         ).map((s) => spellOption(s, known.has(s.slug) ? 'Already known' : undefined)),
-      (out, inn) => (st.prepared = st.prepared.map((s) => (s === out ? inn : s))),
+      (out, inn) => replaceIn(st.prepared, out, inn),
       'spell',
     )
   }
+  // Another class's invocations or maneuvers change only on that class's levels.
+  const others = new Set(
+    st.tracks
+      .filter((t) => t !== st.track)
+      .flatMap((t) => [...t.cls.optionGroups, ...(t.sub?.optionGroups ?? [])]),
+  )
+  const own = new Set([...st.ctx.cls.optionGroups, ...(st.sub?.optionGroups ?? [])])
   for (const group of new Set(st.options.map((o) => o.group))) {
+    if (others.has(group) && !own.has(group)) continue
     const mine = st.options.filter((o) => o.group === group)
     swap(
       group,
       mine.map((o) => ({ id: o.slug, name: o.name })),
-      () => optionGroupEntries(st, group).map((e) => entryOption(st, e, L)),
+      () => optionGroupEntries(st, group).map((e) => entryOption(st, e, CL)),
       (out, inn) => {
         const i = st.options.findIndex((o) => o.group === group && o.slug === out)
         const e = optionGroupEntries(st, group).find((x) => x.slug === inn)
@@ -1451,6 +1629,7 @@ function swaps(w: Walker) {
       'option',
     )
   }
+  styleSwap(w)
   if (st.masteries.length)
     swap(
       'mastery',
@@ -1473,6 +1652,42 @@ function swaps(w: Walker) {
     )
 }
 
+/** A class feature whose feat a later level of the class may replace (Fighter's Fighting Style). */
+const STYLE_SWAP = /replace the feat you chose with a different fighting style feat/i
+const swapsStyle = (f: Dnd5eFeature) => STYLE_SWAP.test(f.text ?? f.summary ?? '')
+
+/**
+ * "Whenever you gain a Fighter level, you can replace the feat you chose with a different
+ * Fighting Style feat" (SRD 5.2.1 p. 47): one optional pick of another Fighting Style feat; the
+ * old feat and what it gave go, the new one's own picks are asked at this level.
+ */
+function styleSwap(w: Walker) {
+  const st = w.st
+  const cls = st.ctx.cls
+  const old = st.styles.get(cls.slug)
+  if (!old) return
+  const key = `L${w.level}:swap:fighting-style`
+  const from = `${cls.name} ${w.cl}`
+  const v = ask(w, {
+    key,
+    label: `Replace your Fighting Style feat (${old.feat.name})`,
+    from,
+    kind: 'feat',
+    count: 1,
+    optional: true,
+    options: st.ctx.data.feats
+      .filter((f) => f.category === 'fighting-style')
+      .map((f) => featOption(f, featBlocked(st, f, w.level))),
+    note: 'Whenever you gain a level in this class, you can replace the feat with a different Fighting Style feat.',
+  })[0]
+  if (!v) return
+  dropFeat(st, old)
+  const mark = traceMark(st)
+  takeFeat(w, v, key, from)
+  const now = traceSince(st, mark)
+  if (now) st.styles.set(cls.slug, now)
+}
+
 // --- Levels --------------------------------------------------------------------------
 
 const baseName = (name: string) => name.replace(/\s*\(.*\)\s*$/, '')
@@ -1493,23 +1708,35 @@ const isAsi = (name: string) => norm(name) === 'ability score improvement'
 const isBoon = (name: string) => norm(name) === 'epic boon'
 const isSubclassRow = (name: string) => /subclass$/i.test(name)
 
+/**
+ * Features a hero gains once whatever classes give them (SRD 5.2.1 p. 25): a second Extra Attack
+ * doesn't stack, and Unarmored Defense stays the first class's.
+ */
+const ONCE_ONLY = new Set(['extra attack', 'unarmored defense'])
+const hasAlready = (st: Dnd5eBuildState, name: string) =>
+  ONCE_ONLY.has(norm(name)) && st.features.some((x) => norm(x.name) === norm(name))
+
 function classFeature(w: Walker, f: Dnd5eFeature, tableName: string) {
   const st = w.st
   const cls = st.ctx.cls
-  const L = w.level
-  const repeat = L !== f.level
-  const from = `${cls.name} ${L}`
-  const key = `L${L}:${keyPart(f.name)}`
+  const CL = w.cl
+  const repeat = CL !== f.level
+  if (!repeat && hasAlready(st, f.name)) return
+  const from = `${cls.name} ${CL}`
+  const key = `L${w.level}:${keyPart(f.name)}`
+  w.classScope = true
   if (!repeat) {
     addFeature(st, f.name, from, f)
     if (norm(f.name).includes('fighting style')) st.fightingStyle = true
-    if (norm(f.name) === 'magical secrets') st.extraLists = ['cleric', 'druid', 'wizard']
+    if (norm(f.name) === 'magical secrets')
+      st.extraLists.splice(0, st.extraLists.length, 'cleric', 'druid', 'wizard')
     applyGrants(w, f.grants, from, key)
     addUses(st, f.name, cls.name, f)
   }
   const exact = exactLevel(tableName)
-  const extra = subclassOptions(st, f, L)
+  const extra = subclassOptions(st, f, CL)
   const owner = extra.length ? { ...f, options: [...(f.options ?? []), ...extra] } : f
+  const mark = !repeat && swapsStyle(f) ? traceMark(st) : null
   f.choices?.forEach((c, i) => {
     if (choiceColumn(cls, f, c)) return
     if (c.group && cls.optionGroups.includes(c.group)) {
@@ -1520,7 +1747,10 @@ function classFeature(w: Walker, f: Dnd5eFeature, tableName: string) {
     const choice = exact ? { ...c, maxLevel: exact, label: tableName } : c
     runChoice(w, choice, `${key}:${i}`, from, owner)
   })
+  const style = mark && traceSince(st, mark)
+  if (style) st.styles.set(cls.slug, style)
   if (!repeat) featureParts(w, f, key, from)
+  w.classScope = false
 }
 
 /** A class feature that asks to pick one of its named options (Fighting Style). */
@@ -1574,7 +1804,8 @@ function featureParts(w: Walker, f: Dnd5eFeature, key: string, from: string) {
 function columnChoices(w: Walker) {
   const st = w.st
   const cls = st.ctx.cls
-  const L = w.level
+  const L = w.cl
+  w.classScope = true
   for (const f of cls.features) {
     if (f.level > L) continue
     f.choices?.forEach((c, i) => {
@@ -1585,25 +1816,28 @@ function columnChoices(w: Walker) {
           ? columnNumber(cls, L, column)
           : columnNumber(cls, L, column) - columnNumber(cls, L - 1, column)
       if (count <= 0) return
-      const key = `L${L}:${keyPart(f.name)}:${i}`
+      const key = `L${w.level}:${keyPart(f.name)}:${i}`
       const from = `${cls.name} ${L}`
       if (c.kind === 'weaponMastery') masteryChoice(w, key, c.label ?? f.name, from, count)
       else if (c.group) groupChoice(w, key, c.label ?? f.name, from, c.group, count)
       else runChoice(w, { ...c, count }, key, from, f)
     })
   }
+  w.classScope = false
 }
 
 function subclassFeatures(w: Walker) {
   const st = w.st
   const sub = st.sub
   if (!sub) return
-  const L = w.level
+  const L = w.cl
   const from = sub.name
+  w.classScope = true
   // Chosen past its first features (a level 1 subclass taken at level 3): those come now too.
   const due = (x: Dnd5eFeature) => x.level === L || (L === st.subLevel && x.level < L)
   for (const f of sub.features.filter(due)) {
-    const key = `L${L}:${keyPart(sub.slug)}:${keyPart(f.name)}`
+    if (hasAlready(st, f.name)) continue
+    const key = `L${w.level}:${keyPart(sub.slug)}:${keyPart(f.name)}`
     addFeature(st, f.name, `${from} ${f.level}`, f)
     if (norm(f.name).includes('fighting style')) st.fightingStyle = true
     replaceClassFeature(st, f)
@@ -1622,7 +1856,7 @@ function subclassFeatures(w: Walker) {
       const f = sub.features.find((x) => x.choices?.some((c) => c.group === group))
       groupChoice(
         w,
-        `L${L}:${keyPart(sub.slug)}:${group}`,
+        `L${w.level}:${keyPart(sub.slug)}:${group}`,
         f?.name ?? groupName(st, group),
         `${from} ${L}`,
         group,
@@ -1636,13 +1870,14 @@ function subclassFeatures(w: Walker) {
     if (row.level === L && (!row.group || groups.has(row.group)))
       for (const s of row.spells) addExtraSpell(st, s, sub.name)
   borrowedSpells(st)
+  w.classScope = false
 }
 
-/** A lent subclass's always-prepared spells, row by row as the hero's level reaches them. */
+/** A lent subclass's always-prepared spells, row by row as the class's level reaches them. */
 function borrowedSpells(st: Dnd5eBuildState) {
   for (const { sub, from } of st.borrowed)
     for (const row of sub.spells ?? [])
-      if (row.level <= st.level && !row.group)
+      if (row.level <= st.classLevel && !row.group)
         for (const s of row.spells) addExtraSpell(st, s, from)
 }
 
@@ -1674,7 +1909,7 @@ function subclassChoice(w: Walker) {
   const values = ask(w, {
     key: `L${w.level}:subclass`,
     label: `${cls.name} subclass`,
-    from: `${cls.name} ${w.level}`,
+    from: `${cls.name} ${w.cl}`,
     kind: 'subclass',
     count: 1,
     options: subs.map(subclassOption),
@@ -1682,13 +1917,13 @@ function subclassChoice(w: Walker) {
   const sub = bySlug(subs, values[0])
   if (sub) {
     st.sub = sub
-    st.subLevel = w.level
+    st.subLevel = w.cl
   }
 }
 
 /**
- * Level 1: a subclass whose features start before the subclass level may be chosen now, so its
- * level 1 and 2 features apply (leave it empty to choose at the usual level).
+ * A class's level 1: a subclass whose features start before the subclass level may be chosen
+ * now, so its level 1 and 2 features apply (leave it empty to choose at the usual level).
  */
 function earlySubclassChoice(w: Walker) {
   const st = w.st
@@ -1696,7 +1931,7 @@ function earlySubclassChoice(w: Walker) {
   const early = earlySubclasses(cls, st.ctx.data)
   if (!early.length || cls.subclassLevel <= 1) return
   const values = ask(w, {
-    key: 'L1:subclass',
+    key: `L${w.level}:subclass`,
     label: `${cls.name} subclass now`,
     from: `${cls.name} 1`,
     kind: 'subclass',
@@ -1896,49 +2131,203 @@ function speciesTraits(w: Walker) {
       })
 }
 
-/** One level of the walk: what the class table, subclass and species give and ask for. */
+// --- Multiclassing (SRD 5.2.1 pp. 24–26) ----------------------------------------------
+
+/** The score a class's primary ability needs for multiclassing (SRD 5.2.1 p. 24). */
+export const MULTICLASS_MIN = 13
+
+/**
+ * What taking a first level in `cls` still needs, or empty: 13 or more in the primary ability
+ * of the new class and of every class the hero has (SRD 5.2.1 p. 24).
+ */
+export function multiclassBlocked(
+  st: Pick<Dnd5eBuildState, 'abilities' | 'tracks'>,
+  cls: Dnd5eClassDef,
+): string {
+  const unmet = [...st.tracks.map((t) => t.cls), cls].flatMap((c) => {
+    const { abilities, any } = c.multiclass.prerequisite
+    const ok = (a: Dnd5eAbility) => st.abilities[a] >= MULTICLASS_MIN
+    if (any ? abilities.some(ok) : abilities.every(ok)) return []
+    const names = abilities.map((a) => DND5E_ABILITY_NAME[a]).join(any ? ' or ' : ' and ')
+    return [`${names} ${MULTICLASS_MIN}+ (${c.name})`]
+  })
+  return unmet.length ? `Needs ${unmet.join(', ')}` : ''
+}
+
+/**
+ * The proficiencies a class's first level gives a hero who takes it as a new class, read from
+ * its Core Traits line ("As a Multiclass Character", SRD 5.2.1 p. 25 and each class): armor,
+ * weapons and tools it names, one skill (from its list when the line says so) and one Musical
+ * Instrument. Never saving throws or starting equipment.
+ */
+export function multiclassGains(cls: Dnd5eClassDef) {
+  const n = norm(cls.multiclass.gains)
+  const word = (x: string) => new RegExp(`\\b${norm(x).replace(/ armor$/, '')}\\b`).test(n)
+  const skill = /\bone (?:\w+ )?skill\b/.test(n)
+    ? /skill list|\bone (?!skill)\w+ skill\b/.test(n)
+      ? cls.skills.options
+      : allSkills()
+    : null
+  return {
+    armor: cls.armor.filter(word),
+    weapons: cls.weapons.filter((x) => n.includes(norm(x))),
+    tools: cls.tools.filter((t) => n.includes(norm(t))),
+    skill,
+    instrument: /musical instrument/.test(n),
+  }
+}
+
+function classOption(st: Dnd5eBuildState, c: Dnd5eClassDef): Dnd5ePickOption {
+  const t = st.tracks.find((x) => x.cls.slug === c.slug)
+  if (t)
+    return {
+      id: c.slug,
+      name: c.name,
+      meta: `${c.name} ${t.level} → ${t.level + 1}`,
+      ...(t.level >= 20 ? { disabled: 'Already level 20' } : {}),
+      source: c.source,
+    }
+  const blocked = multiclassBlocked(st, c)
+  return {
+    id: c.slug,
+    name: c.name,
+    meta: [
+      'New class',
+      `d${c.hitDie}`,
+      `${c.multiclass.prerequisite.abilities.join(c.multiclass.prerequisite.any ? ' or ' : ' and ')} ${MULTICLASS_MIN}+`,
+      sourceTag(c),
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    text: `As a new class you gain: ${c.multiclass.gains}, and its level 1 features.`,
+    ...(blocked ? { disabled: blocked } : {}),
+    source: c.source,
+  }
+}
+
+/**
+ * The class a level after the first goes to (SRD 5.2.1 p. 24): one the hero has, or a new one
+ * whose prerequisites they meet. Left empty, the first class, as every save before
+ * multiclassing.
+ */
+function classForLevel(w: Walker): Dnd5eClassTrack {
+  const st = w.st
+  const data = st.ctx.data
+  const first = st.tracks[0]!
+  const v = ask(w, {
+    key: `L${w.level}:class`,
+    label: 'Class for this level',
+    from: `Level ${w.level}`,
+    kind: 'class',
+    count: 1,
+    optional: true,
+    options: [
+      ...st.tracks.map((t) => t.cls),
+      ...data.classes.filter((c) => !st.tracks.some((t) => t.cls.slug === c.slug)),
+    ].map((c) => classOption(st, c)),
+    note: `Go on in a class you have, or take a level in a new one (multiclassing): it needs ${MULTICLASS_MIN} or more in its primary ability and in your current classes' (SRD 5.2.1 p. 24). Left empty: ${first.cls.name}.`,
+  })[0]
+  const cls = bySlug(data.classes, v) ?? first.cls
+  let t = st.tracks.find((x) => x.cls.slug === cls.slug)
+  if (!t) {
+    t = newTrack(cls)
+    st.tracks.push(t)
+  }
+  return t
+}
+
+/** A new class's first level: its multiclass proficiencies (no saves, no equipment). */
+function multiclassStart(w: Walker) {
+  const st = w.st
+  const cls = st.ctx.cls
+  const key = `L${w.level}:multiclass`
+  const g = multiclassGains(cls)
+  g.armor.forEach((a) => st.armor.add(a))
+  g.weapons.forEach((x) => st.weapons.add(x))
+  for (const t of g.tools) grantSkill(w, t, cls.name, key)
+  if (g.instrument && cls.toolChoice)
+    runChoice(
+      w,
+      { ...cls.toolChoice, count: 1, label: `${cls.name} tool` },
+      `${key}:tool`,
+      cls.name,
+      {},
+    )
+  if (g.skill)
+    runChoice(
+      w,
+      { kind: 'skill', count: 1, from: g.skill, label: `${cls.name} skill` },
+      `${key}:skill`,
+      cls.name,
+      {},
+    )
+  addFeature(st, 'Multiclass proficiencies', `${cls.name} 1`, {
+    summary: `As a new class, the ${cls.name} gives: ${cls.multiclass.gains}.`,
+  })
+}
+
+/**
+ * One level of the walk: the class it goes to, then what that class's table, its subclass and
+ * the species give and ask for. Class tables, features and spells read the class's own level;
+ * keys, feats and species traits the character level.
+ */
 function walkLevel(w: Walker) {
   const st = w.st
-  const { cls } = st.ctx
   const L = w.level
   st.level = L
-  for (const s of st.later.filter((x) => x.at <= L)) addExtraSpell(st, s.slug, s.from, s.extra)
-  st.later = st.later.filter((x) => x.at > L)
+  const track = L === 1 ? st.tracks[0]! : classForLevel(w)
+  enterTrack(st, track)
+  track.level += 1
+  const CL = track.level
+  w.cl = CL
+  st.classLevel = CL
+  const { cls } = st.ctx
+  const reached = (x: Dnd5eBuildState['later'][number]) =>
+    x.cls ? x.cls === cls.slug && x.at <= CL : x.at <= L
+  for (const s of st.later.filter(reached)) addExtraSpell(st, s.slug, s.from, s.extra)
+  st.later = st.later.filter((x) => !reached(x))
   if (L === 1) {
     origin(w)
     earlySubclassChoice(w)
-  } else speciesTraits(w)
-  const row = cls.levels.find((l) => l.level === L)
+  } else {
+    speciesTraits(w)
+    if (CL === 1) {
+      multiclassStart(w)
+      earlySubclassChoice(w)
+    }
+  }
+  const row = cls.levels.find((l) => l.level === CL)
   let asi = false
   let boon = false
   for (const name of row?.features ?? []) {
     if (isAsi(name)) asi = true
     else if (isBoon(name)) boon = true
-    else if (isSubclassRow(name) && L === cls.subclassLevel) subclassChoice(w)
+    else if (isSubclassRow(name) && CL === cls.subclassLevel) subclassChoice(w)
     else if (norm(name) === 'subclass feature') continue
     else {
       const f = findClassFeature(cls, name)
       if (f) classFeature(w, f, name)
     }
   }
-  if (L === cls.subclassLevel && !st.sub && !(row?.features ?? []).some(isSubclassRow))
+  if (CL === cls.subclassLevel && !st.sub && !(row?.features ?? []).some(isSubclassRow))
     subclassChoice(w)
-  // ASI and Epic Boon come from `asiLevels` and `epicBoonLevel`; their features' own feat
-  // choices are the same pick and aren't asked twice (data quirk 1).
-  if (asi || cls.asiLevels.includes(L))
+  // ASI and Epic Boon come from `asiLevels` and `epicBoonLevel` (class levels); their features'
+  // own feat choices are the same pick and aren't asked twice (data quirk 1).
+  if (asi || cls.asiLevels.includes(CL))
     featChoice(
       w,
       `L${L}:asi`,
       'Ability Score Improvement or a feat',
-      `${cls.name} ${L}`,
+      `${cls.name} ${CL}`,
       ASI_CATEGORIES,
     )
-  if (boon || L === cls.epicBoonLevel)
-    featChoice(w, `L${L}:boon`, 'Epic Boon or a feat', `${cls.name} ${L}`, BOON_CATEGORIES)
+  if (boon || CL === cls.epicBoonLevel)
+    featChoice(w, `L${L}:boon`, 'Epic Boon or a feat', `${cls.name} ${CL}`, BOON_CATEGORIES)
   subclassFeatures(w)
   columnChoices(w)
   spellPicks(w)
   if (L > 1) swaps(w)
+  leaveTrack(st, track)
 }
 
 export interface Dnd5eWalkInput {
@@ -1992,7 +2381,8 @@ export function customBackground(c: Dnd5eCreation, data: Dnd5eBuildData): Dnd5eB
   const shop = customGearOptions(data)
   const bought = custom.gear.flatMap((slug) => shop.filter((g) => g.slug === slug).slice(0, 1))
   const spent = bought.reduce((n, g) => n + g.cost, 0)
-  const left = Math.max(0, Math.floor((CUSTOM_GEAR_CP - spent) / 100))
+  // What isn't spent stays as coins, silver and copper included.
+  const left = cpToCoins(CUSTOM_GEAR_CP - spent)
   return {
     slug: CUSTOM_BACKGROUND,
     name: custom.name.trim() || 'Custom background',
@@ -2005,7 +2395,11 @@ export function customBackground(c: Dnd5eCreation, data: Dnd5eBuildData): Dnd5eB
     feat: { slug: '' },
     skills: [],
     equipment: [
-      { option: 'A', items: [...bought.map((g) => g.name), `${left} GP`].join(', '), gp: left },
+      {
+        option: 'A',
+        items: [...bought.map((g) => g.name), coinsText(left)].join(', '),
+        gp: left.gp,
+      },
       { option: 'B', items: '50 GP', gp: 50 },
     ],
   }
@@ -2070,7 +2464,7 @@ export function walkDnd5e(
       st.increases = {}
       if (abilities) st.abilities = { ...abilities }
     }
-    walkLevel({ st, level: L, picks: input.choices, asking: last })
+    walkLevel({ st, level: L, cl: 0, classScope: false, picks: input.choices, asking: last })
   }
   return st
 }
@@ -2103,22 +2497,42 @@ export function pickProblem(p: Dnd5ePick, values: string[] | undefined): string 
 
 // --- The sheet -----------------------------------------------------------------------
 
-/** Parses "Chain Mail, Greatsword, 8 Javelins, …, and 4 GP" into items and gold. */
+/** The five coins (SRD 5.2.1 p. 89), each worth this many copper pieces. */
+export const COIN_CP = { cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 } as const
+type Coin = keyof typeof COIN_CP
+
+/** No coins: all five, so a sheet never loses silver or copper. */
+export const noCoins = (): Required<Dnd5eCoins> => ({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 })
+
+/** Copper pieces as gold, silver and copper: 3766 cp → 37 gp, 6 sp, 6 cp. */
+export function cpToCoins(cp: number): Required<Dnd5eCoins> {
+  const n = Math.max(0, Math.round(cp))
+  return { ...noCoins(), gp: Math.floor(n / 100), sp: Math.floor((n % 100) / 10), cp: n % 10 }
+}
+
+/** "37 GP, 6 SP, 6 CP": the coins that aren't zero, largest first ("0 GP" for none). */
+export function coinsText(c: Dnd5eCoins): string {
+  const order: Coin[] = ['pp', 'gp', 'ep', 'sp', 'cp']
+  const parts = order.filter((k) => (c[k] ?? 0) > 0).map((k) => `${c[k]} ${k.toUpperCase()}`)
+  return parts.join(', ') || '0 GP'
+}
+
+/** Parses "Chain Mail, Greatsword, 8 Javelins, …, and 4 GP" into items and coins. */
 export function parseEquipment(
   items: string,
   data: Dnd5eBuildData,
   tools: { background?: string; cls?: string } = {},
-): { items: InventoryItem[]; gp: number } {
-  let gp = 0
+): { items: InventoryItem[]; gp: number; coins: Required<Dnd5eCoins> } {
+  const coins = noCoins()
   const out: InventoryItem[] = []
   const parts = items
     .split(/,\s*|\s+and\s+(?=\d|[A-Z])/)
     .map((p) => p.replace(/^and\s+/, '').trim())
     .filter(Boolean)
   for (const part of parts) {
-    const gold = /^(\d+)\s*GP$/i.exec(part)
-    if (gold) {
-      gp += Number(gold[1])
+    const money = /^(\d+)\s*(CP|SP|EP|GP|PP)$/i.exec(part)
+    if (money) {
+      coins[money[2]!.toLowerCase() as Coin] += Number(money[1])
       continue
     }
     const m = /^(\d+)\s+(.+)$/.exec(part)
@@ -2135,7 +2549,26 @@ export function parseEquipment(
       ...(known?.tag ? { tag: known.tag } : {}),
     })
   }
-  return { items: out, gp }
+  return { items: out, gp: coins.gp, coins }
+}
+
+/**
+ * Folds items of the same name into one row with their quantities added: a Wizard's and a Sage's
+ * Robe are "2 Robe", not two rows.
+ */
+export function mergeItems(items: InventoryItem[]): void {
+  const seen = new Map<string, InventoryItem>()
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!
+    const key = norm(item.name)
+    const first = seen.get(key)
+    if (!first) {
+      seen.set(key, item)
+      continue
+    }
+    first.qty = String((Number(first.qty) || 1) + (Number(item.qty) || 1))
+    items.splice(i--, 1)
+  }
 }
 
 function matchItem(data: Dnd5eBuildData, name: string): { name: string; tag?: string } | null {
@@ -2231,44 +2664,56 @@ function resolveCount(
   abilities: Record<Dnd5eAbility, number>,
 ): number {
   const c = u.uses.count
-  const sub = st.sub && SUBCLASS_SCALING[st.sub.slug]?.uses?.[u.name]
-  if (sub?.count && u.from === st.sub?.name) return countAt(sub.count, level)
-  if (u.times) return u.times * (c === 'level' ? level : typeof c === 'number' ? c : 1)
+  const t = trackOf(st, u.cls)
+  const cl = t.level
+  const sub = t.sub && SUBCLASS_SCALING[t.sub.slug]?.uses?.[u.name]
+  if (sub?.count && u.from === t.sub?.name) return countAt(sub.count, cl)
+  if (u.times) return u.times * (c === 'level' ? cl : typeof c === 'number' ? c : 1)
   if (typeof c === 'number') return c
   if (c === 'PB') return proficiencyBonus(level)
-  if (c === 'level') return level
-  if (c.startsWith('column:')) return columnNumber(st.ctx.cls, level, c.slice(7))
+  if (c === 'level') return cl
+  if (c.startsWith('column:')) return columnNumber(t.cls, cl, c.slice(7))
   return Math.max(1, abilityMod(abilities[c as Dnd5eAbility]))
 }
 
-function resourceDice(u: Uses, st: Dnd5eBuildState, level: number): string | undefined {
-  const sub = st.sub && SUBCLASS_SCALING[st.sub.slug]?.uses?.[u.name]
+function resourceDice(u: Uses, st: Dnd5eBuildState): string | undefined {
+  const t = trackOf(st, u.cls)
+  const cl = t.level
+  const sub = t.sub && SUBCLASS_SCALING[t.sub.slug]?.uses?.[u.name]
   if (sub?.dice)
     return Object.entries(sub.dice).reduce<string | undefined>(
-      (d, [l, v]) => (Number(l) <= level ? v : d),
+      (d, [l, v]) => (Number(l) <= cl ? v : d),
       undefined,
     )
   if (!u.dice) return undefined
-  if (u.dice.startsWith('column:')) return columnText(st.ctx.cls, level, u.dice.slice(7))
+  if (u.dice.startsWith('column:')) return columnText(t.cls, cl, u.dice.slice(7))
   // A later feature that changes the die (Improved Combat Superiority's d10).
-  const later = (st.sub?.features ?? [])
-    .filter((f) => f.level <= level && f.dice && /improved|ultimate/i.test(f.name))
+  const later = (t.sub?.features ?? [])
+    .filter((f) => f.level <= cl && f.dice && /improved|ultimate/i.test(f.name))
     .sort((a, b) => b.level - a.level)[0]
-  return later && u.from === st.sub?.name ? later.dice : u.dice
+  return later && u.from === t.sub?.name ? later.dice : u.dice
 }
 
-/** The class's casting numbers at a level, or undefined for a non-caster (yet). */
-function castingStats(
-  st: Dnd5eBuildState,
+/** The casting a class gives: its own, or its subclass's (Eldritch Knight). */
+const trackSpellcasting = (t: Dnd5eClassTrack) => t.cls.spellcasting ?? t.sub?.spellcasting
+
+/**
+ * One class's casting numbers at its own level, as if single-classed (SRD 5.2.1 p. 25): its
+ * cantrips, prepared spells, slots and Pact Magic, with the hero's Proficiency Bonus. Undefined
+ * for a class without casting (yet).
+ */
+function trackCasting(
+  t: Dnd5eClassTrack,
   level: number,
   abilities: Record<Dnd5eAbility, number>,
 ): Dnd5eCasting | undefined {
-  const sc = castingOf(st)
+  const sc = trackSpellcasting(t)
   if (!sc) return undefined
-  const cantrips = sc.cantrips[level - 1] ?? 0
-  const prepared = sc.prepared[level - 1] ?? 0
-  const slots = sc.slots?.[level - 1] ?? Array<number>(9).fill(0)
-  const pact = sc.pact?.[level - 1]
+  const cl = t.level
+  const cantrips = sc.cantrips[cl - 1] ?? 0
+  const prepared = sc.prepared[cl - 1] ?? 0
+  const slots = sc.slots?.[cl - 1] ?? Array<number>(9).fill(0)
+  const pact = sc.pact?.[cl - 1]
   if (!cantrips && !prepared && !slots.some(Boolean) && !pact?.slots) return undefined
   const pb = proficiencyBonus(level)
   const mod = abilityMod(abilities[sc.ability])
@@ -2285,13 +2730,87 @@ function castingStats(
   }
 }
 
+/**
+ * The level a class adds on the Multiclass Spellcaster table (SRD 5.2.1 pp. 25–26): all of a
+ * full caster's levels, half a Paladin's or Ranger's rounded up (the Artificer's too, Forge of
+ * the Artificer), a third of an Eldritch Knight's or Arcane Trickster's rounded down (PHB 2024).
+ */
+export function casterLevel(kind: Dnd5eCasting['kind'], level: number): number {
+  if (kind === 'full') return level
+  if (kind === 'half') return Math.ceil(level / 2)
+  if (kind === 'third') return Math.floor(level / 3)
+  return 0
+}
+
+/**
+ * Spell slots of a hero with Spellcasting from several classes (SRD 5.2.1 pp. 25–26): the
+ * Multiclass Spellcaster table, the full casters' slot table, at the sum of `casterLevel`. One
+ * class with slots keeps its own table, and Pact Magic stays apart.
+ */
+function heroSlots(st: Dnd5eBuildState, per: { t: Dnd5eClassTrack; c: Dnd5eCasting }[]) {
+  const slotted = per.filter((p) => p.c.slots.some(Boolean))
+  if (slotted.length < 2) return slotted[0]?.c.slots ?? Array<number>(9).fill(0)
+  const n = slotted.reduce((sum, p) => sum + casterLevel(p.c.kind, p.t.level), 0)
+  const table = st.ctx.data.classes.find((c) => c.spellcasting?.kind === 'full')?.spellcasting
+  return [...(table?.slots?.[Math.min(20, n) - 1] ?? Array<number>(9).fill(0))]
+}
+
+/**
+ * The hero's casting: one class's numbers (its DC, attack, cantrips and prepared spells; the
+ * first casting class's when several cast), with the slots of every class and any class's Pact
+ * Magic; and each casting class's own numbers when the hero has more than one class.
+ */
+function castingStats(
+  st: Dnd5eBuildState,
+  level: number,
+  abilities: Record<Dnd5eAbility, number>,
+): { main?: Dnd5eCasting; classes: Dnd5eClassCasting[] } {
+  const per = st.tracks.flatMap((t) => {
+    const c = trackCasting(t, level, abilities)
+    return c ? [{ t, c }] : []
+  })
+  const first = per[0]
+  if (!first) return { classes: [] }
+  const pact = per.find((p) => p.c.pact)?.c.pact
+  const main: Dnd5eCasting = { ...first.c, slots: heroSlots(st, per) }
+  if (pact) main.pact = pact
+  else delete main.pact
+  const classes =
+    st.tracks.length > 1
+      ? per.map(({ t, c }): Dnd5eClassCasting => {
+          const sc = trackSpellcasting(t)
+          return {
+            ability: c.ability,
+            kind: c.kind,
+            list: c.list,
+            saveDc: c.saveDc,
+            attack: c.attack,
+            ...(c.pact ? { pact: c.pact } : {}),
+            cantrips: c.cantrips,
+            prepared: c.prepared,
+            classSlug: t.cls.slug,
+            className: sc === t.cls.spellcasting ? t.cls.name : (t.sub?.name ?? t.cls.name),
+            level: t.level,
+            maxSpellLevel: maxSpellLevel(sc, t.level),
+          }
+        })
+      : []
+  return { main, classes }
+}
+
 /** Speed as the sheet shows it: "30 ft", "30 ft, climb 30 ft". */
-function speedText(st: Dnd5eBuildState, level: number): string {
-  const cls = st.ctx.cls
-  const unarmored = cls.columns.includes('Unarmored Movement')
-    ? columnNumber(cls, level, 'Unarmored Movement')
-    : 0
-  const fast = cls.features.some((f) => f.level <= level && norm(f.name) === 'fast movement')
+function speedText(st: Dnd5eBuildState): string {
+  const unarmored = st.tracks.reduce(
+    (n, t) =>
+      n +
+      (t.cls.columns.includes('Unarmored Movement')
+        ? columnNumber(t.cls, t.level, 'Unarmored Movement')
+        : 0),
+    0,
+  )
+  const fast = st.tracks.some((t) =>
+    t.cls.features.some((f) => f.level <= t.level && norm(f.name) === 'fast movement'),
+  )
     ? 10
     : 0
   const walk = st.ctx.species.speed + st.walkBonus + unarmored + fast
@@ -2398,19 +2917,38 @@ export function dnd5eNumbers(
  * `from`, weapons without `slug`) stay.
  */
 export function writeBuild(sheet: Dnd5eSheet, st: Dnd5eBuildState, level: number): void {
-  const { cls, species, background, data } = st.ctx
+  const { species, background, data } = st.ctx
+  const first = st.tracks[0]!
+  const cls = first.cls
   const pb = proficiencyBonus(level)
+  const named = (t: Dnd5eClassTrack) => (t.sub ? `${t.cls.name} (${t.sub.name})` : t.cls.name)
   sheet.classSlug = cls.slug
-  sheet.class = st.sub ? `${cls.name} (${st.sub.name})` : cls.name
-  sheet.subclassSlug = st.sub?.slug ?? ''
+  sheet.class =
+    st.tracks.length > 1
+      ? st.tracks
+          .map((t) => `${t.cls.name} ${t.level}${t.sub ? ` (${t.sub.name})` : ''}`)
+          .join(' / ')
+      : named(first)
+  sheet.subclassSlug = first.sub?.slug ?? ''
+  sheet.classes = st.tracks.map((t) => ({
+    slug: t.cls.slug,
+    name: t.cls.name,
+    level: t.level,
+    hitDie: t.cls.hitDie,
+    ...(t.sub ? { subclassSlug: t.sub.slug, subclass: t.sub.name } : {}),
+  }))
   sheet.speciesSlug = species.slug
   sheet.lineage = st.lineage ? `${species.name} (${st.lineage.name})` : species.name
   sheet.backgroundSlug = background.slug
   sheet.background = background.name
   sheet.hitDie = cls.hitDie
+  // Hit Point Dice of the same size pool together; different sizes are tracked apart (p. 24).
+  const dice = new Map<number, number>()
+  for (const t of st.tracks) dice.set(t.cls.hitDie, (dice.get(t.cls.hitDie) ?? 0) + t.level)
+  sheet.hitDice = [...dice].map(([die, count]) => ({ die, count }))
   sheet.profBonus = pb
   sheet.size = st.size
-  sheet.speed = speedText(st, level)
+  sheet.speed = speedText(st)
   sheet.saveProfs = DND5E_ABILITIES.filter((a) => st.saves.has(a))
   sheet.proficiencies = {
     skills: allSkills().filter((s) => st.skills.has(s)),
@@ -2423,31 +2961,38 @@ export function writeBuild(sheet: Dnd5eSheet, st: Dnd5eBuildState, level: number
   sheet.featsTaken = st.feats.map((f) => ({ ...f }))
   sheet.options = st.options.map((o) => ({ ...o }))
   sheet.masteries = [...st.masteries]
-  const ability = castingOf(st)?.ability ?? 'INT'
-  const classFrom = st.sub?.spellcasting ? st.sub.name : cls.name
-  const ref = (slug: string, extra: Partial<Dnd5eSpellRef> = {}): Dnd5eSpellRef => {
-    const def = data.spells.find((s) => s.slug === slug)
-    return {
-      slug,
-      name: def?.name ?? slug,
-      level: def?.level ?? 0,
-      from: classFrom,
-      ability,
-      ...extra,
-    }
-  }
+  // Each class's spells use that class's ability (SRD 5.2.1 p. 25).
   sheet.spells = [
-    ...st.cantrips.map((s) => ref(s)),
-    ...st.prepared.map((s) => ref(s)),
-    ...st.book.filter((s) => !st.prepared.includes(s)).map((s) => ref(s, { book: true })),
+    ...st.tracks.flatMap((t) => {
+      const ability = trackSpellcasting(t)?.ability ?? 'INT'
+      const from = t.sub?.spellcasting ? t.sub.name : t.cls.name
+      const ref = (slug: string, extra: Partial<Dnd5eSpellRef> = {}): Dnd5eSpellRef => {
+        const def = data.spells.find((s) => s.slug === slug)
+        return {
+          slug,
+          name: def?.name ?? slug,
+          level: def?.level ?? 0,
+          from,
+          ability,
+          ...extra,
+        }
+      }
+      return [
+        ...t.cantrips.map((s) => ref(s)),
+        ...t.prepared.map((s) => ref(s)),
+        ...t.book.filter((s) => !t.prepared.includes(s)).map((s) => ref(s, { book: true })),
+      ]
+    }),
     ...st.extra.map((s) => ({ ...s })),
   ]
   const casting = castingStats(st, level, sheet.abilities)
-  if (casting) sheet.castingStats = casting
+  if (casting.main) sheet.castingStats = casting.main
   else delete sheet.castingStats
+  if (casting.classes.length) sheet.castingClasses = casting.classes
+  else delete sheet.castingClasses
   sheet.resources = st.uses
     .map((u): Dnd5eResource => {
-      const dice = resourceDice(u, st, level)
+      const dice = resourceDice(u, st)
       return {
         name: u.name,
         from: u.from,
@@ -2599,7 +3144,7 @@ export function buildDnd5eSheet(
     background.equipment.find((e) => e.option === c.equipment.background) ??
       background.equipment[0],
   ].filter((e) => !!e)
-  let gp = 0
+  const coins = noCoins()
   const inventory: InventoryItem[] = []
   pack.forEach((e, i) => {
     const parsed = parseEquipment(
@@ -2607,9 +3152,10 @@ export function buildDnd5eSheet(
       data,
       i === 0 ? { cls: tools.cls } : { background: tools.background },
     )
-    gp += parsed.gp
+    for (const k of Object.keys(coins) as Coin[]) coins[k] += parsed.coins[k]
     inventory.push(...parsed.items)
   })
+  mergeItems(inventory)
   // Wear the first armor and shield the hero is trained in.
   const trained = (a: Dnd5eArmorDef) =>
     [...st.armor].some(
@@ -2624,7 +3170,7 @@ export function buildDnd5eSheet(
     if (item) item.worn = true
   }
   sheet.inventory = inventory
-  sheet.coins = { gp }
+  sheet.coins = coins
   const pb = proficiencyBonus(1)
   sheet.weapons = inventory.flatMap((i) => {
     const w = weaponOf(data, i.name)

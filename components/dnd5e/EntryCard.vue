@@ -83,7 +83,7 @@ const RESOURCE_PIPS = 8
     <p v-if="facts.length" class="small entry__facts">{{ facts.join(' · ') }}</p>
     <p v-if="e.text && e.full" class="small entry__sum">{{ e.text }}</p>
     <details v-if="e.text" class="entry__text">
-      <summary class="small">Rules</summary>
+      <summary class="small">Rules text</summary>
       <!-- eslint-disable-next-line vue/no-v-html -- loreHtml escapes everything first -->
       <div class="small" v-html="loreHtml(e.full ?? e.text)" />
     </details>
@@ -187,8 +187,30 @@ const RESOURCE_PIPS = 8
     min-height: 28px;
     display: flex;
     align-items: center;
+    gap: 8px;
     cursor: pointer;
-    color: var(--page-muted);
+    color: var(--page-soft);
+    font-weight: 600;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      margin-bottom: 3px;
+      border: solid var(--accent-text);
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+  }
+
+  &[open] > summary::after {
+    margin: 3px 0 0;
+    transform: rotate(-135deg);
   }
 
   div {

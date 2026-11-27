@@ -35,5 +35,9 @@ function set(on: boolean) {
   gap: 8px;
   font-size: 13px;
   cursor: pointer;
+
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
 }
 </style>

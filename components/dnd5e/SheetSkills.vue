@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The 5e sheet's Skills panel, laid out like Nimble's: "Next check" (Normal / Advantage /
-// Disadvantage, which cancel each other, SRD 5.2.1 p. 6), then the saving throws and the skills
-// as shared SheetSkillRows: the proficiency mark (○ none, ½ Jack of All Trades, ● proficient,
+// Disadvantage, which cancel each other, SRD 5.2.1 p. 6), then the six saving throws as a compact
+// grid of tiles (ability, mark, value with its breakdown, Roll) and the skills as shared
+// SheetSkillRows: the proficiency mark (○ none, ½ Jack of All Trades, ● proficient,
 // ◆ Expertise; a hand-made sheet taps it to change), what the skill is for, the value with its
 // breakdown (ability, proficiency, Exhaustion, conditions, Bless…) and Roll. With Manual dice
 // Roll asks for the d20. Under the result, what can still change it (Dnd5eAfterRoll: Heroic
@@ -55,6 +56,8 @@ const sub = (r: Dnd5eSkillRow) => {
   const m = d20Mode(r.test)
   return `${r.ability}${m === 'adv' ? ' · adv.' : m === 'dis' ? ' · dis.' : ''}`
 }
+
+const hasJack = computed(() => skills.value.some((r) => r.prof === 0.5))
 
 const pending = ref<Dnd5eSkillRow | null>(null)
 
@@ -118,25 +121,45 @@ function cycle(r: Dnd5eSkillRow) {
       :disabled="!canEdit"
       @submit="(v) => pending && roll(pending, v)"
     />
+    <p class="legend" aria-hidden="true">
+      <span>○ not proficient</span> · <span>● proficient</span> · <span>◆ Expertise</span
+      ><template v-if="hasJack"> · <span>½ Jack of All Trades</span></template>
+    </p>
     <div class="caps group">Saving throws</div>
-    <SheetSkillRow
-      v-for="r in saves"
-      :key="r.name"
-      :name="r.name"
-      :sub="sub(r)"
-      :value="r.test.fail ? 'fails' : sign(r.test.bonus)"
-      :breakdown="lines(r)"
-      :changed="!!r.test.adv.length || !!r.test.dis.length || !!r.test.fail"
-      :disabled="!canEdit"
-      :roll-label="`Roll ${r.name} ${sign(r.test.bonus)}`"
-      @roll="roll(r)"
-    >
-      <template #marks>
-        <span class="mark" :class="`mark--${r.prof * 2}`" :title="MARK_NAME[r.prof]">{{
-          MARK[r.prof]
-        }}</span>
-      </template>
-    </SheetSkillRow>
+    <div class="saves">
+      <div v-for="r in saves" :key="r.name" class="tile save">
+        <span class="save__head">
+          <span class="save__name">{{ r.ability }}</span>
+          <span class="mark" :class="`mark--${r.prof * 2}`" :title="MARK_NAME[r.prof]"
+            >{{ MARK[r.prof] }}<span class="sr-only">{{ MARK_NAME[r.prof] }}</span></span
+          >
+          <UiTooltip
+            v-if="lines(r).length"
+            :title="`${r.name} ${r.test.fail ? 'fails' : sign(r.test.bonus)}`"
+            :text="lines(r).join('\n')"
+          >
+            <strong
+              class="save__value"
+              :class="{ 'is-changed': !!r.test.adv.length || !!r.test.dis.length || !!r.test.fail }"
+              tabindex="0"
+              >{{ r.test.fail ? 'fails' : sign(r.test.bonus) }}</strong
+            >
+          </UiTooltip>
+          <strong v-else class="save__value">{{
+            r.test.fail ? 'fails' : sign(r.test.bonus)
+          }}</strong>
+        </span>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm save__roll"
+          :disabled="!canEdit"
+          :aria-label="`Roll ${r.name} ${sign(r.test.bonus)}`"
+          @click="roll(r)"
+        >
+          Roll
+        </button>
+      </div>
+    </div>
     <div class="caps group">Skills</div>
     <SheetSkillRow
       v-for="r in skills"
@@ -180,6 +203,63 @@ function cycle(r: Dnd5eSkillRow) {
   font-size: 11px;
 }
 
+.saves {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.save {
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.save__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.save__name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.save__value {
+  margin-left: auto;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+
+  &[tabindex] {
+    cursor: help;
+    border-bottom: 1px dotted var(--line-strong);
+  }
+
+  &.is-changed {
+    color: var(--warn-text);
+  }
+}
+
+.save__roll {
+  min-height: 30px;
+  padding: 2px 10px;
+
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
+}
+
+.legend {
+  margin: 0;
+  font-size: 12px;
+  color: var(--page-muted);
+
+  span {
+    white-space: nowrap;
+  }
+}
+
 .mark {
   flex: none;
   width: 22px;
@@ -187,7 +267,7 @@ function cycle(r: Dnd5eSkillRow) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--page-muted);
 
   &--2,
@@ -197,6 +277,7 @@ function cycle(r: Dnd5eSkillRow) {
 
   &--4 {
     color: var(--secondary);
+    font-size: 19px;
   }
 }
 

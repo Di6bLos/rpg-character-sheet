@@ -169,7 +169,7 @@ function giveToggle(key: string) {
           @click="alliesOpen = !alliesOpen"
         >
           Ally effects
-          <span aria-hidden="true">{{ alliesOpen ? '▴' : '▾' }}</span>
+          <span class="chev" :class="{ 'chev--up': alliesOpen }" aria-hidden="true" />
         </button>
         <button
           v-for="d in shownAllies"
@@ -202,12 +202,26 @@ function giveToggle(key: string) {
 .fx-fold {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 34px;
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
+}
+
+.chev {
+  width: 7px;
+  height: 7px;
+  margin-bottom: 4px;
+  border: solid var(--accent-text);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+
+  &--up {
+    margin: 4px 0 0;
+    transform: rotate(-135deg);
+  }
 }
 
 .cond {

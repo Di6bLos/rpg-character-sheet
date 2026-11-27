@@ -41,7 +41,9 @@
         "Monk 2: Unarmored Movement",
         "Monk 2: Uncanny Metabolism"
       ],
-      "picks": [],
+      "picks": [
+        "L2:class class×1?"
+      ],
       "after": {
         "profBonus": 2,
         "hpMax": 17,
@@ -66,6 +68,7 @@
         "Warrior of the Open Hand 3: Open Hand Technique"
       ],
       "picks": [
+        "L3:class class×1?",
         "L3:subclass subclass×1"
       ],
       "after": {
@@ -92,6 +95,7 @@
         "Feat · Monk 4: Ability Score Improvement"
       ],
       "picks": [
+        "L4:class class×1?",
         "L4:asi feat×1",
         "L4:asi>asi asi×2"
       ],
@@ -118,7 +122,9 @@
         "Monk 5: Extra Attack",
         "Monk 5: Stunning Strike"
       ],
-      "picks": [],
+      "picks": [
+        "L5:class class×1?"
+      ],
       "after": {
         "profBonus": 3,
         "hpMax": 38,
@@ -142,7 +148,9 @@
         "Monk 6: Empowered Strikes",
         "Warrior of the Open Hand 6: Wholeness of Body"
       ],
-      "picks": [],
+      "picks": [
+        "L6:class class×1?"
+      ],
       "after": {
         "profBonus": 3,
         "hpMax": 45,
@@ -166,7 +174,9 @@
       "features": [
         "Monk 7: Evasion"
       ],
-      "picks": [],
+      "picks": [
+        "L7:class class×1?"
+      ],
       "after": {
         "profBonus": 3,
         "hpMax": 52,
@@ -191,6 +201,7 @@
         "Feat · Monk 8: Ability Score Improvement"
       ],
       "picks": [
+        "L8:class class×1?",
         "L8:asi feat×1",
         "L8:asi>asi asi×2"
       ],
@@ -217,7 +228,9 @@
       "features": [
         "Monk 9: Acrobatic Movement"
       ],
-      "picks": [],
+      "picks": [
+        "L9:class class×1?"
+      ],
       "after": {
         "profBonus": 4,
         "hpMax": 66,
@@ -242,7 +255,9 @@
         "Monk 10: Heightened Focus",
         "Monk 10: Self-Restoration"
       ],
-      "picks": [],
+      "picks": [
+        "L10:class class×1?"
+      ],
       "after": {
         "profBonus": 4,
         "hpMax": 73,
@@ -266,7 +281,9 @@
       "features": [
         "Warrior of the Open Hand 11: Fleet Step"
       ],
-      "picks": [],
+      "picks": [
+        "L11:class class×1?"
+      ],
       "after": {
         "profBonus": 4,
         "hpMax": 80,
@@ -291,6 +308,7 @@
         "Feat · Monk 12: Ability Score Improvement"
       ],
       "picks": [
+        "L12:class class×1?",
         "L12:asi feat×1",
         "L12:asi>asi asi×2"
       ],
@@ -317,7 +335,9 @@
       "features": [
         "Monk 13: Deflect Energy"
       ],
-      "picks": [],
+      "picks": [
+        "L13:class class×1?"
+      ],
       "after": {
         "profBonus": 5,
         "hpMax": 94,
@@ -341,7 +361,9 @@
       "features": [
         "Monk 14: Disciplined Survivor"
       ],
-      "picks": [],
+      "picks": [
+        "L14:class class×1?"
+      ],
       "after": {
         "profBonus": 5,
         "hpMax": 101,
@@ -365,7 +387,9 @@
       "features": [
         "Monk 15: Perfect Focus"
       ],
-      "picks": [],
+      "picks": [
+        "L15:class class×1?"
+      ],
       "after": {
         "profBonus": 5,
         "hpMax": 108,
@@ -390,6 +414,7 @@
         "Feat · Monk 16: Ability Score Improvement"
       ],
       "picks": [
+        "L16:class class×1?",
         "L16:asi feat×1",
         "L16:asi>asi asi×2"
       ],
@@ -416,7 +441,9 @@
       "features": [
         "Warrior of the Open Hand 17: Quivering Palm"
       ],
-      "picks": [],
+      "picks": [
+        "L17:class class×1?"
+      ],
       "after": {
         "profBonus": 6,
         "hpMax": 122,
@@ -440,7 +467,9 @@
       "features": [
         "Monk 18: Superior Defense"
       ],
-      "picks": [],
+      "picks": [
+        "L18:class class×1?"
+      ],
       "after": {
         "profBonus": 6,
         "hpMax": 129,
@@ -465,6 +494,7 @@
         "Feat · Monk 19: Ability Score Improvement"
       ],
       "picks": [
+        "L19:class class×1?",
         "L19:boon feat×1",
         "L19:boon>asi asi×2"
       ],
@@ -491,7 +521,9 @@
       "features": [
         "Monk 20: Body and Mind"
       ],
-      "picks": [],
+      "picks": [
+        "L20:class class×1?"
+      ],
       "after": {
         "profBonus": 6,
         "hpMax": 143,

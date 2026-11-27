@@ -2,9 +2,11 @@
 // The data-driven 5e level-up inside `SheetLevelUpDialog`, for heroes made in the builder
 // (SRD 5.2.1 p. 23): Hit Points (the fixed value, a roll or the player's own roll), what the
 // level grants (Proficiency Bonus, features, slots, resources), then the picks it asks for
-// (subclass, feats, invocations, spells, Expertise…) and the optional swaps. `previous` fills in
-// a level's recorded picks (Reconfigure); picks that no longer fit show as problems. The Sources
-// menu is the builder's, shared per browser.
+// (subclass, feats, invocations, spells, Expertise…) and the optional swaps. The class comes
+// first: the one the hero goes on in, or a new one (multiclassing, SRD 5.2.1 p. 24); it starts
+// on the class the last level went to, and an empty pick means the first class. `previous` fills
+// in a level's recorded picks (Reconfigure); picks that no longer fit show as problems. The
+// Sources menu is the builder's, shared per browser.
 import { loadDnd5e } from '~/data/dnd5e'
 import type { Dnd5eLevelInput, Dnd5eSheet } from '~/types/sheets'
 import { rollDie, sign } from '~/utils/dice'
@@ -45,6 +47,20 @@ const picks = ref<Record<string, string[]>>(
     ? (JSON.parse(JSON.stringify(props.previous.picks)) as Record<string, string[]>)
     : {},
 )
+const classKey = computed(() => `L${level.value}:class`)
+const firstClass = computed(() => sheet.value.classSlug ?? '')
+const lastClass = sheet.value.choices?.[`L${level.value - 1}:class`]?.[0]
+if (!props.previous && lastClass && lastClass !== firstClass.value)
+  picks.value[classKey.value] = [lastClass]
+/** The level's class; the first class is kept as an empty pick, as saves before multiclassing. */
+const classModel = computed<string[] | undefined>({
+  get: () =>
+    picks.value[classKey.value]?.length ? picks.value[classKey.value] : [firstClass.value],
+  set: (v) => {
+    const slug = v?.[0]
+    picks.value[classKey.value] = slug && slug !== firstClass.value ? [slug] : []
+  },
+})
 const hpMode = ref<'fixed' | 'roll' | 'own'>(props.previous ? 'own' : 'fixed')
 const hpTyped = ref<number>(props.previous?.hpRoll ?? 0)
 const hpRolled = ref<number | null>(null)
@@ -81,11 +97,13 @@ const problems = computed(() =>
     : [{ section: '', text: 'Loading the rules' }],
 )
 
+const classPick = computed(() => plan.value?.picks.find((p) => p.kind === 'class'))
+const otherPicks = computed(() => (plan.value?.picks ?? []).filter((p) => p.kind !== 'class'))
 const mainPicks = computed(() =>
-  (plan.value?.picks ?? []).filter((p) => !p.optional && !p.key.includes(':swap:')),
+  otherPicks.value.filter((p) => !p.optional && !p.key.includes(':swap:')),
 )
 const swapPicks = computed(() =>
-  (plan.value?.picks ?? []).filter((p) => p.optional || p.key.includes(':swap:')),
+  otherPicks.value.filter((p) => p.optional || p.key.includes(':swap:')),
 )
 /** The swaps start open when one is under way (a replayed level, or a jump to a problem). */
 const swapsOpen = computed(() => swapPicks.value.some((p) => picks.value[p.key]?.length))
@@ -144,9 +162,14 @@ defineExpose({ problems, progress, commit, jump })
   </p>
   <p v-else-if="!plan" class="small muted" aria-live="polite">Loading the 5e rules…</p>
   <template v-else>
+    <section v-if="classPick" class="step-block">
+      <Dnd5ePickField v-model="classModel" :pick="classPick" :show-errors="showErrors" />
+    </section>
+
     <section class="step-block" aria-labelledby="d5-grants">
       <div class="step-head">
         <h3 id="d5-grants">New at level {{ level }}</h3>
+        <span class="small muted">{{ plan.cls.name }} {{ plan.cls.level }}</span>
       </div>
       <dl class="facts">
         <div>

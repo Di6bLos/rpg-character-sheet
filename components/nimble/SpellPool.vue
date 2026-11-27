@@ -288,6 +288,16 @@ function adjustUses(delta: number) {
     }
   }
 
+  // A 44px pitch to tap a pip on touch screens; the diamonds keep their size.
+  @media (pointer: coarse) {
+    gap: 0;
+
+    button {
+      width: 44px;
+      height: 44px;
+    }
+  }
+
   .mana__pip-temp i {
     background: var(--accent);
     box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 50%, transparent);

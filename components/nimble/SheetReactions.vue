@@ -259,6 +259,10 @@ const message = computed(
   gap: 8px;
   width: 100%;
 
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
+
   em {
     margin-left: auto;
     font-style: normal;

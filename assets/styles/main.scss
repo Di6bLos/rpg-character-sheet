@@ -176,6 +176,17 @@ img {
   }
 }
 
+// A note beside a panel's heading that shows only while the panel is folded ("3 attacks").
+.fold-hint {
+  display: none;
+  font-size: 13px;
+  color: var(--page-muted);
+}
+
+.panel:has(> .ui-fold[aria-expanded='false']) .fold-hint {
+  display: inline;
+}
+
 .panel {
   background: var(--panel-bg);
   color: var(--panel-text);
@@ -218,6 +229,7 @@ img {
 
 .title-help {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }

@@ -85,7 +85,7 @@ function confirmRest() {
               Crit
             </label>
           </div>
-          <div class="row" style="gap: 8px">
+          <div class="row hp-steps" style="gap: 8px">
             <button
               type="button"
               class="step"
