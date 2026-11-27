@@ -10,6 +10,7 @@
 import type { Dnd5eMastery, Dnd5eWeaponDef } from '~/data/dnd5e/types'
 import type { Dnd5eAbility, Dnd5eSheet, Dnd5eWeapon } from '~/types/sheets'
 import { proficientWith } from '~/utils/dnd5eBuild'
+import { gearUnarmed } from '~/utils/dnd5eMagicItems'
 import { conditionRules } from '~/utils/dnd5eConditions'
 import {
   activeEffectDefs,
@@ -262,6 +263,8 @@ export function weaponAttack(
   if (def && (props.has('Finesse') || (hero.has('Martial Arts') && monkWeapon(def))))
     ability = hero.mod('DEX') > hero.mod('STR') ? 'DEX' : 'STR'
   else if (!def) ability = ranged ? 'DEX' : 'STR'
+  if (w.magic && hero.has('Battle Ready') && hero.mod('INT') > hero.mod(ability)) ability = 'INT'
+  if (hasEffect(s, 'bladesong') && hero.mod('INT') > hero.mod(ability)) ability = 'INT'
   const mod = hero.mod(ability)
   let bonus: number
   const lines: string[] = []
@@ -303,6 +306,10 @@ export function weaponAttack(
       dmgMod = 0
     } else if (dmgMod > 0) notes.push('Two-Weapon Fighting: modifier to off-hand damage')
   }
+  if (w.magic) {
+    bonus += w.magic
+    lines.push(`${w.enchant ?? 'Magic weapon'} ${sign(w.magic)}`)
+  }
   if (ranged && def && hero.feat('archery')) {
     bonus += 2
     lines.push('Archery +2')
@@ -315,6 +322,7 @@ export function weaponAttack(
     if (!melee && (s.abilities.DEX ?? 10) < 13) t.dis.push('Heavy, Dexterity under 13')
   }
   if (grip.long) t.dis.push('long range')
+  if (w.magic) flat.push({ label: w.enchant ?? 'Magic weapon', value: w.magic })
   const oneHanded = melee && def && !props.has('Two-Handed') && !grip.twoHands && !grip.offhand
   if (oneHanded && hero.feat('dueling')) flat.push({ label: 'Dueling', value: 2 })
   if (grip.thrown && props.has('Thrown') && hero.feat('thrown-weapon-fighting'))
@@ -389,12 +397,18 @@ export function unarmedAttack(
   const ma = hero.has('Martial Arts') ? columnDice(o.columns, 'Martial Arts') : ''
   const ability: Dnd5eAbility = ma && hero.mod('DEX') > hero.mod('STR') ? 'DEX' : 'STR'
   const mod = hero.mod(ability)
-  const lines = [`${ability} ${sign(mod)}`, `Proficiency ${sign(hero.pb)}`]
+  const wraps = gearUnarmed(s)
+  const plus = wraps.reduce((n, g) => n + g.value, 0)
+  const lines = [
+    `${ability} ${sign(mod)}`,
+    `Proficiency ${sign(hero.pb)}`,
+    ...wraps.map((g) => `${g.label} ${sign(g.value)}`),
+  ]
   const t = d20Test(s, level, {
     label: 'Unarmed Strike',
     kind: 'attack',
     ability,
-    bonus: mod + hero.pb,
+    bonus: mod + hero.pb + plus,
     lines,
   })
   adjustAttackTest(s, t, {
@@ -412,7 +426,7 @@ export function unarmedAttack(
       : hero.feat('tavern-brawler')
         ? '1d4'
         : '')
-  const flat: { label: string; value: number }[] = []
+  const flat: { label: string; value: number }[] = wraps.map((g) => ({ ...g }))
   const extras: Dnd5eDamagePart[] = []
   for (const d of activeEffectDefs(s)) {
     const dm = d.damage

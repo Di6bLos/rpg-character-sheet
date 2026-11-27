@@ -2,14 +2,17 @@
 // The 5e sheet's Inventory, laid out like Nimble's: what the hero carries against Strength × 15
 // lb (SRD 5.2.1 p. 190), each item with its rules on hover, quantity, Equip for armor and
 // shields (one of each; the worn gear sets AC, utils/dnd5eItems.ts), a weapon's mastery,
-// attunement for magic items that need it (at most 3, p. 204), adding from the data or a
-// write-in (a weapon added also joins the Attacks), and coins (cp, sp, ep, gp, pp).
+// attunement for magic items that need it (at most 3, p. 204, more for an Artificer), an item's
+// charges, adding from the data or a write-in (a weapon added also joins the Attacks), the
+// Artificer's replicated items and stored spell (Dnd5eArtificer), and coins (cp, sp, ep, gp, pp).
 import { loadDnd5e } from '~/data/dnd5e'
 import type { Dnd5eMagicItemDef } from '~/data/dnd5e/types'
 import type { Dnd5eCoins, Dnd5eSheet } from '~/types/sheets'
 import { MASTERY_TEXT, WEAPON_PROPERTY_TEXT } from '~/utils/dnd5eAttacks'
-import { ATTUNE_MAX, armorOf, carried, toggleAttune, wearItem } from '~/utils/dnd5eItems'
-import { norm5e } from '~/utils/dnd5ePlay'
+import { attunementLimit } from '~/utils/dnd5eArtificer'
+import { armorOf, carried, toggleAttune, wearItem } from '~/utils/dnd5eItems'
+import { chargesOf } from '~/utils/dnd5eMagicItems'
+import { dnd5eHero, norm5e } from '~/utils/dnd5ePlay'
 
 const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
 const { claim, resultIn } = useResultOwner()
@@ -49,8 +52,9 @@ const rows = computed(() =>
       armor,
       mastery:
         weapon && (sheet.value.masteries ?? []).includes(weapon.slug) ? weapon.mastery : null,
-      attune: !!mi?.attunement,
-      rarity: mi?.rarity ?? '',
+      attune: !!mi?.attunement || (!!item.replicated && /attunement/i.test(planText(item.name))),
+      rarity: mi?.rarity ?? (item.replicated ? 'Replicated' : ''),
+      charges: chargesOf(mi?.text),
     }
   }),
 )
@@ -63,6 +67,23 @@ const pct = computed(() =>
     : 0,
 )
 const attuned = computed(() => sheet.value.inventory.filter((i) => i.attuned).length)
+const attuneMax = computed(() => attunementLimit(sheet.value, draft.value.level))
+const artificer = computed(() =>
+  dnd5eHero(sheet.value, draft.value.level).has('Replicate Magic Item'),
+)
+
+/** A replicated item's plan summary (for whether it needs Attunement). */
+function planText(name: string) {
+  const plans = data.value?.options.find((g) => g.slug === 'plans')?.entries ?? []
+  return plans.find((p) => name.includes(p.name))?.summary ?? ''
+}
+
+function charge(i: number, by: number, max: number) {
+  if (!canEdit.value) return
+  const item = sheet.value.inventory[i]
+  if (!item) return
+  item.chargesUsed = Math.max(0, Math.min(max, (item.chargesUsed ?? 0) - by))
+}
 
 function equip(i: number) {
   if (!canEdit.value || !data.value) return
@@ -71,7 +92,7 @@ function equip(i: number) {
 }
 
 function attune(i: number) {
-  if (canEdit.value) claim('inv:', () => say(toggleAttune(sheet.value, i)))
+  if (canEdit.value) claim('inv:', () => say(toggleAttune(sheet.value, i, attuneMax.value)))
 }
 
 function setQty(i: number, by: number) {
@@ -153,7 +174,7 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
         <h2 id="inv-h">Inventory</h2>
         <UiHelp
           label="About inventory"
-          text="Equip armor and a shield to wear them: what you wear sets your AC (SRD 5.2.1 p. 92). Attune to up to three magic items that need it (p. 204). You can carry Strength × 15 lb (p. 190)."
+          :text="`Equip armor and a shield to wear them: what you wear sets your AC (SRD 5.2.1 p. 92). Attune to up to ${attuneMax} magic items that need it (p. 204). You can carry Strength × 15 lb (p. 190).`"
         />
       </div>
       <span v-if="load" class="small" :class="{ over }"
@@ -196,12 +217,37 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
             type="button"
             class="chip equip"
             :aria-pressed="!!r.item.attuned"
-            :disabled="!canEdit || (!r.item.attuned && attuned >= ATTUNE_MAX)"
-            :title="`Attune (${attuned} / ${ATTUNE_MAX})`"
+            :disabled="!canEdit || (!r.item.attuned && attuned >= attuneMax)"
+            :title="`Attune (${attuned} / ${attuneMax})`"
             @click="attune(r.i)"
           >
             {{ r.item.attuned ? 'Attuned' : 'Attune' }}
           </button>
+          <span v-if="r.charges" class="charges">
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`Spend a charge of ${r.item.name}`"
+              :disabled="!canEdit || (r.item.chargesUsed ?? 0) >= r.charges.max"
+              @click="charge(r.i, -1, r.charges.max)"
+            >
+              −
+            </button>
+            <span
+              class="small"
+              :title="r.charges.regain ? `Regains ${r.charges.regain} charges at dawn` : ''"
+              >{{ r.charges.max - (r.item.chargesUsed ?? 0) }} / {{ r.charges.max }} charges</span
+            >
+            <button
+              type="button"
+              class="step step--xs"
+              :aria-label="`Get a charge of ${r.item.name} back`"
+              :disabled="!canEdit || !(r.item.chargesUsed ?? 0)"
+              @click="charge(r.i, 1, r.charges.max)"
+            >
+              +
+            </button>
+          </span>
           <button
             type="button"
             class="step step--xs"
@@ -234,6 +280,7 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
       </li>
     </ul>
     <p v-if="!rows.length" class="empty">Nothing carried yet.</p>
+    <Dnd5eArtificer v-if="artificer" />
     <p v-if="resultIn('inv:')" class="roll-status" role="status">{{ resultIn('inv:') }}</p>
 
     <form class="add" @submit.prevent="add">
@@ -362,6 +409,12 @@ function setCoin(k: keyof Dnd5eCoins, v: string) {
     flex: 1;
     min-width: 0;
   }
+}
+
+.charges {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .coins {

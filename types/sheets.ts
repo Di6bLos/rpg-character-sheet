@@ -191,6 +191,9 @@ export interface Dnd5eWeapon {
   range: string
   /** The weapon's data slug when the builder added it; its numbers follow the hero's level-ups. */
   slug?: string
+  /** A magic bonus to its attack and damage rolls (a +1 weapon), and the item that gives it. */
+  magic?: number
+  enchant?: string
 }
 
 /** A feature on the sheet. `from` marks one the builder added ("Fighter 2", "Elf", "Alert"). */

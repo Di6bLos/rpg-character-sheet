@@ -12,6 +12,7 @@ import type { Dnd5eSpellDef } from '~/data/dnd5e/types'
 import type { Dnd5eSheet, Dnd5eSpellRef } from '~/types/sheets'
 import { type Dnd5eTarget, adjustAttackTest } from '~/utils/dnd5eAttacks'
 import { DND5E_EFFECTS, SPELL_EFFECTS, activeEffectDefs, addEffect } from '~/utils/dnd5eEffects'
+import { gearSpellAttack } from '~/utils/dnd5eMagicItems'
 import {
   type D20Mode,
   type Dnd5eCost,
@@ -236,9 +237,10 @@ export function spellNumbers(s: Dnd5eSheet, level: number, ref: Pick<Dnd5eSpellR
   const mod = hero.mod(ref.ability)
   const fx = activeEffectDefs(s).filter((d) => d.spell)
   const dcBonus = fx.reduce((n, d) => n + (d.spell?.dc ?? 0), 0)
+  const wand = gearSpellAttack(s).reduce((n, g) => n + g.value, 0)
   return {
     mod,
-    attack: mod + hero.pb,
+    attack: mod + hero.pb + wand,
     dc: 8 + mod + hero.pb + dcBonus,
     /** Effects giving the spell attacks Advantage (Innate Sorcery). */
     adv: fx.filter((d) => d.spell?.adv).map((d) => d.name),

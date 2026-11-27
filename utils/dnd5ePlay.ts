@@ -23,6 +23,7 @@ import {
   removeEffect,
   spendEffects,
 } from '~/utils/dnd5eEffects'
+import { gearAc, gearAdvantage, gearSaves } from '~/utils/dnd5eMagicItems'
 import { activeModifiers, allAbilities, amountOf } from '~/utils/dnd5eModifiers'
 import {
   type Rng,
@@ -225,7 +226,7 @@ export function acNow(s: Dnd5eSheet, level: number): Dnd5eNumber {
       lines.push(`${d.name} ${sign(d.ac)}`)
     }
   }
-  for (const e of effectValues(s, 'ac')) {
+  for (const e of [...effectValues(s, 'ac'), ...(form ? [] : gearAc(s))]) {
     v += e.value
     lines.push(`${e.label} ${sign(e.value)}`)
   }
@@ -360,6 +361,14 @@ export function d20Test(
   if (t.kind === 'check' && t.skill)
     for (const d of activeEffectDefs(s))
       if (d.skillAdv?.includes(t.skill) && !out.adv.includes(d.name)) out.adv.push(d.name)
+  const gear = gearAdvantage(s)
+  if (t.kind === 'initiative') out.adv.push(...gear.initiative)
+  if (t.kind === 'check' && t.skill) out.adv.push(...(gear.skills[t.skill] ?? []))
+  if (t.kind === 'save' || t.kind === 'death')
+    for (const g of gearSaves(s)) {
+      out.bonus += g.value
+      out.lines.push(`${g.label} ${sign(g.value)}`)
+    }
   const rely = t.kind === 'initiative' || t.kind === 'death' ? null : t.kind
   if (rely && activeEffectDefs(s).some((d) => d.reliable?.includes(rely))) out.reliable = true
   for (const m of modifiersNow(s, level)) {
