@@ -130,13 +130,17 @@ const PF2E_VALUED = new Set(PF2E_CONDITION_DEFS.filter((d) => d.valued).map((d) 
 
 /**
  * Conditions as the board lists them: PF2e's valued ones with their value ("Frightened 2",
- * 1 when the sheet has none), the rest by name.
+ * 1 when the sheet has none), 5e's Exhaustion with its level when known, the rest by name.
  */
 export function conditionLabels(
   conditions: readonly string[],
   system: GameSystem | null | undefined,
   values?: Record<string, number> | null,
 ): string[] {
+  if (system === 'dnd5e')
+    return conditions.map((n) =>
+      n === 'Exhaustion' && values?.Exhaustion ? `Exhaustion ${values.Exhaustion}` : n,
+    )
   if (system !== 'pf2e') return [...conditions]
   return conditions.map((n) => (PF2E_VALUED.has(n) ? `${n} ${Math.max(1, values?.[n] ?? 1)}` : n))
 }
@@ -149,5 +153,6 @@ export function conditionLabels(
 export function rosterAc(entry: RosterEntry | null | undefined): number | undefined {
   const s = entry?.summary
   if (entry?.character_system === 'pf2e') return s?.acNow ?? acFromParts(s ?? {})
+  if (entry?.character_system === 'dnd5e') return s?.ac
   return heroArmor(s?.ac, s?.conditions, entry?.character_level)
 }

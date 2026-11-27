@@ -10,7 +10,7 @@
 // tap selects; the Creature tab shows the whole stat block).
 import type { CampaignNpc, RosterEntry } from '~/types'
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
-import { statTop } from '~/composables/useCombatantNpcs'
+import { statArmor, statTop } from '~/composables/useCombatantNpcs'
 import { heroTurnActions } from '~/utils/nimblePlay'
 import { conditionLabels, heroDead, heroDown, rosterAc } from '~/utils/roster'
 
@@ -50,7 +50,7 @@ const deadHero = computed(() => down.value && heroDead(props.hero?.summary))
 const armor = computed(() =>
   isPc.value
     ? String(rosterAc(props.hero) ?? props.c.ac ?? '—')
-    : statTop(props.npc, 'Armor') || String(props.c.ac ?? '—'),
+    : statArmor(props.npc) || String(props.c.ac ?? '—'),
 )
 const conditions = computed(() =>
   isPc.value
@@ -122,10 +122,12 @@ function onInit(event: Event) {
 }
 
 // --- Tooltip ----------------------------------------------------------------------
+/** "Armor" on Nimble's board, "AC" on 5e's and PF2e's. */
+const armorWord = computed(() => (features.value.nimbleHero ? 'Armor' : 'AC'))
 const tipSub = computed(() =>
   [
     props.npc?.level ? `Level ${props.npc.level}` : '',
-    `Armor ${armor.value}`,
+    `${armorWord.value} ${armor.value}`,
     statTop(props.npc, 'Speed') ? `Speed ${statTop(props.npc, 'Speed')}` : '',
   ]
     .filter(Boolean)
@@ -205,7 +207,7 @@ const tipKeys = computed(() =>
             ✎
           </button>
         </template>
-        <span class="ec__armor" title="Armor">
+        <span class="ec__armor" :title="armorWord">
           <svg
             class="ec__shield"
             width="11"
@@ -219,8 +221,8 @@ const tipKeys = computed(() =>
           >
             <path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3Z" />
           </svg>
-          <span class="ec__armor-word">Armor </span><span class="sr-only ec__armor-sr">Armor </span
-          >{{ armor }}
+          <span class="ec__armor-word">{{ armorWord }} </span
+          ><span class="sr-only ec__armor-sr">{{ armorWord }} </span>{{ armor }}
         </span>
         <label class="ec__init" title="Initiative" @click.stop>
           <span class="sr-only">Initiative for {{ c.name }}</span>

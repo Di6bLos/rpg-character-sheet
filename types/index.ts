@@ -141,8 +141,10 @@ export interface RosterEntry {
     wounded?: number
     /** PF2e Doomed value: lowers the Dying value that kills. */
     doomed?: number
-    /** PF2e values of valued conditions (frightened 2); absent means 1. */
+    /** PF2e values of valued conditions (frightened 2); absent means 1. 5e: Exhaustion's level. */
     conditionValues?: Record<string, number>
+    /** 5e Exhaustion level (stores/campaign.ts copies it into `conditionValues`). */
+    exhaustion?: number
     /** PF2e feat names (Diehard changes when the hero dies). */
     featNames?: string[]
     /** PF2e: the shield, the AC parts the sheet saves, and persistent damage. */

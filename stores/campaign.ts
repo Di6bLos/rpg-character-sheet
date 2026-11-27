@@ -172,6 +172,10 @@ export const useCampaignStore = defineStore('campaign', () => {
     // A PF2e hero's AC now: the AC parts the sheet saved, with the conditions and shield.
     for (const r of rows)
       if (r.character_system === 'pf2e' && r.summary) r.summary.acNow = acFromParts(r.summary)
+    // A 5e hero's Exhaustion level, read where PF2e's condition values are ("Exhaustion 2").
+    for (const r of rows)
+      if (r.character_system === 'dnd5e' && r.summary?.exhaustion)
+        r.summary.conditionValues = { Exhaustion: r.summary.exhaustion }
     // Kept out of usage-analytics click labels.
     rememberNames(rows.flatMap((r) => [r.display_name, r.handle, r.character_name]))
     return rows

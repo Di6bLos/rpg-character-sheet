@@ -6,7 +6,7 @@
 // combatant with no stat block shows the numbers only. Off Nimble (`useBattleFeatures().pips`
 // false) there is no Actions tile.
 import type { TurnRow, useInitiative } from '~/composables/useInitiative'
-import { statTop } from '~/composables/useCombatantNpcs'
+import { statArmor, statTop } from '~/composables/useCombatantNpcs'
 import { statBlockSubtitle } from '~/utils/npcStatBlock'
 
 const props = defineProps<{
@@ -93,7 +93,7 @@ function resetName(event: KeyboardEvent) {
 }
 
 // --- Tiles -----------------------------------------------------------------------------
-const armor = computed(() => statTop(npc.value, 'Armor') || String(c.value?.ac ?? '—'))
+const armor = computed(() => statArmor(npc.value) || String(c.value?.ac ?? '—'))
 const speed = computed(() => statTop(npc.value, 'Speed') || '—')
 function onMax(event: Event) {
   const v = Number((event.target as HTMLInputElement).value)
@@ -126,7 +126,7 @@ function onMax(event: Event) {
       <div class="sbk__tiles" :class="{ 'sbk__tiles--3': !features.pips }">
         <div class="sbk__tile">
           <b>{{ armor }}</b
-          ><span>Armor</span>
+          ><span>{{ features.nimbleHero ? 'Armor' : 'AC' }}</span>
         </div>
         <div class="sbk__tile">
           <b>{{ speed }}</b

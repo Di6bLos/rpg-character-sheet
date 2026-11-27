@@ -1,9 +1,13 @@
 <script setup lang="ts">
 // The battle board's action panel (centre column): every action of the player's hero as
 // a tile, filtered to Ready now (the default), All or a category, with a search box.
-// The tiles come from useBattleActions and the sections from sectionsFor, so Ready now,
-// All and the sheet agree; clicking does what the sheet does and posts to party chat.
-import type { NimbleSheet } from '~/types/sheets'
+// The tiles come from useBattleActions (Nimble) or useBattleDnd5eActions (5e) and the sections
+// from sectionsFor, so Ready now, All and the sheet agree; clicking does what the sheet does
+// and posts to party chat. A 5e hero also gets the sheet's Target row and the next attack's
+// Advantage / Disadvantage above the tiles, a dice entry while a Manual dice roll waits, and
+// "Heal yourself" after a healing spell.
+import type { BattleTile } from '~/composables/useBattleActions'
+import type { AnySheet } from '~/types/sheets'
 import { readyNote, sectionsFor, type ActionFilter } from '~/utils/battleActions'
 
 defineProps<{
@@ -22,13 +26,38 @@ defineProps<{
 const FILTER_KEY = 'lantern-battle-filter'
 const FILTERS: ActionFilter[] = ['ready', 'all', 'attack', 'spell', 'react', 'ability']
 
-const { canEdit } = useSheet<NimbleSheet>()
+const { canEdit, draft } = useSheet<AnySheet>()
 // On touch (touch desktops too) the filter chips and search are touch-sized too.
 const { touch } = useBoardLayout()
 const announce = useAnnounce()
-const { actions, onTurn, actionsLeft, mana, lastResult, lastDetail } = useBattleActions({
-  onResult: announce,
-})
+
+/** The hero's system, fixed for this panel's life (HeroScope remounts it for a new hero). */
+const dnd5e = draft.value.system === 'dnd5e'
+
+/** Nimble's tiles with the note under Ready now. */
+function nimbleTiles() {
+  const n = useBattleActions({ onResult: announce })
+  return {
+    ...n,
+    note: computed(() =>
+      readyNote(n.actions.value, {
+        onTurn: n.onTurn.value,
+        actionsLeft: n.actionsLeft.value,
+        mana: n.mana.value,
+      }),
+    ),
+  }
+}
+
+const five = dnd5e ? useBattleDnd5eActions({ onResult: announce }) : null
+const source: {
+  actions: ComputedRef<BattleTile[]>
+  onTurn: ComputedRef<boolean>
+  note: ComputedRef<string>
+  lastResult: Ref<string>
+  lastDetail: Ref<string>
+} = five ?? nimbleTiles()
+const { actions, onTurn, note, lastResult, lastDetail } = source
 
 function savedFilter(): ActionFilter {
   try {
@@ -64,13 +93,6 @@ const readyCount = computed(() =>
     0,
   ),
 )
-const note = computed(() =>
-  readyNote(actions.value, {
-    onTurn: onTurn.value,
-    actionsLeft: actionsLeft.value,
-    mana: mana.value,
-  }),
-)
 const byKey = computed(() => new Map(actions.value.map((a) => [a.key, a])))
 const empty = computed(() =>
   query.value.trim()
@@ -92,6 +114,16 @@ const empty = computed(() =>
     aria-labelledby="battle-actions-h"
   >
     <h2 id="battle-actions-h" class="sr-only">Actions</h2>
+    <details v-if="five" class="actions__target">
+      <summary>Target &amp; odds</summary>
+      <Dnd5eTargetAc />
+      <SheetSituation
+        chips-label="Next attack"
+        :chips="five.chips.value"
+        :steppers="[]"
+        @toggle="five.toggleMode"
+      />
+    </details>
     <BattleActionFilters v-model:filter="filter" v-model:query="query" :ready-count="readyCount" />
     <p v-if="filter === 'ready'" class="actions__note">{{ note }}</p>
     <div class="actions__list">
@@ -112,6 +144,22 @@ const empty = computed(() =>
       </section>
       <p v-if="!sections.length" class="actions__empty">{{ empty }}</p>
     </div>
+    <NimbleDiceEntry
+      v-if="five?.prompt.value"
+      :label="five.prompt.value"
+      action="Roll"
+      :disabled="!canEdit"
+      @submit="five.submitDice"
+    />
+    <button
+      v-if="five && five.healed.value > 0"
+      type="button"
+      class="btn btn--ghost btn--sm actions__heal"
+      :disabled="!canEdit"
+      @click="five.healSelf"
+    >
+      Heal yourself {{ five.healed.value }}
+    </button>
     <!-- The phone shows it in its own result bar under the tab. -->
     <p v-if="lastResult && !sheet" class="actions__result" role="status">
       <span class="actions__last" :title="lastDetail || undefined">{{ lastResult }}</span>
@@ -128,6 +176,30 @@ const empty = computed(() =>
   flex-direction: column;
   gap: 10px;
   padding: 14px;
+}
+
+.actions__target {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+
+  > summary {
+    cursor: pointer;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--page-muted);
+  }
+
+  &[open] > summary {
+    margin-bottom: 4px;
+  }
+}
+
+.actions__heal {
+  align-self: flex-start;
 }
 
 .actions__note {

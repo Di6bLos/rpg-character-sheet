@@ -60,3 +60,8 @@ export function statTop(npc: CampaignNpc | undefined, label: string): string {
   const want = label.toLowerCase()
   return npc?.stat_block.top?.find(([k]) => k.toLowerCase() === want)?.[1]?.trim() ?? ''
 }
+
+/** A stat block's armor line: Nimble's "Armor", or the "AC" / "Armor Class" of 5e and PF2e. */
+export function statArmor(npc: CampaignNpc | undefined): string {
+  return statTop(npc, 'Armor') || statTop(npc, 'AC') || statTop(npc, 'Armor Class')
+}

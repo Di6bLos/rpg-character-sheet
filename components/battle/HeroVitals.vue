@@ -11,10 +11,13 @@
 // end on their own timing. Where Nimble shows the GM mana, PF2e
 // (`gmPoints`) shows hero and focus points. PF2e damage also takes its type, From a spell and
 // Shield Block (offered while the hero's shield is raised), so the hero's resistances,
-// weaknesses and shield apply; the picker's Persistent damage sets persistent damage.
+// weaknesses and shield apply; the picker's Persistent damage sets persistent damage. 5e
+// damage takes its type too (resistance, vulnerability, immunity on the hero's sheet), and a
+// 5e hero shows Passive Perception and what they concentrate on.
 import type { HeroCard, RosterEntry } from '~/types'
 import type { HeroLive } from '~/composables/useHeroCard'
 import { sign } from '~/utils/dice'
+import { DND5E_DAMAGE_TYPES } from '~/utils/dnd5ePlay'
 import { PF2E_DAMAGE_TYPES } from '~/utils/pf2eDamage'
 import { initiativeBonus, initiativeLabel } from '~/utils/heroCardStats'
 import { conditionLabels, heroDown, hpTone } from '~/utils/roster'
@@ -123,6 +126,20 @@ const amount = ref<number | null>(null)
 const crit = ref(false)
 /** PF2e: the damage's type ('' untyped), whether a spell dealt it, and Shield Block. */
 const pf2e = computed(() => props.card.system === 'pf2e')
+const dnd5e = computed(() => props.card.system === 'dnd5e')
+/** The damage types the GM picks from: PF2e's or 5e's; none for Nimble. */
+const damageTypes = computed<readonly string[]>(() =>
+  pf2e.value ? PF2E_DAMAGE_TYPES : dnd5e.value ? DND5E_DAMAGE_TYPES : [],
+)
+/** 5e: Passive Perception (the roster's, else the card's) and the spell held in Concentration. */
+const passive = computed(() =>
+  props.card.system === 'dnd5e'
+    ? (props.entry?.summary?.passivePerception ?? props.card.passivePerception)
+    : null,
+)
+const concentration = computed(() =>
+  dnd5e.value ? (props.entry?.summary?.concentration ?? '') : '',
+)
 const dmgType = ref('')
 const fromSpell = ref(false)
 const block = ref(false)
@@ -157,7 +174,9 @@ async function adjust(sign: 1 | -1) {
   const isCrit = sign < 0 && crit.value
   const typed = pf2e.value
     ? { type: dmgType.value, spell: fromSpell.value, shieldBlock: block.value && shieldUp.value }
-    : {}
+    : dnd5e.value
+      ? { type: dmgType.value }
+      : {}
   if (!(await send(id, name, sign * n, isCrit, typed))) return
   resetDamage()
   const kind = sign < 0 && typed.type ? ` ${typed.type}` : ''
@@ -209,7 +228,7 @@ async function adjust(sign: 1 | -1) {
       </div>
       <p v-if="own" class="hc__hint">
         {{
-          features.nimbleHero
+          features.heroEditor
             ? 'Change your HP in the hero column on the left.'
             : 'Change your HP on your full sheet.'
         }}
@@ -256,13 +275,14 @@ async function adjust(sign: 1 | -1) {
           Crit
         </button>
       </div>
-      <div v-if="pf2e" class="hc__ctl hc__typed">
+      <div v-if="damageTypes.length" class="hc__ctl hc__typed">
         <label class="sr-only" :for="`${uid}-type`">Damage type</label>
         <select :id="`${uid}-type`" v-model="dmgType" class="input hc__type">
           <option value="">Untyped</option>
-          <option v-for="t in PF2E_DAMAGE_TYPES" :key="t" :value="t">{{ t }}</option>
+          <option v-for="t in damageTypes" :key="t" :value="t">{{ t }}</option>
         </select>
         <button
+          v-if="pf2e"
           type="button"
           class="btn btn--ghost btn--sm hc__toggle"
           :aria-pressed="fromSpell"
@@ -347,7 +367,14 @@ async function adjust(sign: 1 | -1) {
         <b>{{ sign(init) }}</b>
         <span>{{ initiativeLabel(card.system) }}</span>
       </div>
+      <div v-if="passive !== null" class="hc__tile">
+        <b>{{ passive }}</b>
+        <span>Passive</span>
+      </div>
     </div>
+    <p v-if="concentration" class="hc__conc">
+      Concentrating on <strong>{{ concentration }}</strong>
+    </p>
 
     <BattleConditionPicker
       v-if="controls"
@@ -573,6 +600,20 @@ async function adjust(sign: 1 | -1) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
+
+  // 5e adds Passive Perception.
+  &:has(> :nth-child(4)) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.hc__conc {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: min(var(--radius-control), 8px);
+  border: 1px solid var(--secondary);
+  background: color-mix(in srgb, var(--secondary) 12%, transparent);
+  font-size: 13px;
 }
 
 .hc__tile {

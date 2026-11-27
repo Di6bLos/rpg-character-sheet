@@ -1,0 +1,120 @@
+// The battle board's hero column (components/battle/Hero.vue, and its 5e twin
+// components/battle/dnd5e/Hero.vue): the panel, who the hero is, the stat tiles, the
+// abilities and saves grid, and the section labels.
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 14px;
+}
+
+.hero__id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hero__who {
+  min-width: 0;
+}
+
+.hero.panel .hero__name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 17px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.hero__dead {
+  font-size: 13px;
+  color: var(--page-muted);
+}
+
+.hero__sub {
+  font-size: 12px;
+  color: var(--page-muted);
+}
+
+.hero__tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.hero__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: min(var(--radius-control), 8px);
+  background: var(--inset);
+  border: 1px solid var(--line);
+
+  b {
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  span {
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--page-muted);
+  }
+}
+
+.is-changed {
+  // The readable accent (the ink variant inside a panel), pulled toward the text colour
+  // so it stays at AA on inset and tinted tiles too.
+  color: color-mix(in srgb, var(--accent-text) 60%, var(--page-text));
+}
+
+.hero__block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hero__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.hero__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 0;
+  border-radius: min(var(--radius-control), 6px);
+  background: var(--inset);
+  font-size: 11px;
+  color: var(--page-soft);
+
+  b {
+    font-size: 13px;
+    color: var(--page-text);
+  }
+
+  &--adv span {
+    color: color-mix(in srgb, var(--secondary) 70%, var(--page-text));
+    font-weight: 700;
+  }
+
+  &--dis span {
+    color: color-mix(in srgb, var(--danger) 35%, var(--page-text));
+    font-weight: 700;
+  }
+}
+
+// Section labels, shared with the Hero* parts.
+.hero :deep(.sect) {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--page-muted);
+}

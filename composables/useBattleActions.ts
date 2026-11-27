@@ -28,6 +28,18 @@ export type BattleTile = BattleAction & {
   upcast?: { at: number; max: number; set: (tier: number) => void }
   /** The attack's odds as its sheet card shows them (weapons, inventions, attack spells). */
   odds?: ActionOdds
+  /**
+   * 5e: how the spell is cast (a slot level, a Pact slot, a free cast, a ritual), the sheet's
+   * upcast select; `short` labels the tile's button ("L2").
+   */
+  castWith?: {
+    options: { key: string; label: string }[]
+    at: string
+    short: string
+    set: (key: string) => void
+  }
+  /** 5e: the odds line the sheet's card shows ("vs AC 15: 60% hit · 5% crit · Advantage"). */
+  oddsText?: string
 }
 
 /** The odds fields of a sheet attack, as the tile's `odds`. */

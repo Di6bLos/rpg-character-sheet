@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // An action's details on touch, opened by a tap on its tile (a tap never uses it): the
 // name, kind and tier line, costs, the rules text, why it is unavailable, its picks
-// (Opportunity Attack, Help) or upcast stepper, and one big button that uses it. On a
+// (Opportunity Attack, Help) or upcast stepper (a 5e spell: how to cast it), and one big
+// button that uses it. A 5e tile shows its cost ("Bonus Action") and its odds line. On a
 // phone it is a bottom sheet (UiDialog, closed by Escape, the backdrop or a swipe down);
 // elsewhere a popover under the tile. Using the action closes it. The tile is read live,
 // so an action that becomes unavailable while open disables the button.
@@ -19,13 +20,15 @@ const open = defineModel<boolean>({ required: true })
 const a = computed(() => props.action)
 const button = computed(() => tileButton(a.value))
 const sub = computed(() => tileSub(a.value))
-const odds = computed(() => oddsLine(a.value.odds))
+const odds = computed(() => a.value.oddsText ?? oddsLine(a.value.odds))
 const facts = computed(() =>
   [
     a.value.dice ? { value: a.value.dice, label: 'Damage' } : null,
-    a.value.actions === 0
-      ? { value: 'No action', label: 'Cost' }
-      : { value: String(a.value.actions), label: a.value.actions === 1 ? 'Action' : 'Actions' },
+    a.value.cost
+      ? { value: a.value.cost, label: 'Cost' }
+      : a.value.actions === 0
+        ? { value: 'No action', label: 'Cost' }
+        : { value: String(a.value.actions), label: a.value.actions === 1 ? 'Action' : 'Actions' },
     a.value.mana ? { value: String(a.value.mana), label: 'Mana' } : null,
   ].filter((f) => f !== null),
 )
@@ -106,8 +109,15 @@ const swipe = computed(() =>
         </button>
       </div>
       <template v-else>
+        <BattleCastWith
+          v-if="a.castWith && a.castWith.options.length > 1"
+          class="det__upcast"
+          :name="a.name"
+          :cast-with="a.castWith"
+          :disabled="readonly"
+        />
         <NimbleUpcast
-          v-if="a.upcast"
+          v-else-if="a.upcast"
           class="det__upcast"
           :name="a.name"
           :tier="a.tier ?? 0"
@@ -126,7 +136,9 @@ const swipe = computed(() =>
           {{ button.label }}
         </button>
       </template>
-      <p v-if="odds" class="det__odds" :class="{ 'det__odds--adv': !a.odds?.rushed }">{{ odds }}</p>
+      <p v-if="odds" class="det__odds" :class="{ 'det__odds--adv': a.odds && !a.odds.rushed }">
+        {{ odds }}
+      </p>
       <p class="det__note">Posts to party chat</p>
     </div>
   </component>

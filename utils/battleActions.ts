@@ -1,12 +1,12 @@
 /**
- * Availability and grouping of the actions on the desktop battle board. Pure presentation:
- * rolls, costs and triggers stay in the Nimble composables; `unavailable` only explains why
+ * Availability and grouping of the actions on the battle board. Pure presentation: rolls,
+ * costs and triggers stay in the Nimble and 5e composables; `unavailable` only explains why
  * something is greyed out, and the sheet and the board share the same rule.
  */
 import { oddsLabel } from './nimbleConditions'
 
 export type ActionGroup = 'attack' | 'support' | 'react'
-export type ActionKind = 'weapon' | 'spell' | 'ability' | 'reaction' | 'summon'
+export type ActionKind = 'weapon' | 'spell' | 'ability' | 'reaction' | 'summon' | 'core'
 export type ActionFilter = 'ready' | 'all' | 'attack' | 'spell' | 'react' | 'ability'
 
 export interface BattleAction {
@@ -21,6 +21,10 @@ export interface BattleAction {
   detail: string
   desc: string
   school: string | null
+  /** 5e: what it takes ("Action", "Bonus Action", "Reaction"), shown in place of pips and mana. */
+  cost?: string
+  /** 5e: the spell level's name ("Cantrip", "2nd level"), in place of "Tier N". */
+  tierLabel?: string
   /** Usable while it isn't your turn (reactions, paid off-turn casts). */
   offTurn: boolean
   /** Why it can't be used right now; '' when it can. */
@@ -111,14 +115,21 @@ function matches(filter: ActionFilter, a: BattleAction): boolean {
     case 'react':
       return a.group === 'react'
     case 'ability':
-      return a.kind === 'ability' || a.kind === 'summon'
+      return a.kind === 'ability' || a.kind === 'summon' || a.kind === 'core'
     default:
       return true
   }
 }
 
+/** A spell level's section title: "Cantrips", "Tier 2", or the tile's own ("2nd level"). */
+function tierTitle(t: number, spells: BattleAction[]): string {
+  if (t === 0) return 'Cantrips'
+  return spells.find((a) => (a.tier ?? 0) === t)?.tierLabel ?? `Tier ${t}`
+}
+
 /**
- * Group the actions into the board's sections; empty sections are left out. `keep` is the
+ * Group the actions into the board's sections; empty sections are left out. The 5e core
+ * actions (Dash, Dodge…) get a section of their own after Boost & support. `keep` is the
  * tile whose details are open: it stays in Ready now even when it stops being usable (an
  * upcast past the hero's mana), so its details don't vanish under the finger.
  */
@@ -146,7 +157,11 @@ export function sectionsFor(
           ),
           section(
             'Boost & support',
-            open.filter((a) => a.group === 'support'),
+            open.filter((a) => a.group === 'support' && a.kind !== 'core'),
+          ),
+          section(
+            'Core actions',
+            open.filter((a) => a.kind === 'core'),
           ),
           section(
             'Reactions',
@@ -181,12 +196,16 @@ export function sectionsFor(
         shown.filter((a) => a.kind === 'ability' || a.kind === 'summon'),
       ),
       section(
+        'Core actions',
+        shown.filter((a) => a.kind === 'core'),
+      ),
+      section(
         'Reactions',
         shown.filter((a) => a.group === 'react'),
       ),
       ...tiers.map((t) =>
         section(
-          t === 0 ? 'Cantrips' : `Tier ${t}`,
+          tierTitle(t, spells),
           spells.filter((a) => (a.tier ?? 0) === t),
         ),
       ),
@@ -208,12 +227,42 @@ export function readyNote(
   return parts.join(' · ')
 }
 
+/**
+ * The 5e line under Ready now: the action, Bonus Action and Reaction left and the movement, or
+ * what's open off your turn.
+ */
+export function dnd5eReadyNote(
+  list: BattleAction[],
+  ctx: {
+    onTurn: boolean
+    actions: number
+    bonus: boolean
+    reaction: boolean
+    movement: { used: number; max: number } | null
+  },
+): string {
+  const reaction = ctx.reaction ? 'Reaction ready' : 'Reaction used'
+  if (!ctx.onTurn) return `Not your turn · ${reaction} · only reactions and free options`
+  const hidden = list.filter((a) => a.unavailable !== '').length
+  const parts = [
+    ctx.actions > 0
+      ? `${ctx.actions} ${ctx.actions === 1 ? 'action' : 'actions'} left`
+      : 'Action used',
+    ctx.bonus ? 'Bonus Action ready' : 'Bonus Action used',
+    reaction,
+  ]
+  if (ctx.movement) parts.push(`${Math.max(0, ctx.movement.max - ctx.movement.used)} ft to move`)
+  if (hidden > 0) parts.push(`hiding ${hidden} you can't use now`)
+  return parts.join(' · ')
+}
+
 const VERB: Record<ActionKind, string> = {
   spell: 'Cast',
   weapon: 'Attack with',
   reaction: 'React:',
   summon: 'Command',
   ability: 'Use',
+  core: 'Take',
 }
 
 /**
@@ -235,12 +284,13 @@ const KIND: Record<ActionKind, string> = {
   ability: 'Ability',
   reaction: 'Reaction',
   summon: 'Summon',
+  core: 'Core action',
 }
 
-/** A tile's second line: the kind (or a spell's tier), school and one detail. */
+/** A tile's second line: the kind (or a spell's tier or level), school and one detail. */
 export function tileSub(a: BattleAction): string {
   const t = a.tier
-  const spell = t === null ? '' : t === 0 ? 'Cantrip' : `Tier ${t}`
+  const spell = t === null ? '' : t === 0 ? 'Cantrip' : (a.tierLabel ?? `Tier ${t}`)
   return [a.kind === 'spell' ? spell : KIND[a.kind], a.school, a.detail].filter(Boolean).join(' · ')
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   castReason,
+  dnd5eReadyNote,
   oddsLine,
   guarded,
   reactionReason,
@@ -13,6 +14,8 @@ import {
   type BattleAction,
 } from '../utils/battleActions'
 import { counterCost, usableOffTurn } from '../utils/nimblePlay'
+import { beginEncounter, costWhy, setInitiative, startTurn } from '../utils/dnd5ePlay'
+import { build } from './helpers/dnd5e'
 
 function act(patch: Partial<BattleAction> = {}): BattleAction {
   return {
@@ -288,5 +291,102 @@ describe('oddsLine', () => {
   it('even odds or none say nothing', () => {
     expect(oddsLine({ rushed: 0, advantage: 0, why: 'Rushed, Invisible' })).toBe('')
     expect(oddsLine(undefined)).toBe('')
+  })
+})
+
+describe('5e tiles', () => {
+  // A 5e hero's tiles carry the cost the sheet shows and the reason its button gives.
+  const fives = [
+    act({ name: 'Longsword', kind: 'weapon', group: 'attack', cost: 'Attack action' }),
+    act({
+      name: 'Fire Bolt',
+      kind: 'spell',
+      group: 'attack',
+      tier: 0,
+      tierLabel: 'Cantrip',
+      cost: 'Magic action',
+    }),
+    act({
+      name: 'Magic Missile',
+      kind: 'spell',
+      group: 'support',
+      tier: 1,
+      tierLabel: '1st level',
+      cost: 'Magic action',
+    }),
+    act({ name: 'Second Wind', kind: 'ability', group: 'support', cost: 'Bonus Action' }),
+    act({ name: 'Dash', kind: 'core', group: 'support', cost: 'Action' }),
+    act({ name: 'Opportunity Attack', kind: 'reaction', group: 'react', cost: 'Reaction' }),
+  ]
+
+  it('gives the core actions a section of their own, after Boost & support', () => {
+    expect(sectionsFor(fives, 'ready', '', true).map((x) => x.title)).toEqual([
+      'Attack',
+      'Boost & support',
+      'Core actions',
+      'Reactions',
+    ])
+    expect(sectionsFor(fives, 'all', '', true).map((x) => x.title)).toEqual([
+      'Weapons',
+      'Class abilities',
+      'Core actions',
+      'Reactions',
+      'Cantrips',
+      '1st level',
+    ])
+    expect(
+      sectionsFor(fives, 'ability', '', true)
+        .flatMap((x) => x.actions)
+        .map((a) => a.name),
+    ).toEqual(['Second Wind', 'Dash'])
+  })
+
+  it('names a spell by its level and a core action by its verb', () => {
+    expect(
+      tileSub(act({ kind: 'spell', tier: 2, tierLabel: '2nd level', school: 'Evocation' })),
+    ).toBe('2nd level · Evocation')
+    expect(tileSub(act({ kind: 'core', detail: '' }))).toBe('Core action')
+    expect(tileButton(tile({ kind: 'core', name: 'Dash' })).label).toBe('Take Dash')
+  })
+
+  it("off the hero's turn, Ready now keeps reactions and drops attacks, with the sheet's reasons", () => {
+    const { sheet } = build('fighter')
+    beginEncounter(sheet)
+    setInitiative(sheet, 12)
+    const tiles = [
+      act({ name: 'Longsword', kind: 'weapon', unavailable: costWhy(sheet, 'attack') }),
+      act({ name: 'Dash', kind: 'core', group: 'support', unavailable: costWhy(sheet, 'action') }),
+      act({
+        name: 'Opportunity Attack',
+        kind: 'reaction',
+        group: 'react',
+        offTurn: true,
+        unavailable: costWhy(sheet, 'reaction'),
+      }),
+    ]
+    expect(tiles[0]!.unavailable).toBe('Not your turn')
+    const off = sectionsFor(tiles, 'ready', '', false).flatMap((x) => x.actions)
+    expect(off.map((a) => a.name)).toEqual(['Opportunity Attack'])
+    startTurn(sheet)
+    expect(costWhy(sheet, 'attack')).toBe('')
+  })
+
+  it('sums up the action, Bonus Action, Reaction and movement under Ready now', () => {
+    const turn = { actions: 1, bonus: true, reaction: true, movement: { used: 10, max: 30 } }
+    expect(dnd5eReadyNote(fives, { onTurn: true, ...turn })).toBe(
+      '1 action left · Bonus Action ready · Reaction ready · 20 ft to move',
+    )
+    expect(
+      dnd5eReadyNote([act({ unavailable: 'No action left' })], {
+        onTurn: true,
+        ...turn,
+        actions: 0,
+        bonus: false,
+        movement: null,
+      }),
+    ).toBe("Action used · Bonus Action used · Reaction ready · hiding 1 you can't use now")
+    expect(dnd5eReadyNote(fives, { onTurn: false, ...turn, reaction: false })).toBe(
+      'Not your turn · Reaction used · only reactions and free options',
+    )
   })
 })

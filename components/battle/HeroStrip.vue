@@ -1,53 +1,99 @@
 <script setup lang="ts">
 // The phone board's strip with the player's hero, on every tab but Hero: portrait (the
 // dead portrait once dead), name, an HP bar with temp HP, the first two conditions,
-// and Armor and mana (or the class resource). A tap goes to the Hero tab.
-import type { NimbleSheet } from '~/types/sheets'
+// and Armor and mana (or the class resource); a 5e hero's AC and spell slots (or Speed). A
+// tap goes to the Hero tab.
+import type { ComputedRef } from 'vue'
+import type { AnySheet, Dnd5eSheet, NimbleSheet } from '~/types/sheets'
+import { exhaustionOf } from '~/utils/dnd5eConditions'
+import { acNow, isDead as dnd5eDead, speedNow } from '~/utils/dnd5ePlay'
+import { slotsLeft } from '~/utils/dnd5eSpells'
 import { armorNow } from '~/utils/nimblePlay'
 import { hpClass } from '~/utils/roster'
 
 const emit = defineEmits<{ 'go-hero': [] }>()
 
-const { draft, portrait } = useSheet<NimbleSheet>()
+const { draft, portrait } = useSheet<AnySheet>()
 const sheet = computed(() => draft.value.sheet)
-const { dead } = useNimbleVitals()
-const { active, statuses } = useNimbleConditions()
+
+interface Strip {
+  dead: ComputedRef<boolean>
+  /** The first two conditions and statuses, in the Hero tab's tones. */
+  chips: ComputedRef<{ name: string; tone: string }[]>
+  more: ComputedRef<number>
+  armor: ComputedRef<{ label: string; value: number }>
+  tile: ComputedRef<{ label: string; value: string; mana: boolean } | null>
+}
+
+/**
+ * Nimble: conditions in the Hero tab's tones (HeroConditions): automatic ones plain, set
+ * conditions `set`, spell and ability statuses `status`; Armor with spell statuses
+ * (Electrocharge, Dragonform), as the hero column shows it; mana when the hero has any, else
+ * the class resource's count (Fury Dice, charges…).
+ */
+function nimbleStrip(): Strip {
+  const nimble = sheet as ComputedRef<NimbleSheet>
+  const { dead } = useNimbleVitals()
+  const { active, statuses } = useNimbleConditions()
+  const { hasMana, resource, resourceShort } = useNimbleResource()
+  return {
+    dead,
+    chips: computed(() =>
+      [
+        ...active.value
+          .filter((c) => !c.fromEffect)
+          .map((c) => ({ name: c.name, tone: c.automatic ? '' : 'set' })),
+        ...statuses.value.map((s) => ({ name: s.label, tone: 'status' })),
+      ].slice(0, 2),
+    ),
+    more: computed(
+      () => active.value.filter((c) => !c.fromEffect).length + statuses.value.length - 2,
+    ),
+    armor: computed(() => ({
+      label: 'Armor',
+      value: armorNow(nimble.value, draft.value.level).value,
+    })),
+    tile: computed(() => {
+      const m = nimble.value.mana
+      if (hasMana.value) return { label: 'Mana', value: String(m.current + m.temp), mana: true }
+      return resource.value
+        ? { label: resource.value.name, value: resourceShort.value, mana: false }
+        : null
+    }),
+  }
+}
+
+/** 5e: conditions (Exhaustion with its level) and effects, AC now, spell slots left (casters) or Speed. */
+function dnd5eStrip(): Strip {
+  const five = sheet as ComputedRef<Dnd5eSheet>
+  const all = computed(() => [
+    ...five.value.conditions.map((c) => ({
+      name: c === 'Exhaustion' ? `Exhaustion ${exhaustionOf(five.value)}` : c,
+      tone: 'set',
+    })),
+    ...(five.value.effects ?? []).map((e) => ({ name: e.name, tone: 'status' })),
+  ])
+  return {
+    dead: computed(() => dnd5eDead(five.value)),
+    chips: computed(() => all.value.slice(0, 2)),
+    more: computed(() => all.value.length - 2),
+    armor: computed(() => ({ label: 'AC', value: acNow(five.value, draft.value.level).value })),
+    tile: computed(() => {
+      const slots = slotsLeft(five.value).reduce((n, x) => n + x, 0)
+      if (five.value.castingStats) return { label: 'Slots', value: String(slots), mana: true }
+      return { label: 'Speed', value: String(speedNow(five.value).value), mana: false }
+    }),
+  }
+}
+
+const { dead, chips, more, armor, tile } =
+  draft.value.system === 'dnd5e' ? dnd5eStrip() : nimbleStrip()
 
 const hpMax = computed(() => Math.max(1, sheet.value.hpMax))
 const hpPct = computed(() => Math.min(100, Math.max(0, (sheet.value.hp / hpMax.value) * 100)))
 const tempPct = computed(() =>
-  Math.min(100 - hpPct.value, Math.max(0, (sheet.value.tempHp / hpMax.value) * 100)),
+  Math.min(100 - hpPct.value, Math.max(0, ((sheet.value.tempHp ?? 0) / hpMax.value) * 100)),
 )
-
-/**
- * The first two of the hero's conditions and statuses, in the Hero tab's tones
- * (HeroConditions): automatic ones plain, set conditions `set`, spell and ability statuses
- * `status`.
- */
-const chips = computed(() =>
-  [
-    ...active.value
-      .filter((c) => !c.fromEffect)
-      .map((c) => ({ name: c.name, tone: c.automatic ? '' : 'set' })),
-    ...statuses.value.map((s) => ({ name: s.label, tone: 'status' })),
-  ].slice(0, 2),
-)
-const more = computed(
-  () => active.value.filter((c) => !c.fromEffect).length + statuses.value.length - 2,
-)
-
-/** Armor with spell statuses (Electrocharge, Dragonform), as the hero column shows it. */
-const armor = computed(() => armorNow(sheet.value, draft.value.level).value)
-
-/** Mana when the hero has any, else the class resource's count (Fury Dice, charges…). */
-const { hasMana, resource, resourceShort } = useNimbleResource()
-const tile = computed<{ label: string; value: string; mana: boolean } | null>(() => {
-  const m = sheet.value.mana
-  if (hasMana.value) return { label: 'Mana', value: String(m.current + m.temp), mana: true }
-  return resource.value
-    ? { label: resource.value.name, value: resourceShort.value, mana: false }
-    : null
-})
 
 const label = computed(
   () =>
@@ -55,7 +101,7 @@ const label = computed(
       draft.value.name,
       dead.value ? 'dead' : `${sheet.value.hp} of ${sheet.value.hpMax} HP`,
       sheet.value.tempHp ? `${sheet.value.tempHp} temp HP` : '',
-      `Armor ${armor.value}`,
+      `${armor.value.label} ${armor.value.value}`,
       tile.value ? `${tile.value.label} ${tile.value.value}` : '',
       chips.value.map((c) => c.name).join(', '),
     ]
@@ -109,8 +155,8 @@ const label = computed(
     </span>
     <span class="hs__stats" aria-hidden="true">
       <span class="hs__mini">
-        <b>{{ armor }}</b>
-        <span>Armor</span>
+        <b>{{ armor.value }}</b>
+        <span>{{ armor.label }}</span>
       </span>
       <span v-if="tile" class="hs__mini" :class="{ 'hs__mini--mana': tile.mana }">
         <b>{{ tile.value }}</b>
