@@ -6,7 +6,8 @@
 // ◆ Expertise; a hand-made sheet taps it to change), what the skill is for, the value with its
 // breakdown (ability, proficiency, Exhaustion, conditions, Bless…) and Roll. With Manual dice
 // Roll asks for the d20. Under the result, what can still change it (Dnd5eAfterRoll: Heroic
-// Inspiration, Indomitable, Portent…); above, a Luck Point for Advantage on the next one.
+// Inspiration, Indomitable, Portent…); above, a Luck Point for Advantage on the next one. On a
+// phone the panel starts folded until the reader opens it.
 import type { Dnd5eSheet } from '~/types/sheets'
 import { showOutcome, sign } from '~/utils/dice'
 import { isBuiltDnd5e } from '~/utils/dnd5eLevelUp'
@@ -23,6 +24,7 @@ import {
 const { draft, canEdit, say } = useSheet<Dnd5eSheet>()
 const { claim, resultIn } = useResultOwner()
 const { lastRoll } = useDnd5eSheet()
+const { layout } = useBoardLayout()
 const sheet = computed(() => draft.value.sheet)
 const level = computed(() => draft.value.level)
 const ownDice = computed(() => !!sheet.value.ownDice)
@@ -104,7 +106,7 @@ function cycle(r: Dnd5eSkillRow) {
 
 <template>
   <section class="panel stack" style="gap: 6px" aria-labelledby="sk-h">
-    <UiFold name="Skills" />
+    <UiFold name="Skills" :start-folded="layout === 'phone'" />
     <div class="title-help" style="margin: 0 0 6px">
       <h2 id="sk-h">Skills</h2>
       <UiHelp

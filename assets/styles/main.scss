@@ -862,6 +862,14 @@ select.input {
   }
 }
 
+@media (hover: none) and (pointer: coarse) {
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 22px;
+    height: 22px;
+  }
+}
+
 // While a battle board splitter is dragged: keep its cursor everywhere and don't select text.
 .is-resizing,
 .is-resizing * {

@@ -5,6 +5,7 @@
 // from, its cost and uses, its dice and save, and its text (SRD text or Lantern's summary).
 // Using them is in Actions, Reactions and Attacks; the proficiencies close the panel. Each card is
 // a one-line row (name, where it's from, cost and uses) that opens across the grid to its text.
+// The cards of a row share its width, so a group's last row never leaves one card beside gaps.
 import type { Dnd5eSheet } from '~/types/sheets'
 import type { Dnd5eEntry } from '~/utils/dnd5eFeatures'
 import { COST_LABEL, usesLeft } from '~/utils/dnd5ePlay'
@@ -127,12 +128,20 @@ const profs = computed(() => {
   color: var(--accent-text);
 }
 
+.abilities {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
 .ability {
+  flex: 1 1 min(340px, 100%);
+  min-width: 0;
   padding: 0;
   gap: 6px;
 
   &[open] {
-    grid-column: 1 / -1;
+    flex-basis: 100%;
     border-color: var(--accent);
   }
 
