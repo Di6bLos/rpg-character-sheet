@@ -62,6 +62,7 @@
         "Feat · Ranger 2: Archery"
       ],
       "picks": [
+        "L2:class class×1?",
         "L2:deft-explorer:0 expertise×1",
         "L2:deft-explorer:1 language×2",
         "L2:fighting-style:0 option×1",
@@ -104,6 +105,7 @@
         "Hunter: Hunter’s Prey: Colossus Slayer"
       ],
       "picks": [
+        "L3:class class×1?",
         "L3:subclass subclass×1",
         "L3:hunter:hunters-prey:0 option×1",
         "L3:spells:prepared spell×1",
@@ -142,6 +144,7 @@
         "Feat · Ranger 4: Ability Score Improvement"
       ],
       "picks": [
+        "L4:class class×1?",
         "L4:asi feat×1",
         "L4:asi>asi asi×2",
         "L4:spells:prepared spell×1",
@@ -180,6 +183,7 @@
         "Ranger 5: Extra Attack"
       ],
       "picks": [
+        "L5:class class×1?",
         "L5:spells:prepared spell×1",
         "L5:swap:prepared-spell:out swapOut×1?",
         "L5:swap:mastery:out swapOut×1?"
@@ -216,6 +220,7 @@
         "Ranger 6: Roving"
       ],
       "picks": [
+        "L6:class class×1?",
         "L6:swap:prepared-spell:out swapOut×1?",
         "L6:swap:mastery:out swapOut×1?"
       ],
@@ -252,6 +257,7 @@
         "Hunter: Defensive Tactics: Escape the Horde"
       ],
       "picks": [
+        "L7:class class×1?",
         "L7:hunter:defensive-tactics:0 option×1",
         "L7:spells:prepared spell×1",
         "L7:swap:prepared-spell:out swapOut×1?",
@@ -289,6 +295,7 @@
         "Feat · Ranger 8: Ability Score Improvement"
       ],
       "picks": [
+        "L8:class class×1?",
         "L8:asi feat×1",
         "L8:asi>asi asi×2",
         "L8:swap:prepared-spell:out swapOut×1?",
@@ -326,6 +333,7 @@
         "Ranger 9: Expertise"
       ],
       "picks": [
+        "L9:class class×1?",
         "L9:expertise:0 expertise×2",
         "L9:spells:prepared spell×2",
         "L9:swap:prepared-spell:out swapOut×1?",
@@ -363,6 +371,7 @@
         "Ranger 10: Tireless"
       ],
       "picks": [
+        "L10:class class×1?",
         "L10:swap:prepared-spell:out swapOut×1?",
         "L10:swap:mastery:out swapOut×1?"
       ],
@@ -399,6 +408,7 @@
         "Hunter 11: Superior Hunter’s Prey"
       ],
       "picks": [
+        "L11:class class×1?",
         "L11:spells:prepared spell×1",
         "L11:swap:prepared-spell:out swapOut×1?",
         "L11:swap:mastery:out swapOut×1?"
@@ -436,6 +446,7 @@
         "Feat · Ranger 12: Ability Score Improvement"
       ],
       "picks": [
+        "L12:class class×1?",
         "L12:asi feat×1",
         "L12:asi>asi asi×2",
         "L12:swap:prepared-spell:out swapOut×1?",
@@ -474,6 +485,7 @@
         "Ranger 13: Relentless Hunter"
       ],
       "picks": [
+        "L13:class class×1?",
         "L13:spells:prepared spell×1",
         "L13:swap:prepared-spell:out swapOut×1?",
         "L13:swap:mastery:out swapOut×1?"
@@ -511,6 +523,7 @@
         "Ranger 14: Nature’s Veil"
       ],
       "picks": [
+        "L14:class class×1?",
         "L14:swap:prepared-spell:out swapOut×1?",
         "L14:swap:mastery:out swapOut×1?"
       ],
@@ -548,6 +561,7 @@
         "Hunter 15: Superior Hunter’s Defense"
       ],
       "picks": [
+        "L15:class class×1?",
         "L15:spells:prepared spell×1",
         "L15:swap:prepared-spell:out swapOut×1?",
         "L15:swap:mastery:out swapOut×1?"
@@ -586,6 +600,7 @@
         "Feat · Ranger 16: Ability Score Improvement"
       ],
       "picks": [
+        "L16:class class×1?",
         "L16:asi feat×1",
         "L16:asi>asi asi×2",
         "L16:swap:prepared-spell:out swapOut×1?",
@@ -625,6 +640,7 @@
         "Ranger 17: Precise Hunter"
       ],
       "picks": [
+        "L17:class class×1?",
         "L17:spells:prepared spell×2",
         "L17:swap:prepared-spell:out swapOut×1?",
         "L17:swap:mastery:out swapOut×1?"
@@ -663,6 +679,7 @@
         "Ranger 18: Feral Senses"
       ],
       "picks": [
+        "L18:class class×1?",
         "L18:swap:prepared-spell:out swapOut×1?",
         "L18:swap:mastery:out swapOut×1?"
       ],
@@ -700,6 +717,7 @@
         "Feat · Ranger 19: Ability Score Improvement"
       ],
       "picks": [
+        "L19:class class×1?",
         "L19:boon feat×1",
         "L19:boon>asi asi×2",
         "L19:spells:prepared spell×1",
@@ -740,6 +758,7 @@
         "Ranger 20: Foe Slayer"
       ],
       "picks": [
+        "L20:class class×1?",
         "L20:swap:prepared-spell:out swapOut×1?",
         "L20:swap:mastery:out swapOut×1?"
       ],

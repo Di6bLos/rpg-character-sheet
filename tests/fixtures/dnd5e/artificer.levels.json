@@ -63,6 +63,7 @@
         "Magic Item Plans: Common Magic Item"
       ],
       "picks": [
+        "L2:class class×1?",
         "L2:replicate-magic-item:0 option×4",
         "L2:spells:prepared spell×1",
         "L2:swap:cantrip:out swapOut×1?",
@@ -104,6 +105,7 @@
         "Alchemist 3: Experimental Elixir"
       ],
       "picks": [
+        "L3:class class×1?",
         "L3:subclass subclass×1",
         "L3:alchemist:tools-of-the-trade>dup-alchemists-supplies tool×1",
         "L3:spells:prepared spell×1",
@@ -144,6 +146,7 @@
         "Feat · Artificer 4: Ability Score Improvement"
       ],
       "picks": [
+        "L4:class class×1?",
         "L4:asi feat×1",
         "L4:asi>asi asi×2",
         "L4:spells:prepared spell×1",
@@ -184,6 +187,7 @@
         "Alchemist 5: Alchemical Savant"
       ],
       "picks": [
+        "L5:class class×1?",
         "L5:spells:prepared spell×1",
         "L5:swap:cantrip:out swapOut×1?",
         "L5:swap:prepared-spell:out swapOut×1?",
@@ -222,6 +226,7 @@
         "Artificer 6: Magic Item Tinker"
       ],
       "picks": [
+        "L6:class class×1?",
         "L6:replicate-magic-item:0 option×1",
         "L6:swap:cantrip:out swapOut×1?",
         "L6:swap:prepared-spell:out swapOut×1?",
@@ -262,6 +267,7 @@
         "Artificer 7: Flash of Genius"
       ],
       "picks": [
+        "L7:class class×1?",
         "L7:spells:prepared spell×1",
         "L7:swap:cantrip:out swapOut×1?",
         "L7:swap:prepared-spell:out swapOut×1?",
@@ -303,6 +309,7 @@
         "Feat · Artificer 8: Ability Score Improvement"
       ],
       "picks": [
+        "L8:class class×1?",
         "L8:asi feat×1",
         "L8:asi>asi asi×2",
         "L8:swap:cantrip:out swapOut×1?",
@@ -345,6 +352,7 @@
         "Alchemist 9: Restorative Reagents"
       ],
       "picks": [
+        "L9:class class×1?",
         "L9:spells:prepared spell×2",
         "L9:swap:cantrip:out swapOut×1?",
         "L9:swap:prepared-spell:out swapOut×1?",
@@ -386,6 +394,7 @@
         "Artificer 10: Magic Item Adept"
       ],
       "picks": [
+        "L10:class class×1?",
         "L10:replicate-magic-item:0 option×1",
         "L10:spells:cantrips cantrip×1",
         "L10:swap:cantrip:out swapOut×1?",
@@ -428,6 +437,7 @@
         "Artificer 11: Spell-Storing Item"
       ],
       "picks": [
+        "L11:class class×1?",
         "L11:spells:prepared spell×1",
         "L11:swap:cantrip:out swapOut×1?",
         "L11:swap:prepared-spell:out swapOut×1?",
@@ -469,6 +479,7 @@
         "Feat · Artificer 12: Ability Score Improvement"
       ],
       "picks": [
+        "L12:class class×1?",
         "L12:asi feat×1",
         "L12:asi>asi asi×2",
         "L12:swap:cantrip:out swapOut×1?",
@@ -509,6 +520,7 @@
       "level": 13,
       "features": [],
       "picks": [
+        "L13:class class×1?",
         "L13:spells:prepared spell×1",
         "L13:swap:cantrip:out swapOut×1?",
         "L13:swap:prepared-spell:out swapOut×1?",
@@ -550,6 +562,7 @@
         "Artificer 14: Advanced Artifice"
       ],
       "picks": [
+        "L14:class class×1?",
         "L14:replicate-magic-item:0 option×1",
         "L14:spells:cantrips cantrip×1",
         "L14:swap:cantrip:out swapOut×1?",
@@ -592,6 +605,7 @@
         "Alchemist 15: Chemical Mastery"
       ],
       "picks": [
+        "L15:class class×1?",
         "L15:spells:prepared spell×1",
         "L15:swap:cantrip:out swapOut×1?",
         "L15:swap:prepared-spell:out swapOut×1?",
@@ -633,6 +647,7 @@
         "Feat · Artificer 16: Ability Score Improvement"
       ],
       "picks": [
+        "L16:class class×1?",
         "L16:asi feat×1",
         "L16:asi>asi asi×2",
         "L16:swap:cantrip:out swapOut×1?",
@@ -673,6 +688,7 @@
       "level": 17,
       "features": [],
       "picks": [
+        "L17:class class×1?",
         "L17:spells:prepared spell×2",
         "L17:swap:cantrip:out swapOut×1?",
         "L17:swap:prepared-spell:out swapOut×1?",
@@ -714,6 +730,7 @@
         "Artificer 18: Magic Item Master"
       ],
       "picks": [
+        "L18:class class×1?",
         "L18:replicate-magic-item:0 option×1",
         "L18:swap:cantrip:out swapOut×1?",
         "L18:swap:prepared-spell:out swapOut×1?",
@@ -755,6 +772,7 @@
         "Feat · Artificer 19: Ability Score Improvement"
       ],
       "picks": [
+        "L19:class class×1?",
         "L19:boon feat×1",
         "L19:boon>asi asi×2",
         "L19:spells:prepared spell×1",
@@ -798,6 +816,7 @@
         "Artificer 20: Soul of Artifice"
       ],
       "picks": [
+        "L20:class class×1?",
         "L20:swap:cantrip:out swapOut×1?",
         "L20:swap:prepared-spell:out swapOut×1?",
         "L20:swap:plans:out swapOut×1?"

@@ -9,6 +9,8 @@ import {
   CUSTOM_BACKGROUND,
   bonusProblem,
   buildDnd5eSheet,
+  coinsText,
+  cpToCoins,
   clashPicks,
   customGearOptions,
   customProblem,
@@ -29,7 +31,7 @@ import {
   dnd5eLevelProblems,
   levelHpGain,
 } from '../utils/dnd5eLevelUp'
-import { canRestore, restoreLevel } from '../utils/levelHistory'
+import { canRestore, restoreBuild, restoreLevel } from '../utils/levelHistory'
 import { abilityMod } from '../utils/dice'
 import { build, cls, creation, data, fill, levelTo } from './helpers/dnd5e'
 
@@ -249,6 +251,15 @@ describe('5e level 1', () => {
       .reduce((n, g) => n + g.cost, 0)
     expect(sheet.inventory.map((i) => i.name)).toEqual(expect.arrayContaining(['Rope', 'Lamp']))
     expect(sheet.coins!.gp).toBe(4 + Math.floor((5000 - spent) / 100))
+    // Unspent silver and copper stay as coins (SRD 5.2.1 p. 89).
+    const left = 5000 - spent
+    expect(sheet.coins).toEqual({
+      cp: left % 10,
+      sp: Math.floor((left % 100) / 10),
+      ep: 0,
+      gp: 4 + Math.floor(left / 100),
+      pp: 0,
+    })
     // Level-ups and undo replay it from the sheet's creation and picks.
     levelTo(sheet, 1, 4)
     restoreLevel(sheet, 3)
@@ -657,5 +668,89 @@ describe('5e: the later 2024 books', () => {
     }
     expect(pool('oath-of-the-ebon-blade')).toContain('frostscythe')
     expect(pool('oath-of-devotion')).not.toContain('frostscythe')
+  })
+})
+
+describe('5e: Fighting Style swaps, Magic Initiate, coins, redoing level 1', () => {
+  it('a Fighter may replace its Fighting Style feat on a Fighter level (SRD 5.2.1 p. 47)', () => {
+    const sheet = build('fighter').sheet
+    const style = sheet.featsTaken!.find(
+      (f) => data.feats.find((x) => x.slug === f.slug)?.category === 'fighting-style',
+    )!
+    const plan = dnd5eLevelPlan(sheet, 2, data)!
+    const swap = plan.picks.find((p) => p.key === 'L2:swap:fighting-style')!
+    expect(swap.optional).toBe(true)
+    expect(swap.options.find((o) => o.id === style.slug)?.disabled).toBe('Already taken')
+    const picks = fill((p) => dnd5eLevelPlan(sheet, 2, data, p)!.picks, prefer('fighter'), {
+      'L2:swap:fighting-style': ['blind-fighting'],
+    })
+    const at2 = dnd5eLevelPlan(sheet, 2, data, picks)!
+    expect(dnd5eLevelProblems(at2, { hpRoll: 6, picks })).toEqual([])
+    applyDnd5eLevel(sheet, 2, { hpRoll: 6, picks }, data)
+    const feats = sheet.featsTaken!.map((f) => f.slug)
+    expect(feats).toContain('blind-fighting')
+    expect(feats).not.toContain(style.slug)
+    expect(sheet.features.some((f) => f.name === style.name)).toBe(false)
+    expect(sheet.senses).toEqual(expect.arrayContaining([{ name: 'Blindsight', range: 10 }]))
+    // The next Fighter level can swap again, and the sense goes with the feat.
+    const back = fill((p) => dnd5eLevelPlan(sheet, 3, data, p)!.picks, prefer('fighter'), {
+      'L3:swap:fighting-style': ['defense'],
+    })
+    applyDnd5eLevel(sheet, 3, { hpRoll: 6, picks: back }, data)
+    expect(sheet.featsTaken!.map((f) => f.slug)).toContain('defense')
+    expect(sheet.senses?.some((x) => x.name === 'Blindsight')).toBe(false)
+    // Paladins and Rangers keep theirs: only the Fighter's text allows it.
+    const pal = levelTo(build('paladin').sheet, 1, 2)
+    expect(dnd5eLevelPlan(pal, 3, data)!.picks.some((p) => p.key.includes('fighting-style'))).toBe(
+      false,
+    )
+  })
+
+  it('Magic Initiate taken again needs a different spell list (SRD 5.2.1 p. 87)', () => {
+    const c = creation('fighter', 'human', 'acolyte')
+    const picks = { 'L1:species:versatile:0': ['magic-initiate'] }
+    const list = creationPicks(c, picks, data).find(
+      (p) => p.key === 'L1:species:versatile:0>0' && p.kind === 'option',
+    )!
+    expect(list.options.find((o) => o.id === 'Cleric')?.disabled).toMatch(/Chosen when you took/)
+    expect(list.options.find((o) => o.id === 'Wizard')?.disabled).toBeUndefined()
+    expect(pickProblem(list, ['Cleric'])).toMatch(/Cleric/)
+  })
+
+  it('coins keep silver and copper', () => {
+    expect(cpToCoins(3766)).toEqual({ cp: 6, sp: 6, ep: 0, gp: 37, pp: 0 })
+    expect(coinsText({ gp: 37, sp: 6, cp: 6 })).toBe('37 GP, 6 SP, 6 CP')
+    expect(coinsText({ gp: 0 })).toBe('0 GP')
+    expect(parseEquipment('Rope, 3 GP, 4 SP and 9 CP', data).coins).toEqual({
+      cp: 9,
+      sp: 4,
+      ep: 0,
+      gp: 3,
+      pp: 0,
+    })
+    expect(build('wizard').sheet.coins).toEqual({ cp: 0, sp: 0, ep: 0, gp: 5 + 8, pp: 0 })
+  })
+
+  it('level 1 redone (Reconfigure): the rebuilt sheet takes the place, later levels replay', () => {
+    const { sheet, creation: made, choices } = build('fighter')
+    levelTo(sheet, 1, 4, 'champion')
+    sheet.inventory.push({ name: 'Lucky Coin', qty: '1' })
+    const recorded = sheet.levelHistory!.map((e) => e.dnd5e!)
+    const redo = { ...made, speciesSlug: 'dwarf' }
+    const l1 = Object.fromEntries(
+      Object.entries(choices).filter(([k]) => !k.startsWith('L1:species')),
+    )
+    const picks = fill((p) => creationPicks(redo, p, data), prefer('fighter'), l1)
+    restoreBuild(sheet, buildDnd5eSheet(redo, picks, data))
+    expect(sheet.levelHistory).toEqual([])
+    recorded.forEach((input, i) => {
+      const plan = dnd5eLevelPlan(sheet, i + 2, data, input.picks)!
+      expect(dnd5eLevelProblems(plan, input)).toEqual([])
+      applyDnd5eLevel(sheet, i + 2, input, data)
+    })
+    expect(sheet.lineage).toMatch(/Dwarf/)
+    expect(sheet.class).toBe('Fighter (Champion)')
+    expect(sheet.inventory.map((i) => i.name)).toContain('Lucky Coin')
+    expect(sheet.levelHistory).toHaveLength(3)
   })
 })

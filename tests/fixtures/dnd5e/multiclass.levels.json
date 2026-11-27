@@ -1,0 +1,1127 @@
+{
+  "Paladin 2 / Warlock 3": [
+    {
+      "class": "Paladin",
+      "features": [
+        "Background: Noble",
+        "Feat · Noble: Skilled",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Paladin 1: Lay on Hands",
+        "Paladin 1: Spellcasting",
+        "Paladin 1: Weapon Mastery"
+      ],
+      "picks": [],
+      "profBonus": 2,
+      "hpMax": 11,
+      "hitDice": [
+        "1d10"
+      ],
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Paladin",
+      "features": [
+        "Paladin 2: Fighting Style",
+        "Paladin 2: Fighting Style: Fighting Style feat",
+        "Feat · Paladin 2: Archery",
+        "Paladin 2: Paladin’s Smite"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:fighting-style:0 option×1",
+        "L2:fighting-style:0>fighting-style-feat:0 feat×1",
+        "L2:spells:prepared spell×1",
+        "L2:swap:prepared-spell:out swapOut×1?",
+        "L2:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 18,
+      "hitDice": [
+        "2d10"
+      ],
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Paladin 2 / Warlock 1",
+      "features": [
+        "Warlock 1: Multiclass proficiencies",
+        "Warlock 1: Eldritch Invocations",
+        "Warlock 1: Pact Magic",
+        "Eldritch Invocations: Armor of Shadows"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:eldritch-invocations:0 option×1",
+        "L3:spells:cantrips cantrip×2",
+        "L3:spells:prepared spell×2",
+        "L3:swap:eldritch-invocations:out swapOut×1?",
+        "L3:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 24,
+      "hitDice": [
+        "2d10",
+        "1d8"
+      ],
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": "1×1",
+      "casting": [
+        "Paladin 2: DC 12, 0 cantrips, 3 prepared to level 1",
+        "Warlock 1: DC 12, 2 cantrips, 2 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Paladin 2 / Warlock 2",
+      "features": [
+        "Warlock 2: Magical Cunning",
+        "Eldritch Invocations: Agonizing Blast",
+        "Eldritch Invocations: Devil’s Sight"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:eldritch-invocations:0 option×2",
+        "L4:eldritch-invocations:0>agonizing-blast:0 cantrip×1",
+        "L4:spells:prepared spell×1",
+        "L4:swap:cantrip:out swapOut×1?",
+        "L4:swap:prepared-spell:out swapOut×1?",
+        "L4:swap:eldritch-invocations:out swapOut×1?",
+        "L4:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 30,
+      "hitDice": [
+        "2d10",
+        "2d8"
+      ],
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": "2×1",
+      "casting": [
+        "Paladin 2: DC 12, 0 cantrips, 3 prepared to level 1",
+        "Warlock 2: DC 12, 2 cantrips, 3 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Paladin 2 / Warlock 3 (Fiend Patron)",
+      "features": [
+        "Fiend Patron 3: Dark One’s Blessing",
+        "Fiend Patron 3: Fiend Spells"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:subclass subclass×1",
+        "L5:spells:prepared spell×1",
+        "L5:swap:cantrip:out swapOut×1?",
+        "L5:swap:prepared-spell:out swapOut×1?",
+        "L5:swap:eldritch-invocations:out swapOut×1?",
+        "L5:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 3,
+      "hpMax": 36,
+      "hitDice": [
+        "2d10",
+        "3d8"
+      ],
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": "2×2",
+      "casting": [
+        "Paladin 2: DC 13, 0 cantrips, 3 prepared to level 1",
+        "Warlock 3: DC 13, 2 cantrips, 4 prepared to level 2"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    }
+  ],
+  "Fighter 1 / Wizard 5": [
+    {
+      "class": "Fighter",
+      "features": [
+        "Background: Soldier",
+        "Feat · Soldier: Savage Attacker",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Fighter 1: Fighting Style",
+        "Feat · Fighter 1: Archery",
+        "Fighter 1: Second Wind",
+        "Fighter 1: Weapon Mastery"
+      ],
+      "picks": [],
+      "profBonus": 2,
+      "hpMax": 12,
+      "hitDice": [
+        "1d10"
+      ],
+      "slots": [],
+      "pact": null,
+      "casting": [],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "STR",
+        "CON"
+      ]
+    },
+    {
+      "class": "Fighter 1 / Wizard 1",
+      "features": [
+        "Wizard 1: Multiclass proficiencies",
+        "Wizard 1: Spellcasting",
+        "Wizard 1: Ritual Adept",
+        "Wizard 1: Arcane Recovery"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:spellcasting:0 spell×6",
+        "L2:spells:cantrips cantrip×3",
+        "L2:spells:prepared spell×4",
+        "L2:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 18,
+      "hitDice": [
+        "1d10",
+        "1d6"
+      ],
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Wizard 1: DC 11, 3 cantrips, 4 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "STR",
+        "CON"
+      ]
+    },
+    {
+      "class": "Fighter 1 / Wizard 2",
+      "features": [
+        "Wizard 2: Scholar"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:scholar:0 expertise×1",
+        "L3:spells:book spell×2",
+        "L3:spells:prepared spell×1",
+        "L3:swap:cantrip:out swapOut×1?",
+        "L3:swap:prepared-spell:out swapOut×1?",
+        "L3:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 24,
+      "hitDice": [
+        "1d10",
+        "2d6"
+      ],
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Wizard 2: DC 11, 3 cantrips, 5 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "STR",
+        "CON"
+      ]
+    },
+    {
+      "class": "Fighter 1 / Wizard 3 (Evoker)",
+      "features": [
+        "Evoker 3: Evocation Savant",
+        "Evoker 3: Potent Cantrip"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:subclass subclass×1",
+        "L4:evoker:evocation-savant:0 spell×2",
+        "L4:spells:book spell×2",
+        "L4:spells:prepared spell×1",
+        "L4:swap:cantrip:out swapOut×1?",
+        "L4:swap:prepared-spell:out swapOut×1?",
+        "L4:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 30,
+      "hitDice": [
+        "1d10",
+        "3d6"
+      ],
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Wizard 3: DC 11, 3 cantrips, 6 prepared to level 2"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "STR",
+        "CON"
+      ]
+    },
+    {
+      "class": "Fighter 1 / Wizard 4 (Evoker)",
+      "features": [
+        "Feat · Wizard 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:asi feat×1",
+        "L5:asi>asi asi×2",
+        "L5:spells:cantrips cantrip×1",
+        "L5:spells:book spell×2",
+        "L5:spells:prepared spell×1",
+        "L5:swap:cantrip:out swapOut×1?",
+        "L5:swap:prepared-spell:out swapOut×1?",
+        "L5:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 3,
+      "hpMax": 36,
+      "hitDice": [
+        "1d10",
+        "4d6"
+      ],
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Wizard 4: DC 13, 4 cantrips, 7 prepared to level 2"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "STR",
+        "CON"
+      ]
+    },
+    {
+      "class": "Fighter 1 / Wizard 5 (Evoker)",
+      "features": [
+        "Wizard 5: Memorize Spell"
+      ],
+      "picks": [
+        "L6:class class×1?",
+        "L6:spells:book spell×2",
+        "L6:spells:prepared spell×2",
+        "L6:swap:cantrip:out swapOut×1?",
+        "L6:swap:prepared-spell:out swapOut×1?",
+        "L6:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 3,
+      "hpMax": 42,
+      "hitDice": [
+        "1d10",
+        "5d6"
+      ],
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Wizard 5: DC 13, 4 cantrips, 9 prepared to level 3"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Heavy armor",
+        "Shields"
+      ],
+      "saves": [
+        "STR",
+        "CON"
+      ]
+    }
+  ],
+  "Rogue 3 (Arcane Trickster) / Ranger 2": [
+    {
+      "class": "Rogue",
+      "features": [
+        "Background: Criminal",
+        "Feat · Criminal: Alert",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Magic Initiate",
+        "Magic Initiate: Spell list: Cleric",
+        "Rogue 1: Expertise",
+        "Rogue 1: Sneak Attack",
+        "Rogue 1: Thieves’ Cant",
+        "Rogue 1: Weapon Mastery"
+      ],
+      "picks": [],
+      "profBonus": 2,
+      "hpMax": 10,
+      "hitDice": [
+        "1d8"
+      ],
+      "slots": [],
+      "pact": null,
+      "casting": [],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons that have the Finesse or Light property"
+      ],
+      "armor": [
+        "Light armor"
+      ],
+      "saves": [
+        "DEX",
+        "INT"
+      ]
+    },
+    {
+      "class": "Rogue",
+      "features": [
+        "Rogue 2: Cunning Action"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 17,
+      "hitDice": [
+        "2d8"
+      ],
+      "slots": [],
+      "pact": null,
+      "casting": [],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons that have the Finesse or Light property"
+      ],
+      "armor": [
+        "Light armor"
+      ],
+      "saves": [
+        "DEX",
+        "INT"
+      ]
+    },
+    {
+      "class": "Rogue (Arcane Trickster)",
+      "features": [
+        "Rogue 3: Steady Aim",
+        "Arcane Trickster 3: Spellcasting",
+        "Arcane Trickster 3: Mage Hand Legerdemain"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:subclass subclass×1",
+        "L3:spells:cantrips cantrip×3",
+        "L3:spells:prepared spell×3",
+        "L3:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 24,
+      "hitDice": [
+        "3d8"
+      ],
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons that have the Finesse or Light property"
+      ],
+      "armor": [
+        "Light armor"
+      ],
+      "saves": [
+        "DEX",
+        "INT"
+      ]
+    },
+    {
+      "class": "Rogue 3 (Arcane Trickster) / Ranger 1",
+      "features": [
+        "Ranger 1: Multiclass proficiencies",
+        "Ranger 1: Spellcasting",
+        "Ranger 1: Favored Enemy",
+        "Ranger 1: Weapon Mastery"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:multiclass:skill skill×1",
+        "L4:subclass subclass×1?",
+        "L4:weapon-mastery:0 weaponMastery×2",
+        "L4:spells:prepared spell×2",
+        "L4:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 32,
+      "hitDice": [
+        "3d8",
+        "1d10"
+      ],
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Arcane Trickster 3: DC 11, 3 cantrips, 3 prepared to level 1",
+        "Ranger 1: DC 12, 0 cantrips, 2 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons that have the Finesse or Light property",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields"
+      ],
+      "saves": [
+        "DEX",
+        "INT"
+      ]
+    },
+    {
+      "class": "Rogue 3 (Arcane Trickster) / Ranger 2",
+      "features": [
+        "Ranger 2: Deft Explorer",
+        "Ranger 2: Fighting Style",
+        "Ranger 2: Fighting Style: Fighting Style feat",
+        "Feat · Ranger 2: Archery"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:deft-explorer:0 expertise×1",
+        "L5:deft-explorer:1 language×2",
+        "L5:fighting-style:0 option×1",
+        "L5:fighting-style:0>fighting-style-feat:0 feat×1",
+        "L5:spells:prepared spell×1",
+        "L5:swap:prepared-spell:out swapOut×1?",
+        "L5:swap:mastery:out swapOut×1?"
+      ],
+      "profBonus": 3,
+      "hpMax": 40,
+      "hitDice": [
+        "3d8",
+        "2d10"
+      ],
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Arcane Trickster 3: DC 12, 3 cantrips, 3 prepared to level 1",
+        "Ranger 2: DC 13, 0 cantrips, 3 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons that have the Finesse or Light property",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields"
+      ],
+      "saves": [
+        "DEX",
+        "INT"
+      ]
+    }
+  ],
+  "Cleric 1 / Druid 4 / Artificer 2": [
+    {
+      "class": "Cleric",
+      "features": [
+        "Background: Acolyte",
+        "Feat · Acolyte: Magic Initiate",
+        "Magic Initiate: Spell list: Cleric",
+        "Human: Resourceful",
+        "Human: Skillful",
+        "Human: Versatile",
+        "Feat · Human: Alert",
+        "Cleric 1: Spellcasting",
+        "Cleric 1: Divine Order",
+        "Cleric 1: Divine Order: Protector"
+      ],
+      "picks": [],
+      "profBonus": 2,
+      "hpMax": 9,
+      "hitDice": [
+        "1d8"
+      ],
+      "slots": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields",
+        "Heavy armor"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Cleric 1 / Druid 1",
+      "features": [
+        "Druid 1: Multiclass proficiencies",
+        "Druid 1: Spellcasting",
+        "Druid 1: Druidic",
+        "Druid 1: Primal Order",
+        "Druid 1: Primal Order: Magician"
+      ],
+      "picks": [
+        "L2:class class×1?",
+        "L2:primal-order:0 option×1",
+        "L2:primal-order:0>magician:0 cantrip×1",
+        "L2:spells:cantrips cantrip×2",
+        "L2:spells:prepared spell×4"
+      ],
+      "profBonus": 2,
+      "hpMax": 15,
+      "hitDice": [
+        "2d8"
+      ],
+      "slots": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Cleric 1: DC 13, 3 cantrips, 4 prepared to level 1",
+        "Druid 1: DC 13, 2 cantrips, 4 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields",
+        "Heavy armor"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Cleric 1 / Druid 2",
+      "features": [
+        "Druid 2: Wild Shape",
+        "Druid 2: Wild Companion"
+      ],
+      "picks": [
+        "L3:class class×1?",
+        "L3:spells:prepared spell×1",
+        "L3:swap:cantrip:out swapOut×1?",
+        "L3:swap:prepared-spell:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 21,
+      "hitDice": [
+        "3d8"
+      ],
+      "slots": [
+        4,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Cleric 1: DC 13, 3 cantrips, 4 prepared to level 1",
+        "Druid 2: DC 13, 2 cantrips, 5 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields",
+        "Heavy armor"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Cleric 1 / Druid 3 (Circle of the Land)",
+      "features": [
+        "Circle of the Land 3: Circle of the Land Spells",
+        "Circle of the Land: Land Type: Arid Land",
+        "Circle of the Land 3: Land’s Aid"
+      ],
+      "picks": [
+        "L4:class class×1?",
+        "L4:subclass subclass×1",
+        "L4:circle-of-the-land:circle-of-the-land-spells:0 option×1",
+        "L4:spells:prepared spell×1",
+        "L4:swap:cantrip:out swapOut×1?",
+        "L4:swap:prepared-spell:out swapOut×1?"
+      ],
+      "profBonus": 2,
+      "hpMax": 27,
+      "hitDice": [
+        "4d8"
+      ],
+      "slots": [
+        4,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Cleric 1: DC 13, 3 cantrips, 4 prepared to level 1",
+        "Druid 3: DC 13, 2 cantrips, 6 prepared to level 2"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields",
+        "Heavy armor"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Cleric 1 / Druid 4 (Circle of the Land)",
+      "features": [
+        "Feat · Druid 4: Ability Score Improvement"
+      ],
+      "picks": [
+        "L5:class class×1?",
+        "L5:asi feat×1",
+        "L5:asi>asi asi×2",
+        "L5:spells:cantrips cantrip×1",
+        "L5:spells:prepared spell×1",
+        "L5:swap:cantrip:out swapOut×1?",
+        "L5:swap:prepared-spell:out swapOut×1?"
+      ],
+      "profBonus": 3,
+      "hpMax": 33,
+      "hitDice": [
+        "5d8"
+      ],
+      "slots": [
+        4,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Cleric 1: DC 15, 3 cantrips, 4 prepared to level 1",
+        "Druid 4: DC 15, 3 cantrips, 7 prepared to level 2"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields",
+        "Heavy armor"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Cleric 1 / Druid 4 (Circle of the Land) / Artificer 1",
+      "features": [
+        "Artificer 1: Multiclass proficiencies",
+        "Artificer 1: Spellcasting",
+        "Artificer 1: Tinker’s Magic"
+      ],
+      "picks": [
+        "L6:class class×1?",
+        "L6:multiclass:skill skill×1",
+        "L6:spells:cantrips cantrip×2",
+        "L6:spells:prepared spell×2"
+      ],
+      "profBonus": 3,
+      "hpMax": 39,
+      "hitDice": [
+        "6d8"
+      ],
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Cleric 1: DC 15, 3 cantrips, 4 prepared to level 1",
+        "Druid 4: DC 15, 3 cantrips, 7 prepared to level 2",
+        "Artificer 1: DC 13, 2 cantrips, 2 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields",
+        "Heavy armor"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    },
+    {
+      "class": "Cleric 1 / Druid 4 (Circle of the Land) / Artificer 2",
+      "features": [
+        "Artificer 2: Replicate Magic Item",
+        "Magic Item Plans: Alchemy Jug",
+        "Magic Item Plans: Bag of Holding",
+        "Magic Item Plans: Cap of Water Breathing",
+        "Magic Item Plans: Common Magic Item"
+      ],
+      "picks": [
+        "L7:class class×1?",
+        "L7:replicate-magic-item:0 option×4",
+        "L7:spells:prepared spell×1",
+        "L7:swap:cantrip:out swapOut×1?",
+        "L7:swap:prepared-spell:out swapOut×1?",
+        "L7:swap:plans:out swapOut×1?"
+      ],
+      "profBonus": 3,
+      "hpMax": 45,
+      "hitDice": [
+        "7d8"
+      ],
+      "slots": [
+        4,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pact": null,
+      "casting": [
+        "Cleric 1: DC 15, 3 cantrips, 4 prepared to level 1",
+        "Druid 4: DC 15, 3 cantrips, 7 prepared to level 2",
+        "Artificer 2: DC 13, 2 cantrips, 3 prepared to level 1"
+      ],
+      "weapons": [
+        "Simple weapons",
+        "Martial weapons"
+      ],
+      "armor": [
+        "Light armor",
+        "Medium armor",
+        "Shields",
+        "Heavy armor"
+      ],
+      "saves": [
+        "WIS",
+        "CHA"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 // The data-driven 5e (2024) level-up (SRD 5.2.1 p. 23): what reaching a level grants and asks
 // for, read from the same walk as the level 1 build (`utils/dnd5eBuild.ts`), and applying it
-// with a level history entry so it can be undone and replayed (Reconfigure).
+// with a level history entry so it can be undone and replayed (Reconfigure). The level's class
+// is one of its picks (`L<level>:class`), so a multiclass level replays like any other.
 import type { Dnd5eAbility, Dnd5eFeatureEntry, Dnd5eLevelInput, Dnd5eSheet } from '~/types/sheets'
 import {
   type Dnd5eBuildData,
@@ -24,6 +25,8 @@ export const DND5E_XP = [
 
 export interface Dnd5eLevelPlan {
   level: number
+  /** The class this level goes to, with its level in that class (multiclassing). */
+  cls: { slug: string; name: string; level: number }
   /** Hit Points: the Hit Die (its fixed value), CON now and after, and per-level bonuses. */
   hp: { die: number; fixed: number; con: number; perLevel: number; retro: number }
   profBonus: { from: number; to: number }
@@ -134,6 +137,7 @@ export function dnd5eLevelPlan(
   })
   return {
     level,
+    cls: { slug: cls.slug, name: cls.name, level: after.classLevel },
     hp: {
       die: cls.hitDie,
       fixed: fixedHp(cls.hitDie),
