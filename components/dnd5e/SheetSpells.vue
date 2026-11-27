@@ -2,7 +2,7 @@
 // The 5e sheet's Spells, laid out like Nimble's and PF2e's: the spell attack and save DC, slot
 // pips per level and the Pact Magic slots (tap to spend or restore), then cantrips and each
 // spell level folding, every spell a card (`.tile.spell`) of the same three lines: name and its
-// C / R / Always / Free tags, cost, range, duration and school, and the summary clamped to two
+// Conc. / Ritual / Always / Free tags, cost, range, duration and school, and the summary clamped to two
 // lines (left out on a phone); open, it spans the grid with its text, what it casts with
 // (slot levels to upcast, a pact slot, free casts, a Ritual), Cast and the result, and "Heal
 // yourself" for healing. Spellbook spells not prepared fold away (rituals only, with Ritual
@@ -68,8 +68,10 @@ function meta(r: Dnd5eSpellRef) {
 function tags(r: Dnd5eSpellRef) {
   const d = casting.defOf(r.slug)
   return [
-    ...(d?.concentration ? [{ t: 'C', title: 'Concentration: one such spell at a time' }] : []),
-    ...(d?.ritual ? [{ t: 'R', title: 'Ritual: cast it without a slot, 10 minutes longer' }] : []),
+    ...(d?.concentration ? [{ t: 'Conc.', title: 'Concentration: one such spell at a time' }] : []),
+    ...(d?.ritual
+      ? [{ t: 'Ritual', title: 'Ritual: cast it without a slot, 10 minutes longer' }]
+      : []),
     ...(r.always ? [{ t: 'Always', title: `Always prepared (${r.from})` }] : []),
     ...(r.free ? [{ t: 'Free', title: `Free cast from ${r.from}` }] : []),
   ]
@@ -161,7 +163,7 @@ const components = (r: Dnd5eSpellRef) => {
         <details v-for="r in g.spells" :key="r.slug" name="dnd5e-spell" class="tile spell">
           <summary class="spell__head">
             <span class="spell__top">
-              <strong class="spell__name">{{ r.name }}</strong>
+              <strong class="spell__name" :title="r.name">{{ r.name }}</strong>
               <span v-for="t in tags(r)" :key="t.t" class="tag" :title="t.title"
                 ><span aria-hidden="true">{{ t.t }}</span
                 ><span class="sr-only">{{ t.title }}</span></span
@@ -241,7 +243,7 @@ const components = (r: Dnd5eSpellRef) => {
         <details v-for="r in book" :key="r.slug" name="dnd5e-spell" class="tile spell">
           <summary class="spell__head">
             <span class="spell__top">
-              <strong class="spell__name">{{ r.name }}</strong>
+              <strong class="spell__name" :title="r.name">{{ r.name }}</strong>
               <span v-for="t in tags(r)" :key="t.t" class="tag" :title="t.title"
                 ><span aria-hidden="true">{{ t.t }}</span
                 ><span class="sr-only">{{ t.title }}</span></span
