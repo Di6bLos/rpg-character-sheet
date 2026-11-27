@@ -1,14 +1,16 @@
 <script setup lang="ts">
 // The Turn panel of the Nimble, PF2e and 5e sheets: whose turn it is, the action circles (tap to
 // spend or restore; PF2e adds its reaction and strikes out actions stunned or slowed took; 5e
-// its reaction, Bonus Action, object interaction and movement), the actions left and the
+// its reaction, Bonus Action, object interaction and movement; with a reaction circle each
+// circle is captioned: Action, Reaction, Bonus, Object), the actions left and the
 // attack note, and one step button at a time (Initiative, Start turn, End turn…) with a typed
 // Initiative for Manual dice. Each system fills a `TurnModel`: nimble/SheetTurn from
 // useTurnSteps, pf2e/SheetTurn from usePf2eTurnSteps, dnd5e/SheetTurn from useDnd5eTurnSteps.
 import type { TurnModel } from '~/utils/turnSteps'
 
-defineProps<{ turn: TurnModel }>()
+const props = defineProps<{ turn: TurnModel }>()
 const { draft, canEdit, campaignId } = useSheet()
+const captioned = computed(() => !!props.turn.reaction)
 </script>
 
 <template>
@@ -38,29 +40,31 @@ const { draft, canEdit, campaignId } = useSheet()
       >
     </div>
     <div class="tile turn">
-      <div
-        class="row"
-        style="gap: 8px; flex-wrap: wrap"
-        role="group"
-        aria-label="Actions this turn"
-      >
-        <button
-          v-for="p in turn.pips"
-          :key="p.n"
-          type="button"
-          class="action"
-          :class="{ on: p.on, extra: p.extra, lost: !!p.lost }"
-          :aria-label="
-            p.lost
-              ? `Action ${p.n} lost to ${p.lost}`
-              : `${p.on ? 'Spend' : 'Restore'} action ${p.n}`
-          "
-          :title="p.lost ? `Lost to ${p.lost} this turn` : undefined"
-          :disabled="!canEdit || turn.pipsLocked || !!p.lost"
-          @click="turn.toggleAction(p.n)"
-        >
-          {{ p.n }}
-        </button>
+      <div class="row circles" role="group" aria-label="Actions this turn">
+        <span class="captioned">
+          <span class="row" style="gap: 8px; flex-wrap: wrap">
+            <button
+              v-for="p in turn.pips"
+              :key="p.n"
+              type="button"
+              class="action"
+              :class="{ on: p.on, extra: p.extra, lost: !!p.lost }"
+              :aria-label="
+                p.lost
+                  ? `Action ${p.n} lost to ${p.lost}`
+                  : `${p.on ? 'Spend' : 'Restore'} action ${p.n}`
+              "
+              :title="p.lost ? `Lost to ${p.lost} this turn` : undefined"
+              :disabled="!canEdit || turn.pipsLocked || !!p.lost"
+              @click="turn.toggleAction(p.n)"
+            >
+              {{ p.n }}
+            </button>
+          </span>
+          <span v-if="captioned" class="caption" aria-hidden="true">{{
+            turn.pips.length === 1 ? 'Action' : 'Actions'
+          }}</span>
+        </span>
         <button
           type="button"
           class="action action--add"
@@ -71,33 +75,36 @@ const { draft, canEdit, campaignId } = useSheet()
         >
           +1
         </button>
-        <button
-          v-if="turn.reaction"
-          type="button"
-          class="action action--reaction"
-          :class="{ on: turn.reaction.ready }"
-          :aria-label="turn.reaction.ready ? 'Spend your reaction' : 'Restore your reaction'"
-          :aria-pressed="!turn.reaction.ready"
-          title="Your reaction: one a round, back at the start of your turn"
-          :disabled="!canEdit"
-          @click="turn.toggleReaction?.()"
-        >
-          <span aria-hidden="true">↺</span>
-        </button>
-        <button
-          v-for="e in turn.economy ?? []"
-          :key="e.key"
-          type="button"
-          class="action action--economy"
-          :class="[`action--${e.key}`, { on: e.ready }]"
-          :aria-label="e.ready ? `Spend your ${e.label}` : `Restore your ${e.label}`"
-          :aria-pressed="!e.ready"
-          :title="e.title"
-          :disabled="!canEdit || turn.pipsLocked"
-          @click="turn.toggleEconomy?.(e.key)"
-        >
-          <span aria-hidden="true">{{ e.glyph }}</span>
-        </button>
+        <span v-if="turn.reaction" class="captioned captioned--reaction">
+          <button
+            type="button"
+            class="action action--reaction"
+            :class="{ on: turn.reaction.ready }"
+            :aria-label="turn.reaction.ready ? 'Spend your reaction' : 'Restore your reaction'"
+            :aria-pressed="!turn.reaction.ready"
+            title="Your reaction: one a round, back at the start of your turn"
+            :disabled="!canEdit"
+            @click="turn.toggleReaction?.()"
+          >
+            <span aria-hidden="true">↺</span>
+          </button>
+          <span class="caption" aria-hidden="true">Reaction</span>
+        </span>
+        <span v-for="e in turn.economy ?? []" :key="e.key" class="captioned">
+          <button
+            type="button"
+            class="action action--economy"
+            :class="[`action--${e.key}`, { on: e.ready }]"
+            :aria-label="e.ready ? `Spend your ${e.label}` : `Restore your ${e.label}`"
+            :aria-pressed="!e.ready"
+            :title="e.title"
+            :disabled="!canEdit || turn.pipsLocked"
+            @click="turn.toggleEconomy?.(e.key)"
+          >
+            <span aria-hidden="true">{{ e.glyph }}</span>
+          </button>
+          <span class="caption" aria-hidden="true">{{ e.short }}</span>
+        </span>
       </div>
       <div class="stack" style="gap: 2px; min-width: 140px">
         <strong role="status" style="font-size: 15px">{{ turn.leftText }}</strong>
@@ -267,6 +274,30 @@ const { draft, canEdit, campaignId } = useSheet()
   color: var(--page-muted);
 }
 
+.circles {
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.captioned {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+
+  &--reaction {
+    margin-left: 4px;
+  }
+}
+
+.caption {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--page-muted);
+}
+
 .turn {
   flex-direction: row;
   flex-wrap: wrap;
@@ -340,7 +371,6 @@ const { draft, canEdit, campaignId } = useSheet()
   &--reaction {
     --reaction: #7a5ccc;
 
-    margin-left: 4px;
     font-size: 18px;
 
     &.on {

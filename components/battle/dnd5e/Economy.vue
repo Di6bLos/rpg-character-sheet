@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // A 5e hero's turn economy on the battle board (SRD 5.2.1 p. 13), from the sheet's turn model
 // (useDnd5eTurnSteps): the action circles (tap to spend or restore, +1 for Action Surge or
-// Haste), the Reaction (↺), the Bonus Action (B) and the object interaction (✋), then the
-// movement with −/+ 5 ft. The turn bar shows it; on the phone, whose one-row turn bar has no
+// Haste), the Reaction (↺), the Bonus Action (B) and the object interaction (✋), each captioned
+// (Action, Reaction, Bonus, Object), then the movement with −/+ 5 ft. The turn bar shows it; on the phone, whose one-row turn bar has no
 // room, the hero tab does (`compact`: 44px targets).
 import type { TurnModel } from '~/utils/turnSteps'
 
@@ -13,16 +13,23 @@ const { canEdit } = useSheet()
 <template>
   <div class="eco" :class="{ 'eco--compact': compact }">
     <div class="eco__line" role="group" :aria-label="`Actions: ${turn.leftText}`">
-      <button
-        v-for="p in turn.pips"
-        :key="p.n"
-        type="button"
-        class="eco__pip"
-        :class="{ on: p.on, extra: p.extra }"
-        :aria-label="`${p.on ? 'Spend' : 'Restore'} action ${p.n}`"
-        :disabled="!canEdit || turn.pipsLocked"
-        @click="turn.toggleAction(p.n)"
-      />
+      <span class="eco__item">
+        <span class="eco__pips">
+          <button
+            v-for="p in turn.pips"
+            :key="p.n"
+            type="button"
+            class="eco__pip"
+            :class="{ on: p.on, extra: p.extra }"
+            :aria-label="`${p.on ? 'Spend' : 'Restore'} action ${p.n}`"
+            :disabled="!canEdit || turn.pipsLocked"
+            @click="turn.toggleAction(p.n)"
+          />
+        </span>
+        <span class="eco__cap" aria-hidden="true">{{
+          turn.pips.length === 1 ? 'Action' : 'Actions'
+        }}</span>
+      </span>
       <button
         type="button"
         class="eco__add"
@@ -33,33 +40,36 @@ const { canEdit } = useSheet()
       >
         +1
       </button>
-      <button
-        v-if="turn.reaction"
-        type="button"
-        class="eco__pip eco__pip--glyph"
-        :class="{ on: turn.reaction.ready }"
-        :aria-label="turn.reaction.ready ? 'Spend your reaction' : 'Restore your reaction'"
-        :aria-pressed="!turn.reaction.ready"
-        title="Your Reaction: one a round, back at the start of your turn"
-        :disabled="!canEdit"
-        @click="turn.toggleReaction?.()"
-      >
-        <span aria-hidden="true">↺</span>
-      </button>
-      <button
-        v-for="e in turn.economy ?? []"
-        :key="e.key"
-        type="button"
-        class="eco__pip eco__pip--glyph"
-        :class="{ on: e.ready }"
-        :aria-label="e.ready ? `Spend your ${e.label}` : `Restore your ${e.label}`"
-        :aria-pressed="!e.ready"
-        :title="e.title"
-        :disabled="!canEdit || turn.pipsLocked"
-        @click="turn.toggleEconomy?.(e.key)"
-      >
-        <span aria-hidden="true">{{ e.glyph }}</span>
-      </button>
+      <span v-if="turn.reaction" class="eco__item">
+        <button
+          type="button"
+          class="eco__pip eco__pip--glyph"
+          :class="{ on: turn.reaction.ready }"
+          :aria-label="turn.reaction.ready ? 'Spend your reaction' : 'Restore your reaction'"
+          :aria-pressed="!turn.reaction.ready"
+          title="Your Reaction: one a round, back at the start of your turn"
+          :disabled="!canEdit"
+          @click="turn.toggleReaction?.()"
+        >
+          <span aria-hidden="true">↺</span>
+        </button>
+        <span class="eco__cap" aria-hidden="true">Reaction</span>
+      </span>
+      <span v-for="e in turn.economy ?? []" :key="e.key" class="eco__item">
+        <button
+          type="button"
+          class="eco__pip eco__pip--glyph"
+          :class="{ on: e.ready }"
+          :aria-label="e.ready ? `Spend your ${e.label}` : `Restore your ${e.label}`"
+          :aria-pressed="!e.ready"
+          :title="e.title"
+          :disabled="!canEdit || turn.pipsLocked"
+          @click="turn.toggleEconomy?.(e.key)"
+        >
+          <span aria-hidden="true">{{ e.glyph }}</span>
+        </button>
+        <span class="eco__cap" aria-hidden="true">{{ e.short }}</span>
+      </span>
     </div>
     <div v-if="turn.movement" class="eco__move" role="group" aria-label="Movement this turn">
       <button
@@ -96,10 +106,30 @@ const { canEdit } = useSheet()
 }
 
 .eco__line,
-.eco__move {
+.eco__move,
+.eco__pips {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.eco__line {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.eco__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.eco__cap {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--page-muted);
 }
 
 .eco__pip {
@@ -156,8 +186,13 @@ const { canEdit } = useSheet()
   gap: 8px;
 
   .eco__line,
-  .eco__move {
+  .eco__move,
+  .eco__pips {
     gap: 8px;
+  }
+
+  .eco__cap {
+    font-size: 11px;
   }
 
   .eco__pip {
